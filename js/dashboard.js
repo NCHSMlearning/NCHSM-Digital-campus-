@@ -439,69 +439,99 @@ class DashboardModule {
         }
     }
     
-    // ========== COMPACT NEXT CLASS CARD ==========
-    async loadQuickNextClass() {
-        console.log('📅 Loading next class card...');
-        
-        try {
-            const studentBlock = this.userProfile?.block;
-            if (!studentBlock) return;
-            
-            const { data: timetable, error } = await this.sb
-                .from('timetables')
-                .select('*')
-                .eq('block', studentBlock);
-            
-            if (error || !timetable || timetable.length === 0) return;
-            
-            const nextClass = this.findNextClass(timetable);
-            const card = document.getElementById('quick-next-class');
-            
-            if (!card || !nextClass) {
-                if (card) card.style.display = 'none';
-                return;
-            }
-            
-            const classDate = this.getClassDate(nextClass);
-            const isToday = classDate && classDate.toDateString() === new Date().toDateString();
-            const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
-            const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
-            
-            // Update card content
-            document.getElementById('quick-next-class-time').innerHTML = `${startTime} — ${endTime}`;
-            document.getElementById('quick-next-class-name').innerHTML = this.truncateText(nextClass.session_name || nextClass.course_name, 40);
-            
-            let lecturerName = nextClass.lecturer_name || 'TBA';
-            if (lecturerName !== 'TBA' && lecturerName !== '—') {
-                lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
-            }
-            document.getElementById('quick-next-class-lecturer').innerHTML = lecturerName;
-            document.getElementById('quick-next-class-venue').innerHTML = nextClass.venue || 'TBD';
-            
-            const daySpan = document.getElementById('quick-next-class-day');
-            const dayContainer = document.getElementById('quick-next-class-day-container');
-            
-            if (isToday) {
-                if (dayContainer) dayContainer.classList.add('today');
-                if (daySpan) daySpan.innerHTML = 'TODAY';
-            } else if (classDate) {
-                if (dayContainer) dayContainer.classList.remove('today');
-                const formatted = classDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                if (daySpan) daySpan.innerHTML = formatted;
-            }
-            
-            card.style.display = 'block';
-            
-            // Click to go to calendar
-            card.onclick = () => {
-                const calendarTab = document.querySelector('[data-tab="calendar"]');
-                if (calendarTab) calendarTab.click();
-            };
-            
-        } catch (error) {
-            console.error('Next class error:', error);
+  // ========== SIMPLIFIED NEXT CLASS CARD (USING DATABASE DATES) ==========
+async loadQuickNextClass() {
+    console.log('📅 Loading next class card...');
+    
+    try {
+        const studentBlock = this.userProfile?.block;
+        if (!studentBlock) {
+            console.log('No block found');
+            return;
         }
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Simple query using the class_date column
+        const { data: nextClass, error } = await this.sb
+            .from('timetables')
+            .select('*')
+            .eq('block', studentBlock)
+            .gte('class_date', today)
+            .order('class_date', { ascending: true })
+            .order('start_time', { ascending: true })
+            .limit(1);
+        
+        if (error) {
+            console.error('Query error:', error);
+            return;
+        }
+        
+        if (!nextClass || nextClass.length === 0) {
+            console.log('No upcoming classes found');
+            const card = document.getElementById('quick-next-class');
+            if (card) card.style.display = 'none';
+            return;
+        }
+        
+        const cls = nextClass[0];
+        const classDate = new Date(cls.class_date);
+        const isToday = classDate.toDateString() === new Date().toDateString();
+        const startTime = cls.start_time?.substring(0,5) || 'TBA';
+        const endTime = cls.end_time?.substring(0,5) || 'TBA';
+        
+        // Format date: "Tue, Jun 2" or "TODAY"
+        const formattedDate = classDate.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        // Update card elements
+        document.getElementById('quick-next-class-time').innerHTML = `${startTime} — ${endTime}`;
+        document.getElementById('quick-next-class-name').innerHTML = cls.session_name || cls.course_name;
+        document.getElementById('quick-next-class-code').innerHTML = cls.course_name || studentBlock;
+        
+        let lecturerName = cls.lecturer_name || 'TBA';
+        if (lecturerName !== 'TBA' && lecturerName !== '—') {
+            lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
+        }
+        document.getElementById('quick-next-class-lecturer').innerHTML = lecturerName;
+        document.getElementById('quick-next-class-venue').innerHTML = cls.venue || 'TBD';
+        
+        const daySpan = document.getElementById('quick-next-class-day');
+        const dayContainer = document.getElementById('quick-next-class-day-container');
+        
+        if (isToday) {
+            if (dayContainer) dayContainer.classList.add('today');
+            if (daySpan) daySpan.innerHTML = 'TODAY';
+        } else {
+            if (dayContainer) dayContainer.classList.remove('today');
+            if (daySpan) daySpan.innerHTML = formattedDate;
+        }
+        
+        // Show the card
+        const card = document.getElementById('quick-next-class');
+        if (card) {
+            card.style.display = 'block';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }
+        
+        // Click to go to calendar
+        card.onclick = () => {
+            const calendarTab = document.querySelector('[data-tab="calendar"]');
+            if (calendarTab) calendarTab.click();
+        };
+        
+        console.log(`✅ Next class: ${cls.session_name} on ${formattedDate} at ${startTime}`);
+        
+    } catch (error) {
+        console.error('Error loading next class:', error);
+        const card = document.getElementById('quick-next-class');
+        if (card) card.style.display = 'none';
     }
+}
     
    getClassDate(classItem) {
     // Anchor: June 3, 2026 is Tuesday of Week 1 at 11:00 AM (CHANGED TO 2026)
