@@ -23,22 +23,31 @@ class ProfileModule {
         this.savePhotoButton = document.getElementById('save-photo-button');
         this.cancelPhotoButton = document.getElementById('cancel-photo-button');
         
-        // Form fields (LEFT COLUMN)
+        // ==================== FORM FIELDS (LEFT COLUMN) ====================
+        
+        // Personal Information
         this.profileName = document.getElementById('profile-name');
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
         this.profilePhone = document.getElementById('profile-phone');
-        this.profileDob = document.getElementById('profile-dob');        // DOB
-        this.profileGender = document.getElementById('profile-gender');  // Gender
+        this.profileAltPhone = document.getElementById('profile-alt-phone');        // NEW
+        this.profileDob = document.getElementById('profile-dob');
+        this.profileGender = document.getElementById('profile-gender');
+        this.profileNationalId = document.getElementById('profile-national-id');    // NEW
+        this.profileAddress = document.getElementById('profile-address');           // NEW
+        
+        // Guardian Information
+        this.profileGuardianName = document.getElementById('profile-guardian-name');   // NEW
+        this.profileGuardianPhone = document.getElementById('profile-guardian-phone'); // NEW
+        
+        // Academic Information
         this.profileProgram = document.getElementById('profile-program');
         this.profileBlock = document.getElementById('profile-block');
         this.profileIntakeYear = document.getElementById('profile-intake-year');
-        
-        // Admission Date fields
         this.profileAdmissionDate = document.getElementById('profile-admission-date');
         this.profileAdmissionYear = document.getElementById('profile-admission-year');
         
-        // Block Progress elements (in left column)
+        // Block Progress elements
         this.blockProgressFill = document.getElementById('block-progress-fill');
         this.blockProgressText = document.getElementById('block-progress-text');
         this.currentBlockStatus = document.getElementById('current-block-status');
@@ -55,7 +64,7 @@ class ProfileModule {
         this.passwordRequirements = document.getElementById('password-requirements');
         this.passwordFeedback = document.getElementById('password-feedback');
         
-        // Action buttons (form actions at bottom)
+        // Action buttons
         this.editProfileButton = document.getElementById('edit-profile-button');
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
@@ -145,20 +154,17 @@ class ProfileModule {
     setupPasswordResetListeners() {
         if (!this.newPassword) return;
         
-        // Password strength checker
         this.newPassword.addEventListener('input', () => {
             this.checkPasswordStrength(this.newPassword.value);
             this.validatePasswordRequirements(this.newPassword.value);
         });
         
-        // Confirm password check
         if (this.confirmPassword) {
             this.confirmPassword.addEventListener('input', () => {
                 this.validateConfirmPassword();
             });
         }
         
-        // Show password requirements when typing
         this.newPassword.addEventListener('focus', () => {
             if (this.passwordRequirements) {
                 this.passwordRequirements.classList.add('show');
@@ -173,7 +179,6 @@ class ProfileModule {
             }, 2000);
         });
         
-        // Change password button click
         if (this.changePasswordBtn) {
             this.changePasswordBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -188,11 +193,8 @@ class ProfileModule {
         
         let strength = 0;
         
-        // Length check
         if (password.length >= 8) strength++;
         if (password.length >= 12) strength++;
-        
-        // Complexity checks
         if (/[A-Z]/.test(password)) strength++;
         if (/[a-z]/.test(password)) strength++;
         if (/[0-9]/.test(password)) strength++;
@@ -219,7 +221,6 @@ class ProfileModule {
         this.passwordStrengthText.textContent = strengthLabel;
         this.passwordStrengthText.style.color = this.getStrengthColor(strengthClass);
         
-        // Update bar width for visual feedback
         const widthPercent = (strength / 7) * 100;
         this.passwordStrengthBar.style.width = `${widthPercent}%`;
     }
@@ -243,7 +244,6 @@ class ProfileModule {
             special: /[!@#$%^&*]/.test(password)
         };
         
-        // Update each requirement
         const reqLength = document.getElementById('req-length');
         const reqUppercase = document.getElementById('req-uppercase');
         const reqLowercase = document.getElementById('req-lowercase');
@@ -307,7 +307,6 @@ class ProfileModule {
         const newPassword = this.newPassword?.value;
         const confirmPassword = this.confirmPassword?.value;
         
-        // Validation
         if (!currentPassword) {
             this.showPasswordFeedback('❌ Please enter your current password', 'error');
             return;
@@ -323,14 +322,12 @@ class ProfileModule {
             return;
         }
         
-        // Validate password strength
         if (!this.validatePasswordRequirements(newPassword)) {
             this.showPasswordFeedback('❌ Password does not meet requirements!', 'error');
             if (this.passwordRequirements) this.passwordRequirements.classList.add('show');
             return;
         }
         
-        // Show loading state
         if (this.changePasswordBtn) {
             this.changePasswordBtn.disabled = true;
             this.changePasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Changing Password...';
@@ -338,16 +335,11 @@ class ProfileModule {
         
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
             
             const email = this.userProfile?.email;
-            if (!email) {
-                throw new Error('User email not found');
-            }
+            if (!email) throw new Error('User email not found');
             
-            // Verify current password
             const { error: signInError } = await supabase.auth.signInWithPassword({
                 email: email,
                 password: currentPassword
@@ -358,37 +350,27 @@ class ProfileModule {
                 return;
             }
             
-            // Update password
             const { error: updateError } = await supabase.auth.updateUser({
                 password: newPassword
             });
             
             if (updateError) throw updateError;
             
-            // Success
-            this.showPasswordFeedback('✅ Password changed successfully! Please use your new password next login.', 'success');
+            this.showPasswordFeedback('✅ Password changed successfully!', 'success');
             
-            // Clear form
             if (this.currentPassword) this.currentPassword.value = '';
             if (this.newPassword) this.newPassword.value = '';
             if (this.confirmPassword) this.confirmPassword.value = '';
             
-            // Reset strength indicator
             if (this.passwordStrengthBar) {
                 this.passwordStrengthBar.className = 'strength-bar';
                 this.passwordStrengthBar.style.width = '0%';
             }
             if (this.passwordStrengthText) this.passwordStrengthText.textContent = 'Not set';
+            if (this.passwordRequirements) this.passwordRequirements.classList.remove('show');
             
-            // Hide password requirements
-            if (this.passwordRequirements) {
-                this.passwordRequirements.classList.remove('show');
-            }
-            
-            // Log audit
             await this.logAudit('PASSWORD_CHANGE', 'User changed their password', null, 'SUCCESS');
             
-            // Optionally sign out and require re-login
             setTimeout(() => {
                 if (confirm('Password changed successfully! Would you like to login again with your new password?')) {
                     supabase.auth.signOut();
@@ -441,7 +423,6 @@ class ProfileModule {
     }
     
     async initialize() {
-        // Get user data from database.js
         this.userId = this.getCurrentUserId();
         
         if (!this.userId) {
@@ -450,7 +431,6 @@ class ProfileModule {
         }
         
         this.userProfile = this.getUserProfile();
-        
         await this.loadProfile();
     }
     
@@ -505,16 +485,9 @@ class ProfileModule {
             this.userProfile = profile;
             this.clearStatus();
             
-            // Populate form fields
             this.populateProfileForm();
-            
-            // Load profile photo
             await this.loadProfilePhoto();
-            
-            // Update block progress display
             this.updateBlockProgress();
-            
-            // Set initial state
             this.updateUIState('view');
             
         } catch (error) {
@@ -526,11 +499,12 @@ class ProfileModule {
     populateProfileForm() {
         if (!this.userProfile) return;
         
-        // Set field values
+        // Personal Information
         if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
         if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
         if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
         if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
+        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';  // NEW
         
         // Date of Birth
         if (this.profileDob && this.userProfile.date_of_birth) {
@@ -549,6 +523,17 @@ class ProfileModule {
             this.profileGender.value = '';
         }
         
+        // National ID
+        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';  // NEW
+        
+        // Address
+        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';  // NEW
+        
+        // Guardian Information
+        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';  // NEW
+        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';  // NEW
+        
+        // Academic Information
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
         if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || 'Introductory';
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
@@ -576,7 +561,6 @@ class ProfileModule {
         }
     }
     
-    // Block Progress Display
     updateBlockProgress() {
         if (!this.userProfile) return;
         
@@ -596,7 +580,6 @@ class ProfileModule {
         const completedBlocksCount = currentBlockNumber - 1;
         const progressPercent = (completedBlocksCount / totalBlocks) * 100;
         
-        // Update progress bar
         if (this.blockProgressFill) {
             this.blockProgressFill.style.width = `${progressPercent}%`;
         }
@@ -609,10 +592,7 @@ class ProfileModule {
             this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
         }
         
-        // Update block timeline
         this.updateBlockTimeline(currentBlock);
-        
-        // Update completed blocks badges
         this.updateCompletedBlocks(completedBlocksCount);
     }
     
@@ -716,7 +696,6 @@ class ProfileModule {
     updateViewMode() {
         this.isEditing = false;
         
-        // Show/Hide buttons
         if (this.editProfileButton) this.editProfileButton.style.display = 'inline-flex';
         if (this.saveProfileButton) this.saveProfileButton.style.display = 'none';
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
@@ -724,32 +703,21 @@ class ProfileModule {
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
-        // Remove editing class
-        if (this.profileForm) {
-            this.profileForm.classList.remove('editing');
-        }
-        
-        // Make fields readonly
+        if (this.profileForm) this.profileForm.classList.remove('editing');
         this.setFieldsReadonly(true);
         
-        // Reset photo if pending
         if (this.pendingPhotoFile) {
             this.pendingPhotoFile = null;
             this.loadProfilePhoto();
         }
         
-        // Reset file input
-        if (this.passportFileInput) {
-            this.passportFileInput.value = '';
-        }
-        
+        if (this.passportFileInput) this.passportFileInput.value = '';
         this.clearStatus();
     }
     
     updateEditMode() {
         this.isEditing = true;
         
-        // Show/Hide buttons
         if (this.editProfileButton) this.editProfileButton.style.display = 'none';
         if (this.saveProfileButton) this.saveProfileButton.style.display = 'inline-flex';
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'inline-flex';
@@ -757,20 +725,13 @@ class ProfileModule {
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
-        // Add editing class
-        if (this.profileForm) {
-            this.profileForm.classList.add('editing');
-        }
-        
-        // Make fields editable (only specific fields)
+        if (this.profileForm) this.profileForm.classList.add('editing');
         this.setFieldsReadonly(false);
         
         this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
         
         setTimeout(() => {
-            if (this.profileName) {
-                this.profileName.focus();
-            }
+            if (this.profileName) this.profileName.focus();
         }, 100);
     }
     
@@ -782,86 +743,86 @@ class ProfileModule {
     }
     
     setFieldsReadonly(readonly) {
-    // Fields that can be edited (removed profileDob from this list)
-    const editableFields = [this.profileName, this.profilePhone, this.profileGender];
-    
-    editableFields.forEach(field => {
-        if (field) {
-            if (field.tagName === 'SELECT') {
-                field.disabled = readonly;
-            } else {
-                field.readOnly = readonly;
+        // Editable fields
+        const editableFields = [
+            this.profileName, 
+            this.profilePhone, 
+            this.profileAltPhone,
+            this.profileGender,
+            this.profileDob,
+            this.profileAddress,
+            this.profileGuardianName,
+            this.profileGuardianPhone
+        ];
+        
+        editableFields.forEach(field => {
+            if (field) {
+                if (field.tagName === 'SELECT') {
+                    field.disabled = readonly;
+                } else {
+                    field.readOnly = readonly;
+                }
+                if (!readonly) {
+                    field.classList.add('editable');
+                } else {
+                    field.classList.remove('editable');
+                }
             }
+        });
+        
+        // Date of Birth special handling
+        if (this.profileDob) {
             if (!readonly) {
-                field.classList.add('editable');
+                this.profileDob.removeAttribute('readonly');
+                this.profileDob.disabled = false;
+                this.profileDob.classList.add('editable');
+                this.profileDob.style.backgroundColor = '#fffbeb';
+                this.profileDob.style.cursor = 'pointer';
             } else {
+                this.profileDob.setAttribute('readonly', 'readonly');
+                this.profileDob.disabled = false;
+                this.profileDob.classList.remove('editable');
+                this.profileDob.style.backgroundColor = '#f8fafc';
+            }
+        }
+        
+        // Readonly fields
+        const readonlyFields = [
+            this.profileStudentId,
+            this.profileEmail,
+            this.profileProgram,
+            this.profileBlock,
+            this.profileIntakeYear,
+            this.profileAdmissionDate,
+            this.profileAdmissionYear,
+            this.profileNationalId
+        ];
+        
+        readonlyFields.forEach(field => {
+            if (field) {
+                if (field.tagName === 'SELECT') {
+                    field.disabled = true;
+                } else {
+                    field.readOnly = true;
+                }
                 field.classList.remove('editable');
             }
-        }
-    });
-    
-    // Date of Birth - handle separately so calendar works when editable
-    if (this.profileDob) {
-        if (!readonly) {
-            // In edit mode: remove readonly, enable the date picker
-            this.profileDob.removeAttribute('readonly');
-            this.profileDob.disabled = false;
-            this.profileDob.classList.add('editable');
-            // Force the date picker to be interactive
-            this.profileDob.style.backgroundColor = '#fffbeb';
-            this.profileDob.style.cursor = 'pointer';
-        } else {
-            // In view mode: make it readonly
-            this.profileDob.setAttribute('readonly', 'readonly');
-            this.profileDob.disabled = false; // Keep enabled but readonly
-            this.profileDob.classList.remove('editable');
-            this.profileDob.style.backgroundColor = '#f8fafc';
-        }
+        });
     }
-    
-    // Fields that are always readonly
-    const readonlyFields = [
-        this.profileStudentId,
-        this.profileEmail,
-        this.profileProgram,
-        this.profileBlock,
-        this.profileIntakeYear,
-        this.profileAdmissionDate,
-        this.profileAdmissionYear
-    ];
-    
-    readonlyFields.forEach(field => {
-        if (field) {
-            if (field.tagName === 'SELECT') {
-                field.disabled = true;
-            } else {
-                field.readOnly = true;
-            }
-            field.classList.remove('editable');
-        }
-    });
-}
     
     enableEditing() {
         this.updateUIState('edit');
     }
     
     cancelEditing() {
-        // Restore original values
         this.populateProfileForm();
         
-        // Reset photo if pending
         if (this.pendingPhotoFile) {
             this.pendingPhotoFile = null;
             this.loadProfilePhoto();
         }
         
-        // Reset file input
-        if (this.passportFileInput) {
-            this.passportFileInput.value = '';
-        }
-        
-        // Hide photo buttons
+        if (this.passportFileInput) this.passportFileInput.value = '';
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
@@ -871,10 +832,7 @@ class ProfileModule {
     async saveProfile() {
         if (!this.userId) return;
         
-        // Validate form
-        if (!this.validateForm()) {
-            return;
-        }
+        if (!this.validateForm()) return;
         
         this.updateUIState('saving');
         
@@ -882,14 +840,17 @@ class ProfileModule {
             const updates = {
                 full_name: this.profileName ? this.profileName.value.trim() : '',
                 phone: this.profilePhone ? this.profilePhone.value.trim() : '',
+                alt_phone: this.profileAltPhone ? this.profileAltPhone.value.trim() : '',
                 date_of_birth: this.profileDob ? this.profileDob.value : null,
                 gender: this.profileGender ? this.profileGender.value : null,
+                address: this.profileAddress ? this.profileAddress.value.trim() : '',
+                guardian_name: this.profileGuardianName ? this.profileGuardianName.value.trim() : '',
+                guardian_phone: this.profileGuardianPhone ? this.profileGuardianPhone.value.trim() : '',
                 updated_at: new Date().toISOString()
             };
             
             await this.saveProfileData(updates);
             
-            // If there's a pending photo, upload it
             if (this.pendingPhotoFile) {
                 await this.uploadPassportPhoto();
             } else {
@@ -901,112 +862,85 @@ class ProfileModule {
         }
     }
     
-async saveProfileData(updates) {
-    const supabase = this.getSupabaseClient();
-    if (!supabase) {
-        throw new Error('No database connection');
-    }
-    
-    // First, get the existing profile to preserve all required fields
-    const { data: existingProfile, error: fetchError } = await supabase
-        .from('consolidated_user_profiles_table')
-        .select('*')
-        .eq('user_id', this.userId)
-        .maybeSingle();
-    
-    if (fetchError && fetchError.code !== 'PGRST116') {
-        console.warn('Error fetching existing profile:', fetchError);
-    }
-    
-    // Handle date of birth properly
-    let dobValue = updates.date_of_birth;
-    if (dobValue === '' || dobValue === null || dobValue === undefined) {
-        dobValue = existingProfile?.date_of_birth || null;
-    } else if (dobValue) {
-        const testDate = new Date(dobValue);
-        if (!isNaN(testDate.getTime())) {
-            dobValue = testDate.toISOString().split('T')[0];
-        }
-    }
-    
-    // Get required values (from updates, existing profile, or defaults)
-    const emailValue = updates.email || existingProfile?.email || this.userProfile?.email || (this.profileEmail?.value);
-    const fullNameValue = updates.full_name || existingProfile?.full_name || this.userProfile?.full_name || '';
-    const roleValue = existingProfile?.role || 'student';
-    const statusValue = existingProfile?.status || 'active';
-    
-    // Generate an ID if this is a new record (id is NOT NULL)
-    let idValue = existingProfile?.id;
-    if (!idValue) {
-        // Generate a UUID or use user_id as fallback
-        idValue = this.userId;
-    }
-    
-    if (!emailValue) {
-        throw new Error('Email is required but not available');
-    }
-    
-    if (!fullNameValue) {
-        throw new Error('Full name is required');
-    }
-    
-    // Build complete object with ALL required NOT NULL fields
-    const upsertData = {
-        // REQUIRED fields (NOT NULL)
-        user_id: this.userId,
-        id: idValue,
-        email: emailValue,
-        full_name: fullNameValue,
-        role: roleValue,
-        status: statusValue,
+    async saveProfileData(updates) {
+        const supabase = this.getSupabaseClient();
+        if (!supabase) throw new Error('No database connection');
         
-        // Optional fields that can be updated
-        phone: updates.phone !== undefined ? updates.phone : (existingProfile?.phone || null),
-        date_of_birth: dobValue,
-        gender: updates.gender !== undefined ? updates.gender : (existingProfile?.gender || null),
-        updated_at: new Date().toISOString(),
+        const { data: existingProfile, error: fetchError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', this.userId)
+            .maybeSingle();
         
-        // Preserve other fields from existing profile
-        student_id: existingProfile?.student_id || this.userProfile?.student_id || null,
-        program: existingProfile?.program || this.userProfile?.program || null,
-        block: existingProfile?.block || this.userProfile?.block || null,
-        current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
-        intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
-        admission_date: existingProfile?.admission_date || this.userProfile?.admission_date || null,
-        admission_year: existingProfile?.admission_year || this.userProfile?.admission_year || null,
-        passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
-        department: existingProfile?.department || this.userProfile?.department || null,
-        block_program_year: existingProfile?.block_program_year || null,
-        student_uuid: existingProfile?.student_uuid || this.userId,
-        two_factor_enabled: existingProfile?.two_factor_enabled || false,
-        block_progress: existingProfile?.block_progress || null,
-        role_id: existingProfile?.role_id || null,
-        last_login: existingProfile?.last_login || null,
-        created_at: existingProfile?.created_at || new Date().toISOString()
-    };
-    
-    // Remove any undefined values
-    Object.keys(upsertData).forEach(key => {
-        if (upsertData[key] === undefined) {
-            delete upsertData[key];
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            console.warn('Error fetching existing profile:', fetchError);
         }
-    });
-    
-    console.log('Upserting with complete data. Required fields present:', {
-        hasUserId: !!upsertData.user_id,
-        hasId: !!upsertData.id,
-        hasEmail: !!upsertData.email,
-        hasFullName: !!upsertData.full_name,
-        hasRole: !!upsertData.role,
-        hasStatus: !!upsertData.status
-    });
-    
-    const { error } = await supabase
-        .from('consolidated_user_profiles_table')
-        .upsert(upsertData, { onConflict: 'user_id' });
-    
-    if (error) throw error;
-}
+        
+        let dobValue = updates.date_of_birth;
+        if (dobValue === '' || dobValue === null || dobValue === undefined) {
+            dobValue = existingProfile?.date_of_birth || null;
+        } else if (dobValue) {
+            const testDate = new Date(dobValue);
+            if (!isNaN(testDate.getTime())) {
+                dobValue = testDate.toISOString().split('T')[0];
+            }
+        }
+        
+        const emailValue = updates.email || existingProfile?.email || this.userProfile?.email || (this.profileEmail?.value);
+        const fullNameValue = updates.full_name || existingProfile?.full_name || this.userProfile?.full_name || '';
+        const roleValue = existingProfile?.role || 'student';
+        const statusValue = existingProfile?.status || 'active';
+        
+        let idValue = existingProfile?.id;
+        if (!idValue) idValue = this.userId;
+        
+        if (!emailValue) throw new Error('Email is required but not available');
+        if (!fullNameValue) throw new Error('Full name is required');
+        
+        const upsertData = {
+            user_id: this.userId,
+            id: idValue,
+            email: emailValue,
+            full_name: fullNameValue,
+            role: roleValue,
+            status: statusValue,
+            phone: updates.phone !== undefined ? updates.phone : (existingProfile?.phone || null),
+            alt_phone: updates.alt_phone !== undefined ? updates.alt_phone : (existingProfile?.alt_phone || null),
+            date_of_birth: dobValue,
+            gender: updates.gender !== undefined ? updates.gender : (existingProfile?.gender || null),
+            address: updates.address !== undefined ? updates.address : (existingProfile?.address || null),
+            guardian_name: updates.guardian_name !== undefined ? updates.guardian_name : (existingProfile?.guardian_name || null),
+            guardian_phone: updates.guardian_phone !== undefined ? updates.guardian_phone : (existingProfile?.guardian_phone || null),
+            updated_at: new Date().toISOString(),
+            student_id: existingProfile?.student_id || this.userProfile?.student_id || null,
+            program: existingProfile?.program || this.userProfile?.program || null,
+            block: existingProfile?.block || this.userProfile?.block || null,
+            current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
+            intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
+            admission_date: existingProfile?.admission_date || this.userProfile?.admission_date || null,
+            admission_year: existingProfile?.admission_year || this.userProfile?.admission_year || null,
+            passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
+            national_id: existingProfile?.national_id || this.userProfile?.national_id || null,
+            department: existingProfile?.department || this.userProfile?.department || null,
+            block_program_year: existingProfile?.block_program_year || null,
+            student_uuid: existingProfile?.student_uuid || this.userId,
+            two_factor_enabled: existingProfile?.two_factor_enabled || false,
+            block_progress: existingProfile?.block_progress || null,
+            role_id: existingProfile?.role_id || null,
+            last_login: existingProfile?.last_login || null,
+            created_at: existingProfile?.created_at || new Date().toISOString()
+        };
+        
+        Object.keys(upsertData).forEach(key => {
+            if (upsertData[key] === undefined) delete upsertData[key];
+        });
+        
+        const { error } = await supabase
+            .from('consolidated_user_profiles_table')
+            .upsert(upsertData, { onConflict: 'user_id' });
+        
+        if (error) throw error;
+    }
     
     async savePhotoOnly() {
         if (!this.pendingPhotoFile) {
@@ -1025,16 +959,10 @@ async saveProfileData(updates) {
     
     cancelPhotoUpload() {
         this.pendingPhotoFile = null;
-        
-        if (this.passportFileInput) {
-            this.passportFileInput.value = '';
-        }
-        
+        if (this.passportFileInput) this.passportFileInput.value = '';
         this.loadProfilePhoto();
-        
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
-        
         this.showStatus('Photo upload cancelled', 'info');
     }
     
@@ -1045,19 +973,12 @@ async saveProfileData(updates) {
         }
         
         this.pendingPhotoFile = null;
-        
-        if (this.passportFileInput) {
-            this.passportFileInput.value = '';
-        }
-        
+        if (this.passportFileInput) this.passportFileInput.value = '';
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
-        // Reload profile to get updated data
         this.loadProfile();
-        
         this.showStatus('Profile updated successfully!', 'success');
-        
         this.updateUIState('view');
     }
     
@@ -1071,54 +992,48 @@ async saveProfileData(updates) {
         }
     }
     
-   validateForm() {
-    let isValid = true;
-    
-    this.clearAllErrors();
-    
-    if (this.profileName && !this.profileName.value.trim()) {
-        this.showFieldError(this.profileName, 'Name is required');
-        isValid = false;
-    }
-    
-    if (this.profilePhone && this.profilePhone.value.trim()) {
-        const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
-        if (!phoneRegex.test(this.profilePhone.value.trim())) {
-            this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
-            isValid = false;
-        }
-    }
-    
-    // IMPROVED DATE VALIDATION
-    if (this.profileDob && this.profileDob.value) {
-        const dobValue = this.profileDob.value;
-        const dobDate = new Date(dobValue);
+    validateForm() {
+        let isValid = true;
+        this.clearAllErrors();
         
-        // Check if date is valid
-        if (isNaN(dobDate.getTime())) {
-            this.showFieldError(this.profileDob, 'Please enter a valid date');
+        if (this.profileName && !this.profileName.value.trim()) {
+            this.showFieldError(this.profileName, 'Name is required');
             isValid = false;
-        } else {
-            // Check age range
-            const today = new Date();
-            let age = today.getFullYear() - dobDate.getFullYear();
-            const m = today.getMonth() - dobDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
-                age--;
-            }
-            
-            if (age < 16) {
-                this.showFieldError(this.profileDob, 'You must be at least 16 years old');
-                isValid = false;
-            } else if (age > 100) {
-                this.showFieldError(this.profileDob, 'Please enter a valid date of birth');
+        }
+        
+        if (this.profilePhone && this.profilePhone.value.trim()) {
+            const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
+            if (!phoneRegex.test(this.profilePhone.value.trim())) {
+                this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
                 isValid = false;
             }
         }
+        
+        if (this.profileDob && this.profileDob.value) {
+            const dobValue = this.profileDob.value;
+            const dobDate = new Date(dobValue);
+            
+            if (isNaN(dobDate.getTime())) {
+                this.showFieldError(this.profileDob, 'Please enter a valid date');
+                isValid = false;
+            } else {
+                const today = new Date();
+                let age = today.getFullYear() - dobDate.getFullYear();
+                const m = today.getMonth() - dobDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) age--;
+                
+                if (age < 16) {
+                    this.showFieldError(this.profileDob, 'You must be at least 16 years old');
+                    isValid = false;
+                } else if (age > 100) {
+                    this.showFieldError(this.profileDob, 'Please enter a valid date of birth');
+                    isValid = false;
+                }
+            }
+        }
+        
+        return isValid;
     }
-    
-    return isValid;
-}
     
     showFieldError(field, message) {
         field.classList.add('error');
@@ -1138,7 +1053,6 @@ async saveProfileData(updates) {
     clearAllErrors() {
         const errorElements = document.querySelectorAll('.field-error');
         errorElements.forEach(element => element.remove());
-        
         const errorInputs = document.querySelectorAll('.form-field input.error, .form-field select.error');
         errorInputs.forEach(input => input.classList.remove('error'));
     }
@@ -1156,15 +1070,9 @@ async saveProfileData(updates) {
         
         this.pendingPhotoFile = file;
         
-        if (this.photoObjectURL) {
-            URL.revokeObjectURL(this.photoObjectURL);
-        }
-        
+        if (this.photoObjectURL) URL.revokeObjectURL(this.photoObjectURL);
         this.photoObjectURL = URL.createObjectURL(file);
-        
-        if (this.passportPreview) {
-            this.passportPreview.src = this.photoObjectURL;
-        }
+        if (this.passportPreview) this.passportPreview.src = this.photoObjectURL;
         
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'inline-flex';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'inline-flex';
@@ -1178,19 +1086,12 @@ async saveProfileData(updates) {
         const maxSize = 2 * 1024 * 1024;
         
         if (!validTypes.includes(file.type)) {
-            return {
-                valid: false,
-                message: 'Invalid file type. Please upload JPG, PNG, or WebP image.'
-            };
+            return { valid: false, message: 'Invalid file type. Please upload JPG, PNG, or WebP image.' };
         }
         
         if (file.size > maxSize) {
-            const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
             const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-            return {
-                valid: false,
-                message: `File too large (${fileSizeMB} MB). Maximum size is ${maxSizeMB} MB.`
-            };
+            return { valid: false, message: `File too large (${fileSizeMB} MB). Maximum size is 2 MB.` };
         }
         
         return { valid: true };
@@ -1198,54 +1099,36 @@ async saveProfileData(updates) {
     
     async uploadPassportPhoto() {
         const file = this.pendingPhotoFile;
-        if (!file) {
-            return;
-        }
+        if (!file) return;
         
         this.showStatus('Uploading photo...', 'info');
         
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                throw new Error('No database connection');
-            }
+            if (!supabase) throw new Error('No database connection');
             
             const fileExt = file.name.split('.').pop();
             const filePath = `${this.userId}.${fileExt}`;
             
             const { error: uploadError } = await supabase.storage
                 .from('passports')
-                .upload(filePath, file, { 
-                    cacheControl: '3600', 
-                    upsert: true,
-                    contentType: file.type
-                });
+                .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
             
             if (uploadError) throw uploadError;
             
-            const { data: urlData } = supabase.storage
-                .from('passports')
-                .getPublicUrl(filePath);
-            
+            const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
             
             const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
-                .upsert({ 
-                    user_id: this.userId,
-                    passport_url: publicUrl,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+                .upsert({ user_id: this.userId, passport_url: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
             
             if (updateError) throw updateError;
             
             this.showStatus('Photo uploaded successfully!', 'success');
-            
             this.pendingPhotoFile = null;
-            
             if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
             if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
-            
             await this.loadProfile();
             
             setTimeout(() => {
@@ -1288,13 +1171,8 @@ async saveProfileData(updates) {
 let profileModule = null;
 
 function initProfileModule() {
-    if (!document.getElementById('profile-form')) {
-        return null;
-    }
-    
-    if (profileModule) {
-        return profileModule;
-    }
+    if (!document.getElementById('profile-form')) return null;
+    if (profileModule) return profileModule;
     
     try {
         profileModule = new ProfileModule();
@@ -1308,7 +1186,6 @@ function initProfileModule() {
         };
         
         waitForDatabase();
-        
         return profileModule;
     } catch (error) {
         console.error('Profile init error:', error);
@@ -1331,20 +1208,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // If profile is visible initially
     if (document.getElementById('profile') && document.getElementById('profile').style.display !== 'none') {
-        setTimeout(() => {
-            initProfileModule();
-        }, 1000);
+        setTimeout(() => initProfileModule(), 1000);
     }
 });
 
 window.ProfileModule = ProfileModule;
 window.initProfileModule = initProfileModule;
 window.loadProfile = () => {
-    if (profileModule) {
-        return profileModule.loadProfile();
-    }
+    if (profileModule) return profileModule.loadProfile();
 };
 
-console.log('Profile module loaded with two-column layout (photo right, details left)');
+console.log('Profile module loaded with all fields (Phone, Alt Phone, DOB, Gender, National ID, Address, Guardian Name, Guardian Phone)');
