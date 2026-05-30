@@ -268,28 +268,50 @@
     <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
 </div>
 
-       <!-- TIMETABLE -->
-<div class="section-title">📅 My Class Schedule - <span id="timetable-block-title">Loading...</span></div>
-<div class="timetable-tabs">
-    <button class="week-btn active" data-week="all">📅 All Weeks</button>
-    <button class="week-btn" data-week="1">Week 1</button>
-    <button class="week-btn" data-week="2">Week 2</button>
-    <button class="week-btn" data-week="3">Week 3</button>
-    <button class="week-btn" data-week="4">Week 4</button>
-    <button class="week-btn" data-week="5">Week 5</button>
-    <button class="week-btn" data-week="6">Week 6</button>
+<!-- TIMETABLE SECTION - SUPER COMPACT -->
+<div class="section-title" style="font-size: 18px; margin-bottom: 12px;">
+    📅 My Schedule - <span id="timetable-block-title" style="color: #4C1D95;">Loading...</span>
 </div>
-<div class="timetable-card">
-    <div id="timetable-loading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>Loading your class schedule...</p>
+
+<!-- Quick Next Class (Tiny Banner) -->
+<div id="next-class-snap" style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; font-size: 13px;">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <span style="background: #10b98120; padding: 4px 8px; border-radius: 20px;">
+            <i class="fas fa-hourglass-half" style="color: #10b981; font-size: 12px;"></i> <strong>Next:</strong>
+        </span>
+        <span><strong id="next-class-name">-</strong></span>
+        <span><i class="fas fa-user"></i> <span id="next-class-lecturer">-</span></span>
+        <span><i class="fas fa-clock"></i> <span id="next-class-time">-</span></span>
+        <span><i class="fas fa-map-marker-alt"></i> <span id="next-class-venue">-</span></span>
+        <span id="next-class-day" style="color: #10b981;"></span>
     </div>
-    <div id="timetable-container" style="display: none;"></div>
-    <div id="timetable-empty" class="empty-state" style="display: none;">
-        <i class="fas fa-calendar-times"></i>
-        <h3>No Timetable Available</h3>
-        <p id="empty-message-text">Your class schedule is not yet available.</p>
-    </div>
+</div>
+
+<!-- Week Filter - Tiny Dropdown -->
+<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+    <select id="week-filter-select" style="padding: 5px 10px; font-size: 12px; border-radius: 6px; border: 1px solid #e5e7eb; background: white;">
+        <option value="all">📅 All Weeks</option>
+        <option value="1">Week 1</option>
+        <option value="2">Week 2</option>
+        <option value="3">Week 3</option>
+        <option value="4">Week 4</option>
+        <option value="5">Week 5</option>
+        <option value="6">Week 6</option>
+    </select>
+    <span style="font-size: 11px; color: #9ca3af;" id="class-count-display"></span>
+</div>
+
+<!-- Tiny Timetable Table -->
+<div id="timetable-container" style="background: white; border-radius: 8px; overflow-x: auto;"></div>
+
+<!-- Loading & Empty States -->
+<div id="timetable-loading" style="text-align: center; padding: 20px;">
+    <div class="loading-spinner" style="width: 24px; height: 24px;"></div>
+    <p style="font-size: 12px; margin-top: 8px;">Loading...</p>
+</div>
+<div id="timetable-empty" style="display: none; text-align: center; padding: 30px;">
+    <i class="fas fa-calendar-times" style="font-size: 32px; color: #d1d5db;"></i>
+    <p style="font-size: 13px; margin-top: 8px;">No timetable yet</p>
 </div>
 
         <!-- ACTION REQUIRED -->
