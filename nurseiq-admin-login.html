@@ -704,7 +704,7 @@
                     <div><span class="badge ${q.correctLetter === 'C' ? 'badge-success' : 'badge-primary'}">C.</span> ${escapeHtml(q.options.C)}</div>
                     <div><span class="badge ${q.correctLetter === 'D' ? 'badge-success' : 'badge-primary'}">D.</span> ${escapeHtml(q.options.D)}</div>
                 </div>
-                <div class="preview-correct"><i class="fas fa-check-circle"></i> Correct Answer: ${q.correctLetter} - ${escapeHtml(q.correctText)}</div>
+                <div class="preview-correct"><i class="fas fa-check-circle"></i> Correct Answer: ${escapeHtml(q.correctText)}</div>
                 <div class="preview-explanation"><i class="fas fa-info-circle"></i> Explanation: ${escapeHtml(q.explanation)}</div>
             </div>
         `).join('');
@@ -732,23 +732,22 @@
         let failed = 0;
         
         for (let q of pendingImportData) {
-            const payload = {
-                question_text: q.question,
-                option_a: q.options.A || null,
-                option_b: q.options.B || null,
-                option_c: q.options.C || null,
-                option_d: q.options.D || null,
-                correct_answer: q.correctLetter,  // ← Stores LETTER (A, B, C, D)
-                explanation: q.explanation.substring(0, 1000),
-                course_id: courseId,
-                difficulty: 'medium',
-                question_type: 'multiple_choice',
-                curriculum: 'KRCHN',
-                is_active: true,
-                is_published: true,
-                created_at: new Date().toISOString()
-            };
-            
+          const payload = {
+    question_text: q.question,
+    option_a: q.options.A || null,
+    option_b: q.options.B || null,
+    option_c: q.options.C || null,
+    option_d: q.options.D || null,
+    correct_answer: q.correctText,  // ← FIXED - stores ACTUAL ANSWER TEXT
+    explanation: q.explanation.substring(0, 1000),
+    course_id: courseId,
+    difficulty: 'medium',
+    question_type: 'multiple_choice',
+    curriculum: 'KRCHN',
+    is_active: true,
+    is_published: true,
+    created_at: new Date().toISOString()
+};
             const { error } = await sb.from('medical_assessments').insert([payload]);
             if (error) {
                 failed++;
