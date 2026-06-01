@@ -22,19 +22,19 @@ const SPREADSHEETS = {
   }
 };
 
-// Google Sheets Auth
-const auth = new google.auth.GoogleAuth({
-  credentials: {
-    type: "service_account",
-    project_id: "nursing-marks-system",
-    private_key_id: "1ed05cb70c346df5c3bb79e06bb1bffbd26f17b2",
-    private_key: `-----BEGIN PRIVATE KEY-----
+// ===== GOOGLE SHEETS AUTHENTICATION =====
+// Use environment variable for credentials in production
+const credentials = {
+  type: "service_account",
+  project_id: "nursing-marks-system",
+  private_key_id: "1ed05cb70c346df5c3bb79e06bb1bffbd26f17b2",
+  private_key: `-----BEGIN PRIVATE KEY-----
 MIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDJCTumvxURgqLM
 KJFDb+tk82Hh3ePi5Sl6vtov4ZVOWegwZZ6u9CWVErxFVGdbMOkg+EVhyx3aD+dS
 ZV+ZFmT2dTOu1CLjB+bTr1sPPZ1uFlWPd7bXMfDFhBdOpWVF15Ph+K6mHWjNX/TW
 DVEiwMd7x1wk+S0uEsgoXCc5fIb9SkTKUy+7ZpRCq3igyDvS/y33wpPlSNJH0wjg
 BWan+9obXHdMaDUWvqnUMqYHt2KeQcrBkLXXBdDDIY3gm/kSrLrJTTpPTgQYXmcL
-ujDh3Zx3t6HAncs4vdftGVClagamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
+ujDh3Zx3t6HAncs4vdftGVClgamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
 i7+YwBBZAgMBAAECgf94125PJ1/dCItptIBvzLiFIzCF/cvu03bQM3Ag33hnoHZL
 sDM56ABzBLHqoFkl/xNQgewFkV3Jth/s0MaH86La3QHZutd53M2YFqLiDesqX2+l
 ZBRHoMxk/ONgCIPmpL4Dj3g+vEGsXxCux1J2glvA/I116FH0yVVpR6EfKULsKhAF
@@ -55,13 +55,15 @@ C5a7SSvZgF+hszWNxcvoo0WVA7XI1YxFVcQz/QKBgDAsGt05pNt+9JFluUZaftLi
 iPfNv42aRnCdCn7YpnW8SkSTcyD0y+0hSCisQZ2NBgAkw4Y1uIYV+ayC4WXxWqmJ
 yuRhbjbdQnNygiTKqxi2Q/xLoQR3eG9zs4mCPwBkwzfEa7QateVKqB8SOhKr/TlZ
 eET3hIw//KEIOlTU2QI/
------END PRIVATE KEY-----
-`,
-    client_email: "nursing-marks-bot@nursing-marks-system.iam.gserviceaccount.com",
-    client_id: "116238387173068992581",
-    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-    token_uri: "https://oauth2.googleapis.com/token"
-  },
+-----END PRIVATE KEY-----`,
+  client_email: "nursing-marks-bot@nursing-marks-system.iam.gserviceaccount.com",
+  client_id: "116238387173068992581",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token"
+};
+
+const auth = new google.auth.GoogleAuth({
+  credentials: credentials,
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
 });
 
@@ -76,38 +78,19 @@ app.use((req, res, next) => {
 });
 
 // ===== HELPER FUNCTIONS =====
-async function getSheetLastRow(spreadsheetId, sheetName) {
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: `${sheetName}!A:A`,
-    });
-    return response.data.values ? response.data.values.length : 1;
-  } catch {
-    return 1;
-  }
-}
-
-// FIXED: createMarksheet function that properly creates sheets with students
 async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
-  // Clean the subject name for sheet name (remove special characters)
   let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
   const sheetName = `${block}_${cleanSubject}`;
   
   try {
-    // First, get all students
     const studentsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
       range: 'STUDENTS!A:B',
     });
     const students = studentsResponse.data.values || [];
     
-    if (students.length <= 1) {
-      console.log('No students found to add to marksheet');
-      return;
-    }
+    if (students.length <= 1) return;
     
-    // Prepare rows for the new sheet
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED_BY', 'ASSESSMENT_TYPE']];
     for (let i = 1; i < students.length; i++) {
       if (students[i][0]) {
@@ -115,34 +98,20 @@ async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
       }
     }
     
-    // Create the sheet and add data in one operation
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
-      requestBody: {
-        requests: [{
-          addSheet: {
-            properties: { title: sheetName }
-          }
-        }]
-      }
+      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
     });
     
-    // Add the data
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
       range: `${sheetName}!A1:I${rows.length}`,
       valueInputOption: 'RAW',
       requestBody: { values: rows }
     });
-    
-    console.log(`Created marksheet ${sheetName} with ${rows.length - 1} students`);
   } catch (error) {
-    // If sheet already exists, just update it
-    if (error.message && error.message.includes('already exists')) {
-      console.log(`Sheet ${sheetName} already exists, skipping creation`);
-    } else {
+    if (!error.message.includes('already exists')) {
       console.error('Error creating marksheet:', error.message);
-      throw error;
     }
   }
 }
@@ -235,12 +204,12 @@ app.post('/api/add-student', async (req, res) => {
       range: 'STUDENTS!A:D',
     });
     const data = response.data.values || [];
-    let nextRow = data.length + 1;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === admission) {
         return res.json({ success: false, message: 'Student already exists' });
       }
     }
+    const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
       range: `STUDENTS!A${nextRow}:D${nextRow}`,
@@ -337,12 +306,12 @@ app.post('/api/add-lecturer', async (req, res) => {
       range: 'LECTURERS!A:F',
     });
     const data = response.data.values || [];
-    let nextRow = data.length + 1;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === username) {
         return res.json({ success: false, message: 'Username already exists' });
       }
     }
+    const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
       range: `LECTURERS!A${nextRow}:F${nextRow}`,
@@ -416,12 +385,11 @@ app.post('/api/update-lecturer', async (req, res) => {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === oldUsername) {
         const row = i + 1;
-        const updateValues = [username, name, email || '', password || data[i][3], subjects.join(',')];
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `LECTURERS!A${row}:E${row}`,
           valueInputOption: 'RAW',
-          requestBody: { values: [updateValues] }
+          requestBody: { values: [[username, name, email || '', password || data[i][3], subjects.join(',')]] }
         });
         break;
       }
@@ -460,55 +428,39 @@ app.get('/api/units', async (req, res) => {
 app.post('/api/add-unit', async (req, res) => {
   try {
     const { block, name, assessmentType } = req.body;
-    
-    // First, add to CONFIG sheet
-    const configResponse = await sheets.spreadsheets.values.get({
+    const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
     });
-    
-    const data = configResponse.data.values || [];
+    const data = response.data.values || [];
     let nextRow = data.length + 1;
-    let unitExists = false;
-    let isActive = false;
     
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === block && data[i][1] === name) {
-        unitExists = true;
-        isActive = data[i][2] === 'YES';
-        if (isActive) {
+        if (data[i][2] === 'YES') {
           return res.json({ success: false, message: 'Unit already exists' });
         } else {
-          // Reactivate existing unit
           await sheets.spreadsheets.values.update({
             spreadsheetId: req.spreadsheetId,
             range: `CONFIG!C${i+1}:D${i+1}`,
             valueInputOption: 'RAW',
             requestBody: { values: [['YES', assessmentType]] }
           });
-          // Create marksheet
           await createMarksheet(req.spreadsheetId, block, name, assessmentType);
           return res.json({ success: true, message: 'Unit reactivated successfully' });
         }
       }
     }
     
-    if (!unitExists) {
-      // Add new unit to CONFIG
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: req.spreadsheetId,
-        range: `CONFIG!A${nextRow}:D${nextRow}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[block, name, 'YES', assessmentType]] }
-      });
-    }
-    
-    // Create marksheet with students
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `CONFIG!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[block, name, 'YES', assessmentType]] }
+    });
     await createMarksheet(req.spreadsheetId, block, name, assessmentType);
-    
-    res.json({ success: true, message: 'Unit added successfully with all students' });
+    res.json({ success: true, message: 'Unit added successfully' });
   } catch (error) {
-    console.error('Add unit error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -587,7 +539,7 @@ app.post('/api/marks', async (req, res) => {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     if (examType === 'nck') {
-      return res.json({ success: false, message: 'NCK scores are read-only. Edit directly in Google Sheets.' });
+      return res.json({ success: false, message: 'NCK scores are read-only' });
     }
     
     let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
