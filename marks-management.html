@@ -1030,12 +1030,11 @@
   
  function displayXYFormsMarks(marks) {
   if (!marks || marks.length === 0) {
-    document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found. Ensure students are in the STUDENTS sheet.</div>';
+    document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found.</div>';
     return;
   }
   
-  console.log('Displaying XY FORMS marks:', marks.length, 'students');
-  console.log('First student data:', marks[0]); // Debug to see what we're getting
+  console.log('First student data sample:', marks[0]);
   
   const clinicalAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'];
   
@@ -1045,8 +1044,9 @@
       <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
       <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
       <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
+      <button class="save-btn" onclick="copyFirstRowToAll()" style="padding: 5px 12px; background: #8b5cf6;">Copy First Row to All</button>
     </div>
-    <table style="min-width: 1400px;">
+    <table style="min-width: 1600px;">
       <thead>
         <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
           <th style="position: sticky; left: 0; background: #667eea; min-width: 50px;">#</th>
@@ -1055,7 +1055,7 @@
   for (let area of clinicalAreas) {
     html += `<th style="min-width: 65px;"><div style="font-size: 10px;">${area}</div></th>`;
   }
-  html += `<th style="min-width: 80px;">Average</th><th style="min-width: 80px;">Status</th><th style="min-width: 120px;">Graded By</th>`;
+  html += `<th style="min-width: 80px;">Average</th><th style="min-width: 80px;">Status</th><th style="min-width: 150px;">Graded By</th>`;
   html += `</tr></thead><tbody>`;
   
   currentNCKMarks = marks;
@@ -1064,23 +1064,14 @@
   for (let i = 0; i < marks.length; i++) {
     const m = marks[i];
     
-    // FIX: Use 'scores' array from API, NOT 'clinicalAreas'
-    let scores = [];
-    if (m.scores && m.scores.length) {
-      scores = m.scores;
-    } else if (m.clinicalAreas) {
+    // Get scores from API response
+    let scores = m.scores || [];
+    if (scores.length === 0 && m.clinicalAreas) {
       scores = m.clinicalAreas.map(ca => ca.score || 0);
-    } else {
-      // Try to get from the marks object directly
-      for (let c = 0; c < clinicalAreas.length; c++) {
-        scores.push(m[`area_${c}`] || 0);
-      }
     }
-    
-    // Ensure we have 22 scores
     while (scores.length < 22) scores.push(0);
     
-    // Calculate average from scores that have values
+    // Calculate average from non-zero scores only - as a NUMBER (0-100)
     const validScores = scores.filter(s => s > 0);
     let avg = 0;
     if (validScores.length > 0) {
@@ -1092,31 +1083,67 @@
     const status = avg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
     const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
     
+    // Get graded by - filter out the old final score (looks like a decimal number)
+    let gradedBy = m.gradedBy || '';
+    // If gradedBy looks like a decimal number (old final score), clear it
+    if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) {
+      gradedBy = '';
+    }
+    
     html += `<tr class="${rowClass}">`;
-    html += `<td style="position: sticky; left: 0; background: white;">${i+1}${m.name === 'ADMIN' ? ' (Admin)' : ''}</td>`;
+    html += `<td style="position: sticky; left: 0; background: white;">${i+1}</td>`;
     html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500;">${m.name || 'Unnamed'}</td>`;
     
     for (let c = 0; c < 22; c++) {
       const score = scores[c] || 0;
-      html += `<td style="padding: 2px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 55px; padding: 4px; font-size: 11px; border-radius: 6px; text-align: center;" onchange="updateXYAverage(${i})"></td>`;
+      const scoreStyle = score > 0 ? 'background: #d1fae5;' : '';
+      html += `<td style="padding: 2px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 55px; padding: 4px; font-size: 11px; border-radius: 6px; text-align: center; ${scoreStyle}" onchange="updateXYAverage(${i})"></td>`;
     }
     
+    // Display average as a NUMBER (no percentage sign)
     const displayAvg = avg > 0 ? avg.toFixed(2) : '0.00';
-    html += `<td id="xyAvg_${i}" style="font-weight: bold; text-align: center;">${displayAvg}%</td>`;
+    html += `<td id="xyAvg_${i}" style="font-weight: bold; text-align: center; background: ${avg >= 60 ? '#d1fae5' : '#fee2e2'};">${displayAvg}</td>`;
     html += `<td id="xyStatus_${i}" style="text-align: center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
-    html += `<td style="padding: 2px;"><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width: 100px; padding: 4px; font-size: 11px; border-radius: 6px;"></td>`;
+    html += `<td style="padding: 2px;"><input type="text" id="xyGraded_${i}" value="${gradedBy}" placeholder="Lecturer name" style="width: 110px; padding: 4px; font-size: 11px; border-radius: 6px;"></td>`;
     html += `</tr>`;
   }
   
   html += `</tbody></table></div>
   <div style="text-align: center; margin-top: 20px; padding: 10px; background: #fef3c7; border-radius: 12px;">
-    <i class="fas fa-info-circle"></i> <strong>Tip:</strong> Press Tab/Enter to move between cells. Use quick fill buttons above.
+    <i class="fas fa-info-circle"></i> <strong>Tip:</strong> 
+    - Green cells have scores, white cells are empty.<br>
+    - Use "Fill Empty" to add default scores to all empty cells.<br>
+    - Press Tab/Enter to navigate between cells.
   </div>
   <div style="text-align: center; margin-top: 20px;">
     <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
   </div>`;
   
   document.getElementById('nckMarksContainer').innerHTML = html;
+}
+
+// Helper function to copy first row to all students
+function copyFirstRowToAll() {
+  const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+  if (rows.length === 0) return;
+  
+  // Get scores from first row
+  const firstRowScores = [];
+  for (let c = 0; c < 22; c++) {
+    const input = document.getElementById(`xy_0_${c}`);
+    if (input) firstRowScores.push(input.value);
+    else firstRowScores.push(0);
+  }
+  
+  // Apply to all rows
+  for (let i = 1; i < rows.length; i++) {
+    for (let c = 0; c < 22; c++) {
+      const input = document.getElementById(`xy_${i}_${c}`);
+      if (input) input.value = firstRowScores[c];
+    }
+    updateXYAverage(i);
+  }
+  showNotification('Copied first student scores to all students', false);
 }
   function displayAssessmentMarks(marks) {
     if (!marks || marks.length === 0) {
@@ -1153,20 +1180,20 @@
     document.getElementById('nckMarksContainer').innerHTML = html;
   }
   
-  window.updateXYAverage = function(idx) {
-    const areas = 22;
-    let scores = [];
-    for (let c = 0; c < areas; c++) {
-      const val = parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value);
-      if (!isNaN(val) && val > 0) scores.push(val);
-    }
-    const avg = scores.length ? scores.reduce((a,b) => a+b,0) / scores.length : 0;
-    const status = avg >= 60 ? 'PASS' : (scores.length ? 'FAIL' : 'PENDING');
-    document.getElementById(`xyAvg_${idx}`).innerHTML = avg.toFixed(2) + '%';
-    document.getElementById(`xyStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
-    const row = document.getElementById(`xy_${idx}_0`)?.parentElement?.parentElement;
-    if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-  };
+ window.updateXYAverage = function(idx) {
+  let scores = [];
+  for (let c = 0; c < 22; c++) {
+    const val = parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value);
+    if (!isNaN(val) && val > 0) scores.push(val);
+  }
+  const avg = scores.length ? scores.reduce((a,b) => a+b,0) / scores.length : 0;
+  const status = avg >= 60 ? 'PASS' : (scores.length ? 'FAIL' : 'PENDING');
+  // Display as NUMBER (no percentage sign)
+  document.getElementById(`xyAvg_${idx}`).innerHTML = avg.toFixed(2);
+  document.getElementById(`xyStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
+  const row = document.getElementById(`xy_${idx}_0`)?.parentElement?.parentElement;
+  if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
+};
   
   window.updateACTotal = function(idx) {
     const s0 = parseFloat(document.getElementById(`ac_${idx}_0`)?.value) || 0;
