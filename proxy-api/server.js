@@ -18,47 +18,61 @@ app.use((req, res, next) => {
 const APPS_SCRIPT_BASE = 'https://script.google.com';
 const APPS_SCRIPT_PATH = '/macros/s/AKfycbzjJqzzGyEd1Jm6kq32BXUEl-2ZGEQY2WwpqJjhAQtYKl98_wOo8FFkMUzYKLxCK0noVA/exec';
 
-// Helper to forward requests
-async function forwardRequest(req, res, targetUrl) {
+// Helper to get correct MIME type
+function getMimeType(path) {
+  if (path.endsWith('.css')) return 'text/css';
+  if (path.endsWith('.js')) return 'application/javascript';
+  if (path.endsWith('.json')) return 'application/json';
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+  if (path.endsWith('.svg')) return 'image/svg+xml';
+  if (path.endsWith('.woff2')) return 'font/woff2';
+  if (path.endsWith('.woff')) return 'font/woff';
+  if (path.endsWith('.ttf')) return 'font/ttf';
+  return 'text/html';
+}
+
+// Forward request with proper MIME types
+async function forwardRequest(req, res, targetUrl, contentType) {
   try {
     console.log('Proxying:', targetUrl);
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': req.headers.accept || '*/*',
-        'Accept-Language': 'en-US,en;q=0.9'
+        'Accept': req.headers.accept || '*/*'
       }
     });
     
     const body = await response.text();
+    const mimeType = getMimeType(req.path);
     
-    // For HTML, fix resource paths
-    if (response.headers.get('content-type')?.includes('text/html')) {
-      let modified = body;
-      // Fix relative URLs to absolute
-      modified = modified.replace(/(src|href)=["']\/([^"']+)["']/g, `$1="https://script.google.com/$2"`);
-      modified = modified.replace(/(src|href)=["'](?!https?:\/\/)([^"']+)["']/g, `$1="https://script.google.com/macros/s/AKfycbzjJqzzGyEd1Jm6kq32BXUEl-2ZGEQY2WwpqJjhAQtYKl98_wOo8FFkMUzYKLxCK0noVA/exec/$2"`);
-      res.send(modified);
-    } else {
-      res.set('Content-Type', response.headers.get('content-type'));
-      res.send(body);
-    }
+    res.set('Content-Type', mimeType);
+    res.send(body);
   } catch (error) {
     console.error('Proxy error:', error);
     res.status(500).send(`Error: ${error.message}`);
   }
 }
 
-// Handle all requests
-app.use(async (req, res) => {
-  // If requesting static assets, forward to Google
-  if (req.path.includes('/static/') || req.path.includes('/macros/')) {
-    const targetUrl = APPS_SCRIPT_BASE + req.originalUrl;
-    await forwardRequest(req, res, targetUrl);
-  } else {
-    // Main page request
-    await forwardRequest(req, res, APPS_SCRIPT_BASE + APPS_SCRIPT_PATH);
-  }
+// Handle static assets (CSS, JS, etc.)
+app.get('/static/*', async (req, res) => {
+  const targetUrl = APPS_SCRIPT_BASE + req.originalUrl;
+  await forwardRequest(req, res, targetUrl);
+});
+
+app.get('/macros/*', async (req, res) => {
+  const targetUrl = APPS_SCRIPT_BASE + req.originalUrl;
+  await forwardRequest(req, res, targetUrl);
+});
+
+// Main page
+app.get('/', async (req, res) => {
+  await forwardRequest(req, res, APPS_SCRIPT_BASE + APPS_SCRIPT_PATH);
+});
+
+// Catch all - handle any other routes
+app.get('*', async (req, res) => {
+  await forwardRequest(req, res, APPS_SCRIPT_BASE + APPS_SCRIPT_PATH);
 });
 
 const PORT = process.env.PORT || 3000;
