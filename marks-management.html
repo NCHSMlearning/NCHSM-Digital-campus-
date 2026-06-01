@@ -3,119 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nursing School System | Nakuru College of Health Sciences</title>
+  <title>Marks Management | Nakuru College of Health Sciences</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       height: 100vh;
       overflow: hidden;
     }
-    
-    /* Hide scrollbar on body */
-    body::-webkit-scrollbar {
-      display: none;
-    }
-    
-    .iframe-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
     iframe {
       width: 100%;
       height: 100%;
       border: none;
-      display: block;
     }
-    
-    /* Loading screen while iframe loads */
-    .loading-screen {
+    .loading {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #667eea, #764ba2);
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-direction: column;
       z-index: 9999;
-      transition: opacity 0.5s ease;
     }
-    
-    .loading-spinner {
-      width: 60px;
-      height: 60px;
-      border: 5px solid rgba(255,255,255,0.3);
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
       border-top-color: white;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      margin-bottom: 20px;
     }
-    
-    .loading-text {
-      color: white;
-      font-size: 18px;
-      font-family: 'Segoe UI', Arial, sans-serif;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div class="iframe-container">
-    <div class="loading-screen" id="loadingScreen">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Loading Marks Management System...</div>
-    </div>
-    <iframe 
-      id="marksIframe"
-      src="https://script.google.com/macros/s/AKfycbzjJqzzGyEd1Jm6kq32BXUEl-2ZGEQY2WwpqJjhAQtYKl98_wOo8FFkMUzYKLxCK0noVA/exec"
-      onload="hideLoading()">
-    </iframe>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
   </div>
-
-  <script>
-    function hideLoading() {
-      var loadingScreen = document.getElementById('loadingScreen');
-      if (loadingScreen) {
-        loadingScreen.style.opacity = '0';
-        setTimeout(function() {
-          loadingScreen.style.display = 'none';
-        }, 500);
-      }
-    }
-    
-    // If iframe fails to load after 10 seconds, show error
-    setTimeout(function() {
-      var loadingScreen = document.getElementById('loadingScreen');
-      if (loadingScreen && loadingScreen.style.display !== 'none') {
-        loadingScreen.innerHTML = `
-          <div style="text-align:center;">
-            <div style="color:white; font-size:24px; margin-bottom:15px;">⚠️</div>
-            <div style="color:white; font-size:16px;">Unable to load the system.</div>
-            <div style="color:rgba(255,255,255,0.8); font-size:14px; margin-top:10px;">
-              Please check your internet connection or 
-              <a href="https://script.google.com/macros/s/AKfycbzjJqzzGyEd1Jm6kq32BXUEl-2ZGEQY2WwpqJjhAQtYKl98_wOo8FFkMUzYKLxCK0noVA/exec" 
-                 style="color:white;">click here to open directly</a>
-            </div>
-          </div>
-        `;
-      }
-    }, 10000);
-  </script>
+  <iframe 
+    src="https://nchsm-marks-proxy.onrender.com"
+    onload="document.getElementById('loading').style.display='none'">
+  </iframe>
 </body>
 </html>
