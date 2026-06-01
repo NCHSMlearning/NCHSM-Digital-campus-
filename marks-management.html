@@ -28,6 +28,8 @@
     .logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .back-btn { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: bold; }
     .save-btn { background: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px; }
+    .delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
+    .edit-btn { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
     select, input { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; }
     table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
@@ -40,6 +42,7 @@
     .login-container input { width: 100%; margin: 10px 0; }
     .login-container button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .error { color: red; margin-top: 10px; text-align: center; }
+    .success { color: green; margin-top: 10px; text-align: center; }
     .lecturer-card, .unit-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .subject-badge { background: #667eea; color: white; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 2px; display: inline-block; }
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
@@ -51,6 +54,21 @@
     .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader-text { color: white; margin-top: 15px; font-size: 16px; }
+    .notification-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #27ae60;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
     @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -59,8 +77,8 @@
 
 <script>
   // ===== CONFIGURATION =====
-  // REPLACE THIS WITH YOUR RENDER BACKEND URL!
-const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';  
+  const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com/';
+  
   var currentUser = null;
   
   function showLoading(message) {
@@ -77,6 +95,15 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     if (loader) loader.remove();
   }
   
+  function showNotification(message, isError = false) {
+    var toast = document.createElement('div');
+    toast.className = 'notification-toast';
+    toast.style.backgroundColor = isError ? '#e74c3c' : '#27ae60';
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
+  }
+  
   async function apiCall(endpoint, options = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -86,6 +113,7 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
       return await response.json();
     } catch (error) {
       console.error('API Error:', error);
+      showNotification('Network error: ' + error.message, true);
       return { error: error.message };
     }
   }
@@ -127,6 +155,7 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
       currentUser = result.user;
       localStorage.setItem('nursingUser', JSON.stringify(currentUser));
       showMain();
+      showNotification('Welcome ' + currentUser.name + '!');
     } else {
       document.getElementById('loginError').innerHTML = result.message;
     }
@@ -222,14 +251,12 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
   
   // ========== MARKS FULL PAGE ==========
   async function showMarksFull() {
-    document.getElementById('app').innerHTML = `
-      <div class="container">
-        <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-        <div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject to enter marks</p></div>
-        <select id="blockSelect"><option>Loading blocks...</option></select>
-        <select id="subjectSelect" style="display:none;"><option>Select Subject</option></select>
-        <div id="marksTable"></div>
-      </div>
+    document.getElementById('contentArea').innerHTML = `
+      <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
+      <div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject to enter marks</p></div>
+      <select id="blockSelect"><option>Loading blocks...</option></select>
+      <select id="subjectSelect" style="display:none;"><option>Select Subject</option></select>
+      <div id="marksTable"></div>
     `;
     
     const blocks = await apiCall('/api/blocks');
@@ -262,7 +289,7 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     showLoading('Loading marks for ' + subject + '...');
     var marksTable = document.getElementById('marksTable');
     
-    const marks = await apiCall(`/api/marks/${block}/${encodeURIComponent(subject)}`);
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
     
     if (!marks || marks.length === 0) {
       marksTable.innerHTML = '<div style="background:white; padding:20px; text-align:center;">No students found for ' + subject + '</div>';
@@ -420,8 +447,28 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     });
     
     hideLoading();
-    alert(result.message || (result.success ? 'Saved!' : 'Error saving marks'));
-    if (result.success) loadMarksFull(block, subject);
+    
+    if (result.success) {
+      showNotification('Marks saved successfully!');
+      loadMarksFull(block, subject);
+      
+      // Send email notification for lecturer updates
+      if (currentUser.role === 'lecturer') {
+        await apiCall('/api/send-notification', {
+          method: 'POST',
+          body: JSON.stringify({
+            lecturerName: currentUser.name,
+            subject: subject,
+            block: block,
+            studentCount: len,
+            timestamp: new Date().toISOString()
+          })
+        });
+        showNotification('Admin notified via email');
+      }
+    } else {
+      showNotification('Error saving marks: ' + (result.error || 'Unknown error'), true);
+    }
   };
   
   // ========== REPORTS FULL PAGE ==========
@@ -429,14 +476,15 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     showLoading('Loading reports...');
     const students = await apiCall('/api/students');
     
-    var html = '<div class="container"><button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
     html += '<div class="header"><h3>📊 Student Reports</h3></div>';
-    html += '<table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
+    html += '<div style="background:white; border-radius:10px; padding:20px; overflow-x:auto;">';
+    html += '<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
     for (var i = 0; i < students.length; i++) {
-      html += '<tr><td>' + students[i].admission + '</td><td>' + students[i].name + '</td><td>' + students[i].block + '</td><td>' + students[i].status + '</td></tr>';
+      html += '<tr><td style="padding:8px;">' + students[i].admission + '</td><td style="padding:8px;">' + students[i].name + '</td><td style="padding:8px;">' + students[i].block + '</td><td style="padding:8px;">' + students[i].status + '</td></tr>';
     }
     html += '</tbody></table></div>';
-    document.getElementById('app').innerHTML = html;
+    document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
@@ -445,28 +493,218 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     showLoading('Loading students...');
     const students = await apiCall('/api/students');
     
-    var html = `
-      <div class="container">
-        <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-        <div class="header"><h3>👥 Manage Students</h3></div>
-        <div class="students-list">
-          <table style="width:100%; border-collapse:collapse; background:white;">
-            <thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead>
-            <tbody>
-    `;
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
+    html += '<div class="header"><h3>👥 Manage Students</h3></div>';
+    html += '<div style="background:white; border-radius:10px; padding:20px; overflow-x:auto;">';
+    html += '<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < students.length; i++) {
-      html += '<tr><td>' + students[i].admission + '</td><td>' + students[i].name + '</td><td>' + students[i].block + '</td><td>' + students[i].status + '</td></tr>';
+      html += '<tr>';
+      html += '<td style="padding:8px;">' + students[i].admission + '</td>';
+      html += '<td style="padding:8px;">' + students[i].name + '</td>';
+      html += '<td style="padding:8px;">' + students[i].block + '</td>';
+      html += '<td style="padding:8px;">' + students[i].status + '</td>';
+      html += '<td style="padding:8px;"><button class="edit-btn" onclick="editStudent(\'' + students[i].admission + '\', \'' + students[i].name + '\', \'' + students[i].block + '\')">Edit</button><button class="delete-btn" onclick="deleteStudent(\'' + students[i].admission + '\')">Delete</button></td>';
+      html += '</tr>';
     }
-    html += '</tbody></table></div></div>';
-    document.getElementById('app').innerHTML = html;
+    html += '</tbody></table></div>';
+    document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  // Placeholder functions for other sections
-  function showLecturersFull() { document.getElementById('app').innerHTML = '<div class="container"><button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👨‍🏫 Lecturers</h3></div><p>Lecturer management coming soon...</p></div>'; }
-  function showUnitsFull() { document.getElementById('app').innerHTML = '<div class="container"><button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div><p>Unit management coming soon...</p></div>'; }
-  function showLecturerMarksFull() { showMarksFull(); }
-  function showLecturerReportsFull() { showReportsFull(); }
+  function editStudent(admission, name, block) {
+    var newName = prompt('Edit student name:', name);
+    if (newName && newName !== name) {
+      showLoading('Updating student...');
+      apiCall('/api/update-student', {
+        method: 'POST',
+        body: JSON.stringify({ admission, name: newName, block })
+      }).then(() => {
+        showNotification('Student updated!');
+        showStudentsFull();
+      });
+    }
+  }
+  
+  function deleteStudent(admission) {
+    if (confirm('Delete this student? This will remove all their marks!')) {
+      showLoading('Deleting student...');
+      apiCall('/api/delete-student', {
+        method: 'POST',
+        body: JSON.stringify({ admission })
+      }).then(() => {
+        showNotification('Student deleted!');
+        showStudentsFull();
+      });
+    }
+  }
+  
+  // ========== LECTURERS FULL PAGE ==========
+  async function showLecturersFull() {
+    showLoading('Loading lecturers...');
+    const lecturers = await apiCall('/api/lecturers');
+    
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
+    html += '<div class="header"><h3>👨‍🏫 Manage Lecturers</h3></div>';
+    html += '<button class="save-btn" style="background:#27ae60; margin-bottom:15px;" onclick="addLecturer()">➕ Add New Lecturer</button>';
+    html += '<div id="lecturersList">';
+    
+    for (var i = 0; i < lecturers.length; i++) {
+      html += '<div class="lecturer-card">';
+      html += '<div><strong>' + lecturers[i].name + '</strong><br><small>' + lecturers[i].username + '</small><br><small>' + (lecturers[i].email || '') + '</small></div>';
+      html += '<div>';
+      var subjects = lecturers[i].subjects || [];
+      for (var j = 0; j < subjects.length; j++) {
+        var parts = subjects[j].split('|');
+        html += '<span class="subject-badge">' + (parts[1] || parts[0]) + '</span>';
+      }
+      html += '</div>';
+      html += '<div><button class="edit-btn" onclick="editLecturer(\'' + lecturers[i].username + '\')">Edit</button><button class="delete-btn" onclick="deleteLecturer(\'' + lecturers[i].username + '\')">Delete</button></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  function addLecturer() {
+    var username = prompt('Enter username:');
+    if (!username) return;
+    var name = prompt('Enter full name:');
+    if (!name) return;
+    var password = prompt('Enter password:', 'password123');
+    
+    showLoading('Adding lecturer...');
+    apiCall('/api/add-lecturer', {
+      method: 'POST',
+      body: JSON.stringify({ username, name, email: '', password, subjects: [] })
+    }).then(() => {
+      showNotification('Lecturer added!');
+      showLecturersFull();
+    });
+  }
+  
+  function editLecturer(username) {
+    showNotification('Edit functionality - Select subjects feature coming soon', true);
+  }
+  
+  function deleteLecturer(username) {
+    if (confirm('Delete this lecturer?')) {
+      showLoading('Deleting lecturer...');
+      apiCall('/api/delete-lecturer', {
+        method: 'POST',
+        body: JSON.stringify({ username })
+      }).then(() => {
+        showNotification('Lecturer deleted!');
+        showLecturersFull();
+      });
+    }
+  }
+  
+  // ========== UNITS FULL PAGE ==========
+  async function showUnitsFull() {
+    showLoading('Loading units...');
+    const blocks = await apiCall('/api/blocks');
+    const units = await apiCall('/api/units');
+    
+    var blockOptions = '';
+    for (var i = 0; i < blocks.length; i++) {
+      blockOptions += '<option value="' + blocks[i] + '">' + blocks[i].replace('_', ' ') + '</option>';
+    }
+    
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
+    html += '<div class="header"><h3>📚 Manage Units</h3></div>';
+    html += '<div style="background:white; padding:20px; border-radius:10px; margin-bottom:20px;">';
+    html += '<h4>➕ Add New Unit</h4>';
+    html += '<select id="newUnitBlock">' + blockOptions + '</select>';
+    html += '<input type="text" id="newUnitName" placeholder="Subject Name" style="width:100%; margin:5px 0;">';
+    html += '<select id="newUnitType" style="width:100%; margin:5px 0;">';
+    html += '<option value="full">Full Assessment (CAT1 + CAT2 + Exam)</option>';
+    html += '<option value="single_cat">Single CAT (CAT + Exam)</option>';
+    html += '<option value="exam_only">Exam Only</option>';
+    html += '</select>';
+    html += '<button class="save-btn" onclick="addUnit()">➕ Add Unit</button>';
+    html += '</div>';
+    html += '<div id="unitsList">';
+    
+    for (var b = 0; b < blocks.length; b++) {
+      var block = blocks[b];
+      var blockUnits = units[block] || [];
+      html += '<div style="margin:15px 0;"><h4>' + block.replace('_', ' ') + '</h4><div style="display:flex; flex-wrap:wrap; gap:10px;">';
+      for (var u = 0; u < blockUnits.length; u++) {
+        var unit = blockUnits[u];
+        var assessmentIcon = unit.assessmentType === 'single_cat' ? '📝' : (unit.assessmentType === 'exam_only' ? '📖' : '📊');
+        html += '<div class="unit-card">' + assessmentIcon + ' ' + unit.name + ' <button class="delete-btn" onclick="deleteUnit(\'' + block + '\', \'' + unit.name.replace(/'/g, "\\'") + '\')">✖</button></div>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  function addUnit() {
+    var block = document.getElementById('newUnitBlock').value;
+    var name = document.getElementById('newUnitName').value.trim().toUpperCase();
+    var assessmentType = document.getElementById('newUnitType').value;
+    
+    if (!block || !name) {
+      showNotification('Please select block and enter subject name', true);
+      return;
+    }
+    
+    showLoading('Adding unit...');
+    apiCall('/api/add-unit', {
+      method: 'POST',
+      body: JSON.stringify({ block, name, assessmentType })
+    }).then(() => {
+      showNotification('Unit added!');
+      showUnitsFull();
+    });
+  }
+  
+  function deleteUnit(block, name) {
+    if (confirm('Delete unit "' + name + '" from ' + block.replace('_', ' ') + '? This will delete all marks!')) {
+      showLoading('Deleting unit...');
+      apiCall('/api/delete-unit', {
+        method: 'POST',
+        body: JSON.stringify({ block, name })
+      }).then(() => {
+        showNotification('Unit deleted!');
+        showUnitsFull();
+      });
+    }
+  }
+  
+  // ========== LECTURER SECTIONS ==========
+  function showLecturerMarksFull() {
+    showMarksFull();
+  }
+  
+  async function showLecturerReportsFull() {
+    showLoading('Loading reports...');
+    const subjects = currentUser.subjects || [];
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
+    html += '<div class="header"><h3>📊 My Reports</h3></div><div class="stats-grid">';
+    
+    for (var i = 0; i < subjects.length; i++) {
+      var parts = subjects[i].split('|');
+      var block = parts[0];
+      var subject = parts[1];
+      var marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
+      var passCount = 0;
+      for (var j = 0; j < marks.length; j++) {
+        var total = parseFloat(marks[j].final) || 0;
+        if (total >= 60) passCount++;
+      }
+      var passRate = marks.length > 0 ? Math.round((passCount / marks.length) * 100) : 0;
+      
+      html += '<div class="stat-card"><div class="stat-number">' + passRate + '%</div>';
+      html += '<div class="stat-label">' + subject + '<br>(' + marks.length + ' students)</div></div>';
+    }
+    html += '</div>';
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
   
   checkLogin();
 </script>
