@@ -32,10 +32,10 @@
     .delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
     select, input { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; }
     table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
     th { background: #667eea; color: white; font-weight: bold; }
-    tr:hover { background: #f5f5f5; }
-    input[type="number"] { width: 80px; padding: 5px; text-align: center; }
+    tr:hover { background: #f8fafc; }
+    input[type="number"] { width: 80px; padding: 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px; }
     .pass-row { background-color: #d5f5e3 !important; }
     .fail-row { background-color: #fadbd8 !important; }
     .login-container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
@@ -53,15 +53,8 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    .selector-group label {
-      font-weight: bold;
-      color: #333;
-    }
-    .selector-group select {
-      width: auto;
-      min-width: 200px;
-      margin: 0;
-    }
+    .selector-group label { font-weight: bold; color: #333; }
+    .selector-group select { width: auto; min-width: 200px; margin: 0; }
     .lecturer-card, .unit-card {
       background: white;
       border-radius: 10px;
@@ -103,16 +96,8 @@
       max-height: 80%;
       overflow-y: auto;
     }
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 15px;
-    }
-    .close {
-      cursor: pointer;
-      font-size: 24px;
-      color: #999;
-    }
+    .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+    .close { cursor: pointer; font-size: 24px; color: #999; }
     .close:hover { color: #333; }
     .loader {
       position: fixed;
@@ -153,18 +138,6 @@
       to { transform: translateX(0); opacity: 1; }
     }
     .content-area { margin-top: 20px; }
-    .clinical-areas-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 15px;
-    }
-    .clinical-area-item {
-      background: #f8f9fa;
-      padding: 8px;
-      border-radius: 5px;
-      font-size: 12px;
-    }
     @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -179,7 +152,6 @@
   var currentUser = null;
   var currentYear = '2024';
   var currentExamType = 'internal';
-  var currentClinicalAreasData = null;
   
   function showLoading(message) {
     var existingLoader = document.querySelector('.loader');
@@ -400,57 +372,82 @@
     const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
     
     if (!marks || marks.length === 0) {
-      marksTable.innerHTML = '<div style="background:white;padding:20px;text-align:center;">No students found</div>';
+      marksTable.innerHTML = '<div style="background:white; padding:20px; text-align:center;">No students found for ' + subject + '</div>';
       hideLoading();
       return;
     }
     
-    var html = '<div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;">';
-    html += '<th>Admission</th><th>Name</th>';
+    var html = '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;">';
+    html += '<table style="width:100%; border-collapse:collapse; background:white; border-radius:10px;">';
+    html += '<thead style="position:sticky; top:0; background:#667eea;">';
+    html += '<tr style="background:#667eea; color:white; text-align:left;">';
+    html += '<th style="padding:12px;">Admission</th>';
+    html += '<th style="padding:12px;">Name</th>';
     
     if (currentExamType === 'nck') {
-      html += '<th>Clinical Score<br>(0-100)</th><th>Status</th><th>Graded By</th>';
+      html += '<th style="padding:12px; width:100px;">Clinical Score<br><span style="font-size:11px;">(0-100)</span></th>';
+      html += '<th style="padding:12px; width:80px;">Status</th>';
+      html += '<th style="padding:12px;">Graded By</th>';
     } else {
-      html += '<th>CAT1(30)</th><th>CAT2(30)</th><th>Exam(70)</th><th>Total</th><th>Status</th><th>Graded By</th>';
+      html += '<th style="padding:12px; width:90px;">CAT1<br><span style="font-size:11px;">(0-30)</span></th>';
+      html += '<th style="padding:12px; width:90px;">CAT2<br><span style="font-size:11px;">(0-30)</span></th>';
+      html += '<th style="padding:12px; width:90px;">Exam<br><span style="font-size:11px;">(0-70)</span></th>';
+      html += '<th style="padding:12px; width:80px;">Total</th>';
+      html += '<th style="padding:12px; width:80px;">Status</th>';
+      html += '<th style="padding:12px;">Graded By</th>';
     }
-    html += '</table></thead><tbody>';
+    html += '</tr></thead><tbody>';
     
     for (var i = 0; i < marks.length; i++) {
       if (currentExamType === 'nck') {
-        var clinicalScore = marks[i].cat1 || '';
+        var clinicalScore = marks[i].cat1 || '0';
         var numClinical = parseFloat(clinicalScore) || 0;
         var status = numClinical >= 70 ? 'PASS' : (numClinical > 0 ? 'FAIL' : '');
         var rowClass = numClinical >= 70 ? 'pass-row' : (numClinical > 0 ? 'fail-row' : '');
-        html += `<tr class="${rowClass}">`;
-        html += `<td style="padding:10px;">${marks[i].admission}</td>`;
-        html += `<td style="padding:10px;">${marks[i].name}</td>`;
-        html += `<td style="padding:10px;"><input type="number" id="clinical_${i}" value="${clinicalScore}" min="0" max="100" step="0.5" onchange="updateNckStatus(${i})"></td>`;
-        html += `<td id="status_${i}">${status}</td>`;
-        html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
-        html += `</tr>`;
+        
+        html += '<tr class="' + rowClass + '">';
+        html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
+        html += '<td style="padding:10px;">' + marks[i].name + '</td>';
+        html += '<td style="padding:10px;"><input type="number" id="clinical_' + i + '" value="' + clinicalScore + '" min="0" max="100" step="0.5" style="width:80px;" onchange="updateNckStatus(' + i + ')"></td>';
+        html += '<td id="status_' + i + '">' + status + '</td>';
+        html += '<td>' + (marks[i].gradedBy || '-') + '</td>';
+        html += '</tr>';
       } else {
-        var cat1 = marks[i].cat1 || '', cat2 = marks[i].cat2 || '', exam = marks[i].exam || '';
-        var numCat1 = parseFloat(cat1)||0, numCat2 = parseFloat(cat2)||0, numExam = parseFloat(exam)||0;
-        var cappedCat1 = Math.min(numCat1,30), cappedCat2 = Math.min(numCat2,30), cappedExam = Math.min(numExam,70);
-        var total = ((cappedCat1 + cappedCat2) / 60) * 30 + cappedExam;
+        var cat1 = marks[i].cat1 || '';
+        var cat2 = marks[i].cat2 || '';
+        var exam = marks[i].exam || '';
+        
+        var numCat1 = parseFloat(cat1) || 0;
+        var numCat2 = parseFloat(cat2) || 0;
+        var numExam = parseFloat(exam) || 0;
+        
+        var cappedCat1 = Math.min(numCat1, 30);
+        var cappedCat2 = Math.min(numCat2, 30);
+        var cappedExam = Math.min(numExam, 70);
+        var catsTotalRaw = cappedCat1 + cappedCat2;
+        var catsTotal = (catsTotalRaw / 60) * 30;
+        var total = catsTotal + cappedExam;
         total = Math.round(total * 10) / 10;
+        
         var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
         var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-        html += `<tr class="${rowClass}">`;
-        html += `<td style="padding:10px;">${marks[i].admission}</td>`;
-        html += `<td style="padding:10px;">${marks[i].name}</td>`;
-        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
-        html += `<td id="total_${i}">${total}</td>`;
-        html += `<td id="status_${i}">${status}</td>`;
-        html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
-        html += `</tr>`;
+        
+        html += '<tr class="' + rowClass + '">';
+        html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
+        html += '<td style="padding:10px;">' + marks[i].name + '</td>';
+        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+        html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td>';
+        html += '<td id="status_' + i + '">' + status + '</td>';
+        html += '<td>' + (marks[i].gradedBy || '-') + '</td>';
+        html += '</tr>';
       }
     }
     
     html += '</tbody></table></div>';
-    html += '<div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
+    html += '<div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
+    
     marksTable.innerHTML = html;
     hideLoading();
   }
@@ -459,13 +456,25 @@
     var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
     var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
     var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-    var cappedCat1 = Math.min(cat1,30), cappedCat2 = Math.min(cat2,30), cappedExam = Math.min(exam,70);
-    var total = ((cappedCat1 + cappedCat2) / 60) * 30 + cappedExam;
+    
+    var cappedCat1 = Math.min(cat1, 30);
+    var cappedCat2 = Math.min(cat2, 30);
+    var cappedExam = Math.min(exam, 70);
+    var catsTotalRaw = cappedCat1 + cappedCat2;
+    var catsTotal = (catsTotalRaw / 60) * 30;
+    var total = catsTotal + cappedExam;
     total = Math.round(total * 10) / 10;
+    
+    var status = total >= 60 ? 'PASS' : 'FAIL';
+    var rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+    
     document.getElementById('total_' + idx).innerHTML = total;
-    document.getElementById('status_' + idx).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
+    document.getElementById('status_' + idx).innerHTML = status;
+    
     var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
-    if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
+    if (row) {
+      row.className = rowClass;
+    }
   };
   
   window.updateNckStatus = function(idx) {
@@ -497,7 +506,7 @@
     showLoading('Loading reports...');
     const students = await apiCall('/api/students');
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 Student Reports</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
-    for (var i = 0; i < students.length; i++) html += `<tr><td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td></tr>`;
+    for (var i = 0; i < students.length; i++) html += `<tr><td style="padding:8px;">${students[i].admission}</td><td style="padding:8px;">${students[i].name}</td><td style="padding:8px;">${students[i].block}</td><td style="padding:8px;">${students[i].status}</td></tr>`;
     html += '</tbody></table></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
@@ -510,11 +519,14 @@
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👥 Manage Students</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < students.length; i++) {
       html += `<tr>`;
-      html += `<td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td>`;
-      html += `<td><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td>`;
+      html += `<td style="padding:8px;">${students[i].admission}</td>`;
+      html += `<td style="padding:8px;">${students[i].name}</td>`;
+      html += `<td style="padding:8px;">${students[i].block}</td>`;
+      html += `<td style="padding:8px;">${students[i].status}</td>`;
+      html += `<td style="padding:8px;"><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td>`;
       html += `</tr>`;
     }
-    html += '</tbody></table><button class="save-btn" style="margin-top:15px;" onclick="addStudent()">➕ Add New Student</button></div>';
+    html += '</tbody><tr><button class="save-btn" style="margin-top:15px;" onclick="addStudent()">➕ Add New Student</button></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
@@ -586,11 +598,11 @@
         <div id="editLecturerModal" class="modal">
           <div class="modal-content" style="width:600px;">
             <div class="modal-header"><h3>Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div>
-            <div style="margin-bottom:15px;"><label><strong>Username:</strong></label><input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0; width:100%; padding:8px;"></div>
-            <div style="margin-bottom:15px;"><label><strong>Full Name:</strong></label><input type="text" id="editName" value="${lecturer.name.replace(/'/g, "\\'")}" style="width:100%; padding:8px;"></div>
-            <div style="margin-bottom:15px;"><label><strong>Email:</strong></label><input type="email" id="editEmail" value="${lecturer.email || ''}" style="width:100%; padding:8px;"></div>
-            <div style="margin-bottom:15px;"><label><strong>Password:</strong></label><input type="password" id="editPassword" placeholder="Leave blank to keep current" style="width:100%; padding:8px;"></div>
-            <div style="margin-bottom:15px;"><label><strong>Assigned Subjects:</strong></label><select id="editSubjects" multiple size="10" style="width:100%; height:200px;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
+            <div><label><strong>Username:</strong></label><input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0; width:100%; padding:8px;"></div>
+            <div><label><strong>Full Name:</strong></label><input type="text" id="editName" value="${lecturer.name.replace(/'/g, "\\'")}" style="width:100%; padding:8px;"></div>
+            <div><label><strong>Email:</strong></label><input type="email" id="editEmail" value="${lecturer.email || ''}" style="width:100%; padding:8px;"></div>
+            <div><label><strong>Password:</strong></label><input type="password" id="editPassword" placeholder="Leave blank to keep current" style="width:100%; padding:8px;"></div>
+            <div><label><strong>Assigned Subjects:</strong></label><select id="editSubjects" multiple size="10" style="width:100%; height:200px;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
             <button onclick="saveEditedLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; width:100%; border:none; border-radius:5px;">Save Changes</button>
           </div>
         </div>`;
