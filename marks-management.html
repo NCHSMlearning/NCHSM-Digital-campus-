@@ -663,22 +663,25 @@
     setTimeout(() => toast.remove(), 3000);
   }
   
-  async function apiCall(endpoint, opts = {}) {
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-Year': currentYear,
-        'X-Exam-Type': currentExamType
-      };
-      const res = await fetch(API_BASE_URL + endpoint, { headers, ...opts });
-      const ct = res.headers.get('content-type');
-      if (ct && ct.includes('application/json')) return await res.json();
-      return { error: 'Non-JSON response' };
-    } catch (e) {
-      console.error(e);
-      return { error: e.message };
-    }
+ async function apiCall(endpoint, opts = {}) {
+  try {
+    const headers = { 
+      'Content-Type': 'application/json',
+      'X-Year': currentYear,
+      'X-Exam-Type': currentExamType  // This should be 'nck' for NCK
+    };
+    
+    console.log(`[API] ${endpoint} - Headers:`, headers); // DEBUG
+    
+    const res = await fetch(API_BASE_URL + endpoint, { headers, ...opts });
+    const ct = res.headers.get('content-type');
+    if (ct && ct.includes('application/json')) return await res.json();
+    return { error: 'Non-JSON response' };
+  } catch (e) {
+    console.error(e);
+    return { error: e.message };
   }
+}
   
   async function getConfig() {
     if (configCache) return configCache;
