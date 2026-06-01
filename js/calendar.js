@@ -353,8 +353,7 @@ function renderCalendarTimetable(weekNumber) {
                     <tr class="${cls.is_holiday ? 'holiday-row' : ''}">
                         ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${shortDayNames[day]}</td>` : ''}
                         <td class="timetable-time">${startTime} - ${endTime}</td>
-                        <td><strong>${escapeHtml(courseDisplay)}</strong>${badzes}</td>
-                        <td>${escapeHtml(lecturerName)}</td>
+<td><strong>${escapeHtml(courseDisplay)}</strong>${badges}</td>                        <td>${escapeHtml(lecturerName)}</td>
                         <td>${escapeHtml(cls.venue || 'TBD')}</td>
                     </tr>
                 `;
