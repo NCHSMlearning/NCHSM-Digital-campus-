@@ -75,275 +75,46 @@ app.use((req, res, next) => {
   next();
 });
 
-// ===== API ENDPOINTS =====
-
-app.get('/', (req, res) => {
-  res.json({ message: 'Nursing Marks API is running!' });
-});
-
-// Get available years
-app.get('/api/years', (req, res) => {
-  res.json(Object.keys(SPREADSHEETS));
-});
-
-// Get blocks
-app.get('/api/blocks', (req, res) => {
-  res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
-});
-
-// Get subjects for a block
-app.get('/api/subjects/:block', async (req, res) => {
-  try {
-    const { block } = req.params;
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'CONFIG!A:D',
-    });
-    
-    const config = response.data.values || [];
-    const subjects = [];
-    
-    for (let i = 1; i < config.length; i++) {
-      if (config[i][0] === block && config[i][2] === 'YES') {
-        subjects.push(config[i][1]);
-      }
-    }
-    
-    res.json(subjects);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get students
-app.get('/api/students', async (req, res) => {
+// ===== HELPER FUNCTIONS =====
+async function getSheetLastRow(spreadsheetId, sheetName) {
   try {
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:D',
-    });
-    
-    const data = response.data.values || [];
-    const students = [];
-    const seen = {};
-    
-    for (let i = 1; i < data.length; i++) {
-      const admission = data[i][0];
-      if (admission && !seen[admission]) {
-        seen[admission] = true;
-        students.push({
-          admission: admission,
-          name: data[i][1],
-          block: data[i][2] || 'BLOCK_0',
-          status: data[i][3] || 'ACTIVE'
-        });
-      }
-    }
-    
-    res.json(students);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get marks
-app.get('/api/marks/:block/:subject', async (req, res) => {
-  try {
-    const { block, subject } = req.params;
-    const examType = req.headers['x-exam-type'] || 'internal';
-    let sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
-    
-    // For NCK, use different sheet name structure
-    if (examType === 'nck') {
-      sheetName = `XY FORMS`;  // NCK uses XY FORMS sheet
-    }
-    
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: `${sheetName}!A:Z`,
-    });
-    
-    const data = response.data.values || [];
-    const marks = [];
-    
-    if (examType === 'nck') {
-      // NCK format - get all students and their final clinical scores
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0]) {
-          // Calculate average of 21 clinical areas (columns C to W)
-          let total = 0;
-          let count = 0;
-          for (let j = 2; j <= 22 && j < data[i].length; j++) {
-            const score = parseFloat(data[i][j]);
-            if (!isNaN(score)) {
-              total += score;
-              count++;
-            }
-          }
-          const finalScore = count > 0 ? total / count : 0;
-          
-          marks.push({
-            row: i + 1,
-            admission: data[i][0],
-            name: data[i][1],
-            finalScore: Math.round(finalScore * 100) / 100,
-            gradedBy: data[i][23] || ''
-          });
-        }
-      }
-    } else {
-      // Internal exams format
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0]) {
-          marks.push({
-            row: i + 1,
-            admission: data[i][0],
-            name: data[i][1],
-            cat1: data[i][2] || '',
-            cat2: data[i][3] || '',
-            exam: data[i][4] || '',
-            final: data[i][5] || '',
-            gradedBy: data[i][7] || '',
-            assessmentType: data[i][8] || 'full'
-          });
-        }
-      }
-    }
-    
-    res.json(marks);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-// Save marks (Internal exams only - NCK is read-only)
-app.post('/api/marks', async (req, res) => {
-  try {
-    const { block, subject, marksData, lecturerName } = req.body;
-    const examType = req.headers['x-exam-type'] || 'internal';
-    
-    if (examType === 'nck') {
-      return res.json({ success: false, message: 'NCK scores are read-only. Edit directly in Google Sheets.' });
-    }
-    
-    const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
-    
-    // Get assessment type
-    const configResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'CONFIG!A:D',
-    });
-    
-    const config = configResponse.data.values || [];
-    let assessmentType = 'full';
-    for (let i = 1; i < config.length; i++) {
-      if (config[i][0] === block && config[i][1] === subject) {
-        assessmentType = config[i][3] || 'full';
-        break;
-      }
-    }
-    
-    for (const mark of marksData) {
-      let cat1 = parseFloat(mark.cat1) || 0;
-      let cat2 = parseFloat(mark.cat2) || 0;
-      let exam = parseFloat(mark.exam) || 0;
-      let finalTotal = 0;
-      
-      if (assessmentType === 'full') {
-        cat1 = Math.min(cat1, 30);
-        cat2 = Math.min(cat2, 30);
-        exam = Math.min(exam, 70);
-        const catsTotal = ((cat1 + cat2) / 60) * 30;
-        finalTotal = catsTotal + exam;
-      } else if (assessmentType === 'single_cat') {
-        cat1 = Math.min(cat1, 30);
-        exam = Math.min(exam, 70);
-        finalTotal = cat1 + exam;
-      } else {
-        exam = Math.min(exam, 100);
-        finalTotal = exam;
-      }
-      
-      finalTotal = Math.round(finalTotal * 10) / 10;
-      const grade = finalTotal >= 70 ? 'A' : (finalTotal >= 60 ? 'B' : (finalTotal >= 50 ? 'C' : (finalTotal >= 40 ? 'D' : 'E')));
-      
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: req.spreadsheetId,
-        range: `${sheetName}!C${mark.row}:H${mark.row}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [[cat1, cat2, exam, finalTotal, grade, lecturerName]]
-        }
-      });
-    }
-    
-    res.json({ success: true, message: 'Marks saved successfully!' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Login endpoint
-app.post('/api/login', async (req, res) => {
-  try {
-    const { username, password, year, examType } = req.body;
-    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
-    
-    // Check ADMIN sheet
-    const adminResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
-      range: 'ADMIN!A:C',
+      range: `${sheetName}!A:A`,
     });
-    
-    const admins = adminResponse.data.values || [];
-    for (let i = 1; i < admins.length; i++) {
-      if (admins[i][0] === username && admins[i][1] === password) {
-        return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
-      }
-    }
-    
-    // Check LECTURERS sheet
-    const lecturersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: 'LECTURERS!A:F',
-    });
-    
-    const lecturers = lecturersResponse.data.values || [];
-    for (let i = 1; i < lecturers.length; i++) {
-      if (lecturers[i][0] === username && lecturers[i][3] === password) {
-        return res.json({ 
-          success: true, 
-          user: { 
-            username, 
-            name: lecturers[i][1], 
-            role: 'lecturer',
-            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : []
-          } 
-        });
-      }
-    }
-    
-    res.json({ success: false, message: 'Invalid username or password' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return response.data.values ? response.data.values.length : 1;
+  } catch {
+    return 1;
   }
-});
+}
 
-// Get stats
-app.get('/api/stats', async (req, res) => {
+async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
+  const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
   try {
-    const students = await getStudents(req.spreadsheetId);
-    res.json({
-      totalStudents: students.length,
-      totalBlocks: 6,
-      totalSubjects: 28
+    await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A1`,
     });
   } catch (error) {
-    res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
+    const studentsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'STUDENTS!A:B',
+    });
+    const students = studentsResponse.data.values || [];
+    const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED_BY', 'ASSESSMENT_TYPE']];
+    for (let i = 1; i < students.length; i++) {
+      rows.push([students[i][0], students[i][1], '', '', '', '', '', '', assessmentType]);
+    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A1:I${rows.length}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: rows }
+    });
   }
-});
+}
 
-async function getStudents(spreadsheetId) {
+async function getStudentsList(spreadsheetId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
     range: 'STUDENTS!A:D',
@@ -360,6 +131,449 @@ async function getStudents(spreadsheetId) {
   }
   return students;
 }
+
+// ===== API ENDPOINTS =====
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Nursing Marks API is running!' });
+});
+
+app.get('/api/years', (req, res) => {
+  res.json(Object.keys(SPREADSHEETS));
+});
+
+app.get('/api/blocks', (req, res) => {
+  res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
+});
+
+app.get('/api/subjects/:block', async (req, res) => {
+  try {
+    const { block } = req.params;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const config = response.data.values || [];
+    const subjects = [];
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][0] === block && config[i][2] === 'YES') {
+        subjects.push(config[i][1]);
+      }
+    }
+    res.json(subjects);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== STUDENT ENDPOINTS ==========
+app.get('/api/students', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    const students = [];
+    const seen = {};
+    for (let i = 1; i < data.length; i++) {
+      const admission = data[i][0];
+      if (admission && !seen[admission]) {
+        seen[admission] = true;
+        students.push({
+          admission: admission,
+          name: data[i][1],
+          block: data[i][2] || 'BLOCK_0',
+          status: data[i][3] || 'ACTIVE'
+        });
+      }
+    }
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-student', async (req, res) => {
+  try {
+    const { admission, name, block } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    let nextRow = data.length + 1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        return res.json({ success: false, message: 'Student already exists' });
+      }
+    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `STUDENTS!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[admission, name.toUpperCase(), block, 'ACTIVE']] }
+    });
+    res.json({ success: true, message: 'Student added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/update-student', async (req, res) => {
+  try {
+    const { admission, name, block } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `STUDENTS!B${i+1}:C${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[name.toUpperCase(), block]] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Student updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-student', async (req, res) => {
+  try {
+    const { admission } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `STUDENTS!D${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['INACTIVE']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Student deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== LECTURER ENDPOINTS ==========
+app.get('/api/lecturers', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    const data = response.data.values || [];
+    const lecturers = [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][5] !== 'NO') {
+        lecturers.push({
+          username: data[i][0],
+          name: data[i][1],
+          email: data[i][2] || '',
+          password: data[i][3],
+          subjects: data[i][4] ? data[i][4].split(',') : []
+        });
+      }
+    }
+    res.json(lecturers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-lecturer', async (req, res) => {
+  try {
+    const { username, name, email, password, subjects } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    const data = response.data.values || [];
+    let nextRow = data.length + 1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        return res.json({ success: false, message: 'Username already exists' });
+      }
+    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `LECTURERS!A${nextRow}:F${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[username, name, email || '', password, subjects.join(','), 'YES']] }
+    });
+    res.json({ success: true, message: 'Lecturer added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-lecturer', async (req, res) => {
+  try {
+    const { username } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `LECTURERS!F${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['NO']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Lecturer deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/lecturer/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        res.json({
+          username: data[i][0],
+          name: data[i][1],
+          email: data[i][2] || '',
+          subjects: data[i][4] ? data[i][4].split(',') : []
+        });
+        return;
+      }
+    }
+    res.json(null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== UNIT ENDPOINTS ==========
+app.get('/api/units', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    const units = { 'BLOCK_0': [], 'BLOCK_1': [], 'BLOCK_2': [], 'BLOCK_3': [], 'BLOCK_4': [], 'BLOCK_5': [] };
+    for (let i = 1; i < data.length; i++) {
+      const block = data[i][0];
+      const subject = data[i][1];
+      const active = data[i][2];
+      const assessmentType = data[i][3] || 'full';
+      if (block && subject && active === 'YES') {
+        if (!units[block]) units[block] = [];
+        units[block].push({ name: subject, assessmentType: assessmentType });
+      }
+    }
+    res.json(units);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-unit', async (req, res) => {
+  try {
+    const { block, name, assessmentType } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    let nextRow = data.length + 1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === name) {
+        if (data[i][2] === 'YES') {
+          return res.json({ success: false, message: 'Unit already exists' });
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `CONFIG!C${i+1}:D${i+1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [['YES', assessmentType]] }
+          });
+          await createMarksheet(req.spreadsheetId, block, name, assessmentType);
+          return res.json({ success: true, message: 'Unit reactivated successfully' });
+        }
+      }
+    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `CONFIG!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[block, name, 'YES', assessmentType]] }
+    });
+    await createMarksheet(req.spreadsheetId, block, name, assessmentType);
+    res.json({ success: true, message: 'Unit added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-unit', async (req, res) => {
+  try {
+    const { block, name } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === name) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `CONFIG!C${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['NO']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Unit deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== MARKS ENDPOINTS ==========
+app.get('/api/marks/:block/:subject', async (req, res) => {
+  try {
+    const { block, subject } = req.params;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    let sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    if (examType === 'nck') {
+      sheetName = `XY FORMS`;
+    }
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: `${sheetName}!A:Z`,
+    });
+    const data = response.data.values || [];
+    const marks = [];
+    if (examType === 'nck') {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0]) {
+          let total = 0, count = 0;
+          for (let j = 2; j <= 22 && j < data[i].length; j++) {
+            const score = parseFloat(data[i][j]);
+            if (!isNaN(score)) { total += score; count++; }
+          }
+          const finalScore = count > 0 ? total / count : 0;
+          marks.push({ row: i + 1, admission: data[i][0], name: data[i][1], cat1: finalScore, gradedBy: data[i][23] || '' });
+        }
+      }
+    } else {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0]) {
+          marks.push({ row: i + 1, admission: data[i][0], name: data[i][1], cat1: data[i][2] || '', cat2: data[i][3] || '', exam: data[i][4] || '', final: data[i][5] || '', gradedBy: data[i][7] || '', assessmentType: data[i][8] || 'full' });
+        }
+      }
+    }
+    res.json(marks);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/marks', async (req, res) => {
+  try {
+    const { block, subject, marksData, lecturerName } = req.body;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    if (examType === 'nck') {
+      return res.json({ success: false, message: 'NCK scores are read-only. Edit directly in Google Sheets.' });
+    }
+    const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    const configResponse = await sheets.spreadsheets.values.get({ spreadsheetId: req.spreadsheetId, range: 'CONFIG!A:D' });
+    const config = configResponse.data.values || [];
+    let assessmentType = 'full';
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][0] === block && config[i][1] === subject) { assessmentType = config[i][3] || 'full'; break; }
+    }
+    for (const mark of marksData) {
+      let cat1 = parseFloat(mark.cat1) || 0, cat2 = parseFloat(mark.cat2) || 0, exam = parseFloat(mark.exam) || 0, finalTotal = 0;
+      if (assessmentType === 'full') {
+        cat1 = Math.min(cat1, 30); cat2 = Math.min(cat2, 30); exam = Math.min(exam, 70);
+        finalTotal = ((cat1 + cat2) / 60) * 30 + exam;
+      } else if (assessmentType === 'single_cat') {
+        cat1 = Math.min(cat1, 30); exam = Math.min(exam, 70);
+        finalTotal = cat1 + exam;
+      } else {
+        exam = Math.min(exam, 100);
+        finalTotal = exam;
+      }
+      finalTotal = Math.round(finalTotal * 10) / 10;
+      const grade = finalTotal >= 70 ? 'A' : (finalTotal >= 60 ? 'B' : (finalTotal >= 50 ? 'C' : (finalTotal >= 40 ? 'D' : 'E')));
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!C${mark.row}:H${mark.row}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[cat1, cat2, exam, finalTotal, grade, lecturerName]] }
+      });
+    }
+    res.json({ success: true, message: 'Marks saved successfully!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== LOGIN & STATS ==========
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password, year } = req.body;
+    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
+    const adminResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'ADMIN!A:C' });
+    const admins = adminResponse.data.values || [];
+    for (let i = 1; i < admins.length; i++) {
+      if (admins[i][0] === username && admins[i][1] === password) {
+        return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
+      }
+    }
+    const lecturersResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'LECTURERS!A:F' });
+    const lecturers = lecturersResponse.data.values || [];
+    for (let i = 1; i < lecturers.length; i++) {
+      if (lecturers[i][0] === username && lecturers[i][3] === password) {
+        return res.json({ success: true, user: { username, name: lecturers[i][1], role: 'lecturer', subjects: lecturers[i][4] ? lecturers[i][4].split(',') : [] } });
+      }
+    }
+    res.json({ success: false, message: 'Invalid username or password' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const students = await getStudentsList(req.spreadsheetId);
+    res.json({ totalStudents: students.length, totalBlocks: 6, totalSubjects: 28 });
+  } catch (error) {
+    res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
