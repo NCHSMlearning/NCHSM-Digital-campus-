@@ -34,7 +34,7 @@ KJFDb+tk82Hh3ePi5Sl6vtov4ZVOWegwZZ6u9CWVErxFVGdbMOkg+EVhyx3aD+dS
 ZV+ZFmT2dTOu1CLjB+bTr1sPPZ1uFlWPd7bXMfDFhBdOpWVF15Ph+K6mHWjNX/TW
 DVEiwMd7x1wk+S0uEsgoXCc5fIb9SkTKUy+7ZpRCq3igyDvS/y33wpPlSNJH0wjg
 BWan+9obXHdMaDUWvqnUMqYHt2KeQcrBkLXXBdDDIY3gm/kSrLrJTTpPTgQYXmcL
-ujDh3Zx3t6HAncs4vdftGVClgamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
+ujDh3Zx3t6HAncs4vdftGVClagamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
 i7+YwBBZAgMBAAECgf94125PJ1/dCItptIBvzLiFIzCF/cvu03bQM3Ag33hnoHZL
 sDM56ABzBLHqoFkl/xNQgewFkV3Jth/s0MaH86La3QHZutd53M2YFqLiDesqX2+l
 ZBRHoMxk/ONgCIPmpL4Dj3g+vEGsXxCux1J2glvA/I116FH0yVVpR6EfKULsKhAF
@@ -88,29 +88,62 @@ async function getSheetLastRow(spreadsheetId, sheetName) {
   }
 }
 
+// FIXED: createMarksheet function that properly creates sheets with students
 async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
-  const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+  // Clean the subject name for sheet name (remove special characters)
+  let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+  const sheetName = `${block}_${cleanSubject}`;
+  
   try {
-    await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: `${sheetName}!A1`,
-    });
-  } catch (error) {
+    // First, get all students
     const studentsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
       range: 'STUDENTS!A:B',
     });
     const students = studentsResponse.data.values || [];
+    
+    if (students.length <= 1) {
+      console.log('No students found to add to marksheet');
+      return;
+    }
+    
+    // Prepare rows for the new sheet
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED_BY', 'ASSESSMENT_TYPE']];
     for (let i = 1; i < students.length; i++) {
-      rows.push([students[i][0], students[i][1], '', '', '', '', '', '', assessmentType]);
+      if (students[i][0]) {
+        rows.push([students[i][0], students[i][1], '', '', '', '', '', '', assessmentType]);
+      }
     }
+    
+    // Create the sheet and add data in one operation
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetId,
+      requestBody: {
+        requests: [{
+          addSheet: {
+            properties: { title: sheetName }
+          }
+        }]
+      }
+    });
+    
+    // Add the data
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
       range: `${sheetName}!A1:I${rows.length}`,
       valueInputOption: 'RAW',
       requestBody: { values: rows }
     });
+    
+    console.log(`Created marksheet ${sheetName} with ${rows.length - 1} students`);
+  } catch (error) {
+    // If sheet already exists, just update it
+    if (error.message && error.message.includes('already exists')) {
+      console.log(`Sheet ${sheetName} already exists, skipping creation`);
+    } else {
+      console.error('Error creating marksheet:', error.message);
+      throw error;
+    }
   }
 }
 
@@ -372,16 +405,13 @@ app.get('/api/lecturer/:username', async (req, res) => {
   }
 });
 
-// UPDATE LECTURER ENDPOINT
 app.post('/api/update-lecturer', async (req, res) => {
   try {
     const { oldUsername, username, name, email, password, subjects } = req.body;
-    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'LECTURERS!A:F',
     });
-    
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === oldUsername) {
@@ -396,7 +426,6 @@ app.post('/api/update-lecturer', async (req, res) => {
         break;
       }
     }
-    
     res.json({ success: true, message: 'Lecturer updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -431,37 +460,55 @@ app.get('/api/units', async (req, res) => {
 app.post('/api/add-unit', async (req, res) => {
   try {
     const { block, name, assessmentType } = req.body;
-    const response = await sheets.spreadsheets.values.get({
+    
+    // First, add to CONFIG sheet
+    const configResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
     });
-    const data = response.data.values || [];
+    
+    const data = configResponse.data.values || [];
     let nextRow = data.length + 1;
+    let unitExists = false;
+    let isActive = false;
+    
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === block && data[i][1] === name) {
-        if (data[i][2] === 'YES') {
+        unitExists = true;
+        isActive = data[i][2] === 'YES';
+        if (isActive) {
           return res.json({ success: false, message: 'Unit already exists' });
         } else {
+          // Reactivate existing unit
           await sheets.spreadsheets.values.update({
             spreadsheetId: req.spreadsheetId,
             range: `CONFIG!C${i+1}:D${i+1}`,
             valueInputOption: 'RAW',
             requestBody: { values: [['YES', assessmentType]] }
           });
+          // Create marksheet
           await createMarksheet(req.spreadsheetId, block, name, assessmentType);
           return res.json({ success: true, message: 'Unit reactivated successfully' });
         }
       }
     }
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: req.spreadsheetId,
-      range: `CONFIG!A${nextRow}:D${nextRow}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[block, name, 'YES', assessmentType]] }
-    });
+    
+    if (!unitExists) {
+      // Add new unit to CONFIG
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: req.spreadsheetId,
+        range: `CONFIG!A${nextRow}:D${nextRow}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[block, name, 'YES', assessmentType]] }
+      });
+    }
+    
+    // Create marksheet with students
     await createMarksheet(req.spreadsheetId, block, name, assessmentType);
-    res.json({ success: true, message: 'Unit added successfully' });
+    
+    res.json({ success: true, message: 'Unit added successfully with all students' });
   } catch (error) {
+    console.error('Add unit error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -496,16 +543,20 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
-    let sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+    let sheetName = `${block}_${cleanSubject}`;
+    
     if (examType === 'nck') {
       sheetName = `XY FORMS`;
     }
+    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: `${sheetName}!A:Z`,
     });
     const data = response.data.values || [];
     const marks = [];
+    
     if (examType === 'nck') {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0]) {
@@ -538,13 +589,17 @@ app.post('/api/marks', async (req, res) => {
     if (examType === 'nck') {
       return res.json({ success: false, message: 'NCK scores are read-only. Edit directly in Google Sheets.' });
     }
-    const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    
+    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+    const sheetName = `${block}_${cleanSubject}`;
+    
     const configResponse = await sheets.spreadsheets.values.get({ spreadsheetId: req.spreadsheetId, range: 'CONFIG!A:D' });
     const config = configResponse.data.values || [];
     let assessmentType = 'full';
     for (let i = 1; i < config.length; i++) {
       if (config[i][0] === block && config[i][1] === subject) { assessmentType = config[i][3] || 'full'; break; }
     }
+    
     for (const mark of marksData) {
       let cat1 = parseFloat(mark.cat1) || 0, cat2 = parseFloat(mark.cat2) || 0, exam = parseFloat(mark.exam) || 0, finalTotal = 0;
       if (assessmentType === 'full') {
