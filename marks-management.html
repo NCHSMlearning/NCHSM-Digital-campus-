@@ -28,29 +28,131 @@
     .logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .back-btn { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: bold; }
     .save-btn { background: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px; }
+    .edit-btn { background: #3498db; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+    .delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
     select, input { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; }
     table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #667eea; color: white; font-weight: bold; }
     tr:hover { background: #f5f5f5; }
-    input[type="number"] { width: 70px; padding: 5px; text-align: center; }
+    input[type="number"] { width: 80px; padding: 5px; text-align: center; }
     .pass-row { background-color: #d5f5e3 !important; }
     .fail-row { background-color: #fadbd8 !important; }
     .login-container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .login-container input { width: 100%; margin: 10px 0; }
     .login-container button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .error { color: red; margin-top: 10px; text-align: center; }
-    .lecturer-card, .unit-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .subject-badge { background: #667eea; color: white; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 2px; display: inline-block; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 500px; max-width: 90%; max-height: 80%; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
-    .close { cursor: pointer; font-size: 24px; color: #999; }
+    .success { color: green; margin-top: 10px; text-align: center; }
+    .selector-group {
+      background: white;
+      border-radius: 15px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .selector-group label {
+      font-weight: bold;
+      color: #333;
+    }
+    .selector-group select {
+      width: auto;
+      min-width: 200px;
+      margin: 0;
+    }
+    .lecturer-card, .unit-card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .subject-badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 11px;
+      margin: 2px;
+      display: inline-block;
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      width: 500px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    .close {
+      cursor: pointer;
+      font-size: 24px;
+      color: #999;
+    }
     .close:hover { color: #333; }
-    .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader-text { color: white; margin-top: 15px; font-size: 16px; }
+    .notification-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #27ae60;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .content-area { margin-top: 20px; }
     @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -59,9 +161,12 @@
 
 <script>
   // ===== CONFIGURATION =====
-  // REPLACE THIS WITH YOUR RENDER BACKEND URL!
-const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';  
+  const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
+  const INTAKE_YEARS = ['2024', '2025', '2026'];
+  
   var currentUser = null;
+  var currentYear = '2024';
+  var currentExamType = 'internal';
   
   function showLoading(message) {
     var existingLoader = document.querySelector('.loader');
@@ -77,15 +182,29 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     if (loader) loader.remove();
   }
   
+  function showNotification(message, isError = false) {
+    var toast = document.createElement('div');
+    toast.className = 'notification-toast';
+    toast.style.backgroundColor = isError ? '#e74c3c' : '#27ae60';
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
+  }
+  
   async function apiCall(endpoint, options = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Year': currentYear,
+          'X-Exam-Type': currentExamType
+        },
         ...options
       });
       return await response.json();
     } catch (error) {
       console.error('API Error:', error);
+      showNotification('Network error: ' + error.message, true);
       return { error: error.message };
     }
   }
@@ -116,10 +235,15 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     showLoading('Logging in...');
     var username = document.getElementById('username').value;
     var password = document.getElementById('password').value;
+    currentYear = '2024';
+    currentExamType = 'internal';
+    
+    localStorage.setItem('selectedYear', currentYear);
+    localStorage.setItem('selectedExamType', currentExamType);
     
     const result = await apiCall('/api/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, year: currentYear })
     });
     
     hideLoading();
@@ -127,6 +251,7 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
       currentUser = result.user;
       localStorage.setItem('nursingUser', JSON.stringify(currentUser));
       showMain();
+      showNotification('Welcome ' + currentUser.name + '!');
     } else {
       document.getElementById('loginError').innerHTML = result.message;
     }
@@ -142,331 +267,348 @@ const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
     showLoading('Loading Dashboard...');
     var isAdmin = (currentUser.role === 'admin');
     
+    var yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>March ${y} Class</option>`).join('');
+    var examTypeOptions = `
+      <option value="internal" ${currentExamType === 'internal' ? 'selected' : ''}>📝 Internal Exams (CAT1 + CAT2 + Exam)</option>
+      <option value="nck" ${currentExamType === 'nck' ? 'selected' : ''}>🏥 NCK Score Sheet (Clinical Assessment)</option>
+    `;
+    
     var statsHtml = `
+      <div class="selector-group">
+        <div><label>📅 Class / Intake Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div>
+        <div><label>📋 Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div>
+      </div>
       <div class="stats-grid">
-        <div class="stat-card" onclick="if(${isAdmin}) showFullPage('students')">
-          <div class="stat-number" id="totalStudents">-</div>
-          <div class="stat-label">Total Students</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">6</div>
-          <div class="stat-label">Blocks</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="totalSubjects">-</div>
-          <div class="stat-label">${isAdmin ? 'Subjects' : 'My Subjects'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">60%</div>
-          <div class="stat-label">Pass Mark</div>
-        </div>
+        <div class="stat-card" onclick="if(${isAdmin}) showSection('students')"><div class="stat-number" id="totalStudents">-</div><div class="stat-label">Total Students</div></div>
+        <div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Blocks</div></div>
+        <div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label">${isAdmin ? 'Subjects' : 'My Subjects'}</div></div>
+        <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div>
       </div>
     `;
     
-    var menuHtml = '';
-    if (isAdmin) {
-      menuHtml = `
-        <div class="admin-menu-grid">
-          <button class="menu-btn btn-primary" onclick="showFullPage('marks')">📝 Enter Marks</button>
-          <button class="menu-btn btn-success" onclick="showFullPage('reports')">📊 Reports</button>
-          <button class="menu-btn btn-info" onclick="showFullPage('students')">👥 Students</button>
-          <button class="menu-btn btn-warning" onclick="showFullPage('lecturers')">👨‍🏫 Lecturers</button>
-          <button class="menu-btn btn-danger" onclick="showFullPage('units')">📚 Manage Units</button>
-        </div>
-      `;
-    } else {
-      menuHtml = `
-        <div class="menu-grid">
-          <button class="menu-btn btn-primary" onclick="showFullPage('lecturerMarks')">📝 My Subjects</button>
-          <button class="menu-btn btn-success" onclick="showFullPage('lecturerReports')">📊 My Reports</button>
-        </div>
-      `;
-    }
+    var menuHtml = isAdmin ? `
+      <div class="admin-menu-grid">
+        <button class="menu-btn btn-primary" id="marksBtn">📝 Enter Marks</button>
+        <button class="menu-btn btn-success" id="reportsBtn">📊 Reports</button>
+        <button class="menu-btn btn-info" id="studentsBtn">👥 Students</button>
+        <button class="menu-btn btn-warning" id="lecturersBtn">👨‍🏫 Lecturers</button>
+        <button class="menu-btn btn-danger" id="unitsBtn">📚 Manage Units</button>
+      </div>
+    ` : `
+      <div class="menu-grid">
+        <button class="menu-btn btn-primary" id="lecturerMarksBtn">📝 My Subjects</button>
+        <button class="menu-btn btn-success" id="lecturerReportsBtn">📊 My Reports</button>
+      </div>
+    `;
     
     document.getElementById('app').innerHTML = `
       <div class="container">
-        <div class="header">
-          <h1>🏥 Nursing School System</h1>
-          <p>Pass Mark: 60% | ${currentUser.name} (${currentUser.role})</p>
-        </div>
-        <div class="user-info">
-          <span>👋 Welcome, ${currentUser.name}</span>
-          <button class="logout-btn" onclick="logout()">🚪 Logout</button>
-        </div>
+        <div class="header"><h1>🏥 Nursing School System</h1><p>Pass Mark: 60% | ${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | ${currentExamType === 'internal' ? 'Internal Exams' : 'NCK Score Sheet'}</p></div>
+        <div class="user-info"><span>👋 Welcome, ${currentUser.name}</span><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
         ${statsHtml}
         ${menuHtml}
         <div id="contentArea" class="content-area"></div>
       </div>
     `;
     
+    // Attach event listeners
+    if (isAdmin) {
+      document.getElementById('marksBtn').onclick = () => showSection('marks');
+      document.getElementById('reportsBtn').onclick = () => showSection('reports');
+      document.getElementById('studentsBtn').onclick = () => showSection('students');
+      document.getElementById('lecturersBtn').onclick = () => showSection('lecturers');
+      document.getElementById('unitsBtn').onclick = () => showSection('units');
+    } else {
+      document.getElementById('lecturerMarksBtn').onclick = () => showSection('lecturerMarks');
+      document.getElementById('lecturerReportsBtn').onclick = () => showSection('lecturerReports');
+    }
+    
     const stats = await apiCall('/api/stats');
     document.getElementById('totalStudents').innerHTML = stats.totalStudents || 0;
-    
-    if (isAdmin) {
-      document.getElementById('totalSubjects').innerHTML = stats.totalSubjects || 0;
-    } else {
-      document.getElementById('totalSubjects').innerHTML = (currentUser.subjects || []).length;
-    }
+    document.getElementById('totalSubjects').innerHTML = isAdmin ? (stats.totalSubjects || 0) : (currentUser.subjects || []).length;
     hideLoading();
   }
   
-  function showFullPage(page) {
-    if (page === 'marks') showMarksFull();
-    else if (page === 'reports') showReportsFull();
-    else if (page === 'students') showStudentsFull();
-    else if (page === 'lecturers') showLecturersFull();
-    else if (page === 'units') showUnitsFull();
-    else if (page === 'lecturerMarks') showLecturerMarksFull();
-    else if (page === 'lecturerReports') showLecturerReportsFull();
+  window.changeYear = function() {
+    currentYear = document.getElementById('yearSelectMain').value;
+    localStorage.setItem('selectedYear', currentYear);
+    showMain();
+  };
+  
+  window.changeExamType = function() {
+    currentExamType = document.getElementById('examTypeSelect').value;
+    localStorage.setItem('selectedExamType', currentExamType);
+    showMain();
+  };
+  
+  function showSection(section) {
+    if (section === 'marks') showMarks();
+    else if (section === 'reports') showReports();
+    else if (section === 'students') showStudents();
+    else if (section === 'lecturers') showLecturers();
+    else if (section === 'units') showUnits();
+    else if (section === 'lecturerMarks') showLecturerMarks();
+    else if (section === 'lecturerReports') showLecturerReports();
   }
   
-  // ========== MARKS FULL PAGE ==========
-  async function showMarksFull() {
-    document.getElementById('app').innerHTML = `
-      <div class="container">
-        <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-        <div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject to enter marks</p></div>
-        <select id="blockSelect"><option>Loading blocks...</option></select>
-        <select id="subjectSelect" style="display:none;"><option>Select Subject</option></select>
-        <div id="marksTable"></div>
-      </div>
+  // ========== MARKS SECTION ==========
+  async function showMarks() {
+    document.getElementById('contentArea').innerHTML = `
+      <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
+      <div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject to enter marks</p></div>
+      <select id="blockSelect"><option>Loading blocks...</option></select>
+      <select id="subjectSelect" style="display:none;"><option>Select Subject</option></select>
+      <div id="marksTable"></div>
     `;
     
     const blocks = await apiCall('/api/blocks');
     var sel = document.getElementById('blockSelect');
     sel.innerHTML = '<option value="">-- Select Block --</option>';
-    for (var i = 0; i < blocks.length; i++) {
-      sel.innerHTML += '<option value="' + blocks[i] + '">' + blocks[i].replace('_', ' ') + '</option>';
-    }
-    sel.onchange = function() { loadSubjectsFull(sel.value); };
+    for (var i = 0; i < blocks.length; i++) sel.innerHTML += '<option value="' + blocks[i] + '">' + blocks[i].replace('_', ' ') + '</option>';
+    sel.onchange = function() { loadSubjects(sel.value); };
   }
   
-  async function loadSubjectsFull(block) {
+  async function loadSubjects(block) {
     if (!block) return;
     showLoading('Loading subjects...');
     document.getElementById('subjectSelect').style.display = 'none';
     document.getElementById('marksTable').innerHTML = '';
-    
     const subjects = await apiCall(`/api/subjects/${block}`);
     var sel = document.getElementById('subjectSelect');
     sel.style.display = 'block';
     sel.innerHTML = '<option value="">-- Select Subject --</option>';
-    for (var i = 0; i < subjects.length; i++) {
-      sel.innerHTML += '<option value="' + subjects[i] + '">' + subjects[i] + '</option>';
-    }
-    sel.onchange = function() { if (sel.value) loadMarksFull(block, sel.value); };
+    for (var i = 0; i < subjects.length; i++) sel.innerHTML += '<option value="' + subjects[i] + '">' + subjects[i] + '</option>';
+    sel.onchange = function() { if (sel.value) loadMarks(block, sel.value); };
     hideLoading();
   }
   
-  async function loadMarksFull(block, subject) {
-    showLoading('Loading marks for ' + subject + '...');
+  async function loadMarks(block, subject) {
+    showLoading('Loading marks...');
     var marksTable = document.getElementById('marksTable');
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
+    if (!marks || marks.length === 0) { marksTable.innerHTML = '<div style="background:white;padding:20px;text-align:center;">No students found</div>'; hideLoading(); return; }
     
-    const marks = await apiCall(`/api/marks/${block}/${encodeURIComponent(subject)}`);
-    
-    if (!marks || marks.length === 0) {
-      marksTable.innerHTML = '<div style="background:white; padding:20px; text-align:center;">No students found for ' + subject + '</div>';
-      hideLoading();
-      return;
-    }
-    
-    var assessmentType = marks[0]?.assessmentType || 'full';
-    
-    var html = '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;">';
-    html += '<table style="width:100%; border-collapse:collapse; background:white; border-radius:10px;">';
-    html += '<thead style="position:sticky; top:0;">';
-    html += '<tr style="background:#667eea; color:white; text-align:left;">';
-    html += '<th style="padding:12px;">Admission</th>';
-    html += '<th style="padding:12px;">Name</th>';
-    
-    if (assessmentType === 'full') {
-      html += '<th style="padding:12px; width:90px;">CAT1<br>(30)</th>';
-      html += '<th style="padding:12px; width:90px;">CAT2<br>(30)</th>';
-      html += '<th style="padding:12px; width:90px;">Exam<br>(70)</th>';
-    } else if (assessmentType === 'single_cat') {
-      html += '<th style="padding:12px; width:90px;">CAT<br>(30)</th>';
-      html += '<th style="padding:12px; width:90px;">Exam<br>(70)</th>';
+    var html = '<div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;">';
+    html += '<th>Admission</th><th>Name</th>';
+    if (currentExamType === 'nck') {
+      html += '<th>Clinical Score<br>(0-100)</th><th>Status</th><th>Graded By</th>';
     } else {
-      html += '<th style="padding:12px; width:90px;">Exam<br>(100)</th>';
+      html += '<th>CAT1(30)</th><th>CAT2(30)</th><th>Exam(70)</th><th>Total</th><th>Status</th><th>Graded By</th>';
     }
-    
-    html += '<th style="padding:12px; width:80px;">Total</th>';
-    html += '<th style="padding:12px; width:80px;">Status</th>';
-    html += '<th style="padding:12px;">Graded By</th>';
-    html += '<tr></thead><tbody>';
+    html += '</tr></thead><tbody>';
     
     for (var i = 0; i < marks.length; i++) {
-      var cat1 = marks[i].cat1 || '';
-      var cat2 = marks[i].cat2 || '';
-      var exam = marks[i].exam || '';
-      
-      var numCat1 = parseFloat(cat1) || 0;
-      var numCat2 = parseFloat(cat2) || 0;
-      var numExam = parseFloat(exam) || 0;
-      var total = 0;
-      
-      if (assessmentType === 'full') {
-        var cappedCat1 = Math.min(numCat1, 30);
-        var cappedCat2 = Math.min(numCat2, 30);
-        var cappedExam = Math.min(numExam, 70);
-        var catsTotalRaw = cappedCat1 + cappedCat2;
-        var catsTotal = (catsTotalRaw / 60) * 30;
-        total = catsTotal + cappedExam;
-        total = Math.round(total * 10) / 10;
-      } else if (assessmentType === 'single_cat') {
-        var cappedCat = Math.min(numCat1, 30);
-        var cappedExam2 = Math.min(numExam, 70);
-        total = cappedCat + cappedExam2;
-        total = Math.round(total * 10) / 10;
+      if (currentExamType === 'nck') {
+        var clinical = marks[i].cat1 || '';
+        var numClinical = parseFloat(clinical) || 0;
+        var status = numClinical >= 70 ? 'PASS' : (numClinical > 0 ? 'FAIL' : '');
+        var rowClass = numClinical >= 70 ? 'pass-row' : (numClinical > 0 ? 'fail-row' : '');
+        html += `<tr class="${rowClass}"><td>${marks[i].admission}</td><td>${marks[i].name}</td>
+          <td><input type="number" id="clinical_${i}" value="${clinical}" min="0" max="100" step="0.5" onchange="updateNckTotal(${i})"></td>
+          <td id="status_${i}">${status}</td><td>${marks[i].gradedBy || '-'}</td></tr>`;
       } else {
-        total = Math.min(numExam, 100);
+        var cat1 = marks[i].cat1 || '', cat2 = marks[i].cat2 || '', exam = marks[i].exam || '';
+        var numCat1 = parseFloat(cat1)||0, numCat2 = parseFloat(cat2)||0, numExam = parseFloat(exam)||0;
+        var cappedCat1 = Math.min(numCat1,30), cappedCat2 = Math.min(numCat2,30), cappedExam = Math.min(numExam,70);
+        var total = ((cappedCat1 + cappedCat2) / 60) * 30 + cappedExam;
         total = Math.round(total * 10) / 10;
+        var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
+        var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
+        html += `<tr class="${rowClass}"><td>${marks[i].admission}</td><td>${marks[i].name}</td>
+          <td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>
+          <td><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>
+          <td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateInternalTotal(${i})"></td>
+          <td id="total_${i}">${total}</td><td id="status_${i}">${status}</td><td>${marks[i].gradedBy || '-'}</td></tr>`;
       }
-      
-      var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-      var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-      var gradedBy = marks[i].gradedBy || '-';
-      
-      html += '<tr class="' + rowClass + '">';
-      html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
-      html += '<td style="padding:10px;">' + marks[i].name + '</td>';
-      
-      if (assessmentType === 'full') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-      } else if (assessmentType === 'single_cat') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-        html += '<td style="background:#f5f5f5; padding:10px;">-</td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-      } else {
-        html += '<td style="background:#f5f5f5; padding:10px;">-</td>';
-        html += '<td style="background:#f5f5f5; padding:10px;">-</td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" style="width:70px;" onchange="updateTotalFull(' + i + ', \'' + assessmentType + '\')"></td>';
-      }
-      
-      html += '<td id="total_' + i + '" style="padding:10px; font-weight:bold;">' + total + '</td>';
-      html += '<td id="status_' + i + '" style="padding:10px;">' + status + '</td>';
-      html += '<td style="padding:10px;">' + gradedBy + '</td>';
-      html += '</tr>';
     }
-    
-    html += '</tbody></table></div>';
-    html += '<div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveMarksFull(\'' + block + '\', \'' + subject + '\', ' + marks.length + ', \'' + assessmentType + '\')">💾 Save All Marks</button></div>';
-    
+    html += '</tbody></table></div><div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
     marksTable.innerHTML = html;
-    window.currentBlock = block;
-    window.currentSubject = subject;
-    window.currentAssessmentType = assessmentType;
     hideLoading();
   }
   
-  window.updateTotalFull = function(idx, assessmentType) {
-    var total = 0;
-    
-    if (assessmentType === 'full') {
-      var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
-      var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
-      var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-      
-      var cappedCat1 = Math.min(cat1, 30);
-      var cappedCat2 = Math.min(cat2, 30);
-      var cappedExam = Math.min(exam, 70);
-      var catsTotalRaw = cappedCat1 + cappedCat2;
-      var catsTotal = (catsTotalRaw / 60) * 30;
-      total = catsTotal + cappedExam;
-      total = Math.round(total * 10) / 10;
-    } else if (assessmentType === 'single_cat') {
-      var cat = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
-      var exam2 = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-      
-      var cappedCat = Math.min(cat, 30);
-      var cappedExam2 = Math.min(exam2, 70);
-      total = cappedCat + cappedExam2;
-      total = Math.round(total * 10) / 10;
-    } else {
-      var exam3 = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-      total = Math.min(exam3, 100);
-      total = Math.round(total * 10) / 10;
-    }
-    
-    var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-    var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-    
+  window.updateInternalTotal = function(idx) {
+    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
+    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
+    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
+    var cappedCat1 = Math.min(cat1,30), cappedCat2 = Math.min(cat2,30), cappedExam = Math.min(exam,70);
+    var total = ((cappedCat1 + cappedCat2) / 60) * 30 + cappedExam;
+    total = Math.round(total * 10) / 10;
     document.getElementById('total_' + idx).innerHTML = total;
-    document.getElementById('status_' + idx).innerHTML = status;
-    
+    document.getElementById('status_' + idx).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
     var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
-    if (row) {
-      row.className = rowClass;
-    }
+    if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
   };
   
-  window.saveMarksFull = async function(block, subject, len, assessmentType) {
+  window.updateNckTotal = function(idx) {
+    var clinical = parseFloat(document.getElementById('clinical_' + idx)?.value) || 0;
+    var status = clinical >= 70 ? 'PASS' : (clinical > 0 ? 'FAIL' : '');
+    document.getElementById('status_' + idx).innerHTML = status;
+    var row = document.getElementById('clinical_' + idx)?.parentElement?.parentElement;
+    if (row) row.className = clinical >= 70 ? 'pass-row' : (clinical > 0 ? 'fail-row' : '');
+  };
+  
+  window.saveMarks = async function(block, subject, len) {
     showLoading('Saving marks...');
     var marksData = [];
     for (var i = 0; i < len; i++) {
-      marksData.push({
-        row: i + 2,
-        cat1: document.getElementById('cat1_' + i)?.value || '',
-        cat2: document.getElementById('cat2_' + i)?.value || '',
-        exam: document.getElementById('exam_' + i)?.value || ''
-      });
+      if (currentExamType === 'nck') {
+        marksData.push({ row: i + 2, cat1: document.getElementById('clinical_' + i)?.value || '', cat2: '', exam: '' });
+      } else {
+        marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: document.getElementById('cat2_' + i)?.value || '', exam: document.getElementById('exam_' + i)?.value || '' });
+      }
     }
-    
-    const result = await apiCall('/api/marks', {
-      method: 'POST',
-      body: JSON.stringify({ block, subject, marksData, lecturerName: currentUser.name })
-    });
-    
+    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block, subject, marksData, lecturerName: currentUser.name }) });
     hideLoading();
-    alert(result.message || (result.success ? 'Saved!' : 'Error saving marks'));
-    if (result.success) loadMarksFull(block, subject);
+    showNotification(result.message || (result.success ? 'Saved!' : 'Error'), !result.success);
+    if (result.success) loadMarks(block, subject);
   };
   
-  // ========== REPORTS FULL PAGE ==========
-  async function showReportsFull() {
+  // ========== REPORTS SECTION ==========
+  async function showReports() {
     showLoading('Loading reports...');
     const students = await apiCall('/api/students');
-    
-    var html = '<div class="container"><button class="back-btn" onclick="showMain()">← Back to Dashboard</button>';
-    html += '<div class="header"><h3>📊 Student Reports</h3></div>';
-    html += '<table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
-    for (var i = 0; i < students.length; i++) {
-      html += '<tr><td>' + students[i].admission + '</td><td>' + students[i].name + '</td><td>' + students[i].block + '</td><td>' + students[i].status + '</td></tr>';
-    }
+    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 Student Reports</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
+    for (var i = 0; i < students.length; i++) html += `<tr><td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td></tr>`;
     html += '</tbody></table></div>';
-    document.getElementById('app').innerHTML = html;
+    document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  // ========== STUDENTS FULL PAGE ==========
-  async function showStudentsFull() {
+  // ========== STUDENTS SECTION ==========
+  async function showStudents() {
     showLoading('Loading students...');
     const students = await apiCall('/api/students');
-    
-    var html = `
-      <div class="container">
-        <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-        <div class="header"><h3>👥 Manage Students</h3></div>
-        <div class="students-list">
-          <table style="width:100%; border-collapse:collapse; background:white;">
-            <thead><tr style="background:#667eea; color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead>
-            <tbody>
-    `;
+    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👥 Manage Students</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < students.length; i++) {
-      html += '<tr><td>' + students[i].admission + '</td><td>' + students[i].name + '</td><td>' + students[i].block + '</td><td>' + students[i].status + '</td></tr>';
+      html += `<tr><td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td>
+        <td><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button>
+        <button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td></tr>`;
     }
-    html += '</tbody></table></div></div>';
-    document.getElementById('app').innerHTML = html;
+    html += '</tbody></table><button class="save-btn" style="margin-top:15px;" onclick="addStudent()">➕ Add New Student</button></div>';
+    document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  // Placeholder functions for other sections
-  function showLecturersFull() { document.getElementById('app').innerHTML = '<div class="container"><button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👨‍🏫 Lecturers</h3></div><p>Lecturer management coming soon...</p></div>'; }
-  function showUnitsFull() { document.getElementById('app').innerHTML = '<div class="container"><button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div><p>Unit management coming soon...</p></div>'; }
-  function showLecturerMarksFull() { showMarksFull(); }
-  function showLecturerReportsFull() { showReportsFull(); }
+  function addStudent() {
+    var admission = prompt('Enter Admission Number:');
+    if (!admission) return;
+    var name = prompt('Enter Full Name:');
+    if (!name) return;
+    var block = prompt('Enter Block (e.g., BLOCK_0):', 'BLOCK_0');
+    showLoading('Adding student...');
+    apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student added!'); showStudents(); });
+  }
+  
+  function editStudent(admission, oldName, oldBlock) {
+    var name = prompt('Edit student name:', oldName);
+    if (!name) return;
+    var block = prompt('Edit block:', oldBlock);
+    showLoading('Updating student...');
+    apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student updated!'); showStudents(); });
+  }
+  
+  function deleteStudent(admission) {
+    if (confirm('Delete this student? This will remove all their marks!')) {
+      showLoading('Deleting student...');
+      apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission }) }).then(() => { hideLoading(); showNotification('Student deleted!'); showStudents(); });
+    }
+  }
+  
+  // ========== LECTURERS SECTION ==========
+  async function showLecturers() {
+    showLoading('Loading lecturers...');
+    const lecturers = await apiCall('/api/lecturers');
+    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👨‍🏫 Manage Lecturers</h3></div><div id="lecturersList">';
+    for (var i = 0; i < lecturers.length; i++) {
+      var subjects = lecturers[i].subjects || [];
+      var subjectBadges = subjects.map(s => `<span class="subject-badge">${s.split('|')[1] || s}</span>`).join('');
+      html += `<div class="lecturer-card"><div><strong>${lecturers[i].name}</strong><br><small>${lecturers[i].username}</small><br><small>${lecturers[i].email || ''}</small></div><div>${subjectBadges}</div><div><button class="edit-btn" onclick="editLecturer('${lecturers[i].username}')">Edit</button><button class="delete-btn" onclick="deleteLecturer('${lecturers[i].username}')">Delete</button></div></div>`;
+    }
+    html += `<button class="save-btn" style="margin-top:15px;" onclick="addLecturer()">➕ Add New Lecturer</button></div>`;
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  function addLecturer() {
+    var username = prompt('Enter username:');
+    if (!username) return;
+    var name = prompt('Enter full name:');
+    if (!name) return;
+    var password = prompt('Enter password:', 'password123');
+    showLoading('Adding lecturer...');
+    apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email: '', password, subjects: [] }) }).then(() => { hideLoading(); showNotification('Lecturer added!'); showLecturers(); });
+  }
+  
+  function editLecturer(username) { showNotification('Edit feature - Select subjects coming soon', true); }
+  function deleteLecturer(username) { if (confirm('Delete this lecturer?')) { showLoading('Deleting...'); apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); }); } }
+  
+  // ========== UNITS SECTION ==========
+  async function showUnits() {
+    showLoading('Loading units...');
+    const blocks = await apiCall('/api/blocks');
+    const units = await apiCall('/api/units');
+    var blockOptions = blocks.map(b => `<option value="${b}">${b.replace('_', ' ')}</option>`).join('');
+    var html = `<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div>
+      <div style="background:white;padding:20px;border-radius:10px;margin-bottom:20px;"><h4>➕ Add New Unit</h4>
+      <select id="newUnitBlock">${blockOptions}</select>
+      <input type="text" id="newUnitName" placeholder="Subject Name" style="margin:5px 0;">
+      <select id="newUnitType" style="margin:5px 0;"><option value="full">Full Assessment (CAT1+CAT2+Exam)</option><option value="single_cat">Single CAT (CAT+Exam)</option><option value="exam_only">Exam Only</option></select>
+      <button class="save-btn" onclick="addUnit()">➕ Add Unit</button></div>
+      <div id="unitsList">`;
+    for (var b of blocks) {
+      var blockUnits = units[b] || [];
+      html += `<div style="margin:15px 0;"><h4>${b.replace('_', ' ')}</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
+      for (var u of blockUnits) {
+        var icon = u.assessmentType === 'single_cat' ? '📝' : (u.assessmentType === 'exam_only' ? '📖' : '📊');
+        html += `<div class="unit-card">${icon} ${u.name} <button class="delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')">✖</button></div>`;
+      }
+      html += `</div></div>`;
+    }
+    html += `</div>`;
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  function addUnit() {
+    var block = document.getElementById('newUnitBlock').value;
+    var name = document.getElementById('newUnitName').value.trim().toUpperCase();
+    var type = document.getElementById('newUnitType').value;
+    if (!block || !name) { showNotification('Please select block and enter subject', true); return; }
+    showLoading('Adding unit...');
+    apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) }).then(() => { hideLoading(); showNotification('Unit added!'); showUnits(); });
+  }
+  
+  function deleteUnit(block, name) {
+    if (confirm(`Delete unit "${name}"? This will delete ALL marks!`)) {
+      showLoading('Deleting unit...');
+      apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }).then(() => { hideLoading(); showNotification('Unit deleted!'); showUnits(); });
+    }
+  }
+  
+  // ========== LECTURER SECTIONS ==========
+  function showLecturerMarks() { showMarks(); }
+  async function showLecturerReports() {
+    showLoading('Loading reports...');
+    const subjects = currentUser.subjects || [];
+    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 My Reports</h3></div><div class="stats-grid">';
+    for (var s of subjects) {
+      var parts = s.split('|');
+      var marks = await apiCall(`/api/marks/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`);
+      var passCount = 0;
+      for (var m of marks) { var total = parseFloat(m.final) || 0; if (total >= 60) passCount++; }
+      var rate = marks.length > 0 ? Math.round((passCount / marks.length) * 100) : 0;
+      html += `<div class="stat-card"><div class="stat-number">${rate}%</div><div class="stat-label">${parts[1]}<br>(${marks.length} students)</div></div>`;
+    }
+    html += '</div>';
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  // Restore saved selections
+  var savedYear = localStorage.getItem('selectedYear');
+  if (savedYear && INTAKE_YEARS.includes(savedYear)) currentYear = savedYear;
+  var savedExamType = localStorage.getItem('selectedExamType');
+  if (savedExamType) currentExamType = savedExamType;
   
   checkLogin();
 </script>
