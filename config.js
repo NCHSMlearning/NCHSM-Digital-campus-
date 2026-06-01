@@ -47,7 +47,7 @@ console.log('🚀 Loading NCHSM Student Portal Configuration');
 window.APP_CONFIG = {
     // Public test Supabase credentials
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
     
     // Optional LocationIQ API key (get from https://locationiq.com/)
     LOCATIONIQ_API_KEY: '',
@@ -61,71 +61,6 @@ window.APP_CONFIG = {
     APP_NAME: 'NCHSM Digital Student Portal',
     APP_VERSION: '2.1.0'
 };
-
-// ========== FIX: Initialize Supabase Client ==========
-// This is what was MISSING from your original config.js
-
-function initializeSupabase() {
-    try {
-        // Check if Supabase library is loaded from CDN
-        if (typeof supabase !== 'undefined' && supabase.createClient) {
-            window.supabase = supabase.createClient(
-                window.APP_CONFIG.SUPABASE_URL,
-                window.APP_CONFIG.SUPABASE_ANON_KEY
-            );
-            console.log('✅ Supabase client initialized successfully');
-            return true;
-        }
-        // Check if it's available as window.supabase
-        else if (window.supabase && window.supabase.createClient) {
-            window.supabase = window.supabase.createClient(
-                window.APP_CONFIG.SUPABASE_URL,
-                window.APP_CONFIG.SUPABASE_ANON_KEY
-            );
-            console.log('✅ Supabase client initialized from window');
-            return true;
-        }
-        else {
-            console.warn('⏳ Waiting for Supabase library to load...');
-            // Retry after delay
-            setTimeout(initializeSupabase, 100);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Failed to initialize Supabase:', error);
-        return false;
-    }
-}
-
-// Start initialization
-let initAttempts = 0;
-function tryInitSupabase() {
-    initAttempts++;
-    const success = initializeSupabase();
-    
-    if (!success && initAttempts < 50) { // Try for up to 5 seconds
-        setTimeout(tryInitSupabase, 100);
-    } else if (!success) {
-        console.error('❌ Could not initialize Supabase after 50 attempts');
-        // Create a mock client to prevent crashes
-        window.supabase = {
-            from: () => ({
-                select: () => Promise.resolve({ data: [], error: null }),
-                insert: () => Promise.resolve({ data: [], error: null }),
-                update: () => Promise.resolve({ data: [], error: null }),
-                delete: () => Promise.resolve({ data: [], error: null })
-            }),
-            auth: {
-                getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-                getUser: () => Promise.resolve({ data: { user: null }, error: null })
-            }
-        };
-        console.warn('⚠️ Using mock Supabase client');
-    }
-}
-
-// Start trying to initialize Supabase
-tryInitSupabase();
 
 // Only show these logs if debugging is enabled
 if (!window.__LOGS_DISABLED) {
