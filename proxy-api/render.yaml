@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: nchsm-marks-proxy
+    runtime: node
+    rootDir: proxy-api
+    buildCommand: npm install
+    startCommand: node server.js
