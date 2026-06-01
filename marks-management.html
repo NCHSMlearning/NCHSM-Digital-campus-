@@ -1028,34 +1028,56 @@
   hideLoading();
 }
   
- function displayXYFormsMarks(marks) {
+function displayXYFormsMarks(marks) {
   if (!marks || marks.length === 0) {
     document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found.</div>';
     return;
   }
   
-  console.log('First student data sample:', marks[0]);
+  // Group clinical areas into categories
+  const areaGroups = [
+    { name: '🏥 MEDICAL', areas: ['MED1', 'MED2', 'MED3'] },
+    { name: '🤰 MCH', areas: ['MCH1', 'MCH2', 'MCH3'] },
+    { name: '🤱 MATERNITY', areas: ['MAT1', 'MAT2', 'MAT3'] },
+    { name: '👶 PAEDIATRICS', areas: ['PEAD1', 'PEAD2'] },
+    { name: '🔪 SURGERY', areas: ['SURG1', 'SURG2', 'SURG3'] },
+    { name: '🚑 OTHER', areas: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
+  ];
   
-  const clinicalAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'];
-  
-  let html = `<div style="overflow-x:auto; max-height: 70vh;">
-    <div style="margin-bottom: 15px; padding: 10px; background: #e0e7ff; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-      <strong><i class="fas fa-bolt"></i> Quick Fill:</strong>
-      <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
-      <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
-      <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
-      <button class="save-btn" onclick="copyFirstRowToAll()" style="padding: 5px 12px; background: #8b5cf6;">Copy First Row to All</button>
+  let html = `
+    <div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #667eea20, #764ba220); border-radius: 12px;">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+        <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
+        <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
+        <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
+        <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
+        <button class="save-btn" onclick="showCompactEntry()" style="padding: 5px 12px; background: #8b5cf6;"><i class="fas fa-compress"></i> Compact View</button>
+      </div>
+      <div style="font-size: 12px; color: #666;">
+        <i class="fas fa-info-circle"></i> Tip: Click on any student name to open a focused entry panel
+      </div>
     </div>
-    <table style="min-width: 1600px;">
-      <thead>
-        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
-          <th style="position: sticky; left: 0; background: #667eea; min-width: 50px;">#</th>
-          <th style="position: sticky; left: 50px; background: #667eea; min-width: 200px;">Student Name</th>`;
+    <div id="nckTableView" style="overflow-x:auto; max-height: 60vh;">
+      <table style="min-width: 1000px;">
+        <thead>
+          <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
+            <th style="position: sticky; left: 0; background: #667eea; min-width: 50px;">#</th>
+            <th style="position: sticky; left: 50px; background: #667eea; min-width: 180px;">Student Name</th>`;
   
-  for (let area of clinicalAreas) {
-    html += `<th style="min-width: 65px;"><div style="font-size: 10px;">${area}</div></th>`;
+  // Add grouped headers
+  for (let group of areaGroups) {
+    html += `<th colspan="${group.areas.length}" style="text-align: center; background: #4f46e5;">${group.name}</th>`;
   }
-  html += `<th style="min-width: 80px;">Average</th><th style="min-width: 80px;">Status</th><th style="min-width: 150px;">Graded By</th>`;
+  html += `<th style="min-width: 70px;">Avg</th><th>Status</th><th>Graded By</th>`;
+  html += `</tr><tr style="background: #818cf8; color: white;">`;
+  html += `<th style="position: sticky; left: 0; background: #818cf8;"></th><th style="position: sticky; left: 50px; background: #818cf8;"></th>`;
+  
+  for (let group of areaGroups) {
+    for (let area of group.areas) {
+      html += `<th style="min-width: 60px; font-size: 10px;">${area}</th>`;
+    }
+  }
+  html += `<th></th><th></th><th></th>`;
   html += `</tr></thead><tbody>`;
   
   currentNCKMarks = marks;
@@ -1063,63 +1085,154 @@
   
   for (let i = 0; i < marks.length; i++) {
     const m = marks[i];
-    
-    // Get scores from API response
     let scores = m.scores || [];
-    if (scores.length === 0 && m.clinicalAreas) {
-      scores = m.clinicalAreas.map(ca => ca.score || 0);
-    }
     while (scores.length < 22) scores.push(0);
     
-    // Calculate average from non-zero scores only - as a NUMBER (0-100)
     const validScores = scores.filter(s => s > 0);
-    let avg = 0;
-    if (validScores.length > 0) {
-      avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-    } else if (m.final && m.final > 0) {
-      avg = m.final;
-    }
-    
-    const status = avg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+    let avg = validScores.length ? validScores.reduce((a,b) => a+b,0) / validScores.length : (m.final || 0);
+    const status = avg >= 60 ? 'PASS' : (validScores.length ? 'FAIL' : 'PENDING');
     const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
     
-    // Get graded by - filter out the old final score (looks like a decimal number)
     let gradedBy = m.gradedBy || '';
-    // If gradedBy looks like a decimal number (old final score), clear it
-    if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) {
-      gradedBy = '';
-    }
+    if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) gradedBy = '';
     
-    html += `<tr class="${rowClass}">`;
+    html += `<tr class="${rowClass}" onclick="openStudentEntry(${i}, '${m.name}')" style="cursor: pointer;">`;
     html += `<td style="position: sticky; left: 0; background: white;">${i+1}</td>`;
-    html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500;">${m.name || 'Unnamed'}</td>`;
+    html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500;">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size: 10px; color: #667eea;"></i></td>`;
     
-    for (let c = 0; c < 22; c++) {
-      const score = scores[c] || 0;
-      const scoreStyle = score > 0 ? 'background: #d1fae5;' : '';
-      html += `<td style="padding: 2px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 55px; padding: 4px; font-size: 11px; border-radius: 6px; text-align: center; ${scoreStyle}" onchange="updateXYAverage(${i})"></td>`;
+    let scoreIndex = 0;
+    for (let group of areaGroups) {
+      for (let area of group.areas) {
+        const score = scores[scoreIndex] || 0;
+        const scoreStyle = score > 0 ? 'background: #d1fae5;' : '';
+        html += `<td style="padding: 2px;"><input type="number" id="xy_${i}_${scoreIndex}" value="${score}" min="0" max="100" step="0.5" style="width: 55px; padding: 4px; font-size: 11px; border-radius: 6px; text-align: center; ${scoreStyle}" onchange="updateXYAverage(${i})" onclick="event.stopPropagation()"></td>`;
+        scoreIndex++;
+      }
     }
     
-    // Display average as a NUMBER (no percentage sign)
     const displayAvg = avg > 0 ? avg.toFixed(2) : '0.00';
     html += `<td id="xyAvg_${i}" style="font-weight: bold; text-align: center; background: ${avg >= 60 ? '#d1fae5' : '#fee2e2'};">${displayAvg}</td>`;
     html += `<td id="xyStatus_${i}" style="text-align: center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
-    html += `<td style="padding: 2px;"><input type="text" id="xyGraded_${i}" value="${gradedBy}" placeholder="Lecturer name" style="width: 110px; padding: 4px; font-size: 11px; border-radius: 6px;"></td>`;
+    html += `<td style="padding: 2px;"><input type="text" id="xyGraded_${i}" value="${gradedBy}" placeholder="Lecturer" style="width: 90px; padding: 4px; font-size: 11px; border-radius: 6px;" onclick="event.stopPropagation()"></td>`;
     html += `</tr>`;
   }
   
   html += `</tbody></table></div>
-  <div style="text-align: center; margin-top: 20px; padding: 10px; background: #fef3c7; border-radius: 12px;">
-    <i class="fas fa-info-circle"></i> <strong>Tip:</strong> 
-    - Green cells have scores, white cells are empty.<br>
-    - Use "Fill Empty" to add default scores to all empty cells.<br>
-    - Press Tab/Enter to navigate between cells.
-  </div>
+  <div id="compactEntryPanel" style="display: none; margin-top: 20px;"></div>
   <div style="text-align: center; margin-top: 20px;">
     <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
   </div>`;
   
   document.getElementById('nckMarksContainer').innerHTML = html;
+}
+
+// Open focused entry panel for a single student
+function openStudentEntry(index, studentName) {
+  const panel = document.getElementById('compactEntryPanel');
+  if (!panel) return;
+  
+  const scores = [];
+  for (let c = 0; c < 22; c++) {
+    const input = document.getElementById(`xy_${index}_${c}`);
+    scores.push(input ? input.value : 0);
+  }
+  
+  const groupedAreas = [
+    { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
+    { title: '🤰 MCH', cols: [3,4,5], names: ['MCH1', 'MCH2', 'MCH3'] },
+    { title: '🤱 MATERNITY', cols: [6,7,8], names: ['MAT1', 'MAT2', 'MAT3'] },
+    { title: '👶 PAEDIATRICS', cols: [9,10], names: ['PEAD1', 'PEAD2'] },
+    { title: '🔪 SURGERY', cols: [11,12,13], names: ['SURG1', 'SURG2', 'SURG3'] },
+    { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
+  ];
+  
+  let html = `
+    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3><i class="fas fa-user-edit"></i> Entering Scores for: ${studentName}</h3>
+        <button class="back-btn" onclick="closeCompactEntry()" style="padding: 5px 15px;">Close</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">`;
+  
+  for (let group of groupedAreas) {
+    html += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+      <h4 style="margin-bottom: 10px; color: #667eea;">${group.title}</h4>`;
+    for (let i = 0; i < group.cols.length; i++) {
+      const colIdx = group.cols[i];
+      const score = scores[colIdx] || 0;
+      html += `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 12px; font-weight: 500;">${group.names[i]}:</label>
+          <input type="number" id="compact_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width: 80px; padding: 5px; border-radius: 8px; text-align: center;" onchange="updateFromCompact(${index}, ${colIdx})">
+        </div>`;
+    }
+    html += `</div>`;
+  }
+  
+  html += `</div>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+        <button class="save-btn" onclick="applyToAllFromCompact(${index})" style="background: #f59e0b;">Apply These Scores to All Students</button>
+        <button class="save-btn" onclick="closeCompactEntry()">Done</button>
+      </div>
+    </div>`;
+  
+  panel.style.display = 'block';
+  panel.innerHTML = html;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeCompactEntry() {
+  const panel = document.getElementById('compactEntryPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+function updateFromCompact(studentIdx, areaIdx) {
+  const compactInput = document.getElementById(`compact_${areaIdx}`);
+  if (compactInput) {
+    const mainInput = document.getElementById(`xy_${studentIdx}_${areaIdx}`);
+    if (mainInput) mainInput.value = compactInput.value;
+  }
+  updateXYAverage(studentIdx);
+}
+
+function applyToAllFromCompact(sourceIdx) {
+  const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+  for (let i = 0; i < rows.length; i++) {
+    for (let c = 0; c < 22; c++) {
+      const sourceInput = document.getElementById(`xy_${sourceIdx}_${c}`);
+      const targetInput = document.getElementById(`xy_${i}_${c}`);
+      if (sourceInput && targetInput) targetInput.value = sourceInput.value;
+    }
+    updateXYAverage(i);
+  }
+  showNotification(`Applied scores from ${currentNCKMarks[sourceIdx]?.name} to all students`, false);
+  closeCompactEntry();
+}
+
+function showCompactEntry() {
+  document.getElementById('nckTableView').style.display = 'none';
+  // Show a list of students to choose from
+  let html = `<div style="background: white; border-radius: 16px; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+      <h3><i class="fas fa-list"></i> Select Student to Enter Scores</h3>
+      <button class="back-btn" onclick="showTableView()">Back to Table View</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">`;
+  
+  for (let i = 0; i < currentNCKMarks.length; i++) {
+    const m = currentNCKMarks[i];
+    html += `<button class="menu-btn btn-primary" onclick="openStudentEntry(${i}, '${m.name}'); showTableView();" style="padding: 12px;">📝 ${m.name}</button>`;
+  }
+  
+  html += `</div></div>`;
+  document.getElementById('compactEntryPanel').innerHTML = html;
+  document.getElementById('compactEntryPanel').style.display = 'block';
+  document.getElementById('nckTableView').style.display = 'none';
+}
+
+function showTableView() {
+  document.getElementById('nckTableView').style.display = 'block';
+  document.getElementById('compactEntryPanel').style.display = 'none';
 }
 
 // Helper function to copy first row to all students
