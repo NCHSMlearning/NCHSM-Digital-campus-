@@ -196,7 +196,7 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT ==========
+// ========== GET MARKS ENDPOINT (FIXED FOR NCK) ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -213,49 +213,80 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       const data = response.data.values || [];
       const marks = [];
       
-      if (sheetName === 'XY FORMS') {
-        for (let i = 1; i < data.length; i++) {
-          if (data[i][1] || data[i][0]) {
-            let total = 0, count = 0;
-            for (let j = 2; j <= 22 && j < data[i].length; j++) {
-              const score = parseFloat(data[i][j]);
-              if (!isNaN(score) && score !== '') {
-                total += score;
-                count++;
-              }
-            }
-            const finalScore = count > 0 ? (total / count) : 0;
-            marks.push({
-              row: i + 1,
-              admission: data[i][0] || '',
-              name: data[i][1] || '',
-              cat1: Math.round(finalScore * 100) / 100,
-              final: Math.round(finalScore * 100) / 100,
-              gradedBy: data[i][24] || data[i][23] || ''
-            });
-          }
+      // Get headers to find FINAL CLINICAL SCORE column
+      const headers = data[0] || [];
+      let finalScoreCol = -1;
+      let gradedByCol = -1;
+      
+      for (let i = 0; i < headers.length; i++) {
+        const header = headers[i] ? headers[i].toString() : '';
+        if (header.toUpperCase().includes('FINAL CLINICAL SCORE')) {
+          finalScoreCol = i;
         }
-      } else {
-        for (let i = 1; i < data.length; i++) {
-          if (data[i][1]) {
-            let total = 0;
-            for (let j = 2; j < data[i].length; j++) {
-              const score = parseFloat(data[i][j]);
-              if (!isNaN(score) && score !== '') total += score;
-            }
-            marks.push({
-              row: i + 1,
-              admission: data[i][0] || '',
-              name: data[i][1] || '',
-              cat1: total,
-              final: total,
-              gradedBy: data[i][data[i].length - 1] || ''
-            });
-          }
+        if (header.toUpperCase().includes('GRADED BY') || header.toUpperCase().includes('LECTURER')) {
+          gradedByCol = i;
         }
       }
+      
+      // If FINAL CLINICAL SCORE column not found, default to column Y (index 24)
+      if (finalScoreCol === -1) finalScoreCol = 24;
+      if (gradedByCol === -1) gradedByCol = 24;
+      
+      if (sheetName === 'XY FORMS') {
+        for (let i = 1; i < data.length; i++) {
+          if (!data[i][0] && !data[i][1]) continue;
+          
+          // Get the pre-calculated FINAL CLINICAL SCORE
+          let finalScore = 0;
+          if (data[i][finalScoreCol]) {
+            finalScore = parseFloat(data[i][finalScoreCol]) || 0;
+          }
+          
+          // Also collect individual clinical scores (for editing)
+          const clinicalScores = [];
+          for (let j = 2; j <= 22 && j < data[i].length; j++) {
+            const score = parseFloat(data[i][j]);
+            clinicalScores.push(isNaN(score) ? 0 : score);
+          }
+          
+          marks.push({
+            row: i + 1,
+            admission: data[i][0] || '',
+            name: data[i][1] || '',
+            scores: clinicalScores,
+            clinicalAreas: clinicalScores,
+            final: finalScore,
+            cat1: finalScore,
+            gradedBy: data[i][gradedByCol] || ''
+          });
+        }
+      } else {
+        // ASSESSMENT AND CASE sheet
+        for (let i = 1; i < data.length; i++) {
+          if (!data[i][1]) continue;
+          
+          const scores = [];
+          for (let j = 2; j <= 10 && j < data[i].length; j++) {
+            const score = parseFloat(data[i][j]);
+            if (!isNaN(score)) scores.push(score);
+          }
+          const total = scores.reduce((a, b) => a + b, 0);
+          
+          marks.push({
+            row: i + 1,
+            admission: data[i][0] || '',
+            name: data[i][1] || '',
+            scores: scores,
+            total: total,
+            final: total,
+            gradedBy: data[i][data[i].length - 1] || ''
+          });
+        }
+      }
+      
       res.json(marks);
     } else {
+      // Internal exams - unchanged
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
@@ -289,7 +320,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT ==========
+// ========== SAVE MARKS ENDPOINT (FIXED FOR NCK) ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
@@ -299,38 +330,105 @@ app.post('/api/marks', async (req, res) => {
     if (examType === 'nck') {
       let sheetName = subject === 'XY FORMS' || subject.includes('XY') ? 'XY FORMS' : 'ASSESSMENT AND CASE';
       
-      for (const mark of marksData) {
-        const row = mark.row;
-        const score = mark.cat1 || mark.exam || 0;
-        
-        if (sheetName === 'XY FORMS') {
-          const updateData = Array(21).fill(score);
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!C${row}:W${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [updateData] }
-          });
-        } else {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!C${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[score]] }
-          });
-        }
-        
-        if (lecturerName) {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!X${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[lecturerName]] }
-          });
+      // Get current data to find FINAL CLINICAL SCORE column
+      const currentSheet = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:Z`,
+      });
+      const headers = currentSheet.data.values?.[0] || [];
+      
+      let finalScoreCol = -1;
+      for (let i = 0; i < headers.length; i++) {
+        const header = headers[i] ? headers[i].toString() : '';
+        if (header.toUpperCase().includes('FINAL CLINICAL SCORE')) {
+          finalScoreCol = i;
+          break;
         }
       }
+      if (finalScoreCol === -1) finalScoreCol = 24; // Default to column Y
+      
+      if (sheetName === 'XY FORMS') {
+        for (const mark of marksData) {
+          const row = mark.row;
+          
+          // Update individual clinical area scores (columns C-W, indices 2-22)
+          for (let col = 0; col < mark.scores.length && col < 21; col++) {
+            const score = mark.scores[col];
+            const columnLetter = String.fromCharCode(67 + col); // C=67
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${columnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[score]] }
+            });
+          }
+          
+          // Calculate new average from individual scores
+          const validScores = mark.scores.filter(s => s > 0);
+          let newAverage = 0;
+          if (validScores.length > 0) {
+            newAverage = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+          }
+          
+          // Update FINAL CLINICAL SCORE column
+          const finalColumnLetter = String.fromCharCode(65 + finalScoreCol);
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!${finalColumnLetter}${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[newAverage.toFixed(2)]] }
+          });
+          
+          // Update graded by
+          if (mark.gradedBy) {
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!X${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[mark.gradedBy]] }
+            });
+          }
+        }
+      } else {
+        // ASSESSMENT AND CASE sheet
+        for (const mark of marksData) {
+          const row = mark.row;
+          
+          // Update assessment scores (columns C-E)
+          for (let col = 0; col < mark.scores.length && col < 3; col++) {
+            const score = mark.scores[col];
+            const columnLetter = String.fromCharCode(67 + col);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${columnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[score]] }
+            });
+          }
+          
+          // Calculate and update total
+          const total = mark.scores.reduce((a, b) => a + b, 0);
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!L${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[total]] }
+          });
+          
+          if (mark.gradedBy) {
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!M${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[mark.gradedBy]] }
+            });
+          }
+        }
+      }
+      
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
+      // Internal exams - unchanged
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
