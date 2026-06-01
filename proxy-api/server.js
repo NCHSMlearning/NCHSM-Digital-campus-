@@ -159,7 +159,10 @@ app.get('/api/subjects/:block', async (req, res) => {
     const subjects = [];
     for (let i = 1; i < config.length; i++) {
       if (config[i][0] === block && config[i][2] === 'YES') {
-        subjects.push(config[i][1]);
+        subjects.push({
+          name: config[i][1],
+          assessmentType: config[i][3] || 'full'
+        });
       }
     }
     res.json(subjects);
@@ -167,7 +170,6 @@ app.get('/api/subjects/:block', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // ========== STUDENT ENDPOINTS ==========
 app.get('/api/students', async (req, res) => {
   try {
