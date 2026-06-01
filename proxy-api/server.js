@@ -300,11 +300,18 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT (NEW) ==========
+// ========== SAVE MARKS ENDPOINT (FIXED) ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
+    const spreadsheetId = req.spreadsheetId;
+    
+    console.log('Saving marks:', { block, subject, examType, marksCount: marksData?.length });
+    
+    if (!marksData || marksData.length === 0) {
+      return res.status(400).json({ success: false, error: 'No marks data provided' });
+    }
     
     if (examType === 'nck') {
       // Handle NCK marks saving
@@ -319,19 +326,22 @@ app.post('/api/marks', async (req, res) => {
         const row = mark.row;
         const score = mark.cat1 || mark.exam || 0;
         
-        // Update the appropriate cell based on sheet type
         if (sheetName === 'XY FORMS') {
-          // Update clinical area averages (simplified - would need more complex logic)
+          // Update all clinical areas with the same score
+          const updateData = [];
+          for (let j = 0; j < 21; j++) {
+            updateData.push(score);
+          }
           await sheets.spreadsheets.values.update({
-            spreadsheetId: req.spreadsheetId,
+            spreadsheetId,
             range: `${sheetName}!C${row}:W${row}`,
             valueInputOption: 'RAW',
-            requestBody: { values: [Array(21).fill(score)] }
+            requestBody: { values: [updateData] }
           });
         } else {
-          // Update assessment scores
+          // Update assessment scores - find first empty column or update all
           await sheets.spreadsheets.values.update({
-            spreadsheetId: req.spreadsheetId,
+            spreadsheetId,
             range: `${sheetName}!C${row}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[score]] }
@@ -341,7 +351,7 @@ app.post('/api/marks', async (req, res) => {
         // Update graded by
         if (lecturerName) {
           await sheets.spreadsheets.values.update({
-            spreadsheetId: req.spreadsheetId,
+            spreadsheetId,
             range: `${sheetName}!X${row}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[lecturerName]] }
@@ -355,9 +365,9 @@ app.post('/api/marks', async (req, res) => {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
-      // Get current data to preserve existing values
+      // Get current data to preserve existing values and get assessment type
       const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: req.spreadsheetId,
+        spreadsheetId,
         range: `${sheetName}!A:I`,
       });
       
@@ -366,9 +376,8 @@ app.post('/api/marks', async (req, res) => {
       for (const mark of marksData) {
         const row = mark.row;
         const existingRow = currentData[row - 1] || [];
+        const assessmentType = existingRow[8] || 'full';
         
-        // Calculate final score and grade based on assessment type
-        let assessmentType = existingRow[8] || 'full';
         let cat1 = parseFloat(mark.cat1) || 0;
         let cat2 = parseFloat(mark.cat2) || 0;
         let exam = parseFloat(mark.exam) || 0;
@@ -396,7 +405,7 @@ app.post('/api/marks', async (req, res) => {
         
         // Update the row
         await sheets.spreadsheets.values.update({
-          spreadsheetId: req.spreadsheetId,
+          spreadsheetId,
           range: `${sheetName}!C${row}:H${row}`,
           valueInputOption: 'RAW',
           requestBody: { 
@@ -614,7 +623,6 @@ app.post('/api/update-lecturer', async (req, res) => {
         const row = i + 1;
         const updateValues = [username, name, email || ''];
         
-        // Only update password if provided
         if (password && password.trim() !== '') {
           updateValues.push(password);
         } else {
@@ -728,12 +736,10 @@ app.post('/api/add-unit', async (req, res) => {
   }
 });
 
-// ========== UPDATE UNIT ENDPOINT (NEW) ==========
 app.post('/api/update-unit', async (req, res) => {
   try {
     const { block, oldName, newName, assessmentType } = req.body;
     
-    // Update the config sheet
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
@@ -758,7 +764,6 @@ app.post('/api/update-unit', async (req, res) => {
       return res.json({ success: false, message: 'Unit not found' });
     }
     
-    // Rename the marksheet if name changed
     if (oldName !== newName) {
       let cleanOldName = oldName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       let cleanNewName = newName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
@@ -820,7 +825,6 @@ app.post('/api/login', async (req, res) => {
     const { username, password, year } = req.body;
     const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
     
-    // Check admin
     const adminResponse = await sheets.spreadsheets.values.get({ 
       spreadsheetId, 
       range: 'ADMIN!A:C' 
@@ -832,7 +836,6 @@ app.post('/api/login', async (req, res) => {
       }
     }
     
-    // Check lecturers
     const lecturersResponse = await sheets.spreadsheets.values.get({ 
       spreadsheetId, 
       range: 'LECTURERS!A:G' 
@@ -862,7 +865,6 @@ app.get('/api/stats', async (req, res) => {
   try {
     const students = await getStudentsList(req.spreadsheetId);
     
-    // Get active subjects count
     const configResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
@@ -880,6 +882,42 @@ app.get('/api/stats', async (req, res) => {
     });
   } catch (error) {
     res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
+  }
+});
+
+// ===== DEBUG ENDPOINT (for troubleshooting) =====
+app.get('/api/debug-lecturers', async (req, res) => {
+  try {
+    const spreadsheetId = req.spreadsheetId;
+    const response = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: 'LECTURERS!A:G' 
+    });
+    const data = response.data.values || [];
+    
+    const lecturers = [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        lecturers.push({
+          row: i,
+          username: data[i][0],
+          name: data[i][1],
+          email: data[i][2],
+          hasPassword: !!data[i][3],
+          subjects: data[i][4],
+          status: data[i][5] || 'ACTIVE'
+        });
+      }
+    }
+    
+    res.json({ 
+      spreadsheetId,
+      totalLecturers: lecturers.length,
+      lecturers: lecturers,
+      columnCount: data[0] ? data[0].length : 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
