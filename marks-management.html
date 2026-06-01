@@ -782,339 +782,402 @@
     if (fastEntryVisible) closeFastEntryPanel();
   }
   
-  // ======================= FAST ENTRY PANEL (KEYBOARD FRIENDLY) =======================
-  function openFastEntryPanel() {
-    if (!currentNCKMarks || currentNCKMarks.length === 0) { showNotification('No data loaded', true); return; }
-    if (fastEntryVisible) { closeFastEntryPanel(); return; }
-    
-    const areaGroups = [
-      { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
-      { title: '🤰 MCH', cols: [3,4,5], names: ['MCH1', 'MCH2', 'MCH3'] },
-      { title: '🤱 MATERNITY', cols: [6,7,8], names: ['MAT1', 'MAT2', 'MAT3'] },
-      { title: '👶 PAEDIATRICS', cols: [9,10], names: ['PEAD1', 'PEAD2'] },
-      { title: '🔪 SURGERY', cols: [11,12,13], names: ['SURG1', 'SURG2', 'SURG3'] },
-      { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
-    ];
-    
-    const panel = document.createElement('div');
-    panel.id = 'fastEntryPanel';
-    panel.className = 'fast-entry-panel';
-    panel.innerHTML = `
-      <div class="fast-entry-header">
-        <span><i class="fas fa-bolt"></i> Fast Entry Mode</span>
-        <span><i class="fas fa-times" onclick="closeFastEntryPanel()" style="cursor: pointer;"></i></span>
-      </div>
-      <div class="fast-entry-body">
-        <select id="fastStudentSelect" class="student-selector">
-          ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
-        </select>
-        <div id="fastEntryFields"></div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-          <button class="save-btn" onclick="applyFastEntry()" style="flex: 1;"><i class="fas fa-save"></i> Save & Next</button>
-          <button class="back-btn" onclick="applyFastEntryAndStay()" style="flex: 1;">Save & Stay</button>
-        </div>
-        <div style="margin-top: 10px; text-align: center; font-size: 11px; color: #666;">
-          <i class="fas fa-keyboard"></i> Press Enter to save and move to next student
-        </div>
-      </div>
-    `;
-    document.body.appendChild(panel);
-    fastEntryVisible = true;
-    loadFastEntryFields(0);
-    
-    document.getElementById('fastStudentSelect').onchange = () => {
-      loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value));
-    };
-  }
+  // ======================= FAST ENTRY PANEL (FULL SCREEN MODE) =======================
+function openFastEntryPanel() {
+  if (!currentNCKMarks || currentNCKMarks.length === 0) { showNotification('No data loaded', true); return; }
+  if (fastEntryVisible) { closeFastEntryPanel(); return; }
   
-  function loadFastEntryFields(studentIdx) {
-    const container = document.getElementById('fastEntryFields');
-    if (!container) return;
-    
-    const scores = [];
-    for (let c = 0; c < 22; c++) {
-      const input = document.getElementById(`xy_${studentIdx}_${c}`);
-      scores.push(input ? input.value : 0);
-    }
-    
-    const areaGroups = [
-      { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
-      { title: '🤰 MCH', cols: [3,4,5], names: ['MCH1', 'MCH2', 'MCH3'] },
-      { title: '🤱 MATERNITY', cols: [6,7,8], names: ['MAT1', 'MAT2', 'MAT3'] },
-      { title: '👶 PAEDIATRICS', cols: [9,10], names: ['PEAD1', 'PEAD2'] },
-      { title: '🔪 SURGERY', cols: [11,12,13], names: ['SURG1', 'SURG2', 'SURG3'] },
-      { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
-    ];
-    
-    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">`;
-    for (let group of areaGroups) {
-      html += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
-        <h4 style="margin-bottom: 10px; color: #667eea;">${group.title}</h4>`;
-      for (let i = 0; i < group.cols.length; i++) {
-        const colIdx = group.cols[i];
-        const score = scores[colIdx] || 0;
-        html += `<div class="fast-entry-row">
-          <label>${group.names[i]}:</label>
-          <input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" onkeypress="handleFastEntryKey(event, ${colIdx})">
-        </div>`;
-      }
-      html += `</div>`;
+  const areaGroups = [
+    { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
+    { title: '🤰 MCH', cols: [3,4,5], names: ['MCH1', 'MCH2', 'MCH3'] },
+    { title: '🤱 MATERNITY', cols: [6,7,8], names: ['MAT1', 'MAT2', 'MAT3'] },
+    { title: '👶 PAEDIATRICS', cols: [9,10], names: ['PEAD1', 'PEAD2'] },
+    { title: '🔪 SURGERY', cols: [11,12,13], names: ['SURG1', 'SURG2', 'SURG3'] },
+    { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
+  ];
+  
+  // Create full-screen modal
+  const modal = document.createElement('div');
+  modal.id = 'fastEntryModal';
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px;';
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 24px; max-width: 1400px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 24px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <i class="fas fa-expand-alt" style="font-size: 20px;"></i>
+          <span style="font-size: 20px; font-weight: 700;"><i class="fas fa-bolt"></i> Full Screen Fast Entry - XY FORMS</span>
+        </div>
+        <div>
+          <button class="back-btn" onclick="closeFastEntryModal()" style="padding: 8px 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; color: white; cursor: pointer; font-weight: 600;"><i class="fas fa-times"></i> Close (ESC)</button>
+        </div>
+      </div>
+      <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+          <div style="flex: 2;">
+            <label style="font-weight: 600; display: block; margin-bottom: 8px;"><i class="fas fa-user-graduate"></i> Select Student:</label>
+            <select id="fastStudentSelect" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 14px; font-weight: 500;">
+              ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label style="font-weight: 600; display: block; margin-bottom: 8px;"><i class="fas fa-chart-line"></i> Current Average:</label>
+            <div id="currentAvgDisplay" style="padding: 12px; background: #f0fdf4; border-radius: 12px; font-weight: bold; text-align: center; font-size: 18px;">0.00</div>
+          </div>
+          <div style="flex: 1;">
+            <label style="font-weight: 600; display: block; margin-bottom: 8px;"><i class="fas fa-flag-checkered"></i> Status:</label>
+            <div id="currentStatusDisplay" style="padding: 12px; background: #fef3c7; border-radius: 12px; font-weight: bold; text-align: center;">PENDING</div>
+          </div>
+        </div>
+        <div id="fastEntryFields" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;"></div>
+        <div style="display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+          <button class="save-btn" onclick="applyFastEntry()" style="flex: 1; padding: 14px; font-size: 16px;"><i class="fas fa-save"></i> Save & Next Student (Enter)</button>
+          <button class="back-btn" onclick="applyFastEntryAndStay()" style="flex: 1; padding: 14px; font-size: 16px;">Save & Stay (Shift+Enter)</button>
+          <button class="back-btn" onclick="closeFastEntryModal()" style="flex: 0.5; padding: 14px;">Close (ESC)</button>
+        </div>
+        <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #666; padding: 10px; background: #f8fafc; border-radius: 12px;">
+          <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> 
+          <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Enter</kbd> = Save & Next | 
+          <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Shift + Enter</kbd> = Save & Stay | 
+          <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">ESC</kbd> = Close
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  fastEntryVisible = true;
+  loadFastEntryFields(0);
+  
+  document.getElementById('fastStudentSelect').onchange = () => {
+    loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value));
+  };
+  
+  // Keyboard event for modal
+  document.addEventListener('keydown', handleFastEntryKeyboard);
+}
+
+function handleFastEntryKeyboard(e) {
+  if (!fastEntryVisible) return;
+  if (e.key === 'Escape') {
+    closeFastEntryModal();
+  } else if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    applyFastEntry();
+  } else if (e.key === 'Enter' && e.shiftKey) {
+    e.preventDefault();
+    applyFastEntryAndStay();
+  }
+}
+
+function closeFastEntryModal() {
+  const modal = document.getElementById('fastEntryModal');
+  if (modal) modal.remove();
+  fastEntryVisible = false;
+  document.removeEventListener('keydown', handleFastEntryKeyboard);
+}
+
+function loadFastEntryFields(studentIdx) {
+  const container = document.getElementById('fastEntryFields');
+  if (!container) return;
+  
+  const scores = [];
+  for (let c = 0; c < 22; c++) {
+    const input = document.getElementById(`xy_${studentIdx}_${c}`);
+    scores.push(input ? input.value : 0);
+  }
+  const gradedBy = document.getElementById(`xyGraded_${studentIdx}`)?.value || '';
+  
+  // Calculate current average
+  const validScores = scores.filter(s => parseFloat(s) > 0);
+  let currentAvg = 0;
+  if (validScores.length > 0) {
+    currentAvg = validScores.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / validScores.length;
+  }
+  const currentStatus = currentAvg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+  document.getElementById('currentAvgDisplay').innerHTML = currentAvg.toFixed(2);
+  document.getElementById('currentStatusDisplay').innerHTML = `<span class="badge ${currentStatus === 'PASS' ? 'badge-pass' : 'badge-fail'}">${currentStatus}</span>`;
+  
+  const areaGroups = [
+    { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
+    { title: '🤰 MCH', cols: [3,4,5], names: ['MCH1', 'MCH2', 'MCH3'] },
+    { title: '🤱 MATERNITY', cols: [6,7,8], names: ['MAT1', 'MAT2', 'MAT3'] },
+    { title: '👶 PAEDIATRICS', cols: [9,10], names: ['PEAD1', 'PEAD2'] },
+    { title: '🔪 SURGERY', cols: [11,12,13], names: ['SURG1', 'SURG2', 'SURG3'] },
+    { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
+  ];
+  
+  let html = ``;
+  for (let group of areaGroups) {
+    html += `<div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; background: #fafafa;">
+      <h4 style="margin-bottom: 15px; color: #667eea; font-size: 16px;">${group.title}</h4>`;
+    for (let i = 0; i < group.cols.length; i++) {
+      const colIdx = group.cols[i];
+      const score = scores[colIdx] || 0;
+      html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <label style="font-size: 14px; font-weight: 500;">${group.names[i]}:</label>
+        <input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width: 100px; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center;" onchange="updateFastPreview(${studentIdx})" onkeypress="handleFastEntryKey(event, ${colIdx})">
+      </div>`;
     }
     html += `</div>`;
-    container.innerHTML = html;
-    
-    // Focus first input
-    setTimeout(() => { const firstInput = container.querySelector('input'); if (firstInput) firstInput.focus(); }, 100);
   }
   
-  function handleFastEntryKey(event, colIdx) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const nextCol = colIdx + 1;
-      const nextInput = document.getElementById(`fast_${nextCol}`);
-      if (nextInput) { nextInput.focus(); }
-      else { applyFastEntry(); }
+  html += `<div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; background: #fafafa;">
+    <h4 style="margin-bottom: 15px; color: #667eea;">📝 Grading Information</h4>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <label style="font-size: 14px; font-weight: 500;">Graded By (Lecturer Name):</label>
+      <input type="text" id="fast_graded" value="${gradedBy}" placeholder="Enter your name" style="flex: 1; margin-left: 20px; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+    </div>
+  </div>`;
+  
+  container.innerHTML = html;
+  
+  // Focus first input
+  setTimeout(() => { const firstInput = container.querySelector('input[type="number"]'); if (firstInput) firstInput.focus(); }, 100);
+}
+
+function updateFastPreview(studentIdx) {
+  let scores = [];
+  for (let c = 0; c < 22; c++) {
+    const val = parseFloat(document.getElementById(`fast_${c}`)?.value);
+    scores.push(isNaN(val) ? 0 : val);
+  }
+  const validScores = scores.filter(s => s > 0);
+  let avg = 0;
+  if (validScores.length > 0) {
+    avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+  }
+  const status = avg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+  document.getElementById('currentAvgDisplay').innerHTML = avg.toFixed(2);
+  document.getElementById('currentStatusDisplay').innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
+}
+
+function handleFastEntryKey(event, colIdx) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const nextCol = colIdx + 1;
+    const nextInput = document.getElementById(`fast_${nextCol}`);
+    if (nextInput) { 
+      nextInput.focus(); 
+    } else { 
+      applyFastEntry(); 
     }
   }
-  
-  function applyFastEntry() {
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    for (let c = 0; c < 22; c++) {
-      const fastVal = document.getElementById(`fast_${c}`)?.value;
-      if (fastVal !== undefined) {
-        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
-        if (mainInput) mainInput.value = fastVal;
-      }
-    }
-    updateXYAverage(studentIdx);
-    
-    const nextIdx = studentIdx + 1;
-    if (nextIdx < currentNCKMarks.length) {
-      document.getElementById('fastStudentSelect').value = nextIdx;
-      loadFastEntryFields(nextIdx);
-      showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
-    } else {
-      closeFastEntryPanel();
-      showNotification('All students done! Click Save All to save to server.', false);
+}
+
+function applyFastEntry() {
+  const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+  for (let c = 0; c < 22; c++) {
+    const fastVal = document.getElementById(`fast_${c}`)?.value;
+    if (fastVal !== undefined) {
+      const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
+      if (mainInput) mainInput.value = fastVal;
     }
   }
+  const gradedVal = document.getElementById('fast_graded')?.value;
+  if (gradedVal !== undefined) {
+    const gradedInput = document.getElementById(`xyGraded_${studentIdx}`);
+    if (gradedInput) gradedInput.value = gradedVal;
+  }
+  updateXYAverage(studentIdx);
   
-  function applyFastEntryAndStay() {
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    for (let c = 0; c < 22; c++) {
-      const fastVal = document.getElementById(`fast_${c}`)?.value;
-      if (fastVal !== undefined) {
-        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
-        if (mainInput) mainInput.value = fastVal;
-      }
+  const nextIdx = studentIdx + 1;
+  if (nextIdx < currentNCKMarks.length) {
+    document.getElementById('fastStudentSelect').value = nextIdx;
+    loadFastEntryFields(nextIdx);
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+  } else {
+    closeFastEntryModal();
+    showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false);
+  }
+}
+
+function applyFastEntryAndStay() {
+  const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+  for (let c = 0; c < 22; c++) {
+    const fastVal = document.getElementById(`fast_${c}`)?.value;
+    if (fastVal !== undefined) {
+      const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
+      if (mainInput) mainInput.value = fastVal;
     }
-    updateXYAverage(studentIdx);
-    showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
   }
-  
-  function openFastEntryForStudent(studentIdx, studentName) {
-    if (!fastEntryVisible) openFastEntryPanel();
-    setTimeout(() => {
-      const select = document.getElementById('fastStudentSelect');
-      if (select) { select.value = studentIdx; loadFastEntryFields(studentIdx); }
-    }, 200);
+  const gradedVal = document.getElementById('fast_graded')?.value;
+  if (gradedVal !== undefined) {
+    const gradedInput = document.getElementById(`xyGraded_${studentIdx}`);
+    if (gradedInput) gradedInput.value = gradedVal;
   }
+  updateXYAverage(studentIdx);
+  showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
+}
+
+function openFastEntryForStudent(studentIdx, studentName) {
+  openFastEntryPanel();
+  setTimeout(() => {
+    const select = document.getElementById('fastStudentSelect');
+    if (select) { select.value = studentIdx; loadFastEntryFields(studentIdx); }
+  }, 200);
+}
+
+// ======================= FAST ENTRY FOR ASSESSMENT SHEET (FULL SCREEN) =======================
+function openFastAssessmentPanel() {
+  if (!currentNCKMarks || currentNCKMarks.length === 0) { showNotification('No data loaded', true); return; }
+  if (fastEntryVisible) { closeFastEntryModal(); return; }
   
-  function openFastAssessmentPanel() {
-    if (!currentNCKMarks || currentNCKMarks.length === 0) { showNotification('No data loaded', true); return; }
-    if (fastEntryVisible) { closeFastEntryPanel(); return; }
-    
-    const panel = document.createElement('div');
-    panel.id = 'fastEntryPanel';
-    panel.className = 'fast-entry-panel';
-    panel.innerHTML = `
-      <div class="fast-entry-header">
-        <span><i class="fas fa-bolt"></i> Fast Entry - Assessments</span>
-        <span><i class="fas fa-times" onclick="closeFastEntryPanel()" style="cursor: pointer;"></i></span>
+  const modal = document.createElement('div');
+  modal.id = 'fastEntryModal';
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px;';
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 24px; max-width: 700px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 24px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center;">
+        <div><i class="fas fa-expand-alt"></i> <strong>Full Screen Fast Entry - Assessments</strong></div>
+        <button class="back-btn" onclick="closeFastEntryModal()" style="padding: 8px 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; color: white; cursor: pointer;"><i class="fas fa-times"></i> Close (ESC)</button>
       </div>
-      <div class="fast-entry-body">
-        <select id="fastStudentSelect" class="student-selector">
-          ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
-        </select>
+      <div style="padding: 24px;">
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600;">Select Student:</label>
+          <select id="fastStudentSelect" style="width: 100%; padding: 12px; border-radius: 12px; margin-top: 8px;">
+            ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
+          </select>
+        </div>
         <div id="fastAssessmentFields"></div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-          <button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex: 1;"><i class="fas fa-save"></i> Save & Next</button>
-          <button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex: 1;">Save & Stay</button>
+        <div style="display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+          <button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex: 1; padding: 14px;"><i class="fas fa-save"></i> Save & Next (Enter)</button>
+          <button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex: 1; padding: 14px;">Save & Stay (Shift+Enter)</button>
+          <button class="back-btn" onclick="closeFastEntryModal()" style="flex: 0.5;">Close (ESC)</button>
         </div>
-        <div style="margin-top: 10px; text-align: center; font-size: 11px; color: #666;">
-          <i class="fas fa-keyboard"></i> Press Enter to save and move to next student
+        <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #666; padding: 10px; background: #f8fafc; border-radius: 12px;">
+          <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> Enter = Save & Next | Shift+Enter = Save & Stay | ESC = Close
         </div>
       </div>
-    `;
-    document.body.appendChild(panel);
-    fastEntryVisible = true;
-    loadFastAssessmentFields(0);
-    
-    document.getElementById('fastStudentSelect').onchange = () => {
-      loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value));
-    };
-  }
+    </div>
+  `;
   
-  function loadFastAssessmentFields(studentIdx) {
-    const container = document.getElementById('fastAssessmentFields');
-    if (!container) return;
-    
-    const s0 = document.getElementById(`ac_${studentIdx}_0`)?.value || 0;
-    const s1 = document.getElementById(`ac_${studentIdx}_1`)?.value || 0;
-    const s2 = document.getElementById(`ac_${studentIdx}_2`)?.value || 0;
-    const graded = document.getElementById(`acGraded_${studentIdx}`)?.value || '';
-    
-    container.innerHTML = `
-      <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-        <div style="margin-bottom: 15px;"><strong>ANC Assessment:</strong> <input type="number" id="fast_ac_0" value="${s0}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;" onkeypress="handleFastAssessmentKey(event, 0)"></div>
-        <div style="margin-bottom: 15px;"><strong>CWC Immunization:</strong> <input type="number" id="fast_ac_1" value="${s1}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;" onkeypress="handleFastAssessmentKey(event, 1)"></div>
-        <div style="margin-bottom: 15px;"><strong>Ward Nursing Care:</strong> <input type="number" id="fast_ac_2" value="${s2}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;" onkeypress="handleFastAssessmentKey(event, 2)"></div>
-        <div><strong>Graded By:</strong> <input type="text" id="fast_ac_graded" value="${graded}" placeholder="Lecturer name" style="width: 100%; padding: 10px;"></div>
+  document.body.appendChild(modal);
+  fastEntryVisible = true;
+  loadFastAssessmentFields(0);
+  
+  document.getElementById('fastStudentSelect').onchange = () => {
+    loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value));
+  };
+}
+
+function loadFastAssessmentFields(studentIdx) {
+  const container = document.getElementById('fastAssessmentFields');
+  if (!container) return;
+  
+  const s0 = document.getElementById(`ac_${studentIdx}_0`)?.value || 0;
+  const s1 = document.getElementById(`ac_${studentIdx}_1`)?.value || 0;
+  const s2 = document.getElementById(`ac_${studentIdx}_2`)?.value || 0;
+  const graded = document.getElementById(`acGraded_${studentIdx}`)?.value || '';
+  
+  // Calculate current total and status
+  const currentTotal = parseFloat(s0) + parseFloat(s1) + parseFloat(s2);
+  const currentStatus = currentTotal >= 60 ? 'PASS' : (currentTotal > 0 ? 'FAIL' : 'PENDING');
+  
+  container.innerHTML = `
+    <div style="margin-bottom: 20px; padding: 15px; background: #f0fdf4; border-radius: 12px; text-align: center;">
+      <strong>Current Total: <span id="currentTotalDisplay" style="font-size: 24px;">${currentTotal}</span></strong> &nbsp; | &nbsp;
+      <strong>Status: <span id="currentAssessmentStatus" class="badge ${currentStatus === 'PASS' ? 'badge-pass' : 'badge-fail'}">${currentStatus}</span></strong>
+    </div>
+    <div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; background: #fafafa;">
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">📋 ANC Assessment:</label>
+        <input type="number" id="fast_ac_0" value="${s0}" min="0" max="100" step="0.5" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;" onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, 0)">
       </div>
-    `;
-    
-    setTimeout(() => { const firstInput = container.querySelector('input'); if (firstInput) firstInput.focus(); }, 100);
-  }
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">💉 CWC Immunization:</label>
+        <input type="number" id="fast_ac_1" value="${s1}" min="0" max="100" step="0.5" style="width: 100%; padding: 12px; border-radius: 8px;" onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, 1)">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">🏥 Ward Nursing Care:</label>
+        <input type="number" id="fast_ac_2" value="${s2}" min="0" max="100" step="0.5" style="width: 100%; padding: 12px; border-radius: 8px;" onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, 2)">
+      </div>
+      <div>
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">✍️ Graded By:</label>
+        <input type="text" id="fast_ac_graded" value="${graded}" placeholder="Lecturer name" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+      </div>
+    </div>
+  `;
   
-  function handleFastAssessmentKey(event, fieldIdx) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      if (fieldIdx < 2) {
-        const nextInput = document.getElementById(`fast_ac_${fieldIdx + 1}`);
-        if (nextInput) nextInput.focus();
-      } else {
-        applyFastAssessmentEntry();
-      }
-    }
-  }
-  
-  function applyFastAssessmentEntry() {
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const val0 = document.getElementById('fast_ac_0')?.value;
-    const val1 = document.getElementById('fast_ac_1')?.value;
-    const val2 = document.getElementById('fast_ac_2')?.value;
-    const graded = document.getElementById('fast_ac_graded')?.value;
-    
-    if (val0 !== undefined) document.getElementById(`ac_${studentIdx}_0`).value = val0;
-    if (val1 !== undefined) document.getElementById(`ac_${studentIdx}_1`).value = val1;
-    if (val2 !== undefined) document.getElementById(`ac_${studentIdx}_2`).value = val2;
-    if (graded !== undefined) document.getElementById(`acGraded_${studentIdx}`).value = graded;
-    
-    updateACTotal(studentIdx);
-    
-    const nextIdx = studentIdx + 1;
-    if (nextIdx < currentNCKMarks.length) {
-      document.getElementById('fastStudentSelect').value = nextIdx;
-      loadFastAssessmentFields(nextIdx);
-      showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+  setTimeout(() => { const firstInput = container.querySelector('input'); if (firstInput) firstInput.focus(); }, 100);
+}
+
+function updateFastAssessmentPreview() {
+  const s0 = parseFloat(document.getElementById('fast_ac_0')?.value) || 0;
+  const s1 = parseFloat(document.getElementById('fast_ac_1')?.value) || 0;
+  const s2 = parseFloat(document.getElementById('fast_ac_2')?.value) || 0;
+  const total = s0 + s1 + s2;
+  const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
+  document.getElementById('currentTotalDisplay').innerHTML = total;
+  document.getElementById('currentAssessmentStatus').innerHTML = status;
+  document.getElementById('currentAssessmentStatus').className = `badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}`;
+}
+
+function handleFastAssessmentKey(event, fieldIdx) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (fieldIdx < 2) {
+      const nextInput = document.getElementById(`fast_ac_${fieldIdx + 1}`);
+      if (nextInput) nextInput.focus();
     } else {
-      closeFastEntryPanel();
-      showNotification('All students done! Click Save All to save to server.', false);
+      applyFastAssessmentEntry();
     }
   }
+}
+
+function applyFastAssessmentEntry() {
+  const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+  const val0 = document.getElementById('fast_ac_0')?.value;
+  const val1 = document.getElementById('fast_ac_1')?.value;
+  const val2 = document.getElementById('fast_ac_2')?.value;
+  const graded = document.getElementById('fast_ac_graded')?.value;
   
-  function applyFastAssessmentEntryAndStay() {
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const val0 = document.getElementById('fast_ac_0')?.value;
-    const val1 = document.getElementById('fast_ac_1')?.value;
-    const val2 = document.getElementById('fast_ac_2')?.value;
-    const graded = document.getElementById('fast_ac_graded')?.value;
-    
-    if (val0 !== undefined) document.getElementById(`ac_${studentIdx}_0`).value = val0;
-    if (val1 !== undefined) document.getElementById(`ac_${studentIdx}_1`).value = val1;
-    if (val2 !== undefined) document.getElementById(`ac_${studentIdx}_2`).value = val2;
-    if (graded !== undefined) document.getElementById(`acGraded_${studentIdx}`).value = graded;
-    
-    updateACTotal(studentIdx);
-    showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
+  if (val0 !== undefined) document.getElementById(`ac_${studentIdx}_0`).value = val0;
+  if (val1 !== undefined) document.getElementById(`ac_${studentIdx}_1`).value = val1;
+  if (val2 !== undefined) document.getElementById(`ac_${studentIdx}_2`).value = val2;
+  if (graded !== undefined) document.getElementById(`acGraded_${studentIdx}`).value = graded;
+  
+  updateACTotal(studentIdx);
+  
+  const nextIdx = studentIdx + 1;
+  if (nextIdx < currentNCKMarks.length) {
+    document.getElementById('fastStudentSelect').value = nextIdx;
+    loadFastAssessmentFields(nextIdx);
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+  } else {
+    closeFastEntryModal();
+    showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false);
   }
+}
+
+function applyFastAssessmentEntryAndStay() {
+  const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+  const val0 = document.getElementById('fast_ac_0')?.value;
+  const val1 = document.getElementById('fast_ac_1')?.value;
+  const val2 = document.getElementById('fast_ac_2')?.value;
+  const graded = document.getElementById('fast_ac_graded')?.value;
   
-  function openFastAssessmentEntry(studentIdx, studentName) {
-    if (!fastEntryVisible) openFastAssessmentPanel();
-    setTimeout(() => {
-      const select = document.getElementById('fastStudentSelect');
-      if (select) { select.value = studentIdx; loadFastAssessmentFields(studentIdx); }
-    }, 200);
-  }
+  if (val0 !== undefined) document.getElementById(`ac_${studentIdx}_0`).value = val0;
+  if (val1 !== undefined) document.getElementById(`ac_${studentIdx}_1`).value = val1;
+  if (val2 !== undefined) document.getElementById(`ac_${studentIdx}_2`).value = val2;
+  if (graded !== undefined) document.getElementById(`acGraded_${studentIdx}`).value = graded;
   
-  function closeFastEntryPanel() {
-    const panel = document.getElementById('fastEntryPanel');
-    if (panel) panel.remove();
-    fastEntryVisible = false;
-  }
-  
-  window.updateXYAverage = function(idx) {
-    let scores = [];
-    for (let c = 0; c < 22; c++) {
-      const val = parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value);
-      if (!isNaN(val) && val > 0) scores.push(val);
-    }
-    const avg = scores.length ? scores.reduce((a,b) => a+b,0) / scores.length : 0;
-    const status = avg >= 60 ? 'PASS' : (scores.length ? 'FAIL' : 'PENDING');
-    document.getElementById(`xyAvg_${idx}`).innerHTML = avg.toFixed(2);
-    document.getElementById(`xyStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
-    const row = document.getElementById(`xy_${idx}_0`)?.parentElement?.parentElement;
-    if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-  };
-  
-  window.updateACTotal = function(idx) {
-    const s0 = parseFloat(document.getElementById(`ac_${idx}_0`)?.value) || 0;
-    const s1 = parseFloat(document.getElementById(`ac_${idx}_1`)?.value) || 0;
-    const s2 = parseFloat(document.getElementById(`ac_${idx}_2`)?.value) || 0;
-    const total = s0 + s1 + s2;
-    const status = total >= 60 ? 'PASS' : ((s0 || s1 || s2) ? 'FAIL' : 'PENDING');
-    document.getElementById(`acTotal_${idx}`).innerHTML = total;
-    document.getElementById(`acStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
-    const row = document.getElementById(`ac_${idx}_0`)?.parentElement?.parentElement;
-    if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-  };
-  
-  function fillAllEmptyAreas() {
-    const defaultScore = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
-    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-    for (let i = 0; i < rows.length; i++) {
-      let changed = false;
-      for (let c = 0; c < 22; c++) {
-        const input = document.getElementById(`xy_${i}_${c}`);
-        if (input && (!input.value || parseFloat(input.value) === 0)) { input.value = defaultScore; changed = true; }
-      }
-      if (changed) updateXYAverage(i);
-    }
-    showNotification(`Filled empty areas with ${defaultScore}`, false);
-  }
-  
-  function fillAllWithScore() {
-    const score = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
-    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-    for (let i = 0; i < rows.length; i++) {
-      for (let c = 0; c < 22; c++) { const input = document.getElementById(`xy_${i}_${c}`); if (input) input.value = score; }
-      updateXYAverage(i);
-    }
-    showNotification(`Applied ${score} to ALL clinical areas`, false);
-  }
-  
-  window.saveNCKMarks = async function() {
-    const sheetName = document.getElementById('nckSheetSelect').value;
-    let marksData = [];
-    if (sheetName === 'XY FORMS') {
-      const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-      for (let i = 0; i < rows.length; i++) {
-        let scores = [];
-        for (let c = 0; c < 22; c++) { scores.push(parseFloat(document.getElementById(`xy_${i}_${c}`)?.value) || 0); }
-        marksData.push({ row: i + 2, scores: scores, gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' });
-      }
-    } else {
-      const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-      for (let i = 0; i < rows.length; i++) {
-        marksData.push({ row: i + 2, scores: [parseFloat(document.getElementById(`ac_${i}_0`)?.value)||0, parseFloat(document.getElementById(`ac_${i}_1`)?.value)||0, parseFloat(document.getElementById(`ac_${i}_2`)?.value)||0], gradedBy: document.getElementById(`acGraded_${i}`)?.value || '' });
-      }
-    }
-    showLoading('Saving NCK marks...');
-    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: 'BLOCK_0', subject: sheetName, marksData: marksData, lecturerName: currentUser.name, examType: 'nck' }) });
-    hideLoading();
-    showNotification(result?.success ? 'NCK marks saved successfully!' : 'Error saving NCK marks', !result?.success);
-    if (result?.success) loadNCKMarks();
-  };
+  updateACTotal(studentIdx);
+  showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
+}
+
+function openFastAssessmentEntry(studentIdx, studentName) {
+  openFastAssessmentPanel();
+  setTimeout(() => {
+    const select = document.getElementById('fastStudentSelect');
+    if (select) { select.value = studentIdx; loadFastAssessmentFields(studentIdx); }
+  }, 200);
+}
+
+function closeFastEntryPanel() {
+  closeFastEntryModal();
+}
   
   // ======================= NCK COLUMN MANAGEMENT (XY FORMS) =======================
   async function showNCKColumnManager() {
