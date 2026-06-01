@@ -6,10 +6,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// YOUR GOOGLE SHEET ID
-const SPREADSHEET_ID = '1W7g_qwVS1r0sBpcGqTKFXr-mY4Hetw1a7-nMnkxVoGA';
+// ===== SPREADSHEET CONFIGURATION - ALL CLASSES =====
+const SPREADSHEETS = {
+  '2024': {
+    internal: '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0',
+    nck: '1F-DsXPgZYSyqH9F3kGDP9Z4_AtTV_ZAOd6KXbYdchMo'
+  },
+  '2025': {
+    internal: '1qX2vVuUaIut0_-Z1pvxtbJDC8u4zTyeqs6Xywk56bOM',
+    nck: '1KYZPg7GhqDZ70CTw7albG9PZ72FnM4RJr14XPeIy-OU'
+  },
+  '2026': {
+    internal: '1W7g_qwVS1r0sBpcGqTKFXr-mY4Hetw1a7-nMnkxVoGA',
+    nck: '1F3R92jREt7tYFvYo0YtiQeh7HZldY_47YkwvlBiD44E'
+  }
+};
 
-// Service account credentials
+// Google Sheets Auth
 const auth = new google.auth.GoogleAuth({
   credentials: {
     type: "service_account",
@@ -54,60 +67,51 @@ eET3hIw//KEIOlTU2QI/
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-// ========== API ENDPOINTS ==========
+// ===== MIDDLEWARE =====
+app.use((req, res, next) => {
+  const year = req.headers['x-year'] || req.body.year || '2024';
+  const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
+  req.spreadsheetId = SPREADSHEETS[year]?.[examType] || SPREADSHEETS['2024'].internal;
+  next();
+});
 
-// Root endpoint
+// ===== API ENDPOINTS =====
+
 app.get('/', (req, res) => {
   res.json({ message: 'Nursing Marks API is running!' });
 });
 
-// LOGIN ENDPOINT - THIS WAS MISSING!
-app.post('/api/login', async (req, res) => {
+// Get available years
+app.get('/api/years', (req, res) => {
+  res.json(Object.keys(SPREADSHEETS));
+});
+
+// Get blocks
+app.get('/api/blocks', (req, res) => {
+  res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
+});
+
+// Get subjects for a block
+app.get('/api/subjects/:block', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    console.log('Login attempt:', username);
-    
-    // Check ADMIN sheet
-    const adminResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'ADMIN!A:C',
+    const { block } = req.params;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
     });
     
-    const admins = adminResponse.data.values || [];
-    for (let i = 1; i < admins.length; i++) {
-      if (admins[i][0] === username && admins[i][1] === password) {
-        return res.json({ 
-          success: true, 
-          user: { username, name: 'Administrator', role: 'admin' } 
-        });
+    const config = response.data.values || [];
+    const subjects = [];
+    
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][0] === block && config[i][2] === 'YES') {
+        subjects.push(config[i][1]);
       }
     }
     
-    // Check LECTURERS sheet
-    const lecturersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'LECTURERS!A:F',
-    });
-    
-    const lecturers = lecturersResponse.data.values || [];
-    for (let i = 1; i < lecturers.length; i++) {
-      if (lecturers[i][0] === username && lecturers[i][3] === password) {
-        return res.json({ 
-          success: true, 
-          user: { 
-            username, 
-            name: lecturers[i][1], 
-            role: 'lecturer',
-            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : []
-          } 
-        });
-      }
-    }
-    
-    res.json({ success: false, message: 'Invalid username or password' });
+    res.json(subjects);
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -115,7 +119,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/students', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: req.spreadsheetId,
       range: 'STUDENTS!A:D',
     });
     
@@ -142,62 +146,67 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
-// Get blocks
-app.get('/api/blocks', (req, res) => {
-  res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
-});
-
-// Get subjects for a block
-app.get('/api/subjects/:block', async (req, res) => {
-  try {
-    const { block } = req.params;
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'CONFIG!A:D',
-    });
-    
-    const config = response.data.values || [];
-    const subjects = [];
-    
-    for (let i = 1; i < config.length; i++) {
-      if (config[i][0] === block && config[i][2] === 'YES') {
-        subjects.push(config[i][1]);
-      }
-    }
-    
-    res.json(subjects);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Get marks
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
-    const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    let sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
+    
+    // For NCK, use different sheet name structure
+    if (examType === 'nck') {
+      sheetName = `XY FORMS`;  // NCK uses XY FORMS sheet
+    }
     
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A:I`,
+      spreadsheetId: req.spreadsheetId,
+      range: `${sheetName}!A:Z`,
     });
     
     const data = response.data.values || [];
     const marks = [];
     
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0]) {
-        marks.push({
-          row: i + 1,
-          admission: data[i][0],
-          name: data[i][1],
-          cat1: data[i][2] || '',
-          cat2: data[i][3] || '',
-          exam: data[i][4] || '',
-          final: data[i][5] || '',
-          gradedBy: data[i][7] || '',
-          assessmentType: data[i][8] || 'full'
-        });
+    if (examType === 'nck') {
+      // NCK format - get all students and their final clinical scores
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0]) {
+          // Calculate average of 21 clinical areas (columns C to W)
+          let total = 0;
+          let count = 0;
+          for (let j = 2; j <= 22 && j < data[i].length; j++) {
+            const score = parseFloat(data[i][j]);
+            if (!isNaN(score)) {
+              total += score;
+              count++;
+            }
+          }
+          const finalScore = count > 0 ? total / count : 0;
+          
+          marks.push({
+            row: i + 1,
+            admission: data[i][0],
+            name: data[i][1],
+            finalScore: Math.round(finalScore * 100) / 100,
+            gradedBy: data[i][23] || ''
+          });
+        }
+      }
+    } else {
+      // Internal exams format
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0]) {
+          marks.push({
+            row: i + 1,
+            admission: data[i][0],
+            name: data[i][1],
+            cat1: data[i][2] || '',
+            cat2: data[i][3] || '',
+            exam: data[i][4] || '',
+            final: data[i][5] || '',
+            gradedBy: data[i][7] || '',
+            assessmentType: data[i][8] || 'full'
+          });
+        }
       }
     }
     
@@ -207,25 +216,63 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// Save marks
+// Save marks (Internal exams only - NCK is read-only)
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    
+    if (examType === 'nck') {
+      return res.json({ success: false, message: 'NCK scores are read-only. Edit directly in Google Sheets.' });
+    }
+    
     const sheetName = `${block}_${subject.replace(/\s/g, '_')}`;
     
+    // Get assessment type
+    const configResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    
+    const config = configResponse.data.values || [];
+    let assessmentType = 'full';
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][0] === block && config[i][1] === subject) {
+        assessmentType = config[i][3] || 'full';
+        break;
+      }
+    }
+    
     for (const mark of marksData) {
-      const cat1 = parseFloat(mark.cat1) || 0;
-      const cat2 = parseFloat(mark.cat2) || 0;
-      const exam = parseFloat(mark.exam) || 0;
-      const final = cat1 + cat2 + exam;
-      const grade = final >= 70 ? 'A' : (final >= 60 ? 'B' : (final >= 50 ? 'C' : 'D'));
+      let cat1 = parseFloat(mark.cat1) || 0;
+      let cat2 = parseFloat(mark.cat2) || 0;
+      let exam = parseFloat(mark.exam) || 0;
+      let finalTotal = 0;
+      
+      if (assessmentType === 'full') {
+        cat1 = Math.min(cat1, 30);
+        cat2 = Math.min(cat2, 30);
+        exam = Math.min(exam, 70);
+        const catsTotal = ((cat1 + cat2) / 60) * 30;
+        finalTotal = catsTotal + exam;
+      } else if (assessmentType === 'single_cat') {
+        cat1 = Math.min(cat1, 30);
+        exam = Math.min(exam, 70);
+        finalTotal = cat1 + exam;
+      } else {
+        exam = Math.min(exam, 100);
+        finalTotal = exam;
+      }
+      
+      finalTotal = Math.round(finalTotal * 10) / 10;
+      const grade = finalTotal >= 70 ? 'A' : (finalTotal >= 60 ? 'B' : (finalTotal >= 50 ? 'C' : (finalTotal >= 40 ? 'D' : 'E')));
       
       await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: req.spreadsheetId,
         range: `${sheetName}!C${mark.row}:H${mark.row}`,
         valueInputOption: 'RAW',
         requestBody: {
-          values: [[cat1, cat2, exam, final, grade, lecturerName]]
+          values: [[cat1, cat2, exam, finalTotal, grade, lecturerName]]
         }
       });
     }
@@ -236,10 +283,56 @@ app.post('/api/marks', async (req, res) => {
   }
 });
 
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password, year, examType } = req.body;
+    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
+    
+    // Check ADMIN sheet
+    const adminResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'ADMIN!A:C',
+    });
+    
+    const admins = adminResponse.data.values || [];
+    for (let i = 1; i < admins.length; i++) {
+      if (admins[i][0] === username && admins[i][1] === password) {
+        return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
+      }
+    }
+    
+    // Check LECTURERS sheet
+    const lecturersResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    
+    const lecturers = lecturersResponse.data.values || [];
+    for (let i = 1; i < lecturers.length; i++) {
+      if (lecturers[i][0] === username && lecturers[i][3] === password) {
+        return res.json({ 
+          success: true, 
+          user: { 
+            username, 
+            name: lecturers[i][1], 
+            role: 'lecturer',
+            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : []
+          } 
+        });
+      }
+    }
+    
+    res.json({ success: false, message: 'Invalid username or password' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get stats
 app.get('/api/stats', async (req, res) => {
   try {
-    const students = await getStudents();
+    const students = await getStudents(req.spreadsheetId);
     res.json({
       totalStudents: students.length,
       totalBlocks: 6,
@@ -250,16 +343,14 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-async function getStudents() {
+async function getStudents(spreadsheetId) {
   const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
+    spreadsheetId: spreadsheetId,
     range: 'STUDENTS!A:D',
   });
-  
   const data = response.data.values || [];
   const students = [];
   const seen = {};
-  
   for (let i = 1; i < data.length; i++) {
     const admission = data[i][0];
     if (admission && !seen[admission]) {
