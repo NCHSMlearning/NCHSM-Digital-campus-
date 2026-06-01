@@ -539,8 +539,118 @@
     apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email: '', password, subjects: [] }) }).then(() => { hideLoading(); showNotification('Lecturer added!'); showLecturers(); });
   }
   
-  function editLecturer(username) { showNotification('Edit feature - Select subjects coming soon', true); }
-  function deleteLecturer(username) { if (confirm('Delete this lecturer?')) { showLoading('Deleting...'); apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); }); } }
+function editLecturer(username) {
+  // Fetch lecturer details first
+  showLoading('Loading lecturer details...');
+  
+  apiCall(`/api/lecturer/${username}`).then(lecturer => {
+    hideLoading();
+    
+    if (!lecturer) {
+      showNotification('Lecturer not found', true);
+      return;
+    }
+    
+    // Fetch available units
+    apiCall('/api/units').then(units => {
+      // Build subject options grouped by block
+      let subjectOptions = '';
+      const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+      
+      for (const block of blocks) {
+        const blockUnits = units[block] || [];
+        if (blockUnits.length > 0) {
+          subjectOptions += `<optgroup label="${block.replace('_', ' ')}">`;
+          for (const unit of blockUnits) {
+            const isSelected = lecturer.subjects && lecturer.subjects.includes(`${block}|${unit.name}`);
+            const selectedAttr = isSelected ? 'selected' : '';
+            subjectOptions += `<option value="${block}|${unit.name}" ${selectedAttr}>${unit.name} (${unit.assessmentType})</option>`;
+          }
+          subjectOptions += `</optgroup>`;
+        }
+      }
+      
+      // Create modal HTML
+      const modalHtml = `
+        <div id="editLecturerModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Edit Lecturer: ${lecturer.name}</h3>
+              <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label><strong>Username:</strong></label>
+              <input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0;">
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label><strong>Full Name:</strong></label>
+              <input type="text" id="editName" value="${lecturer.name}">
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label><strong>Email:</strong></label>
+              <input type="email" id="editEmail" value="${lecturer.email || ''}">
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label><strong>Password:</strong></label>
+              <input type="password" id="editPassword" placeholder="Leave blank to keep current">
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label><strong>Assigned Subjects (Hold Ctrl/Cmd to select multiple):</strong></label>
+              <select id="editSubjects" multiple size="10" style="width:100%; height:200px;">
+                ${subjectOptions}
+              </select>
+              <small>💡 Hold Ctrl (Windows) or Cmd (Mac) to select multiple subjects</small>
+            </div>
+            <button onclick="saveEditedLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; width:100%; border:none; border-radius:5px; cursor:pointer;">Save Changes</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Pre-select subjects
+      if (lecturer.subjects) {
+        const select = document.getElementById('editSubjects');
+        for (let i = 0; i < select.options.length; i++) {
+          if (lecturer.subjects.includes(select.options[i].value)) {
+            select.options[i].selected = true;
+          }
+        }
+      }
+    });
+  });
+}
+
+function saveEditedLecturer(oldUsername) {
+  const username = document.getElementById('editUsername').value;
+  const name = document.getElementById('editName').value;
+  const email = document.getElementById('editEmail').value;
+  const password = document.getElementById('editPassword').value;
+  
+  const select = document.getElementById('editSubjects');
+  const subjects = [];
+  for (let i = 0; i < select.options.length; i++) {
+    if (select.options[i].selected) {
+      subjects.push(select.options[i].value);
+    }
+  }
+  
+  showLoading('Saving lecturer changes...');
+  
+  apiCall('/api/update-lecturer', {
+    method: 'POST',
+    body: JSON.stringify({ oldUsername, username, name, email, password, subjects })
+  }).then(result => {
+    hideLoading();
+    closeModal();
+    if (result.success) {
+      showNotification('Lecturer updated successfully!');
+      showLecturers(); // Refresh the list
+    } else {
+      showNotification(result.message || 'Error updating lecturer', true);
+    }
+  });
+}  function deleteLecturer(username) { if (confirm('Delete this lecturer?')) { showLoading('Deleting...'); apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); }); } }
   
   // ========== UNITS SECTION ==========
   async function showUnits() {
