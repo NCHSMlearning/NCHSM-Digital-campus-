@@ -437,78 +437,80 @@
   
   // ========== LECTURER SUBJECTS DISPLAY (NEW) ==========
   async function showLecturerSubjects() {
-    showLoading('Loading your subjects...');
+  showLoading('Loading your subjects...');
+  
+  var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+  var lecturerSubjects = currentUser.subjects || [];
+  
+  // Organize subjects by block
+  var subjectsByBlock = {};
+  for (var b of blocks) {
+    subjectsByBlock[b] = [];
+  }
+  
+  for (var i = 0; i < lecturerSubjects.length; i++) {
+    var subj = lecturerSubjects[i];
+    var parts = subj.split('|');
+    var block = parts[0];
+    var name = parts[1];
+    var type = parts[2] || 'full';  // ← Make sure assessment type is captured
     
-    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    var lecturerSubjects = currentUser.subjects || [];
+    console.log(`Subject: ${block} | ${name} | Type: ${type}`); // Debug log
     
-    // Organize subjects by block
-    var subjectsByBlock = {};
-    for (var b of blocks) {
-      subjectsByBlock[b] = [];
+    if (subjectsByBlock[block]) {
+      subjectsByBlock[block].push({ name: name, assessmentType: type });
     }
-    
-    for (var i = 0; i < lecturerSubjects.length; i++) {
-      var subj = lecturerSubjects[i];
-      var parts = subj.split('|');
-      var block = parts[0];
-      var name = parts[1];
-      var type = parts[2] || 'full';
+  }
+  
+  var html = `
+    <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
+    <div class="header">
+      <h3>📚 My Subjects</h3>
+      <p>Click on any subject to enter marks</p>
+    </div>
+  `;
+  
+  for (var b of blocks) {
+    var subjects = subjectsByBlock[b];
+    if (subjects.length > 0) {
+      html += `
+        <div style="margin: 20px 0 10px 0;">
+          <h3 style="color: white; background: #667eea; padding: 10px 15px; border-radius: 10px; display: inline-block;">
+            ${b.replace('_', ' ')}
+          </h3>
+        </div>
+        <div class="subject-list">
+      `;
       
-      if (subjectsByBlock[block]) {
-        subjectsByBlock[block].push({ name: name, assessmentType: type });
+      for (var s of subjects) {
+        var typeLabel = s.assessmentType === 'full' ? 'CAT1 + CAT2 + Exam' : (s.assessmentType === 'single_cat' ? 'CAT + Exam' : 'Exam Only');
+        var typeClass = s.assessmentType === 'full' ? 'badge-full' : (s.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
+        var icon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
+        
+        html += `
+          <div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')">
+            <h4>${icon} ${s.name}</h4>
+            <p>Block: ${b.replace('_', ' ')}</p>
+            <span class="assessment-badge ${typeClass}">${typeLabel}</span>
+          </div>
+        `;
       }
+      html += `</div>`;
     }
-    
-    var html = `
-      <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-      <div class="header">
-        <h3>📚 My Subjects</h3>
-        <p>Click on any subject to enter marks</p>
+  }
+  
+  if (lecturerSubjects.length === 0) {
+    html += `
+      <div style="background: white; border-radius: 15px; padding: 40px; text-align: center;">
+        <p style="color: #999; font-size: 16px;">No subjects assigned to you yet.</p>
+        <p style="color: #999; font-size: 14px; margin-top: 10px;">Please contact the administrator to assign subjects.</p>
       </div>
     `;
-    
-    for (var b of blocks) {
-      var subjects = subjectsByBlock[b];
-      if (subjects.length > 0) {
-        html += `
-          <div style="margin: 20px 0 10px 0;">
-            <h3 style="color: white; background: #667eea; padding: 10px 15px; border-radius: 10px; display: inline-block;">
-              ${b.replace('_', ' ')}
-            </h3>
-          </div>
-          <div class="subject-list">
-        `;
-        
-        for (var s of subjects) {
-          var typeLabel = s.assessmentType === 'full' ? 'CAT1 + CAT2 + Exam' : (s.assessmentType === 'single_cat' ? 'CAT + Exam' : 'Exam Only');
-          var typeClass = s.assessmentType === 'full' ? 'badge-full' : (s.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
-          var icon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
-          
-          html += `
-            <div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')">
-              <h4>${icon} ${s.name}</h4>
-              <p>Block: ${b.replace('_', ' ')}</p>
-              <span class="assessment-badge ${typeClass}">${typeLabel}</span>
-            </div>
-          `;
-        }
-        html += `</div>`;
-      }
-    }
-    
-    if (lecturerSubjects.length === 0) {
-      html += `
-        <div style="background: white; border-radius: 15px; padding: 40px; text-align: center;">
-          <p style="color: #999; font-size: 16px;">No subjects assigned to you yet.</p>
-          <p style="color: #999; font-size: 14px; margin-top: 10px;">Please contact the administrator to assign subjects.</p>
-        </div>
-      `;
-    }
-    
-    document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
   }
+  
+  document.getElementById('contentArea').innerHTML = html;
+  hideLoading();
+}
   
   // ========== OPEN MARKS ENTRY FROM SUBJECT CARD ==========
   window.openMarksEntry = function(block, subject, assessmentType) {
