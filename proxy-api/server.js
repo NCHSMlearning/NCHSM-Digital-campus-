@@ -6,10 +6,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Your Google Sheet ID - REPLACE THIS!
+// YOUR GOOGLE SHEET ID
 const SPREADSHEET_ID = '1W7g_qwVS1r0sBpcGqTKFXr-mY4Hetw1a7-nMnkxVoGA';
 
-// Service account auth
+// Service account credentials
 const auth = new google.auth.GoogleAuth({
   credentials: {
     type: "service_account",
@@ -54,9 +54,61 @@ eET3hIw//KEIOlTU2QI/
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-// Test endpoint
+// ========== API ENDPOINTS ==========
+
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({ message: 'Nursing Marks API is running!' });
+});
+
+// LOGIN ENDPOINT - THIS WAS MISSING!
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log('Login attempt:', username);
+    
+    // Check ADMIN sheet
+    const adminResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'ADMIN!A:C',
+    });
+    
+    const admins = adminResponse.data.values || [];
+    for (let i = 1; i < admins.length; i++) {
+      if (admins[i][0] === username && admins[i][1] === password) {
+        return res.json({ 
+          success: true, 
+          user: { username, name: 'Administrator', role: 'admin' } 
+        });
+      }
+    }
+    
+    // Check LECTURERS sheet
+    const lecturersResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'LECTURERS!A:F',
+    });
+    
+    const lecturers = lecturersResponse.data.values || [];
+    for (let i = 1; i < lecturers.length; i++) {
+      if (lecturers[i][0] === username && lecturers[i][3] === password) {
+        return res.json({ 
+          success: true, 
+          user: { 
+            username, 
+            name: lecturers[i][1], 
+            role: 'lecturer',
+            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : []
+          } 
+        });
+      }
+    }
+    
+    res.json({ success: false, message: 'Invalid username or password' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // Get students
@@ -67,24 +119,24 @@ app.get('/api/students', async (req, res) => {
       range: 'STUDENTS!A:D',
     });
     
-    const students = response.data.values || [];
-    const uniqueStudents = [];
+    const data = response.data.values || [];
+    const students = [];
     const seen = {};
     
-    for (let i = 1; i < students.length; i++) {
-      const admission = students[i][0];
+    for (let i = 1; i < data.length; i++) {
+      const admission = data[i][0];
       if (admission && !seen[admission]) {
         seen[admission] = true;
-        uniqueStudents.push({
+        students.push({
           admission: admission,
-          name: students[i][1],
-          block: students[i][2] || 'BLOCK_0',
-          status: students[i][3] || 'ACTIVE'
+          name: data[i][1],
+          block: data[i][2] || 'BLOCK_0',
+          status: data[i][3] || 'ACTIVE'
         });
       }
     }
     
-    res.json(uniqueStudents);
+    res.json(students);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -178,11 +230,45 @@ app.post('/api/marks', async (req, res) => {
       });
     }
     
-    res.json({ success: true, message: 'Marks saved!' });
+    res.json({ success: true, message: 'Marks saved successfully!' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Get stats
+app.get('/api/stats', async (req, res) => {
+  try {
+    const students = await getStudents();
+    res.json({
+      totalStudents: students.length,
+      totalBlocks: 6,
+      totalSubjects: 28
+    });
+  } catch (error) {
+    res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
+  }
+});
+
+async function getStudents() {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'STUDENTS!A:D',
+  });
+  
+  const data = response.data.values || [];
+  const students = [];
+  const seen = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const admission = data[i][0];
+    if (admission && !seen[admission]) {
+      seen[admission] = true;
+      students.push(admission);
+    }
+  }
+  return students;
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
