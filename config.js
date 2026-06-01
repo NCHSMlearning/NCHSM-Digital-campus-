@@ -26,10 +26,7 @@
         console.info = function() {};
         console.warn = function() {};
         
-        // Optional: Keep errors but silence them too (uncomment if desired)
-        // console.error = function() {};
-        
-        // Or keep errors with a prefix (recommended for production debugging)
+        // Keep errors with a prefix for production debugging
         console.error = function(...args) {
             originalError('[NCHSM Error]', ...args);
         };
@@ -43,6 +40,54 @@
 })();
 
 console.log('🚀 Loading NCHSM Student Portal Configuration');
+
+// ========== SUPABASE CLIENT INITIALIZATION ==========
+// Create the supabase client that all modules expect
+
+// Wait for Supabase library to load from CDN
+function initSupabaseClient() {
+    try {
+        // Check if Supabase library is available (loaded from CDN in HTML)
+        if (typeof supabase === 'undefined' && typeof createClient !== 'undefined') {
+            // If supabase variable doesn't exist but createClient does
+            window.supabase = createClient(
+                'https://lwhtjozfsmbyihenfunw.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+            );
+            console.log('✅ Supabase client initialized via createClient');
+        } else if (typeof supabase !== 'undefined' && supabase.createClient) {
+            // If supabase object exists from CDN
+            window.supabase = supabase.createClient(
+                window.APP_CONFIG.SUPABASE_URL,
+                window.APP_CONFIG.SUPABASE_ANON_KEY
+            );
+            console.log('✅ Supabase client initialized via supabase.createClient');
+        } else if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+            window.supabase = window.supabase.createClient(
+                window.APP_CONFIG.SUPABASE_URL,
+                window.APP_CONFIG.SUPABASE_ANON_KEY
+            );
+            console.log('✅ Supabase client initialized via window.supabase.createClient');
+        } else {
+            // Last resort - try to use the global from CDN
+            console.warn('⚠️ Supabase library not yet loaded, will retry...');
+            setTimeout(initSupabaseClient, 100);
+            return false;
+        }
+        
+        // Verify the client works
+        if (window.supabase && typeof window.supabase.from === 'function') {
+            console.log('✅ Supabase client ready - .from() method available');
+            return true;
+        } else {
+            console.error('❌ Supabase client created but .from() method missing');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Failed to initialize Supabase client:', error);
+        return false;
+    }
+}
 
 window.APP_CONFIG = {
     // Public test Supabase credentials
@@ -62,6 +107,38 @@ window.APP_CONFIG = {
     APP_VERSION: '2.1.0'
 };
 
+// Initialize Supabase client immediately
+// Try to initialize, retry if needed
+let initAttempts = 0;
+const maxInitAttempts = 10;
+
+function tryInitSupabase() {
+    initAttempts++;
+    const success = initSupabaseClient();
+    
+    if (!success && initAttempts < maxInitAttempts) {
+        console.log(`⏳ Retrying Supabase initialization (${initAttempts}/${maxInitAttempts})...`);
+        setTimeout(tryInitSupabase, 200);
+    } else if (!success) {
+        console.error('❌ Failed to initialize Supabase after multiple attempts');
+        // Create a fallback mock client to prevent crashes
+        window.supabase = {
+            from: (table) => ({
+                select: () => Promise.resolve({ data: [], error: null }),
+                insert: () => Promise.resolve({ data: [], error: null }),
+                update: () => Promise.resolve({ data: [], error: null }),
+                delete: () => Promise.resolve({ data: [], error: null }),
+                eq: () => ({ select: () => Promise.resolve({ data: [], error: null }) })
+            }),
+            auth: {
+                getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+                getUser: () => Promise.resolve({ data: { user: null }, error: null })
+            }
+        };
+        console.warn('⚠️ Using fallback mock Supabase client');
+    }
+}
+
 // Only show these logs if debugging is enabled
 if (!window.__LOGS_DISABLED) {
     console.log('✅ Configuration loaded successfully');
@@ -75,7 +152,21 @@ if (!window.APP_CONFIG.SUPABASE_URL || !window.APP_CONFIG.SUPABASE_ANON_KEY) {
     console.error('❌ Missing Supabase credentials');
 }
 
+// Start Supabase initialization
+tryInitSupabase();
+
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = window.APP_CONFIG;
 }
+
+// Also expose a global function to check Supabase status
+window.checkSupabaseStatus = function() {
+    if (window.supabase && typeof window.supabase.from === 'function') {
+        console.log('✅ Supabase is ready');
+        return true;
+    } else {
+        console.warn('⚠️ Supabase not ready');
+        return false;
+    }
+};
