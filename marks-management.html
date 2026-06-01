@@ -1028,59 +1028,96 @@
   hideLoading();
 }
   
-  function displayXYFormsMarks(marks) {
-    if (!marks || marks.length === 0) {
-      document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found. Ensure students are in the STUDENTS sheet.</div>';
-      return;
-    }
-    
-    const clinicalAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'];
-    
-    let html = `<div style="overflow-x:auto; max-height: 70vh;"><table style="min-width: 1200px;"><thead><tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
-      <th style="position: sticky; left: 0; background: #667eea;">#</th>
-      <th style="position: sticky; left: 60px; background: #667eea;">Student Name</th>`;
-    
-    for (let area of clinicalAreas) {
-      html += `<th style="min-width: 70px;"><div style="font-size: 11px;">${area}</div><div style="font-size: 9px;">(0-100)</div></th>`;
-    }
-    html += `<th>Average</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
-    
-    currentNCKMarks = marks;
-    currentNCKSheet = 'XY FORMS';
-    
-    for (let i = 0; i < marks.length; i++) {
-      const m = marks[i];
-      let scores = [];
-      if (m.clinicalAreas) {
-        scores = m.clinicalAreas.map(ca => ca.score || 0);
-      } else {
-        for (let c = 0; c < clinicalAreas.length; c++) scores.push(0);
-      }
-      
-      const validScores = scores.filter(s => s > 0);
-      const avg = validScores.length ? scores.reduce((a,b) => a+b,0) / validScores.length : 0;
-      const status = avg >= 60 ? 'PASS' : (validScores.length ? 'FAIL' : 'PENDING');
-      const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-      
-      html += `<tr class="${rowClass}">`;
-      html += `<td style="position: sticky; left: 0; background: white;">${i+1}</td>`;
-      html += `<td style="position: sticky; left: 60px; background: white; font-weight: 500;">${m.name || 'Unnamed'}</td>`;
-      
-      for (let c = 0; c < clinicalAreas.length; c++) {
-        const score = scores[c] || 0;
-        html += `<td style="padding: 4px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 65px; padding: 6px; border-radius: 8px;" onchange="updateXYAverage(${i})"></td>`;
-      }
-      
-      html += `<td id="xyAvg_${i}" style="font-weight: bold;">${avg.toFixed(2)}%</td>`;
-      html += `<td id="xyStatus_${i}"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
-      html += `<td><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer name" style="width: 120px; padding: 6px; border-radius: 8px;"></td>`;
-      html += `</tr>`;
-    }
-    
-    html += `</tbody></table></div><div style="text-align: center; margin-top: 24px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`;
-    document.getElementById('nckMarksContainer').innerHTML = html;
+ function displayXYFormsMarks(marks) {
+  if (!marks || marks.length === 0) {
+    document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found. Ensure students are in the STUDENTS sheet.</div>';
+    return;
   }
   
+  console.log('Displaying XY FORMS marks:', marks.length, 'students');
+  console.log('First student data:', marks[0]); // Debug to see what we're getting
+  
+  const clinicalAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'];
+  
+  let html = `<div style="overflow-x:auto; max-height: 70vh;">
+    <div style="margin-bottom: 15px; padding: 10px; background: #e0e7ff; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <strong><i class="fas fa-bolt"></i> Quick Fill:</strong>
+      <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
+      <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
+      <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
+    </div>
+    <table style="min-width: 1400px;">
+      <thead>
+        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
+          <th style="position: sticky; left: 0; background: #667eea; min-width: 50px;">#</th>
+          <th style="position: sticky; left: 50px; background: #667eea; min-width: 200px;">Student Name</th>`;
+  
+  for (let area of clinicalAreas) {
+    html += `<th style="min-width: 65px;"><div style="font-size: 10px;">${area}</div></th>`;
+  }
+  html += `<th style="min-width: 80px;">Average</th><th style="min-width: 80px;">Status</th><th style="min-width: 120px;">Graded By</th>`;
+  html += `</tr></thead><tbody>`;
+  
+  currentNCKMarks = marks;
+  currentNCKSheet = 'XY FORMS';
+  
+  for (let i = 0; i < marks.length; i++) {
+    const m = marks[i];
+    
+    // FIX: Use 'scores' array from API, NOT 'clinicalAreas'
+    let scores = [];
+    if (m.scores && m.scores.length) {
+      scores = m.scores;
+    } else if (m.clinicalAreas) {
+      scores = m.clinicalAreas.map(ca => ca.score || 0);
+    } else {
+      // Try to get from the marks object directly
+      for (let c = 0; c < clinicalAreas.length; c++) {
+        scores.push(m[`area_${c}`] || 0);
+      }
+    }
+    
+    // Ensure we have 22 scores
+    while (scores.length < 22) scores.push(0);
+    
+    // Calculate average from scores that have values
+    const validScores = scores.filter(s => s > 0);
+    let avg = 0;
+    if (validScores.length > 0) {
+      avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+    } else if (m.final && m.final > 0) {
+      avg = m.final;
+    }
+    
+    const status = avg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+    const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
+    
+    html += `<tr class="${rowClass}">`;
+    html += `<td style="position: sticky; left: 0; background: white;">${i+1}${m.name === 'ADMIN' ? ' (Admin)' : ''}</td>`;
+    html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500;">${m.name || 'Unnamed'}</td>`;
+    
+    for (let c = 0; c < 22; c++) {
+      const score = scores[c] || 0;
+      html += `<td style="padding: 2px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 55px; padding: 4px; font-size: 11px; border-radius: 6px; text-align: center;" onchange="updateXYAverage(${i})"></td>`;
+    }
+    
+    const displayAvg = avg > 0 ? avg.toFixed(2) : '0.00';
+    html += `<td id="xyAvg_${i}" style="font-weight: bold; text-align: center;">${displayAvg}%</td>`;
+    html += `<td id="xyStatus_${i}" style="text-align: center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
+    html += `<td style="padding: 2px;"><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width: 100px; padding: 4px; font-size: 11px; border-radius: 6px;"></td>`;
+    html += `</tr>`;
+  }
+  
+  html += `</tbody></table></div>
+  <div style="text-align: center; margin-top: 20px; padding: 10px; background: #fef3c7; border-radius: 12px;">
+    <i class="fas fa-info-circle"></i> <strong>Tip:</strong> Press Tab/Enter to move between cells. Use quick fill buttons above.
+  </div>
+  <div style="text-align: center; margin-top: 20px;">
+    <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
+  </div>`;
+  
+  document.getElementById('nckMarksContainer').innerHTML = html;
+}
   function displayAssessmentMarks(marks) {
     if (!marks || marks.length === 0) {
       document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>';
