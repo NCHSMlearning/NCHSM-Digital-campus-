@@ -372,6 +372,37 @@ app.get('/api/lecturer/:username', async (req, res) => {
   }
 });
 
+// UPDATE LECTURER ENDPOINT
+app.post('/api/update-lecturer', async (req, res) => {
+  try {
+    const { oldUsername, username, name, email, password, subjects } = req.body;
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:F',
+    });
+    
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === oldUsername) {
+        const row = i + 1;
+        const updateValues = [username, name, email || '', password || data[i][3], subjects.join(',')];
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `LECTURERS!A${row}:E${row}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [updateValues] }
+        });
+        break;
+      }
+    }
+    
+    res.json({ success: true, message: 'Lecturer updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== UNIT ENDPOINTS ==========
 app.get('/api/units', async (req, res) => {
   try {
