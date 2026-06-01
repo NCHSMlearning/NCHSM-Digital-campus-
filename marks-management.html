@@ -258,8 +258,8 @@
     .modal-content {
       background: white;
       border-radius: 28px;
-      width: 750px;
-      max-width: 95%;
+      width: 520px;
+      max-width: 90%;
       max-height: 85vh;
       overflow-y: auto;
       box-shadow: var(--shadow-xl);
@@ -404,7 +404,7 @@
       position: fixed;
       bottom: 20px;
       right: 20px;
-      width: 420px;
+      width: 380px;
       background: white;
       border-radius: 20px;
       box-shadow: var(--shadow-xl);
@@ -429,7 +429,7 @@
     
     .fast-entry-body {
       padding: 20px;
-      max-height: 450px;
+      max-height: 400px;
       overflow-y: auto;
     }
     
@@ -441,48 +441,23 @@
       border-bottom: 1px solid #e2e8f0;
     }
     
+    .fast-entry-row label {
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+    }
+    
+    .fast-entry-row input {
+      width: 80px;
+      padding: 8px;
+      text-align: center;
+    }
+    
     .student-selector {
       width: 100%;
       padding: 10px;
       margin-bottom: 15px;
       border-radius: 12px;
-    }
-    
-    .compact-view {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-    }
-    
-    .area-group {
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-    }
-    
-    .area-group h4 {
-      margin-bottom: 12px;
-      color: #667eea;
-    }
-    
-    .area-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    
-    .area-row label {
-      font-size: 13px;
-      font-weight: 500;
-    }
-    
-    .area-row input {
-      width: 80px;
-      padding: 6px;
-      text-align: center;
-      border-radius: 8px;
     }
     
     @media (max-width: 768px) {
@@ -674,7 +649,7 @@
   
   async function showFullReports() { const students = await apiCall('/api/students', {}); exportToCSV(students, 'students_report'); }
   
-  // ======================= NCK MARKS ENTRY =======================
+  // ======================= NCK MARKS ENTRY WITH FAST ENTRY PANEL =======================
   async function showNCKMarks() {
     document.getElementById('contentArea').innerHTML = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div><div class="selector-group"><label><i class="fas fa-table-list"></i> Select Sheet:</label><select id="nckSheetSelect" style="min-width: 250px;"><option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option><option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option></select><button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button></div><div id="nckMarksContainer"></div>`;
     document.getElementById('nckSheetSelect').onchange = () => loadNCKMarks();
@@ -691,10 +666,7 @@
   }
   
   function displayXYFormsMarks(marks) {
-    if (!marks || marks.length === 0) {
-      document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found.</div>';
-      return;
-    }
+    if (!marks || marks.length === 0) { document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found.</div>'; return; }
     
     const areaGroups = [
       { name: '🏥 MEDICAL', areas: ['MED1', 'MED2', 'MED3'] },
@@ -706,19 +678,15 @@
     ];
     
     let html = `<div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #667eea20, #764ba220); border-radius: 12px;">
-      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-          <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
-          <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
-          <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
-          <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
-          ${currentUser.role === 'admin' ? `<button class="save-btn" onclick="showNCKColumnManager()" style="padding: 5px 12px; background: #ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>` : ''}
-        </div>
-        <div>
-          <button class="menu-btn btn-info" onclick="openFullScreenEntry()" style="padding: 5px 12px; font-size: 12px;"><i class="fas fa-expand"></i> Full Screen</button>
-        </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
+        <input type="number" id="quickFillScore" placeholder="Score" value="75" style="width: 80px; padding: 5px;">
+        <button class="save-btn" onclick="fillAllEmptyAreas()" style="padding: 5px 12px;">Fill Empty</button>
+        <button class="save-btn" onclick="fillAllWithScore()" style="padding: 5px 12px; background: #f59e0b;">Apply to All</button>
+        <button class="save-btn" onclick="openFastEntryPanel()" style="padding: 5px 12px; background: #8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>
+        ${currentUser.role === 'admin' ? `<button class="save-btn" onclick="showNCKColumnManager()" style="padding: 5px 12px; background: #ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>` : ''}
       </div>
-      <div style="font-size: 12px; color: #666; margin-top: 8px;"><i class="fas fa-info-circle"></i> Tip: Click on any student name to open focused entry panel.</div>
+      <div style="font-size: 12px; color: #666; margin-top: 8px;"><i class="fas fa-info-circle"></i> Tip: Click "Fast Entry Mode" for a focused, keyboard-friendly interface</div>
     </div>
     <div id="nckTableView" style="overflow-x:auto; max-height: 60vh;">
       <table style="min-width: 1000px;">
@@ -727,8 +695,7 @@
           <th style="position: sticky; left: 50px; background: #667eea;">Student Name</th>`;
     
     for (let group of areaGroups) { html += `<th colspan="${group.areas.length}" style="text-align: center; background: #4f46e5;">${group.name}</th>`; }
-    html += `<th>Avg</th><th>Status</th><th>Graded By</th></tr>`;
-    html += `<tr style="background: #818cf8; color: white;"><th></th><th></th>`;
+    html += `<th>Avg</th><th>Status</th><th>Graded By</th></tr><tr style="background: #818cf8; color: white;"><th></th><th></th>`;
     for (let group of areaGroups) { for (let area of group.areas) { html += `<th style="min-width: 55px; font-size: 10px;">${area}</th>`; } }
     html += `<th></th><th></th><th></th></tr></thead><tbody>`;
     
@@ -748,7 +715,7 @@
       
       html += `<tr class="${rowClass}">`;
       html += `<td style="position: sticky; left: 0; background: white;">${i+1}</td>`;
-      html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500; cursor: pointer;" onclick="openStudentEntryPanel(${i}, '${(m.name || 'Unnamed').replace(/'/g, "\\'")}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size: 10px;"></i></td>`;
+      html += `<td style="position: sticky; left: 50px; background: white; font-weight: 500; cursor: pointer;" onclick="openFastEntryForStudent(${i}, '${m.name}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size: 10px;"></i></td>`;
       
       let scoreIdx = 0;
       for (let group of areaGroups) {
@@ -773,61 +740,36 @@
   }
   
   function displayAssessmentMarks(marks) {
-    if (!marks || marks.length === 0) {
-      document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>';
-      return;
-    }
-    
-    let html = `<div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #667eea20, #764ba220); border-radius: 12px;">
-      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-          <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
-          ${currentUser.role === 'admin' ? `<button class="save-btn" onclick="showNCKColumnManager()" style="padding: 5px 12px; background: #ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>` : ''}
-        </div>
-      </div>
-    </div>
-    <div style="overflow-x:auto;"><table style="min-width: 700px;"><thead><tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"><th>#</th><th>Student Name</th><th>ANC Assessment</th><th>CWC Immunization</th><th>Ward Nursing Care</th><th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
-    
+    if (!marks || marks.length === 0) { document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>'; return; }
+    let html = `<div style="overflow-x:auto;"><table style="min-width: 700px;"><thead><tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"><th>#</th><th>Student Name</th><th>ANC Assessment</th><th>CWC Immunization</th><th>Ward Nursing Care</th><th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
     currentNCKMarks = marks;
     currentNCKSheet = 'ASSESSMENT AND CASE';
-    
     for (let i = 0; i < marks.length; i++) {
       const m = marks[i];
       const scores = m.scores || [0, 0, 0];
       const total = scores.reduce((a, b) => a + b, 0);
       const status = total >= 60 ? 'PASS' : (scores.some(s => s > 0) ? 'FAIL' : 'PENDING');
       const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-      let gradedBy = m.gradedBy || '';
-      if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) gradedBy = '';
-      
       html += `<tr class="${rowClass}">`;
       html += `<td>${i+1}</td>`;
-      html += `<td style="font-weight: 500; cursor: pointer;" onclick="openAssessmentEntryPanel(${i}, '${(m.name || 'Unnamed').replace(/'/g, "\\'")}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size: 10px;"></i></td>`;
+      html += `<td style="font-weight: 500; cursor: pointer;" onclick="openFastAssessmentEntry(${i}, '${m.name}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size: 10px;"></i></td>`;
       html += `<td><input type="number" id="ac_${i}_0" value="${scores[0] || 0}" min="0" max="100" step="0.5" style="width: 70px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
       html += `<td><input type="number" id="ac_${i}_1" value="${scores[1] || 0}" min="0" max="100" step="0.5" style="width: 70px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
       html += `<td><input type="number" id="ac_${i}_2" value="${scores[2] || 0}" min="0" max="100" step="0.5" style="width: 70px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
       html += `<td id="acTotal_${i}" style="font-weight: bold;">${total}</td>`;
       html += `<td id="acStatus_${i}"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
-      html += `<td><input type="text" id="acGraded_${i}" value="${gradedBy}" placeholder="Lecturer" style="width: 100px; padding: 6px; border-radius: 8px;"></td>`;
-      html += `</td>`;
+      html += `<td><input type="text" id="acGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width: 100px; padding: 6px;"></td>`;
+      html += `</tr>`;
     }
-    
     html += `</tbody></table></div><div style="text-align: center; margin-top: 20px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`;
     document.getElementById('nckMarksContainer').innerHTML = html;
     if (fastEntryVisible) closeFastEntryPanel();
   }
   
-  // ======================= FAST ENTRY PANELS =======================
-  function openStudentEntryPanel(studentIdx, studentName) {
-    const existing = document.getElementById('floatingEntryPanel');
-    if (existing) existing.remove();
-    
-    const scores = [];
-    for (let c = 0; c < 22; c++) {
-      const input = document.getElementById(`xy_${studentIdx}_${c}`);
-      scores.push(input ? input.value : 0);
-    }
-    const gradedBy = document.getElementById(`xyGraded_${studentIdx}`)?.value || '';
+  // ======================= FAST ENTRY PANEL (KEYBOARD FRIENDLY) =======================
+  function openFastEntryPanel() {
+    if (!currentNCKMarks || currentNCKMarks.length === 0) { showNotification('No data loaded', true); return; }
+    if (fastEntryVisible) { closeFastEntryPanel(); return; }
     
     const areaGroups = [
       { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
@@ -839,199 +781,38 @@
     ];
     
     const panel = document.createElement('div');
-    panel.id = 'floatingEntryPanel';
-    panel.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 900px; max-height: 85vh; background: white; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); z-index: 1002; overflow-y: auto;';
+    panel.id = 'fastEntryPanel';
+    panel.className = 'fast-entry-panel';
     panel.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center;">
-        <div><i class="fas fa-user-edit"></i> <strong>Entering Scores for:</strong> ${studentName}</div>
-        <button class="back-btn" onclick="closeFloatingPanel()" style="padding: 5px 15px; background: rgba(255,255,255,0.2);"><i class="fas fa-times"></i> Close</button>
+      <div class="fast-entry-header">
+        <span><i class="fas fa-bolt"></i> Fast Entry Mode</span>
+        <span><i class="fas fa-times" onclick="closeFastEntryPanel()" style="cursor: pointer;"></i></span>
       </div>
-      <div style="padding: 24px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">`;
-    
-    for (let group of areaGroups) {
-      panel.innerHTML += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-        <h4 style="margin-bottom: 12px; color: #667eea;">${group.title}</h4>`;
-      for (let i = 0; i < group.cols.length; i++) {
-        const colIdx = group.cols[i];
-        const score = scores[colIdx] || 0;
-        panel.innerHTML += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <label style="font-size: 13px; font-weight: 500;">${group.names[i]}:</label>
-          <input type="number" id="float_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width: 80px; padding: 6px; border-radius: 8px; text-align: center;">
-        </div>`;
-      }
-      panel.innerHTML += `</div>`;
-    }
-    
-    panel.innerHTML += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-        <h4 style="margin-bottom: 12px; color: #667eea;">📝 Grading</h4>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <label style="font-size: 13px; font-weight: 500;">Graded By:</label>
-          <input type="text" id="float_graded" value="${gradedBy}" placeholder="Lecturer name" style="flex: 1; margin-left: 10px; padding: 6px; border-radius: 8px;">
+      <div class="fast-entry-body">
+        <select id="fastStudentSelect" class="student-selector">
+          ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
+        </select>
+        <div id="fastEntryFields"></div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button class="save-btn" onclick="applyFastEntry()" style="flex: 1;"><i class="fas fa-save"></i> Save & Next</button>
+          <button class="back-btn" onclick="applyFastEntryAndStay()" style="flex: 1;">Save & Stay</button>
         </div>
-      </div>`;
-    
-    panel.innerHTML += `</div>
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-          <button class="back-btn" onclick="closeFloatingPanel()">Cancel</button>
-          <button class="save-btn" onclick="saveFloatingPanel(${studentIdx})"><i class="fas fa-save"></i> Save Changes</button>
+        <div style="margin-top: 10px; text-align: center; font-size: 11px; color: #666;">
+          <i class="fas fa-keyboard"></i> Press Enter to save and move to next student
         </div>
-      </div>`;
-    
+      </div>
+    `;
     document.body.appendChild(panel);
+    fastEntryVisible = true;
+    loadFastEntryFields(0);
     
-    const backdrop = document.createElement('div');
-    backdrop.id = 'floatingBackdrop';
-    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
-    backdrop.onclick = closeFloatingPanel;
-    document.body.appendChild(backdrop);
+    document.getElementById('fastStudentSelect').onchange = () => {
+      loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value));
+    };
   }
   
-  function openAssessmentEntryPanel(studentIdx, studentName) {
-    const existing = document.getElementById('floatingEntryPanel');
-    if (existing) existing.remove();
-    
-    const s0 = document.getElementById(`ac_${studentIdx}_0`)?.value || 0;
-    const s1 = document.getElementById(`ac_${studentIdx}_1`)?.value || 0;
-    const s2 = document.getElementById(`ac_${studentIdx}_2`)?.value || 0;
-    const gradedBy = document.getElementById(`acGraded_${studentIdx}`)?.value || '';
-    
-    const panel = document.createElement('div');
-    panel.id = 'floatingEntryPanel';
-    panel.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 450px; background: white; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); z-index: 1002;';
-    panel.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center;">
-        <div><i class="fas fa-user-edit"></i> <strong>Entering Scores for:</strong> ${studentName}</div>
-        <button class="back-btn" onclick="closeFloatingPanel()" style="padding: 5px 15px; background: rgba(255,255,255,0.2);"><i class="fas fa-times"></i> Close</button>
-      </div>
-      <div style="padding: 24px;">
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: 600;">ANC Assessment:</label>
-          <input type="number" id="float_ac_0" value="${s0}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px;">
-        </div>
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: 600;">CWC Immunization:</label>
-          <input type="number" id="float_ac_1" value="${s1}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px;">
-        </div>
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: 600;">Ward Nursing Care:</label>
-          <input type="number" id="float_ac_2" value="${s2}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px;">
-        </div>
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: 600;">Graded By:</label>
-          <input type="text" id="float_ac_graded" value="${gradedBy}" placeholder="Lecturer name" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px;">
-        </div>
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-          <button class="back-btn" onclick="closeFloatingPanel()">Cancel</button>
-          <button class="save-btn" onclick="saveFloatingAssessmentPanel(${studentIdx})"><i class="fas fa-save"></i> Save</button>
-        </div>
-      </div>`;
-    
-    document.body.appendChild(panel);
-    
-    const backdrop = document.createElement('div');
-    backdrop.id = 'floatingBackdrop';
-    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
-    backdrop.onclick = closeFloatingPanel;
-    document.body.appendChild(backdrop);
-  }
-  
-  function closeFloatingPanel() {
-    const panel = document.getElementById('floatingEntryPanel');
-    const backdrop = document.getElementById('floatingBackdrop');
-    if (panel) panel.remove();
-    if (backdrop) backdrop.remove();
-  }
-  
-  function saveFloatingPanel(studentIdx) {
-    for (let c = 0; c < 22; c++) {
-      const floatVal = document.getElementById(`float_${c}`)?.value;
-      if (floatVal !== undefined) {
-        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
-        if (mainInput) mainInput.value = floatVal;
-      }
-    }
-    const gradedVal = document.getElementById('float_graded')?.value;
-    if (gradedVal !== undefined) {
-      const gradedInput = document.getElementById(`xyGraded_${studentIdx}`);
-      if (gradedInput) gradedInput.value = gradedVal;
-    }
-    updateXYAverage(studentIdx);
-    closeFloatingPanel();
-    showNotification(`Scores saved for ${currentNCKMarks[studentIdx]?.name}`, false);
-  }
-  
-  function saveFloatingAssessmentPanel(studentIdx) {
-    const val0 = document.getElementById('float_ac_0')?.value;
-    const val1 = document.getElementById('float_ac_1')?.value;
-    const val2 = document.getElementById('float_ac_2')?.value;
-    const graded = document.getElementById('float_ac_graded')?.value;
-    
-    if (val0 !== undefined) document.getElementById(`ac_${studentIdx}_0`).value = val0;
-    if (val1 !== undefined) document.getElementById(`ac_${studentIdx}_1`).value = val1;
-    if (val2 !== undefined) document.getElementById(`ac_${studentIdx}_2`).value = val2;
-    if (graded !== undefined) document.getElementById(`acGraded_${studentIdx}`).value = graded;
-    
-    updateACTotal(studentIdx);
-    closeFloatingPanel();
-    showNotification(`Assessment saved for ${currentNCKMarks[studentIdx]?.name}`, false);
-  }
-  
-  function openFullScreenEntry() {
-    if (!currentNCKMarks || currentNCKMarks.length === 0) return;
-    
-    const isXYForms = (currentNCKSheet === 'XY FORMS');
-    
-    let modal = document.getElementById('fullScreenModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'fullScreenModal';
-      document.body.appendChild(modal);
-    }
-    
-    let html = `<div style="background: white; border-radius: 20px; max-width: 95vw; width: 1200px; max-height: 90vh; overflow-y: auto; margin: 20px auto;">
-      <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
-        <div><i class="fas fa-expand"></i> <strong>Full Screen Entry - ${currentNCKSheet}</strong></div>
-        <button class="back-btn" onclick="closeFullScreenModal()" style="padding: 5px 15px; background: rgba(255,255,255,0.2);"><i class="fas fa-times"></i> Close</button>
-      </div>
-      <div style="padding: 20px;">
-        <div style="margin-bottom: 15px;">
-          <label style="font-weight: 600;">Select Student:</label>
-          <select id="fullScreenStudentSelect" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 12px;">
-            ${currentNCKMarks.map((m, i) => `<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
-          </select>
-        </div>
-        <div id="fullScreenFields"></div>
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button class="save-btn" onclick="saveFullScreenEntry()" style="flex: 1;"><i class="fas fa-save"></i> Save & Next</button>
-          <button class="back-btn" onclick="saveFullScreenStay()" style="flex: 1;">Save & Stay</button>
-          <button class="back-btn" onclick="closeFullScreenModal()">Close</button>
-        </div>
-      </div>
-    </div>`;
-    
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.background = 'rgba(0,0,0,0.7)';
-    modal.style.zIndex = '2000';
-    modal.style.overflow = 'auto';
-    modal.innerHTML = html;
-    
-    if (isXYForms) {
-      loadFullScreenXYFields(0);
-      document.getElementById('fullScreenStudentSelect').onchange = () => loadFullScreenXYFields(parseInt(document.getElementById('fullScreenStudentSelect').value));
-    } else {
-      loadFullScreenACFields(0);
-      document.getElementById('fullScreenStudentSelect').onchange = () => loadFullScreenACFields(parseInt(document.getElementById('fullScreenStudentSelect').value));
-    }
-  }
-  
-  function loadFullScreenXYFields(studentIdx) {
-    const container = document.getElementById('fullScreenFields');
+  function loadFastEntryFields(studentIdx) {
+    const container = document.getElementById('fastEntryFields');
     if (!container) return;
     
     const scores = [];
@@ -1039,7 +820,6 @@
       const input = document.getElementById(`xy_${studentIdx}_${c}`);
       scores.push(input ? input.value : 0);
     }
-    const gradedBy = document.getElementById(`xyGraded_${studentIdx}`)?.value || '';
     
     const areaGroups = [
       { title: '🏥 MEDICAL', cols: [0,1,2], names: ['MED1', 'MED2', 'MED3'] },
@@ -1050,275 +830,120 @@
       { title: '🚑 OTHER', cols: [14,15,16,17,18,19,20,21], names: ['OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'] }
     ];
     
-    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">`;
+    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">`;
     for (let group of areaGroups) {
-      html += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-        <h4 style="margin-bottom: 12px; color: #667eea;">${group.title}</h4>`;
+      html += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+        <h4 style="margin-bottom: 10px; color: #667eea;">${group.title}</h4>`;
       for (let i = 0; i < group.cols.length; i++) {
         const colIdx = group.cols[i];
         const score = scores[colIdx] || 0;
-        html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <label style="font-size: 13px; font-weight: 500;">${group.names[i]}:</label>
-          <input type="number" id="full_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width: 80px; padding: 6px; border-radius: 8px; text-align: center;">
+        html += `<div class="fast-entry-row">
+          <label>${group.names[i]}:</label>
+          <input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" onkeypress="handleFastEntryKey(event, ${colIdx})">
         </div>`;
       }
       html += `</div>`;
     }
-    html += `<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-      <h4 style="margin-bottom: 12px; color: #667eea;">📝 Grading</h4>
-      <div><label>Graded By:</label><input type="text" id="full_graded" value="${gradedBy}" placeholder="Lecturer name" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 8px;"></div>
-    </div>`;
     html += `</div>`;
     container.innerHTML = html;
+    
+    // Focus first input
+    setTimeout(() => { const firstInput = container.querySelector('input'); if (firstInput) firstInput.focus(); }, 100);
   }
   
-  function loadFullScreenACFields(studentIdx) {
-    const container = document.getElementById('fullScreenFields');
-    if (!container) return;
-    
-    const s0 = document.getElementById(`ac_${studentIdx}_0`)?.value || 0;
-    const s1 = document.getElementById(`ac_${studentIdx}_1`)?.value || 0;
-    const s2 = document.getElementById(`ac_${studentIdx}_2`)?.value || 0;
-    const gradedBy = document.getElementById(`acGraded_${studentIdx}`)?.value || '';
-    
-    container.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-        <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
-          <h4 style="margin-bottom: 12px; color: #667eea;">📋 Assessments</h4>
-          <div style="margin-bottom: 15px;"><label>ANC Assessment:</label><input type="number" id="full_ac_0" value="${s0}" min="0" max="100" step="0.5" style="width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px;"></div>
-          <div style="margin-bottom: 15px;"><label>CWC Immunization:</label><input type="number" id="full_ac_1" value="${s1}" min="0" max="100" step="0.5" style="width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px;"></div>
-          <div style="margin-bottom: 15px;"><label>Ward Nursing Care:</label><input type="number" id="full_ac_2" value="${s2}" min="0" max="100" step="0.5" style="width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px;"></div>
-          <div><label>Graded By:</label><input type="text" id="full_ac_graded" value="${gradedBy}" placeholder="Lecturer name" style="width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px;"></div>
-        </div>
-      </div>`;
-  }
-  
-  function saveFullScreenEntry() {
-    const studentIdx = parseInt(document.getElementById('fullScreenStudentSelect').value);
-    const isXYForms = (currentNCKSheet === 'XY FORMS');
-    
-    if (isXYForms) {
-      for (let c = 0; c < 22; c++) {
-        const fullVal = document.getElementById(`full_${c}`)?.value;
-        if (fullVal !== undefined) {
-          const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
-          if (mainInput) mainInput.value = fullVal;
-        }
-      }
-      const gradedVal = document.getElementById('full_graded')?.value;
-      if (gradedVal !== undefined) {
-        const gradedInput = document.getElementById(`xyGraded_${studentIdx}`);
-        if (gradedInput) gradedInput.value = gradedVal;
-      }
-      updateXYAverage(studentIdx);
-    } else {
-      for (let i = 0; i < 3; i++) {
-        const fullVal = document.getElementById(`full_ac_${i}`)?.value;
-        if (fullVal !== undefined) {
-          const mainInput = document.getElementById(`ac_${studentIdx}_${i}`);
-          if (mainInput) mainInput.value = fullVal;
-        }
-      }
-      const gradedVal = document.getElementById('full_ac_graded')?.value;
-      if (gradedVal !== undefined) {
-        const gradedInput = document.getElementById(`acGraded_${studentIdx}`);
-        if (gradedInput) gradedInput.value = gradedVal;
-      }
-      updateACTotal(studentIdx);
+  function handleFastEntryKey(event, colIdx) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const nextCol = colIdx + 1;
+      const nextInput = document.getElementById(`fast_${nextCol}`);
+      if (nextInput) { nextInput.focus(); }
+      else { applyFastEntry(); }
     }
+  }
+  
+  function applyFastEntry() {
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    for (let c = 0; c < 22; c++) {
+      const fastVal = document.getElementById(`fast_${c}`)?.value;
+      if (fastVal !== undefined) {
+        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
+        if (mainInput) mainInput.value = fastVal;
+      }
+    }
+    updateXYAverage(studentIdx);
     
     const nextIdx = studentIdx + 1;
     if (nextIdx < currentNCKMarks.length) {
-      document.getElementById('fullScreenStudentSelect').value = nextIdx;
-      if (isXYForms) loadFullScreenXYFields(nextIdx);
-      else loadFullScreenACFields(nextIdx);
+      document.getElementById('fastStudentSelect').value = nextIdx;
+      loadFastEntryFields(nextIdx);
       showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
     } else {
-      showNotification('All students done! Close to save to server.', false);
+      closeFastEntryPanel();
+      showNotification('All students done! Click Save All to save to server.', false);
     }
   }
   
-  function saveFullScreenStay() {
-    const studentIdx = parseInt(document.getElementById('fullScreenStudentSelect').value);
-    const isXYForms = (currentNCKSheet === 'XY FORMS');
-    
-    if (isXYForms) {
-      for (let c = 0; c < 22; c++) {
-        const fullVal = document.getElementById(`full_${c}`)?.value;
-        if (fullVal !== undefined) {
-          const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
-          if (mainInput) mainInput.value = fullVal;
-        }
+  function applyFastEntryAndStay() {
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    for (let c = 0; c < 22; c++) {
+      const fastVal = document.getElementById(`fast_${c}`)?.value;
+      if (fastVal !== undefined) {
+        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`);
+        if (mainInput) mainInput.value = fastVal;
       }
-      const gradedVal = document.getElementById('full_graded')?.value;
-      if (gradedVal !== undefined) {
-        const gradedInput = document.getElementById(`xyGraded_${studentIdx}`);
-        if (gradedInput) gradedInput.value = gradedVal;
-      }
-      updateXYAverage(studentIdx);
-    } else {
-      for (let i = 0; i < 3; i++) {
-        const fullVal = document.getElementById(`full_ac_${i}`)?.value;
-        if (fullVal !== undefined) {
-          const mainInput = document.getElementById(`ac_${studentIdx}_${i}`);
-          if (mainInput) mainInput.value = fullVal;
-        }
-      }
-      const gradedVal = document.getElementById('full_ac_graded')?.value;
-      if (gradedVal !== undefined) {
-        const gradedInput = document.getElementById(`acGraded_${studentIdx}`);
-        if (gradedInput) gradedInput.value = gradedVal;
-      }
-      updateACTotal(studentIdx);
     }
+    updateXYAverage(studentIdx);
     showNotification(`Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
   }
   
-  function closeFullScreenModal() {
-    const modal = document.getElementById('fullScreenModal');
-    if (modal) {
-      modal.style.display = 'none';
-      modal.innerHTML = '';
-    }
+  function openFastEntryForStudent(studentIdx, studentName) {
+    if (!fastEntryVisible) openFastEntryPanel();
+    setTimeout(() => {
+      const select = document.getElementById('fastStudentSelect');
+      if (select) { select.value = studentIdx; loadFastEntryFields(studentIdx); }
+    }, 200);
   }
   
-  // ======================= NCK COLUMN MANAGEMENT (BOTH SHEETS) =======================
-  async function showNCKColumnManager() {
-    if (currentUser.role !== 'admin') {
-      showNotification('Only administrators can manage NCK columns', true);
-      return;
-    }
-    
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
-    const isXYForms = (sheetName === 'XY FORMS');
-    
-    let currentColumns = [];
-    if (isXYForms) {
-      currentColumns = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL CLINICS'];
-    } else {
-      currentColumns = ['ANC ASSESSMENT', 'CWC IMMUNIZATION', 'WARD NURSING CARE'];
-    }
-    
-    const modalHtml = `
-      <div id="nckColumnModal" class="modal">
-        <div class="modal-content" style="width: 750px;">
-          <div class="modal-header">
-            <h3><i class="fas fa-columns"></i> Manage Columns - ${sheetName}</h3>
-          <span class="close" onclick="closeModal()">&times;</span>
-          </div>
-          <div class="modal-body">
-            <div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;">
-              <i class="fas fa-info-circle"></i> <strong>Tip:</strong> Add or remove columns. Changes apply to ALL students.
-              ${isXYForms ? '<br>XY FORMS has 22 clinical areas. You can add more or remove existing ones.' : '<br>ASSESSMENT & CASE has 3 assessment areas. You can add more assessments (e.g., Emergency, ICU, etc.).'}
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-              <h4><i class="fas fa-plus-circle"></i> Add New ${isXYForms ? 'Clinical Area' : 'Assessment'}</h4>
-              <div style="display: flex; gap: 10px;">
-                <input type="text" id="newAreaName" placeholder="${isXYForms ? 'e.g., ICU, EMERGENCY' : 'e.g., EMERGENCY ASSESSMENT'}" style="flex: 1;">
-                <button class="save-btn" onclick="addNCKColumn()">Add Column</button>
-              </div>
-            </div>
-            
-            <div>
-              <h4><i class="fas fa-list"></i> Current ${isXYForms ? 'Clinical Areas' : 'Assessments'} (${currentColumns.length})</h4>
-              <div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 350px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">
-                ${currentColumns.map((area, idx) => `
-                  <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <span><strong>${idx + 1}.</strong> ${area}</span>
-                    <button class="delete-btn" onclick="deleteNCKColumn(${idx})" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-            
-            <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;">
-              <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Deleting a column will remove all scores for that ${isXYForms ? 'clinical area' : 'assessment'} for ALL students. This action cannot be undone.
-            </div>
-            
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-              <button class="back-btn" onclick="closeModal()">Cancel</button>
-              <button class="save-btn" onclick="applyNCKColumnChanges()">Apply Changes</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  function openFastAssessmentEntry(studentIdx, studentName) {
+    // For assessment sheet - simpler version
+    const panel = document.createElement('div');
+    panel.id = 'fastEntryPanel';
+    panel.className = 'fast-entry-panel';
+    panel.innerHTML = `
+      <div class="fast-entry-header">
+        <span><i class="fas fa-bolt"></i> Fast Entry - ${studentName}</span>
+        <span><i class="fas fa-times" onclick="closeFastEntryPanel()" style="cursor: pointer;"></i></span>
+      </div>
+      <div class="fast-entry-body">
+        <div style="margin-bottom: 15px;"><strong>ANC Assessment:</strong> <input type="number" id="fast_ac_0" value="${document.getElementById(`ac_${studentIdx}_0`)?.value || 0}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;"></div>
+        <div style="margin-bottom: 15px;"><strong>CWC Immunization:</strong> <input type="number" id="fast_ac_1" value="${document.getElementById(`ac_${studentIdx}_1`)?.value || 0}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;"></div>
+        <div style="margin-bottom: 15px;"><strong>Ward Nursing Care:</strong> <input type="number" id="fast_ac_2" value="${document.getElementById(`ac_${studentIdx}_2`)?.value || 0}" min="0" max="100" step="0.5" style="width: 100%; padding: 10px;"></div>
+        <div><strong>Graded By:</strong> <input type="text" id="fast_ac_graded" value="${document.getElementById(`acGraded_${studentIdx}`)?.value || ''}" style="width: 100%; padding: 10px;"></div>
+        <button class="save-btn" onclick="saveFastAssessment(${studentIdx})" style="width: 100%; margin-top: 15px;"><i class="fas fa-save"></i> Save & Close</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    fastEntryVisible = true;
   }
   
-  async function addNCKColumn() {
-    const newName = document.getElementById('newAreaName')?.value.trim();
-    if (!newName) { showNotification('Enter column name', true); return; }
-    if (currentNCKMarks) {
-      for (let i = 0; i < currentNCKMarks.length; i++) {
-        if (!currentNCKMarks[i].scores) currentNCKMarks[i].scores = [];
-        currentNCKMarks[i].scores.push(0);
-      }
-      if (currentNCKSheet === 'XY FORMS') displayXYFormsMarks(currentNCKMarks);
-      else displayAssessmentMarks(currentNCKMarks);
+  function saveFastAssessment(studentIdx) {
+    for (let i = 0; i < 3; i++) {
+      const input = document.getElementById(`ac_${studentIdx}_${i}`);
+      const fastInput = document.getElementById(`fast_ac_${i}`);
+      if (input && fastInput) input.value = fastInput.value;
     }
-    closeModal();
-    showNotification(`Added column: ${newName}`, false);
-    setTimeout(() => showNCKColumnManager(), 500);
+    const gradedInput = document.getElementById(`acGraded_${studentIdx}`);
+    const fastGraded = document.getElementById('fast_ac_graded');
+    if (gradedInput && fastGraded) gradedInput.value = fastGraded.value;
+    updateACTotal(studentIdx);
+    closeFastEntryPanel();
+    showNotification('Saved!', false);
   }
   
-  async function deleteNCKColumn(colIdx) {
-    if (!confirm(`Delete column ${colIdx + 1}? This removes ALL scores in this column.`)) return;
-    if (currentNCKMarks) {
-      for (let i = 0; i < currentNCKMarks.length; i++) {
-        if (currentNCKMarks[i].scores && currentNCKMarks[i].scores.length > colIdx) {
-          currentNCKMarks[i].scores.splice(colIdx, 1);
-        }
-      }
-      if (currentNCKSheet === 'XY FORMS') displayXYFormsMarks(currentNCKMarks);
-      else displayAssessmentMarks(currentNCKMarks);
-    }
-    closeModal();
-    showNotification(`Deleted column ${colIdx + 1}`, false);
-    setTimeout(() => showNCKColumnManager(), 500);
-  }
-  
-  async function applyNCKColumnChanges() {
-    showLoading('Saving column structure...');
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
-    const marksData = [];
-    const isXYForms = (sheetName === 'XY FORMS');
-    for (let i = 0; i < currentNCKMarks.length; i++) {
-      if (isXYForms) {
-        marksData.push({ row: i + 2, scores: currentNCKMarks[i].scores || [], gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' });
-      } else {
-        marksData.push({ row: i + 2, scores: currentNCKMarks[i].scores || [], gradedBy: document.getElementById(`acGraded_${i}`)?.value || '' });
-      }
-    }
-    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: 'BLOCK_0', subject: sheetName, marksData: marksData, lecturerName: currentUser.name, examType: 'nck' }) });
-    hideLoading(); closeModal();
-    showNotification(result?.success ? 'Column structure saved!' : 'Error saving', !result?.success);
-    if (result?.success) loadNCKMarks();
-  }
-  
-  // ======================= QUICK FILL FUNCTIONS =======================
-  function fillAllEmptyAreas() {
-    const defaultScore = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
-    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-    for (let i = 0; i < rows.length; i++) {
-      let changed = false;
-      for (let c = 0; c < 22; c++) {
-        const input = document.getElementById(`xy_${i}_${c}`);
-        if (input && (!input.value || parseFloat(input.value) === 0)) { input.value = defaultScore; changed = true; }
-      }
-      if (changed) updateXYAverage(i);
-    }
-    showNotification(`Filled empty areas with ${defaultScore}`, false);
-  }
-  
-  function fillAllWithScore() {
-    const score = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
-    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
-    for (let i = 0; i < rows.length; i++) {
-      for (let c = 0; c < 22; c++) { const input = document.getElementById(`xy_${i}_${c}`); if (input) input.value = score; }
-      updateXYAverage(i);
-    }
-    showNotification(`Applied ${score} to ALL clinical areas`, false);
+  function closeFastEntryPanel() {
+    const panel = document.getElementById('fastEntryPanel');
+    if (panel) panel.remove();
+    fastEntryVisible = false;
   }
   
   window.updateXYAverage = function(idx) {
@@ -1347,6 +972,30 @@
     if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
   };
   
+  function fillAllEmptyAreas() {
+    const defaultScore = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
+    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+    for (let i = 0; i < rows.length; i++) {
+      let changed = false;
+      for (let c = 0; c < 22; c++) {
+        const input = document.getElementById(`xy_${i}_${c}`);
+        if (input && (!input.value || parseFloat(input.value) === 0)) { input.value = defaultScore; changed = true; }
+      }
+      if (changed) updateXYAverage(i);
+    }
+    showNotification(`Filled empty areas with ${defaultScore}`, false);
+  }
+  
+  function fillAllWithScore() {
+    const score = parseFloat(document.getElementById('quickFillScore')?.value) || 75;
+    const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+    for (let i = 0; i < rows.length; i++) {
+      for (let c = 0; c < 22; c++) { const input = document.getElementById(`xy_${i}_${c}`); if (input) input.value = score; }
+      updateXYAverage(i);
+    }
+    showNotification(`Applied ${score} to ALL clinical areas`, false);
+  }
+  
   window.saveNCKMarks = async function() {
     const sheetName = document.getElementById('nckSheetSelect').value;
     let marksData = [];
@@ -1369,6 +1018,58 @@
     showNotification(result?.success ? 'NCK marks saved successfully!' : 'Error saving NCK marks', !result?.success);
     if (result?.success) loadNCKMarks();
   };
+  
+  // ======================= NCK COLUMN MANAGEMENT (ADMIN ONLY) =======================
+  async function showNCKColumnManager() {
+    if (currentUser.role !== 'admin') { showNotification('Only administrators can manage NCK columns', true); return; }
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    let currentAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL CLINICS'];
+    const modalHtml = `<div id="nckColumnModal" class="modal"><div class="modal-content" style="width: 700px;"><div class="modal-header"><h3><i class="fas fa-columns"></i> Manage NCK Sheet Columns - ${sheetName}</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;"><i class="fas fa-info-circle"></i> <strong>Tip:</strong> Add or remove clinical areas. Changes apply to ALL students.</div><div style="margin-bottom: 20px;"><h4><i class="fas fa-plus-circle"></i> Add New Clinical Area</h4><div style="display: flex; gap: 10px;"><input type="text" id="newAreaName" placeholder="e.g., ICU, EMERGENCY" style="flex: 1;"><button class="save-btn" onclick="addNCKColumn()">Add Column</button></div></div><div style="margin-bottom: 20px;"><h4><i class="fas fa-list"></i> Current Clinical Areas (${currentAreas.length})</h4><div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">${currentAreas.map((area, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;"><span><strong>${idx + 1}.</strong> ${area}</span><button class="delete-btn" onclick="deleteNCKColumn(${idx})" style="padding: 4px 8px;">Delete</button></div>`).join('')}</div></div><div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Deleting a column removes all scores for that area. Cannot be undone.</div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="back-btn" onclick="closeModal()">Cancel</button><button class="save-btn" onclick="applyNCKColumnChanges()">Apply Changes</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+  
+  async function addNCKColumn() {
+    const newName = document.getElementById('newAreaName')?.value.trim();
+    if (!newName) { showNotification('Enter column name', true); return; }
+    if (currentNCKMarks) {
+      for (let i = 0; i < currentNCKMarks.length; i++) {
+        if (!currentNCKMarks[i].scores) currentNCKMarks[i].scores = [];
+        currentNCKMarks[i].scores.push(0);
+      }
+      displayXYFormsMarks(currentNCKMarks);
+    }
+    closeModal();
+    showNotification(`Added column: ${newName}`, false);
+    setTimeout(() => showNCKColumnManager(), 500);
+  }
+  
+  async function deleteNCKColumn(colIdx) {
+    if (!confirm(`Delete column ${colIdx + 1}? This removes ALL scores in this column.`)) return;
+    if (currentNCKMarks) {
+      for (let i = 0; i < currentNCKMarks.length; i++) {
+        if (currentNCKMarks[i].scores && currentNCKMarks[i].scores.length > colIdx) {
+          currentNCKMarks[i].scores.splice(colIdx, 1);
+        }
+      }
+      displayXYFormsMarks(currentNCKMarks);
+    }
+    closeModal();
+    showNotification(`Deleted column ${colIdx + 1}`, false);
+    setTimeout(() => showNCKColumnManager(), 500);
+  }
+  
+  async function applyNCKColumnChanges() {
+    showLoading('Saving column structure...');
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    const marksData = [];
+    for (let i = 0; i < currentNCKMarks.length; i++) {
+      marksData.push({ row: i + 2, scores: currentNCKMarks[i].scores || [], gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' });
+    }
+    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: 'BLOCK_0', subject: sheetName, marksData: marksData, lecturerName: currentUser.name, examType: 'nck' }) });
+    hideLoading(); closeModal();
+    showNotification(result?.success ? 'Column structure saved!' : 'Error saving', !result?.success);
+    if (result?.success) loadNCKMarks();
+  }
   
   // ======================= INTERNAL MARKS (UNCHANGED) =======================
   async function showAdminMarks() {
@@ -1399,7 +1100,7 @@
     if (at === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
     else if (at === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
     else html += '<th>Exam (0-100)</th>';
-    html += '<th>Total</th><th>Status</th><th>Graded By</th><tr></thead><tbody>';
+    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
     window.currentAdminMarks = marks; window.currentAdminAssessmentType = at; window.currentAdminBlock = block; window.currentAdminSubject = subject;
     for (let i = 0; i < marks.length; i++) {
       const m = marks[i]; const cat1 = m.cat1 || '', cat2 = m.cat2 || '', exam = m.exam || '';
@@ -1412,7 +1113,7 @@
       if (at === 'full') { html += `<td><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`; html += `<td><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`; html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; }
       else if (at === 'single_cat') { html += `<td><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`; html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; }
       else { html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`; }
-      html += `<td id="atotal_${i}">${total}</td><td id="astatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy || '-'}</td></tr>`;
+      html += `<td id="atotal_${i}">${total}</td><td id="astatus_${i}">${status}<td><td style="padding:10px;">${m.gradedBy || '-'}</td></tr>`;
     }
     html += `</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks</button></div>`;
     document.getElementById('marksTable').innerHTML = html; hideLoading();
@@ -1470,7 +1171,7 @@
     if (atype === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
     else if (atype === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
     else html += '<th>Exam (0-100)</th>';
-    html += '<th>Total</th><th>Status</th><th>Graded By</th><tr></thead><tbody>';
+    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
     window.currentMarksData = marks; window.currentMarksSubject = subject; window.currentMarksBlock = block; window.currentAssessmentType = atype;
     for (let i = 0; i < marks.length; i++) {
       const m = marks[i]; const cat1 = m.cat1 || '', cat2 = m.cat2 || '', exam = m.exam || '';
@@ -1480,7 +1181,7 @@
       else total = Math.round(Math.min(nexam,100)*10)/10;
       const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
       html += `<tr class="${rowClass}"><td>${m.admission}</td><td>${m.name}</td>`;
-      if (atype === 'full') { html += `<td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; html += `<td><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; }
+      if (atype === 'full') { html += `<td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; html += `<td><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></tr>`; }
       else if (atype === 'single_cat') { html += `<td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; }
       else { html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; }
       html += `<td id="ltotal_${i}">${total}</td><td id="lstatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy || '-'}</td></tr>`;
@@ -1510,7 +1211,7 @@
     hideLoading(); showNotification(res?.success ? 'Saved!' : 'Error', !res?.success); if (res?.success) loadMarksForSubject(window.currentMarksBlock, window.currentMarksSubject, window.currentAssessmentType);
   };
   
-  // ======================= STUDENTS, LECTURERS, UNITS =======================
+  // ======================= STUDENTS, LECTURERS, UNITS (SIMPLIFIED) =======================
   async function showStudents() {
     const students = await apiCall('/api/students', {});
     let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3><button class="save-btn" onclick="showAddStudentModal()" style="margin: 10px 0;"><i class="fas fa-plus"></i> Add Student</button><button class="export-btn" onclick="exportToCSV(students,'students')"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
