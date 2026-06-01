@@ -1,158 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <base target="_top">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nursing School System | Nakuru College of Health Sciences</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Nursing School System | NCK & Internal Marks | Nakuru College</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; transition: all 0.3s ease; }
-    body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
-    body.dark-mode .header, body.dark-mode .stat-card, body.dark-mode .selector-group,
-    body.dark-mode .user-info, body.dark-mode .subject-card, body.dark-mode table,
-    body.dark-mode .lecturer-card, body.dark-mode .unit-card, body.dark-mode .modal-content,
-    body.dark-mode .login-container { background: #2d2d44; color: #eee; }
-    body.dark-mode th { background: #0f3460; }
-    body.dark-mode td { border-bottom-color: #3d3d5c; }
-    body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #1e1e2e; color: #eee; border-color: #3d3d5c; }
+    
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --secondary: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --dark: #1e293b;
+      --light: #f8fafc;
+      --gray: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      --radius: 24px;
+      --radius-sm: 12px;
+    }
+    
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      min-height: 100vh; 
+      padding: 24px; 
+      transition: all 0.3s ease;
+    }
+    
+    body.dark-mode {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+    
+    body.dark-mode .card,
+    body.dark-mode .header,
+    body.dark-mode .stat-card,
+    body.dark-mode .selector-group,
+    body.dark-mode .user-info,
+    body.dark-mode .subject-card,
+    body.dark-mode table,
+    body.dark-mode .lecturer-card,
+    body.dark-mode .unit-card,
+    body.dark-mode .modal-content,
+    body.dark-mode .login-container {
+      background: #1e293b;
+      color: #f1f5f9;
+      border-color: #334155;
+    }
+    
+    body.dark-mode th {
+      background: #0f172a;
+    }
+    
+    body.dark-mode td {
+      border-bottom-color: #334155;
+    }
+    
+    body.dark-mode input,
+    body.dark-mode select,
+    body.dark-mode textarea {
+      background: #0f172a;
+      color: #f1f5f9;
+      border-color: #475569;
+    }
+    
     .container { max-width: 1400px; margin: 0 auto; }
-    .header { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: white; border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
-    .stat-number { font-size: 36px; font-weight: bold; color: #667eea; }
-    .stat-label { margin-top: 10px; font-size: 14px; color: #555; }
-    .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-    .admin-menu-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 20px; }
-    .menu-btn { padding: 15px; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .menu-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    
+    /* Glassmorphism Header */
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      text-align: center;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    body.dark-mode .header {
+      background: rgba(30, 41, 59, 0.95);
+    }
+    
+    .header h1 {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-size: 32px;
+      font-weight: 800;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .stat-card:hover::before {
+      transform: scaleX(1);
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+    }
+    
+    .stat-number {
+      font-size: 42px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .stat-label {
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray);
+    }
+    
+    /* Selector Group */
+    .selector-group {
+      background: white;
+      border-radius: 20px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    
+    .selector-group label {
+      font-weight: 600;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Modern Select & Input */
+    select, input {
+      padding: 12px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    /* Menu Buttons */
+    .admin-menu-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .menu-btn {
+      padding: 16px;
+      border: none;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .menu-btn i {
+      font-size: 16px;
+    }
+    
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    
     .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .btn-success { background: linear-gradient(135deg, #27ae60, #229954); }
-    .btn-info { background: linear-gradient(135deg, #3498db, #2980b9); }
-    .btn-warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
-    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-    .btn-export { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
-    .btn-dark { background: linear-gradient(135deg, #2c3e50, #1a1a2e); }
-    .user-info { background: white; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .back-btn { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: bold; }
-    .save-btn { background: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px; }
-    .edit-btn, .unit-edit-btn { background: #3498db; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-    .delete-btn, .unit-delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-    .export-btn { background: #8e44ad; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
-    select, input { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; }
-    table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    th { background: #667eea; color: white; font-weight: bold; }
-    tr:hover { background: #f8fafc; }
-    input[type="number"] { width: 80px; padding: 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px; }
-    .pass-row { background-color: #d5f5e3 !important; }
-    .fail-row { background-color: #fadbd8 !important; }
-    body.dark-mode .pass-row { background-color: #1e4a2f !important; }
-    body.dark-mode .fail-row { background-color: #7a2e2e !important; }
-    .login-container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .login-container input, .login-container select { width: 100%; margin: 10px 0; }
-    .login-container button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .error { color: red; margin-top: 10px; text-align: center; }
-    .selector-group { background: white; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
-    .selector-group label { font-weight: bold; color: #333; }
-    .selector-group select { width: auto; min-width: 200px; margin: 0; }
-    .lecturer-card, .unit-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .subject-badge { background: #667eea; color: white; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 2px; display: inline-block; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 600px; max-width: 90%; max-height: 80%; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
-    .modal-header h3 { color: #333; }
-    .close { cursor: pointer; font-size: 24px; color: #999; }
-    .close:hover { color: #333; }
-    .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loader-text { color: white; margin-top: 15px; font-size: 16px; }
-    .notification-toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: slideIn 0.3s ease; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    .content-area { margin-top: 20px; }
-    .unit-assessment-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-left: 8px; }
-    .badge-full { background: #27ae60; color: white; }
-    .badge-single { background: #f39c12; color: white; }
-    .badge-exam { background: #e74c3c; color: white; }
-    .export-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; }
-    .subject-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
-    .subject-card { background: white; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #667eea; }
-    .subject-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); background: #f8f9fa; }
-    .subject-card h4 { margin-bottom: 8px; font-size: 16px; }
-    .subject-card p { font-size: 12px; margin-top: 5px; }
-    .assessment-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-top: 8px; }
-    .search-box { width: 300px; padding: 8px 15px; border-radius: 20px; margin-bottom: 15px; }
-    .progress-bar { width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; position: fixed; top: 0; left: 0; z-index: 10001; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
-    .keyboard-hint { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 11px; z-index: 9999; }
-    @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } .admin-menu-grid { grid-template-columns: repeat(3, 1fr); } .search-box { width: 100%; } }
+    .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+    .btn-info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .btn-export { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .btn-dark { background: linear-gradient(135deg, #1e293b, #0f172a); }
+    
+    /* User Info Bar */
+    .user-info {
+      background: white;
+      border-radius: 20px;
+      padding: 16px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: var(--shadow);
+    }
+    
+    .logout-btn {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 40px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logout-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+    }
+    
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1e293b;
+      border-left: 4px solid var(--primary);
+      padding-left: 16px;
+    }
+    
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+    }
+    
+    th {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    
+    tr:hover {
+      background: rgba(99, 102, 241, 0.05);
+    }
+    
+    .pass-row { background-color: #d1fae5 !important; }
+    .fail-row { background-color: #fee2e2 !important; }
+    
+    body.dark-mode .pass-row { background-color: #064e3b !important; }
+    body.dark-mode .fail-row { background-color: #7f1d1d !important; }
+    
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      gap: 6px;
+    }
+    
+    .badge-pass { background: #d1fae5; color: #065f46; }
+    .badge-fail { background: #fee2e2; color: #991b1b; }
+    .badge-full { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    .badge-single { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+    .badge-exam { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+    
+    /* Subject Cards */
+    .subject-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .subject-card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--primary);
+    }
+    
+    .subject-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+    }
+    
+    .subject-card h4 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1e293b;
+    }
+    
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 28px;
+      width: 520px;
+      max-width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-xl);
+      animation: slideUp 0.3s ease;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 28px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .modal-header h3 {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .close {
+      cursor: pointer;
+      font-size: 28px;
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+    
+    .close:hover {
+      color: #ef4444;
+      transform: rotate(90deg);
+    }
+    
+    .modal-body {
+      padding: 28px;
+    }
+    
+    .modal-body .field {
+      margin-bottom: 20px;
+    }
+    
+    .modal-body label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #334155;
+    }
+    
+    /* Buttons */
+    .save-btn, .export-btn, .edit-btn, .delete-btn, .back-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .save-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    .export-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+    .edit-btn { background: #3b82f6; color: white; }
+    .delete-btn { background: #ef4444; color: white; }
+    .back-btn { background: #64748b; color: white; }
+    
+    /* Loader */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loader-text {
+      color: white;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    
+    /* Notification */
+    .notification-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 60px;
+      z-index: 10000;
+      animation: slideInRight 0.3s ease;
+      box-shadow: var(--shadow-lg);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    
+    .full-width {
+      grid-column: span 2;
+    }
+    
+    /* Rankings */
+    .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+    .rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: white; }
+    .rank-3 { background: linear-gradient(135deg, #fb923c, #f97316); color: white; }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 16px; }
+      .stats-grid, .admin-menu-grid, .menu-grid, .charts-grid { grid-template-columns: repeat(2, 1fr); }
+      .full-width { grid-column: span 1; }
+      .admin-menu-grid { grid-template-columns: repeat(3, 1fr); }
+      .header h1 { font-size: 24px; }
+    }
+    
+    /* Login */
+    .login-container {
+      max-width: 460px;
+      margin: 80px auto;
+      background: white;
+      padding: 48px 40px;
+      border-radius: 32px;
+      box-shadow: var(--shadow-xl);
+    }
+    
+    .login-container h2 {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .login-container button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 8px;
+    }
+    
+    .lecturer-card, .unit-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow);
+    }
+    
+    .subject-badge {
+      background: var(--primary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      margin: 2px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
 <div id="app"></div>
-<div class="progress-bar" id="progressBar" style="display:none;"><div class="progress-fill" id="progressFill"></div></div>
 
 <script>
-  // ===== CONFIGURATION =====
+  // ======================= CONFIGURATION =======================
   const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
   const INTAKE_YEARS = ['2024', '2025', '2026'];
   
-  var currentUser = null;
-  var currentYear = '2026';
-  var currentExamType = 'internal';
-  var currentBlock = null;
-  var currentSubject = null;
-  var currentAssessmentType = null;
-  var configCache = null;
-  var autoSaveTimer = null;
-  var hasUnsavedChanges = false;
+  let currentUser = null;
+  let currentYear = '2026';
+  let currentExamType = 'internal';
+  let configCache = null;
   
-  // ===== UTILITY FUNCTIONS =====
-  function showLoading(message) {
-    var existingLoader = document.querySelector('.loader');
-    if (existingLoader) existingLoader.remove();
-    var loader = document.createElement('div');
+  // Marks entry globals
+  let currentMarksData = null;
+  let currentMarksBlock = null;
+  let currentMarksSubject = null;
+  let currentAssessmentType = null;
+  let currentAdminMarks = null;
+  let currentAdminAssessmentType = null;
+  let currentAdminBlock = null;
+  let currentAdminSubject = null;
+  let currentNCKMarks = null;
+  let currentNCKSheet = null;
+  
+  // ======================= UTILITIES =======================
+  function showLoading(msg) {
+    let existing = document.querySelector('.loader');
+    if (existing) existing.remove();
+    let loader = document.createElement('div');
     loader.className = 'loader';
-    loader.innerHTML = '<div class="spinner"></div><div class="loader-text">' + (message || 'Loading...') + '</div>';
+    loader.innerHTML = `<div class="spinner"></div><div class="loader-text">${msg || 'Loading...'}</div>`;
     document.body.appendChild(loader);
   }
   
   function hideLoading() {
-    var loader = document.querySelector('.loader');
+    let loader = document.querySelector('.loader');
     if (loader) loader.remove();
   }
   
-  function showNotification(message, isError) {
-    var toast = document.createElement('div');
+  function showNotification(msg, isErr) {
+    let toast = document.createElement('div');
     toast.className = 'notification-toast';
-    toast.style.backgroundColor = isError ? '#e74c3c' : '#27ae60';
-    toast.innerHTML = message;
+    toast.style.background = isErr ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #10b981, #059669)';
+    toast.innerHTML = `<i class="fas ${isErr ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${msg}`;
     document.body.appendChild(toast);
-    setTimeout(function() { toast.remove(); }, 3000);
+    setTimeout(() => toast.remove(), 3000);
   }
   
-  async function apiCall(endpoint, options) {
-    options = options || {};
+  async function apiCall(endpoint, opts = {}) {
     try {
-      var headers = { 
+      const headers = {
         'Content-Type': 'application/json',
         'X-Year': currentYear,
         'X-Exam-Type': currentExamType
       };
-      var response = await fetch(API_BASE_URL + endpoint, { headers: headers, ...options });
-      var contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      } else {
-        return { error: 'Server returned non-JSON response' };
-      }
-    } catch (error) {
-      console.error('API Error:', error);
-      showNotification('Network error: ' + error.message, true);
-      return { error: error.message };
+      const res = await fetch(API_BASE_URL + endpoint, { headers, ...opts });
+      const ct = res.headers.get('content-type');
+      if (ct && ct.includes('application/json')) return await res.json();
+      return { error: 'Non-JSON response' };
+    } catch (e) {
+      console.error(e);
+      return { error: e.message };
     }
   }
   
@@ -163,88 +687,45 @@
   }
   
   function exportToCSV(data, filename) {
-    if (!data || data.length === 0) { showNotification('No data to export', true); return; }
-    var csvRows = [];
-    var headers = Object.keys(data[0]);
-    csvRows.push(headers.join(','));
-    for (var r = 0; r < data.length; r++) {
-      var row = data[r];
-      var values = [];
-      for (var h = 0; h < headers.length; h++) {
-        var val = row[headers[h]] || '';
-        values.push('"' + String(val).replace(/"/g, '""') + '"');
-      }
-      csvRows.push(values.join(','));
-    }
-    var blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
+    if (!data || !data.length) { showNotification('No data to export', true); return; }
+    const headers = Object.keys(data[0]);
+    let csv = [headers.join(',')];
+    data.forEach(row => {
+      const values = headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`);
+      csv.push(values.join(','));
+    });
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
-    a.download = filename + '_' + new Date().toISOString().slice(0,19) + '.csv';
+    a.download = `${filename}_${new Date().toISOString().slice(0, 19)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showNotification('Export completed!', false);
   }
   
-  // ===== DARK MODE =====
   function initDarkMode() {
-    var savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode === 'true') {
-      document.body.classList.add('dark-mode');
-    }
+    if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
   }
   
   function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-    showNotification('Dark mode ' + (document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled'), false);
+    showNotification(`Dark mode ${document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled'}`, false);
   }
   
-  // ===== KEYBOARD SHORTCUTS =====
-  function initKeyboardShortcuts() {
-    document.addEventListener('keydown', function(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (window.saveLecturerMarks) window.saveLecturerMarks();
-        else if (window.saveAdminMarks) window.saveAdminMarks();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault();
-        var searchBox = document.getElementById('subjectSearch');
-        if (searchBox) searchBox.focus();
-      }
-      if (e.key === 'Escape') { closeModal(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-        e.preventDefault();
-        toggleDarkMode();
-      }
-    });
-    if (!document.querySelector('.keyboard-hint')) {
-      var hint = document.createElement('div');
-      hint.className = 'keyboard-hint';
-      hint.innerHTML = 'Ctrl+S: Save | Ctrl+F: Search | Ctrl+D: Dark Mode | ESC: Close';
-      document.body.appendChild(hint);
-    }
+  function closeModal() {
+    document.querySelectorAll('.modal').forEach(m => m.remove());
   }
   
-  // ===== AUTO-SAVE =====
-  function markAsChanged() { hasUnsavedChanges = true; }
-  
-  function closeModal() { var modals = document.querySelectorAll('.modal'); for(var i=0;i<modals.length;i++) modals[i].remove(); }
-  
-  // ===== LOGIN FUNCTIONS =====
+  // ======================= LOGIN & MAIN =======================
   function checkLogin() {
     initDarkMode();
-    initKeyboardShortcuts();
-    var saved = localStorage.getItem('nursingUser');
+    const saved = localStorage.getItem('nursingUser');
     if (saved) {
       currentUser = JSON.parse(saved);
-      var savedYear = localStorage.getItem('selectedYear');
-      if (savedYear && INTAKE_YEARS.indexOf(savedYear) !== -1) {
-        currentYear = savedYear;
-      } else {
-        currentYear = '2026';
-      }
+      const savedYear = localStorage.getItem('selectedYear');
+      currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026';
       showMain();
     } else {
       showLogin();
@@ -252,37 +733,46 @@
   }
   
   function showLogin() {
-    var yearOptions = '';
-    for(var i=0;i<INTAKE_YEARS.length;i++) {
-      var y = INTAKE_YEARS[i];
-      yearOptions += '<option value="' + y + '" ' + (y === '2026' ? 'selected' : '') + '>March ' + y + ' Class</option>';
-    }
-    document.getElementById('app').innerHTML = '<div class="login-container"><h2 style="text-align:center; margin-bottom:20px;">🏥 Nursing School System</h2><p style="text-align:center; color:#666; margin-bottom:20px;">Nakuru College of Health Sciences</p><select id="loginYear">' + yearOptions + '</select><input type="text" id="username" placeholder="Username"><input type="password" id="password" placeholder="Password"><button onclick="doLogin()">Login</button><div id="loginError" class="error"></div></div>';
+    const yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === '2026' ? 'selected' : ''}>🎓 March ${y} Class</option>`).join('');
+    document.getElementById('app').innerHTML = `
+      <div class="login-container">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <i class="fas fa-graduation-cap" style="font-size: 48px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent;"></i>
+        </div>
+        <h2>Nursing School System</h2>
+        <p style="text-align: center; color: #64748b; margin-bottom: 32px;">Nakuru College of Health Sciences</p>
+        <select id="loginYear">${yearOptions}</select>
+        <input type="text" id="username" placeholder="👤 Username">
+        <input type="password" id="password" placeholder="🔒 Password">
+        <button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
+        <div id="loginError" class="error" style="color: #ef4444; margin-top: 16px; text-align: center;"></div>
+      </div>
+    `;
   }
   
   async function doLogin() {
     showLoading('Logging in...');
-    var username = document.getElementById('username').value;
-    var password = document.getElementById('password').value;
-    var year = document.getElementById('loginYear').value;
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const year = document.getElementById('loginYear').value;
     currentYear = year;
-    currentExamType = 'internal';
     localStorage.setItem('selectedYear', currentYear);
-    localStorage.setItem('selectedExamType', currentExamType);
-    var result = await apiCall('/api/login', { method: 'POST', body: JSON.stringify({ username: username, password: password, year: currentYear }) });
+    const result = await apiCall('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, year: currentYear })
+    });
     hideLoading();
     if (result.success) {
       currentUser = result.user;
       localStorage.setItem('nursingUser', JSON.stringify(currentUser));
       showMain();
-      showNotification('Welcome ' + currentUser.name + '!', false);
+      showNotification(`Welcome ${currentUser.name}!`, false);
     } else {
       document.getElementById('loginError').innerHTML = result.message;
     }
   }
   
   function logout() {
-    if (autoSaveTimer) clearInterval(autoSaveTimer);
     localStorage.removeItem('nursingUser');
     currentUser = null;
     configCache = null;
@@ -291,36 +781,87 @@
   
   async function showMain() {
     showLoading('Loading Dashboard...');
-    var isAdmin = (currentUser.role === 'admin');
-    var yearOptions = '';
-    for(var i=0;i<INTAKE_YEARS.length;i++) {
-      var y = INTAKE_YEARS[i];
-      yearOptions += '<option value="' + y + '" ' + (y === currentYear ? 'selected' : '') + '>March ' + y + ' Class</option>';
-    }
-    var examTypeOptions = '<option value="internal" ' + (currentExamType === 'internal' ? 'selected' : '') + '>📝 Internal Exams (CAT1 + CAT2 + Exam)</option><option value="nck" ' + (currentExamType === 'nck' ? 'selected' : '') + '>🏥 NCK Score Sheet (Clinical Assessment)</option>';
-    var statsHtml = '<div class="selector-group"><div><label>📅 Class / Intake Year:</label> <select id="yearSelectMain" onchange="changeYear()">' + yearOptions + '</select></div><div><label>📋 Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">' + examTypeOptions + '</select></div></div><div class="stats-grid"><div class="stat-card" onclick="if(' + isAdmin + ') showSection(\'students\')"><div class="stat-number" id="totalStudents">-</div><div class="stat-label">Total Students</div></div><div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Blocks</div></div><div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label">' + (isAdmin ? 'Subjects' : 'My Subjects') + '</div></div><div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div></div>';
-    var menuHtml = '';
+    const isAdmin = (currentUser.role === 'admin');
+    const yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>🎓 March ${y} Class</option>`).join('');
+    const examTypeOptions = `
+      <option value="internal" ${currentExamType === 'internal' ? 'selected' : ''}>📝 Internal Exams (CAT1 + CAT2 + Exam)</option>
+      <option value="nck" ${currentExamType === 'nck' ? 'selected' : ''}>🏥 NCK Score Sheet (Clinical Assessment)</option>
+    `;
+    
+    const statsHtml = `
+      <div class="selector-group">
+        <div><label><i class="fas fa-calendar-alt"></i> Class Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div>
+        <div><label><i class="fas fa-file-alt"></i> Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-number" id="totalStudents">-</div><div class="stat-label"><i class="fas fa-users"></i> Total Students</div></div>
+        <div class="stat-card"><div class="stat-number">6</div><div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div></div>
+        <div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label"><i class="fas fa-book"></i> Active Units</div></div>
+        <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div></div>
+      </div>
+    `;
+    
+    let menuHtml = '';
     if (isAdmin) {
-      menuHtml = '<div class="admin-menu-grid"><button class="menu-btn btn-primary" id="marksBtn">📝 Enter Marks</button><button class="menu-btn btn-info" id="statsBtn">📈 Statistics</button><button class="menu-btn btn-success" id="reportsBtn">📊 Reports</button><button class="menu-btn btn-warning" id="studentsBtn">👥 Students</button><button class="menu-btn btn-danger" id="lecturersBtn">👨‍🏫 Lecturers</button><button class="menu-btn btn-export" id="unitsBtn">📚 Units</button></div>';
+      menuHtml = `
+        <div class="admin-menu-grid">
+          <button class="menu-btn btn-primary" id="marksBtn"><i class="fas fa-pen-alt"></i> Internal Marks</button>
+          <button class="menu-btn btn-info" id="nckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button>
+          <button class="menu-btn btn-success" id="dashboardBtn"><i class="fas fa-chart-line"></i> Analytics</button>
+          <button class="menu-btn btn-warning" id="studentsBtn"><i class="fas fa-user-graduate"></i> Students</button>
+          <button class="menu-btn btn-danger" id="lecturersBtn"><i class="fas fa-chalkboard-user"></i> Lecturers</button>
+          <button class="menu-btn btn-export" id="unitsBtn"><i class="fas fa-book-open"></i> Units</button>
+          <button class="menu-btn btn-secondary" id="reportsBtn"><i class="fas fa-download"></i> Reports</button>
+        </div>
+      `;
     } else {
-      menuHtml = '<div class="menu-grid"><button class="menu-btn btn-primary" id="lecturerMarksBtn">📝 My Subjects</button><button class="menu-btn btn-info" id="lecturerStatsBtn">📈 Statistics</button><button class="menu-btn btn-success" id="lecturerReportsBtn">📊 Reports</button></div>';
+      menuHtml = `
+        <div class="menu-grid">
+          <button class="menu-btn btn-primary" id="lecturerMarksBtn"><i class="fas fa-pen-alt"></i> My Subjects</button>
+          <button class="menu-btn btn-info" id="lecturerNckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button>
+          <button class="menu-btn btn-success" id="lecturerDashboardBtn"><i class="fas fa-chart-simple"></i> My Analytics</button>
+          <button class="menu-btn btn-export" id="lecturerReportsBtn"><i class="fas fa-download"></i> Reports</button>
+        </div>
+      `;
     }
-    document.getElementById('app').innerHTML = '<div class="container"><div class="header"><h1>🏥 Nursing School System</h1><p>Pass Mark: 60% | ' + currentUser.name + ' (' + currentUser.role + ') | March ' + currentYear + ' Class | ' + (currentExamType === 'internal' ? 'Internal Exams' : 'NCK Score Sheet') + '</p></div><div class="user-info"><span>👋 Welcome, ' + currentUser.name + '</span><div><button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding: 5px 15px; margin-right: 10px;">🌙 Dark Mode</button><button class="logout-btn" onclick="logout()">🚪 Logout</button></div></div>' + statsHtml + menuHtml + '<div id="contentArea" class="content-area"></div></div>';
+    
+    document.getElementById('app').innerHTML = `
+      <div class="container">
+        <div class="header">
+          <h1><i class="fas fa-hospital-user"></i> Nakuru College of Health Sciences</h1>
+          <p style="margin-top: 8px;">${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | Pass Mark: 60%</p>
+        </div>
+        <div class="user-info">
+          <span><i class="fas fa-user-circle"></i> Welcome, ${currentUser.name}</span>
+          <div>
+            <button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding: 8px 20px; margin-right: 12px;"><i class="fas fa-moon"></i> Dark Mode</button>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+          </div>
+        </div>
+        ${statsHtml}
+        ${menuHtml}
+        <div id="contentArea"></div>
+      </div>
+    `;
+    
     if (isAdmin) {
-      document.getElementById('marksBtn').onclick = function() { showAdminMarks(); };
-      document.getElementById('statsBtn').onclick = function() { showStatistics(); };
-      document.getElementById('reportsBtn').onclick = function() { showReports(); };
-      document.getElementById('studentsBtn').onclick = function() { showStudents(); };
-      document.getElementById('lecturersBtn').onclick = function() { showLecturers(); };
-      document.getElementById('unitsBtn').onclick = function() { showUnits(); };
+      document.getElementById('marksBtn').onclick = () => showAdminMarks();
+      document.getElementById('nckBtn').onclick = () => showNCKMarks();
+      document.getElementById('dashboardBtn').onclick = () => showAnalyticsDashboard();
+      document.getElementById('studentsBtn').onclick = () => showStudents();
+      document.getElementById('lecturersBtn').onclick = () => showLecturers();
+      document.getElementById('unitsBtn').onclick = () => showUnits();
+      document.getElementById('reportsBtn').onclick = () => showFullReports();
     } else {
-      document.getElementById('lecturerMarksBtn').onclick = function() { showLecturerSubjects(); };
-      document.getElementById('lecturerStatsBtn').onclick = function() { showStatistics(); };
-      document.getElementById('lecturerReportsBtn').onclick = function() { showReports(); };
+      document.getElementById('lecturerMarksBtn').onclick = () => showLecturerSubjects();
+      document.getElementById('lecturerNckBtn').onclick = () => showNCKMarks();
+      document.getElementById('lecturerDashboardBtn').onclick = () => showLecturerAnalytics();
+      document.getElementById('lecturerReportsBtn').onclick = () => showFullReports();
     }
-    var stats = await apiCall('/api/stats', {});
+    
+    const stats = await apiCall('/api/stats', {});
     document.getElementById('totalStudents').innerHTML = stats.totalStudents || 0;
-    var subjectCount = isAdmin ? (stats.totalSubjects || 0) : (currentUser.subjects || []).length;
+    const subjectCount = isAdmin ? (stats.totalSubjects || 0) : (currentUser.subjects || []).length;
     document.getElementById('totalSubjects').innerHTML = subjectCount;
     hideLoading();
   }
@@ -338,573 +879,706 @@
     showMain();
   };
   
-  function showSection(section) {
-    if (section === 'marks') showAdminMarks();
-    else if (section === 'reports') showReports();
-    else if (section === 'students') showStudents();
-    else if (section === 'lecturers') showLecturers();
-    else if (section === 'units') showUnits();
-  }
-  
-  // ===== STATISTICS =====
-  async function showStatistics() {
-    showLoading('Loading statistics...');
-    var students = await apiCall('/api/students', {});
-    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button><div class="header"><h3>📈 Performance Statistics Dashboard</h3></div><div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;"><div class="stat-card" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;"><div class="stat-number" style="color: white;">' + students.length + '</div><div class="stat-label" style="color: white;">Total Students</div></div><div class="stat-card" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"><div class="stat-number" style="color: white;">6</div><div class="stat-label" style="color: white;">Total Blocks</div></div><div class="stat-card" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;"><div class="stat-number" style="color: white;">60%</div><div class="stat-label" style="color: white;">Pass Mark</div></div></div><div style="background: white; border-radius: 15px; padding: 20px; text-align: center;"><p style="color: #666;">Click on "My Subjects" or "Enter Marks" to view detailed subject performance</p></div>';
+  // ======================= ANALYTICS DASHBOARD =======================
+  async function showAnalyticsDashboard() {
+    showLoading('Loading analytics...');
+    const students = await apiCall('/api/students', {});
+    const html = `
+      <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-chart-line"></i> Academic Analytics Dashboard</h3></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-number">${students.length}</div><div class="stat-label">Total Students</div></div>
+        <div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Blocks</div></div>
+        <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div>
+        <div class="stat-card"><div class="stat-number">-</div><div class="stat-label">Overall Pass Rate</div></div>
+      </div>
+      <div class="card"><div class="card-title"><i class="fas fa-chart-pie"></i> Student Distribution</div><canvas id="analyticsChart" style="max-height: 300px;"></canvas></div>
+    `;
     document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
-  }
-  
-  // ===== BULK IMPORT =====
-  function showBulkImportModal() {
-    var modalHtml = '<div id="bulkImportModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📤 Bulk Import Students</h3><span class="close" onclick="closeModal()">&times;</span></div><div style="padding: 10px;"><p>Upload CSV file with columns: Admission, Name, Block</p><input type="file" id="csvFile" accept=".csv" style="margin: 10px 0;"><a href="#" onclick="downloadStudentTemplate()" style="color: #667eea;">📥 Download Template</a><div style="margin-top: 20px;"><button onclick="importStudents()" class="save-btn">Import Students</button></div></div></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-  }
-  
-  function downloadStudentTemplate() {
-    var csv = 'Admission,Name,Block\nKRCHN/0001/25,John Doe,BLOCK_0\nKRCHN/0002/25,Jane Smith,BLOCK_1';
-    var blob = new Blob([csv], { type: 'text/csv' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'student_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  
-  async function importStudents() {
-    var file = document.getElementById('csvFile').files[0];
-    if (!file) { showNotification('Please select a CSV file', true); return; }
-    var reader = new FileReader();
-    reader.onload = async function(e) {
-      var lines = e.target.result.split('\n');
-      var students = [];
-      for (var i = 1; i < lines.length; i++) {
-        var cols = lines[i].split(',');
-        if (cols.length >= 2 && cols[0].trim()) {
-          students.push({ admission: cols[0].trim(), name: cols[1].trim(), block: cols[2] ? cols[2].trim() : 'BLOCK_0' });
-        }
-      }
-      if (students.length === 0) { showNotification('No valid students found in CSV', true); return; }
-      showLoading('Importing ' + students.length + ' students...');
-      var success = 0;
-      for (var s = 0; s < students.length; s++) {
-        var result = await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify(students[s]) });
-        if (result.success) success++;
-      }
-      hideLoading();
-      showNotification('Imported ' + success + ' of ' + students.length + ' students successfully!', false);
-      closeModal();
-      if (currentUser.role === 'admin') showStudents();
-      else showMain();
-    };
-    reader.readAsText(file);
-  }
-  
-  // ===== SUBJECT SEARCH =====
-  function addSubjectFilter() {
-    setTimeout(function() {
-      var subjectSelect = document.getElementById('subjectSelect');
-      if (subjectSelect && !document.getElementById('subjectSearch')) {
-        var filterHtml = '<input type="text" id="subjectSearch" class="search-box" placeholder="🔍 Search subjects... (Ctrl+F)">';
-        subjectSelect.insertAdjacentHTML('beforebegin', filterHtml);
-        document.getElementById('subjectSearch').addEventListener('input', function(e) {
-          var searchTerm = e.target.value.toLowerCase();
-          var options = subjectSelect.options;
-          for (var i = 0; i < options.length; i++) {
-            var text = options[i].text.toLowerCase();
-            options[i].style.display = text.indexOf(searchTerm) !== -1 ? '' : 'none';
-          }
+    
+    setTimeout(() => {
+      const ctx = document.getElementById('analyticsChart')?.getContext('2d');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: ['Active Students', 'Blocks', 'Subjects'], datasets: [{ data: [students.length, 6, 28], backgroundColor: ['#6366f1', '#10b981', '#f59e0b'] }] },
+          options: { responsive: true }
         });
       }
     }, 100);
+    hideLoading();
   }
   
-  // ===== LECTURER SUBJECTS =====
-  async function showLecturerSubjects() {
-    showLoading('Loading your subjects...');
-    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    var lecturerSubjects = currentUser.subjects || [];
-    var config = await getConfig();
-    var subjectsByBlock = {};
-    for (var b = 0; b < blocks.length; b++) subjectsByBlock[blocks[b]] = [];
-    for (var i = 0; i < lecturerSubjects.length; i++) {
-      var parts = lecturerSubjects[i].split('|');
-      var block = parts[0];
-      var name = parts[1];
-      var assessmentType = 'full';
-      if (config && config[block]) {
-        var found = null;
-        for (var f = 0; f < config[block].length; f++) {
-          if (config[block][f].name === name) { found = config[block][f]; break; }
-        }
-        if (found) assessmentType = found.assessmentType || 'full';
-      }
-      if (subjectsByBlock[block]) subjectsByBlock[block].push({ name: name, assessmentType: assessmentType });
-    }
-    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button><div class="header"><h3>📚 My Subjects</h3><p>Click on any subject to enter marks</p></div>';
-    var hasSubjects = false;
-    for (var b = 0; b < blocks.length; b++) {
-      var block = blocks[b];
-      var subjects = subjectsByBlock[block];
-      if (subjects.length > 0) {
-        hasSubjects = true;
-        html += '<div style="margin: 20px 0 10px 0;"><h3 style="color: white; background: #667eea; padding: 10px 15px; border-radius: 10px; display: inline-block;">' + block.replace('_', ' ') + '</h3></div><div class="subject-list">';
-        for (var s = 0; s < subjects.length; s++) {
-          var subj = subjects[s];
-          var typeLabel = subj.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (subj.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          var typeClass = subj.assessmentType === 'full' ? 'badge-full' : (subj.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
-          var icon = subj.assessmentType === 'full' ? '📊' : (subj.assessmentType === 'single_cat' ? '📝' : '📖');
-          html += '<div class="subject-card" onclick="openMarksEntry(\'' + block + '\', \'' + subj.name.replace(/'/g, "\\'") + '\', \'' + subj.assessmentType + '\')"><h4>' + icon + ' ' + subj.name + '</h4><p>Block: ' + block.replace('_', ' ') + '</p><span class="assessment-badge ' + typeClass + '">' + typeLabel + '</span></div>';
-        }
-        html += '</div>';
+  async function showLecturerAnalytics() {
+    showLoading('Loading your analytics...');
+    const lecturerSubjects = currentUser.subjects || [];
+    let myData = [];
+    for (let subj of lecturerSubjects) {
+      const parts = subj.split('|');
+      const block = parts[0];
+      const subject = parts[1];
+      const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+      if (marks && marks.length) {
+        const scores = marks.map(m => parseFloat(m.final)).filter(s => s > 0);
+        const avg = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : 0;
+        myData.push({ block, subject, avg, students: scores.length });
       }
     }
-    if (!hasSubjects) html += '<div style="background: white; border-radius: 15px; padding: 40px; text-align: center;"><p>No subjects assigned to you yet.</p><p>Please contact the administrator to assign subjects.</p></div>';
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div>
+      <div class="card"><div class="card-title">📊 My Subjects Performance</div>
+      <div style="overflow-x:auto;"><table style="width:100%"><thead><tr><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th></tr></thead><tbody>`;
+    for (let d of myData) {
+      html += `<tr><td>${d.block.replace('_', ' ')}</td><td>${d.subject}</td><td><strong>${d.avg.toFixed(1)}%</strong></td><td>${d.students}</td></tr>`;
+    }
+    html += `</tbody></table></div></div>`;
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  window.openMarksEntry = function(block, subject, assessmentType) {
-    currentBlock = block;
-    currentSubject = subject;
-    currentAssessmentType = assessmentType;
-    loadMarksForSubject(block, subject, assessmentType);
-  };
+  async function showFullReports() {
+    const students = await apiCall('/api/students', {});
+    exportToCSV(students, 'students_report');
+  }
   
-  async function loadMarksForSubject(block, subject, assessmentType) {
-    showLoading('Loading marks for ' + subject + '...');
-    var html = '<button class="back-btn" onclick="showLecturerSubjects()">← Back to My Subjects</button><div class="header"><h3>📝 ' + subject + '</h3><p>Block: ' + block.replace('_', ' ') + ' | Assessment: ' + (assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')) + '</p></div><div id="marksTableContainer"></div>';
-    document.getElementById('contentArea').innerHTML = html;
-    var marks = await apiCall('/api/marks/' + encodeURIComponent(block) + '/' + encodeURIComponent(subject), {});
-    displayLecturerMarksTable(marks, block, subject, assessmentType);
+  // ======================= NCK MARKS ENTRY (FIXED) =======================
+  async function showNCKMarks() {
+    document.getElementById('contentArea').innerHTML = `
+      <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div>
+      <div class="selector-group">
+        <label><i class="fas fa-table-list"></i> Select Sheet:</label>
+        <select id="nckSheetSelect" style="min-width: 250px;">
+          <option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option>
+          <option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option>
+        </select>
+        <button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button>
+      </div>
+      <div id="nckMarksContainer"></div>
+    `;
+    document.getElementById('nckSheetSelect').onchange = () => loadNCKMarks();
+    loadNCKMarks();
+  }
+  
+  async function loadNCKMarks() {
+    const sheetName = document.getElementById('nckSheetSelect').value;
+    showLoading(`Loading ${sheetName}...`);
+    const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {});
+    console.log(`NCK ${sheetName} data:`, marks);
+    
+    if (sheetName === 'XY FORMS') {
+      displayXYFormsMarks(marks);
+    } else {
+      displayAssessmentMarks(marks);
+    }
     hideLoading();
   }
   
-  function displayLecturerMarksTable(marks, block, subject, assessmentType) {
+  function displayXYFormsMarks(marks) {
     if (!marks || marks.length === 0) {
-      document.getElementById('marksTableContainer').innerHTML = '<div style="background:white; padding:20px; text-align:center;">No data found</div>';
+      document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No data found. Ensure students are in the STUDENTS sheet.</div>';
       return;
     }
-    var html = '<div class="export-bar"><button class="export-btn" onclick="exportLecturerMarks()">📥 Export to Excel</button></div>';
-    html += '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th>';
-    if (assessmentType === 'full') {
-      html += '<th>CAT1<br><span style="font-size:11px;">(0-30)</span></th><th>CAT2<br><span style="font-size:11px;">(0-30)</span></th><th>Exam<br><span style="font-size:11px;">(0-70)</span></th>';
-    } else if (assessmentType === 'single_cat') {
-      html += '<th>CAT<br><span style="font-size:11px;">(0-30)</span></th><th>Exam<br><span style="font-size:11px;">(0-70)</span></th><th style="background:#f0f0f0;">CAT2<br><span style="font-size:11px;">(Not Used)</span></th>';
-    } else {
-      html += '<th>Exam<br><span style="font-size:11px;">(0-100)</span></th><th style="background:#f0f0f0;">CAT<br><span style="font-size:11px;">(Not Used)</span></th><th style="background:#f0f0f0;">CAT2<br><span style="font-size:11px;">(Not Used)</span></th>';
+    
+    const clinicalAreas = ['MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'];
+    
+    let html = `<div style="overflow-x:auto; max-height: 70vh;"><table style="min-width: 1200px;"><thead><tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; position: sticky; top: 0;">
+      <th style="position: sticky; left: 0; background: #667eea;">#</th>
+      <th style="position: sticky; left: 60px; background: #667eea;">Student Name</th>`;
+    
+    for (let area of clinicalAreas) {
+      html += `<th style="min-width: 70px;"><div style="font-size: 11px;">${area}</div><div style="font-size: 9px;">(0-100)</div></th>`;
     }
-    html += '<th>Total</th><th>Status</th><th>Graded By</th><tr></thead><tbody>';
-    window.currentMarksData = marks;
-    window.currentMarksSubject = subject;
-    window.currentMarksBlock = block;
-    window.currentAssessmentType = assessmentType;
-    for (var i = 0; i < marks.length; i++) {
-      var cat1 = marks[i].cat1 || '';
-      var cat2 = marks[i].cat2 || '';
-      var exam = marks[i].exam || '';
-      var numCat1 = parseFloat(cat1) || 0;
-      var numCat2 = parseFloat(cat2) || 0;
-      var numExam = parseFloat(exam) || 0;
-      var total = 0;
-      if (assessmentType === 'full') {
-        total = Math.round(((Math.min(numCat1, 30) + Math.min(numCat2, 30)) / 60 * 30 + Math.min(numExam, 70)) * 10) / 10;
-      } else if (assessmentType === 'single_cat') {
-        total = Math.round((Math.min(numCat1, 30) + Math.min(numExam, 70)) * 10) / 10;
+    html += `<th>Average</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
+    
+    currentNCKMarks = marks;
+    currentNCKSheet = 'XY FORMS';
+    
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i];
+      let scores = [];
+      if (m.clinicalAreas) {
+        scores = m.clinicalAreas.map(ca => ca.score || 0);
       } else {
-        total = Math.round(Math.min(numExam, 100) * 10) / 10;
+        for (let c = 0; c < clinicalAreas.length; c++) scores.push(0);
       }
-      var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-      var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-      html += '<tr class="' + rowClass + '"><td style="padding:10px;">' + marks[i].admission + '</td><td style="padding:10px;">' + marks[i].name + '</td>';
-      if (assessmentType === 'full') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-      } else if (assessmentType === 'single_cat') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
-      } else {
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
-        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
+      
+      const validScores = scores.filter(s => s > 0);
+      const avg = validScores.length ? scores.reduce((a,b) => a+b,0) / validScores.length : 0;
+      const status = avg >= 60 ? 'PASS' : (validScores.length ? 'FAIL' : 'PENDING');
+      const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
+      
+      html += `<tr class="${rowClass}">`;
+      html += `<td style="position: sticky; left: 0; background: white;">${i+1}</td>`;
+      html += `<td style="position: sticky; left: 60px; background: white; font-weight: 500;">${m.name || 'Unnamed'}</td>`;
+      
+      for (let c = 0; c < clinicalAreas.length; c++) {
+        const score = scores[c] || 0;
+        html += `<td style="padding: 4px;"><input type="number" id="xy_${i}_${c}" value="${score}" min="0" max="100" step="0.5" style="width: 65px; padding: 6px; border-radius: 8px;" onchange="updateXYAverage(${i})"></td>`;
       }
-      html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td><td id="status_' + i + '">' + status + '</td><td style="padding:10px;">' + (marks[i].gradedBy || '-') + '</td></tr>';
+      
+      html += `<td id="xyAvg_${i}" style="font-weight: bold;">${avg.toFixed(2)}%</td>`;
+      html += `<td id="xyStatus_${i}"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
+      html += `<td><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer name" style="width: 120px; padding: 6px; border-radius: 8px;"></td>`;
+      html += `</tr>`;
     }
-    html += '</tbody></table></div><div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save All Marks (Ctrl+S)</button></div>';
-    document.getElementById('marksTableContainer').innerHTML = html;
+    
+    html += `</tbody></table></div><div style="text-align: center; margin-top: 24px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`;
+    document.getElementById('nckMarksContainer').innerHTML = html;
   }
   
-  window.updateLecturerTotal = function(idx) {
-    var assessmentType = window.currentAssessmentType || 'full';
-    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
-    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-    var total = 0;
-    if (assessmentType === 'full') {
-      total = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
-    } else if (assessmentType === 'single_cat') {
-      total = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
-    } else {
-      total = Math.round(Math.min(exam, 100) * 10) / 10;
+  function displayAssessmentMarks(marks) {
+    if (!marks || marks.length === 0) {
+      document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>';
+      return;
     }
-    var status = total >= 60 ? 'PASS' : 'FAIL';
-    document.getElementById('total_' + idx).innerHTML = total;
-    document.getElementById('status_' + idx).innerHTML = status;
-    var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
-    if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
+    
+    let html = `<div style="overflow-x:auto;"><table style="min-width: 800px;"><thead><tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+      <th>#</th><th>Student Name</th><th>ANC Assessment</th><th>CWC Immunization</th><th>Ward Nursing Care</th><th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
+    
+    currentNCKMarks = marks;
+    currentNCKSheet = 'ASSESSMENT AND CASE';
+    
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i];
+      const scores = m.scores || [0, 0, 0];
+      const total = scores.reduce((a,b) => a+b, 0);
+      const status = total >= 60 ? 'PASS' : (scores.some(s => s > 0) ? 'FAIL' : 'PENDING');
+      const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
+      
+      html += `<tr class="${rowClass}">`;
+      html += `<td>${i+1}</td>`;
+      html += `<td style="font-weight: 500;">${m.name || 'Unnamed'}</td>`;
+      html += `<td><input type="number" id="ac_${i}_0" value="${scores[0] || 0}" min="0" max="100" step="0.5" style="width: 80px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
+      html += `<td><input type="number" id="ac_${i}_1" value="${scores[1] || 0}" min="0" max="100" step="0.5" style="width: 80px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
+      html += `<td><input type="number" id="ac_${i}_2" value="${scores[2] || 0}" min="0" max="100" step="0.5" style="width: 80px; padding: 6px; border-radius: 8px;" onchange="updateACTotal(${i})"></td>`;
+      html += `<td id="acTotal_${i}" style="font-weight: bold;">${total}</td>`;
+      html += `<td id="acStatus_${i}"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td>`;
+      html += `<td><input type="text" id="acGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer name" style="width: 120px; padding: 6px; border-radius: 8px;"></td>`;
+      html += `</tr>`;
+    }
+    
+    html += `</tbody></table></div><div style="text-align: center; margin-top: 24px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`;
+    document.getElementById('nckMarksContainer').innerHTML = html;
+  }
+  
+  window.updateXYAverage = function(idx) {
+    const areas = 22;
+    let scores = [];
+    for (let c = 0; c < areas; c++) {
+      const val = parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value);
+      if (!isNaN(val) && val > 0) scores.push(val);
+    }
+    const avg = scores.length ? scores.reduce((a,b) => a+b,0) / scores.length : 0;
+    const status = avg >= 60 ? 'PASS' : (scores.length ? 'FAIL' : 'PENDING');
+    document.getElementById(`xyAvg_${idx}`).innerHTML = avg.toFixed(2) + '%';
+    document.getElementById(`xyStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
+    const row = document.getElementById(`xy_${idx}_0`)?.parentElement?.parentElement;
+    if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
   };
   
-  window.saveLecturerMarks = async function() {
-    var marksData = [];
-    var marksCount = window.currentMarksData?.length || 0;
-    var assessmentType = window.currentAssessmentType || 'full';
-    for (var i = 0; i < marksCount; i++) {
-      marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: assessmentType === 'full' ? (document.getElementById('cat2_' + i)?.value || '') : '', exam: document.getElementById('exam_' + i)?.value || '' });
-    }
-    showLoading('Saving marks...');
-    var result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentMarksBlock, subject: window.currentMarksSubject, marksData: marksData, lecturerName: currentUser.name }) });
-    hideLoading();
-    if (result && result.success) {
-      showNotification('Marks saved successfully!', false);
-    } else {
-      showNotification(result?.error || 'Failed to save marks', true);
-    }
+  window.updateACTotal = function(idx) {
+    const s0 = parseFloat(document.getElementById(`ac_${idx}_0`)?.value) || 0;
+    const s1 = parseFloat(document.getElementById(`ac_${idx}_1`)?.value) || 0;
+    const s2 = parseFloat(document.getElementById(`ac_${idx}_2`)?.value) || 0;
+    const total = s0 + s1 + s2;
+    const status = total >= 60 ? 'PASS' : ((s0 || s1 || s2) ? 'FAIL' : 'PENDING');
+    document.getElementById(`acTotal_${idx}`).innerHTML = total;
+    document.getElementById(`acStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`;
+    const row = document.getElementById(`ac_${idx}_0`)?.parentElement?.parentElement;
+    if (row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
   };
   
-  window.exportLecturerMarks = function() {
-    if (window.currentMarksData) {
-      var exportData = [];
-      for (var i = 0; i < window.currentMarksData.length; i++) {
-        var m = window.currentMarksData[i];
-        exportData.push({ Admission: m.admission, Name: m.name, CAT1: document.getElementById('cat1_' + i)?.value || '', CAT2: document.getElementById('cat2_' + i)?.value || '', Exam: document.getElementById('exam_' + i)?.value || '', Total: document.getElementById('total_' + i)?.innerHTML || '', Status: document.getElementById('status_' + i)?.innerHTML || '', 'Graded By': m.gradedBy || '' });
+  window.saveNCKMarks = async function() {
+    const sheetName = document.getElementById('nckSheetSelect').value;
+    let marksData = [];
+    
+    if (sheetName === 'XY FORMS') {
+      const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+      for (let i = 0; i < rows.length; i++) {
+        let scores = [];
+        for (let c = 0; c < 22; c++) {
+          const val = parseFloat(document.getElementById(`xy_${i}_${c}`)?.value) || 0;
+          scores.push(val);
+        }
+        marksData.push({
+          row: i + 2,
+          scores: scores,
+          gradedBy: document.getElementById(`xyGraded_${i}`)?.value || ''
+        });
       }
-      exportToCSV(exportData, window.currentMarksSubject);
+    } else {
+      const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+      for (let i = 0; i < rows.length; i++) {
+        let scores = [
+          parseFloat(document.getElementById(`ac_${i}_0`)?.value) || 0,
+          parseFloat(document.getElementById(`ac_${i}_1`)?.value) || 0,
+          parseFloat(document.getElementById(`ac_${i}_2`)?.value) || 0
+        ];
+        marksData.push({
+          row: i + 2,
+          scores: scores,
+          gradedBy: document.getElementById(`acGraded_${i}`)?.value || ''
+        });
+      }
     }
+    
+    showLoading('Saving NCK marks...');
+    const result = await apiCall('/api/marks', {
+      method: 'POST',
+      body: JSON.stringify({
+        block: 'BLOCK_0',
+        subject: sheetName,
+        marksData: marksData,
+        lecturerName: currentUser.name,
+        examType: 'nck'
+      })
+    });
+    hideLoading();
+    showNotification(result?.success ? 'NCK marks saved successfully!' : 'Error saving NCK marks', !result?.success);
+    if (result?.success) loadNCKMarks();
   };
   
-  // ===== ADMIN MARKS SECTION =====
+  // ======================= INTERNAL MARKS (UNCHANGED LOGIC) =======================
   async function showAdminMarks() {
-    document.getElementById('contentArea').innerHTML = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject</p></div><select id="blockSelect"><option>Loading blocks...</option></select><select id="subjectSelect" style="display:none;"></select><div id="marksTable"></div>';
-    var blocks = await apiCall('/api/blocks', {});
-    var sel = document.getElementById('blockSelect');
+    document.getElementById('contentArea').innerHTML = `
+      <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3></div>
+      <select id="blockSelect"><option>Loading blocks...</option></select>
+      <select id="subjectSelect" style="display:none;"></select>
+      <div id="marksTable"></div>
+    `;
+    const blocks = await apiCall('/api/blocks', {});
+    const sel = document.getElementById('blockSelect');
     sel.innerHTML = '<option value="">-- Select Block --</option>';
-    for (var i = 0; i < blocks.length; i++) sel.innerHTML += '<option value="' + blocks[i] + '">' + blocks[i].replace('_', ' ') + '</option>';
-    sel.onchange = function() { loadAdminSubjects(sel.value); };
+    blocks.forEach(b => sel.innerHTML += `<option value="${b}">${b.replace('_', ' ')}</option>`);
+    sel.onchange = () => loadAdminSubjects(sel.value);
   }
   
   async function loadAdminSubjects(block) {
     if (!block) return;
     showLoading('Loading subjects...');
-    var subjects = await apiCall('/api/subjects/' + block, {});
-    var sel = document.getElementById('subjectSelect');
+    const subjects = await apiCall(`/api/subjects/${block}`, {});
+    const sel = document.getElementById('subjectSelect');
     sel.style.display = 'block';
     sel.innerHTML = '<option value="">-- Select Subject --</option>';
-    for (var i = 0; i < subjects.length; i++) {
-      var s = subjects[i];
-      sel.innerHTML += '<option value="' + s.name + '" data-type="' + s.assessmentType + '">' + s.name + '</option>';
-    }
-    sel.onchange = function() {
-      if (sel.value) {
-        var selectedOption = sel.options[sel.selectedIndex];
-        var assessmentType = selectedOption.getAttribute('data-type') || 'full';
-        loadAdminMarks(block, sel.value, assessmentType);
-      }
-    };
-    addSubjectFilter();
+    subjects.forEach(s => sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${s.name} (${s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')})</option>`);
+    sel.onchange = () => { if (sel.value) loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type); };
     hideLoading();
   }
   
-  async function loadAdminMarks(block, subject, assessmentType) {
+  async function loadAdminMarks(block, subject, at) {
     showLoading('Loading marks...');
-    var marks = await apiCall('/api/marks/' + block + '/' + subject, {});
-    var html = '<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()">📥 Export</button></div><div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th>';
-    if (assessmentType === 'full') html += '<th>CAT1</th><th>CAT2</th><th>Exam</th>';
-    else if (assessmentType === 'single_cat') html += '<th>CAT</th><th>Exam</th>';
-    else html += '<th>Exam</th>';
+    const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+    let html = `<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+    if (at === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+    else if (at === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+    else html += '<th>Exam (0-100)</th>';
     html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+    
     window.currentAdminMarks = marks;
-    window.currentAdminAssessmentType = assessmentType;
+    window.currentAdminAssessmentType = at;
     window.currentAdminBlock = block;
     window.currentAdminSubject = subject;
-    for (var i = 0; i < marks.length; i++) {
-      var cat1 = marks[i].cat1 || '';
-      var cat2 = marks[i].cat2 || '';
-      var exam = marks[i].exam || '';
-      var numCat1 = parseFloat(cat1) || 0;
-      var numCat2 = parseFloat(cat2) || 0;
-      var numExam = parseFloat(exam) || 0;
-      var total = 0;
-      if (assessmentType === 'full') total = Math.round(((Math.min(numCat1, 30) + Math.min(numCat2, 30)) / 60 * 30 + Math.min(numExam, 70)) * 10) / 10;
-      else if (assessmentType === 'single_cat') total = Math.round((Math.min(numCat1, 30) + Math.min(numExam, 70)) * 10) / 10;
-      else total = Math.round(Math.min(numExam, 100) * 10) / 10;
-      var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-      html += '<tr class="' + (total >= 60 ? 'pass-row' : 'fail-row') + '"><td style="padding:10px;">' + marks[i].admission + '</td><td style="padding:10px;">' + marks[i].name + '</td>';
-      if (assessmentType === 'full') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
-      } else if (assessmentType === 'single_cat') {
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
+    
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i];
+      const cat1 = m.cat1 || '', cat2 = m.cat2 || '', exam = m.exam || '';
+      let ncat1 = parseFloat(cat1)||0, ncat2 = parseFloat(cat2)||0, nexam = parseFloat(exam)||0, total = 0;
+      if (at === 'full') total = Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30 + Math.min(nexam,70))*10)/10;
+      else if (at === 'single_cat') total = Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10;
+      else total = Math.round(Math.min(nexam,100)*10)/10;
+      const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
+      const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+      html += `<tr class="${rowClass}"><td>${m.admission}</td><td>${m.name}</td>`;
+      if (at === 'full') {
+        html += `<td><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += `<td><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+      } else if (at === 'single_cat') {
+        html += `<td><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
       } else {
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
+        html += `<td><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
       }
-      html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td><td id="status_' + i + '">' + status + '</td><td style="padding:10px;">' + (marks[i].gradedBy || '-') + '</td></tr>';
+      html += `<td id="atotal_${i}">${total}</td><td id="astatus_${i}">${status}</td><td>${m.gradedBy || '-'}</td></tr>`;
     }
-    html += '</tbody></table></div><div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks (Ctrl+S)</button></div>';
+    html += `</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks</button></div>`;
     document.getElementById('marksTable').innerHTML = html;
     hideLoading();
   }
   
   window.updateAdminTotal = function(idx) {
-    var assessmentType = window.currentAdminAssessmentType || 'full';
-    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
-    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
-    var total = 0;
-    if (assessmentType === 'full') total = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
-    else if (assessmentType === 'single_cat') total = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
-    else total = Math.round(Math.min(exam, 100) * 10) / 10;
-    document.getElementById('total_' + idx).innerHTML = total;
-    document.getElementById('status_' + idx).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
-    var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
+    const at = window.currentAdminAssessmentType || 'full';
+    let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0;
+    let cat2 = parseFloat(document.getElementById(`acat2_${idx}`)?.value) || 0;
+    let exam = parseFloat(document.getElementById(`aexam_${idx}`)?.value) || 0;
+    let total = 0;
+    if (at === 'full') total = Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30 + Math.min(exam,70))*10)/10;
+    else if (at === 'single_cat') total = Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10;
+    else total = Math.round(Math.min(exam,100)*10)/10;
+    document.getElementById(`atotal_${idx}`).innerHTML = total;
+    document.getElementById(`astatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
+    const row = document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement;
     if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
   };
   
   window.saveAdminMarks = async function() {
-    var marksData = [];
-    var marksCount = window.currentAdminMarks?.length || 0;
-    for (var i = 0; i < marksCount; i++) {
-      marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: document.getElementById('cat2_' + i)?.value || '', exam: document.getElementById('exam_' + i)?.value || '' });
+    let marksData = [];
+    const len = window.currentAdminMarks?.length || 0;
+    const at = window.currentAdminAssessmentType || 'full';
+    for (let i = 0; i < len; i++) {
+      if (at === 'full') marksData.push({ row: i+2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: document.getElementById(`acat2_${i}`)?.value || '', exam: document.getElementById(`aexam_${i}`)?.value || '' });
+      else if (at === 'single_cat') marksData.push({ row: i+2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' });
+      else marksData.push({ row: i+2, cat1: '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' });
     }
     showLoading('Saving...');
-    var result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentAdminBlock, subject: window.currentAdminSubject, marksData: marksData, lecturerName: currentUser.name }) });
+    const res = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentAdminBlock, subject: window.currentAdminSubject, marksData, lecturerName: currentUser.name }) });
     hideLoading();
-    showNotification(result?.success ? 'Saved!' : 'Error', !result?.success);
-    if (result?.success) loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType);
+    showNotification(res?.success ? 'Saved!' : 'Error', !res?.success);
+    if (res?.success) loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType);
   };
   
   window.exportAdminMarks = function() {
     if (window.currentAdminMarks) {
-      var exportData = [];
-      for (var i = 0; i < window.currentAdminMarks.length; i++) {
-        var m = window.currentAdminMarks[i];
-        exportData.push({ Admission: m.admission, Name: m.name, CAT1: document.getElementById('cat1_' + i)?.value || '', CAT2: document.getElementById('cat2_' + i)?.value || '', Exam: document.getElementById('exam_' + i)?.value || '', Total: document.getElementById('total_' + i)?.innerHTML || '', Status: document.getElementById('status_' + i)?.innerHTML || '' });
-      }
-      exportToCSV(exportData, 'marks');
+      const data = window.currentAdminMarks.map((m,i) => ({ Admission: m.admission, Name: m.name, CAT1: document.getElementById(`acat1_${i}`)?.value || '', CAT2: document.getElementById(`acat2_${i}`)?.value || '', Exam: document.getElementById(`aexam_${i}`)?.value || '', Total: document.getElementById(`atotal_${i}`)?.innerHTML || '' }));
+      exportToCSV(data, 'internal_marks');
     }
   };
   
-  // ===== REPORTS =====
-  async function showReports() {
-    showLoading('Loading reports...');
-    var students = await apiCall('/api/students', {});
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 Student Reports</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
-    for (var i = 0; i < students.length; i++) html += '<tr><td style="padding:8px;">' + students[i].admission + '</td><td style="padding:8px;">' + students[i].name + '</td><td style="padding:8px;">' + students[i].block + '</td><td style="padding:8px;">' + students[i].status + '</td></tr>';
-    html += '</tbody></table><button class="export-btn" style="margin-top:15px;" onclick="exportToCSV(students, \'students_report\')">📥 Export CSV</button></div>';
+  // ======================= LECTURER INTERNAL MARKS =======================
+  async function showLecturerSubjects() {
+    showLoading('Loading your subjects...');
+    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    const lecturerSubjects = currentUser.subjects || [];
+    const config = await getConfig();
+    const subjectsByBlock = {};
+    for (let b of blocks) subjectsByBlock[b] = [];
+    for (let subj of lecturerSubjects) {
+      const parts = subj.split('|');
+      const block = parts[0];
+      const name = parts[1];
+      let atype = 'full';
+      if (config && config[block]) {
+        const found = config[block].find(c => c.name === name);
+        if (found) atype = found.assessmentType || 'full';
+      }
+      if (subjectsByBlock[block]) subjectsByBlock[block].push({ name, assessmentType: atype });
+    }
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks</p></div>`;
+    for (let b of blocks) {
+      if (subjectsByBlock[b].length) {
+        html += `<div style="margin: 20px 0 10px;"><h3 style="display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 24px; border-radius: 40px;">${b.replace('_', ' ')}</h3></div><div class="subject-list">`;
+        for (let s of subjectsByBlock[b]) {
+          const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
+          const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+          html += `<div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')">
+            <h4>${typeIcon} ${s.name}</h4>
+            <p><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')} | ${typeLabel}</p>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+    }
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  // ===== STUDENTS (ADMIN) =====
-  async function showStudents() {
-    showLoading('Loading...');
-    var students = await apiCall('/api/students', {});
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👥 Manage Students</h3><div style="margin-bottom:15px;"><button class="save-btn" onclick="showBulkImportModal()" style="margin-right:10px;">📤 Bulk Import</button><button class="export-btn" onclick="exportToCSV(students, \'students\')">📥 Export CSV</button></div></div><div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    for (var i = 0; i < students.length; i++) {
-      html += '<tr><td style="padding:8px;">' + students[i].admission + '</td><td style="padding:8px;">' + students[i].name + '</td><td style="padding:8px;">' + students[i].block + '</td><td style="padding:8px;">' + students[i].status + '</td><td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal(\'' + students[i].admission + '\',\'' + students[i].name + '\',\'' + students[i].block + '\')">Edit</button><button class="delete-btn" onclick="deleteStudent(\'' + students[i].admission + '\')">Delete</button></td></tr>';
-    }
-    html += '</tbody></table><button class="save-btn" style="margin-top:15px;" onclick="showAddStudentModal()">➕ Add Student</button></div>';
+  window.openMarksEntry = function(block, subject, atype) {
+    currentMarksBlock = block;
+    currentMarksSubject = subject;
+    currentAssessmentType = atype;
+    loadMarksForSubject(block, subject, atype);
+  };
+  
+  async function loadMarksForSubject(block, subject, atype) {
+    showLoading('Loading marks...');
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {});
+    let html = `<button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_', ' ')} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p></div>
+      <div id="marksTableContainer"></div>`;
     document.getElementById('contentArea').innerHTML = html;
+    displayLecturerMarksTable(marks, block, subject, atype);
     hideLoading();
+  }
+  
+  function displayLecturerMarksTable(marks, block, subject, atype) {
+    if (!marks || !marks.length) {
+      document.getElementById('marksTableContainer').innerHTML = '<div class="card" style="text-align:center;">No data found</div>';
+      return;
+    }
+    let html = `<div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+    if (atype === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+    else if (atype === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+    else html += '<th>Exam (0-100)</th>';
+    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+    
+    window.currentMarksData = marks;
+    window.currentMarksSubject = subject;
+    window.currentMarksBlock = block;
+    window.currentAssessmentType = atype;
+    
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i];
+      const cat1 = m.cat1 || '', cat2 = m.cat2 || '', exam = m.exam || '';
+      let ncat1 = parseFloat(cat1)||0, ncat2 = parseFloat(cat2)||0, nexam = parseFloat(exam)||0, total = 0;
+      if (atype === 'full') total = Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30 + Math.min(nexam,70))*10)/10;
+      else if (atype === 'single_cat') total = Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10;
+      else total = Math.round(Math.min(nexam,100)*10)/10;
+      const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
+      const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+      html += `<tr class="${rowClass}"><td>${m.admission}</td><td>${m.name}</td>`;
+      if (atype === 'full') {
+        html += `<td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+        html += `<td><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+        html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+      } else if (atype === 'single_cat') {
+        html += `<td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+        html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+      } else {
+        html += `<td><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"></td>`;
+      }
+      html += `<td id="ltotal_${i}">${total}</td><td id="lstatus_${i}">${status}</td><td>${m.gradedBy || '-'}</td></tr>`;
+    }
+    html += `</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`;
+    document.getElementById('marksTableContainer').innerHTML = html;
+  }
+  
+  window.updateLecturerTotal = function(idx) {
+    const at = window.currentAssessmentType || 'full';
+    let cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0;
+    let cat2 = parseFloat(document.getElementById(`cat2_${idx}`)?.value) || 0;
+    let exam = parseFloat(document.getElementById(`exam_${idx}`)?.value) || 0;
+    let total = 0;
+    if (at === 'full') total = Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30 + Math.min(exam,70))*10)/10;
+    else if (at === 'single_cat') total = Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10;
+    else total = Math.round(Math.min(exam,100)*10)/10;
+    document.getElementById(`ltotal_${idx}`).innerHTML = total;
+    document.getElementById(`lstatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
+    const row = document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement;
+    if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
+  };
+  
+  window.saveLecturerMarks = async function() {
+    let marksData = [];
+    const len = window.currentMarksData?.length || 0;
+    const at = window.currentAssessmentType || 'full';
+    for (let i = 0; i < len; i++) {
+      if (at === 'full') marksData.push({ row: i+2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: document.getElementById(`cat2_${i}`)?.value || '', exam: document.getElementById(`exam_${i}`)?.value || '' });
+      else if (at === 'single_cat') marksData.push({ row: i+2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' });
+      else marksData.push({ row: i+2, cat1: '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' });
+    }
+    showLoading('Saving...');
+    const res = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentMarksBlock, subject: window.currentMarksSubject, marksData, lecturerName: currentUser.name }) });
+    hideLoading();
+    showNotification(res?.success ? 'Saved!' : 'Error', !res?.success);
+    if (res?.success) loadMarksForSubject(window.currentMarksBlock, window.currentMarksSubject, window.currentAssessmentType);
+  };
+  
+  // ======================= STUDENTS, LECTURERS, UNITS =======================
+  async function showStudents() {
+    const students = await apiCall('/api/students', {});
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3><button class="save-btn" onclick="showAddStudentModal()" style="margin: 10px 0;"><i class="fas fa-plus"></i> Add Student</button><button class="export-btn" onclick="exportToCSV(students,'students')"><i class="fas fa-download"></i> Export</button></div>
+      <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+    students.forEach(s => {
+      html += `<tr><td>${s.admission}</td><td>${s.name}</td><td>${s.block}</td><td><span class="badge ${s.status === 'ACTIVE' ? 'badge-pass' : 'badge-fail'}">${s.status}</span></td>
+      <td><button class="edit-btn" onclick="showEditStudentModal('${s.admission}','${s.name}','${s.block}')"><i class="fas fa-edit"></i> Edit</button>
+      <button class="delete-btn" onclick="deleteStudent('${s.admission}')"><i class="fas fa-trash"></i> Delete</button></td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+    document.getElementById('contentArea').innerHTML = html;
   }
   
   function showAddStudentModal() {
-    var modalHtml = '<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div><div><label>Name:</label><input type="text" id="studentName" placeholder="Full Name"></div><div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0">BLOCK_0</option><option value="BLOCK_1">BLOCK_1</option><option value="BLOCK_2">BLOCK_2</option><option value="BLOCK_3">BLOCK_3</option><option value="BLOCK_4">BLOCK_4</option><option value="BLOCK_5">BLOCK_5</option></select></div><button onclick="saveNewStudent()" class="save-btn">Save</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div>
+      <div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select></div>
+      <button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button>
+    </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
   }
   
   async function saveNewStudent() {
-    var admission = document.getElementById('studentAdmission').value;
-    var name = document.getElementById('studentName').value;
-    var block = document.getElementById('studentBlock').value;
+    const admission = document.getElementById('studentAdmission').value;
+    const name = document.getElementById('studentName').value;
+    const block = document.getElementById('studentBlock').value;
     if (!admission || !name) { showNotification('Fill all fields', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission: admission, name: name, block: block }) });
+    await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) });
     hideLoading(); closeModal(); showNotification('Student added!', false); showStudents();
   }
   
-  function showEditStudentModal(admission, name, block) {
-    var modalHtml = '<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" value="' + admission + '" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="studentName" value="' + name + '"></div><div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0" ' + (block === 'BLOCK_0' ? 'selected' : '') + '>BLOCK_0</option><option value="BLOCK_1" ' + (block === 'BLOCK_1' ? 'selected' : '') + '>BLOCK_1</option><option value="BLOCK_2" ' + (block === 'BLOCK_2' ? 'selected' : '') + '>BLOCK_2</option><option value="BLOCK_3" ' + (block === 'BLOCK_3' ? 'selected' : '') + '>BLOCK_3</option><option value="BLOCK_4" ' + (block === 'BLOCK_4' ? 'selected' : '') + '>BLOCK_4</option><option value="BLOCK_5" ' + (block === 'BLOCK_5' ? 'selected' : '') + '>BLOCK_5</option></select></div><button onclick="updateStudent(\'' + admission + '\')" class="save-btn">Save</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  function showEditStudentModal(adm, name, block) {
+    const modal = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Admission</label><input type="text" value="${adm}" readonly style="background:#f1f5f9;"></div>
+      <div class="field"><label>Name</label><input type="text" id="studentName" value="${name}"></div>
+      <div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option ${b === block ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
+      <button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button>
+    </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
   }
   
-  async function updateStudent(admission) {
-    var name = document.getElementById('studentName').value;
-    var block = document.getElementById('studentBlock').value;
+  async function updateStudent(adm) {
+    const name = document.getElementById('studentName').value;
+    const block = document.getElementById('studentBlock').value;
     showLoading('Updating...');
-    await apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission: admission, name: name, block: block }) });
+    await apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission: adm, name, block }) });
     hideLoading(); closeModal(); showNotification('Updated!', false); showStudents();
   }
   
-  async function deleteStudent(admission) {
+  async function deleteStudent(adm) {
     if (confirm('Delete this student?')) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission: admission }) });
+      await apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission: adm }) });
       hideLoading(); showNotification('Deleted!', false); showStudents();
     }
   }
   
-  // ===== LECTURERS (ADMIN) =====
   async function showLecturers() {
-    showLoading('Loading...');
-    var lecturers = await apiCall('/api/lecturers', {});
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👨‍🏫 Manage Lecturers</h3></div>';
-    for (var i = 0; i < lecturers.length; i++) {
-      var l = lecturers[i];
-      var subjectBadges = '';
-      for (var s = 0; s < (l.subjects || []).length; s++) {
-        subjectBadges += '<span class="subject-badge">' + (l.subjects[s].split('|')[1] || l.subjects[s]) + '</span>';
-      }
-      html += '<div class="lecturer-card"><div><strong>' + l.name + '</strong><br><small>' + l.username + '</small><br><small>' + (l.email || '') + '</small></div><div>' + subjectBadges + '</div><div><button class="edit-btn" onclick="showEditLecturerModal(\'' + l.username + '\')">Edit</button><button class="delete-btn" onclick="deleteLecturer(\'' + l.username + '\')">Delete</button></div></div>';
-    }
-    html += '<button class="save-btn" onclick="showAddLecturerModal()">➕ Add Lecturer</button>';
+    const lecturers = await apiCall('/api/lecturers', {});
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3><button class="save-btn" onclick="showAddLecturerModal()" style="margin: 10px 0;"><i class="fas fa-plus"></i> Add Lecturer</button></div>`;
+    lecturers.forEach(l => {
+      const badges = (l.subjects || []).map(s => `<span class="subject-badge">${s.split('|')[1]}</span>`).join('');
+      html += `<div class="lecturer-card"><div><strong>${l.name}</strong><br><small>${l.username}</small></div><div>${badges}</div><div><button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button> <button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button></div></div>`;
+    });
     document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
   }
   
   function showAddLecturerModal() {
-    var modalHtml = '<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" id="lecUser" placeholder="Username"></div><div><label>Name:</label><input type="text" id="lecName" placeholder="Full Name"></div><div><label>Email:</label><input type="email" id="lecEmail" placeholder="Email"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Password" value="password123"></div><button onclick="saveNewLecturer()" class="save-btn">Save</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = `<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Username</label><input type="text" id="lecUser"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="lecName"></div>
+      <div class="field"><label>Email</label><input type="email" id="lecEmail"></div>
+      <div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div>
+      <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save</button>
+    </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
   }
   
   async function saveNewLecturer() {
-    var username = document.getElementById('lecUser').value;
-    var name = document.getElementById('lecName').value;
-    var email = document.getElementById('lecEmail').value;
-    var pass = document.getElementById('lecPass').value;
+    const username = document.getElementById('lecUser').value;
+    const name = document.getElementById('lecName').value;
+    const email = document.getElementById('lecEmail').value;
+    const pass = document.getElementById('lecPass').value;
     if (!username || !name) { showNotification('Fill required fields', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username: username, name: name, email: email, password: pass, subjects: [] }) });
+    await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: pass, subjects: [] }) });
     hideLoading(); closeModal(); showNotification('Lecturer added!', false); showLecturers();
   }
   
   async function showEditLecturerModal(username) {
-    showLoading('Loading...');
-    var lecturer = await apiCall('/api/lecturer/' + username, {});
-    var config = await getConfig();
-    hideLoading();
-    var subjectOptions = '';
-    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    for (var b = 0; b < blocks.length; b++) {
-      var block = blocks[b];
-      var blockUnits = config[block] || [];
-      if (blockUnits.length > 0) {
-        subjectOptions += '<optgroup label="' + block.replace('_', ' ') + '">';
-        for (var u = 0; u < blockUnits.length; u++) {
-          var unit = blockUnits[u];
-          var isSelected = false;
-          if (lecturer.subjects) {
-            for (var sel = 0; sel < lecturer.subjects.length; sel++) {
-              if (lecturer.subjects[sel] === block + '|' + unit.name) { isSelected = true; break; }
-            }
-          }
-          subjectOptions += '<option value="' + block + '|' + unit.name + '" ' + (isSelected ? 'selected' : '') + '>' + unit.name + ' (' + (unit.assessmentType === 'full' ? 'Full' : (unit.assessmentType === 'single_cat' ? 'Single CAT' : 'Exam Only')) + ')</option>';
-        }
-        subjectOptions += '</optgroup>';
+    const lecturer = await apiCall(`/api/lecturer/${username}`, {});
+    const config = await getConfig();
+    let subjectOptions = '';
+    for (let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']) {
+      const units = config[b] || [];
+      if (units.length) {
+        subjectOptions += `<optgroup label="${b.replace('_', ' ')}">`;
+        units.forEach(u => {
+          const selected = (lecturer.subjects || []).includes(`${b}|${u.name}`);
+          subjectOptions += `<option value="${b}|${u.name}" ${selected ? 'selected' : ''}>${u.name} (${u.assessmentType})</option>`;
+        });
+        subjectOptions += `</optgroup>`;
       }
     }
-    var modalHtml = '<div id="lecturerModal" class="modal"><div class="modal-content" style="width:600px;"><div class="modal-header"><h3>Edit Lecturer: ' + lecturer.name + '</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" value="' + lecturer.username + '" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="lecName" value="' + lecturer.name + '"></div><div><label>Email:</label><input type="email" id="lecEmail" value="' + (lecturer.email || '') + '"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Leave blank to keep current"></div><div><label>Assigned Subjects:</label><select id="lecSubjects" multiple size="6" style="width:100%;">' + subjectOptions + '</select><small>Hold Ctrl/Cmd to select multiple</small></div><button onclick="updateLecturer(\'' + lecturer.username + '\')" class="save-btn">Save Changes</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = `<div id="lecturerModal" class="modal"><div class="modal-content" style="max-width:600px;"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Username</label><input type="text" value="${lecturer.username}" readonly></div>
+      <div class="field"><label>Name</label><input type="text" id="lecName" value="${lecturer.name}"></div>
+      <div class="field"><label>Email</label><input type="email" id="lecEmail" value="${lecturer.email || ''}"></div>
+      <div class="field"><label>Password (leave blank to keep)</label><input type="password" id="lecPass" placeholder="New password"></div>
+      <div class="field"><label>Assigned Subjects</label><select id="lecSubjects" multiple size="6" style="width:100%">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
+      <button onclick="updateLecturer('${lecturer.username}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button>
+    </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
   }
   
   async function updateLecturer(oldUsername) {
-    var name = document.getElementById('lecName').value;
-    var email = document.getElementById('lecEmail').value;
-    var password = document.getElementById('lecPass').value;
-    var select = document.getElementById('lecSubjects');
-    var subjects = [];
-    for (var i = 0; i < select.options.length; i++) if (select.options[i].selected) subjects.push(select.options[i].value);
-    showLoading('Saving...');
-    await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername: oldUsername, username: oldUsername, name: name, email: email, password: password, subjects: subjects }) });
-    hideLoading(); closeModal(); showNotification('Lecturer updated!', false); showLecturers();
+    const name = document.getElementById('lecName').value;
+    const email = document.getElementById('lecEmail').value;
+    const password = document.getElementById('lecPass').value;
+    const select = document.getElementById('lecSubjects');
+    const subjects = Array.from(select.selectedOptions).map(o => o.value);
+    showLoading('Updating...');
+    await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username: oldUsername, name, email, password, subjects }) });
+    hideLoading(); closeModal(); showNotification('Updated!', false); showLecturers();
   }
   
   async function deleteLecturer(username) {
     if (confirm('Delete this lecturer?')) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username: username }) });
+      await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) });
       hideLoading(); showNotification('Deleted!', false); showLecturers();
     }
   }
   
-  // ===== UNITS (ADMIN) =====
   async function showUnits() {
-    showLoading('Loading...');
-    var units = await apiCall('/api/units', {});
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div><div style="background:white;padding:20px;border-radius:10px;margin-bottom:20px;"><h4>➕ Add New Unit</h4><select id="newUnitBlock"><option value="BLOCK_0">BLOCK 0</option><option value="BLOCK_1">BLOCK 1</option><option value="BLOCK_2">BLOCK 2</option><option value="BLOCK_3">BLOCK 3</option><option value="BLOCK_4">BLOCK 4</option><option value="BLOCK_5">BLOCK 5</option></select><input type="text" id="newUnitName" placeholder="Subject Name"><select id="newUnitType"><option value="full">📊 Full Assessment (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div><div id="unitsList">';
-    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    for (var b = 0; b < blocks.length; b++) {
-      var block = blocks[b];
-      var blockUnits = units[block] || [];
-      if (blockUnits.length > 0) {
-        html += '<div style="margin:15px 0;"><h4>' + block.replace('_', ' ') + '</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">';
-        for (var u = 0; u < blockUnits.length; u++) {
-          var unit = blockUnits[u];
-          var icon = unit.assessmentType === 'single_cat' ? '📝' : (unit.assessmentType === 'exam_only' ? '📖' : '📊');
-          var typeLabel = unit.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (unit.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          var typeClass = unit.assessmentType === 'full' ? 'badge-full' : (unit.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
-          html += '<div class="unit-card">' + icon + ' <strong>' + unit.name + '</strong><span class="unit-assessment-badge ' + typeClass + '">' + typeLabel + '</span><div><button class="unit-edit-btn" onclick="showEditUnitModal(\'' + block + '\', \'' + unit.name.replace(/'/g, "\\'") + '\', \'' + unit.assessmentType + '\')">✏️ Edit</button><button class="unit-delete-btn" onclick="deleteUnit(\'' + block + '\', \'' + unit.name.replace(/'/g, "\\'") + '\')">🗑️ Delete</button></div></div>';
-        }
-        html += '</div></div>';
+    const units = await apiCall('/api/units', {});
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div>
+      <div class="card"><h4><i class="fas fa-plus-circle"></i> Add New Unit</h4>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+        <div><label>Block</label><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select></div>
+        <div><label>Subject Name</label><input type="text" id="newUnitName" placeholder="Subject Name"></div>
+        <div><label>Assessment Type</label><select id="newUnitType"><option value="full">📊 Full (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select></div>
+        <div><button class="save-btn" onclick="addNewUnit()"><i class="fas fa-plus"></i> Add Unit</button></div>
+      </div></div>`;
+    for (let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']) {
+      const blockUnits = units[b] || [];
+      if (blockUnits.length) {
+        html += `<div style="margin-top:24px;"><h3><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')}</h3><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:16px; margin-top:12px;">`;
+        blockUnits.forEach(u => {
+          html += `<div class="unit-card"><div><strong>${u.name}</strong><span class="badge badge-${u.assessmentType}" style="margin-left:8px;">${u.assessmentType}</span></div><div style="margin-top:12px;"><button class="edit-btn" onclick="showEditUnitModal('${b}','${u.name}','${u.assessmentType}')">Edit</button> <button class="delete-btn" onclick="deleteUnit('${b}','${u.name}')">Delete</button></div></div>`;
+        });
+        html += `</div></div>`;
       }
     }
-    html += '</div>';
     document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
   }
   
   async function addNewUnit() {
-    var block = document.getElementById('newUnitBlock').value;
-    var name = document.getElementById('newUnitName').value.trim().toUpperCase();
-    var type = document.getElementById('newUnitType').value;
+    const block = document.getElementById('newUnitBlock').value;
+    const name = document.getElementById('newUnitName').value.trim().toUpperCase();
+    const type = document.getElementById('newUnitType').value;
     if (!name) { showNotification('Enter subject name', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block: block, name: name, assessmentType: type }) });
+    await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) });
     hideLoading(); configCache = null; showNotification('Unit added!', false); showUnits();
   }
   
-  function showEditUnitModal(block, name, currentType) {
-    var modalHtml = '<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Subject Name:</label><input type="text" id="editUnitName" value="' + name + '"></div><div><label>Assessment Type:</label><select id="editUnitType"><option value="full" ' + (currentType === 'full' ? 'selected' : '') + '>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ' + (currentType === 'single_cat' ? 'selected' : '') + '>Single CAT (CAT+Exam)</option><option value="exam_only" ' + (currentType === 'exam_only' ? 'selected' : '') + '>Exam Only</option></select></div><button onclick="updateUnit(\'' + block + '\', \'' + name + '\')" class="save-btn">Save Changes</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  function showEditUnitModal(block, name, curType) {
+    const modal = `<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div>
+      <div class="field"><label>Assessment Type</label><select id="editUnitType"><option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option><option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option></select></div>
+      <button onclick="updateUnit('${block}','${name}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button>
+    </div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
   }
   
   async function updateUnit(block, oldName) {
-    var newName = document.getElementById('editUnitName').value.trim().toUpperCase();
-    var newType = document.getElementById('editUnitType').value;
+    const newName = document.getElementById('editUnitName').value.trim().toUpperCase();
+    const newType = document.getElementById('editUnitType').value;
     if (!newName) { showNotification('Enter subject name', true); return; }
     showLoading('Updating...');
-    await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block: block, oldName: oldName, newName: newName, assessmentType: newType }) });
+    await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) });
     hideLoading(); closeModal(); configCache = null; showNotification('Unit updated!', false); showUnits();
   }
   
   async function deleteUnit(block, name) {
-    if (confirm('Delete unit "' + name + '" from ' + block.replace('_', ' ') + '?\n\nThis will delete ALL marks for this unit!')) {
+    if (confirm(`Delete unit "${name}"? This will delete ALL marks!`)) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block: block, name: name }) });
+      await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) });
       hideLoading(); configCache = null; showNotification('Unit deleted!', false); showUnits();
     }
   }
   
   // Initialize
-  var savedYear = localStorage.getItem('selectedYear');
-  if (savedYear && INTAKE_YEARS.indexOf(savedYear) !== -1) currentYear = savedYear;
-  var savedExamType = localStorage.getItem('selectedExamType');
-  if (savedExamType) currentExamType = savedExamType;
-  
+  let sy = localStorage.getItem('selectedYear');
+  if (sy && INTAKE_YEARS.includes(sy)) currentYear = sy;
+  let set = localStorage.getItem('selectedExamType');
+  if (set) currentExamType = set;
   checkLogin();
 </script>
 </body>
