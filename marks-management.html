@@ -963,19 +963,70 @@
     loadNCKMarks();
   }
   
-  async function loadNCKMarks() {
-    const sheetName = document.getElementById('nckSheetSelect').value;
-    showLoading(`Loading ${sheetName}...`);
-    const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {});
+ async function loadNCKMarks() {
+  const sheetName = document.getElementById('nckSheetSelect').value;
+  showLoading(`Loading ${sheetName}...`);
+  
+  // Direct fetch with explicit headers for debugging
+  const url = `${API_BASE_URL}/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`;
+  console.log(`Fetching: ${url}`);
+  console.log(`Headers: X-Year=${currentYear}, X-Exam-Type=nck`);
+  
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'X-Year': currentYear,
+        'X-Exam-Type': 'nck'
+      }
+    });
+    const marks = await response.json();
     console.log(`NCK ${sheetName} data:`, marks);
+    console.log(`Number of students:`, marks.length);
+    
+    if (marks.length === 0) {
+      // Try to get debug info from server
+      const debugResponse = await fetch(`${API_BASE_URL}/api/debug/nck-sheets`, {
+        headers: { 'X-Year': currentYear, 'X-Exam-Type': 'nck' }
+      });
+      const debugInfo = await debugResponse.json();
+      console.log('Debug info:', debugInfo);
+      
+      document.getElementById('nckMarksContainer').innerHTML = `
+        <div class="card" style="text-align:center; padding: 30px;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b;"></i>
+          <h3>No NCK Data Found</h3>
+          <p>Debug Information:</p>
+          <ul style="text-align: left; display: inline-block;">
+            <li>Year: ${currentYear}</li>
+            <li>Sheet: ${sheetName}</li>
+            <li>API Response: ${marks.length} students</li>
+            <li>Available sheets: ${debugInfo.sheetNames?.join(', ') || 'unknown'}</li>
+          </ul>
+          <button class="back-btn" onclick="showMain()" style="margin-top: 20px;">Go Back</button>
+        </div>
+      `;
+      hideLoading();
+      return;
+    }
     
     if (sheetName === 'XY FORMS') {
       displayXYFormsMarks(marks);
     } else {
       displayAssessmentMarks(marks);
     }
-    hideLoading();
+  } catch (error) {
+    console.error('Error loading NCK marks:', error);
+    document.getElementById('nckMarksContainer').innerHTML = `
+      <div class="card" style="text-align:center; padding: 30px; background: #fee2e2;">
+        <i class="fas fa-bug" style="font-size: 48px; color: #ef4444;"></i>
+        <h3>Error Loading NCK Data</h3>
+        <p>${error.message}</p>
+        <button class="back-btn" onclick="showMain()">Go Back</button>
+      </div>
+    `;
   }
+  hideLoading();
+}
   
   function displayXYFormsMarks(marks) {
     if (!marks || marks.length === 0) {
