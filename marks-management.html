@@ -394,10 +394,43 @@
   document.getElementById('subjectSelect').style.display = 'none';
   document.getElementById('marksTable').innerHTML = '';
   
-  const subjects = await apiCall(`/api/subjects/${block}`);
+  let subjects = [];
+  
+  // Check if user is lecturer
+  if (currentUser.role === 'lecturer') {
+    // Get lecturer's assigned subjects from localStorage or currentUser
+    const lecturerSubjects = currentUser.subjects || [];
+    console.log("Lecturer's assigned subjects:", lecturerSubjects);
+    
+    // Filter subjects by block
+    for (var i = 0; i < lecturerSubjects.length; i++) {
+      const subj = lecturerSubjects[i];
+      const parts = subj.split('|');
+      const subjBlock = parts[0];
+      const subjName = parts[1];
+      const subjType = parts[2] || 'full';
+      
+      if (subjBlock === block) {
+        subjects.push({
+          name: subjName,
+          assessmentType: subjType
+        });
+      }
+    }
+  } else {
+    // Admin gets all subjects from API
+    subjects = await apiCall(`/api/subjects/${block}`);
+  }
+  
   var sel = document.getElementById('subjectSelect');
   sel.style.display = 'block';
   sel.innerHTML = '<option value="">-- Select Subject --</option>';
+  
+  if (subjects.length === 0) {
+    sel.innerHTML = '<option value="">-- No subjects assigned --</option>';
+    hideLoading();
+    return;
+  }
   
   for (var i = 0; i < subjects.length; i++) {
     var subject = subjects[i];
@@ -405,7 +438,6 @@
     var assessmentType = subject.assessmentType || 'full';
     
     if (currentExamType === 'nck') {
-      // For NCK, show XY FORMS and ASSESSMENT AND CASE
       var icon = subjectName === 'XY FORMS' ? '📊' : '📋';
       sel.innerHTML += `<option value="${subjectName}" data-type="nck">${icon} ${subjectName}</option>`;
     } else {
