@@ -98,7 +98,7 @@
       background: white;
       padding: 25px;
       border-radius: 15px;
-      width: 500px;
+      width: 600px;
       max-width: 90%;
       max-height: 80%;
       overflow-y: auto;
@@ -153,6 +153,18 @@
       to { transform: translateX(0); opacity: 1; }
     }
     .content-area { margin-top: 20px; }
+    .clinical-areas-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .clinical-area-item {
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
     @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -167,6 +179,7 @@
   var currentUser = null;
   var currentYear = '2024';
   var currentExamType = 'internal';
+  var currentClinicalAreasData = null;
   
   function showLoading(message) {
     var existingLoader = document.querySelector('.loader');
@@ -311,7 +324,6 @@
       </div>
     `;
     
-    // Attach event listeners
     if (isAdmin) {
       document.getElementById('marksBtn').onclick = () => showSection('marks');
       document.getElementById('reportsBtn').onclick = () => showSection('reports');
@@ -386,26 +398,36 @@
     showLoading('Loading marks...');
     var marksTable = document.getElementById('marksTable');
     const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
-    if (!marks || marks.length === 0) { marksTable.innerHTML = '<div style="background:white;padding:20px;text-align:center;">No students found</div>'; hideLoading(); return; }
+    
+    if (!marks || marks.length === 0) {
+      marksTable.innerHTML = '<div style="background:white;padding:20px;text-align:center;">No students found</div>';
+      hideLoading();
+      return;
+    }
     
     var html = '<div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;">';
     html += '<th>Admission</th><th>Name</th>';
+    
     if (currentExamType === 'nck') {
       html += '<th>Clinical Score<br>(0-100)</th><th>Status</th><th>Graded By</th>';
     } else {
       html += '<th>CAT1(30)</th><th>CAT2(30)</th><th>Exam(70)</th><th>Total</th><th>Status</th><th>Graded By</th>';
     }
-    html += '</tr></thead><tbody>';
+    html += '</table></thead><tbody>';
     
     for (var i = 0; i < marks.length; i++) {
       if (currentExamType === 'nck') {
-        var clinical = marks[i].cat1 || '';
-        var numClinical = parseFloat(clinical) || 0;
+        var clinicalScore = marks[i].cat1 || '';
+        var numClinical = parseFloat(clinicalScore) || 0;
         var status = numClinical >= 70 ? 'PASS' : (numClinical > 0 ? 'FAIL' : '');
         var rowClass = numClinical >= 70 ? 'pass-row' : (numClinical > 0 ? 'fail-row' : '');
-        html += `<tr class="${rowClass}"><td>${marks[i].admission}</td><td>${marks[i].name}</td>
-          <td><input type="number" id="clinical_${i}" value="${clinical}" min="0" max="100" step="0.5" onchange="updateNckTotal(${i})"></td>
-          <td id="status_${i}">${status}</td><td>${marks[i].gradedBy || '-'}</td></tr>`;
+        html += `<tr class="${rowClass}">`;
+        html += `<td style="padding:10px;">${marks[i].admission}</td>`;
+        html += `<td style="padding:10px;">${marks[i].name}</td>`;
+        html += `<td style="padding:10px;"><input type="number" id="clinical_${i}" value="${clinicalScore}" min="0" max="100" step="0.5" onchange="updateNckStatus(${i})"></td>`;
+        html += `<td id="status_${i}">${status}</td>`;
+        html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
+        html += `</tr>`;
       } else {
         var cat1 = marks[i].cat1 || '', cat2 = marks[i].cat2 || '', exam = marks[i].exam || '';
         var numCat1 = parseFloat(cat1)||0, numCat2 = parseFloat(cat2)||0, numExam = parseFloat(exam)||0;
@@ -414,14 +436,21 @@
         total = Math.round(total * 10) / 10;
         var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
         var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-        html += `<tr class="${rowClass}"><td>${marks[i].admission}</td><td>${marks[i].name}</td>
-          <td><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>
-          <td><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>
-          <td><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateInternalTotal(${i})"></td>
-          <td id="total_${i}">${total}</td><td id="status_${i}">${status}</td><td>${marks[i].gradedBy || '-'}</td></tr>`;
+        html += `<tr class="${rowClass}">`;
+        html += `<td style="padding:10px;">${marks[i].admission}</td>`;
+        html += `<td style="padding:10px;">${marks[i].name}</td>`;
+        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
+        html += `<td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
+        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateInternalTotal(${i})"></td>`;
+        html += `<td id="total_${i}">${total}</td>`;
+        html += `<td id="status_${i}">${status}</td>`;
+        html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
+        html += `</tr>`;
       }
     }
-    html += '</tbody></table></div><div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
+    
+    html += '</tbody></table></div>';
+    html += '<div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
     marksTable.innerHTML = html;
     hideLoading();
   }
@@ -439,7 +468,7 @@
     if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
   };
   
-  window.updateNckTotal = function(idx) {
+  window.updateNckStatus = function(idx) {
     var clinical = parseFloat(document.getElementById('clinical_' + idx)?.value) || 0;
     var status = clinical >= 70 ? 'PASS' : (clinical > 0 ? 'FAIL' : '');
     document.getElementById('status_' + idx).innerHTML = status;
@@ -480,9 +509,10 @@
     const students = await apiCall('/api/students');
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👥 Manage Students</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     for (var i = 0; i < students.length; i++) {
-      html += `<tr><td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td>
-        <td><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button>
-        <button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td></tr>`;
+      html += `<tr>`;
+      html += `<td>${students[i].admission}</td><td>${students[i].name}</td><td>${students[i].block}</td><td>${students[i].status}</td>`;
+      html += `<td><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td>`;
+      html += `</tr>`;
     }
     html += '</tbody></table><button class="save-btn" style="margin-top:15px;" onclick="addStudent()">➕ Add New Student</button></div>';
     document.getElementById('contentArea').innerHTML = html;
@@ -490,18 +520,15 @@
   }
   
   function addStudent() {
-    var admission = prompt('Enter Admission Number:');
-    if (!admission) return;
-    var name = prompt('Enter Full Name:');
-    if (!name) return;
+    var admission = prompt('Enter Admission Number:'); if (!admission) return;
+    var name = prompt('Enter Full Name:'); if (!name) return;
     var block = prompt('Enter Block (e.g., BLOCK_0):', 'BLOCK_0');
     showLoading('Adding student...');
     apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student added!'); showStudents(); });
   }
   
   function editStudent(admission, oldName, oldBlock) {
-    var name = prompt('Edit student name:', oldName);
-    if (!name) return;
+    var name = prompt('Edit student name:', oldName); if (!name) return;
     var block = prompt('Edit block:', oldBlock);
     showLoading('Updating student...');
     apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student updated!'); showStudents(); });
@@ -530,127 +557,69 @@
   }
   
   function addLecturer() {
-    var username = prompt('Enter username:');
-    if (!username) return;
-    var name = prompt('Enter full name:');
-    if (!name) return;
+    var username = prompt('Enter username:'); if (!username) return;
+    var name = prompt('Enter full name:'); if (!name) return;
     var password = prompt('Enter password:', 'password123');
     showLoading('Adding lecturer...');
     apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email: '', password, subjects: [] }) }).then(() => { hideLoading(); showNotification('Lecturer added!'); showLecturers(); });
   }
   
-function editLecturer(username) {
-  // Fetch lecturer details first
-  showLoading('Loading lecturer details...');
-  
-  apiCall(`/api/lecturer/${username}`).then(lecturer => {
-    hideLoading();
-    
-    if (!lecturer) {
-      showNotification('Lecturer not found', true);
-      return;
-    }
-    
-    // Fetch available units
-    apiCall('/api/units').then(units => {
-      // Build subject options grouped by block
-      let subjectOptions = '';
-      const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-      
-      for (const block of blocks) {
-        const blockUnits = units[block] || [];
+  function editLecturer(username) {
+    showLoading('Loading lecturer details...');
+    Promise.all([apiCall(`/api/lecturer/${username}`), apiCall('/api/units')]).then(([lecturer, units]) => {
+      hideLoading();
+      if (!lecturer) { showNotification('Lecturer not found', true); return; }
+      var subjectOptions = '';
+      var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+      for (var b of blocks) {
+        var blockUnits = units[b] || [];
         if (blockUnits.length > 0) {
-          subjectOptions += `<optgroup label="${block.replace('_', ' ')}">`;
-          for (const unit of blockUnits) {
-            const isSelected = lecturer.subjects && lecturer.subjects.includes(`${block}|${unit.name}`);
-            const selectedAttr = isSelected ? 'selected' : '';
-            subjectOptions += `<option value="${block}|${unit.name}" ${selectedAttr}>${unit.name} (${unit.assessmentType})</option>`;
+          subjectOptions += `<optgroup label="${b.replace('_', ' ')}">`;
+          for (var u of blockUnits) {
+            var isSelected = lecturer.subjects && lecturer.subjects.includes(`${b}|${u.name}`);
+            subjectOptions += `<option value="${b}|${u.name}" ${isSelected ? 'selected' : ''}>${u.name} (${u.assessmentType})</option>`;
           }
           subjectOptions += `</optgroup>`;
         }
       }
-      
-      // Create modal HTML
-      const modalHtml = `
+      var modalHtml = `
         <div id="editLecturerModal" class="modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>Edit Lecturer: ${lecturer.name}</h3>
-              <span class="close" onclick="closeModal()">&times;</span>
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label><strong>Username:</strong></label>
-              <input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0;">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label><strong>Full Name:</strong></label>
-              <input type="text" id="editName" value="${lecturer.name}">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label><strong>Email:</strong></label>
-              <input type="email" id="editEmail" value="${lecturer.email || ''}">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label><strong>Password:</strong></label>
-              <input type="password" id="editPassword" placeholder="Leave blank to keep current">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label><strong>Assigned Subjects (Hold Ctrl/Cmd to select multiple):</strong></label>
-              <select id="editSubjects" multiple size="10" style="width:100%; height:200px;">
-                ${subjectOptions}
-              </select>
-              <small>💡 Hold Ctrl (Windows) or Cmd (Mac) to select multiple subjects</small>
-            </div>
-            <button onclick="saveEditedLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; width:100%; border:none; border-radius:5px; cursor:pointer;">Save Changes</button>
+          <div class="modal-content" style="width:600px;">
+            <div class="modal-header"><h3>Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div>
+            <div style="margin-bottom:15px;"><label><strong>Username:</strong></label><input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0; width:100%; padding:8px;"></div>
+            <div style="margin-bottom:15px;"><label><strong>Full Name:</strong></label><input type="text" id="editName" value="${lecturer.name.replace(/'/g, "\\'")}" style="width:100%; padding:8px;"></div>
+            <div style="margin-bottom:15px;"><label><strong>Email:</strong></label><input type="email" id="editEmail" value="${lecturer.email || ''}" style="width:100%; padding:8px;"></div>
+            <div style="margin-bottom:15px;"><label><strong>Password:</strong></label><input type="password" id="editPassword" placeholder="Leave blank to keep current" style="width:100%; padding:8px;"></div>
+            <div style="margin-bottom:15px;"><label><strong>Assigned Subjects:</strong></label><select id="editSubjects" multiple size="10" style="width:100%; height:200px;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
+            <button onclick="saveEditedLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; width:100%; border:none; border-radius:5px;">Save Changes</button>
           </div>
-        </div>
-      `;
-      
+        </div>`;
       document.body.insertAdjacentHTML('beforeend', modalHtml);
-      
-      // Pre-select subjects
-      if (lecturer.subjects) {
-        const select = document.getElementById('editSubjects');
-        for (let i = 0; i < select.options.length; i++) {
-          if (lecturer.subjects.includes(select.options[i].value)) {
-            select.options[i].selected = true;
-          }
-        }
-      }
     });
-  });
-}
-
-function saveEditedLecturer(oldUsername) {
-  const username = document.getElementById('editUsername').value;
-  const name = document.getElementById('editName').value;
-  const email = document.getElementById('editEmail').value;
-  const password = document.getElementById('editPassword').value;
-  
-  const select = document.getElementById('editSubjects');
-  const subjects = [];
-  for (let i = 0; i < select.options.length; i++) {
-    if (select.options[i].selected) {
-      subjects.push(select.options[i].value);
-    }
   }
   
-  showLoading('Saving lecturer changes...');
+  function saveEditedLecturer(oldUsername) {
+    var username = document.getElementById('editUsername').value;
+    var name = document.getElementById('editName').value;
+    var email = document.getElementById('editEmail').value;
+    var password = document.getElementById('editPassword').value;
+    var select = document.getElementById('editSubjects');
+    var subjects = [];
+    for (var i = 0; i < select.options.length; i++) if (select.options[i].selected) subjects.push(select.options[i].value);
+    showLoading('Saving...');
+    apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username, name, email, password, subjects }) }).then(result => {
+      hideLoading(); closeModal();
+      if (result.success) { showNotification('Lecturer updated!'); showLecturers(); }
+      else showNotification(result.message || 'Error', true);
+    });
+  }
   
-  apiCall('/api/update-lecturer', {
-    method: 'POST',
-    body: JSON.stringify({ oldUsername, username, name, email, password, subjects })
-  }).then(result => {
-    hideLoading();
-    closeModal();
-    if (result.success) {
-      showNotification('Lecturer updated successfully!');
-      showLecturers(); // Refresh the list
-    } else {
-      showNotification(result.message || 'Error updating lecturer', true);
+  function deleteLecturer(username) {
+    if (confirm('Delete this lecturer?')) {
+      showLoading('Deleting...');
+      apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); });
     }
-  });
-}  function deleteLecturer(username) { if (confirm('Delete this lecturer?')) { showLoading('Deleting...'); apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); }); } }
+  }
   
   // ========== UNITS SECTION ==========
   async function showUnits() {
@@ -713,6 +682,8 @@ function saveEditedLecturer(oldUsername) {
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
+  
+  function closeModal() { var modals = document.querySelectorAll('.modal'); modals.forEach(m => m.remove()); }
   
   // Restore saved selections
   var savedYear = localStorage.getItem('selectedYear');
