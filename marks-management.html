@@ -8,46 +8,14 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; transition: all 0.3s ease; }
-    
-    /* Dark Mode Styles */
-    body.dark-mode {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    }
-    
-    body.dark-mode .header,
-    body.dark-mode .stat-card,
-    body.dark-mode .selector-group,
-    body.dark-mode .user-info,
-    body.dark-mode .subject-card,
-    body.dark-mode table,
-    body.dark-mode .lecturer-card,
-    body.dark-mode .unit-card,
-    body.dark-mode .modal-content,
-    body.dark-mode .login-container {
-      background: #2d2d44;
-      color: #eee;
-    }
-    
-    body.dark-mode th {
-      background: #0f3460;
-    }
-    
-    body.dark-mode td {
-      border-bottom-color: #3d3d5c;
-    }
-    
-    body.dark-mode input,
-    body.dark-mode select,
-    body.dark-mode textarea {
-      background: #1e1e2e;
-      color: #eee;
-      border-color: #3d3d5c;
-    }
-    
-    body.dark-mode .subject-card:hover {
-      background: #3d3d5c;
-    }
-    
+    body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+    body.dark-mode .header, body.dark-mode .stat-card, body.dark-mode .selector-group,
+    body.dark-mode .user-info, body.dark-mode .subject-card, body.dark-mode table,
+    body.dark-mode .lecturer-card, body.dark-mode .unit-card, body.dark-mode .modal-content,
+    body.dark-mode .login-container { background: #2d2d44; color: #eee; }
+    body.dark-mode th { background: #0f3460; }
+    body.dark-mode td { border-bottom-color: #3d3d5c; }
+    body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #1e1e2e; color: #eee; border-color: #3d3d5c; }
     .container { max-width: 1400px; margin: 0 auto; }
     .header { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
@@ -55,8 +23,6 @@
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
     .stat-number { font-size: 36px; font-weight: bold; color: #667eea; }
     .stat-label { margin-top: 10px; font-size: 14px; color: #555; }
-    body.dark-mode .stat-label { color: #ccc; }
-    body.dark-mode .stat-number { color: #9b59b6; }
     .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
     .admin-menu-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 20px; }
     .menu-btn { padding: 15px; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -80,7 +46,6 @@
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
     th { background: #667eea; color: white; font-weight: bold; }
     tr:hover { background: #f8fafc; }
-    body.dark-mode tr:hover { background: #3d3d5c; }
     input[type="number"] { width: 80px; padding: 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px; }
     .pass-row { background-color: #d5f5e3 !important; }
     .fail-row { background-color: #fadbd8 !important; }
@@ -90,191 +55,45 @@
     .login-container input, .login-container select { width: 100%; margin: 10px 0; }
     .login-container button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .error { color: red; margin-top: 10px; text-align: center; }
-    .selector-group {
-      background: white;
-      border-radius: 15px;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+    .selector-group { background: white; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
     .selector-group label { font-weight: bold; color: #333; }
     .selector-group select { width: auto; min-width: 200px; margin: 0; }
-    .lecturer-card, .unit-card {
-      background: white;
-      border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .subject-badge {
-      background: #667eea;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 15px;
-      font-size: 11px;
-      margin: 2px;
-      display: inline-block;
-    }
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-content {
-      background: white;
-      padding: 25px;
-      border-radius: 15px;
-      width: 600px;
-      max-width: 90%;
-      max-height: 80%;
-      overflow-y: auto;
-    }
+    .lecturer-card, .unit-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .subject-badge { background: #667eea; color: white; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 2px; display: inline-block; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 600px; max-width: 90%; max-height: 80%; overflow-y: auto; }
     .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
     .modal-header h3 { color: #333; }
     .close { cursor: pointer; font-size: 24px; color: #999; }
     .close:hover { color: #333; }
-    .loader {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
+    .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader-text { color: white; margin-top: 15px; font-size: 16px; }
-    .notification-toast {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #27ae60;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      z-index: 10000;
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
+    .notification-toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     .content-area { margin-top: 20px; }
-    .unit-assessment-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: bold;
-      margin-left: 8px;
-    }
+    .unit-assessment-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-left: 8px; }
     .badge-full { background: #27ae60; color: white; }
     .badge-single { background: #f39c12; color: white; }
     .badge-exam { background: #e74c3c; color: white; }
     .export-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; }
-    .subject-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-    .subject-card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      border-left: 5px solid #667eea;
-    }
-    .subject-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-      background: #f8f9fa;
-    }
+    .subject-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+    .subject-card { background: white; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #667eea; }
+    .subject-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); background: #f8f9fa; }
     .subject-card h4 { margin-bottom: 8px; font-size: 16px; }
     .subject-card p { font-size: 12px; margin-top: 5px; }
-    .assessment-badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-    .search-box {
-      width: 300px;
-      padding: 8px 15px;
-      border-radius: 20px;
-      margin-bottom: 15px;
-    }
-    .progress-bar {
-      width: 100%;
-      height: 4px;
-      background: #e0e0e0;
-      border-radius: 2px;
-      overflow: hidden;
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 10001;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-    .keyboard-hint {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 11px;
-      z-index: 9999;
-    }
-    @media (max-width: 768px) { 
-      .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); }
-      .admin-menu-grid { grid-template-columns: repeat(3, 1fr); }
-      .search-box { width: 100%; }
-    }
+    .assessment-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-top: 8px; }
+    .search-box { width: 300px; padding: 8px 15px; border-radius: 20px; margin-bottom: 15px; }
+    .progress-bar { width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; position: fixed; top: 0; left: 0; z-index: 10001; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
+    .keyboard-hint { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 11px; z-index: 9999; }
+    @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } .admin-menu-grid { grid-template-columns: repeat(3, 1fr); } .search-box { width: 100%; } }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div id="app"></div>
-<div class="progress-bar" id="progressBar" style="display:none;">
-  <div class="progress-fill" id="progressFill"></div>
-</div>
+<div class="progress-bar" id="progressBar" style="display:none;"><div class="progress-fill" id="progressFill"></div></div>
 
 <script>
   // ===== CONFIGURATION =====
@@ -306,21 +125,7 @@
     if (loader) loader.remove();
   }
   
-  function showProgress(percentage) {
-    const progressBar = document.getElementById('progressBar');
-    const progressFill = document.getElementById('progressFill');
-    if (percentage === undefined) {
-      progressBar.style.display = 'none';
-      return;
-    }
-    progressBar.style.display = 'block';
-    progressFill.style.width = percentage + '%';
-    if (percentage >= 100) {
-      setTimeout(() => { progressBar.style.display = 'none'; }, 500);
-    }
-  }
-  
-  function showNotification(message, isError = false) {
+  function showNotification(message, isError) {
     var toast = document.createElement('div');
     toast.className = 'notification-toast';
     toast.style.backgroundColor = isError ? '#e74c3c' : '#27ae60';
@@ -329,25 +134,19 @@
     setTimeout(function() { toast.remove(); }, 3000);
   }
   
-  async function apiCall(endpoint, options = {}) {
+  async function apiCall(endpoint, options) {
+    options = options || {};
     try {
-      const headers = { 
+      var headers = { 
         'Content-Type': 'application/json',
         'X-Year': currentYear,
         'X-Exam-Type': currentExamType
       };
-      
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: headers,
-        ...options
-      });
-      
-      const contentType = response.headers.get('content-type');
+      var response = await fetch(API_BASE_URL + endpoint, { headers: headers, ...options });
+      var contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         return await response.json();
       } else {
-        const text = await response.text();
-        console.error('Non-JSON response:', text.substring(0, 200));
         return { error: 'Server returned non-JSON response' };
       }
     } catch (error) {
@@ -359,7 +158,7 @@
   
   async function getConfig() {
     if (configCache) return configCache;
-    configCache = await apiCall('/api/units');
+    configCache = await apiCall('/api/units', {});
     return configCache;
   }
   
@@ -368,11 +167,13 @@
     var csvRows = [];
     var headers = Object.keys(data[0]);
     csvRows.push(headers.join(','));
-    for (var row of data) {
-      var values = headers.map(header => {
-        var val = row[header] || '';
-        return `"${String(val).replace(/"/g, '""')}"`;
-      });
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var values = [];
+      for (var h = 0; h < headers.length; h++) {
+        var val = row[headers[h]] || '';
+        values.push('"' + String(val).replace(/"/g, '""') + '"');
+      }
       csvRows.push(values.join(','));
     }
     var blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
@@ -382,12 +183,12 @@
     a.download = filename + '_' + new Date().toISOString().slice(0,19) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
-    showNotification('Export completed!');
+    showNotification('Export completed!', false);
   }
   
   // ===== DARK MODE =====
   function initDarkMode() {
-    const savedDarkMode = localStorage.getItem('darkMode');
+    var savedDarkMode = localStorage.getItem('darkMode');
     if (savedDarkMode === 'true') {
       document.body.classList.add('dark-mode');
     }
@@ -396,341 +197,50 @@
   function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-    showNotification(`Dark mode ${document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled'}`);
+    showNotification('Dark mode ' + (document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled'), false);
   }
   
   // ===== KEYBOARD SHORTCUTS =====
   function initKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-      // Ctrl+S to save marks
+    document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (window.saveLecturerMarks && typeof window.saveLecturerMarks === 'function') {
-          window.saveLecturerMarks();
-        } else if (window.saveAdminMarks && typeof window.saveAdminMarks === 'function') {
-          window.saveAdminMarks();
-        }
+        if (window.saveLecturerMarks) window.saveLecturerMarks();
+        else if (window.saveAdminMarks) window.saveAdminMarks();
       }
-      
-      // Ctrl+F to focus search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
-        const searchBox = document.getElementById('subjectSearch');
+        var searchBox = document.getElementById('subjectSearch');
         if (searchBox) searchBox.focus();
       }
-      
-      // Escape to close modal
-      if (e.key === 'Escape') {
-        closeModal();
-      }
-      
-      // Ctrl+D for dark mode
+      if (e.key === 'Escape') { closeModal(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
         toggleDarkMode();
       }
-      
-      // Ctrl+B for batch operations
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        if (window.showBatchOperations) window.showBatchOperations();
-      }
     });
-    
-    // Add keyboard hints
     if (!document.querySelector('.keyboard-hint')) {
-      const hint = document.createElement('div');
+      var hint = document.createElement('div');
       hint.className = 'keyboard-hint';
-      hint.innerHTML = '⌘S: Save | ⌘F: Search | ⌘D: Dark Mode | ⌘B: Batch | ESC: Close';
+      hint.innerHTML = 'Ctrl+S: Save | Ctrl+F: Search | Ctrl+D: Dark Mode | ESC: Close';
       document.body.appendChild(hint);
     }
   }
   
-  // ===== AUTO-SAVE DRAFTS =====
-  function startAutoSave(block, subject, assessmentType) {
-    if (autoSaveTimer) clearInterval(autoSaveTimer);
-    
-    autoSaveTimer = setInterval(() => {
-      if (hasUnsavedChanges) {
-        saveDraftMarks(block, subject, assessmentType);
-        hasUnsavedChanges = false;
-      }
-    }, 30000);
-  }
+  // ===== AUTO-SAVE =====
+  function markAsChanged() { hasUnsavedChanges = true; }
   
-  function saveDraftMarks(block, subject, assessmentType) {
-    const marksData = collectMarksData();
-    if (marksData && marksData.length > 0) {
-      localStorage.setItem(`draft_${block}_${subject}`, JSON.stringify({
-        data: marksData,
-        timestamp: new Date().toISOString(),
-        assessmentType: assessmentType,
-        user: currentUser?.username
-      }));
-    }
-  }
+  function closeModal() { var modals = document.querySelectorAll('.modal'); for(var i=0;i<modals.length;i++) modals[i].remove(); }
   
-  function collectMarksData() {
-    const marksData = [];
-    const marksCount = window.currentMarksData?.length || window.currentAdminMarks?.length || 0;
-    const assessmentType = window.currentAssessmentType || window.currentAdminAssessmentType || 'full';
-    
-    for (let i = 0; i < marksCount; i++) {
-      const cat1 = document.getElementById(`cat1_${i}`)?.value || '';
-      const cat2 = document.getElementById(`cat2_${i}`)?.value || '';
-      const exam = document.getElementById(`exam_${i}`)?.value || '';
-      
-      marksData.push({ row: i + 2, cat1, cat2, exam });
-    }
-    return marksData;
-  }
-  
-  function loadDraftMarks(block, subject) {
-    const draft = localStorage.getItem(`draft_${block}_${subject}`);
-    if (draft) {
-      const parsed = JSON.parse(draft);
-      const hoursSince = (Date.now() - new Date(parsed.timestamp).getTime()) / 3600000;
-      if (hoursSince < 24 && parsed.user === currentUser?.username) {
-        if (confirm(`Found unsaved draft from ${new Date(parsed.timestamp).toLocaleString()}. Load it?`)) {
-          return parsed.data;
-        }
-      }
-      localStorage.removeItem(`draft_${block}_${subject}`);
-    }
-    return null;
-  }
-  
-  function markAsChanged() {
-    hasUnsavedChanges = true;
-  }
-  
-  // ===== BATCH OPERATIONS =====
-  window.showBatchOperations = function() {
-    const modalHtml = `
-      <div id="batchModal" class="modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>⚙️ Batch Operations</h3>
-            <span class="close" onclick="closeModal()">&times;</span>
-          </div>
-          <div style="padding: 10px;">
-            <h4>Apply Grade Curve</h4>
-            <input type="number" id="curvePoints" placeholder="Points to add" step="0.5">
-            <button onclick="applyCurve()" class="save-btn" style="margin-top: 10px;">Apply Curve</button>
-            
-            <hr style="margin: 20px 0;">
-            
-            <h4>Set Minimum Score</h4>
-            <input type="number" id="minScore" placeholder="Minimum score" step="0.5">
-            <button onclick="setMinimumScore()" class="save-btn" style="margin-top: 10px;">Apply Minimum</button>
-          </div>
-        </div>
-      </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-  };
-  
-  window.applyCurve = function() {
-    const points = parseFloat(document.getElementById('curvePoints')?.value);
-    if (isNaN(points)) { showNotification('Enter valid points', true); return; }
-    
-    const marksCount = window.currentMarksData?.length || window.currentAdminMarks?.length || 0;
-    const assessmentType = window.currentAssessmentType || window.currentAdminAssessmentType || 'full';
-    
-    for (let i = 0; i < marksCount; i++) {
-      const examField = document.getElementById(`exam_${i}`);
-      if (examField) {
-        let newValue = (parseFloat(examField.value) || 0) + points;
-        const maxValue = assessmentType === 'full' ? 70 : (assessmentType === 'single_cat' ? 70 : 100);
-        newValue = Math.min(newValue, maxValue);
-        examField.value = newValue;
-        if (window.updateLecturerTotal) window.updateLecturerTotal(i);
-        else if (window.updateAdminTotal) window.updateAdminTotal(i);
-        markAsChanged();
-      }
-    }
-    showNotification(`Applied ${points} points curve to all students`);
-    closeModal();
-  };
-  
-  window.setMinimumScore = function() {
-    const minScore = parseFloat(document.getElementById('minScore')?.value);
-    if (isNaN(minScore)) { showNotification('Enter valid minimum score', true); return; }
-    
-    const marksCount = window.currentMarksData?.length || window.currentAdminMarks?.length || 0;
-    
-    for (let i = 0; i < marksCount; i++) {
-      const examField = document.getElementById(`exam_${i}`);
-      if (examField) {
-        let currentValue = parseFloat(examField.value) || 0;
-        if (currentValue < minScore && currentValue > 0) {
-          examField.value = minScore;
-          if (window.updateLecturerTotal) window.updateLecturerTotal(i);
-          else if (window.updateAdminTotal) window.updateAdminTotal(i);
-          markAsChanged();
-        }
-      }
-    }
-    showNotification(`Set minimum score to ${minScore} for all eligible students`);
-    closeModal();
-  };
-  
-  // ===== STATISTICS WITH CHARTS =====
-  async function showStatistics() {
-    showLoading('Loading statistics...');
-    const students = await apiCall('/api/students');
-    
-    const html = `
-      <button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-      <div class="header"><h3>📈 Performance Statistics Dashboard</h3></div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
-        <div class="stat-card" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
-          <div class="stat-number" style="color: white;">${students.length}</div>
-          <div class="stat-label" style="color: white;">Total Students</div>
-        </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
-          <div class="stat-number" style="color: white;">6</div>
-          <div class="stat-label" style="color: white;">Total Blocks</div>
-        </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;">
-          <div class="stat-number" style="color: white;">60%</div>
-          <div class="stat-label" style="color: white;">Pass Mark</div>
-        </div>
-      </div>
-      <div style="background: white; border-radius: 15px; padding: 20px; text-align: center;">
-        <p style="color: #666;">Click on "My Subjects" or "Enter Marks" to view detailed subject performance</p>
-        <canvas id="statsChart" style="max-height: 300px; margin-top: 20px;"></canvas>
-      </div>
-    `;
-    
-    document.getElementById('contentArea').innerHTML = html;
-    
-    setTimeout(() => {
-      const ctx = document.getElementById('statsChart')?.getContext('2d');
-      if (ctx && students.length) {
-        new Chart(ctx, {
-          type: 'doughnut',
-          data: {
-            labels: ['Active Students', 'Blocks', 'Subjects Available'],
-            datasets: [{
-              data: [students.length, 6, (currentUser?.subjects?.length || 10)],
-              backgroundColor: ['#3498db', '#9b59b6', '#27ae60'],
-              borderRadius: 10
-            }]
-          },
-          options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
-        });
-      }
-    }, 100);
-    
-    hideLoading();
-  }
-  
-  // ===== BULK IMPORT STUDENTS =====
-  function showBulkImportModal() {
-    const modalHtml = `
-      <div id="bulkImportModal" class="modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>📤 Bulk Import Students</h3>
-            <span class="close" onclick="closeModal()">&times;</span>
-          </div>
-          <div style="padding: 10px;">
-            <p>Upload CSV file with columns: Admission, Name, Block</p>
-            <input type="file" id="csvFile" accept=".csv" style="margin: 10px 0;">
-            <a href="#" onclick="downloadStudentTemplate()" style="color: #667eea;">📥 Download Template</a>
-            <div style="margin-top: 20px;">
-              <button onclick="importStudents()" class="save-btn">Import Students</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-  }
-  
-  function downloadStudentTemplate() {
-    const csv = 'Admission,Name,Block\nKRCHN/0001/25,John Doe,BLOCK_0\nKRCHN/0002/25,Jane Smith,BLOCK_1';
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'student_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  
-  async function importStudents() {
-    const file = document.getElementById('csvFile').files[0];
-    if (!file) { showNotification('Please select a CSV file', true); return; }
-    
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const lines = e.target.result.split('\n');
-      const students = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',');
-        if (cols.length >= 2 && cols[0].trim()) {
-          students.push({
-            admission: cols[0].trim(),
-            name: cols[1].trim(),
-            block: cols[2]?.trim() || 'BLOCK_0'
-          });
-        }
-      }
-      
-      if (students.length === 0) {
-        showNotification('No valid students found in CSV', true);
-        return;
-      }
-      
-      showLoading(`Importing ${students.length} students...`);
-      let success = 0;
-      for (const student of students) {
-        const result = await apiCall('/api/add-student', { 
-          method: 'POST', 
-          body: JSON.stringify(student) 
-        });
-        if (result.success) success++;
-      }
-      hideLoading();
-      showNotification(`Imported ${success} of ${students.length} students successfully!`);
-      closeModal();
-      if (currentUser.role === 'admin') showStudents();
-      else showMain();
-    };
-    reader.readAsText(file);
-  }
-  
-  // ===== SUBJECT SEARCH/FILTER =====
-  function addSubjectFilter() {
-    setTimeout(() => {
-      const subjectSelect = document.getElementById('subjectSelect');
-      if (subjectSelect && !document.getElementById('subjectSearch')) {
-        const filterHtml = `<input type="text" id="subjectSearch" class="search-box" placeholder="🔍 Search subjects... (Ctrl+F)">`;
-        subjectSelect.insertAdjacentHTML('beforebegin', filterHtml);
-        
-        document.getElementById('subjectSearch').addEventListener('input', (e) => {
-          const searchTerm = e.target.value.toLowerCase();
-          const options = subjectSelect.options;
-          
-          for (let i = 0; i < options.length; i++) {
-            const text = options[i].text.toLowerCase();
-            options[i].style.display = text.includes(searchTerm) ? '' : 'none';
-          }
-        });
-      }
-    }, 100);
-  }
-  
-  // ===== LOGIN & MAIN FUNCTIONS =====
+  // ===== LOGIN FUNCTIONS =====
   function checkLogin() {
     initDarkMode();
     initKeyboardShortcuts();
-    
     var saved = localStorage.getItem('nursingUser');
     if (saved) {
       currentUser = JSON.parse(saved);
       var savedYear = localStorage.getItem('selectedYear');
-      if (savedYear && INTAKE_YEARS.includes(savedYear)) {
+      if (savedYear && INTAKE_YEARS.indexOf(savedYear) !== -1) {
         currentYear = savedYear;
       } else {
         currentYear = '2026';
@@ -742,19 +252,12 @@
   }
   
   function showLogin() {
-    var yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === '2026' ? 'selected' : ''}>March ${y} Class</option>`).join('');
-    
-    document.getElementById('app').innerHTML = `
-      <div class="login-container">
-        <h2 style="text-align:center; margin-bottom:20px;">🏥 Nursing School System</h2>
-        <p style="text-align:center; color:#666; margin-bottom:20px;">Nakuru College of Health Sciences</p>
-        <select id="loginYear">${yearOptions}</select>
-        <input type="text" id="username" placeholder="Username">
-        <input type="password" id="password" placeholder="Password">
-        <button onclick="doLogin()">Login</button>
-        <div id="loginError" class="error"></div>
-      </div>
-    `;
+    var yearOptions = '';
+    for(var i=0;i<INTAKE_YEARS.length;i++) {
+      var y = INTAKE_YEARS[i];
+      yearOptions += '<option value="' + y + '" ' + (y === '2026' ? 'selected' : '') + '>March ' + y + ' Class</option>';
+    }
+    document.getElementById('app').innerHTML = '<div class="login-container"><h2 style="text-align:center; margin-bottom:20px;">🏥 Nursing School System</h2><p style="text-align:center; color:#666; margin-bottom:20px;">Nakuru College of Health Sciences</p><select id="loginYear">' + yearOptions + '</select><input type="text" id="username" placeholder="Username"><input type="password" id="password" placeholder="Password"><button onclick="doLogin()">Login</button><div id="loginError" class="error"></div></div>';
   }
   
   async function doLogin() {
@@ -762,24 +265,17 @@
     var username = document.getElementById('username').value;
     var password = document.getElementById('password').value;
     var year = document.getElementById('loginYear').value;
-    
     currentYear = year;
     currentExamType = 'internal';
-    
     localStorage.setItem('selectedYear', currentYear);
     localStorage.setItem('selectedExamType', currentExamType);
-    
-    const result = await apiCall('/api/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password, year: currentYear })
-    });
-    
+    var result = await apiCall('/api/login', { method: 'POST', body: JSON.stringify({ username: username, password: password, year: currentYear }) });
     hideLoading();
     if (result.success) {
       currentUser = result.user;
       localStorage.setItem('nursingUser', JSON.stringify(currentUser));
       showMain();
-      showNotification('Welcome ' + currentUser.name + '!');
+      showNotification('Welcome ' + currentUser.name + '!', false);
     } else {
       document.getElementById('loginError').innerHTML = result.message;
     }
@@ -796,75 +292,35 @@
   async function showMain() {
     showLoading('Loading Dashboard...');
     var isAdmin = (currentUser.role === 'admin');
-    
-    var yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>March ${y} Class</option>`).join('');
-    var examTypeOptions = `
-      <option value="internal" ${currentExamType === 'internal' ? 'selected' : ''}>📝 Internal Exams (CAT1 + CAT2 + Exam)</option>
-      <option value="nck" ${currentExamType === 'nck' ? 'selected' : ''}>🏥 NCK Score Sheet (Clinical Assessment)</option>
-    `;
-    
-    var statsHtml = `
-      <div class="selector-group">
-        <div><label>📅 Class / Intake Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div>
-        <div><label>📋 Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card" onclick="if(${isAdmin}) showSection('students')"><div class="stat-number" id="totalStudents">-</div><div class="stat-label">Total Students</div></div>
-        <div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Blocks</div></div>
-        <div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label">${isAdmin ? 'Subjects' : 'My Subjects'}</div></div>
-        <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div>
-      </div>
-    `;
-    
-    var menuHtml = isAdmin ? `
-      <div class="admin-menu-grid">
-        <button class="menu-btn btn-primary" id="marksBtn">📝 Enter Marks</button>
-        <button class="menu-btn btn-info" id="statsBtn">📈 Statistics</button>
-        <button class="menu-btn btn-success" id="reportsBtn">📊 Reports</button>
-        <button class="menu-btn btn-warning" id="studentsBtn">👥 Students</button>
-        <button class="menu-btn btn-danger" id="lecturersBtn">👨‍🏫 Lecturers</button>
-        <button class="menu-btn btn-export" id="unitsBtn">📚 Units</button>
-      </div>
-    ` : `
-      <div class="menu-grid">
-        <button class="menu-btn btn-primary" id="lecturerMarksBtn">📝 My Subjects</button>
-        <button class="menu-btn btn-info" id="lecturerStatsBtn">📈 Statistics</button>
-        <button class="menu-btn btn-success" id="lecturerReportsBtn">📊 Reports</button>
-      </div>
-    `;
-    
-    document.getElementById('app').innerHTML = `
-      <div class="container">
-        <div class="header"><h1>🏥 Nursing School System</h1><p>Pass Mark: 60% | ${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | ${currentExamType === 'internal' ? 'Internal Exams' : 'NCK Score Sheet'}</p></div>
-        <div class="user-info">
-          <span>👋 Welcome, ${currentUser.name}</span>
-          <div>
-            <button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding: 5px 15px; margin-right: 10px;">🌙 Dark Mode</button>
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
-          </div>
-        </div>
-        ${statsHtml}
-        ${menuHtml}
-        <div id="contentArea" class="content-area"></div>
-      </div>
-    `;
-    
-    if (isAdmin) {
-      document.getElementById('marksBtn').onclick = () => showAdminMarks();
-      document.getElementById('statsBtn').onclick = () => showStatistics();
-      document.getElementById('reportsBtn').onclick = () => showReports();
-      document.getElementById('studentsBtn').onclick = () => showStudents();
-      document.getElementById('lecturersBtn').onclick = () => showLecturers();
-      document.getElementById('unitsBtn').onclick = () => showUnits();
-    } else {
-      document.getElementById('lecturerMarksBtn').onclick = () => showLecturerSubjects();
-      document.getElementById('lecturerStatsBtn').onclick = () => showStatistics();
-      document.getElementById('lecturerReportsBtn').onclick = () => showReports();
+    var yearOptions = '';
+    for(var i=0;i<INTAKE_YEARS.length;i++) {
+      var y = INTAKE_YEARS[i];
+      yearOptions += '<option value="' + y + '" ' + (y === currentYear ? 'selected' : '') + '>March ' + y + ' Class</option>';
     }
-    
-    const stats = await apiCall('/api/stats');
+    var examTypeOptions = '<option value="internal" ' + (currentExamType === 'internal' ? 'selected' : '') + '>📝 Internal Exams (CAT1 + CAT2 + Exam)</option><option value="nck" ' + (currentExamType === 'nck' ? 'selected' : '') + '>🏥 NCK Score Sheet (Clinical Assessment)</option>';
+    var statsHtml = '<div class="selector-group"><div><label>📅 Class / Intake Year:</label> <select id="yearSelectMain" onchange="changeYear()">' + yearOptions + '</select></div><div><label>📋 Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">' + examTypeOptions + '</select></div></div><div class="stats-grid"><div class="stat-card" onclick="if(' + isAdmin + ') showSection(\'students\')"><div class="stat-number" id="totalStudents">-</div><div class="stat-label">Total Students</div></div><div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Blocks</div></div><div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label">' + (isAdmin ? 'Subjects' : 'My Subjects') + '</div></div><div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div></div>';
+    var menuHtml = '';
+    if (isAdmin) {
+      menuHtml = '<div class="admin-menu-grid"><button class="menu-btn btn-primary" id="marksBtn">📝 Enter Marks</button><button class="menu-btn btn-info" id="statsBtn">📈 Statistics</button><button class="menu-btn btn-success" id="reportsBtn">📊 Reports</button><button class="menu-btn btn-warning" id="studentsBtn">👥 Students</button><button class="menu-btn btn-danger" id="lecturersBtn">👨‍🏫 Lecturers</button><button class="menu-btn btn-export" id="unitsBtn">📚 Units</button></div>';
+    } else {
+      menuHtml = '<div class="menu-grid"><button class="menu-btn btn-primary" id="lecturerMarksBtn">📝 My Subjects</button><button class="menu-btn btn-info" id="lecturerStatsBtn">📈 Statistics</button><button class="menu-btn btn-success" id="lecturerReportsBtn">📊 Reports</button></div>';
+    }
+    document.getElementById('app').innerHTML = '<div class="container"><div class="header"><h1>🏥 Nursing School System</h1><p>Pass Mark: 60% | ' + currentUser.name + ' (' + currentUser.role + ') | March ' + currentYear + ' Class | ' + (currentExamType === 'internal' ? 'Internal Exams' : 'NCK Score Sheet') + '</p></div><div class="user-info"><span>👋 Welcome, ' + currentUser.name + '</span><div><button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding: 5px 15px; margin-right: 10px;">🌙 Dark Mode</button><button class="logout-btn" onclick="logout()">🚪 Logout</button></div></div>' + statsHtml + menuHtml + '<div id="contentArea" class="content-area"></div></div>';
+    if (isAdmin) {
+      document.getElementById('marksBtn').onclick = function() { showAdminMarks(); };
+      document.getElementById('statsBtn').onclick = function() { showStatistics(); };
+      document.getElementById('reportsBtn').onclick = function() { showReports(); };
+      document.getElementById('studentsBtn').onclick = function() { showStudents(); };
+      document.getElementById('lecturersBtn').onclick = function() { showLecturers(); };
+      document.getElementById('unitsBtn').onclick = function() { showUnits(); };
+    } else {
+      document.getElementById('lecturerMarksBtn').onclick = function() { showLecturerSubjects(); };
+      document.getElementById('lecturerStatsBtn').onclick = function() { showStatistics(); };
+      document.getElementById('lecturerReportsBtn').onclick = function() { showReports(); };
+    }
+    var stats = await apiCall('/api/stats', {});
     document.getElementById('totalStudents').innerHTML = stats.totalStudents || 0;
-    const subjectCount = isAdmin ? (stats.totalSubjects || 0) : (currentUser.subjects || []).length;
+    var subjectCount = isAdmin ? (stats.totalSubjects || 0) : (currentUser.subjects || []).length;
     document.getElementById('totalSubjects').innerHTML = subjectCount;
     hideLoading();
   }
@@ -890,53 +346,121 @@
     else if (section === 'units') showUnits();
   }
   
+  // ===== STATISTICS =====
+  async function showStatistics() {
+    showLoading('Loading statistics...');
+    var students = await apiCall('/api/students', {});
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button><div class="header"><h3>📈 Performance Statistics Dashboard</h3></div><div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;"><div class="stat-card" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;"><div class="stat-number" style="color: white;">' + students.length + '</div><div class="stat-label" style="color: white;">Total Students</div></div><div class="stat-card" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"><div class="stat-number" style="color: white;">6</div><div class="stat-label" style="color: white;">Total Blocks</div></div><div class="stat-card" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;"><div class="stat-number" style="color: white;">60%</div><div class="stat-label" style="color: white;">Pass Mark</div></div></div><div style="background: white; border-radius: 15px; padding: 20px; text-align: center;"><p style="color: #666;">Click on "My Subjects" or "Enter Marks" to view detailed subject performance</p></div>';
+    document.getElementById('contentArea').innerHTML = html;
+    hideLoading();
+  }
+  
+  // ===== BULK IMPORT =====
+  function showBulkImportModal() {
+    var modalHtml = '<div id="bulkImportModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📤 Bulk Import Students</h3><span class="close" onclick="closeModal()">&times;</span></div><div style="padding: 10px;"><p>Upload CSV file with columns: Admission, Name, Block</p><input type="file" id="csvFile" accept=".csv" style="margin: 10px 0;"><a href="#" onclick="downloadStudentTemplate()" style="color: #667eea;">📥 Download Template</a><div style="margin-top: 20px;"><button onclick="importStudents()" class="save-btn">Import Students</button></div></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+  
+  function downloadStudentTemplate() {
+    var csv = 'Admission,Name,Block\nKRCHN/0001/25,John Doe,BLOCK_0\nKRCHN/0002/25,Jane Smith,BLOCK_1';
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  
+  async function importStudents() {
+    var file = document.getElementById('csvFile').files[0];
+    if (!file) { showNotification('Please select a CSV file', true); return; }
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      var lines = e.target.result.split('\n');
+      var students = [];
+      for (var i = 1; i < lines.length; i++) {
+        var cols = lines[i].split(',');
+        if (cols.length >= 2 && cols[0].trim()) {
+          students.push({ admission: cols[0].trim(), name: cols[1].trim(), block: cols[2] ? cols[2].trim() : 'BLOCK_0' });
+        }
+      }
+      if (students.length === 0) { showNotification('No valid students found in CSV', true); return; }
+      showLoading('Importing ' + students.length + ' students...');
+      var success = 0;
+      for (var s = 0; s < students.length; s++) {
+        var result = await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify(students[s]) });
+        if (result.success) success++;
+      }
+      hideLoading();
+      showNotification('Imported ' + success + ' of ' + students.length + ' students successfully!', false);
+      closeModal();
+      if (currentUser.role === 'admin') showStudents();
+      else showMain();
+    };
+    reader.readAsText(file);
+  }
+  
+  // ===== SUBJECT SEARCH =====
+  function addSubjectFilter() {
+    setTimeout(function() {
+      var subjectSelect = document.getElementById('subjectSelect');
+      if (subjectSelect && !document.getElementById('subjectSearch')) {
+        var filterHtml = '<input type="text" id="subjectSearch" class="search-box" placeholder="🔍 Search subjects... (Ctrl+F)">';
+        subjectSelect.insertAdjacentHTML('beforebegin', filterHtml);
+        document.getElementById('subjectSearch').addEventListener('input', function(e) {
+          var searchTerm = e.target.value.toLowerCase();
+          var options = subjectSelect.options;
+          for (var i = 0; i < options.length; i++) {
+            var text = options[i].text.toLowerCase();
+            options[i].style.display = text.indexOf(searchTerm) !== -1 ? '' : 'none';
+          }
+        });
+      }
+    }, 100);
+  }
+  
   // ===== LECTURER SUBJECTS =====
   async function showLecturerSubjects() {
     showLoading('Loading your subjects...');
-    
     var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
     var lecturerSubjects = currentUser.subjects || [];
-    const config = await getConfig();
-    
+    var config = await getConfig();
     var subjectsByBlock = {};
-    for (var b of blocks) subjectsByBlock[b] = [];
-    
+    for (var b = 0; b < blocks.length; b++) subjectsByBlock[blocks[b]] = [];
     for (var i = 0; i < lecturerSubjects.length; i++) {
       var parts = lecturerSubjects[i].split('|');
       var block = parts[0];
       var name = parts[1];
       var assessmentType = 'full';
       if (config && config[block]) {
-        const found = config[block].find(s => s.name === name);
+        var found = null;
+        for (var f = 0; f < config[block].length; f++) {
+          if (config[block][f].name === name) { found = config[block][f]; break; }
+        }
         if (found) assessmentType = found.assessmentType || 'full';
       }
-      if (subjectsByBlock[block]) subjectsByBlock[block].push({ name, assessmentType });
+      if (subjectsByBlock[block]) subjectsByBlock[block].push({ name: name, assessmentType: assessmentType });
     }
-    
-    var html = `<button class="back-btn" onclick="showMain()">← Back to Dashboard</button>
-      <div class="header"><h3>📚 My Subjects</h3><p>Click on any subject to enter marks | 💡 Tip: Press Ctrl+B for batch operations</p></div>`;
-    
+    var html = '<button class="back-btn" onclick="showMain()">← Back to Dashboard</button><div class="header"><h3>📚 My Subjects</h3><p>Click on any subject to enter marks</p></div>';
     var hasSubjects = false;
-    for (var b of blocks) {
-      var subjects = subjectsByBlock[b];
+    for (var b = 0; b < blocks.length; b++) {
+      var block = blocks[b];
+      var subjects = subjectsByBlock[block];
       if (subjects.length > 0) {
         hasSubjects = true;
-        html += `<div style="margin: 20px 0 10px 0;"><h3 style="color: white; background: #667eea; padding: 10px 15px; border-radius: 10px; display: inline-block;">${b.replace('_', ' ')}</h3></div><div class="subject-list">`;
-        for (var s of subjects) {
-          var typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          var typeClass = s.assessmentType === 'full' ? 'badge-full' : (s.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
-          var icon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
-          html += `<div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')">
-            <h4>${icon} ${s.name}</h4><p>Block: ${b.replace('_', ' ')}</p>
-            <span class="assessment-badge ${typeClass}">${typeLabel}</span>
-          </div>`;
+        html += '<div style="margin: 20px 0 10px 0;"><h3 style="color: white; background: #667eea; padding: 10px 15px; border-radius: 10px; display: inline-block;">' + block.replace('_', ' ') + '</h3></div><div class="subject-list">';
+        for (var s = 0; s < subjects.length; s++) {
+          var subj = subjects[s];
+          var typeLabel = subj.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (subj.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+          var typeClass = subj.assessmentType === 'full' ? 'badge-full' : (subj.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
+          var icon = subj.assessmentType === 'full' ? '📊' : (subj.assessmentType === 'single_cat' ? '📝' : '📖');
+          html += '<div class="subject-card" onclick="openMarksEntry(\'' + block + '\', \'' + subj.name.replace(/'/g, "\\'") + '\', \'' + subj.assessmentType + '\')"><h4>' + icon + ' ' + subj.name + '</h4><p>Block: ' + block.replace('_', ' ') + '</p><span class="assessment-badge ' + typeClass + '">' + typeLabel + '</span></div>';
         }
-        html += `</div>`;
+        html += '</div>';
       }
     }
-    
-    if (!hasSubjects) html += `<div style="background: white; border-radius: 15px; padding: 40px; text-align: center;"><p>No subjects assigned to you yet.</p><p>Please contact the administrator to assign subjects.</p></div>`;
-    
+    if (!hasSubjects) html += '<div style="background: white; border-radius: 15px; padding: 40px; text-align: center;"><p>No subjects assigned to you yet.</p><p>Please contact the administrator to assign subjects.</p></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
@@ -950,17 +474,10 @@
   
   async function loadMarksForSubject(block, subject, assessmentType) {
     showLoading('Loading marks for ' + subject + '...');
-    
-    var html = `<button class="back-btn" onclick="showLecturerSubjects()">← Back to My Subjects</button>
-      <div class="header"><h3>📝 ${subject}</h3><p>Block: ${block.replace('_', ' ')} | Assessment: ${assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p></div>
-      <div style="margin-bottom: 10px;"><button class="menu-btn btn-warning" onclick="window.showBatchOperations()" style="padding: 5px 15px;">⚙️ Batch Operations (Ctrl+B)</button></div>
-      <div id="marksTableContainer"></div>`;
-    
+    var html = '<button class="back-btn" onclick="showLecturerSubjects()">← Back to My Subjects</button><div class="header"><h3>📝 ' + subject + '</h3><p>Block: ' + block.replace('_', ' ') + ' | Assessment: ' + (assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')) + '</p></div><div id="marksTableContainer"></div>';
     document.getElementById('contentArea').innerHTML = html;
-    
-    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
+    var marks = await apiCall('/api/marks/' + encodeURIComponent(block) + '/' + encodeURIComponent(subject), {});
     displayLecturerMarksTable(marks, block, subject, assessmentType);
-    startAutoSave(block, subject, assessmentType);
     hideLoading();
   }
   
@@ -969,10 +486,8 @@
       document.getElementById('marksTableContainer').innerHTML = '<div style="background:white; padding:20px; text-align:center;">No data found</div>';
       return;
     }
-    
     var html = '<div class="export-bar"><button class="export-btn" onclick="exportLecturerMarks()">📥 Export to Excel</button></div>';
     html += '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th>';
-    
     if (assessmentType === 'full') {
       html += '<th>CAT1<br><span style="font-size:11px;">(0-30)</span></th><th>CAT2<br><span style="font-size:11px;">(0-30)</span></th><th>Exam<br><span style="font-size:11px;">(0-70)</span></th>';
     } else if (assessmentType === 'single_cat') {
@@ -980,80 +495,65 @@
     } else {
       html += '<th>Exam<br><span style="font-size:11px;">(0-100)</span></th><th style="background:#f0f0f0;">CAT<br><span style="font-size:11px;">(Not Used)</span></th><th style="background:#f0f0f0;">CAT2<br><span style="font-size:11px;">(Not Used)</span></th>';
     }
-    
     html += '<th>Total</th><th>Status</th><th>Graded By</th><tr></thead><tbody>';
-    
     window.currentMarksData = marks;
     window.currentMarksSubject = subject;
     window.currentMarksBlock = block;
     window.currentAssessmentType = assessmentType;
-    
     for (var i = 0; i < marks.length; i++) {
       var cat1 = marks[i].cat1 || '';
       var cat2 = marks[i].cat2 || '';
       var exam = marks[i].exam || '';
-      var numCat1 = parseFloat(cat1) || 0, numCat2 = parseFloat(cat2) || 0, numExam = parseFloat(exam) || 0, total = 0;
-      
+      var numCat1 = parseFloat(cat1) || 0;
+      var numCat2 = parseFloat(cat2) || 0;
+      var numExam = parseFloat(exam) || 0;
+      var total = 0;
       if (assessmentType === 'full') {
-        var cappedCat1 = Math.min(numCat1, 30), cappedCat2 = Math.min(numCat2, 30), cappedExam = Math.min(numExam, 70);
-        total = Math.round(((cappedCat1 + cappedCat2) / 60 * 30 + cappedExam) * 10) / 10;
+        total = Math.round(((Math.min(numCat1, 30) + Math.min(numCat2, 30)) / 60 * 30 + Math.min(numExam, 70)) * 10) / 10;
       } else if (assessmentType === 'single_cat') {
         total = Math.round((Math.min(numCat1, 30) + Math.min(numExam, 70)) * 10) / 10;
       } else {
         total = Math.round(Math.min(numExam, 100) * 10) / 10;
       }
-      
       var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
       var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-      
-      html += `<tr class="${rowClass}">`;
-      html += `<td style="padding:10px;">${marks[i].admission}</td>`;
-      html += `<td style="padding:10px;">${marks[i].name}</td>`;
-      
+      html += '<tr class="' + rowClass + '"><td style="padding:10px;">' + marks[i].admission + '</td><td style="padding:10px;">' + marks[i].name + '</td>';
       if (assessmentType === 'full') {
-        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
+        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
       } else if (assessmentType === 'single_cat') {
-        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
-        html += `<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>`;
+        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
       } else {
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="markAsChanged(); updateLecturerTotal(${i})"></td>`;
-        html += `<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>`;
-        html += `<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>`;
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" onchange="updateLecturerTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
+        html += '<td style="padding:10px; background:#f5f5f5; text-align:center; color:#999;">-</td>';
       }
-      
-      html += `<td id="total_${i}" style="font-weight:bold;">${total}</td>`;
-      html += `<td id="status_${i}">${status}</td>`;
-      html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
-      html += `</tr>`;
+      html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td><td id="status_' + i + '">' + status + '</td><td style="padding:10px;">' + (marks[i].gradedBy || '-') + '</td></tr>';
     }
-    
     html += '</tbody></table></div><div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save All Marks (Ctrl+S)</button></div>';
     document.getElementById('marksTableContainer').innerHTML = html;
   }
   
   window.updateLecturerTotal = function(idx) {
     var assessmentType = window.currentAssessmentType || 'full';
-    var cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById(`cat2_${idx}`)?.value) || 0;
-    var exam = parseFloat(document.getElementById(`exam_${idx}`)?.value) || 0;
+    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
+    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
+    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
     var total = 0;
-    
     if (assessmentType === 'full') {
-      total = Math.round((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70));
-      total = Math.round(total * 10) / 10;
+      total = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
     } else if (assessmentType === 'single_cat') {
       total = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
     } else {
       total = Math.round(Math.min(exam, 100) * 10) / 10;
     }
-    
     var status = total >= 60 ? 'PASS' : 'FAIL';
-    document.getElementById(`total_${idx}`).innerHTML = total;
-    document.getElementById(`status_${idx}`).innerHTML = status;
-    var row = document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement;
+    document.getElementById('total_' + idx).innerHTML = total;
+    document.getElementById('status_' + idx).innerHTML = status;
+    var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
     if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
   };
   
@@ -1061,32 +561,14 @@
     var marksData = [];
     var marksCount = window.currentMarksData?.length || 0;
     var assessmentType = window.currentAssessmentType || 'full';
-    
     for (var i = 0; i < marksCount; i++) {
-      marksData.push({
-        row: i + 2,
-        cat1: document.getElementById(`cat1_${i}`)?.value || '',
-        cat2: assessmentType === 'full' ? (document.getElementById(`cat2_${i}`)?.value || '') : '',
-        exam: document.getElementById(`exam_${i}`)?.value || ''
-      });
+      marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: assessmentType === 'full' ? (document.getElementById('cat2_' + i)?.value || '') : '', exam: document.getElementById('exam_' + i)?.value || '' });
     }
-    
     showLoading('Saving marks...');
-    const result = await apiCall('/api/marks', {
-      method: 'POST',
-      body: JSON.stringify({
-        block: window.currentMarksBlock,
-        subject: window.currentMarksSubject,
-        marksData: marksData,
-        lecturerName: currentUser.name
-      })
-    });
-    
+    var result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentMarksBlock, subject: window.currentMarksSubject, marksData: marksData, lecturerName: currentUser.name }) });
     hideLoading();
-    if (result?.success) {
-      showNotification('Marks saved successfully!');
-      localStorage.removeItem(`draft_${window.currentMarksBlock}_${window.currentMarksSubject}`);
-      hasUnsavedChanges = false;
+    if (result && result.success) {
+      showNotification('Marks saved successfully!', false);
     } else {
       showNotification(result?.error || 'Failed to save marks', true);
     }
@@ -1094,49 +576,42 @@
   
   window.exportLecturerMarks = function() {
     if (window.currentMarksData) {
-      var exportData = window.currentMarksData.map((m, i) => ({
-        Admission: m.admission,
-        Name: m.name,
-        CAT1: document.getElementById(`cat1_${i}`)?.value || '',
-        CAT2: document.getElementById(`cat2_${i}`)?.value || '',
-        Exam: document.getElementById(`exam_${i}`)?.value || '',
-        Total: document.getElementById(`total_${i}`)?.innerHTML || '',
-        Status: document.getElementById(`status_${i}`)?.innerHTML || '',
-        'Graded By': m.gradedBy || ''
-      }));
+      var exportData = [];
+      for (var i = 0; i < window.currentMarksData.length; i++) {
+        var m = window.currentMarksData[i];
+        exportData.push({ Admission: m.admission, Name: m.name, CAT1: document.getElementById('cat1_' + i)?.value || '', CAT2: document.getElementById('cat2_' + i)?.value || '', Exam: document.getElementById('exam_' + i)?.value || '', Total: document.getElementById('total_' + i)?.innerHTML || '', Status: document.getElementById('status_' + i)?.innerHTML || '', 'Graded By': m.gradedBy || '' });
+      }
       exportToCSV(exportData, window.currentMarksSubject);
     }
   };
   
   // ===== ADMIN MARKS SECTION =====
   async function showAdminMarks() {
-    document.getElementById('contentArea').innerHTML = `
-      <button class="back-btn" onclick="showMain()">← Back</button>
-      <div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject</p></div>
-      <select id="blockSelect"><option>Loading blocks...</option></select>
-      <select id="subjectSelect" style="display:none;"></select>
-      <div id="marksTable"></div>`;
-    
-    const blocks = await apiCall('/api/blocks');
+    document.getElementById('contentArea').innerHTML = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📝 Enter Marks</h3><p>Select Block and Subject</p></div><select id="blockSelect"><option>Loading blocks...</option></select><select id="subjectSelect" style="display:none;"></select><div id="marksTable"></div>';
+    var blocks = await apiCall('/api/blocks', {});
     var sel = document.getElementById('blockSelect');
     sel.innerHTML = '<option value="">-- Select Block --</option>';
-    blocks.forEach(b => sel.innerHTML += `<option value="${b}">${b.replace('_', ' ')}</option>`);
-    sel.onchange = () => loadAdminSubjects(sel.value);
+    for (var i = 0; i < blocks.length; i++) sel.innerHTML += '<option value="' + blocks[i] + '">' + blocks[i].replace('_', ' ') + '</option>';
+    sel.onchange = function() { loadAdminSubjects(sel.value); };
   }
   
   async function loadAdminSubjects(block) {
     if (!block) return;
     showLoading('Loading subjects...');
-    const subjects = await apiCall(`/api/subjects/${block}`);
+    var subjects = await apiCall('/api/subjects/' + block, {});
     var sel = document.getElementById('subjectSelect');
     sel.style.display = 'block';
     sel.innerHTML = '<option value="">-- Select Subject --</option>';
-    subjects.forEach(s => {
-      const typeLabel = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
-      sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${typeLabel} ${s.name}</option>`;
-    });
-    sel.onchange = () => {
-      if (sel.value) loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type);
+    for (var i = 0; i < subjects.length; i++) {
+      var s = subjects[i];
+      sel.innerHTML += '<option value="' + s.name + '" data-type="' + s.assessmentType + '">' + s.name + '</option>';
+    }
+    sel.onchange = function() {
+      if (sel.value) {
+        var selectedOption = sel.options[sel.selectedIndex];
+        var assessmentType = selectedOption.getAttribute('data-type') || 'full';
+        loadAdminMarks(block, sel.value, assessmentType);
+      }
     };
     addSubjectFilter();
     hideLoading();
@@ -1144,50 +619,41 @@
   
   async function loadAdminMarks(block, subject, assessmentType) {
     showLoading('Loading marks...');
-    const marks = await apiCall(`/api/marks/${block}/${subject}`);
-    var html = '<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()">📥 Export</button><button class="export-btn" onclick="window.showBatchOperations()">⚙️ Batch</button></div><div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th>';
-    
+    var marks = await apiCall('/api/marks/' + block + '/' + subject, {});
+    var html = '<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()">📥 Export</button></div><div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th>';
     if (assessmentType === 'full') html += '<th>CAT1</th><th>CAT2</th><th>Exam</th>';
     else if (assessmentType === 'single_cat') html += '<th>CAT</th><th>Exam</th>';
     else html += '<th>Exam</th>';
-    
     html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
-    
     window.currentAdminMarks = marks;
     window.currentAdminAssessmentType = assessmentType;
     window.currentAdminBlock = block;
     window.currentAdminSubject = subject;
-    
     for (var i = 0; i < marks.length; i++) {
-      var cat1 = marks[i].cat1 || '', cat2 = marks[i].cat2 || '', exam = marks[i].exam || '';
-      var numCat1 = parseFloat(cat1) || 0, numCat2 = parseFloat(cat2) || 0, numExam = parseFloat(exam) || 0, total = 0;
-      
-      if (assessmentType === 'full') total = Math.round((Math.min(numCat1, 30) + Math.min(numCat2, 30)) / 60 * 30 + Math.min(numExam, 70));
+      var cat1 = marks[i].cat1 || '';
+      var cat2 = marks[i].cat2 || '';
+      var exam = marks[i].exam || '';
+      var numCat1 = parseFloat(cat1) || 0;
+      var numCat2 = parseFloat(cat2) || 0;
+      var numExam = parseFloat(exam) || 0;
+      var total = 0;
+      if (assessmentType === 'full') total = Math.round(((Math.min(numCat1, 30) + Math.min(numCat2, 30)) / 60 * 30 + Math.min(numExam, 70)) * 10) / 10;
       else if (assessmentType === 'single_cat') total = Math.round((Math.min(numCat1, 30) + Math.min(numExam, 70)) * 10) / 10;
       else total = Math.round(Math.min(numExam, 100) * 10) / 10;
-      
       var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-      html += `<tr class="${total >= 60 ? 'pass-row' : 'fail-row'}">`;
-      html += `<td style="padding:10px;">${marks[i].admission}</td>`;
-      html += `<td style="padding:10px;">${marks[i].name}</td>`;
-      
+      html += '<tr class="' + (total >= 60 ? 'pass-row' : 'fail-row') + '"><td style="padding:10px;">' + marks[i].admission + '</td><td style="padding:10px;">' + marks[i].name + '</td>';
       if (assessmentType === 'full') {
-        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
       } else if (assessmentType === 'single_cat') {
-        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
       } else {
-        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`;
+        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" onchange="updateAdminTotal(' + i + ')"></td>';
       }
-      
-      html += `<td id="total_${i}" style="font-weight:bold;">${total}</td>`;
-      html += `<td id="status_${i}">${status}</td>`;
-      html += `<td style="padding:10px;">${marks[i].gradedBy || '-'}</td>`;
-      html += `</tr>`;
+      html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td><td id="status_' + i + '">' + status + '</td><td style="padding:10px;">' + (marks[i].gradedBy || '-') + '</td></tr>';
     }
-    
     html += '</tbody></table></div><div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks (Ctrl+S)</button></div>';
     document.getElementById('marksTable').innerHTML = html;
     hideLoading();
@@ -1195,18 +661,16 @@
   
   window.updateAdminTotal = function(idx) {
     var assessmentType = window.currentAdminAssessmentType || 'full';
-    var cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById(`cat2_${idx}`)?.value) || 0;
-    var exam = parseFloat(document.getElementById(`exam_${idx}`)?.value) || 0;
+    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
+    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
+    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
     var total = 0;
-    
-    if (assessmentType === 'full') total = Math.round((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70));
+    if (assessmentType === 'full') total = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
     else if (assessmentType === 'single_cat') total = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
     else total = Math.round(Math.min(exam, 100) * 10) / 10;
-    
-    document.getElementById(`total_${idx}`).innerHTML = total;
-    document.getElementById(`status_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
-    var row = document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement;
+    document.getElementById('total_' + idx).innerHTML = total;
+    document.getElementById('status_' + idx).innerHTML = total >= 60 ? 'PASS' : 'FAIL';
+    var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
     if (row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
   };
   
@@ -1214,23 +678,10 @@
     var marksData = [];
     var marksCount = window.currentAdminMarks?.length || 0;
     for (var i = 0; i < marksCount; i++) {
-      marksData.push({
-        row: i + 2,
-        cat1: document.getElementById(`cat1_${i}`)?.value || '',
-        cat2: document.getElementById(`cat2_${i}`)?.value || '',
-        exam: document.getElementById(`exam_${i}`)?.value || ''
-      });
+      marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: document.getElementById('cat2_' + i)?.value || '', exam: document.getElementById('exam_' + i)?.value || '' });
     }
     showLoading('Saving...');
-    const result = await apiCall('/api/marks', { 
-      method: 'POST', 
-      body: JSON.stringify({ 
-        block: window.currentAdminBlock, 
-        subject: window.currentAdminSubject, 
-        marksData, 
-        lecturerName: currentUser.name 
-      }) 
-    });
+    var result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentAdminBlock, subject: window.currentAdminSubject, marksData: marksData, lecturerName: currentUser.name }) });
     hideLoading();
     showNotification(result?.success ? 'Saved!' : 'Error', !result?.success);
     if (result?.success) loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType);
@@ -1238,42 +689,41 @@
   
   window.exportAdminMarks = function() {
     if (window.currentAdminMarks) {
-      var exportData = window.currentAdminMarks.map((m, i) => ({
-        Admission: m.admission, 
-        Name: m.name,
-        CAT1: document.getElementById(`cat1_${i}`)?.value || '',
-        CAT2: document.getElementById(`cat2_${i}`)?.value || '',
-        Exam: document.getElementById(`exam_${i}`)?.value || '',
-        Total: document.getElementById(`total_${i}`)?.innerHTML || '',
-        Status: document.getElementById(`status_${i}`)?.innerHTML || ''
-      }));
+      var exportData = [];
+      for (var i = 0; i < window.currentAdminMarks.length; i++) {
+        var m = window.currentAdminMarks[i];
+        exportData.push({ Admission: m.admission, Name: m.name, CAT1: document.getElementById('cat1_' + i)?.value || '', CAT2: document.getElementById('cat2_' + i)?.value || '', Exam: document.getElementById('exam_' + i)?.value || '', Total: document.getElementById('total_' + i)?.innerHTML || '', Status: document.getElementById('status_' + i)?.innerHTML || '' });
+      }
       exportToCSV(exportData, 'marks');
     }
   };
   
-  // ===== REPORTS, STUDENTS, LECTURERS, UNITS =====
+  // ===== REPORTS =====
   async function showReports() {
     showLoading('Loading reports...');
-    const students = await apiCall('/api/students');
+    var students = await apiCall('/api/students', {});
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 Student Reports</h3></div><div style="background:white;border-radius:10px;padding:20px;overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th></tr></thead><tbody>';
-    students.forEach(s => html += `<tr><td>${s.admission}</td><td>${s.name}</td><td>${s.block}</td><td>${s.status}</td></tr>`);
+    for (var i = 0; i < students.length; i++) html += '<tr><td style="padding:8px;">' + students[i].admission + '</td><td style="padding:8px;">' + students[i].name + '</td><td style="padding:8px;">' + students[i].block + '</td><td style="padding:8px;">' + students[i].status + '</td></tr>';
     html += '</tbody></table><button class="export-btn" style="margin-top:15px;" onclick="exportToCSV(students, \'students_report\')">📥 Export CSV</button></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
+  // ===== STUDENTS (ADMIN) =====
   async function showStudents() {
     showLoading('Loading...');
-    const students = await apiCall('/api/students');
+    var students = await apiCall('/api/students', {});
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👥 Manage Students</h3><div style="margin-bottom:15px;"><button class="save-btn" onclick="showBulkImportModal()" style="margin-right:10px;">📤 Bulk Import</button><button class="export-btn" onclick="exportToCSV(students, \'students\')">📥 Export CSV</button></div></div><div style="overflow-x:auto;"><table style="width:100%;"><thead><tr style="background:#667eea;color:white;"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    students.forEach(s => html += `<tr><td>${s.admission}</td><td>${s.name}</td><td>${s.block}</td><td>${s.status}</td><td><button class="edit-btn" onclick="showEditStudentModal('${s.admission}','${s.name}','${s.block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button></td></tr>`);
+    for (var i = 0; i < students.length; i++) {
+      html += '<tr><td style="padding:8px;">' + students[i].admission + '</td><td style="padding:8px;">' + students[i].name + '</td><td style="padding:8px;">' + students[i].block + '</td><td style="padding:8px;">' + students[i].status + '</td><td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal(\'' + students[i].admission + '\',\'' + students[i].name + '\',\'' + students[i].block + '\')">Edit</button><button class="delete-btn" onclick="deleteStudent(\'' + students[i].admission + '\')">Delete</button></td></tr>';
+    }
     html += '</tbody></table><button class="save-btn" style="margin-top:15px;" onclick="showAddStudentModal()">➕ Add Student</button></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
   function showAddStudentModal() {
-    var modalHtml = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div><div><label>Name:</label><input type="text" id="studentName" placeholder="Full Name"></div><div><label>Block:</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option value="${b}">${b}</option>`).join('')}</select></div><button onclick="saveNewStudent()" class="save-btn">Save</button></div></div>`;
+    var modalHtml = '<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div><div><label>Name:</label><input type="text" id="studentName" placeholder="Full Name"></div><div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0">BLOCK_0</option><option value="BLOCK_1">BLOCK_1</option><option value="BLOCK_2">BLOCK_2</option><option value="BLOCK_3">BLOCK_3</option><option value="BLOCK_4">BLOCK_4</option><option value="BLOCK_5">BLOCK_5</option></select></div><button onclick="saveNewStudent()" class="save-btn">Save</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
@@ -1283,12 +733,12 @@
     var block = document.getElementById('studentBlock').value;
     if (!admission || !name) { showNotification('Fill all fields', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) });
-    hideLoading(); closeModal(); showNotification('Student added!'); showStudents();
+    await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission: admission, name: name, block: block }) });
+    hideLoading(); closeModal(); showNotification('Student added!', false); showStudents();
   }
   
   function showEditStudentModal(admission, name, block) {
-    var modalHtml = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" value="${admission}" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="studentName" value="${name}"></div><div><label>Block:</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option value="${b}" ${b === block ? 'selected' : ''}>${b}</option>`).join('')}</select></div><button onclick="updateStudent('${admission}')" class="save-btn">Save</button></div></div>`;
+    var modalHtml = '<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Admission:</label><input type="text" value="' + admission + '" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="studentName" value="' + name + '"></div><div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0" ' + (block === 'BLOCK_0' ? 'selected' : '') + '>BLOCK_0</option><option value="BLOCK_1" ' + (block === 'BLOCK_1' ? 'selected' : '') + '>BLOCK_1</option><option value="BLOCK_2" ' + (block === 'BLOCK_2' ? 'selected' : '') + '>BLOCK_2</option><option value="BLOCK_3" ' + (block === 'BLOCK_3' ? 'selected' : '') + '>BLOCK_3</option><option value="BLOCK_4" ' + (block === 'BLOCK_4' ? 'selected' : '') + '>BLOCK_4</option><option value="BLOCK_5" ' + (block === 'BLOCK_5' ? 'selected' : '') + '>BLOCK_5</option></select></div><button onclick="updateStudent(\'' + admission + '\')" class="save-btn">Save</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
@@ -1296,30 +746,38 @@
     var name = document.getElementById('studentName').value;
     var block = document.getElementById('studentBlock').value;
     showLoading('Updating...');
-    await apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) });
-    hideLoading(); closeModal(); showNotification('Updated!'); showStudents();
+    await apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission: admission, name: name, block: block }) });
+    hideLoading(); closeModal(); showNotification('Updated!', false); showStudents();
   }
   
   async function deleteStudent(admission) {
     if (confirm('Delete this student?')) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission }) });
-      hideLoading(); showNotification('Deleted!'); showStudents();
+      await apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission: admission }) });
+      hideLoading(); showNotification('Deleted!', false); showStudents();
     }
   }
   
+  // ===== LECTURERS (ADMIN) =====
   async function showLecturers() {
     showLoading('Loading...');
-    const lecturers = await apiCall('/api/lecturers');
+    var lecturers = await apiCall('/api/lecturers', {});
     var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>👨‍🏫 Manage Lecturers</h3></div>';
-    lecturers.forEach(l => html += `<div class="lecturer-card"><div><strong>${l.name}</strong><br><small>${l.username}</small><br><small>${l.email}</small></div><div>${(l.subjects || []).map(s => `<span class="subject-badge">${s.split('|')[1] || s}</span>`).join('')}</div><div><button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button><button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button></div></div>`);
-    html += `<button class="save-btn" onclick="showAddLecturerModal()">➕ Add Lecturer</button>`;
+    for (var i = 0; i < lecturers.length; i++) {
+      var l = lecturers[i];
+      var subjectBadges = '';
+      for (var s = 0; s < (l.subjects || []).length; s++) {
+        subjectBadges += '<span class="subject-badge">' + (l.subjects[s].split('|')[1] || l.subjects[s]) + '</span>';
+      }
+      html += '<div class="lecturer-card"><div><strong>' + l.name + '</strong><br><small>' + l.username + '</small><br><small>' + (l.email || '') + '</small></div><div>' + subjectBadges + '</div><div><button class="edit-btn" onclick="showEditLecturerModal(\'' + l.username + '\')">Edit</button><button class="delete-btn" onclick="deleteLecturer(\'' + l.username + '\')">Delete</button></div></div>';
+    }
+    html += '<button class="save-btn" onclick="showAddLecturerModal()">➕ Add Lecturer</button>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
   function showAddLecturerModal() {
-    var modalHtml = `<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" id="lecUser" placeholder="Username"></div><div><label>Name:</label><input type="text" id="lecName" placeholder="Full Name"></div><div><label>Email:</label><input type="email" id="lecEmail" placeholder="Email"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Password" value="password123"></div><button onclick="saveNewLecturer()" class="save-btn">Save</button></div></div>`;
+    var modalHtml = '<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" id="lecUser" placeholder="Username"></div><div><label>Name:</label><input type="text" id="lecName" placeholder="Full Name"></div><div><label>Email:</label><input type="email" id="lecEmail" placeholder="Email"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Password" value="password123"></div><button onclick="saveNewLecturer()" class="save-btn">Save</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
@@ -1330,28 +788,36 @@
     var pass = document.getElementById('lecPass').value;
     if (!username || !name) { showNotification('Fill required fields', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: pass, subjects: [] }) });
-    hideLoading(); closeModal(); showNotification('Lecturer added!'); showLecturers();
+    await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username: username, name: name, email: email, password: pass, subjects: [] }) });
+    hideLoading(); closeModal(); showNotification('Lecturer added!', false); showLecturers();
   }
   
   async function showEditLecturerModal(username) {
     showLoading('Loading...');
-    const lecturer = await apiCall(`/api/lecturer/${username}`);
-    const config = await getConfig();
+    var lecturer = await apiCall('/api/lecturer/' + username, {});
+    var config = await getConfig();
     hideLoading();
     var subjectOptions = '';
-    for (var b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']) {
-      var blockUnits = config[b] || [];
-      if (blockUnits.length) {
-        subjectOptions += `<optgroup label="${b.replace('_',' ')}">`;
-        blockUnits.forEach(u => {
-          const isSelected = lecturer.subjects?.includes(`${b}|${u.name}`);
-          subjectOptions += `<option value="${b}|${u.name}" ${isSelected ? 'selected' : ''}>${u.name} (${u.assessmentType === 'full' ? 'Full' : (u.assessmentType === 'single_cat' ? 'Single CAT' : 'Exam Only')})</option>`;
-        });
-        subjectOptions += `</optgroup>`;
+    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    for (var b = 0; b < blocks.length; b++) {
+      var block = blocks[b];
+      var blockUnits = config[block] || [];
+      if (blockUnits.length > 0) {
+        subjectOptions += '<optgroup label="' + block.replace('_', ' ') + '">';
+        for (var u = 0; u < blockUnits.length; u++) {
+          var unit = blockUnits[u];
+          var isSelected = false;
+          if (lecturer.subjects) {
+            for (var sel = 0; sel < lecturer.subjects.length; sel++) {
+              if (lecturer.subjects[sel] === block + '|' + unit.name) { isSelected = true; break; }
+            }
+          }
+          subjectOptions += '<option value="' + block + '|' + unit.name + '" ' + (isSelected ? 'selected' : '') + '>' + unit.name + ' (' + (unit.assessmentType === 'full' ? 'Full' : (unit.assessmentType === 'single_cat' ? 'Single CAT' : 'Exam Only')) + ')</option>';
+        }
+        subjectOptions += '</optgroup>';
       }
     }
-    var modalHtml = `<div id="lecturerModal" class="modal"><div class="modal-content" style="width:600px;"><div class="modal-header"><h3>Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" value="${lecturer.username}" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="lecName" value="${lecturer.name}"></div><div><label>Email:</label><input type="email" id="lecEmail" value="${lecturer.email || ''}"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Leave blank to keep current"></div><div><label>Assigned Subjects:</label><select id="lecSubjects" multiple size="6" style="width:100%;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div><button onclick="updateLecturer('${lecturer.username}')" class="save-btn">Save Changes</button></div></div>`;
+    var modalHtml = '<div id="lecturerModal" class="modal"><div class="modal-content" style="width:600px;"><div class="modal-header"><h3>Edit Lecturer: ' + lecturer.name + '</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Username:</label><input type="text" value="' + lecturer.username + '" readonly style="background:#f0f0f0;"></div><div><label>Name:</label><input type="text" id="lecName" value="' + lecturer.name + '"></div><div><label>Email:</label><input type="email" id="lecEmail" value="' + (lecturer.email || '') + '"></div><div><label>Password:</label><input type="password" id="lecPass" placeholder="Leave blank to keep current"></div><div><label>Assigned Subjects:</label><select id="lecSubjects" multiple size="6" style="width:100%;">' + subjectOptions + '</select><small>Hold Ctrl/Cmd to select multiple</small></div><button onclick="updateLecturer(\'' + lecturer.username + '\')" class="save-btn">Save Changes</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
@@ -1360,38 +826,43 @@
     var email = document.getElementById('lecEmail').value;
     var password = document.getElementById('lecPass').value;
     var select = document.getElementById('lecSubjects');
-    var subjects = Array.from(select.selectedOptions).map(opt => opt.value);
+    var subjects = [];
+    for (var i = 0; i < select.options.length; i++) if (select.options[i].selected) subjects.push(select.options[i].value);
     showLoading('Saving...');
-    await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username: oldUsername, name, email, password, subjects }) });
-    hideLoading(); closeModal(); showNotification('Lecturer updated!'); showLecturers();
+    await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername: oldUsername, username: oldUsername, name: name, email: email, password: password, subjects: subjects }) });
+    hideLoading(); closeModal(); showNotification('Lecturer updated!', false); showLecturers();
   }
   
   async function deleteLecturer(username) {
     if (confirm('Delete this lecturer?')) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) });
-      hideLoading(); showNotification('Deleted!'); showLecturers();
+      await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username: username }) });
+      hideLoading(); showNotification('Deleted!', false); showLecturers();
     }
   }
   
+  // ===== UNITS (ADMIN) =====
   async function showUnits() {
     showLoading('Loading...');
-    const units = await apiCall('/api/units');
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div><div style="background:white;padding:20px;border-radius:10px;margin-bottom:20px;"><h4>➕ Add New Unit</h4><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option value="${b}">${b.replace('_',' ')}</option>`).join('')}</select><input type="text" id="newUnitName" placeholder="Subject Name"><select id="newUnitType"><option value="full">📊 Full Assessment (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div><div id="unitsList">`;
-    for (var b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']) {
-      var blockUnits = units[b] || [];
-      if (blockUnits.length) {
-        html += `<div style="margin:15px 0;"><h4>${b.replace('_',' ')}</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
-        blockUnits.forEach(u => {
-          var icon = u.assessmentType === 'single_cat' ? '📝' : (u.assessmentType === 'exam_only' ? '📖' : '📊');
-          var typeLabel = u.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (u.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          var typeClass = u.assessmentType === 'full' ? 'badge-full' : (u.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
-          html += `<div class="unit-card">${icon} <strong>${u.name}</strong><span class="unit-assessment-badge ${typeClass}">${typeLabel}</span><div><button class="unit-edit-btn" onclick="showEditUnitModal('${b}','${u.name.replace(/'/g, "\\'")}','${u.assessmentType}')">Edit</button><button class="unit-delete-btn" onclick="deleteUnit('${b}','${u.name.replace(/'/g, "\\'")}')">Delete</button></div></div>`;
-        });
-        html += `</div></div>`;
+    var units = await apiCall('/api/units', {});
+    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📚 Manage Units</h3></div><div style="background:white;padding:20px;border-radius:10px;margin-bottom:20px;"><h4>➕ Add New Unit</h4><select id="newUnitBlock"><option value="BLOCK_0">BLOCK 0</option><option value="BLOCK_1">BLOCK 1</option><option value="BLOCK_2">BLOCK 2</option><option value="BLOCK_3">BLOCK 3</option><option value="BLOCK_4">BLOCK 4</option><option value="BLOCK_5">BLOCK 5</option></select><input type="text" id="newUnitName" placeholder="Subject Name"><select id="newUnitType"><option value="full">📊 Full Assessment (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div><div id="unitsList">';
+    var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    for (var b = 0; b < blocks.length; b++) {
+      var block = blocks[b];
+      var blockUnits = units[block] || [];
+      if (blockUnits.length > 0) {
+        html += '<div style="margin:15px 0;"><h4>' + block.replace('_', ' ') + '</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">';
+        for (var u = 0; u < blockUnits.length; u++) {
+          var unit = blockUnits[u];
+          var icon = unit.assessmentType === 'single_cat' ? '📝' : (unit.assessmentType === 'exam_only' ? '📖' : '📊');
+          var typeLabel = unit.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (unit.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+          var typeClass = unit.assessmentType === 'full' ? 'badge-full' : (unit.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
+          html += '<div class="unit-card">' + icon + ' <strong>' + unit.name + '</strong><span class="unit-assessment-badge ' + typeClass + '">' + typeLabel + '</span><div><button class="unit-edit-btn" onclick="showEditUnitModal(\'' + block + '\', \'' + unit.name.replace(/'/g, "\\'") + '\', \'' + unit.assessmentType + '\')">✏️ Edit</button><button class="unit-delete-btn" onclick="deleteUnit(\'' + block + '\', \'' + unit.name.replace(/'/g, "\\'") + '\')">🗑️ Delete</button></div></div>';
+        }
+        html += '</div></div>';
       }
     }
-    html += `</div>`;
+    html += '</div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
@@ -1402,12 +873,12 @@
     var type = document.getElementById('newUnitType').value;
     if (!name) { showNotification('Enter subject name', true); return; }
     showLoading('Adding...');
-    await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) });
-    hideLoading(); configCache = null; showNotification('Unit added!'); showUnits();
+    await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block: block, name: name, assessmentType: type }) });
+    hideLoading(); configCache = null; showNotification('Unit added!', false); showUnits();
   }
   
   function showEditUnitModal(block, name, currentType) {
-    var modalHtml = `<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Subject Name:</label><input type="text" id="editUnitName" value="${name}"></div><div><label>Assessment Type:</label><select id="editUnitType"><option value="full" ${currentType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ${currentType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option><option value="exam_only" ${currentType === 'exam_only' ? 'selected' : ''}>Exam Only</option></select></div><button onclick="updateUnit('${block}','${name}')" class="save-btn">Save Changes</button></div></div>`;
+    var modalHtml = '<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div><label>Subject Name:</label><input type="text" id="editUnitName" value="' + name + '"></div><div><label>Assessment Type:</label><select id="editUnitType"><option value="full" ' + (currentType === 'full' ? 'selected' : '') + '>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ' + (currentType === 'single_cat' ? 'selected' : '') + '>Single CAT (CAT+Exam)</option><option value="exam_only" ' + (currentType === 'exam_only' ? 'selected' : '') + '>Exam Only</option></select></div><button onclick="updateUnit(\'' + block + '\', \'' + name + '\')" class="save-btn">Save Changes</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
@@ -1416,23 +887,21 @@
     var newType = document.getElementById('editUnitType').value;
     if (!newName) { showNotification('Enter subject name', true); return; }
     showLoading('Updating...');
-    await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) });
-    hideLoading(); closeModal(); configCache = null; showNotification('Unit updated!'); showUnits();
+    await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block: block, oldName: oldName, newName: newName, assessmentType: newType }) });
+    hideLoading(); closeModal(); configCache = null; showNotification('Unit updated!', false); showUnits();
   }
   
   async function deleteUnit(block, name) {
-    if (confirm(`Delete unit "${name}" from ${block.replace('_', ' ')}?\n\nThis will delete ALL marks for this unit!`)) {
+    if (confirm('Delete unit "' + name + '" from ' + block.replace('_', ' ') + '?\n\nThis will delete ALL marks for this unit!')) {
       showLoading('Deleting...');
-      await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) });
-      hideLoading(); configCache = null; showNotification('Unit deleted!'); showUnits();
+      await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block: block, name: name }) });
+      hideLoading(); configCache = null; showNotification('Unit deleted!', false); showUnits();
     }
   }
   
-  function closeModal() { document.querySelectorAll('.modal').forEach(m => m.remove()); }
-  
   // Initialize
   var savedYear = localStorage.getItem('selectedYear');
-  if (savedYear && INTAKE_YEARS.includes(savedYear)) currentYear = savedYear;
+  if (savedYear && INTAKE_YEARS.indexOf(savedYear) !== -1) currentYear = savedYear;
   var savedExamType = localStorage.getItem('selectedExamType');
   if (savedExamType) currentExamType = savedExamType;
   
