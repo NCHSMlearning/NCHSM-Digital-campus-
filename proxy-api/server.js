@@ -102,9 +102,7 @@ async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
         spreadsheetId: spreadsheetId,
         requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
       });
-    } catch (e) {
-      // Sheet might already exist
-    }
+    } catch (e) {}
     
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
@@ -205,12 +203,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     const examType = req.headers['x-exam-type'] || 'internal';
     
     if (examType === 'nck') {
-      let sheetName = '';
-      if (subject === 'XY FORMS' || subject.includes('XY')) {
-        sheetName = 'XY FORMS';
-      } else {
-        sheetName = 'ASSESSMENT AND CASE';
-      }
+      let sheetName = subject === 'XY FORMS' || subject.includes('XY') ? 'XY FORMS' : 'ASSESSMENT AND CASE';
       
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
@@ -223,8 +216,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       if (sheetName === 'XY FORMS') {
         for (let i = 1; i < data.length; i++) {
           if (data[i][1] || data[i][0]) {
-            let total = 0;
-            let count = 0;
+            let total = 0, count = 0;
             for (let j = 2; j <= 22 && j < data[i].length; j++) {
               const score = parseFloat(data[i][j]);
               if (!isNaN(score) && score !== '') {
@@ -249,9 +241,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             let total = 0;
             for (let j = 2; j < data[i].length; j++) {
               const score = parseFloat(data[i][j]);
-              if (!isNaN(score) && score !== '') {
-                total += score;
-              }
+              if (!isNaN(score) && score !== '') total += score;
             }
             marks.push({
               row: i + 1,
@@ -264,7 +254,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           }
         }
       }
-      
       res.json(marks);
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
@@ -300,38 +289,22 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT (FIXED) ==========
+// ========== SAVE MARKS ENDPOINT ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     const spreadsheetId = req.spreadsheetId;
     
-    console.log('Saving marks:', { block, subject, examType, marksCount: marksData?.length });
-    
-    if (!marksData || marksData.length === 0) {
-      return res.status(400).json({ success: false, error: 'No marks data provided' });
-    }
-    
     if (examType === 'nck') {
-      // Handle NCK marks saving
-      let sheetName = '';
-      if (subject === 'XY FORMS' || subject.includes('XY')) {
-        sheetName = 'XY FORMS';
-      } else {
-        sheetName = 'ASSESSMENT AND CASE';
-      }
+      let sheetName = subject === 'XY FORMS' || subject.includes('XY') ? 'XY FORMS' : 'ASSESSMENT AND CASE';
       
       for (const mark of marksData) {
         const row = mark.row;
         const score = mark.cat1 || mark.exam || 0;
         
         if (sheetName === 'XY FORMS') {
-          // Update all clinical areas with the same score
-          const updateData = [];
-          for (let j = 0; j < 21; j++) {
-            updateData.push(score);
-          }
+          const updateData = Array(21).fill(score);
           await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `${sheetName}!C${row}:W${row}`,
@@ -339,7 +312,6 @@ app.post('/api/marks', async (req, res) => {
             requestBody: { values: [updateData] }
           });
         } else {
-          // Update assessment scores - find first empty column or update all
           await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `${sheetName}!C${row}`,
@@ -348,7 +320,6 @@ app.post('/api/marks', async (req, res) => {
           });
         }
         
-        // Update graded by
         if (lecturerName) {
           await sheets.spreadsheets.values.update({
             spreadsheetId,
@@ -358,19 +329,15 @@ app.post('/api/marks', async (req, res) => {
           });
         }
       }
-      
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
-      // Handle internal marks saving
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
-      // Get current data to preserve existing values and get assessment type
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `${sheetName}!A:I`,
       });
-      
       const currentData = response.data.values || [];
       
       for (const mark of marksData) {
@@ -384,43 +351,24 @@ app.post('/api/marks', async (req, res) => {
         let finalScore = 0;
         
         if (assessmentType === 'full') {
-          let cappedCat1 = Math.min(cat1, 30);
-          let cappedCat2 = Math.min(cat2, 30);
-          let cappedExam = Math.min(exam, 70);
-          let catsTotalRaw = cappedCat1 + cappedCat2;
-          let catsTotal = (catsTotalRaw / 60) * 30;
-          finalScore = catsTotal + cappedExam;
-          finalScore = Math.round(finalScore * 10) / 10;
+          finalScore = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
         } else if (assessmentType === 'single_cat') {
-          let cappedCat = Math.min(cat1, 30);
-          let cappedExam = Math.min(exam, 70);
-          finalScore = cappedCat + cappedExam;
-          finalScore = Math.round(finalScore * 10) / 10;
+          finalScore = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
         } else {
-          finalScore = Math.min(exam, 100);
-          finalScore = Math.round(finalScore * 10) / 10;
+          finalScore = Math.round(Math.min(exam, 100) * 10) / 10;
         }
         
         const grade = await calculateGrade(finalScore);
         
-        // Update the row
         await sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `${sheetName}!C${row}:H${row}`,
           valueInputOption: 'RAW',
           requestBody: { 
-            values: [[
-              mark.cat1 || '',
-              mark.cat2 || '',
-              mark.exam || '',
-              finalScore,
-              grade,
-              lecturerName || existingRow[7] || ''
-            ]] 
+            values: [[mark.cat1 || '', mark.cat2 || '', mark.exam || '', finalScore, grade, lecturerName || existingRow[7] || '']] 
           }
         });
       }
-      
       res.json({ success: true, message: 'Marks saved successfully' });
     }
   } catch (error) {
@@ -767,8 +715,6 @@ app.post('/api/update-unit', async (req, res) => {
     if (oldName !== newName) {
       let cleanOldName = oldName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       let cleanNewName = newName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-      const oldSheetName = `${block}_${cleanOldName}`;
-      const newSheetName = `${block}_${cleanNewName}`;
       
       try {
         await sheets.spreadsheets.batchUpdate({
@@ -776,15 +722,13 @@ app.post('/api/update-unit', async (req, res) => {
           requestBody: {
             requests: [{
               updateSheetProperties: {
-                properties: { title: newSheetName },
+                properties: { title: `${block}_${cleanNewName}` },
                 fields: 'title'
               }
             }]
           }
         });
-      } catch (e) {
-        console.log('Could not rename sheet, might need manual update');
-      }
+      } catch (e) {}
     }
     
     res.json({ success: true, message: 'Unit updated successfully' });
@@ -885,7 +829,7 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// ===== DEBUG ENDPOINT (for troubleshooting) =====
+// ===== DEBUG ENDPOINT =====
 app.get('/api/debug-lecturers', async (req, res) => {
   try {
     const spreadsheetId = req.spreadsheetId;
@@ -913,8 +857,7 @@ app.get('/api/debug-lecturers', async (req, res) => {
     res.json({ 
       spreadsheetId,
       totalLecturers: lecturers.length,
-      lecturers: lecturers,
-      columnCount: data[0] ? data[0].length : 0
+      lecturers: lecturers
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
