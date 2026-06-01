@@ -51,7 +51,7 @@ dmhPktqrqwSjsxtzsvVEDNQ3hhfTpndxcn+mOWp1iBWyPiOBDvmS6Y9OKT8HfXFY
 IjrmsD6t3BWTNicJINoNgj5cCHwdw/Y7x35BqGjlSA465eMiFO3NUZYGqxvjy9cU
 ik7C6AhMsGFDthXFRLdVs6TfY7APPSB1iP7tWXGry+OIw9PeJmvsMn3VyW5n2z3u
 C5a7SSvZgF+hszWNxcvoo0WVA7XI1YxFVcQz/QKBgDAsGt05pNt+9JFluUZaftLi
-iPfNv42aRnCdCn7YpnW8SkSTcyD0y+0hSCisQZ2NBgAkw4Y1uIYV+ayC4WXxWqmJ
+iPfNv42aRnCdCn7YpnW8SkSTcyD0y+0hSCisQZ2NBgAkw4Y1uIYV+ayC4WxXWqmJ
 yuRhbjbdQnNygiTKqxi2Q/xLoQR3eG9zs4mCPwBkwzfEa7QateVKqB8SOhKr/TlZ
 eET3hIw//KEIOlTU2QI/
 -----END PRIVATE KEY-----`,
@@ -97,10 +97,14 @@ async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
       }
     }
     
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: spreadsheetId,
-      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
-    });
+    try {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
+      });
+    } catch (e) {
+      // Sheet might already exist
+    }
     
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
@@ -133,6 +137,20 @@ async function getStudentsList(spreadsheetId) {
   return students;
 }
 
+async function calculateGrade(percentage) {
+  if (percentage >= 80) return 'A';
+  if (percentage >= 75) return 'A-';
+  if (percentage >= 70) return 'B+';
+  if (percentage >= 65) return 'B';
+  if (percentage >= 60) return 'B-';
+  if (percentage >= 55) return 'C+';
+  if (percentage >= 50) return 'C';
+  if (percentage >= 45) return 'C-';
+  if (percentage >= 40) return 'D+';
+  if (percentage >= 35) return 'D';
+  return 'E';
+}
+
 // ===== API ENDPOINTS =====
 
 app.get('/', (req, res) => {
@@ -147,14 +165,13 @@ app.get('/api/blocks', (req, res) => {
   res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
 });
 
-// ========== SUBJECTS ENDPOINT - UPDATED FOR NCK ==========
+// ========== SUBJECTS ENDPOINT ==========
 app.get('/api/subjects/:block', async (req, res) => {
   try {
     const { block } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
     
     if (examType === 'nck') {
-      // For NCK, return the two assessment types
       res.json([
         { name: 'XY FORMS', assessmentType: 'nck' },
         { name: 'ASSESSMENT AND CASE', assessmentType: 'nck' }
@@ -181,22 +198,19 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== MARKS ENDPOINT - UPDATED FOR NCK ==========
+// ========== GET MARKS ENDPOINT ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
     
     if (examType === 'nck') {
-      // Determine which NCK sheet to read
       let sheetName = '';
       if (subject === 'XY FORMS' || subject.includes('XY')) {
         sheetName = 'XY FORMS';
       } else {
         sheetName = 'ASSESSMENT AND CASE';
       }
-      
-      console.log(`Reading NCK sheet: ${sheetName} from spreadsheet: ${req.spreadsheetId}`);
       
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
@@ -207,12 +221,10 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       const marks = [];
       
       if (sheetName === 'XY FORMS') {
-        // XY FORMS: Calculate average of clinical areas (columns C to W, indices 2-22)
         for (let i = 1; i < data.length; i++) {
           if (data[i][1] || data[i][0]) {
             let total = 0;
             let count = 0;
-            // Clinical areas start at column C (index 2) to column W (index 22)
             for (let j = 2; j <= 22 && j < data[i].length; j++) {
               const score = parseFloat(data[i][j]);
               if (!isNaN(score) && score !== '') {
@@ -232,11 +244,9 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           }
         }
       } else {
-        // ASSESSMENT AND CASE: Sum all assessment scores
         for (let i = 1; i < data.length; i++) {
           if (data[i][1]) {
             let total = 0;
-            // Assessment scores start at column C (index 2)
             for (let j = 2; j < data[i].length; j++) {
               const score = parseFloat(data[i][j]);
               if (!isNaN(score) && score !== '') {
@@ -257,7 +267,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       
       res.json(marks);
     } else {
-      // Internal exams format
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
@@ -288,6 +297,126 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   } catch (error) {
     console.error('Error in /api/marks:', error);
     res.json([]);
+  }
+});
+
+// ========== SAVE MARKS ENDPOINT (NEW) ==========
+app.post('/api/marks', async (req, res) => {
+  try {
+    const { block, subject, marksData, lecturerName } = req.body;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    
+    if (examType === 'nck') {
+      // Handle NCK marks saving
+      let sheetName = '';
+      if (subject === 'XY FORMS' || subject.includes('XY')) {
+        sheetName = 'XY FORMS';
+      } else {
+        sheetName = 'ASSESSMENT AND CASE';
+      }
+      
+      for (const mark of marksData) {
+        const row = mark.row;
+        const score = mark.cat1 || mark.exam || 0;
+        
+        // Update the appropriate cell based on sheet type
+        if (sheetName === 'XY FORMS') {
+          // Update clinical area averages (simplified - would need more complex logic)
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `${sheetName}!C${row}:W${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [Array(21).fill(score)] }
+          });
+        } else {
+          // Update assessment scores
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `${sheetName}!C${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[score]] }
+          });
+        }
+        
+        // Update graded by
+        if (lecturerName) {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `${sheetName}!X${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[lecturerName]] }
+          });
+        }
+      }
+      
+      res.json({ success: true, message: 'NCK marks saved successfully' });
+    } else {
+      // Handle internal marks saving
+      let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      const sheetName = `${block}_${cleanSubject}`;
+      
+      // Get current data to preserve existing values
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!A:I`,
+      });
+      
+      const currentData = response.data.values || [];
+      
+      for (const mark of marksData) {
+        const row = mark.row;
+        const existingRow = currentData[row - 1] || [];
+        
+        // Calculate final score and grade based on assessment type
+        let assessmentType = existingRow[8] || 'full';
+        let cat1 = parseFloat(mark.cat1) || 0;
+        let cat2 = parseFloat(mark.cat2) || 0;
+        let exam = parseFloat(mark.exam) || 0;
+        let finalScore = 0;
+        
+        if (assessmentType === 'full') {
+          let cappedCat1 = Math.min(cat1, 30);
+          let cappedCat2 = Math.min(cat2, 30);
+          let cappedExam = Math.min(exam, 70);
+          let catsTotalRaw = cappedCat1 + cappedCat2;
+          let catsTotal = (catsTotalRaw / 60) * 30;
+          finalScore = catsTotal + cappedExam;
+          finalScore = Math.round(finalScore * 10) / 10;
+        } else if (assessmentType === 'single_cat') {
+          let cappedCat = Math.min(cat1, 30);
+          let cappedExam = Math.min(exam, 70);
+          finalScore = cappedCat + cappedExam;
+          finalScore = Math.round(finalScore * 10) / 10;
+        } else {
+          finalScore = Math.min(exam, 100);
+          finalScore = Math.round(finalScore * 10) / 10;
+        }
+        
+        const grade = await calculateGrade(finalScore);
+        
+        // Update the row
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `${sheetName}!C${row}:H${row}`,
+          valueInputOption: 'RAW',
+          requestBody: { 
+            values: [[
+              mark.cat1 || '',
+              mark.cat2 || '',
+              mark.exam || '',
+              finalScore,
+              grade,
+              lecturerName || existingRow[7] || ''
+            ]] 
+          }
+        });
+      }
+      
+      res.json({ success: true, message: 'Marks saved successfully' });
+    }
+  } catch (error) {
+    console.error('Error saving marks:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -400,7 +529,7 @@ app.get('/api/lecturers', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'LECTURERS!A:F',
+      range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
     const lecturers = [];
@@ -421,63 +550,12 @@ app.get('/api/lecturers', async (req, res) => {
   }
 });
 
-app.post('/api/add-lecturer', async (req, res) => {
-  try {
-    const { username, name, email, password, subjects } = req.body;
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'LECTURERS!A:F',
-    });
-    const data = response.data.values || [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
-        return res.json({ success: false, message: 'Username already exists' });
-      }
-    }
-    const nextRow = data.length + 1;
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: req.spreadsheetId,
-      range: `LECTURERS!A${nextRow}:F${nextRow}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[username, name, email || '', password, subjects.join(','), 'YES']] }
-    });
-    res.json({ success: true, message: 'Lecturer added successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/delete-lecturer', async (req, res) => {
-  try {
-    const { username } = req.body;
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'LECTURERS!A:F',
-    });
-    const data = response.data.values || [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: req.spreadsheetId,
-          range: `LECTURERS!F${i+1}`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [['NO']] }
-        });
-        break;
-      }
-    }
-    res.json({ success: true, message: 'Lecturer deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 app.get('/api/lecturer/:username', async (req, res) => {
   try {
     const { username } = req.params;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'LECTURERS!A:F',
+      range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
@@ -497,27 +575,89 @@ app.get('/api/lecturer/:username', async (req, res) => {
   }
 });
 
+app.post('/api/add-lecturer', async (req, res) => {
+  try {
+    const { username, name, email, password, subjects } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        return res.json({ success: false, message: 'Username already exists' });
+      }
+    }
+    const nextRow = data.length + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `LECTURERS!A${nextRow}:G${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[username, name, email || '', password, subjects ? subjects.join(',') : '', 'YES', new Date().toISOString()]] }
+    });
+    res.json({ success: true, message: 'Lecturer added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/update-lecturer', async (req, res) => {
   try {
     const { oldUsername, username, name, email, password, subjects } = req.body;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'LECTURERS!A:F',
+      range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === oldUsername) {
         const row = i + 1;
+        const updateValues = [username, name, email || ''];
+        
+        // Only update password if provided
+        if (password && password.trim() !== '') {
+          updateValues.push(password);
+        } else {
+          updateValues.push(data[i][3]);
+        }
+        
+        updateValues.push(subjects ? subjects.join(',') : '');
+        
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `LECTURERS!A${row}:E${row}`,
           valueInputOption: 'RAW',
-          requestBody: { values: [[username, name, email || '', password || data[i][3], subjects.join(',')]] }
+          requestBody: { values: [updateValues] }
         });
         break;
       }
     }
     res.json({ success: true, message: 'Lecturer updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-lecturer', async (req, res) => {
+  try {
+    const { username } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `LECTURERS!F${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['NO']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Lecturer deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -588,6 +728,67 @@ app.post('/api/add-unit', async (req, res) => {
   }
 });
 
+// ========== UPDATE UNIT ENDPOINT (NEW) ==========
+app.post('/api/update-unit', async (req, res) => {
+  try {
+    const { block, oldName, newName, assessmentType } = req.body;
+    
+    // Update the config sheet
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    
+    let found = false;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === oldName) {
+        found = true;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `CONFIG!B${i+1}:D${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[newName, 'YES', assessmentType]] }
+        });
+        break;
+      }
+    }
+    
+    if (!found) {
+      return res.json({ success: false, message: 'Unit not found' });
+    }
+    
+    // Rename the marksheet if name changed
+    if (oldName !== newName) {
+      let cleanOldName = oldName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      let cleanNewName = newName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      const oldSheetName = `${block}_${cleanOldName}`;
+      const newSheetName = `${block}_${cleanNewName}`;
+      
+      try {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: req.spreadsheetId,
+          requestBody: {
+            requests: [{
+              updateSheetProperties: {
+                properties: { title: newSheetName },
+                fields: 'title'
+              }
+            }]
+          }
+        });
+      } catch (e) {
+        console.log('Could not rename sheet, might need manual update');
+      }
+    }
+    
+    res.json({ success: true, message: 'Unit updated successfully' });
+  } catch (error) {
+    console.error('Error updating unit:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/delete-unit', async (req, res) => {
   try {
     const { block, name } = req.body;
@@ -618,20 +819,39 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password, year } = req.body;
     const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
-    const adminResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'ADMIN!A:C' });
+    
+    // Check admin
+    const adminResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: 'ADMIN!A:C' 
+    });
     const admins = adminResponse.data.values || [];
     for (let i = 1; i < admins.length; i++) {
       if (admins[i][0] === username && admins[i][1] === password) {
         return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
       }
     }
-    const lecturersResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'LECTURERS!A:F' });
+    
+    // Check lecturers
+    const lecturersResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: 'LECTURERS!A:G' 
+    });
     const lecturers = lecturersResponse.data.values || [];
     for (let i = 1; i < lecturers.length; i++) {
-      if (lecturers[i][0] === username && lecturers[i][3] === password) {
-        return res.json({ success: true, user: { username, name: lecturers[i][1], role: 'lecturer', subjects: lecturers[i][4] ? lecturers[i][4].split(',') : [] } });
+      if (lecturers[i][0] === username && lecturers[i][3] === password && lecturers[i][5] !== 'NO') {
+        return res.json({ 
+          success: true, 
+          user: { 
+            username, 
+            name: lecturers[i][1], 
+            role: 'lecturer', 
+            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : [] 
+          } 
+        });
       }
     }
+    
     res.json({ success: false, message: 'Invalid username or password' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -641,7 +861,23 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     const students = await getStudentsList(req.spreadsheetId);
-    res.json({ totalStudents: students.length, totalBlocks: 6, totalSubjects: 28 });
+    
+    // Get active subjects count
+    const configResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const config = configResponse.data.values || [];
+    let activeSubjects = 0;
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][2] === 'YES') activeSubjects++;
+    }
+    
+    res.json({ 
+      totalStudents: students.length, 
+      totalBlocks: 6, 
+      totalSubjects: activeSubjects 
+    });
   } catch (error) {
     res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
   }
