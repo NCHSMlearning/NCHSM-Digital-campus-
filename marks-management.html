@@ -24,12 +24,14 @@
     .btn-info { background: linear-gradient(135deg, #3498db, #2980b9); }
     .btn-warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
     .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .btn-export { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
     .user-info { background: white; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .back-btn { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: bold; }
     .save-btn { background: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px; }
-    .edit-btn { background: #3498db; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-    .delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+    .edit-btn, .unit-edit-btn { background: #3498db; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+    .delete-btn, .unit-delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+    .export-btn { background: #8e44ad; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
     select, input { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; }
     table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
@@ -42,7 +44,6 @@
     .login-container input { width: 100%; margin: 10px 0; }
     .login-container button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .error { color: red; margin-top: 10px; text-align: center; }
-    .success { color: green; margin-top: 10px; text-align: center; }
     .selector-group {
       background: white;
       border-radius: 15px;
@@ -96,7 +97,8 @@
       max-height: 80%;
       overflow-y: auto;
     }
-    .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+    .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+    .modal-header h3 { color: #333; }
     .close { cursor: pointer; font-size: 24px; color: #999; }
     .close:hover { color: #333; }
     .loader {
@@ -138,6 +140,18 @@
       to { transform: translateX(0); opacity: 1; }
     }
     .content-area { margin-top: 20px; }
+    .unit-assessment-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .badge-full { background: #27ae60; color: white; }
+    .badge-single { background: #f39c12; color: white; }
+    .badge-exam { background: #e74c3c; color: white; }
+    .export-bar { display: flex; justify-content: flex-end; margin-bottom: 15px; }
     @media (max-width: 768px) { .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
@@ -192,6 +206,28 @@
       showNotification('Network error: ' + error.message, true);
       return { error: error.message };
     }
+  }
+  
+  function exportToCSV(data, filename) {
+    if (!data || data.length === 0) { showNotification('No data to export', true); return; }
+    var csvRows = [];
+    var headers = Object.keys(data[0]);
+    csvRows.push(headers.join(','));
+    for (var row of data) {
+      var values = headers.map(header => {
+        var val = row[header] || '';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+    var blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Export completed!');
   }
   
   function checkLogin() {
@@ -357,113 +393,159 @@
     showLoading('Loading subjects...');
     document.getElementById('subjectSelect').style.display = 'none';
     document.getElementById('marksTable').innerHTML = '';
+    
     const subjects = await apiCall(`/api/subjects/${block}`);
     var sel = document.getElementById('subjectSelect');
     sel.style.display = 'block';
     sel.innerHTML = '<option value="">-- Select Subject --</option>';
-    for (var i = 0; i < subjects.length; i++) sel.innerHTML += '<option value="' + subjects[i] + '">' + subjects[i] + '</option>';
-    sel.onchange = function() { if (sel.value) loadMarks(block, sel.value); };
+    
+    for (var i = 0; i < subjects.length; i++) {
+      var subject = subjects[i];
+      var subjectName = subject.name;
+      var assessmentType = subject.assessmentType || 'full';
+      var icon = assessmentType === 'full' ? '📊' : (assessmentType === 'single_cat' ? '📝' : '📖');
+      var typeText = assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+      sel.innerHTML += `<option value="${subjectName}" data-type="${assessmentType}">${icon} ${subjectName} (${typeText})</option>`;
+    }
+    
+    sel.onchange = function() { 
+      if (sel.value) {
+        var selectedOption = sel.options[sel.selectedIndex];
+        var assessmentType = selectedOption.getAttribute('data-type');
+        loadMarks(block, sel.value, assessmentType);
+      }
+    };
     hideLoading();
   }
   
-  async function loadMarks(block, subject) {
-    showLoading('Loading marks...');
-    var marksTable = document.getElementById('marksTable');
-    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
-    
-    if (!marks || marks.length === 0) {
-      marksTable.innerHTML = '<div style="background:white; padding:20px; text-align:center;">No students found for ' + subject + '</div>';
-      hideLoading();
-      return;
-    }
-    
-    var html = '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;">';
-    html += '<table style="width:100%; border-collapse:collapse; background:white; border-radius:10px;">';
-    html += '<thead style="position:sticky; top:0; background:#667eea;">';
-    html += '<tr style="background:#667eea; color:white; text-align:left;">';
-    html += '<th style="padding:12px;">Admission</th>';
-    html += '<th style="padding:12px;">Name</th>';
-    
-    if (currentExamType === 'nck') {
-      html += '<th style="padding:12px; width:100px;">Clinical Score<br><span style="font-size:11px;">(0-100)</span></th>';
-      html += '<th style="padding:12px; width:80px;">Status</th>';
-      html += '<th style="padding:12px;">Graded By</th>';
-    } else {
-      html += '<th style="padding:12px; width:90px;">CAT1<br><span style="font-size:11px;">(0-30)</span></th>';
-      html += '<th style="padding:12px; width:90px;">CAT2<br><span style="font-size:11px;">(0-30)</span></th>';
-      html += '<th style="padding:12px; width:90px;">Exam<br><span style="font-size:11px;">(0-70)</span></th>';
-      html += '<th style="padding:12px; width:80px;">Total</th>';
-      html += '<th style="padding:12px; width:80px;">Status</th>';
-      html += '<th style="padding:12px;">Graded By</th>';
-    }
-    html += '</tr></thead><tbody>';
-    
-    for (var i = 0; i < marks.length; i++) {
-      if (currentExamType === 'nck') {
-        var clinicalScore = marks[i].cat1 || '0';
-        var numClinical = parseFloat(clinicalScore) || 0;
-        var status = numClinical >= 70 ? 'PASS' : (numClinical > 0 ? 'FAIL' : '');
-        var rowClass = numClinical >= 70 ? 'pass-row' : (numClinical > 0 ? 'fail-row' : '');
-        
-        html += '<tr class="' + rowClass + '">';
-        html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
-        html += '<td style="padding:10px;">' + marks[i].name + '</td>';
-        html += '<td style="padding:10px;"><input type="number" id="clinical_' + i + '" value="' + clinicalScore + '" min="0" max="100" step="0.5" style="width:80px;" onchange="updateNckStatus(' + i + ')"></td>';
-        html += '<td id="status_' + i + '">' + status + '</td>';
-        html += '<td>' + (marks[i].gradedBy || '-') + '</td>';
-        html += '</tr>';
-      } else {
-        var cat1 = marks[i].cat1 || '';
-        var cat2 = marks[i].cat2 || '';
-        var exam = marks[i].exam || '';
-        
-        var numCat1 = parseFloat(cat1) || 0;
-        var numCat2 = parseFloat(cat2) || 0;
-        var numExam = parseFloat(exam) || 0;
-        
-        var cappedCat1 = Math.min(numCat1, 30);
-        var cappedCat2 = Math.min(numCat2, 30);
-        var cappedExam = Math.min(numExam, 70);
-        var catsTotalRaw = cappedCat1 + cappedCat2;
-        var catsTotal = (catsTotalRaw / 60) * 30;
-        var total = catsTotal + cappedExam;
-        total = Math.round(total * 10) / 10;
-        
-        var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
-        var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
-        
-        html += '<tr class="' + rowClass + '">';
-        html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
-        html += '<td style="padding:10px;">' + marks[i].name + '</td>';
-        html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
-        html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
-        html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td>';
-        html += '<td id="status_' + i + '">' + status + '</td>';
-        html += '<td>' + (marks[i].gradedBy || '-') + '</td>';
-        html += '</tr>';
-      }
-    }
-    
-    html += '</tbody></table></div>';
-    html += '<div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
-    
-    marksTable.innerHTML = html;
+async function loadMarks(block, subject, assessmentType) {
+  showLoading('Loading marks...');
+  var marksTable = document.getElementById('marksTable');
+  const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`);
+  
+  if (!marks || marks.length === 0) {
+    marksTable.innerHTML = '<div style="background:white; padding:20px; text-align:center;">No students found for ' + subject + '</div>';
     hideLoading();
+    return;
   }
+  
+  var html = '<div class="export-bar"><button class="export-btn" onclick="exportInternalMarks()">📥 Export to Excel</button></div>';
+  html += '<div style="overflow-x:auto; max-height:600px; overflow-y:auto;">';
+  html += '<table style="width:100%; border-collapse:collapse; background:white; border-radius:10px;">';
+  html += '<thead style="position:sticky; top:0; background:#667eea;">';
+  html += '<tr style="background:#667eea; color:white; text-align:left;">';
+  html += '<th style="padding:12px;">Admission</th>';
+  html += '<th style="padding:12px;">Name</th>';
+  
+  if (assessmentType === 'full') {
+    html += '<th style="padding:12px; width:90px;">CAT1<br><span style="font-size:11px;">(0-30)</span></th>';
+    html += '<th style="padding:12px; width:90px;">CAT2<br><span style="font-size:11px;">(0-30)</span></th>';
+    html += '<th style="padding:12px; width:90px;">Exam<br><span style="font-size:11px;">(0-70)</span></th>';
+  } else if (assessmentType === 'single_cat') {
+    html += '<th style="padding:12px; width:90px;">CAT<br><span style="font-size:11px;">(0-30)</span></th>';
+    html += '<th style="padding:12px; width:90px;">Exam<br><span style="font-size:11px;">(0-70)</span></th>';
+  } else {
+    html += '<th style="padding:12px; width:90px;">Exam<br><span style="font-size:11px;">(0-100)</span></th>';
+  }
+  
+  html += '<th style="padding:12px; width:80px;">Total</th>';
+  html += '<th style="padding:12px; width:80px;">Status</th>';
+  html += '<th style="padding:12px;">Graded By</th>';
+  html += '</tr></thead><tbody>';
+  
+  window.currentInternalMarks = marks;
+  window.currentAssessmentType = assessmentType;
+  
+  for (var i = 0; i < marks.length; i++) {
+    var cat1 = marks[i].cat1 || '';
+    var cat2 = marks[i].cat2 || '';
+    var exam = marks[i].exam || '';
+    
+    var numCat1 = parseFloat(cat1) || 0;
+    var numCat2 = parseFloat(cat2) || 0;
+    var numExam = parseFloat(exam) || 0;
+    var total = 0;
+    
+    if (assessmentType === 'full') {
+      var cappedCat1 = Math.min(numCat1, 30);
+      var cappedCat2 = Math.min(numCat2, 30);
+      var cappedExam = Math.min(numExam, 70);
+      var catsTotalRaw = cappedCat1 + cappedCat2;
+      var catsTotal = (catsTotalRaw / 60) * 30;
+      total = catsTotal + cappedExam;
+      total = Math.round(total * 10) / 10;
+    } else if (assessmentType === 'single_cat') {
+      var cappedCat = Math.min(numCat1, 30);
+      var cappedExam = Math.min(numExam, 70);
+      total = cappedCat + cappedExam;
+      total = Math.round(total * 10) / 10;
+    } else {
+      total = Math.min(numExam, 100);
+      total = Math.round(total * 10) / 10;
+    }
+    
+    var status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : '');
+    var rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : '');
+    
+    html += '<tr class="' + rowClass + '">';
+    html += '<td style="padding:10px;">' + marks[i].admission + '</td>';
+    html += '<td style="padding:10px;">' + marks[i].name + '</td>';
+    
+    if (assessmentType === 'full') {
+      html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+      html += '<td style="padding:10px;"><input type="number" id="cat2_' + i + '" value="' + cat2 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+      html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+    } else if (assessmentType === 'single_cat') {
+      // Single CAT - only two fields: CAT and Exam
+      html += '<td style="padding:10px;"><input type="number" id="cat1_' + i + '" value="' + cat1 + '" min="0" max="30" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+      html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="70" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+    } else {
+      // Exam only - only one field
+      html += '<td style="background:#f5f5f5; padding:10px; text-align:center;">-</td>';
+      html += '<td style="background:#f5f5f5; padding:10px; text-align:center;">-</td>';
+      html += '<td style="padding:10px;"><input type="number" id="exam_' + i + '" value="' + exam + '" min="0" max="100" step="0.5" style="width:70px;" onchange="updateInternalTotal(' + i + ')"></td>';
+    }
+    
+    html += '<td id="total_' + i + '" style="font-weight:bold;">' + total + '</td>';
+    html += '<td id="status_' + i + '">' + status + '</td>';
+    html += '<td style="padding:10px;">' + (marks[i].gradedBy || '-') + '</td>';
+    html += '</tr>';
+  }
+  
+  html += '</tbody></table></div>';
+  html += '<div style="text-align:center; margin-top:20px;"><button class="save-btn" onclick="saveInternalMarks(\'' + block + '\', \'' + subject + '\', ' + marks.length + ')">💾 Save All Marks</button></div>';
+  
+  marksTable.innerHTML = html;
+  hideLoading();
+}
   
   window.updateInternalTotal = function(idx) {
-    var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
-    var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
+    var assessmentType = window.currentAssessmentType || 'full';
+    var total = 0;
     
-    var cappedCat1 = Math.min(cat1, 30);
-    var cappedCat2 = Math.min(cat2, 30);
-    var cappedExam = Math.min(exam, 70);
-    var catsTotalRaw = cappedCat1 + cappedCat2;
-    var catsTotal = (catsTotalRaw / 60) * 30;
-    var total = catsTotal + cappedExam;
-    total = Math.round(total * 10) / 10;
+    if (assessmentType === 'full') {
+      var cat1 = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
+      var cat2 = parseFloat(document.getElementById('cat2_' + idx)?.value) || 0;
+      var exam = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
+      var cappedCat1 = Math.min(cat1, 30);
+      var cappedCat2 = Math.min(cat2, 30);
+      var cappedExam = Math.min(exam, 70);
+      var catsTotalRaw = cappedCat1 + cappedCat2;
+      var catsTotal = (catsTotalRaw / 60) * 30;
+      total = catsTotal + cappedExam;
+      total = Math.round(total * 10) / 10;
+    } else if (assessmentType === 'single_cat') {
+      var cat = parseFloat(document.getElementById('cat1_' + idx)?.value) || 0;
+      var exam2 = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
+      var cappedCat = Math.min(cat, 30);
+      var cappedExam2 = Math.min(exam2, 70);
+      total = cappedCat + cappedExam2;
+      total = Math.round(total * 10) / 10;
+    } else {
+      var exam3 = parseFloat(document.getElementById('exam_' + idx)?.value) || 0;
+      total = Math.min(exam3, 100);
+      total = Math.round(total * 10) / 10;
+    }
     
     var status = total >= 60 ? 'PASS' : 'FAIL';
     var rowClass = total >= 60 ? 'pass-row' : 'fail-row';
@@ -472,33 +554,44 @@
     document.getElementById('status_' + idx).innerHTML = status;
     
     var row = document.getElementById('cat1_' + idx)?.parentElement?.parentElement;
-    if (row) {
-      row.className = rowClass;
-    }
+    if (row) row.className = rowClass;
   };
   
-  window.updateNckStatus = function(idx) {
-    var clinical = parseFloat(document.getElementById('clinical_' + idx)?.value) || 0;
-    var status = clinical >= 70 ? 'PASS' : (clinical > 0 ? 'FAIL' : '');
-    document.getElementById('status_' + idx).innerHTML = status;
-    var row = document.getElementById('clinical_' + idx)?.parentElement?.parentElement;
-    if (row) row.className = clinical >= 70 ? 'pass-row' : (clinical > 0 ? 'fail-row' : '');
-  };
-  
-  window.saveMarks = async function(block, subject, len) {
+  window.saveInternalMarks = async function(block, subject, len) {
     showLoading('Saving marks...');
     var marksData = [];
+    var assessmentType = window.currentAssessmentType || 'full';
+    
     for (var i = 0; i < len; i++) {
-      if (currentExamType === 'nck') {
-        marksData.push({ row: i + 2, cat1: document.getElementById('clinical_' + i)?.value || '', cat2: '', exam: '' });
-      } else {
+      if (assessmentType === 'full') {
         marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: document.getElementById('cat2_' + i)?.value || '', exam: document.getElementById('exam_' + i)?.value || '' });
+      } else if (assessmentType === 'single_cat') {
+        marksData.push({ row: i + 2, cat1: document.getElementById('cat1_' + i)?.value || '', cat2: '', exam: document.getElementById('exam_' + i)?.value || '' });
+      } else {
+        marksData.push({ row: i + 2, cat1: '', cat2: '', exam: document.getElementById('exam_' + i)?.value || '' });
       }
     }
+    
     const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block, subject, marksData, lecturerName: currentUser.name }) });
     hideLoading();
     showNotification(result.message || (result.success ? 'Saved!' : 'Error'), !result.success);
-    if (result.success) loadMarks(block, subject);
+    if (result.success) loadMarks(block, subject, assessmentType);
+  };
+  
+  window.exportInternalMarks = function() {
+    if (window.currentInternalMarks) {
+      var exportData = window.currentInternalMarks.map(m => ({
+        Admission: m.admission,
+        Name: m.name,
+        CAT1: m.cat1,
+        CAT2: m.cat2,
+        Exam: m.exam,
+        Total: m.final,
+        Status: parseFloat(m.final) >= 60 ? 'PASS' : 'FAIL',
+        'Graded By': m.gradedBy
+      }));
+      exportToCSV(exportData, 'internal_marks_' + new Date().toISOString().slice(0,19));
+    }
   };
   
   // ========== REPORTS SECTION ==========
@@ -523,33 +616,69 @@
       html += `<td style="padding:8px;">${students[i].name}</td>`;
       html += `<td style="padding:8px;">${students[i].block}</td>`;
       html += `<td style="padding:8px;">${students[i].status}</td>`;
-      html += `<td style="padding:8px;"><button class="edit-btn" onclick="editStudent('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td>`;
+      html += `<td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal('${students[i].admission}','${students[i].name}','${students[i].block}')">Edit</button>
+      <button class="delete-btn" onclick="deleteStudent('${students[i].admission}')">Delete</button></td>`;
       html += `</tr>`;
     }
-    html += '</tbody><tr><button class="save-btn" style="margin-top:15px;" onclick="addStudent()">➕ Add New Student</button></div>';
+    html += '</tbody><table><button class="save-btn" style="margin-top:15px;" onclick="showAddStudentModal()">➕ Add New Student</button></div>';
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  function addStudent() {
-    var admission = prompt('Enter Admission Number:'); if (!admission) return;
-    var name = prompt('Enter Full Name:'); if (!name) return;
-    var block = prompt('Enter Block (e.g., BLOCK_0):', 'BLOCK_0');
-    showLoading('Adding student...');
-    apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student added!'); showStudents(); });
+  function showAddStudentModal() {
+    var modalHtml = `
+      <div id="studentModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header"><h3>Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div>
+          <div><label>Admission Number:</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div>
+          <div><label>Full Name:</label><input type="text" id="studentName" placeholder="Full Name"></div>
+          <div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0">BLOCK_0</option><option value="BLOCK_1">BLOCK_1</option><option value="BLOCK_2">BLOCK_2</option><option value="BLOCK_3">BLOCK_3</option><option value="BLOCK_4">BLOCK_4</option><option value="BLOCK_5">BLOCK_5</option></select></div>
+          <button onclick="saveNewStudent()" style="background:#27ae60; color:white; padding:10px; margin-top:15px; width:100%; border:none; border-radius:5px;">Save</button>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
-  function editStudent(admission, oldName, oldBlock) {
-    var name = prompt('Edit student name:', oldName); if (!name) return;
-    var block = prompt('Edit block:', oldBlock);
-    showLoading('Updating student...');
-    apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { hideLoading(); showNotification('Student updated!'); showStudents(); });
+  function saveNewStudent() {
+    var admission = document.getElementById('studentAdmission').value;
+    var name = document.getElementById('studentName').value;
+    var block = document.getElementById('studentBlock').value;
+    if (!admission || !name) { showNotification('Please fill all fields', true); return; }
+    showLoading('Adding student...');
+    apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => { 
+      hideLoading(); closeModal(); showNotification('Student added!'); showStudents(); 
+    });
+  }
+  
+  function showEditStudentModal(admission, name, block) {
+    var modalHtml = `
+      <div id="studentModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header"><h3>Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div>
+          <div><label>Admission Number:</label><input type="text" id="studentAdmission" value="${admission}" readonly style="background:#f0f0f0;"></div>
+          <div><label>Full Name:</label><input type="text" id="studentName" value="${name}"></div>
+          <div><label>Block:</label><select id="studentBlock"><option value="BLOCK_0" ${block === 'BLOCK_0' ? 'selected' : ''}>BLOCK_0</option><option value="BLOCK_1" ${block === 'BLOCK_1' ? 'selected' : ''}>BLOCK_1</option><option value="BLOCK_2" ${block === 'BLOCK_2' ? 'selected' : ''}>BLOCK_2</option><option value="BLOCK_3" ${block === 'BLOCK_3' ? 'selected' : ''}>BLOCK_3</option><option value="BLOCK_4" ${block === 'BLOCK_4' ? 'selected' : ''}>BLOCK_4</option><option value="BLOCK_5" ${block === 'BLOCK_5' ? 'selected' : ''}>BLOCK_5</option></select></div>
+          <button onclick="updateStudent('${admission}')" style="background:#27ae60; color:white; padding:10px; margin-top:15px; width:100%; border:none; border-radius:5px;">Save Changes</button>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+  
+  function updateStudent(admission) {
+    var name = document.getElementById('studentName').value;
+    var block = document.getElementById('studentBlock').value;
+    showLoading('Updating...');
+    apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }).then(() => {
+      hideLoading(); closeModal(); showNotification('Student updated!'); showStudents();
+    });
   }
   
   function deleteStudent(admission) {
-    if (confirm('Delete this student? This will remove all their marks!')) {
-      showLoading('Deleting student...');
-      apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission }) }).then(() => { hideLoading(); showNotification('Student deleted!'); showStudents(); });
+    if (confirm('Delete this student?')) {
+      showLoading('Deleting...');
+      apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission }) }).then(() => {
+        hideLoading(); showNotification('Student deleted!'); showStudents();
+      });
     }
   }
   
@@ -561,26 +690,44 @@
     for (var i = 0; i < lecturers.length; i++) {
       var subjects = lecturers[i].subjects || [];
       var subjectBadges = subjects.map(s => `<span class="subject-badge">${s.split('|')[1] || s}</span>`).join('');
-      html += `<div class="lecturer-card"><div><strong>${lecturers[i].name}</strong><br><small>${lecturers[i].username}</small><br><small>${lecturers[i].email || ''}</small></div><div>${subjectBadges}</div><div><button class="edit-btn" onclick="editLecturer('${lecturers[i].username}')">Edit</button><button class="delete-btn" onclick="deleteLecturer('${lecturers[i].username}')">Delete</button></div></div>`;
+      html += `<div class="lecturer-card"><div><strong>${lecturers[i].name}</strong><br><small>${lecturers[i].username}</small><br><small>${lecturers[i].email || ''}</small></div><div>${subjectBadges}</div><div><button class="edit-btn" onclick="showEditLecturerModal('${lecturers[i].username}')">Edit</button><button class="delete-btn" onclick="deleteLecturer('${lecturers[i].username}')">Delete</button></div></div>`;
     }
-    html += `<button class="save-btn" style="margin-top:15px;" onclick="addLecturer()">➕ Add New Lecturer</button></div>`;
+    html += `<button class="save-btn" style="margin-top:15px;" onclick="showAddLecturerModal()">➕ Add New Lecturer</button></div>`;
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  function addLecturer() {
-    var username = prompt('Enter username:'); if (!username) return;
-    var name = prompt('Enter full name:'); if (!name) return;
-    var password = prompt('Enter password:', 'password123');
-    showLoading('Adding lecturer...');
-    apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email: '', password, subjects: [] }) }).then(() => { hideLoading(); showNotification('Lecturer added!'); showLecturers(); });
+  function showAddLecturerModal() {
+    var modalHtml = `
+      <div id="lecturerModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header"><h3>Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div>
+          <div><label>Username:</label><input type="text" id="lecUser" placeholder="Username"></div>
+          <div><label>Full Name:</label><input type="text" id="lecName" placeholder="Full Name"></div>
+          <div><label>Email:</label><input type="email" id="lecEmail" placeholder="Email"></div>
+          <div><label>Password:</label><input type="password" id="lecPass" placeholder="Password" value="password123"></div>
+          <button onclick="saveNewLecturer()" style="background:#27ae60; color:white; padding:10px; margin-top:15px; width:100%; border:none; border-radius:5px;">Save</button>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
   }
   
-  function editLecturer(username) {
-    showLoading('Loading lecturer details...');
+  function saveNewLecturer() {
+    var username = document.getElementById('lecUser').value;
+    var name = document.getElementById('lecName').value;
+    var email = document.getElementById('lecEmail').value;
+    var pass = document.getElementById('lecPass').value;
+    if (!username || !name) { showNotification('Please fill required fields', true); return; }
+    showLoading('Adding lecturer...');
+    apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: pass, subjects: [] }) }).then(() => {
+      hideLoading(); closeModal(); showNotification('Lecturer added!'); showLecturers();
+    });
+  }
+  
+  function showEditLecturerModal(username) {
+    showLoading('Loading...');
     Promise.all([apiCall(`/api/lecturer/${username}`), apiCall('/api/units')]).then(([lecturer, units]) => {
       hideLoading();
-      if (!lecturer) { showNotification('Lecturer not found', true); return; }
       var subjectOptions = '';
       var blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
       for (var b of blocks) {
@@ -595,41 +742,41 @@
         }
       }
       var modalHtml = `
-        <div id="editLecturerModal" class="modal">
+        <div id="lecturerModal" class="modal">
           <div class="modal-content" style="width:600px;">
             <div class="modal-header"><h3>Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div>
-            <div><label><strong>Username:</strong></label><input type="text" id="editUsername" value="${lecturer.username}" readonly style="background:#f0f0f0; width:100%; padding:8px;"></div>
-            <div><label><strong>Full Name:</strong></label><input type="text" id="editName" value="${lecturer.name.replace(/'/g, "\\'")}" style="width:100%; padding:8px;"></div>
-            <div><label><strong>Email:</strong></label><input type="email" id="editEmail" value="${lecturer.email || ''}" style="width:100%; padding:8px;"></div>
-            <div><label><strong>Password:</strong></label><input type="password" id="editPassword" placeholder="Leave blank to keep current" style="width:100%; padding:8px;"></div>
-            <div><label><strong>Assigned Subjects:</strong></label><select id="editSubjects" multiple size="10" style="width:100%; height:200px;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
-            <button onclick="saveEditedLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; width:100%; border:none; border-radius:5px;">Save Changes</button>
+            <div><label>Username:</label><input type="text" id="lecUser" value="${lecturer.username}" readonly style="background:#f0f0f0;"></div>
+            <div><label>Full Name:</label><input type="text" id="lecName" value="${lecturer.name}"></div>
+            <div><label>Email:</label><input type="email" id="lecEmail" value="${lecturer.email || ''}"></div>
+            <div><label>Password:</label><input type="password" id="lecPass" placeholder="Leave blank to keep current"></div>
+            <div><label>Assigned Subjects:</label><select id="lecSubjects" multiple size="8" style="width:100%;">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
+            <button onclick="updateLecturer('${lecturer.username}')" style="background:#27ae60; color:white; padding:10px; margin-top:15px; width:100%; border:none; border-radius:5px;">Save Changes</button>
           </div>
         </div>`;
       document.body.insertAdjacentHTML('beforeend', modalHtml);
     });
   }
   
-  function saveEditedLecturer(oldUsername) {
-    var username = document.getElementById('editUsername').value;
-    var name = document.getElementById('editName').value;
-    var email = document.getElementById('editEmail').value;
-    var password = document.getElementById('editPassword').value;
-    var select = document.getElementById('editSubjects');
+  function updateLecturer(oldUsername) {
+    var username = document.getElementById('lecUser').value;
+    var name = document.getElementById('lecName').value;
+    var email = document.getElementById('lecEmail').value;
+    var password = document.getElementById('lecPass').value;
+    var select = document.getElementById('lecSubjects');
     var subjects = [];
     for (var i = 0; i < select.options.length; i++) if (select.options[i].selected) subjects.push(select.options[i].value);
     showLoading('Saving...');
-    apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username, name, email, password, subjects }) }).then(result => {
-      hideLoading(); closeModal();
-      if (result.success) { showNotification('Lecturer updated!'); showLecturers(); }
-      else showNotification(result.message || 'Error', true);
+    apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username, name, email, password, subjects }) }).then(() => {
+      hideLoading(); closeModal(); showNotification('Lecturer updated!'); showLecturers();
     });
   }
   
   function deleteLecturer(username) {
     if (confirm('Delete this lecturer?')) {
       showLoading('Deleting...');
-      apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => { hideLoading(); showNotification('Lecturer deleted!'); showLecturers(); });
+      apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }).then(() => {
+        hideLoading(); showNotification('Lecturer deleted!'); showLecturers();
+      });
     }
   }
   
@@ -643,61 +790,94 @@
       <div style="background:white;padding:20px;border-radius:10px;margin-bottom:20px;"><h4>➕ Add New Unit</h4>
       <select id="newUnitBlock">${blockOptions}</select>
       <input type="text" id="newUnitName" placeholder="Subject Name" style="margin:5px 0;">
-      <select id="newUnitType" style="margin:5px 0;"><option value="full">Full Assessment (CAT1+CAT2+Exam)</option><option value="single_cat">Single CAT (CAT+Exam)</option><option value="exam_only">Exam Only</option></select>
-      <button class="save-btn" onclick="addUnit()">➕ Add Unit</button></div>
+      <select id="newUnitType" style="margin:5px 0;">
+        <option value="full">📊 Full Assessment (CAT1 + CAT2 + Exam)</option>
+        <option value="single_cat">📝 Single CAT (CAT + Exam)</option>
+        <option value="exam_only">📖 Exam Only</option>
+      </select>
+      <button class="save-btn" onclick="addNewUnit()">➕ Add Unit</button></div>
       <div id="unitsList">`;
+    
     for (var b of blocks) {
       var blockUnits = units[b] || [];
-      html += `<div style="margin:15px 0;"><h4>${b.replace('_', ' ')}</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
-      for (var u of blockUnits) {
-        var icon = u.assessmentType === 'single_cat' ? '📝' : (u.assessmentType === 'exam_only' ? '📖' : '📊');
-        html += `<div class="unit-card">${icon} ${u.name} <button class="delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')">✖</button></div>`;
+      if (blockUnits.length > 0) {
+        html += `<div style="margin:15px 0;"><h4>${b.replace('_', ' ')}</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
+        for (var u of blockUnits) {
+          var icon = u.assessmentType === 'single_cat' ? '📝' : (u.assessmentType === 'exam_only' ? '📖' : '📊');
+          var typeLabel = u.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (u.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+          var typeClass = u.assessmentType === 'full' ? 'badge-full' : (u.assessmentType === 'single_cat' ? 'badge-single' : 'badge-exam');
+          html += `<div class="unit-card">
+            ${icon} <strong>${u.name}</strong>
+            <span class="unit-assessment-badge ${typeClass}">${typeLabel}</span>
+            <div>
+              <button class="unit-edit-btn" onclick="showEditUnitModal('${b}', '${u.name.replace(/'/g, "\\'")}', '${u.assessmentType}')">✏️ Edit</button>
+              <button class="unit-delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')">🗑️ Delete</button>
+            </div>
+          </div>`;
+        }
+        html += `</div></div>`;
+      } else {
+        html += `<div style="margin:15px 0;"><h4>${b.replace('_', ' ')}</h4><p style="color:#95a5a6; font-size:12px;">No units added yet</p></div>`;
       }
-      html += `</div></div>`;
     }
     html += `</div>`;
     document.getElementById('contentArea').innerHTML = html;
     hideLoading();
   }
   
-  function addUnit() {
+  function addNewUnit() {
     var block = document.getElementById('newUnitBlock').value;
     var name = document.getElementById('newUnitName').value.trim().toUpperCase();
     var type = document.getElementById('newUnitType').value;
     if (!block || !name) { showNotification('Please select block and enter subject', true); return; }
     showLoading('Adding unit...');
-    apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) }).then(() => { hideLoading(); showNotification('Unit added!'); showUnits(); });
+    apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) }).then(() => {
+      hideLoading(); showNotification('Unit added!'); showUnits();
+    });
+  }
+  
+  function showEditUnitModal(block, name, currentType) {
+    var typeOptions = `
+      <option value="full" ${currentType === 'full' ? 'selected' : ''}>Full Assessment (CAT1 + CAT2 + Exam)</option>
+      <option value="single_cat" ${currentType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT + Exam)</option>
+      <option value="exam_only" ${currentType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+    `;
+    var modalHtml = `
+      <div id="unitModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div>
+          <div><label>Subject Name:</label><input type="text" id="editUnitName" value="${name}"></div>
+          <div><label>Assessment Type:</label><select id="editUnitType">${typeOptions}</select></div>
+          <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" style="background:#27ae60; color:white; padding:10px; margin-top:15px; width:100%; border:none; border-radius:5px;">Save Changes</button>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+  
+  function updateUnit(block, oldName) {
+    var newName = document.getElementById('editUnitName').value.trim().toUpperCase();
+    var newType = document.getElementById('editUnitType').value;
+    if (!newName) { showNotification('Please enter subject name', true); return; }
+    showLoading('Updating unit...');
+    apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) }).then(() => {
+      hideLoading(); closeModal(); showNotification('Unit updated!'); showUnits();
+    });
   }
   
   function deleteUnit(block, name) {
-    if (confirm(`Delete unit "${name}"? This will delete ALL marks!`)) {
+    if (confirm(`Delete unit "${name}" from ${block.replace('_', ' ')}?\n\nThis will delete ALL marks for this unit!`)) {
       showLoading('Deleting unit...');
-      apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }).then(() => { hideLoading(); showNotification('Unit deleted!'); showUnits(); });
+      apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }).then(() => {
+        hideLoading(); showNotification('Unit deleted!'); showUnits();
+      });
     }
   }
   
   // ========== LECTURER SECTIONS ==========
   function showLecturerMarks() { showMarks(); }
-  async function showLecturerReports() {
-    showLoading('Loading reports...');
-    const subjects = currentUser.subjects || [];
-    var html = '<button class="back-btn" onclick="showMain()">← Back</button><div class="header"><h3>📊 My Reports</h3></div><div class="stats-grid">';
-    for (var s of subjects) {
-      var parts = s.split('|');
-      var marks = await apiCall(`/api/marks/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`);
-      var passCount = 0;
-      for (var m of marks) { var total = parseFloat(m.final) || 0; if (total >= 60) passCount++; }
-      var rate = marks.length > 0 ? Math.round((passCount / marks.length) * 100) : 0;
-      html += `<div class="stat-card"><div class="stat-number">${rate}%</div><div class="stat-label">${parts[1]}<br>(${marks.length} students)</div></div>`;
-    }
-    html += '</div>';
-    document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
-  }
-  
+  function showLecturerReports() { showReports(); }
   function closeModal() { var modals = document.querySelectorAll('.modal'); modals.forEach(m => m.remove()); }
   
-  // Restore saved selections
   var savedYear = localStorage.getItem('selectedYear');
   if (savedYear && INTAKE_YEARS.includes(savedYear)) currentYear = savedYear;
   var savedExamType = localStorage.getItem('selectedExamType');
