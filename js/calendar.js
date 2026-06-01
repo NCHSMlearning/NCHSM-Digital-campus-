@@ -282,6 +282,7 @@ function renderCalendarTimetable(weekNumber) {
             .badge-exam { background: #fef3c7; color: #d97706; }
             .badge-holiday { background: #fee2e2; color: #dc2626; }
             .badge-pending { background: #f3f4f6; color: #6b7280; }
+            .badge-study { background: #e0e7ff; color: #4338ca; }
             .week-btn-calendar {
                 padding: 6px 20px;
                 border-radius: 40px;
@@ -332,6 +333,7 @@ function renderCalendarTimetable(weekNumber) {
                 if (cls.is_exam) badges += '<span class="badge-tiny badge-exam">Exam</span>';
                 if (cls.is_holiday) badges += '<span class="badge-tiny badge-holiday">Holiday</span>';
                 if (cls.pending_allocation) badges += '<span class="badge-tiny badge-pending">Pending</span>';
+                if (cls.is_self_study) badges += '<span class="badge-tiny badge-study">Study</span>';
                 
                 const startTime = cls.start_time?.substring(0, 5) || 'TBA';
                 const endTime = cls.end_time?.substring(0, 5) || 'TBA';
@@ -351,7 +353,7 @@ function renderCalendarTimetable(weekNumber) {
                     <tr class="${cls.is_holiday ? 'holiday-row' : ''}">
                         ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${shortDayNames[day]}</td>` : ''}
                         <td class="timetable-time">${startTime} - ${endTime}</td>
-                        <td><strong>${escapeHtml(courseDisplay)}</strong>${badges}</td>
+                        <td><strong>${escapeHtml(courseDisplay)}</strong>${badzes}</td>
                         <td>${escapeHtml(lecturerName)}</td>
                         <td>${escapeHtml(cls.venue || 'TBD')}</td>
                     </tr>
@@ -368,7 +370,6 @@ function renderCalendarTimetable(weekNumber) {
     
     container.innerHTML = html;
 }
-
 // ========== MAIN LOAD FUNCTION ==========
 async function loadAcademicCalendar() {
     if (isLoadingCalendar) {
