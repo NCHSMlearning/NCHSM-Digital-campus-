@@ -1,52 +1,67 @@
-/* ===== ATTENDANCE TAB STYLES ===== */
+/* =====================================================
+   ATTENDANCE TAB STYLES - COMPLETE FIXED VERSION
+   ===================================================== */
+
+/* Header Section - Compact */
 .attendance-header {
     background: linear-gradient(135deg, var(--color-primary) 0%, #4a1d95 100%);
     border-radius: 12px;
-    padding: 25px;
-    color: white;
-    margin-bottom: 25px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .header-content h2 {
     color: white;
-    margin: 0 0 5px 0;
-    font-size: 1.5rem;
+    margin: 0 0 2px 0;
+    font-size: 1.2rem;
     font-weight: 600;
 }
 
 .header-content .subtitle {
     color: rgba(255, 255, 255, 0.9);
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.7rem;
 }
 
+/* Stats Row - 4 Compact Cards */
 .attendance-stats {
     display: flex;
-    gap: 15px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
+/* Individual Stat Card */
 .stat-card {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
-    border-radius: 10px;
-    padding: 15px 20px;
-    min-width: 160px;
+    border-radius: 12px;
+    padding: 8px 16px;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
 }
 
+.stat-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Stat Icon */
 .stat-icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
 }
 
 .stat-icon.present {
@@ -59,85 +74,99 @@
     color: #3b82f6;
 }
 
+.stat-icon.streak {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+/* Stat Content */
 .stat-content {
     display: flex;
     flex-direction: column;
 }
 
 .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.6rem;
     color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 3px;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: 700;
     color: white;
+    line-height: 1.2;
 }
 
 /* Check-in Card */
 .check-in-card {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    margin-bottom: 30px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
     overflow: hidden;
 }
 
 .card-header {
     background: #f8fafc;
-    padding: 20px 25px;
+    padding: 14px 20px;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .card-header h3 {
     margin: 0;
     color: #1e293b;
-    font-size: 1.2rem;
+    font-size: 1rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .gps-status {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
+    gap: 6px;
+    font-size: 0.75rem;
     color: #64748b;
+    background: #f1f5f9;
+    padding: 5px 12px;
+    border-radius: 30px;
 }
 
 .gps-status i {
-    font-size: 1rem;
+    font-size: 0.8rem;
 }
 
 .card-body {
-    padding: 25px;
+    padding: 20px;
 }
 
 /* Check-in Controls */
 .check-in-controls {
     display: grid;
-    gap: 20px;
+    gap: 16px;
 }
 
 .control-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .control-group label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-weight: 600;
     color: #374151;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .select-wrapper {
@@ -146,10 +175,10 @@
 
 .modern-select {
     width: 100%;
-    padding: 12px 40px 12px 15px;
+    padding: 10px 36px 10px 12px;
     border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
     color: #374151;
     background: white;
     appearance: none;
@@ -163,40 +192,36 @@
     box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
 }
 
-.modern-select:disabled {
-    background: #f1f5f9;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
 .select-arrow {
     position: absolute;
-    right: 15px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
     color: #64748b;
+    font-size: 0.75rem;
 }
 
 /* Location Display */
 .location-display {
     background: #f8fafc;
-    border-radius: 8px;
-    padding: 15px;
+    border-radius: 10px;
+    padding: 12px;
     border: 1px solid #e2e8f0;
 }
 
 .location-info {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .location-coordinates {
     display: flex;
-    gap: 15px;
+    flex-wrap: wrap;
+    gap: 12px;
     font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .coord-label {
@@ -213,8 +238,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #64748b;
+    flex-wrap: wrap;
 }
 
 .accuracy-dot {
@@ -232,36 +258,40 @@
     background: #f59e0b;
 }
 
-/* Check-in Action */
+/* Check-in Action - Side by Side */
 .check-in-action {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
-    align-items: start;
-    padding: 20px 0;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 16px 0 0 0;
     border-top: 1px solid #e2e8f0;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
+/* Check-in Button - Proper Size */
 .btn-checkin {
     background: linear-gradient(135deg, var(--color-primary) 0%, #4a1d95 100%);
     color: white;
     border: none;
-    border-radius: 10px;
-    padding: 20px;
-    font-size: 1.1rem;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    flex: 1;
+    min-width: 180px;
 }
 
 .btn-checkin:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(76, 29, 149, 0.2);
+    box-shadow: 0 8px 20px rgba(76, 29, 149, 0.25);
 }
 
 .btn-checkin:disabled {
@@ -270,33 +300,37 @@
 }
 
 .btn-checkin i {
-    font-size: 1.5rem;
-}
-
-.btn-text {
     font-size: 1.2rem;
 }
 
+.btn-text {
+    font-size: 0.9rem;
+}
+
 .btn-subtext {
-    font-size: 0.85rem;
+    font-size: 0.65rem;
     opacity: 0.9;
     font-weight: normal;
 }
 
+/* Requirements List */
 .check-in-requirements {
     background: #fefce8;
     border: 1px solid #fef08a;
-    border-radius: 8px;
-    padding: 15px;
+    border-radius: 10px;
+    padding: 12px;
+    flex: 1;
+    min-width: 180px;
 }
 
 .check-in-requirements p {
-    margin: 0 0 10px 0;
+    margin: 0 0 6px 0;
     font-weight: 600;
     color: #854d0e;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    font-size: 0.75rem;
 }
 
 .check-in-requirements ul {
@@ -306,16 +340,18 @@
 }
 
 .check-in-requirements li {
-    padding: 5px 0;
+    padding: 3px 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     color: #854d0e;
-    font-size: 0.9rem;
+    font-size: 0.7rem;
 }
 
 .req-icon {
     color: #ef4444;
+    font-size: 0.7rem;
+    width: 14px;
 }
 
 .req-icon.valid {
@@ -324,15 +360,16 @@
 
 /* Status Messages */
 .status-messages {
-    margin-top: 10px;
+    margin-top: 16px;
 }
 
 .info-message, .error-message, .success-message {
-    padding: 15px;
-    border-radius: 8px;
+    padding: 12px;
+    border-radius: 10px;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
+    font-size: 0.75rem;
 }
 
 .info-message {
@@ -354,79 +391,82 @@
 }
 
 .status-messages i {
-    font-size: 1.2rem;
-    margin-top: 2px;
+    font-size: 1rem;
+    margin-top: 1px;
 }
 
 .status-messages p {
     margin: 0;
-    font-size: 0.95rem;
-    line-height: 1.5;
+    font-size: 0.75rem;
+    line-height: 1.4;
 }
 
 /* History Section */
 .history-section {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    padding: 20px;
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .section-header h3 {
     margin: 0;
     color: #1e293b;
-    font-size: 1.2rem;
+    font-size: 1rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .filter-controls {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .date-filter {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .date-filter label {
     font-weight: 600;
     color: #374151;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
 }
 
 #history-filter {
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 2px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
 }
 
 .btn-refresh {
     background: #f1f5f9;
     border: 1px solid #e2e8f0;
     color: #374151;
-    padding: 8px 15px;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.2s;
 }
 
@@ -437,35 +477,35 @@
 /* Table */
 .table-container {
     overflow-x: auto;
-    border-radius: 8px;
+    border-radius: 10px;
     border: 1px solid #e2e8f0;
 }
 
 .attendance-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 800px;
+    min-width: 700px;
 }
 
 .attendance-table th {
     background: #f8fafc;
-    padding: 15px;
+    padding: 12px;
     text-align: left;
     font-weight: 600;
     color: #374151;
+    font-size: 0.75rem;
     border-bottom: 2px solid #e2e8f0;
-    white-space: nowrap;
 }
 
 .attendance-table th i {
-    margin-right: 8px;
+    margin-right: 6px;
     color: var(--color-primary);
 }
 
 .attendance-table td {
-    padding: 15px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
     border-bottom: 1px solid #f1f5f9;
-    vertical-align: top;
 }
 
 .attendance-table tr:hover {
@@ -473,7 +513,7 @@
 }
 
 .loading-row td {
-    padding: 40px;
+    padding: 30px;
     text-align: center;
 }
 
@@ -481,13 +521,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     color: #64748b;
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border: 3px solid #e2e8f0;
     border-top-color: var(--color-primary);
     border-radius: 50%;
@@ -498,165 +538,125 @@
     to { transform: rotate(360deg); }
 }
 
-/* Responsive */
+/* Distance Status */
+#distance-status {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #f1f5f9;
+}
+
+/* =====================================================
+   RESPONSIVE BREAKPOINTS
+   ===================================================== */
+
+/* Tablet */
 @media (max-width: 768px) {
     .attendance-header {
         flex-direction: column;
         align-items: stretch;
-        gap: 20px;
+        padding: 16px;
     }
     
     .attendance-stats {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .stat-card {
+        padding: 8px 12px;
+        justify-content: center;
     }
     
     .check-in-action {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+    
+    .btn-checkin {
+        width: 100%;
     }
     
     .section-header {
         flex-direction: column;
         align-items: stretch;
-        gap: 15px;
     }
     
     .filter-controls {
-        flex-direction: column;
-        align-items: stretch;
+        justify-content: space-between;
     }
 }
-/* =====================================================
-   ATTENDANCE STATS CARDS - EXAMS STYLE GRADIENTS
-   ===================================================== */
 
-/* Target the stats container in Attendance header */
-.attendance-header .header-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
-}
-
-/* Base stat card styling */
-.attendance-header .header-stats > div,
-.attendance-header .stat-card {
-    border-radius: 16px;
-    padding: 20px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    color: white;
-}
-
-/* Card 1 - Present Today (Blue/Cyan gradient - attendance theme) */
-.attendance-header .header-stats > div:first-child,
-.attendance-header .stat-card:first-child {
-    background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%);
-    color: white;
-}
-
-/* Card 2 - Current Time (Orange/Gold gradient - time theme) */
-.attendance-header .header-stats > div:nth-child(2),
-.attendance-header .stat-card:nth-child(2) {
-    background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
-    color: white;
-}
-
-/* Card 3 - Attendance Rate (if exists - Purple) */
-.attendance-header .header-stats > div:nth-child(3),
-.attendance-header .stat-card:nth-child(3) {
-    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-    color: white;
-}
-
-/* Card 4 - Late Days (if exists - Red) */
-.attendance-header .header-stats > div:nth-child(4),
-.attendance-header .stat-card:nth-child(4) {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-}
-
-/* Ensure all text inside cards is white */
-.attendance-header .header-stats > div *,
-.attendance-header .stat-card * {
-    color: white;
-}
-
-/* Style the numbers/values (stat value) */
-.attendance-header .header-stats > div div:first-child,
-.attendance-header .stat-card .stat-value,
-.attendance-header .header-stats > div > div:first-of-type {
-    font-size: 32px;
-    font-weight: 800;
-    line-height: 1.2;
-    display: block;
-}
-
-/* Style the labels */
-.attendance-header .header-stats > div div:last-child,
-.attendance-header .stat-card .stat-label,
-.attendance-header .header-stats > div > div:last-of-type {
-    font-size: 13px;
-    opacity: 0.9;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    margin-top: 5px;
-    display: block;
-}
-
-/* Icon styling */
-.attendance-header .header-stats > div i,
-.attendance-header .stat-card .stat-icon {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 14px;
-    padding: 10px;
-    margin-right: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Hover effect */
-.attendance-header .header-stats > div:hover,
-.attendance-header .stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-}
-
-/* Subtle pattern overlay */
-.attendance-header .header-stats > div::before,
-.attendance-header .stat-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-    transform: rotate(45deg);
-    pointer-events: none;
-}
-
-/* Pulse animation on click */
-.attendance-header .header-stats > div:active,
-.attendance-header .stat-card:active {
-    animation: cardPulse 0.5s ease-in-out;
-}
-
-@keyframes cardPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.98); }
-    100% { transform: scale(1); }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .attendance-header .header-stats > div,
-    .attendance-header .stat-card {
-        padding: 15px;
+/* Mobile */
+@media (max-width: 480px) {
+    .attendance-stats {
+        gap: 6px;
     }
     
-    .attendance-header .header-stats > div div:first-child,
-    .attendance-header .stat-card .stat-value {
-        font-size: 24px;
+    .stat-card {
+        padding: 6px 8px;
+    }
+    
+    .stat-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 0.7rem;
+    }
+    
+    .stat-value {
+        font-size: 0.85rem;
+    }
+    
+    .stat-label {
+        font-size: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 14px;
+    }
+    
+    .card-header {
+        padding: 10px 14px;
+    }
+    
+    .modern-select {
+        padding: 8px 32px 8px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .btn-checkin {
+        padding: 10px 16px;
+    }
+    
+    .btn-text {
+        font-size: 0.85rem;
+    }
+    
+    .location-coordinates {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .history-section {
+        padding: 14px;
+    }
+    
+    .attendance-table th,
+    .attendance-table td {
+        padding: 8px;
+        font-size: 0.7rem;
+    }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+    .attendance-stats {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .stat-card {
+        justify-content: flex-start;
     }
 }
