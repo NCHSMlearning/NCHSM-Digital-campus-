@@ -1,5 +1,5 @@
 {
-  "name": "marks-proxy",
+  "name": "nursing-marks-backend",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "node-fetch": "^2.7.0"
+    "cors": "^2.8.5",
+    "googleapis": "^126.0.0"
   }
 }
