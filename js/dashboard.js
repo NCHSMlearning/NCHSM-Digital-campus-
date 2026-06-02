@@ -440,8 +440,9 @@ class DashboardModule {
     }
     
   // ========== SIMPLIFIED NEXT CLASS CARD (USING DATABASE DATES) ==========
+// ========== FIXED: Find next UNFINISHED class ==========
 async loadQuickNextClass() {
-    console.log('📅 Loading next class card...');
+    console.log('📅 Loading next UNFINISHED class...');
     
     try {
         const studentBlock = this.userProfile?.block;
@@ -450,64 +451,93 @@ async loadQuickNextClass() {
             return;
         }
         
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const todayDate = now.toISOString().split('T')[0];
+        const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:00`;
         
-        // Simple query using the class_date column
-        const { data: nextClass, error } = await this.sb
+        console.log(`Current: ${todayDate} at ${currentTime}`);
+        
+        // Get all future classes (date >= today)
+        const { data: futureClasses, error } = await this.sb
             .from('timetables')
             .select('*')
             .eq('block', studentBlock)
-            .gte('class_date', today)
+            .gte('class_date', todayDate)
             .order('class_date', { ascending: true })
-            .order('start_time', { ascending: true })
-            .limit(1);
+            .order('start_time', { ascending: true });
         
         if (error) {
             console.error('Query error:', error);
             return;
         }
         
-        if (!nextClass || nextClass.length === 0) {
+        if (!futureClasses || futureClasses.length === 0) {
             console.log('No upcoming classes found');
             const card = document.getElementById('quick-next-class');
             if (card) card.style.display = 'none';
             return;
         }
         
-        const cls = nextClass[0];
-        const classDate = new Date(cls.class_date);
-        const isToday = classDate.toDateString() === new Date().toDateString();
-        const startTime = cls.start_time?.substring(0,5) || 'TBA';
-        const endTime = cls.end_time?.substring(0,5) || 'TBA';
+        // Find the first class that hasn't started yet
+        let nextClass = null;
         
-        // Format date: "Tue, Jun 2" or "TODAY"
+        for (const cls of futureClasses) {
+            const classDateTime = new Date(`${cls.class_date}T${cls.start_time}`);
+            if (classDateTime > now) {
+                nextClass = cls;
+                break;
+            }
+        }
+        
+        if (!nextClass) {
+            console.log('No future classes (all today are done)');
+            const card = document.getElementById('quick-next-class');
+            if (card) card.style.display = 'none';
+            return;
+        }
+        
+        const classDate = new Date(nextClass.class_date);
+        const isToday = classDate.toDateString() === now.toDateString();
+        const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
+        const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
+        
+        // Format date
         const formattedDate = classDate.toLocaleDateString('en-US', { 
             weekday: 'short', 
             month: 'short', 
             day: 'numeric' 
         });
         
+        console.log(`✅ NEXT CLASS: ${nextClass.session_name} on ${formattedDate} at ${startTime}`);
+        
         // Update card elements
-        document.getElementById('quick-next-class-time').innerHTML = `${startTime} — ${endTime}`;
-        document.getElementById('quick-next-class-name').innerHTML = cls.session_name || cls.course_name;
-        document.getElementById('quick-next-class-code').innerHTML = cls.course_name || studentBlock;
-        
-        let lecturerName = cls.lecturer_name || 'TBA';
-        if (lecturerName !== 'TBA' && lecturerName !== '—') {
-            lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
-        }
-        document.getElementById('quick-next-class-lecturer').innerHTML = lecturerName;
-        document.getElementById('quick-next-class-venue').innerHTML = cls.venue || 'TBD';
-        
+        const timeEl = document.getElementById('quick-next-class-time');
+        const nameEl = document.getElementById('quick-next-class-name');
+        const codeEl = document.getElementById('quick-next-class-code');
+        const lecturerEl = document.getElementById('quick-next-class-lecturer');
+        const venueEl = document.getElementById('quick-next-class-venue');
         const daySpan = document.getElementById('quick-next-class-day');
         const dayContainer = document.getElementById('quick-next-class-day-container');
         
-        if (isToday) {
-            if (dayContainer) dayContainer.classList.add('today');
-            if (daySpan) daySpan.innerHTML = 'TODAY';
-        } else {
-            if (dayContainer) dayContainer.classList.remove('today');
-            if (daySpan) daySpan.innerHTML = formattedDate;
+        if (timeEl) timeEl.innerHTML = `${startTime} — ${endTime}`;
+        if (nameEl) nameEl.innerHTML = nextClass.session_name || nextClass.course_name;
+        if (codeEl) codeEl.innerHTML = nextClass.course_name || studentBlock;
+        
+        let lecturerName = nextClass.lecturer_name || 'TBA';
+        if (lecturerName !== 'TBA' && lecturerName !== '—') {
+            lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
+        }
+        if (lecturerEl) lecturerEl.innerHTML = lecturerName;
+        if (venueEl) venueEl.innerHTML = nextClass.venue || 'TBD';
+        
+        if (daySpan) {
+            if (isToday) {
+                if (dayContainer) dayContainer.classList.add('today');
+                daySpan.innerHTML = 'TODAY';
+            } else {
+                if (dayContainer) dayContainer.classList.remove('today');
+                daySpan.innerHTML = formattedDate;
+            }
         }
         
         // Show the card
@@ -519,12 +549,12 @@ async loadQuickNextClass() {
         }
         
         // Click to go to calendar
-        card.onclick = () => {
-            const calendarTab = document.querySelector('[data-tab="calendar"]');
-            if (calendarTab) calendarTab.click();
-        };
-        
-        console.log(`✅ Next class: ${cls.session_name} on ${formattedDate} at ${startTime}`);
+        if (card) {
+            card.onclick = () => {
+                const calendarTab = document.querySelector('[data-tab="calendar"]');
+                if (calendarTab) calendarTab.click();
+            };
+        }
         
     } catch (error) {
         console.error('Error loading next class:', error);
