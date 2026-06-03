@@ -139,7 +139,7 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT ==========
+// ========== GET MARKS ENDPOINT - FIXED ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -171,11 +171,15 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           
           const clinicalScores = [];
           for (let j = 2; j <= 23; j++) {
-            const score = (j < row.length) ? (parseFloat(row[j]) || 0) : 0;
+            let score = 0;
+            if (j < row.length && row[j] && row[j] !== '') {
+              score = parseFloat(row[j]) || 0;
+              if (score > 100) score = 0;
+            }
             clinicalScores.push(score);
           }
           
-          const validScores = clinicalScores.filter(s => s > 0);
+          const validScores = clinicalScores.filter(s => s > 0 && s <= 100);
           let finalScore = 0;
           if (validScores.length > 0) {
             finalScore = validScores.reduce((a, b) => a + b, 0) / validScores.length;
@@ -191,7 +195,31 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        // ASSESSMENT AND CASE - 11 assessment columns (C through M)
+        // ===== ASSESSMENT AND CASE - FIXED: Find TOTAL column and stop before it =====
+        const headers = data[0] || [];
+        
+        // Find the TOTAL column index
+        let totalColumnIndex = -1;
+        for (let idx = 0; idx < headers.length; idx++) {
+          const header = (headers[idx] || '').toString().toUpperCase().trim();
+          if (header === 'TOTAL') {
+            totalColumnIndex = idx;
+            break;
+          }
+        }
+        
+        // If TOTAL column not found, use the last column - 3 as default
+        if (totalColumnIndex === -1) {
+          totalColumnIndex = headers.length - 3;
+        }
+        
+        // Assessment columns are from column C (index 2) to column BEFORE TOTAL (totalColumnIndex - 1)
+        const assessmentStartCol = 2; // Column C
+        const assessmentEndCol = totalColumnIndex - 1;
+        const assessmentCount = assessmentEndCol - assessmentStartCol + 1;
+        
+        console.log(`[ASSESSMENT] Found TOTAL at column ${totalColumnIndex}, reading ${assessmentCount} assessment columns (${assessmentStartCol} to ${assessmentEndCol})`);
+        
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           if (!row[1]) continue;
@@ -199,23 +227,35 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           const studentName = row[1] || '';
           if (!studentName || studentName === 'NAME') continue;
           
-          // Read exactly 11 assessment columns (indices 2 through 12)
+          // Read ONLY assessment columns (C through column before TOTAL)
           const scores = [];
-          for (let j = 2; j <= 12; j++) {
+          for (let col = assessmentStartCol; col <= assessmentEndCol && col < row.length; col++) {
             let score = 0;
-            if (j < row.length && row[j] && row[j] !== '') {
-              score = parseFloat(row[j]) || 0;
+            if (row[col] && row[col] !== '') {
+              const rawValue = row[col];
+              // Skip formula cells (start with =)
+              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
+                score = 0;
+              } else {
+                score = parseFloat(rawValue) || 0;
+                // Cap at 100 (valid score range)
+                if (score > 100) score = 0;
+              }
             }
             scores.push(score);
           }
           
+          // Calculate total from assessment scores only
           const total = scores.reduce((a, b) => a + b, 0);
-          const validCount = scores.filter(s => s > 0).length;
+          const validCount = scores.filter(s => s > 0 && s <= 100).length;
           const average = validCount > 0 ? total / validCount : 0;
           
+          // Get graded by (usually column after TOTAL)
           let gradedBy = '';
-          if (row[15]) gradedBy = row[15];
-          else if (row[16]) gradedBy = row[16];
+          const gradedByCol = totalColumnIndex + 2; // Usually 2 columns after TOTAL
+          if (gradedByCol < row.length && row[gradedByCol]) {
+            gradedBy = row[gradedByCol];
+          }
           
           marks.push({
             row: i + 1,
@@ -224,12 +264,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             scores: scores,
             total: total,
             final: average,
-            gradedBy: gradedBy
+            gradedBy: gradedBy || ''
           });
         }
       }
       
-      console.log(`[NCK] Returning ${marks.length} students with ${marks[0]?.scores?.length || 0} columns`);
+      console.log(`[NCK] Returning ${marks.length} students with ${marks[0]?.scores?.length || 0} assessment columns`);
       res.json(marks);
     } else {
       // Internal exams
@@ -313,10 +353,33 @@ app.post('/api/marks', async (req, res) => {
           }
         }
       } else {
-        // ASSESSMENT AND CASE - Save 11 columns
+        // ASSESSMENT AND CASE - First find TOTAL column position
+        const headersResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${sheetName}!1:1`,
+        });
+        const headers = headersResponse.data.values?.[0] || [];
+        
+        let totalColumnIndex = -1;
+        for (let idx = 0; idx < headers.length; idx++) {
+          const header = (headers[idx] || '').toString().toUpperCase().trim();
+          if (header === 'TOTAL') {
+            totalColumnIndex = idx;
+            break;
+          }
+        }
+        
+        if (totalColumnIndex === -1) {
+          totalColumnIndex = headers.length - 3;
+        }
+        
+        const assessmentCount = totalColumnIndex - 2; // Number of assessment columns
+        
         for (const mark of marksData) {
           const row = mark.row;
-          for (let col = 0; col < 11 && col < mark.scores.length; col++) {
+          
+          // Save assessment scores (columns C through before TOTAL)
+          for (let col = 0; col < assessmentCount && col < mark.scores.length; col++) {
             const score = mark.scores[col] || 0;
             const columnLetter = String.fromCharCode(67 + col);
             await sheets.spreadsheets.values.update({
@@ -326,25 +389,24 @@ app.post('/api/marks', async (req, res) => {
               requestBody: { values: [[score]] }
             });
           }
+          
+          // Calculate and save TOTAL
           const total = mark.scores.reduce((a, b) => a + b, 0);
+          const totalColumnLetter = String.fromCharCode(65 + totalColumnIndex);
           await sheets.spreadsheets.values.update({
             spreadsheetId,
-            range: `${sheetName}!N${row}`,
+            range: `${sheetName}!${totalColumnLetter}${row}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[total]] }
           });
-          const validCount = mark.scores.filter(s => s > 0).length;
-          const average = validCount > 0 ? (total / validCount).toFixed(2) : 0;
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!O${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[average]] }
-          });
+          
+          // Save graded by
           if (mark.gradedBy) {
+            const gradedByCol = totalColumnIndex + 2;
+            const gradedByColumnLetter = String.fromCharCode(65 + gradedByCol);
             await sheets.spreadsheets.values.update({
               spreadsheetId,
-              range: `${sheetName}!P${row}`,
+              range: `${sheetName}!${gradedByColumnLetter}${row}`,
               valueInputOption: 'RAW',
               requestBody: { values: [[mark.gradedBy]] }
             });
@@ -353,6 +415,7 @@ app.post('/api/marks', async (req, res) => {
       }
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
+      // Internal exams
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       const response = await sheets.spreadsheets.values.get({
@@ -391,7 +454,7 @@ app.post('/api/marks', async (req, res) => {
   }
 });
 
-// ========== STUDENT ENDPOINTS ==========
+// ========== STUDENT ENDPOINTS (keep existing) ==========
 app.get('/api/students', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
