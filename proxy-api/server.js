@@ -78,46 +78,6 @@ app.use((req, res, next) => {
 });
 
 // ===== HELPER FUNCTIONS =====
-async function createMarksheet(spreadsheetId, block, subject, assessmentType) {
-  let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-  const sheetName = `${block}_${cleanSubject}`;
-  
-  try {
-    const studentsResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: 'STUDENTS!A:B',
-    });
-    const students = studentsResponse.data.values || [];
-    
-    if (students.length <= 1) return;
-    
-    const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED_BY', 'ASSESSMENT_TYPE']];
-    for (let i = 1; i < students.length; i++) {
-      if (students[i][0]) {
-        rows.push([students[i][0], students[i][1], '', '', '', '', '', '', assessmentType]);
-      }
-    }
-    
-    try {
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: spreadsheetId,
-        requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
-      });
-    } catch (e) {}
-    
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: spreadsheetId,
-      range: `${sheetName}!A1:I${rows.length}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: rows }
-    });
-  } catch (error) {
-    if (!error.message.includes('already exists')) {
-      console.error('Error creating marksheet:', error.message);
-    }
-  }
-}
-
 async function getStudentsList(spreadsheetId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
@@ -197,7 +157,7 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT (FIXED FOR NCK) ==========
+// ========== GET MARKS ENDPOINT (FIXED) ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -206,7 +166,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     console.log(`[GET MARKS] block=${block}, subject=${subject}, examType=${examType}`);
     
     if (examType === 'nck') {
-      let sheetName = subject === 'XY FORMS' || subject.includes('XY') ? 'XY FORMS' : 'ASSESSMENT AND CASE';
+      let sheetName = subject;
       
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
@@ -226,12 +186,15 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           const studentName = row[1] || row[0] || '';
           if (!studentName || studentName === 'S.NO' || studentName === 'SN NO') continue;
           
-          // Collect individual clinical scores (columns C-W, indices 2-22)
+          // Collect ALL 22 clinical scores (columns C-X, indices 2-23)
           const clinicalScores = [];
-          for (let j = 2; j <= 22 && j < row.length; j++) {
+          for (let j = 2; j <= 23 && j < row.length; j++) {
             const score = parseFloat(row[j]);
             clinicalScores.push(isNaN(score) ? 0 : score);
           }
+          
+          // Pad to 22 columns if needed
+          while (clinicalScores.length < 22) clinicalScores.push(0);
           
           // Calculate average from individual scores or use pre-calculated
           const validScores = clinicalScores.filter(s => s > 0);
@@ -252,17 +215,23 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        // ASSESSMENT AND CASE sheet
+        // ASSESSMENT AND CASE sheet - dynamic column count
+        // Get headers to determine number of assessment columns
+        const headers = data[0] || [];
+        let assessmentStartCol = 2; // Column C
+        let assessmentEndCol = headers.length - 3; // Leave last 3 for total, status, graded by
+        
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           if (!row[1]) continue;
           
           const scores = [];
-          for (let j = 2; j <= 10 && j < row.length; j++) {
+          for (let j = assessmentStartCol; j <= assessmentEndCol && j < row.length; j++) {
             const score = parseFloat(row[j]);
             if (!isNaN(score)) scores.push(score);
           }
           const total = scores.reduce((a, b) => a + b, 0);
+          const average = scores.length > 0 ? total / scores.length : 0;
           
           marks.push({
             row: i + 1,
@@ -270,7 +239,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             name: row[1] || '',
             scores: scores,
             total: total,
-            final: total,
+            final: average,
             gradedBy: row[row.length - 1] || ''
           });
         }
@@ -300,6 +269,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             cat2: data[i][3] || '', 
             exam: data[i][4] || '', 
             final: data[i][5] || '', 
+            grade: data[i][6] || '',
             gradedBy: data[i][7] || '', 
             assessmentType: data[i][8] || 'full' 
           });
@@ -313,7 +283,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT ==========
+// ========== SAVE MARKS ENDPOINT (FIXED FOR NCK) ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
@@ -323,16 +293,17 @@ app.post('/api/marks', async (req, res) => {
     console.log(`[SAVE MARKS] block=${block}, subject=${subject}, examType=${examType}, marksCount=${marksData?.length}`);
     
     if (examType === 'nck') {
-      let sheetName = subject === 'XY FORMS' || subject.includes('XY') ? 'XY FORMS' : 'ASSESSMENT AND CASE';
+      let sheetName = subject;
       
       if (sheetName === 'XY FORMS') {
+        // Save ALL 22 clinical areas for XY FORMS
         for (const mark of marksData) {
           const row = mark.row;
           
-          // Update individual clinical area scores
-          for (let col = 0; col < mark.scores.length && col < 22; col++) {
-            const score = mark.scores[col];
-            const columnLetter = String.fromCharCode(67 + col);
+          // Update ALL 22 clinical area scores (columns C-X, indices 0-21)
+          for (let col = 0; col < 22; col++) {
+            const score = mark.scores[col] || 0;
+            const columnLetter = String.fromCharCode(67 + col); // C=67, D=68, ..., X=88
             await sheets.spreadsheets.values.update({
               spreadsheetId,
               range: `${sheetName}!${columnLetter}${row}`,
@@ -341,7 +312,7 @@ app.post('/api/marks', async (req, res) => {
             });
           }
           
-          // Calculate and update average
+          // Calculate average from all valid scores
           const validScores = mark.scores.filter(s => s > 0);
           let newAverage = 0;
           if (validScores.length > 0) {
@@ -356,7 +327,7 @@ app.post('/api/marks', async (req, res) => {
             requestBody: { values: [[newAverage.toFixed(2)]] }
           });
           
-          // Update graded by
+          // Update graded by (column Z - index 25)
           if (mark.gradedBy) {
             await sheets.spreadsheets.values.update({
               spreadsheetId,
@@ -367,13 +338,21 @@ app.post('/api/marks', async (req, res) => {
           }
         }
       } else {
-        // ASSESSMENT AND CASE sheet
+        // ASSESSMENT AND CASE sheet - dynamic column count
+        // First, get the current headers to determine column count
+        const headersResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${sheetName}!1:1`,
+        });
+        const headers = headersResponse.data.values?.[0] || [];
+        let assessmentColumns = headers.length - 4; // Subtract SN, NAME, TOTAL, GRADED_BY
+        
         for (const mark of marksData) {
           const row = mark.row;
           
-          // Update assessment scores (columns C-E)
-          for (let col = 0; col < mark.scores.length && col < 3; col++) {
-            const score = mark.scores[col];
+          // Update assessment scores (start from column C)
+          for (let col = 0; col < mark.scores.length && col < assessmentColumns; col++) {
+            const score = mark.scores[col] || 0;
             const columnLetter = String.fromCharCode(67 + col);
             await sheets.spreadsheets.values.update({
               spreadsheetId,
@@ -385,17 +364,29 @@ app.post('/api/marks', async (req, res) => {
           
           // Calculate and update total
           const total = mark.scores.reduce((a, b) => a + b, 0);
+          const totalColumnLetter = String.fromCharCode(67 + assessmentColumns);
           await sheets.spreadsheets.values.update({
             spreadsheetId,
-            range: `${sheetName}!L${row}`,
+            range: `${sheetName}!${totalColumnLetter}${row}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[total]] }
           });
           
+          // Update average
+          const average = mark.scores.length > 0 ? (total / assessmentColumns).toFixed(2) : 0;
+          const avgColumnLetter = String.fromCharCode(68 + assessmentColumns);
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!${avgColumnLetter}${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[average]] }
+          });
+          
           if (mark.gradedBy) {
+            const gradedByColumnLetter = String.fromCharCode(69 + assessmentColumns);
             await sheets.spreadsheets.values.update({
               spreadsheetId,
-              range: `${sheetName}!M${row}`,
+              range: `${sheetName}!${gradedByColumnLetter}${row}`,
               valueInputOption: 'RAW',
               requestBody: { values: [[mark.gradedBy]] }
             });
@@ -740,7 +731,6 @@ app.post('/api/add-unit', async (req, res) => {
             valueInputOption: 'RAW',
             requestBody: { values: [['YES', assessmentType]] }
           });
-          await createMarksheet(req.spreadsheetId, block, name, assessmentType);
           return res.json({ success: true, message: 'Unit reactivated successfully' });
         }
       }
@@ -752,7 +742,6 @@ app.post('/api/add-unit', async (req, res) => {
       valueInputOption: 'RAW',
       requestBody: { values: [[block, name, 'YES', assessmentType]] }
     });
-    await createMarksheet(req.spreadsheetId, block, name, assessmentType);
     res.json({ success: true, message: 'Unit added successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -785,25 +774,6 @@ app.post('/api/update-unit', async (req, res) => {
     
     if (!found) {
       return res.json({ success: false, message: 'Unit not found' });
-    }
-    
-    if (oldName !== newName) {
-      let cleanOldName = oldName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-      let cleanNewName = newName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-      
-      try {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId: req.spreadsheetId,
-          requestBody: {
-            requests: [{
-              updateSheetProperties: {
-                properties: { title: `${block}_${cleanNewName}` },
-                fields: 'title'
-              }
-            }]
-          }
-        });
-      } catch (e) {}
     }
     
     res.json({ success: true, message: 'Unit updated successfully' });
@@ -904,41 +874,7 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// ===== DEBUG ENDPOINTS =====
-app.get('/api/debug-lecturers', async (req, res) => {
-  try {
-    const spreadsheetId = req.spreadsheetId;
-    const response = await sheets.spreadsheets.values.get({ 
-      spreadsheetId, 
-      range: 'LECTURERS!A:G' 
-    });
-    const data = response.data.values || [];
-    
-    const lecturers = [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0]) {
-        lecturers.push({
-          row: i,
-          username: data[i][0],
-          name: data[i][1],
-          email: data[i][2],
-          hasPassword: !!data[i][3],
-          subjects: data[i][4],
-          status: data[i][5] || 'ACTIVE'
-        });
-      }
-    }
-    
-    res.json({ 
-      spreadsheetId,
-      totalLecturers: lecturers.length,
-      lecturers: lecturers
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
+// ========== DEBUG ENDPOINTS ==========
 app.get('/api/debug/nck-sheets', async (req, res) => {
   try {
     const spreadsheetId = req.spreadsheetId;
