@@ -85,52 +85,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// ===== MARK ENTRY CHECK MIDDLEWARE =====
-async function checkMarkEntryAllowed(req, res, next) {
-  // Only check POST requests for saving marks
-  if (req.method !== 'POST' || req.path !== '/api/marks') {
-    return next();
-  }
-  
-  const year = req.headers['x-year'] || req.body.year || '2024';
-  const { block, subject, lecturerName } = req.body;
-  const userRole = req.headers['x-user-role'];
-  
-  // ADMIN bypass
-  if (userRole === 'admin' || lecturerName === 'Administrator') {
-    console.log(`[ENTRY CHECK] Admin bypass for ${lecturerName}`);
-    return next();
-  }
-  
-  console.log(`[ENTRY CHECK] Checking for ${lecturerName} - ${year}/${block}/${subject}`);
-  
-  // Check 1: Global
-  if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
-    console.log(`[ENTRY CHECK] BLOCKED: Global closed`);
-    return res.status(403).json({ success: false, message: '❌ Mark entry is globally closed. Contact administrator.' });
-  }
-  
-  // Check 2: Class level
-  const classKey = `${year}_all`;
-  if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
-    console.log(`[ENTRY CHECK] BLOCKED: Class ${year} closed`);
-    return res.status(403).json({ success: false, message: `❌ Mark entry is closed for March ${year} class.` });
-  }
-  
-  // Check 3: Subject level
-  const subjectKey = `${block}_${subject}`;
-  if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
-    console.log(`[ENTRY CHECK] BLOCKED: Subject ${subject} closed`);
-    return res.status(403).json({ success: false, message: `❌ Mark entry is closed for ${subject}.` });
-  }
-  
-  console.log(`[ENTRY CHECK] ALLOWED: Entry open for ${subject}`);
-  next();
-}
-
-// Apply middleware to /api/marks endpoint
-app.use('/api/marks', checkMarkEntryAllowed);
-
 // ===== HELPER FUNCTIONS =====
 async function getStudentsList(spreadsheetId) {
   const response = await sheets.spreadsheets.values.get({
@@ -141,7 +95,7 @@ async function getStudentsList(spreadsheetId) {
   const students = [];
   const seen = {};
   for (let i = 1; i < data.length; i++) {
-    const admission = data[i][0];
+    const admission = data[i]?.[0];
     if (admission && !seen[admission]) {
       seen[admission] = true;
       students.push(admission);
@@ -296,7 +250,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     const examType = req.headers['x-exam-type'] || 'internal';
     const year = req.headers['x-year'] || '2024';
     
-    console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}`);
+    console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}`);
     
     if (examType === 'nck') {
       let sheetName = subject;
@@ -394,15 +348,49 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT ==========
+// ========== SAVE MARKS ENDPOINT WITH ENTRY CHECK ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     const spreadsheetId = req.spreadsheetId;
     const year = req.headers['x-year'] || '2024';
+    const userRole = req.headers['x-user-role'] || req.body.userRole;
     
-    console.log(`[SAVE MARKS] Year: ${year}, block=${block}, subject=${subject}, lecturer: ${lecturerName}`);
+    console.log(`[SAVE ATTEMPT] User: ${lecturerName}, Role: ${userRole}, Subject: ${subject}, Time: ${new Date().toISOString()}`);
+    
+    // ===== ENTRY CHECK - BLOCK LECTURERS IF CLOSED =====
+    const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
+    
+    if (!isAdmin) {
+      console.log(`[SECURITY CHECK] Checking entry status for ${lecturerName}`);
+      
+      // Check 1: Global
+      if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
+        console.log(`[BLOCKED] Global entry closed`);
+        return res.status(403).json({ success: false, message: '❌ Mark entry is globally closed. Contact administrator.' });
+      }
+      
+      // Check 2: Class level
+      const classKey = `${year}_all`;
+      if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
+        console.log(`[BLOCKED] Class ${year} entry closed`);
+        return res.status(403).json({ success: false, message: `❌ Mark entry is closed for March ${year} class.` });
+      }
+      
+      // Check 3: Subject level (for internal exams)
+      if (examType === 'internal') {
+        const subjectKey = `${block}_${subject}`;
+        if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
+          console.log(`[BLOCKED] Subject ${subject} entry closed`);
+          return res.status(403).json({ success: false, message: `❌ Mark entry is closed for ${subject}.` });
+        }
+      }
+      
+      console.log(`[ALLOWED] Entry open for ${subject}`);
+    } else {
+      console.log(`[ADMIN] ${lecturerName} - bypassing entry check`);
+    }
     
     // Log the save action
     markEntryLogs.unshift({
@@ -416,6 +404,7 @@ app.post('/api/marks', async (req, res) => {
     });
     if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
     
+    // ===== SAVE LOGIC =====
     if (examType === 'nck') {
       let sheetName = subject;
       if (sheetName === 'XY FORMS') {
