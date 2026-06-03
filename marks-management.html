@@ -470,7 +470,6 @@ async function showLecturerAnalytics() {
   window.saveAdminMarks=async function(){ let marksData=[]; const len=window.currentAdminMarks?.length||0; const at=window.currentAdminAssessmentType||'full'; for(let i=0;i<len;i++){ if(at==='full') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:document.getElementById(`acat2_${i}`)?.value||'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else if(at==='single_cat') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else marksData.push({row:i+2,cat1:'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); } showLoading('Saving...'); const res=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:window.currentAdminBlock,subject:window.currentAdminSubject,marksData,lecturerName:currentUser.name})}); hideLoading(); showNotification(res?.success?'Saved!':'Error',!res?.success); if(res?.success) loadAdminMarks(window.currentAdminBlock,window.currentAdminSubject,window.currentAdminAssessmentType); };
   
   window.exportAdminMarks=function(){ if(window.currentAdminMarks){ const data=window.currentAdminMarks.map((m,i)=>({Admission:m.admission,Name:m.name,CAT1:document.getElementById(`acat1_${i}`)?.value||'',CAT2:document.getElementById(`acat2_${i}`)?.value||'',Exam:document.getElementById(`aexam_${i}`)?.value||'',Total:document.getElementById(`atotal_${i}`)?.innerHTML||''})); exportToCSV(data,'internal_marks'); } };
-  
 async function showLecturerSubjects() { 
   showLoading('Loading your subjects...'); 
   const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']; 
@@ -495,22 +494,22 @@ async function showLecturerSubjects() {
     } 
     
     // Check if subject is open or closed for entry
-    let isOpen = true;
+    let isSubjectOpen = true;
     let closedReason = '';
     
     // Check global
     if (settings.global && settings.global.enabled === false) {
-      isOpen = false;
+      isSubjectOpen = false;
       closedReason = 'Global entry closed';
     }
     // Check class
     else if (settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false) {
-      isOpen = false;
+      isSubjectOpen = false;
       closedReason = `Entry closed for March ${currentYear} class`;
     }
     // Check specific subject
     else if (settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false) {
-      isOpen = false;
+      isSubjectOpen = false;
       closedReason = `Entry closed for this subject`;
     }
     
@@ -518,7 +517,7 @@ async function showLecturerSubjects() {
       subjectsByBlock[block].push({ 
         name, 
         assessmentType: atype,
-        isOpen: isOpen,
+        isOpen: isSubjectOpen,
         closedReason: closedReason
       }); 
     }
@@ -528,7 +527,7 @@ async function showLecturerSubjects() {
     <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
     <div class="header">
       <h3><i class="fas fa-book"></i> My Subjects</h3>
-      <p>Click on any subject card to enter marks - ${isOpen ? '🔓 Open for entry' : '🔒 Closed for entry'}</p>
+      <p>Click on any subject card to enter marks - ${currentYear} Class</p>
     </div>
   `; 
   
@@ -546,14 +545,14 @@ async function showLecturerSubjects() {
         // Show closed status badge if entry is closed
         const statusBadge = s.isOpen 
           ? '<span class="badge badge-pass" style="background:#10b981; color:white;"><i class="fas fa-lock-open"></i> Open</span>'
-          : `<span class="badge badge-fail" style="background:#dc2626; color:white;"><i class="fas fa-lock"></i> Closed</span>`;
+          : '<span class="badge badge-fail" style="background:#dc2626; color:white;"><i class="fas fa-lock"></i> Closed</span>';
         
         const onclickAttr = s.isOpen 
           ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"`
           : `onclick="showNotification('${s.closedReason}', true)"`;
         
         html += `
-          <div class="subject-card" style="${!s.isOpen ? 'opacity:0.7; background:#fef2f2;' : ''}" ${onclickAttr}>
+          <div class="subject-card" style="${!s.isOpen ? 'opacity:0.7; background:#fef2f2; cursor:not-allowed;' : ''}" ${onclickAttr}>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <h4>${typeIcon} ${s.name}</h4>
               ${statusBadge}
@@ -568,7 +567,7 @@ async function showLecturerSubjects() {
   } 
   document.getElementById('contentArea').innerHTML = html; 
   hideLoading(); 
-}  
+}
   window.openMarksEntry=function(block,subject,atype){ currentMarksBlock=block; currentMarksSubject=subject; currentAssessmentType=atype; loadMarksForSubject(block,subject,atype); };
   
   async function loadMarksForSubject(block,subject,atype){ showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`,{}); let html=`<button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_',' ')} | ${atype==='full'?'CAT1+CAT2+Exam':(atype==='single_cat'?'CAT+Exam':'Exam Only')}</p></div><div id="marksTableContainer"></div>`; document.getElementById('contentArea').innerHTML=html; displayLecturerMarksTable(marks,block,subject,atype); hideLoading(); }
