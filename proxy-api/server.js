@@ -1,451 +1,1014 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Nursing School System | NCK & Internal Marks | Nakuru College</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root { --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --dark: #1e293b; --gray: #64748b; --radius: 24px; --radius-sm: 12px; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1); --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1); }
-    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 24px; transition: all 0.3s ease; }
-    body.dark-mode { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
-    body.dark-mode .card, body.dark-mode .header, body.dark-mode .stat-card, body.dark-mode .selector-group, body.dark-mode .user-info, body.dark-mode .subject-card, body.dark-mode table, body.dark-mode .modal-content, body.dark-mode .login-container { background: #1e293b; color: #f1f5f9; border-color: #334155; }
-    body.dark-mode th { background: #0f172a; }
-    body.dark-mode td { border-bottom-color: #334155; }
-    body.dark-mode input, body.dark-mode select { background: #0f172a; color: #f1f5f9; border-color: #475569; }
-    .container { max-width: 1400px; margin: 0 auto; }
-    .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px; text-align: center; box-shadow: var(--shadow-xl); border: 1px solid rgba(255,255,255,0.2); }
-    .header h1 { background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 32px; font-weight: 800; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
-    .stat-card { background: white; border-radius: var(--radius); padding: 24px; text-align: center; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow); border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
-    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary), var(--secondary)); transform: scaleX(0); transition: transform 0.3s ease; }
-    .stat-card:hover::before { transform: scaleX(1); }
-    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
-    .stat-number { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .stat-label { margin-top: 8px; font-size: 14px; font-weight: 500; color: var(--gray); }
-    .selector-group { background: white; border-radius: 20px; padding: 20px 24px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow); }
-    select, input { padding: 12px 20px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 14px; font-weight: 500; background: white; cursor: pointer; transition: all 0.2s ease; }
-    select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
-    .admin-menu-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-bottom: 24px; }
-    .menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .menu-btn { padding: 14px; border: none; border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: white; transition: all 0.3s ease; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .menu-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-    .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
-    .btn-info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-    .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
-    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
-    .btn-export { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-    .btn-dark { background: linear-gradient(135deg, #1e293b, #0f172a); }
-    .btn-lock { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-    .user-info { background: white; border-radius: 20px; padding: 16px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); }
-    .logout-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 10px 24px; border-radius: 40px; cursor: pointer; font-weight: 600; }
-    .card { background: white; border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); border: 1px solid #e2e8f0; }
-    .card-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--primary); padding-left: 16px; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; }
-    th, td { padding: 14px 16px; text-align: left; }
-    th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 600; font-size: 13px; }
-    tr:hover { background: rgba(99,102,241,0.05); }
-    .pass-row { background-color: #d1fae5 !important; }
-    .fail-row { background-color: #fee2e2 !important; }
-    body.dark-mode .pass-row { background-color: #064e3b !important; }
-    body.dark-mode .fail-row { background-color: #7f1d1d !important; }
-    .badge { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; gap: 6px; }
-    .badge-pass { background: #d1fae5; color: #065f46; }
-    .badge-fail { background: #fee2e2; color: #991b1b; }
-    .badge-gold { background: #fef3c7; color: #92400e; }
-    .badge-silver { background: #e5e7eb; color: #374151; }
-    .badge-bronze { background: #fed7aa; color: #9a3412; }
-    .badge-locked { background: #fed7aa; color: #92400e; }
-    .setting-card { background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
-    .log-entry { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-    .subject-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 20px; margin-top: 20px; }
-    .subject-card { background: white; border-radius: 20px; padding: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow); border-left: 5px solid var(--primary); }
-    .subject-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
-    .subject-card h4 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; border-radius: 28px; width: 750px; max-width: 95%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-xl); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 28px; border-bottom: 2px solid #f1f5f9; }
-    .modal-header h3 { font-size: 22px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .close { cursor: pointer; font-size: 28px; color: #94a3b8; transition: all 0.2s; }
-    .close:hover { color: #ef4444; transform: rotate(90deg); }
-    .modal-body { padding: 28px; }
-    .modal-body .field { margin-bottom: 20px; }
-    .modal-body label { display: block; font-weight: 600; margin-bottom: 8px; }
-    .ranking-card { background: linear-gradient(135deg, #667eea10, #764ba210); border-radius: 16px; padding: 20px; margin-bottom: 16px; border-left: 4px solid var(--primary); }
-    .ranking-number { font-size: 32px; font-weight: 800; color: var(--primary); margin-right: 16px; }
-    .save-btn, .export-btn, .edit-btn, .delete-btn, .back-btn { padding: 10px 20px; border: none; border-radius: 40px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
-    .save-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-    .export-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
-    .edit-btn { background: #3b82f6; color: white; }
-    .delete-btn { background: #ef4444; color: white; }
-    .back-btn { background: #64748b; color: white; }
-    .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .notification-toast { position: fixed; bottom: 24px; right: 24px; background: #10b981; color: white; padding: 14px 24px; border-radius: 60px; z-index: 10000; animation: slideInRight 0.3s ease; font-weight: 500; display: flex; align-items: center; gap: 10px; }
-    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    .login-container { max-width: 460px; margin: 80px auto; background: white; padding: 48px 40px; border-radius: 32px; box-shadow: var(--shadow-xl); }
-    .login-container h2 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 12px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .login-container button { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin-top: 8px; }
-    .lecturer-card, .unit-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow); }
-    .subject-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; margin: 2px; display: inline-block; }
-    .trophy-icon { font-size: 24px; margin-right: 8px; }
-    @media (max-width: 768px) { body { padding: 16px; } .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2,1fr); } .admin-menu-grid { grid-template-columns: repeat(4,1fr); } }
-  </style>
-</head>
-<body>
-<div id="app"></div>
+const express = require('express');
+const cors = require('cors');
+const { google } = require('googleapis');
 
-<script>
-  // ======================= CONFIGURATION =======================
-  const API_BASE_URL = 'https://nchsm-marks-proxy.onrender.com';
-  const INTAKE_YEARS = ['2024', '2025', '2026'];
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// ===== SPREADSHEET CONFIGURATION - ALL CLASSES =====
+const SPREADSHEETS = {
+  '2024': {
+    internal: '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0',
+    nck: '1F-DsXPgZYSyqH9F3kGDP9Z4_AtTV_ZAOd6KXbYdchMo'
+  },
+  '2025': {
+    internal: '1qX2vVuUaIut0_-Z1pvxtbJDC8u4zTyeqs6Xywk56bOM',
+    nck: '1KYZPg7GhqDZ70CTw7albG9PZ72FnM4RJr14XPeIy-OU'
+  },
+  '2026': {
+    internal: '1W7g_qwVS1r0sBpcGqTKFXr-mY4Hetw1a7-nMnkxVoGA',
+    nck: '1F3R92jREt7tYFvYo0YtiQeh7HZldY_47YkwvlBiD44E'
+  }
+};
+
+// ===== MARK ENTRY SETTINGS (Stored in memory) =====
+let markEntrySettings = {
+  global: { enabled: true, closedBy: null, closedAt: null }
+};
+
+// ===== MARK ENTRY LOGS =====
+let markEntryLogs = [];
+
+// ===== GOOGLE SHEETS AUTHENTICATION =====
+const credentials = {
+  type: "service_account",
+  project_id: "nursing-marks-system",
+  private_key_id: "1ed05cb70c346df5c3bb79e06bb1bffbd26f17b2",
+  private_key: `-----BEGIN PRIVATE KEY-----
+MIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDJCTumvxURgqLM
+KJFDb+tk82Hh3ePi5Sl6vtov4ZVOWegwZZ6u9CWVErxFVGdbMOkg+EVhyx3aD+dS
+ZV+ZFmT2dTOu1CLjB+bTr1sPPZ1uFlWPd7bXMfDFhBdOpWVF15Ph+K6mHWjNX/TW
+DVEiwMd7x1wk+S0uEsgoXCc5fIb9SkTKUy+7ZpRCq3igyDvS/y33wpPlSNJH0wjg
+BWan+9obXHdMaDUWvqnUMqYHt2KeQcrBkLXXBdDDIY3gm/kSrLrJTTpPTgQYXmcL
+ujDh3Zx3t6HAncs4vdftGVClgamtsL9k0X5i6PS4RkkvHkJ0uOo6+BBudo780sGX
+i7+YwBBZAgMBAAECgf94125PJ1/dCItptIBvzLiFIzCF/cvu03bQM3Ag33hnoHZL
+sDM56ABzBLHqoFkl/xNQgewFkV3Jth/s0MaH86La3QHZutd53M2YFqLiDesqX2+l
+ZBRHoMxk/ONgCIPmpL4Dj3g+vEGsXxCux1J2glvA/I116FH0yVVpR6EfKULsKhAF
+sSvZqnBFNkoe4cbD4nvy7Y2LQ3JXNaWBuP6xy78AHu4jVTSzrS6tLd9zBqtWOikr
+6BSXpCa5ITr/JZA9l5D18HXUhDI0YurSemDrygQvHIGPcPscBjUpNZh4ccESaj6p
+kTRe3U+Cbw//yKIr1pm3PxtA3La4kbKms2WMqWECgYEA+IwyfXMBCjES60TwuS37
+/b2zf5vFUGVhO8OFOmSzfFPzNirFGD83/zERqIGfjs09NTnvB4FVcdwtFHBNC4GX
+/wXudmb+Etp0ljKOlXGrJJQaRovc6CRdluddsjMTXMRTMh/cLviO5ZduH/FaDxfJ
+lL0iI0Oeb6+CnKZtALyT8z8CgYEAzxBYpMG4PUHuty2pGb1CFqsvBvnePRAhL7x5
+RWdZcZd8Wrs66FTiQoPMs0eIj0xlIFDp+Kki/8ONNkrivgw5ESfQREqBBiiW6//z
+MyQszHv3BYnIZw5l5Dy4mU3D2N9MSn+YXpbcWduX/gzMiuyXJqx5vru6bYAF23l1
+wr/kTmcCgYAl04BjozsHSAyvDaDtLdhp95L32scewy8XH1yJVIYUZ9pd5gh09joZ
+dmhPktqrqwSjsxtzsvVEDNQ3hhfTpndxcn+mOWp1iBWyPiOBDvmS6Y9OKT8HfXFY
+5AFYe3l45tAaksq5w05MFs3Fwr+ICIC/SEGHyGS2bqmcGaABOrHxlQKBgQCGTCnS
+IjrmsD6t3BWTNicJINoNgj5cCHwdw/Y7x35BqGjlSA465eMiFO3NUZYGqxvjy9cU
+ik7C6AhMsGFDthXFRLdVs6TfY7APPSB1iP7tWXGry+OIw9PeJmvsMn3VyW5n2z3u
+C5a7SSvZgF+hszWNxcvoo0WVA7XI1YxFVcQz/QKBgDAsGt05pNt+9JFluUZaftLi
+iPfNv42aRnCdCn7YpnW8SkSTcyD0y+0hSCisQZ2NBgAkw4Y1uIYV+ayC4WxXWqmJ
+yuRhbjbdQnNygiTKqxi2Q/xLoQR3eG9zs4mCPwBkwzfEa7QateVKqB8SOhKr/TlZ
+eET3hIw//KEIOlTU2QI/
+-----END PRIVATE KEY-----`,
+  client_email: "nursing-marks-bot@nursing-marks-system.iam.gserviceaccount.com",
+  client_id: "116238387173068992581",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token"
+};
+
+const auth = new google.auth.GoogleAuth({
+  credentials: credentials,
+  scopes: ['https://www.googleapis.com/auth/spreadsheets']
+});
+
+const sheets = google.sheets({ version: 'v4', auth });
+
+// ===== MIDDLEWARE =====
+app.use((req, res, next) => {
+  const year = req.headers['x-year'] || req.body.year || '2024';
+  const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
+  req.spreadsheetId = SPREADSHEETS[year]?.[examType] || SPREADSHEETS['2024'].internal;
+  console.log(`[MIDDLEWARE] Year: ${year}, ExamType: ${examType}, Spreadsheet: ${req.spreadsheetId}`);
+  next();
+});
+
+// ===== MIDDLEWARE TO CHECK MARK ENTRY ALLOWED =====
+async function checkMarkEntryAllowed(req, res, next) {
+  if (req.method === 'GET') return next();
   
-  let currentUser = null;
-  let currentYear = '2026';
-  let currentExamType = 'internal';
-  let configCache = null;
-  let currentMarksData = null, currentMarksBlock = null, currentMarksSubject = null, currentAssessmentType = null;
-  let currentAdminMarks = null, currentAdminAssessmentType = null, currentAdminBlock = null, currentAdminSubject = null;
-  let currentNCKMarks = null, currentNCKSheet = null;
-  let fastEntryVisible = false;
+  const year = req.headers['x-year'] || req.body.year || '2024';
+  const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
+  const { block, subject } = req.body;
+  const userRole = req.headers['x-user-role'] || req.body.userRole;
   
-  function showLoading(msg) { let l=document.querySelector('.loader'); if(l) l.remove(); l=document.createElement('div'); l.className='loader'; l.innerHTML=`<div class="spinner"></div><div class="loader-text">${msg||'Loading...'}</div>`; document.body.appendChild(l); }
-  function hideLoading() { let l=document.querySelector('.loader'); if(l) l.remove(); }
-  function showNotification(msg,isErr) { let t=document.createElement('div'); t.className='notification-toast'; t.style.background=isErr?'linear-gradient(135deg,#ef4444,#dc2626)':'linear-gradient(135deg,#10b981,#059669)'; t.innerHTML=`<i class="fas ${isErr?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
-  async function apiCall(endpoint,opts={}) { try { const headers={'Content-Type':'application/json','X-Year':currentYear,'X-Exam-Type':currentExamType,'X-User-Role':currentUser?.role||''}; const res=await fetch(API_BASE_URL+endpoint,{headers,...opts}); const ct=res.headers.get('content-type'); if(ct&&ct.includes('application/json')) return await res.json(); return {error:'Non-JSON response'}; } catch(e){ console.error(e); return {error:e.message}; } }
-  async function getConfig() { if(configCache) return configCache; configCache=await apiCall('/api/units',{}); return configCache; }
-  function exportToCSV(data,filename) { if(!data||!data.length){ showNotification('No data to export',true); return; } const headers=Object.keys(data[0]); let csv=[headers.join(',')]; data.forEach(row=>{ const values=headers.map(h=>`"${String(row[h]||'').replace(/"/g,'""')}"`); csv.push(values.join(',')); }); const blob=new Blob([csv.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${filename}_${currentYear}_${new Date().toISOString().slice(0,19)}.csv`; a.click(); URL.revokeObjectURL(a.href); showNotification('Export completed!',false); }
-  function initDarkMode() { if(localStorage.getItem('darkMode')==='true') document.body.classList.add('dark-mode'); }
-  function toggleDarkMode() { document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode',document.body.classList.contains('dark-mode')); }
-  function closeModal() { document.querySelectorAll('.modal').forEach(m=>m.remove()); }
+  if (userRole === 'admin') return next();
   
-  function checkLogin() { initDarkMode(); const saved=localStorage.getItem('nursingUser'); if(saved){ currentUser=JSON.parse(saved); const savedYear=localStorage.getItem('selectedYear'); currentYear=(savedYear&&INTAKE_YEARS.includes(savedYear))?savedYear:'2026'; showMain(); } else { showLogin(); } }
-  function showLogin() { const yearOptions=INTAKE_YEARS.map(y=>`<option value="${y}" ${y==='2026'?'selected':''}>🎓 March ${y} Class</option>`).join(''); document.getElementById('app').innerHTML=`<div class="login-container"><div style="text-align:center;margin-bottom:24px;"><i class="fas fa-graduation-cap" style="font-size:48px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;color:transparent;"></i></div><h2>Nursing School System</h2><p style="text-align:center;color:#64748b;margin-bottom:32px;">Nakuru College of Health Sciences</p><select id="loginYear">${yearOptions}</select><input type="text" id="username" placeholder="👤 Username"><input type="password" id="password" placeholder="🔒 Password"><button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button><div id="loginError" class="error" style="color:#ef4444;margin-top:16px;text-align:center;"></div></div>`; }
-  async function doLogin() { showLoading('Logging in...'); const username=document.getElementById('username').value; const password=document.getElementById('password').value; const year=document.getElementById('loginYear').value; currentYear=year; localStorage.setItem('selectedYear',currentYear); const result=await apiCall('/api/login',{method:'POST',body:JSON.stringify({username,password,year:currentYear})}); hideLoading(); if(result.success){ currentUser=result.user; localStorage.setItem('nursingUser',JSON.stringify(currentUser)); showMain(); showNotification(`Welcome ${currentUser.name}!`,false); } else { document.getElementById('loginError').innerHTML=result.message; } }
-  function logout() { localStorage.removeItem('nursingUser'); currentUser=null; configCache=null; showLogin(); }
+  if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
+    return res.status(403).json({ success: false, message: `Mark entry is globally closed. Contact administrator.` });
+  }
   
-  async function showMain() { showLoading('Loading Dashboard...'); const isAdmin=(currentUser.role==='admin'); const yearOptions=INTAKE_YEARS.map(y=>`<option value="${y}" ${y===currentYear?'selected':''}>🎓 March ${y} Class</option>`).join(''); const examTypeOptions=`<option value="internal" ${currentExamType==='internal'?'selected':''}>📝 Internal Exams (CAT1+CAT2+Exam)</option><option value="nck" ${currentExamType==='nck'?'selected':''}>🏥 NCK Score Sheet (Clinical Assessment)</option>`; const statsHtml=`<div class="selector-group"><div><label><i class="fas fa-calendar-alt"></i> Class Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div><div><label><i class="fas fa-file-alt"></i> Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div></div><div class="stats-grid"><div class="stat-card"><div class="stat-number" id="totalStudents">-</div><div class="stat-label"><i class="fas fa-users"></i> Total Students</div></div><div class="stat-card"><div class="stat-number">6</div><div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div></div><div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label"><i class="fas fa-book"></i> Active Units</div></div><div class="stat-card"><div class="stat-number">60%</div><div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div></div></div>`; let menuHtml=''; if(isAdmin){ menuHtml=`<div class="admin-menu-grid"><button class="menu-btn btn-primary" id="marksBtn"><i class="fas fa-pen-alt"></i> Internal Marks</button><button class="menu-btn btn-info" id="nckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button><button class="menu-btn btn-success" id="dashboardBtn"><i class="fas fa-chart-line"></i> Analytics</button><button class="menu-btn btn-warning" id="studentsBtn"><i class="fas fa-user-graduate"></i> Students</button><button class="menu-btn btn-danger" id="lecturersBtn"><i class="fas fa-chalkboard-user"></i> Lecturers</button><button class="menu-btn btn-export" id="unitsBtn"><i class="fas fa-book-open"></i> Units</button><button class="menu-btn btn-secondary" id="reportsBtn"><i class="fas fa-download"></i> Reports</button><button class="menu-btn btn-lock" id="entryControlBtn"><i class="fas fa-lock"></i> Entry Control</button></div>`; } else { menuHtml=`<div class="menu-grid"><button class="menu-btn btn-primary" id="lecturerMarksBtn"><i class="fas fa-pen-alt"></i> My Subjects</button><button class="menu-btn btn-info" id="lecturerNckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button><button class="menu-btn btn-success" id="lecturerDashboardBtn"><i class="fas fa-chart-simple"></i> My Analytics</button><button class="menu-btn btn-export" id="lecturerReportsBtn"><i class="fas fa-download"></i> Reports</button></div>`; } document.getElementById('app').innerHTML=`<div class="container"><div class="header"><h1><i class="fas fa-hospital-user"></i> Nakuru College of Health Sciences</h1><p style="margin-top:8px;">${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | Pass Mark: 60%</p></div><div class="user-info"><span><i class="fas fa-user-circle"></i> Welcome, ${currentUser.name}</span><div><button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding:8px 20px;margin-right:12px;"><i class="fas fa-moon"></i> Dark Mode</button><button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div></div>${statsHtml}${menuHtml}<div id="contentArea"></div></div>`; if(isAdmin){ document.getElementById('marksBtn').onclick=()=>showAdminMarks(); document.getElementById('nckBtn').onclick=()=>showNCKMarks(); document.getElementById('dashboardBtn').onclick=()=>showComprehensiveAnalytics(); document.getElementById('studentsBtn').onclick=()=>showStudents(); document.getElementById('lecturersBtn').onclick=()=>showLecturers(); document.getElementById('unitsBtn').onclick=()=>showUnits(); document.getElementById('reportsBtn').onclick=()=>showFullReports(); document.getElementById('entryControlBtn').onclick=()=>showEntryControlPanel(); } else { document.getElementById('lecturerMarksBtn').onclick=()=>showLecturerSubjects(); document.getElementById('lecturerNckBtn').onclick=()=>showNCKMarks(); document.getElementById('lecturerDashboardBtn').onclick=()=>showLecturerAnalytics(); document.getElementById('lecturerReportsBtn').onclick=()=>showFullReports(); } const stats=await apiCall('/api/stats',{}); document.getElementById('totalStudents').innerHTML=stats.totalStudents||0; document.getElementById('totalSubjects').innerHTML=isAdmin?(stats.totalSubjects||0):(currentUser.subjects||[]).length; hideLoading(); }
-  window.changeYear=function(){ currentYear=document.getElementById('yearSelectMain').value; localStorage.setItem('selectedYear',currentYear); configCache=null; showMain(); };
-  window.changeExamType=function(){ currentExamType=document.getElementById('examTypeSelect').value; localStorage.setItem('selectedExamType',currentExamType); showMain(); };
+  const classKey = `${year}_all`;
+  if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
+    return res.status(403).json({ success: false, message: `Mark entry is closed for March ${year} class.` });
+  }
   
-  // ========== MARK ENTRY CONTROL PANEL (NEW MODULE - ADDED) ==========
-  async function showEntryControlPanel() {
-    showLoading('Loading entry control panel...');
-    const settings = await apiCall('/api/mark-entry/settings', {});
-    const logs = await apiCall('/api/mark-entry/logs', {});
-    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+  const subjectKey = `${block}_${subject}`;
+  if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
+    return res.status(403).json({ success: false, message: `Mark entry is closed for ${subject} in ${block}.` });
+  }
+  
+  next();
+}
+
+// ========== MARK ENTRY CONTROL ENDPOINTS (NEW) ==========
+app.get('/api/mark-entry/settings', async (req, res) => {
+  res.json(markEntrySettings);
+});
+
+app.get('/api/mark-entry/logs', async (req, res) => {
+  res.json(markEntryLogs.slice(-100).reverse());
+});
+
+app.post('/api/mark-entry/toggle-global', async (req, res) => {
+  const { lecturerName } = req.body;
+  const currentState = markEntrySettings.global?.enabled !== false;
+  
+  markEntrySettings.global = {
+    enabled: !currentState,
+    closedBy: !currentState ? lecturerName : null,
+    closedAt: !currentState ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName: lecturerName,
+    action: !currentState ? 'close' : 'open',
+    target: 'global',
+    details: !currentState ? 'Closed all mark entry' : 'Opened all mark entry'
+  });
+  
+  res.json({ success: true, message: !currentState ? 'Global mark entry closed' : 'Global mark entry opened' });
+});
+
+app.post('/api/mark-entry/toggle-class', async (req, res) => {
+  const { year, lecturerName } = req.body;
+  const classKey = `${year}_all`;
+  const currentState = markEntrySettings[classKey]?.enabled !== false;
+  
+  markEntrySettings[classKey] = {
+    enabled: !currentState,
+    closedBy: !currentState ? lecturerName : null,
+    closedAt: !currentState ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName: lecturerName,
+    action: !currentState ? 'close' : 'open',
+    target: `March ${year} Class`,
+    details: !currentState ? `Closed mark entry for March ${year} class` : `Opened mark entry for March ${year} class`
+  });
+  
+  res.json({ success: true, message: !currentState ? `March ${year} class entry closed` : `March ${year} class entry opened` });
+});
+
+app.post('/api/mark-entry/toggle-subject', async (req, res) => {
+  const { block, subject, examType, lecturerName } = req.body;
+  const subjectKey = `${block}_${subject}`;
+  const currentState = markEntrySettings[subjectKey]?.enabled !== false;
+  
+  markEntrySettings[subjectKey] = {
+    enabled: !currentState,
+    closedBy: !currentState ? lecturerName : null,
+    closedAt: !currentState ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName: lecturerName,
+    action: !currentState ? 'close' : 'open',
+    target: subject,
+    block: block,
+    examType: examType,
+    details: !currentState ? `Closed mark entry for ${subject} in ${block}` : `Opened mark entry for ${subject} in ${block}`
+  });
+  
+  res.json({ success: true, message: !currentState ? `Entry closed for ${subject}` : `Entry opened for ${subject}` });
+});
+
+// ===== HELPER FUNCTIONS =====
+async function getStudentsList(spreadsheetId) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetId,
+    range: 'STUDENTS!A:D',
+  });
+  const data = response.data.values || [];
+  const students = [];
+  const seen = {};
+  for (let i = 1; i < data.length; i++) {
+    const admission = data[i][0];
+    if (admission && !seen[admission]) {
+      seen[admission] = true;
+      students.push(admission);
+    }
+  }
+  return students;
+}
+
+async function calculateGrade(percentage) {
+  if (percentage >= 80) return 'A';
+  if (percentage >= 75) return 'A-';
+  if (percentage >= 70) return 'B+';
+  if (percentage >= 65) return 'B';
+  if (percentage >= 60) return 'B-';
+  if (percentage >= 55) return 'C+';
+  if (percentage >= 50) return 'C';
+  if (percentage >= 45) return 'C-';
+  if (percentage >= 40) return 'D+';
+  if (percentage >= 35) return 'D';
+  return 'E';
+}
+
+// ===== API ENDPOINTS =====
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Nursing Marks API is running!' });
+});
+
+app.get('/api/years', (req, res) => {
+  res.json(Object.keys(SPREADSHEETS));
+});
+
+app.get('/api/blocks', (req, res) => {
+  res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
+});
+
+// ========== SUBJECTS ENDPOINT ==========
+app.get('/api/subjects/:block', async (req, res) => {
+  try {
+    const { block } = req.params;
+    const examType = req.headers['x-exam-type'] || 'internal';
     
-    let html = `
-      <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
-      <div class="header"><h3><i class="fas fa-lock"></i> Mark Entry Control Panel</h3><p>Control mark entry access for lecturers</p></div>
-      <div class="card"><div class="card-title"><i class="fas fa-globe"></i> Global Entry Settings</div>
-        <div class="setting-card"><div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><strong>🔓 All Mark Entry</strong><br><small>Master control for all mark entry</small></div>
-          <button class="${settings.global?.enabled !== false ? 'btn-danger' : 'btn-success'}" onclick="toggleGlobalEntry()" style="padding:8px 24px;">
-            <i class="fas ${settings.global?.enabled !== false ? 'fa-lock' : 'fa-lock-open'}"></i>
-            ${settings.global?.enabled !== false ? 'Close All Entry' : 'Open All Entry'}
-          </button>
-        </div></div>
-      </div>
-      <div class="card"><div class="card-title"><i class="fas fa-calendar-alt"></i> By Class Year</div>
-        ${INTAKE_YEARS.map(year => {
-          const classKey = `${year}_all`;
-          const classSetting = settings[classKey];
-          return `<div class="setting-card"><div style="display:flex;justify-content:space-between;align-items:center;">
-            <div><strong>🎓 March ${year} Class</strong><br><small>All subjects in this class</small></div>
-            <button class="${classSetting?.enabled !== false ? 'btn-danger' : 'btn-success'}" onclick="toggleClassEntry('${year}')" style="padding:8px 20px;">
-              <i class="fas ${classSetting?.enabled !== false ? 'fa-lock' : 'fa-lock-open'}"></i>
-              ${classSetting?.enabled !== false ? 'Close Entry' : 'Open Entry'}
-            </button>
-          </div></div>`;
-        }).join('')}
-      </div>
-      <div class="card"><div class="card-title"><i class="fas fa-layer-group"></i> By Block</div>
-        ${blocks.map(block => `<div class="setting-card"><div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><strong>📚 ${block.replace('_', ' ')}</strong><br><small>Manage subjects in this block</small></div>
-          <button class="btn-info" onclick="showBlockSubjectControl('${block}')" style="padding:8px 16px;"><i class="fas fa-cog"></i> Manage Subjects</button>
-        </div></div>`).join('')}
-      </div>
-      <div class="card"><div class="card-title"><i class="fas fa-history"></i> Mark Entry Logs</div>
-        <div style="max-height:400px;overflow-y:auto;">${logs.length === 0 ? '<p style="text-align:center;">No logs yet</p>' : logs.slice(0,50).map(log => `<div class="log-entry"><i class="fas fa-${log.action === 'save' ? 'save' : 'lock'}"></i> <strong>${log.lecturerName}</strong> ${log.action === 'save' ? 'entered marks for' : log.action === 'close' ? 'closed entry for' : 'opened entry for'} <strong>${log.subject || log.target}</strong> in ${log.block || ''} (${log.examType})<br><small>${new Date(log.timestamp).toLocaleString()}</small></div>`).join('')}</div>
-      </div>
-    `;
-    document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
-  }
-  
-  async function toggleGlobalEntry() {
-    const newState = await apiCall('/api/mark-entry/toggle-global', { method: 'POST', body: JSON.stringify({ lecturerName: currentUser.name }) });
-    showNotification(newState.message, !newState.success);
-    if (newState.success) showEntryControlPanel();
-  }
-  
-  async function toggleClassEntry(year) {
-    const newState = await apiCall('/api/mark-entry/toggle-class', { method: 'POST', body: JSON.stringify({ year, lecturerName: currentUser.name }) });
-    showNotification(newState.message, !newState.success);
-    if (newState.success) showEntryControlPanel();
-  }
-  
-  async function showBlockSubjectControl(block) {
-    const subjects = await apiCall(`/api/subjects/${block}`, {});
-    const settings = await apiCall('/api/mark-entry/settings', {});
-    let html = `<button class="back-btn" onclick="showEntryControlPanel()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book"></i> Manage Subjects in ${block.replace('_', ' ')}</h3></div><div class="card">`;
-    for (const subject of subjects) {
-      const subjectKey = `${block}_${subject.name}`;
-      const setting = settings[subjectKey];
-      html += `<div class="setting-card"><div style="display:flex;justify-content:space-between;align-items:center;">
-        <div><strong>📖 ${subject.name}</strong><br><small>${subject.assessmentType}</small></div>
-        <button class="${setting?.enabled !== false ? 'btn-danger' : 'btn-success'}" onclick="toggleSubjectEntry('${block}', '${subject.name}')" style="padding:8px 20px;">
-          <i class="fas ${setting?.enabled !== false ? 'fa-lock' : 'fa-lock-open'}"></i>
-          ${setting?.enabled !== false ? 'Close Entry' : 'Open Entry'}
-        </button>
-      </div></div>`;
+    if (examType === 'nck') {
+      res.json([
+        { name: 'XY FORMS', assessmentType: 'nck' },
+        { name: 'ASSESSMENT AND CASE', assessmentType: 'nck' }
+      ]);
+    } else {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: 'CONFIG!A:D',
+      });
+      const config = response.data.values || [];
+      const subjects = [];
+      for (let i = 1; i < config.length; i++) {
+        if (config[i][0] === block && config[i][2] === 'YES') {
+          subjects.push({
+            name: config[i][1],
+            assessmentType: config[i][3] || 'full'
+          });
+        }
+      }
+      res.json(subjects);
     }
-    html += `</div>`;
-    document.getElementById('contentArea').innerHTML = html;
-    hideLoading();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  
-  async function toggleSubjectEntry(block, subject) {
-    const newState = await apiCall('/api/mark-entry/toggle-subject', { method: 'POST', body: JSON.stringify({ block, subject, examType: currentExamType, lecturerName: currentUser.name }) });
-    showNotification(newState.message, !newState.success);
-    if (newState.success) showBlockSubjectControl(block);
-  }
-  
-  // ========== COMPREHENSIVE ANALYTICS DASHBOARD ==========
-  async function showComprehensiveAnalytics() {
-    showLoading('Loading comprehensive analytics...');
-    const students = await apiCall('/api/students', {});
-    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    let allStudentPerformance = {};
-    let subjectPerformance = {};
-    let clinicalPerformance = [];
-    const config = await getConfig();
-    for (let block of blocks) {
-      const subjects = config[block] || [];
-      for (let subject of subjects) {
-        const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
-        if (marks && marks.length) {
-          for (let mark of marks) {
-            const admission = mark.admission;
-            if (!allStudentPerformance[admission]) {
-              allStudentPerformance[admission] = { name: mark.name, subjects: [], totalScore: 0, subjectCount: 0, clinicalAvg: 0 };
-            }
-            const finalScore = parseFloat(mark.final) || 0;
-            if (finalScore > 0) {
-              allStudentPerformance[admission].subjects.push({ name: subject.name, score: finalScore });
-              allStudentPerformance[admission].totalScore += finalScore;
-              allStudentPerformance[admission].subjectCount++;
-              if (!subjectPerformance[subject.name]) {
-                subjectPerformance[subject.name] = { scores: [], block: block };
+});
+
+// ========== GET MARKS ENDPOINT ==========
+app.get('/api/marks/:block/:subject', async (req, res) => {
+  try {
+    const { block, subject } = req.params;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    const year = req.headers['x-year'] || '2024';
+    
+    console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}`);
+    
+    if (examType === 'nck') {
+      let sheetName = subject;
+      
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!A:Z`,
+      });
+      
+      const data = response.data.values || [];
+      console.log(`[NCK] ${sheetName} - Total rows: ${data.length}`);
+      
+      const marks = [];
+      
+      if (sheetName === 'XY FORMS') {
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if (!row[0] && !row[1]) continue;
+          
+          const studentName = row[1] || row[0] || '';
+          if (!studentName || studentName === 'S.NO' || studentName === 'SN NO') continue;
+          
+          const clinicalScores = [];
+          for (let j = 2; j <= 23 && j < row.length; j++) {
+            const score = parseFloat(row[j]);
+            clinicalScores.push(isNaN(score) ? 0 : score);
+          }
+          
+          while (clinicalScores.length < 22) clinicalScores.push(0);
+          
+          const validScores = clinicalScores.filter(s => s > 0);
+          let finalScore = 0;
+          if (validScores.length > 0) {
+            finalScore = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+          } else if (row[24]) {
+            finalScore = parseFloat(row[24]) || 0;
+          }
+          
+          marks.push({
+            row: i + 1,
+            admission: row[0] || '',
+            name: studentName,
+            scores: clinicalScores,
+            final: Math.round(finalScore * 100) / 100,
+            gradedBy: row[25] || row[26] || ''
+          });
+        }
+      } else {
+        let assessmentCount = 11;
+        if (year === '2024') assessmentCount = 8;
+        
+        console.log(`[ASSESSMENT] Year ${year} using ${assessmentCount} assessment columns`);
+        
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if (!row[1]) continue;
+          
+          const studentName = row[1] || '';
+          if (!studentName || studentName === 'NAME') continue;
+          
+          const scores = [];
+          for (let col = 2; col < 2 + assessmentCount; col++) {
+            let score = 0;
+            if (col < row.length && row[col] && row[col] !== '') {
+              const rawValue = row[col];
+              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
+                score = 0;
+              } else {
+                score = parseFloat(rawValue) || 0;
+                if (score > 100) score = 0;
               }
-              subjectPerformance[subject.name].scores.push(finalScore);
             }
+            scores.push(score);
+          }
+          
+          const total = scores.reduce((a, b) => a + b, 0);
+          const validCount = scores.filter(s => s > 0).length;
+          const average = validCount > 0 ? total / validCount : 0;
+          
+          let gradedBy = '';
+          if (row[15] && row[15] !== '') {
+            gradedBy = row[15];
+          }
+          
+          marks.push({
+            row: i + 1,
+            admission: row[0] || '',
+            name: studentName,
+            scores: scores,
+            total: total,
+            final: average,
+            gradedBy: gradedBy
+          });
+        }
+      }
+      
+      console.log(`[NCK] Returning ${marks.length} students with ${marks[0]?.scores?.length || 0} columns`);
+      res.json(marks);
+    } else {
+      let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      const sheetName = `${block}_${cleanSubject}`;
+      
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!A:I`,
+      });
+      
+      const data = response.data.values || [];
+      const marks = [];
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0]) {
+          marks.push({ 
+            row: i + 1, 
+            admission: data[i][0], 
+            name: data[i][1], 
+            cat1: data[i][2] || '', 
+            cat2: data[i][3] || '', 
+            exam: data[i][4] || '', 
+            final: data[i][5] || '', 
+            grade: data[i][6] || '',
+            gradedBy: data[i][7] || '', 
+            assessmentType: data[i][8] || 'full' 
+          });
+        }
+      }
+      res.json(marks);
+    }
+  } catch (error) {
+    console.error('Error in /api/marks:', error);
+    res.json([]);
+  }
+});
+
+// ========== SAVE MARKS ENDPOINT (with logging) ==========
+app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
+  try {
+    const { block, subject, marksData, lecturerName } = req.body;
+    const examType = req.headers['x-exam-type'] || 'internal';
+    const spreadsheetId = req.spreadsheetId;
+    const year = req.headers['x-year'] || '2024';
+    
+    console.log(`[SAVE MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}, marksCount=${marksData?.length}`);
+    
+    // Log the mark entry
+    markEntryLogs.unshift({
+      timestamp: new Date().toISOString(),
+      lecturerName: lecturerName,
+      action: 'save',
+      target: subject,
+      block: block,
+      examType: examType,
+      year: year,
+      details: `Saved ${marksData?.length || 0} mark entries`
+    });
+    
+    if (examType === 'nck') {
+      let sheetName = subject;
+      
+      if (sheetName === 'XY FORMS') {
+        for (const mark of marksData) {
+          const row = mark.row;
+          for (let col = 0; col < 22; col++) {
+            const score = mark.scores[col] || 0;
+            const columnLetter = String.fromCharCode(67 + col);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${columnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[score]] }
+            });
+          }
+          
+          const validScores = mark.scores.filter(s => s > 0);
+          let newAverage = 0;
+          if (validScores.length > 0) {
+            newAverage = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+          }
+          
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!Y${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[newAverage.toFixed(2)]] }
+          });
+          
+          if (mark.gradedBy) {
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!Z${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[mark.gradedBy]] }
+            });
+          }
+        }
+      } else {
+        let assessmentCount = 11;
+        if (year === '2024') assessmentCount = 8;
+        
+        for (const mark of marksData) {
+          const row = mark.row;
+          
+          for (let col = 0; col < assessmentCount && col < mark.scores.length; col++) {
+            const score = mark.scores[col] || 0;
+            const columnLetter = String.fromCharCode(67 + col);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${columnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[score]] }
+            });
+          }
+          
+          const total = mark.scores.reduce((a, b) => a + b, 0);
+          const totalColumnLetter = String.fromCharCode(67 + assessmentCount);
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!${totalColumnLetter}${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[total]] }
+          });
+          
+          if (mark.gradedBy) {
+            const gradedByColumnLetter = String.fromCharCode(69 + assessmentCount);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${gradedByColumnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[mark.gradedBy]] }
+            });
           }
         }
       }
-    }
-    for (let adm in allStudentPerformance) {
-      let student = allStudentPerformance[adm];
-      student.overallAvg = student.subjectCount > 0 ? (student.totalScore / student.subjectCount).toFixed(2) : 0;
-    }
-    const topStudents = Object.values(allStudentPerformance).filter(s => s.subjectCount > 0).sort((a, b) => b.overallAvg - a.overallAvg).slice(0, 5);
-    const topSubjects = Object.entries(subjectPerformance).map(([name, data]) => ({ name: name, average: data.scores.length > 0 ? (data.scores.reduce((a,b) => a+b, 0) / data.scores.length).toFixed(2) : 0, studentCount: data.scores.length, block: data.block })).sort((a, b) => b.average - a.average).slice(0, 5);
-    try {
-      const nckMarks = await apiCall(`/api/marks/BLOCK_0/XY FORMS`, {});
-      if (nckMarks && nckMarks.length) {
-        for (let mark of nckMarks) {
-          if (mark.scores && mark.scores.length) {
-            const validScores = mark.scores.filter(s => s > 0);
-            const avg = validScores.length > 0 ? validScores.reduce((a,b) => a+b, 0) / validScores.length : 0;
-            clinicalPerformance.push({ name: mark.name, admission: mark.admission, average: avg });
-          }
+      
+      res.json({ success: true, message: 'NCK marks saved successfully' });
+    } else {
+      let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      const sheetName = `${block}_${cleanSubject}`;
+      
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:I`,
+      });
+      const currentData = response.data.values || [];
+      
+      for (const mark of marksData) {
+        const row = mark.row;
+        const existingRow = currentData[row - 1] || [];
+        const assessmentType = existingRow[8] || 'full';
+        
+        let cat1 = parseFloat(mark.cat1) || 0;
+        let cat2 = parseFloat(mark.cat2) || 0;
+        let exam = parseFloat(mark.exam) || 0;
+        let finalScore = 0;
+        
+        if (assessmentType === 'full') {
+          finalScore = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
+        } else if (assessmentType === 'single_cat') {
+          finalScore = Math.round((Math.min(cat1, 30) + Math.min(exam, 70)) * 10) / 10;
+        } else {
+          finalScore = Math.round(Math.min(exam, 100) * 10) / 10;
         }
-        clinicalPerformance.sort((a, b) => b.average - a.average);
+        
+        const grade = await calculateGrade(finalScore);
+        
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheetName}!C${row}:H${row}`,
+          valueInputOption: 'RAW',
+          requestBody: { 
+            values: [[mark.cat1 || '', mark.cat2 || '', mark.exam || '', finalScore, grade, lecturerName || existingRow[7] || '']] 
+          }
+        });
       }
-    } catch(e) { console.log('NCK data not available'); }
-    const topClinical = clinicalPerformance.slice(0, 5);
-    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chart-line"></i> Comprehensive Academic Analytics</h3><p>March ${currentYear} Class | Performance Rankings & Insights</p></div><div class="stats-grid"><div class="stat-card"><div class="stat-number">${students.length}</div><div class="stat-label">Total Students</div></div><div class="stat-card"><div class="stat-number">${Object.keys(allStudentPerformance).filter(s => allStudentPerformance[s].subjectCount > 0).length}</div><div class="stat-label">Active Students</div></div><div class="stat-card"><div class="stat-number">${topStudents.length > 0 ? topStudents[0]?.overallAvg || 0 : 0}%</div><div class="stat-label">Top Student Avg</div></div><div class="stat-card"><div class="stat-number">${topSubjects.length > 0 ? topSubjects[0]?.average || 0 : 0}%</div><div class="stat-label">Best Subject Avg</div></div></div><div class="card"><div class="card-title"><i class="fas fa-trophy"></i> 🏆 Top 5 Performing Students (Overall)</div>${topStudents.map((student, idx) => `<div class="ranking-card"><div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;"><div style="display: flex; align-items: center;"><span class="ranking-number">#${idx+1}</span><div><strong style="font-size: 18px;">${student.name}</strong><br><small>${student.subjectCount} subjects completed</small></div></div><div style="text-align: right;"><span class="badge ${idx === 0 ? 'badge-gold' : idx === 1 ? 'badge-silver' : 'badge-bronze'}" style="font-size: 20px; padding: 8px 20px;">${student.overallAvg}%</span></div></div><div style="margin-top: 12px;">${student.subjects.slice(0, 3).map(s => `<span class="subject-badge">${s.name}: ${s.score}%</span>`).join('')}${student.subjects.length > 3 ? `<span class="subject-badge">+${student.subjects.length-3} more</span>` : ''}</div></div>`).join('')}${topStudents.length === 0 ? '<p style="text-align:center; color:#666;">No marks entered yet</p>' : ''}</div><div class="card"><div class="card-title"><i class="fas fa-star"></i> 📚 Top 5 Best Performing Subjects</div>${topSubjects.map((subject, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px;"><div><span class="ranking-number" style="font-size: 20px;">#${idx+1}</span><strong>${subject.name}</strong><br><small>${subject.block.replace('_', ' ')} | ${subject.studentCount} students</small></div><span class="badge badge-pass" style="font-size: 18px; padding: 6px 16px;">${subject.average}%</span></div>`).join('')}</div><div class="card"><div class="card-title"><i class="fas fa-hospital-user"></i> 🏥 Top 5 Best Clinical Scores (NCK)</div>${topClinical.map((student, idx) => `<div class="ranking-card"><div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;"><div><span class="ranking-number">#${idx+1}</span><strong>${student.name}</strong><br><small>${student.admission || 'N/A'}</small></div><div><span class="badge badge-pass" style="font-size: 18px; padding: 6px 16px;">${student.average.toFixed(2)}%</span></div></div></div>`).join('')}${topClinical.length === 0 ? '<p style="text-align:center; color:#666;">No NCK clinical marks entered yet</p>' : ''}</div><div class="card"><div class="card-title"><i class="fas fa-chart-pie"></i> Performance Distribution</div><canvas id="performanceChart" style="max-height: 300px;"></canvas><canvas id="subjectsChart" style="max-height: 300px; margin-top: 30px;"></canvas></div><div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;"><button class="export-btn" onclick="exportAnalyticsReport()"><i class="fas fa-download"></i> Export Full Report</button><button class="save-btn" onclick="showMain()"><i class="fas fa-home"></i> Back to Dashboard</button></div>`;
-    document.getElementById('contentArea').innerHTML = html;
-    setTimeout(() => {
-      const ctx1 = document.getElementById('performanceChart')?.getContext('2d');
-      if (ctx1) new Chart(ctx1, { type: 'doughnut', data: { labels: ['Passing (>60%)', 'Failing (<60%)'], datasets: [{ data: [Object.values(allStudentPerformance).filter(s => s.overallAvg >= 60 && s.subjectCount > 0).length, Object.values(allStudentPerformance).filter(s => s.overallAvg < 60 && s.overallAvg > 0 && s.subjectCount > 0).length], backgroundColor: ['#10b981', '#ef4444'] }] }, options: { responsive: true } });
-      const ctx2 = document.getElementById('subjectsChart')?.getContext('2d');
-      if (ctx2) new Chart(ctx2, { type: 'bar', data: { labels: topSubjects.map(s => s.name), datasets: [{ label: 'Average Score (%)', data: topSubjects.map(s => s.average), backgroundColor: 'rgba(99,102,241,0.7)', borderColor: '#6366f1', borderWidth: 2 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } } });
-    }, 100);
-    hideLoading();
-  }
-  
-  function exportAnalyticsReport() { showNotification('Preparing comprehensive report...', false); setTimeout(() => { showNotification('Report feature - Would export all analytics data to CSV', false); }, 1000); }
-  
-  async function showLecturerAnalytics() { showLoading('Loading your analytics...'); const lecturerSubjects=currentUser.subjects||[]; let myData=[]; for(let subj of lecturerSubjects){ const parts=subj.split('|'); const block=parts[0]; const subject=parts[1]; const marks=await apiCall(`/api/marks/${block}/${subject}`,{}); if(marks&&marks.length){ const scores=marks.map(m=>parseFloat(m.final)).filter(s=>s>0); const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0; myData.push({block,subject,avg,students:scores.length}); } } let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div><div class="card"><div class="card-title">📊 My Subjects Performance</div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th></tr></thead><tbody>`; for(let d of myData){ html+=`<tr class="${d.avg>=60?'pass-row':'fail-row'}"><td style="padding:8px;">${d.block.replace('_',' ')}</td><td style="padding:8px;"><strong>${d.subject}</strong></td><td style="padding:8px;"><strong>${d.avg.toFixed(1)}%</strong></td><td style="padding:8px;">${d.students}</td></tr>`; } html+=`</tbody></table></div></div>`; document.getElementById('contentArea').innerHTML=html; hideLoading(); }
-  
-  async function showFullReports() { const students=await apiCall('/api/students',{}); exportToCSV(students,'students_report'); }
-  
-  // ========== NCK MARKS (FULL ORIGINAL FUNCTIONS) ==========
-  async function showNCKMarks() { document.getElementById('contentArea').innerHTML=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div><div class="selector-group"><label><i class="fas fa-table-list"></i> Select Sheet:</label><select id="nckSheetSelect" style="min-width:250px;"><option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option><option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option></select><button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button></div><div id="nckMarksContainer"></div>`; document.getElementById('nckSheetSelect').onchange=()=>loadNCKMarks(); loadNCKMarks(); }
-  
-  async function loadNCKMarks() { const sheetName=document.getElementById('nckSheetSelect').value; showLoading(`Loading ${sheetName}...`); const marks=await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`,{}); console.log(`NCK ${sheetName} data:`,marks); if(sheetName==='XY FORMS'){ displayXYFormsMarks(marks); } else { displayAssessmentMarks(marks); } hideLoading(); }
-  
-  function displayXYFormsMarks(marks) { if(!marks||marks.length===0){ document.getElementById('nckMarksContainer').innerHTML='<div class="card" style="text-align:center;">No data found.</div>'; return; } const areaGroups=[{name:'🏥 MEDICAL',areas:['MED1','MED2','MED3']},{name:'🤰 MCH',areas:['MCH1','MCH2','MCH3']},{name:'🤱 MATERNITY',areas:['MAT1','MAT2','MAT3']},{name:'👶 PAEDIATRICS',areas:['PEAD1','PEAD2']},{name:'🔪 SURGERY',areas:['SURG1','SURG2','SURG3']},{name:'🚑 OTHER',areas:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; let html=`<div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><strong><i class="fas fa-bolt"></i> Quick Actions:</strong><button class="save-btn" onclick="openFastEntryPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>${currentUser.role==='admin'?`<button class="save-btn" onclick="showNCKColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}</div><div style="font-size:12px;color:#666;margin-top:8px;"><i class="fas fa-info-circle"></i> Tip: Click "Fast Entry Mode" for focused entry</div></div><div id="nckTableView" style="overflow-x:auto;max-height:60vh;"><table style="min-width:1000px;"><thead><tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;position:sticky;top:0;"><th style="position:sticky;left:0;background:#667eea;">#</th><th style="position:sticky;left:50px;background:#667eea;">Student Name</th>`; for(let group of areaGroups){ html+=`<th colspan="${group.areas.length}" style="text-align:center;background:#4f46e5;">${group.name}</th>`; } html+=`<th>Avg</th><th>Status</th><th>Graded By</th></tr><tr style="background:#818cf8;color:white;"><th></th><th></th>`; for(let group of areaGroups){ for(let area of group.areas){ html+=`<th style="min-width:55px;font-size:10px;">${area}</th>`; } } html+=`<th></th><th></th><th></th></tr></thead><tbody>`; currentNCKMarks=marks; currentNCKSheet='XY FORMS'; for(let i=0;i<marks.length;i++){ const m=marks[i]; let scores=m.scores||[]; while(scores.length<22) scores.push(0); const validScores=scores.filter(s=>s>0); let avg=validScores.length?validScores.reduce((a,b)=>a+b,0)/validScores.length:(m.final||0); const status=avg>=60?'PASS':(validScores.length?'FAIL':'PENDING'); const rowClass=status==='PASS'?'pass-row':(status==='FAIL'?'fail-row':''); let gradedBy=m.gradedBy||''; if(gradedBy&&!isNaN(parseFloat(gradedBy))&&gradedBy.toString().includes('.')) gradedBy=''; html+=`<tr class="${rowClass}"><td style="position:sticky;left:0;background:white;">${i+1}</td><td style="position:sticky;left:50px;background:white;font-weight:500;cursor:pointer;" onclick="openFastEntryForStudent(${i}, '${m.name}')">${m.name||'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i></td>`; let scoreIdx=0; for(let group of areaGroups){ for(let area of group.areas){ const score=scores[scoreIdx]||0; const scoreStyle=score>0?'background:#d1fae5;':''; html+=`<td style="padding:2px;"><input type="number" id="xy_${i}_${scoreIdx}" value="${score}" min="0" max="100" step="0.5" style="width:50px;padding:4px;font-size:10px;border-radius:6px;text-align:center;${scoreStyle}" onchange="updateXYAverage(${i})"></td>`; scoreIdx++; } } const displayAvg=avg>0?avg.toFixed(2):'0.00'; html+=`<td id="xyAvg_${i}" style="font-weight:bold;text-align:center;background:${avg>=60?'#d1fae5':'#fee2e2'};">${displayAvg}</td><td id="xyStatus_${i}" style="text-align:center;"><span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span></td><td style="padding:2px;"><input type="text" id="xyGraded_${i}" value="${gradedBy}" placeholder="Lecturer" style="width:80px;padding:4px;font-size:10px;border-radius:6px;"></td></tr>`; } html+=`</tbody></table></div><div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`; document.getElementById('nckMarksContainer').innerHTML=html; if(fastEntryVisible) closeFastEntryModal(); }
-  
-  function displayAssessmentMarks(marks) {
-    if (!marks || marks.length === 0) { document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>'; return; }
-    const columnCount = marks[0]?.scores?.length || 11;
-    let assessmentNames = ['ANC WARD', 'PREGNANT WOMAN ASSESMENT', 'NURSING CARE', 'PSYCHIATRY assesment', 'NBU ASSESSMENT', 'MIDWIFERYASSESSMENT', 'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'MCH CASE STUDY', 'PROJECT'];
-    const savedNames = localStorage.getItem(`assessmentColumnNames_${currentYear}`);
-    if (savedNames) { assessmentNames = JSON.parse(savedNames); }
-    while (assessmentNames.length < columnCount) { assessmentNames.push(`Assessment ${assessmentNames.length + 1}`); }
-    localStorage.setItem(`assessmentColumnNames_${currentYear}`, JSON.stringify(assessmentNames));
-    let columnHeaders = ''; for (let i = 0; i < columnCount; i++) { columnHeaders += `<th>${assessmentNames[i]}<br><span style="font-size:10px;">(0-100)</span></th>`; }
-    let html = `<div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><strong><i class="fas fa-bolt"></i> Quick Actions:</strong>${currentUser.role==='admin'?`<button class="save-btn" onclick="showAssessmentColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}<button class="save-btn" onclick="openFastAssessmentPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button></div></div><div style="font-size:12px;color:#666;margin-top:8px;"><i class="fas fa-info-circle"></i> Total = Sum of all assessments | Average = Total / Number of assessments</div></div><div style="overflow-x:auto;"><table style="min-width:800px;"><thead><tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;"><th style="position:sticky;left:0;background:#667eea;">#</th><th style="position:sticky;left:40px;background:#667eea;">Student Name</th>${columnHeaders}<th style="background:#10b981;">Total</th><th style="background:#f59e0b;">Average</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`;
-    currentNCKMarks = marks; currentNCKSheet = 'ASSESSMENT AND CASE';
-    for (let i = 0; i < marks.length; i++) {
-      const m = marks[i]; let scores = m.scores || []; while (scores.length < columnCount) scores.push('');
-      const validScores = scores.filter(s => s !== '' && !isNaN(parseFloat(s)) && parseFloat(s) > 0).map(s => parseFloat(s));
-      const total = validScores.reduce((a, b) => a + b, 0);
-      const average = validScores.length > 0 ? (total / columnCount).toFixed(2) : 0;
-      const status = average >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
-      const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : '');
-      let gradedBy = m.gradedBy || ''; if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) gradedBy = '';
-      html += `<tr class="${rowClass}"><td style="position:sticky;left:0;background:white;font-weight:500;">${i+1}</td><td style="position:sticky;left:40px;background:white;font-weight:500;cursor:pointer;" onclick="openFastAssessmentEntry(${i}, '${(m.name || 'Unnamed').replace(/'/g, "\\'")}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i></td>`;
-      for (let c = 0; c < columnCount; c++) {
-        const score = scores[c]; const hasScore = score !== '' && !isNaN(parseFloat(score)) && parseFloat(score) > 0;
-        const scoreStyle = hasScore ? 'background:#d1fae5;' : 'background:#fff3e0;';
-        const displayValue = hasScore ? parseFloat(score) : '';
-        html += `<td style="padding:4px;"><input type="number" id="ac_${i}_${c}" value="${displayValue}" min="0" max="100" step="0.5" style="width:70px;padding:6px;border-radius:8px;text-align:center;${scoreStyle}" placeholder="-" onchange="updateACTotal(${i})"></td>`;
-      }
-      html += `<td id="acTotal_${i}" style="font-weight:bold;text-align:center;background:#d1fae5;">${total}</td><td id="acAverage_${i}" style="font-weight:bold;text-align:center;background:${average >= 60 ? '#d1fae5' : '#fee2e2'};">${average}%</td><td id="acStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></td><td style="padding:4px;"><input type="text" id="acGraded_${i}" value="${gradedBy}" placeholder="Lecturer" style="width:100px;padding:6px;border-radius:8px;"></td></tr>`;
+      res.json({ success: true, message: 'Marks saved successfully' });
     }
-    html += `</tbody></table></div><div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`;
-    document.getElementById('nckMarksContainer').innerHTML = html;
-    if (fastEntryVisible) closeFastEntryModal();
+  } catch (error) {
+    console.error('Error saving marks:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
-  
-  window.updateXYAverage = function(idx) { let scores=[]; for(let c=0;c<22;c++){ const val=parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value); if(!isNaN(val)&&val>0) scores.push(val); } const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0; const status=avg>=60?'PASS':(scores.length?'FAIL':'PENDING'); document.getElementById(`xyAvg_${idx}`).innerHTML=avg.toFixed(2); document.getElementById(`xyStatus_${idx}`).innerHTML=`<span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span>`; const row=document.getElementById(`xy_${idx}_0`)?.parentElement?.parentElement; if(row) row.className=status==='PASS'?'pass-row':(status==='FAIL'?'fail-row':''); };
-  
-  window.updateACTotal = function(idx) { const columnCount=currentNCKMarks[0]?.scores?.length||11; let scores=[]; let hasAnyScore=false; for(let c=0;c<columnCount;c++){ const input=document.getElementById(`ac_${idx}_${c}`); if(input){ const val=input.value; if(val!==''&&!isNaN(parseFloat(val))&&parseFloat(val)>0){ scores.push(parseFloat(val)); hasAnyScore=true; } else { scores.push(0); } } else { scores.push(0); } } const total=scores.reduce((a,b)=>a+b,0); const average=hasAnyScore?(total/columnCount).toFixed(2):0; const status=average>=60?'PASS':(hasAnyScore?'FAIL':'PENDING'); document.getElementById(`acTotal_${idx}`).innerHTML=total; document.getElementById(`acAverage_${idx}`).innerHTML=average+'%'; document.getElementById(`acStatus_${idx}`).innerHTML=`<span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span>`; const avgCell=document.getElementById(`acAverage_${idx}`); if(avgCell){ avgCell.style.background=average>=60?'#d1fae5':(hasAnyScore?'#fee2e2':'#fef3c7'); } const row=document.getElementById(`ac_${idx}_0`)?.parentElement?.parentElement; if(row) row.className=status==='PASS'?'pass-row':(status==='FAIL'?'fail-row':''); };
-  
-  window.saveNCKMarks = async function() { const sheetName=document.getElementById('nckSheetSelect').value; let marksData=[]; if(sheetName==='XY FORMS'){ const rows=document.querySelectorAll('#nckMarksContainer tbody tr'); for(let i=0;i<rows.length;i++){ let scores=[]; for(let c=0;c<22;c++){ scores.push(parseFloat(document.getElementById(`xy_${i}_${c}`)?.value)||0); } marksData.push({row:i+2,scores:scores,gradedBy:document.getElementById(`xyGraded_${i}`)?.value||''}); } } else { const columnCount=currentNCKMarks[0]?.scores?.length||11; const rows=document.querySelectorAll('#nckMarksContainer tbody tr'); for(let i=0;i<rows.length;i++){ let scores=[]; for(let c=0;c<columnCount;c++){ const val=document.getElementById(`ac_${i}_${c}`)?.value; const score=(val!==''&&!isNaN(parseFloat(val)))?parseFloat(val):''; scores.push(score); } marksData.push({row:i+2,scores:scores,gradedBy:document.getElementById(`acGraded_${i}`)?.value||''}); } } showLoading('Saving NCK marks...'); const result=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:'BLOCK_0',subject:sheetName,marksData:marksData,lecturerName:currentUser.name,examType:'nck'})}); hideLoading(); showNotification(result?.success?'NCK marks saved successfully!':'Error saving NCK marks',!result?.success); if(result?.success) loadNCKMarks(); };
-  
-  // ========== FAST ENTRY FUNCTIONS (FULL ORIGINAL) ==========
-  function openFastEntryPanel() { if(!currentNCKMarks||currentNCKMarks.length===0){ showNotification('No data loaded',true); return; } if(fastEntryVisible){ closeFastEntryModal(); return; } const areaGroups=[{title:'🏥 MEDICAL',cols:[0,1,2],names:['MED1','MED2','MED3']},{title:'🤰 MCH',cols:[3,4,5],names:['MCH1','MCH2','MCH3']},{title:'🤱 MATERNITY',cols:[6,7,8],names:['MAT1','MAT2','MAT3']},{title:'👶 PAEDIATRICS',cols:[9,10],names:['PEAD1','PEAD2']},{title:'🔪 SURGERY',cols:[11,12,13],names:['SURG1','SURG2','SURG3']},{title:'🚑 OTHER',cols:[14,15,16,17,18,19,20,21],names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; const modal=document.createElement('div'); modal.id='fastEntryModal'; modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; modal.innerHTML=`<div style="background:white;border-radius:24px;max-width:1400px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;"><div style="display:flex;align-items:center;gap:15px;"><i class="fas fa-expand-alt" style="font-size:20px;"></i><span style="font-size:20px;font-weight:700;"><i class="fas fa-bolt"></i> Full Screen Fast Entry - XY FORMS (March ${currentYear})</span></div><div><button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;font-weight:600;"><i class="fas fa-times"></i> Close (ESC)</button></div></div><div style="padding:24px;"><div style="margin-bottom:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;"><div style="flex:2;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-user-graduate"></i> Select Student:</label><select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;border:2px solid #e2e8f0;font-size:14px;font-weight:500;">${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}</select></div><div style="flex:1;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-chart-line"></i> Current Average:</label><div id="currentAvgDisplay" style="padding:12px;background:#f0fdf4;border-radius:12px;font-weight:bold;text-align:center;font-size:18px;">0.00</div></div><div style="flex:1;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-flag-checkered"></i> Status:</label><div id="currentStatusDisplay" style="padding:12px;background:#fef3c7;border-radius:12px;font-weight:bold;text-align:center;">PENDING</div></div></div><div id="fastEntryFields" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;"></div><div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;"><button class="save-btn" onclick="applyFastEntry()" style="flex:1;padding:14px;font-size:16px;"><i class="fas fa-save"></i> Save & Next Student (Enter)</button><button class="back-btn" onclick="applyFastEntryAndStay()" style="flex:1;padding:14px;font-size:16px;">Save & Stay (Shift+Enter)</button><button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;padding:14px;">Close (ESC)</button></div><div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;"><i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Enter</kbd> = Save & Next | <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Shift+Enter</kbd> = Save & Stay | <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">ESC</kbd> = Close</div></div></div>`; document.body.appendChild(modal); fastEntryVisible=true; loadFastEntryFields(0); document.getElementById('fastStudentSelect').onchange=()=>{ loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value)); }; document.addEventListener('keydown',handleFastEntryKeyboard); }
-  
-  function handleFastEntryKeyboard(e) { if(!fastEntryVisible) return; if(e.key==='Escape'){ closeFastEntryModal(); } else if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); applyFastEntry(); } else if(e.key==='Enter'&&e.shiftKey){ e.preventDefault(); applyFastEntryAndStay(); } }
-  
-  function closeFastEntryModal() { const modal=document.getElementById('fastEntryModal'); if(modal) modal.remove(); fastEntryVisible=false; document.removeEventListener('keydown',handleFastEntryKeyboard); }
-  
-  function loadFastEntryFields(studentIdx) { const container=document.getElementById('fastEntryFields'); if(!container) return; const scores=[]; for(let c=0;c<22;c++){ const input=document.getElementById(`xy_${studentIdx}_${c}`); scores.push(input?input.value:0); } const gradedBy=document.getElementById(`xyGraded_${studentIdx}`)?.value||''; const validScores=scores.filter(s=>parseFloat(s)>0); let currentAvg=0; if(validScores.length>0){ currentAvg=validScores.reduce((a,b)=>parseFloat(a)+parseFloat(b),0)/validScores.length; } const currentStatus=currentAvg>=60?'PASS':(validScores.length>0?'FAIL':'PENDING'); document.getElementById('currentAvgDisplay').innerHTML=currentAvg.toFixed(2); document.getElementById('currentStatusDisplay').innerHTML=`<span class="badge ${currentStatus==='PASS'?'badge-pass':'badge-fail'}">${currentStatus}</span>`; const areaGroups=[{title:'🏥 MEDICAL',cols:[0,1,2],names:['MED1','MED2','MED3']},{title:'🤰 MCH',cols:[3,4,5],names:['MCH1','MCH2','MCH3']},{title:'🤱 MATERNITY',cols:[6,7,8],names:['MAT1','MAT2','MAT3']},{title:'👶 PAEDIATRICS',cols:[9,10],names:['PEAD1','PEAD2']},{title:'🔪 SURGERY',cols:[11,12,13],names:['SURG1','SURG2','SURG3']},{title:'🚑 OTHER',cols:[14,15,16,17,18,19,20,21],names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; let html=``; for(let group of areaGroups){ html+=`<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;"><h4 style="margin-bottom:15px;color:#667eea;font-size:16px;">${group.title}</h4>`; for(let i=0;i<group.cols.length;i++){ const colIdx=group.cols[i]; const score=scores[colIdx]||0; html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><label style="font-size:14px;font-weight:500;">${group.names[i]}:</label><input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width:100px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;text-align:center;" onchange="updateFastPreview(${studentIdx})" onkeypress="handleFastEntryKey(event, ${colIdx})"></div>`; } html+=`</div>`; } html+=`<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;"><h4 style="margin-bottom:15px;color:#667eea;">📝 Grading Information</h4><div style="display:flex;justify-content:space-between;align-items:center;"><label style="font-size:14px;font-weight:500;">Graded By (Lecturer Name):</label><input type="text" id="fast_graded" value="${gradedBy}" placeholder="Enter your name" style="flex:1;margin-left:20px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;"></div></div>`; container.innerHTML=html; setTimeout(()=>{ const firstInput=container.querySelector('input[type="number"]'); if(firstInput) firstInput.focus(); },100); }
-  
-  function updateFastPreview(studentIdx) { let scores=[]; for(let c=0;c<22;c++){ const val=parseFloat(document.getElementById(`fast_${c}`)?.value); scores.push(isNaN(val)?0:val); } const validScores=scores.filter(s=>s>0); let avg=0; if(validScores.length>0){ avg=validScores.reduce((a,b)=>a+b,0)/validScores.length; } const status=avg>=60?'PASS':(validScores.length>0?'FAIL':'PENDING'); document.getElementById('currentAvgDisplay').innerHTML=avg.toFixed(2); document.getElementById('currentStatusDisplay').innerHTML=`<span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span>`; }
-  
-  function handleFastEntryKey(event,colIdx) { if(event.key==='Enter'){ event.preventDefault(); const nextCol=colIdx+1; const nextInput=document.getElementById(`fast_${nextCol}`); if(nextInput){ nextInput.focus(); } else { applyFastEntry(); } } }
-  
-  function applyFastEntry() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); for(let c=0;c<22;c++){ const fastVal=document.getElementById(`fast_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`xy_${studentIdx}_${c}`); if(mainInput) mainInput.value=fastVal; } } const gradedVal=document.getElementById('fast_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`xyGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateXYAverage(studentIdx); const nextIdx=studentIdx+1; if(nextIdx<currentNCKMarks.length){ document.getElementById('fastStudentSelect').value=nextIdx; loadFastEntryFields(nextIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`,false); } else { closeFastEntryModal(); showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.',false); } }
-  
-  function applyFastEntryAndStay() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); for(let c=0;c<22;c++){ const fastVal=document.getElementById(`fast_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`xy_${studentIdx}_${c}`); if(mainInput) mainInput.value=fastVal; } } const gradedVal=document.getElementById('fast_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`xyGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateXYAverage(studentIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`,false); }
-  
-  function openFastEntryForStudent(studentIdx,studentName) { openFastEntryPanel(); setTimeout(()=>{ const select=document.getElementById('fastStudentSelect'); if(select){ select.value=studentIdx; loadFastEntryFields(studentIdx); } },200); }
-  
-  function openFastAssessmentPanel() { if(!currentNCKMarks||currentNCKMarks.length===0){ showNotification('No data loaded',true); return; } if(fastEntryVisible){ closeFastEntryModal(); return; } const columnCount=currentNCKMarks[0]?.scores?.length||11; let assessmentNames=['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; const savedNames=localStorage.getItem(`assessmentColumnNames_${currentYear}`); if(savedNames){ assessmentNames=JSON.parse(savedNames); } const modal=document.createElement('div'); modal.id='fastEntryModal'; modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; modal.innerHTML=`<div style="background:white;border-radius:24px;max-width:700px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;"><div><i class="fas fa-expand-alt"></i> <strong>Full Screen Fast Entry - Assessments (March ${currentYear})</strong></div><button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;"><i class="fas fa-times"></i> Close (ESC)</button></div><div style="padding:24px;"><div style="margin-bottom:20px;"><label style="font-weight:600;">Select Student:</label><select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;margin-top:8px;">${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}</select></div><div id="fastAssessmentFields"></div><div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;"><button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex:1;padding:14px;"><i class="fas fa-save"></i> Save & Next (Enter)</button><button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex:1;padding:14px;">Save & Stay (Shift+Enter)</button><button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;">Close (ESC)</button></div><div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;"><i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> Enter = Save & Next | Shift+Enter = Save & Stay | ESC = Close</div></div></div>`; document.body.appendChild(modal); fastEntryVisible=true; loadFastAssessmentFields(0); document.getElementById('fastStudentSelect').onchange=()=>{ loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value)); }; }
-  
-  function loadFastAssessmentFields(studentIdx) { const container=document.getElementById('fastAssessmentFields'); if(!container) return; const columnCount=currentNCKMarks[0]?.scores?.length||11; const scores=[]; for(let c=0;c<columnCount;c++){ const input=document.getElementById(`ac_${studentIdx}_${c}`); let val=input?input.value:''; if(val===''||val===undefined) val=0; scores.push(parseFloat(val)||0); } let gradedBy=document.getElementById(`acGraded_${studentIdx}`)?.value||''; if(gradedBy&&!isNaN(parseFloat(gradedBy))&&gradedBy.toString().length>2&&!isNaN(parseInt(gradedBy))){ gradedBy=''; } const total=scores.reduce((a,b)=>a+b,0); const average=columnCount>0?(total/columnCount).toFixed(2):0; const status=average>=60?'PASS':(scores.some(s=>s>0)?'FAIL':'PENDING'); let assessmentNames=['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; const savedNames=localStorage.getItem(`assessmentColumnNames_${currentYear}`); if(savedNames){ assessmentNames=JSON.parse(savedNames); } let assessmentInputs=''; for(let c=0;c<columnCount;c++){ const colName=assessmentNames[c]||`Assessment ${c+1}`; const scoreValue=scores[c]||0; const hasScore=scoreValue>0; const inputStyle=hasScore?'border:2px solid #10b981;':'border:2px solid #f59e0b;background:#fef3c7;'; assessmentInputs+=`<div style="margin-bottom:15px;"><label style="font-weight:600;display:block;margin-bottom:8px;">📋 ${colName}:</label><input type="number" id="fast_ac_${c}" value="${scoreValue}" min="0" max="100" step="0.5" style="width:100%;padding:12px;border-radius:8px;${inputStyle}" onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, ${c})">${scoreValue===0?'<span style="font-size:11px;color:#f59e0b;">⚠️ Score not entered yet</span>':''}</div>`; } container.innerHTML=`<div style="margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:15px;"><div style="padding:15px;background:#d1fae5;border-radius:12px;text-align:center;"><strong>Total Score:</strong><br><span id="currentTotalDisplay" style="font-size:28px;font-weight:bold;">${total}</span></div><div style="padding:15px;background:${average>=60?'#d1fae5':'#fee2e2'};border-radius:12px;text-align:center;"><strong>Average Score:</strong><br><span id="currentAverageDisplay" style="font-size:28px;font-weight:bold;">${average}%</span></div></div><div style="margin-bottom:15px;padding:10px;background:#f0fdf4;border-radius:12px;text-align:center;"><strong>Status: <span id="currentAssessmentStatus" class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span></strong></div><div style="border:1px solid #e2e8f0;border-radius:16px;padding:24px;background:#fafafa;">${assessmentInputs}<div style="margin-top:20px;padding-top:15px;border-top:1px solid #e2e8f0;"><label style="font-weight:600;display:block;margin-bottom:8px;">✍️ Graded By (Lecturer Name):</label><input type="text" id="fast_ac_graded" value="${gradedBy}" placeholder="Enter your name" style="width:100%;padding:12px;border-radius:8px;border:1px solid #cbd5e1;"></div></div>`; setTimeout(()=>{ const firstInput=container.querySelector('input[type="number"]'); if(firstInput) firstInput.focus(); },100); }
-  
-  function updateFastAssessmentPreview() { const columnCount=currentNCKMarks[0]?.scores?.length||11; let scores=[]; let total=0; for(let c=0;c<columnCount;c++){ const val=parseFloat(document.getElementById(`fast_ac_${c}`)?.value)||0; scores.push(val); total+=val; } const average=columnCount>0?(total/columnCount).toFixed(2):0; const status=average>=60?'PASS':(scores.some(s=>s>0)?'FAIL':'PENDING'); document.getElementById('currentTotalDisplay').innerHTML=total; document.getElementById('currentAverageDisplay').innerHTML=average+'%'; document.getElementById('currentAssessmentStatus').innerHTML=status; document.getElementById('currentAssessmentStatus').className=`badge ${status==='PASS'?'badge-pass':'badge-fail'}`; const avgDiv=document.getElementById('currentAverageDisplay').parentElement; if(avgDiv){ avgDiv.style.background=average>=60?'#d1fae5':'#fee2e2'; } }
-  
-  function handleFastAssessmentKey(event,fieldIdx) { if(event.key==='Enter'){ event.preventDefault(); if(fieldIdx<currentNCKMarks[0]?.scores?.length-1){ const nextInput=document.getElementById(`fast_ac_${fieldIdx+1}`); if(nextInput) nextInput.focus(); } else { applyFastAssessmentEntry(); } } }
-  
-  function applyFastAssessmentEntry() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); const columnCount=currentNCKMarks[0]?.scores?.length||11; for(let c=0;c<columnCount;c++){ const fastVal=document.getElementById(`fast_ac_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`ac_${studentIdx}_${c}`); if(mainInput){ const val=parseFloat(fastVal); if(isNaN(val)||val===0){ mainInput.value=''; } else { mainInput.value=val; } } } } const gradedVal=document.getElementById('fast_ac_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`acGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateACTotal(studentIdx); const nextIdx=studentIdx+1; if(nextIdx<currentNCKMarks.length){ document.getElementById('fastStudentSelect').value=nextIdx; loadFastAssessmentFields(nextIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`,false); } else { closeFastEntryModal(); showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.',false); } }
-  
-  function applyFastAssessmentEntryAndStay() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); const columnCount=currentNCKMarks[0]?.scores?.length||11; for(let c=0;c<columnCount;c++){ const fastVal=document.getElementById(`fast_ac_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`ac_${studentIdx}_${c}`); if(mainInput){ const val=parseFloat(fastVal); if(isNaN(val)||val===0){ mainInput.value=''; } else { mainInput.value=val; } } } } const gradedVal=document.getElementById('fast_ac_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`acGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateACTotal(studentIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`,false); }
-  
-  function openFastAssessmentEntry(studentIdx,studentName) { openFastAssessmentPanel(); setTimeout(()=>{ const select=document.getElementById('fastStudentSelect'); if(select){ select.value=studentIdx; loadFastAssessmentFields(studentIdx); } },200); }
-  
-  function closeFastEntryPanel() { closeFastEntryModal(); }
-  
-  // ========== COLUMN MANAGEMENT FUNCTIONS ==========
-  async function showNCKColumnManagerWithClass() { if(currentUser.role!=='admin'){ showNotification('Only administrators can manage NCK columns',true); return; } const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { showNotification('Invalid class year selected', true); return; } const originalYear = currentYear; currentYear = classIntake; const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS'; showLoading(`Loading columns for March ${classIntake} class...`); const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); let currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else if (marks && marks.length > 0 && marks[0].scores) { while (currentAreas.length < marks[0].scores.length) { currentAreas.push(`Area ${currentAreas.length + 1}`); } while (currentAreas.length > marks[0].scores.length && currentAreas.length > 22) { currentAreas.pop(); } } const modalHtml = `<div id="nckColumnModal" class="modal"><div class="modal-content" style="width: 750px;"><div class="modal-header"><h3><i class="fas fa-columns"></i> Manage NCK Columns - March ${classIntake} Class</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;"><i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}</div><div style="margin-bottom: 20px;"><h4><i class="fas fa-plus-circle"></i> Add New Clinical Area</h4><div style="display: flex; gap: 10px;"><input type="text" id="newAreaName" placeholder="e.g., ICU, EMERGENCY, CRITICAL CARE" style="flex: 1;"><button class="save-btn" onclick="addNCKColumnForClass('${classIntake}', '${sheetName}')">Add Column</button></div></div><div style="margin-bottom: 20px;"><h4><i class="fas fa-list"></i> Current Clinical Areas (${currentAreas.length})</h4><div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">${currentAreas.map((area, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;"><span><strong>${idx+1}.</strong> ${area}</span><button class="delete-btn" onclick="deleteNCKColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button></div>`).join('')}</div></div><div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class. Deleting a column removes all scores for that area.</div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="back-btn" onclick="closeModal()">Close</button><button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); hideLoading(); window.selectedColumnClass = classIntake; window.selectedColumnSheet = sheetName; }
-  
-  async function addNCKColumnForClass(classIntake, sheetName) { const newName = document.getElementById('newAreaName')?.value.trim(); if (!newName) { showNotification('Enter column name', true); return; } let currentAreas = []; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else { currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; } currentAreas.push(newName); localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Added column for March ${classIntake} class: ${newName}`, false); closeModal(); setTimeout(() => showNCKColumnManagerWithClass(), 500); }
-  
-  async function deleteNCKColumnForClass(colIdx, classIntake, sheetName) { if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class? This removes ALL scores in this column.`)) return; let currentAreas = []; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } if (currentAreas[colIdx]) { currentAreas.splice(colIdx, 1); localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); } closeModal(); setTimeout(() => showNCKColumnManagerWithClass(), 500); }
-  
-  async function showAssessmentColumnManagerWithClass() { if(currentUser.role!=='admin'){ showNotification('Only administrators can manage assessment columns',true); return; } const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { showNotification('Invalid class year selected', true); return; } const originalYear = currentYear; currentYear = classIntake; const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE'; showLoading(`Loading assessment columns for March ${classIntake} class...`); const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); let currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else if (marks && marks.length > 0 && marks[0].scores) { while (currentAreas.length < marks[0].scores.length) { currentAreas.push(`Assessment ${currentAreas.length + 1}`); } } const modalHtml = `<div id="nckColumnModal" class="modal"><div class="modal-content" style="width: 750px;"><div class="modal-header"><h3><i class="fas fa-columns"></i> Manage Assessment Columns - March ${classIntake} Class</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;"><i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}</div><div style="margin-bottom: 20px;"><h4><i class="fas fa-plus-circle"></i> Add New Assessment Area</h4><div style="display: flex; gap: 10px;"><input type="text" id="newAreaName" placeholder="e.g., EMERGENCY ASSESSMENT, ICU CARE" style="flex: 1;"><button class="save-btn" onclick="addAssessmentColumnForClass('${classIntake}', '${sheetName}')">Add Column</button></div></div><div><h4><i class="fas fa-list"></i> Current Assessments (${currentAreas.length})</h4><div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">${currentAreas.map((area, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;"><span><strong>${idx+1}.</strong> ${area}</span><button class="delete-btn" onclick="deleteAssessmentColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button></div>`).join('')}</div></div><div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class.</div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="back-btn" onclick="closeModal()">Close</button><button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); hideLoading(); }
-  
-  async function addAssessmentColumnForClass(classIntake, sheetName) { const newName = document.getElementById('newAreaName')?.value.trim(); if (!newName) { showNotification('Enter column name', true); return; } let currentAreas = []; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else { currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; } currentAreas.push(newName); localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Added assessment column for March ${classIntake} class: ${newName}`, false); closeModal(); setTimeout(() => showAssessmentColumnManagerWithClass(), 500); }
-  
-  async function deleteAssessmentColumnForClass(colIdx, classIntake, sheetName) { if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class?`)) return; let currentAreas = []; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } if (currentAreas[colIdx]) { currentAreas.splice(colIdx, 1); localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); } closeModal(); setTimeout(() => showAssessmentColumnManagerWithClass(), 500); }
-  
-  function closeModalAndReload(classIntake) { closeModal(); currentYear = classIntake; localStorage.setItem('selectedYear', currentYear); showNotification(`Switched to March ${classIntake} class. Reloading data...`, false); setTimeout(() => loadNCKMarks(), 500); }
-  
-  // ========== INTERNAL MARKS (ADMIN & LECTURER) ==========
-  async function showAdminMarks() { document.getElementById('contentArea').innerHTML=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3></div><select id="blockSelect"><option>Loading blocks...</option></select><select id="subjectSelect" style="display:none;"></select><div id="marksTable"></div>`; const blocks=await apiCall('/api/blocks',{}); const sel=document.getElementById('blockSelect'); sel.innerHTML='<option value="">-- Select Block --</option>'; blocks.forEach(b=>sel.innerHTML+=`<option value="${b}">${b.replace('_',' ')}</option>`); sel.onchange=()=>loadAdminSubjects(sel.value); }
-  
-  async function loadAdminSubjects(block) { if(!block) return; showLoading('Loading subjects...'); const subjects=await apiCall(`/api/subjects/${block}`,{}); const sel=document.getElementById('subjectSelect'); sel.style.display='block'; sel.innerHTML='<option value="">-- Select Subject --</option>'; subjects.forEach(s=>sel.innerHTML+=`<option value="${s.name}" data-type="${s.assessmentType}">${s.name} (${s.assessmentType==='full'?'CAT1+CAT2+Exam':(s.assessmentType==='single_cat'?'CAT+Exam':'Exam Only')})</option>`); sel.onchange=()=>{ if(sel.value) loadAdminMarks(block,sel.value,sel.selectedOptions[0].dataset.type); }; hideLoading(); }
-  
-  async function loadAdminMarks(block,subject,at) { showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${block}/${subject}`,{}); let html=`<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`; if(at==='full') html+='<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>'; else if(at==='single_cat') html+='<th>CAT (0-30)</th><th>Exam (0-70)</th>'; else html+='<th>Exam (0-100)</th>'; html+='<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>'; window.currentAdminMarks=marks; window.currentAdminAssessmentType=at; window.currentAdminBlock=block; window.currentAdminSubject=subject; for(let i=0;i<marks.length;i++){ const m=marks[i]; const cat1=m.cat1||'',cat2=m.cat2||'',exam=m.exam||''; let ncat1=parseFloat(cat1)||0,ncat2=parseFloat(cat2)||0,nexam=parseFloat(exam)||0,total=0; if(at==='full') total=Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30+Math.min(nexam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10; else total=Math.round(Math.min(nexam,100)*10)/10; const status=total>=60?'PASS':(total>0?'FAIL':''); const rowClass=total>=60?'pass-row':'fail-row'; html+=`<tr class="${rowClass}"><td style="padding:10px;">${m.admission}</td><td style="padding:10px;"><strong>${m.name}</strong></td>`; if(at==='full'){ html+=`<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } else if(at==='single_cat'){ html+=`<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } else { html+=`<td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } html+=`<td id="atotal_${i}" style="font-weight:bold;">${total}</td><td id="astatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy||'-'}</td></tr>`; } html+=`</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks</button></div>`; document.getElementById('marksTable').innerHTML=html; hideLoading(); }
-  
-  window.updateAdminTotal=function(idx){ const at=window.currentAdminAssessmentType||'full'; let cat1=parseFloat(document.getElementById(`acat1_${idx}`)?.value)||0,cat2=parseFloat(document.getElementById(`acat2_${idx}`)?.value)||0,exam=parseFloat(document.getElementById(`aexam_${idx}`)?.value)||0,total=0; if(at==='full') total=Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30+Math.min(exam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10; else total=Math.round(Math.min(exam,100)*10)/10; document.getElementById(`atotal_${idx}`).innerHTML=total; document.getElementById(`astatus_${idx}`).innerHTML=total>=60?'PASS':'FAIL'; const row=document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement; if(row) row.className=total>=60?'pass-row':'fail-row'; };
-  
-  window.saveAdminMarks=async function(){ let marksData=[]; const len=window.currentAdminMarks?.length||0; const at=window.currentAdminAssessmentType||'full'; for(let i=0;i<len;i++){ if(at==='full') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:document.getElementById(`acat2_${i}`)?.value||'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else if(at==='single_cat') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else marksData.push({row:i+2,cat1:'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); } showLoading('Saving...'); const res=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:window.currentAdminBlock,subject:window.currentAdminSubject,marksData,lecturerName:currentUser.name})}); hideLoading(); showNotification(res?.success?'Saved!':'Error',!res?.success); if(res?.success) loadAdminMarks(window.currentAdminBlock,window.currentAdminSubject,window.currentAdminAssessmentType); };
-  
-  window.exportAdminMarks=function(){ if(window.currentAdminMarks){ const data=window.currentAdminMarks.map((m,i)=>({Admission:m.admission,Name:m.name,CAT1:document.getElementById(`acat1_${i}`)?.value||'',CAT2:document.getElementById(`acat2_${i}`)?.value||'',Exam:document.getElementById(`aexam_${i}`)?.value||'',Total:document.getElementById(`atotal_${i}`)?.innerHTML||''})); exportToCSV(data,'internal_marks'); } };
-  
-  async function showLecturerSubjects() { showLoading('Loading your subjects...'); const blocks=['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']; const lecturerSubjects=currentUser.subjects||[]; const config=await getConfig(); const subjectsByBlock={}; for(let b of blocks) subjectsByBlock[b]=[]; for(let subj of lecturerSubjects){ const parts=subj.split('|'); const block=parts[0]; const name=parts[1]; let atype='full'; if(config&&config[block]){ const found=config[block].find(c=>c.name===name); if(found) atype=found.assessmentType||'full'; } if(subjectsByBlock[block]) subjectsByBlock[block].push({name,assessmentType:atype}); } let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks</p></div>`; for(let b of blocks){ if(subjectsByBlock[b].length){ html+=`<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_',' ')}</h3></div><div class="subject-list">`; for(let s of subjectsByBlock[b]){ const typeIcon=s.assessmentType==='full'?'📊':(s.assessmentType==='single_cat'?'📝':'📖'); const typeLabel=s.assessmentType==='full'?'CAT1+CAT2+Exam':(s.assessmentType==='single_cat'?'CAT+Exam':'Exam Only'); html+=`<div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g,"\\'")}', '${s.assessmentType}')"><h4>${typeIcon} ${s.name}</h4><p><i class="fas fa-layer-group"></i> ${b.replace('_',' ')} | ${typeLabel}</p></div>`; } html+=`</div>`; } } document.getElementById('contentArea').innerHTML=html; hideLoading(); }
-  
-  window.openMarksEntry=function(block,subject,atype){ currentMarksBlock=block; currentMarksSubject=subject; currentAssessmentType=atype; loadMarksForSubject(block,subject,atype); };
-  
-  async function loadMarksForSubject(block,subject,atype){ showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`,{}); let html=`<button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_',' ')} | ${atype==='full'?'CAT1+CAT2+Exam':(atype==='single_cat'?'CAT+Exam':'Exam Only')}</p></div><div id="marksTableContainer"></div>`; document.getElementById('contentArea').innerHTML=html; displayLecturerMarksTable(marks,block,subject,atype); hideLoading(); }
-  
-  function displayLecturerMarksTable(marks,block,subject,atype){ if(!marks||!marks.length){ document.getElementById('marksTableContainer').innerHTML='<div class="card" style="text-align:center;">No data found</div>'; return; } let html=`<div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`; if(atype==='full') html+='<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>'; else if(atype==='single_cat') html+='<th>CAT (0-30)</th><th>Exam (0-70)</th>'; else html+='<th>Exam (0-100)</th>'; html+='<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>'; window.currentMarksData=marks; window.currentMarksSubject=subject; window.currentMarksBlock=block; window.currentAssessmentType=atype; for(let i=0;i<marks.length;i++){ const m=marks[i]; const cat1=m.cat1||'',cat2=m.cat2||'',exam=m.exam||''; let ncat1=parseFloat(cat1)||0,ncat2=parseFloat(cat2)||0,nexam=parseFloat(exam)||0,total=0; if(atype==='full') total=Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30+Math.min(nexam,70))*10)/10; else if(atype==='single_cat') total=Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10; else total=Math.round(Math.min(nexam,100)*10)/10; const status=total>=60?'PASS':(total>0?'FAIL':''); const rowClass=total>=60?'pass-row':'fail-row'; html+=`<tr class="${rowClass}"><td style="padding:10px;">${m.admission}</td><td style="padding:10px;"><strong>${m.name}</strong></td>`; if(atype==='full'){ html+=`<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } else if(atype==='single_cat'){ html+=`<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } else { html+=`<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } html+=`<td id="ltotal_${i}" style="font-weight:bold;">${total}</td><td id="lstatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy||'-'}</td></tr>`; } html+=`</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`; document.getElementById('marksTableContainer').innerHTML=html; }
-  
-  window.updateLecturerTotal=function(idx){ const at=window.currentAssessmentType||'full'; let cat1=parseFloat(document.getElementById(`cat1_${idx}`)?.value)||0,cat2=parseFloat(document.getElementById(`cat2_${idx}`)?.value)||0,exam=parseFloat(document.getElementById(`exam_${idx}`)?.value)||0,total=0; if(at==='full') total=Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30+Math.min(exam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10; else total=Math.round(Math.min(exam,100)*10)/10; document.getElementById(`ltotal_${idx}`).innerHTML=total; document.getElementById(`lstatus_${idx}`).innerHTML=total>=60?'PASS':'FAIL'; const row=document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement; if(row) row.className=total>=60?'pass-row':'fail-row'; };
-  
-  window.saveLecturerMarks=async function(){ let marksData=[]; const len=window.currentMarksData?.length||0; const at=window.currentAssessmentType||'full'; for(let i=0;i<len;i++){ if(at==='full') marksData.push({row:i+2,cat1:document.getElementById(`cat1_${i}`)?.value||'',cat2:document.getElementById(`cat2_${i}`)?.value||'',exam:document.getElementById(`exam_${i}`)?.value||''}); else if(at==='single_cat') marksData.push({row:i+2,cat1:document.getElementById(`cat1_${i}`)?.value||'',cat2:'',exam:document.getElementById(`exam_${i}`)?.value||''}); else marksData.push({row:i+2,cat1:'',cat2:'',exam:document.getElementById(`exam_${i}`)?.value||''}); } showLoading('Saving...'); const res=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:window.currentMarksBlock,subject:window.currentMarksSubject,marksData,lecturerName:currentUser.name})}); hideLoading(); showNotification(res?.success?'Saved!':'Error',!res?.success); if(res?.success) loadMarksForSubject(window.currentMarksBlock,window.currentMarksSubject,window.currentAssessmentType); };
-  
-  // ========== STUDENT MANAGEMENT ==========
-  async function showStudents() { const students=await apiCall('/api/students',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3><button class="save-btn" onclick="showAddStudentModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Student</button><button class="export-btn" onclick="exportToCSV(students,'students')"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>`; students.forEach(s=>{ html+=`<tr class="${s.status==='ACTIVE'?'pass-row':'fail-row'}"><td style="padding:8px;">${s.admission}</td><td style="padding:8px;"><strong>${s.name}</strong></td><td style="padding:8px;">${s.block}</td><td style="padding:8px;"><span class="badge ${s.status==='ACTIVE'?'badge-pass':'badge-fail'}">${s.status}</span></td><td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal('${s.admission}','${s.name}','${s.block}')">Edit</button> <button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button></td>`; }); html+=`</tbody></tr></div>`; document.getElementById('contentArea').innerHTML=html; }
-  
-  function showAddStudentModal() { const modal=`<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div><div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div><div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option>${b}</option>`).join('')}</select></div><button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  
-  async function saveNewStudent() { const admission=document.getElementById('studentAdmission').value, name=document.getElementById('studentName').value, block=document.getElementById('studentBlock').value; if(!admission||!name){ showNotification('Fill all fields',true); return; } showLoading('Adding...'); await apiCall('/api/add-student',{method:'POST',body:JSON.stringify({admission,name,block})}); hideLoading(); closeModal(); showNotification('Student added!',false); showStudents(); }
-  
-  function showEditStudentModal(adm,name,block) { const modal=`<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Admission</label><input type="text" value="${adm}" readonly></div><div class="field"><label>Name</label><input type="text" id="studentName" value="${name}"></div><div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option ${b===block?'selected':''}>${b}</option>`).join('')}</select></div><button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  
-  async function updateStudent(adm) { const name=document.getElementById('studentName').value, block=document.getElementById('studentBlock').value; showLoading('Updating...'); await apiCall('/api/update-student',{method:'POST',body:JSON.stringify({admission:adm,name,block})}); hideLoading(); closeModal(); showNotification('Updated!',false); showStudents(); }
-  
-  async function deleteStudent(adm) { if(confirm('Delete this student?')){ showLoading('Deleting...'); await apiCall('/api/delete-student',{method:'POST',body:JSON.stringify({admission:adm})}); hideLoading(); showNotification('Deleted!',false); showStudents(); } }
-  
-  // ========== LECTURER MANAGEMENT ==========
-  async function showLecturers() { const lecturers=await apiCall('/api/lecturers',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3><button class="save-btn" onclick="showAddLecturerModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Lecturer</button></div>`; lecturers.forEach(l=>{ const badges=(l.subjects||[]).map(s=>`<span class="subject-badge">${s.split('|')[1]}</span>`).join(''); html+=`<div class="lecturer-card"><div><strong>${l.name}</strong><br><small>${l.username}</small></div><div>${badges}</div><div><button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button> <button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button></div></div>`; }); document.getElementById('contentArea').innerHTML=html; }
-  
-  function showAddLecturerModal() { const modal=`<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Username</label><input type="text" id="lecUser"></div><div class="field"><label>Full Name</label><input type="text" id="lecName"></div><div class="field"><label>Email</label><input type="email" id="lecEmail"></div><div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div><button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  
-  async function saveNewLecturer() { const username=document.getElementById('lecUser').value, name=document.getElementById('lecName').value, email=document.getElementById('lecEmail').value, pass=document.getElementById('lecPass').value; if(!username||!name){ showNotification('Fill required fields',true); return; } showLoading('Adding...'); await apiCall('/api/add-lecturer',{method:'POST',body:JSON.stringify({username,name,email,password:pass,subjects:[]})}); hideLoading(); closeModal(); showNotification('Lecturer added!',false); showLecturers(); }
-  
-  async function showEditLecturerModal(username) { const lecturer=await apiCall(`/api/lecturer/${username}`,{}); const config=await getConfig(); let subjectOptions=''; for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ const units=config[b]||[]; if(units.length){ subjectOptions+=`<optgroup label="${b.replace('_',' ')}">`; units.forEach(u=>{ const selected=(lecturer.subjects||[]).includes(`${b}|${u.name}`); subjectOptions+=`<option value="${b}|${u.name}" ${selected?'selected':''}>${u.name} (${u.assessmentType})</option>`; }); subjectOptions+=`</optgroup>`; } } const modal=`<div id="lecturerModal" class="modal"><div class="modal-content" style="max-width:600px;"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Username</label><input type="text" value="${lecturer.username}" readonly></div><div class="field"><label>Name</label><input type="text" id="lecName" value="${lecturer.name}"></div><div class="field"><label>Email</label><input type="email" id="lecEmail" value="${lecturer.email||''}"></div><div class="field"><label>Password (leave blank to keep)</label><input type="password" id="lecPass" placeholder="New password"></div><div class="field"><label>Assigned Subjects</label><select id="lecSubjects" multiple size="6" style="width:100%">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div><button onclick="updateLecturer('${lecturer.username}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  
-  async function updateLecturer(oldUsername) { const name=document.getElementById('lecName').value, email=document.getElementById('lecEmail').value, password=document.getElementById('lecPass').value, select=document.getElementById('lecSubjects'), subjects=Array.from(select.selectedOptions).map(o=>o.value); showLoading('Updating...'); await apiCall('/api/update-lecturer',{method:'POST',body:JSON.stringify({oldUsername,username:oldUsername,name,email,password,subjects})}); hideLoading(); closeModal(); showNotification('Updated!',false); showLecturers(); }
-  
-  async function deleteLecturer(username) { if(confirm('Delete this lecturer?')){ showLoading('Deleting...'); await apiCall('/api/delete-lecturer',{method:'POST',body:JSON.stringify({username})}); hideLoading(); showNotification('Deleted!',false); showLecturers(); } }
-  
-  // ========== UNIT MANAGEMENT ==========
-  async function showUnits() { const units=await apiCall('/api/units',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div><div class="card"><h4><i class="fas fa-plus-circle"></i> Add New Unit</h4><div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;"><div><label>Block</label><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option>${b}</option>`).join('')}</select></div><div><label>Subject Name</label><input type="text" id="newUnitName" placeholder="Subject Name"></div><div><label>Assessment Type</label><select id="newUnitType"><option value="full">📊 Full (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select></div><div><button class="save-btn" onclick="addNewUnit()"><i class="fas fa-plus"></i> Add Unit</button></div></div></div>`; for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ const blockUnits=units[b]||[]; if(blockUnits.length){ html+=`<div style="margin-top:24px;"><h3><i class="fas fa-layer-group"></i> ${b.replace('_',' ')}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:12px;">`; blockUnits.forEach(u=>{ html+=`<div class="unit-card"><div><strong>${u.name}</strong><span class="badge badge-${u.assessmentType}" style="margin-left:8px;">${u.assessmentType}</span></div><div style="margin-top:12px;"><button class="edit-btn" onclick="showEditUnitModal('${b}','${u.name}','${u.assessmentType}')">Edit</button> <button class="delete-btn" onclick="deleteUnit('${b}','${u.name}')">Delete</button></div></div>`; }); html+=`</div></div>`; } } document.getElementById('contentArea').innerHTML=html; }
-  
-  async function addNewUnit() { const block=document.getElementById('newUnitBlock').value, name=document.getElementById('newUnitName').value.trim().toUpperCase(), type=document.getElementById('newUnitType').value; if(!name){ showNotification('Enter subject name',true); return; } showLoading('Adding...'); await apiCall('/api/add-unit',{method:'POST',body:JSON.stringify({block,name,assessmentType:type})}); hideLoading(); configCache=null; showNotification('Unit added!',false); showUnits(); }
-  
-  function showEditUnitModal(block,name,curType) { const modal=`<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div><div class="field"><label>Assessment Type</label><select id="editUnitType"><option value="full" ${curType==='full'?'selected':''}>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ${curType==='single_cat'?'selected':''}>Single CAT (CAT+Exam)</option><option value="exam_only" ${curType==='exam_only'?'selected':''}>Exam Only</option></select></div><button onclick="updateUnit('${block}','${name}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  
-  async function updateUnit(block,oldName) { const newName=document.getElementById('editUnitName').value.trim().toUpperCase(), newType=document.getElementById('editUnitType').value; if(!newName){ showNotification('Enter subject name',true); return; } showLoading('Updating...'); await apiCall('/api/update-unit',{method:'POST',body:JSON.stringify({block,oldName,newName,assessmentType:newType})}); hideLoading(); closeModal(); configCache=null; showNotification('Unit updated!',false); showUnits(); }
-  
-  async function deleteUnit(block,name) { if(confirm(`Delete unit "${name}"? This will delete ALL marks!`)){ showLoading('Deleting...'); await apiCall('/api/delete-unit',{method:'POST',body:JSON.stringify({block,name})}); hideLoading(); configCache=null; showNotification('Unit deleted!',false); showUnits(); } }
-  
-  let sy=localStorage.getItem('selectedYear'); if(sy&&INTAKE_YEARS.includes(sy)) currentYear=sy; let set=localStorage.getItem('selectedExamType'); if(set) currentExamType=set; checkLogin();
-</script>
-</body>
-</html>
+});
+
+// ========== STUDENT ENDPOINTS ==========
+app.get('/api/students', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    const students = [];
+    const seen = {};
+    for (let i = 1; i < data.length; i++) {
+      const admission = data[i][0];
+      if (admission && !seen[admission]) {
+        seen[admission] = true;
+        students.push({
+          admission: admission,
+          name: data[i][1],
+          block: data[i][2] || 'BLOCK_0',
+          status: data[i][3] || 'ACTIVE'
+        });
+      }
+    }
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-student', async (req, res) => {
+  try {
+    const { admission, name, block } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        return res.json({ success: false, message: 'Student already exists' });
+      }
+    }
+    const nextRow = data.length + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `STUDENTS!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[admission, name.toUpperCase(), block, 'ACTIVE']] }
+    });
+    res.json({ success: true, message: 'Student added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/update-student', async (req, res) => {
+  try {
+    const { admission, name, block } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `STUDENTS!B${i+1}:C${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[name.toUpperCase(), block]] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Student updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-student', async (req, res) => {
+  try {
+    const { admission } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === admission) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `STUDENTS!D${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['INACTIVE']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Student deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== LECTURER ENDPOINTS ==========
+app.get('/api/lecturers', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    const lecturers = [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][5] !== 'NO') {
+        lecturers.push({
+          username: data[i][0],
+          name: data[i][1],
+          email: data[i][2] || '',
+          password: data[i][3],
+          subjects: data[i][4] ? data[i][4].split(',') : []
+        });
+      }
+    }
+    res.json(lecturers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/lecturer/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        res.json({
+          username: data[i][0],
+          name: data[i][1],
+          email: data[i][2] || '',
+          subjects: data[i][4] ? data[i][4].split(',') : []
+        });
+        return;
+      }
+    }
+    res.json(null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-lecturer', async (req, res) => {
+  try {
+    const { username, name, email, password, subjects } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        return res.json({ success: false, message: 'Username already exists' });
+      }
+    }
+    const nextRow = data.length + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `LECTURERS!A${nextRow}:G${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[username, name, email || '', password, subjects ? subjects.join(',') : '', 'YES', new Date().toISOString()]] }
+    });
+    res.json({ success: true, message: 'Lecturer added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/update-lecturer', async (req, res) => {
+  try {
+    const { oldUsername, username, name, email, password, subjects } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === oldUsername) {
+        const row = i + 1;
+        const updateValues = [username, name, email || ''];
+        
+        if (password && password.trim() !== '') {
+          updateValues.push(password);
+        } else {
+          updateValues.push(data[i][3]);
+        }
+        
+        updateValues.push(subjects ? subjects.join(',') : '');
+        
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `LECTURERS!A${row}:E${row}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [updateValues] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Lecturer updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-lecturer', async (req, res) => {
+  try {
+    const { username } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'LECTURERS!A:G',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `LECTURERS!F${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['NO']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Lecturer deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== UNIT ENDPOINTS ==========
+app.get('/api/units', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    const units = { 'BLOCK_0': [], 'BLOCK_1': [], 'BLOCK_2': [], 'BLOCK_3': [], 'BLOCK_4': [], 'BLOCK_5': [] };
+    for (let i = 1; i < data.length; i++) {
+      const block = data[i][0];
+      const subject = data[i][1];
+      const active = data[i][2];
+      const assessmentType = data[i][3] || 'full';
+      if (block && subject && active === 'YES') {
+        if (!units[block]) units[block] = [];
+        units[block].push({ name: subject, assessmentType: assessmentType });
+      }
+    }
+    res.json(units);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/add-unit', async (req, res) => {
+  try {
+    const { block, name, assessmentType } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    let nextRow = data.length + 1;
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === name) {
+        if (data[i][2] === 'YES') {
+          return res.json({ success: false, message: 'Unit already exists' });
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `CONFIG!C${i+1}:D${i+1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [['YES', assessmentType]] }
+          });
+          return res.json({ success: true, message: 'Unit reactivated successfully' });
+        }
+      }
+    }
+    
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: req.spreadsheetId,
+      range: `CONFIG!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[block, name, 'YES', assessmentType]] }
+    });
+    res.json({ success: true, message: 'Unit added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/update-unit', async (req, res) => {
+  try {
+    const { block, oldName, newName, assessmentType } = req.body;
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    
+    let found = false;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === oldName) {
+        found = true;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `CONFIG!B${i+1}:D${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[newName, 'YES', assessmentType]] }
+        });
+        break;
+      }
+    }
+    
+    if (!found) {
+      return res.json({ success: false, message: 'Unit not found' });
+    }
+    
+    res.json({ success: true, message: 'Unit updated successfully' });
+  } catch (error) {
+    console.error('Error updating unit:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/delete-unit', async (req, res) => {
+  try {
+    const { block, name } = req.body;
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const data = response.data.values || [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === name) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: req.spreadsheetId,
+          range: `CONFIG!C${i+1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['NO']] }
+        });
+        break;
+      }
+    }
+    res.json({ success: true, message: 'Unit deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== LOGIN & STATS ==========
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password, year } = req.body;
+    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
+    
+    const adminResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: 'ADMIN!A:C' 
+    });
+    const admins = adminResponse.data.values || [];
+    for (let i = 1; i < admins.length; i++) {
+      if (admins[i][0] === username && admins[i][1] === password) {
+        return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
+      }
+    }
+    
+    const lecturersResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: 'LECTURERS!A:G' 
+    });
+    const lecturers = lecturersResponse.data.values || [];
+    for (let i = 1; i < lecturers.length; i++) {
+      if (lecturers[i][0] === username && lecturers[i][3] === password && lecturers[i][5] !== 'NO') {
+        return res.json({ 
+          success: true, 
+          user: { 
+            username, 
+            name: lecturers[i][1], 
+            role: 'lecturer', 
+            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : [] 
+          } 
+        });
+      }
+    }
+    
+    res.json({ success: false, message: 'Invalid username or password' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const students = await getStudentsList(req.spreadsheetId);
+    
+    const configResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'CONFIG!A:D',
+    });
+    const config = configResponse.data.values || [];
+    let activeSubjects = 0;
+    for (let i = 1; i < config.length; i++) {
+      if (config[i][2] === 'YES') activeSubjects++;
+    }
+    
+    res.json({ 
+      totalStudents: students.length, 
+      totalBlocks: 6, 
+      totalSubjects: activeSubjects 
+    });
+  } catch (error) {
+    res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
+  }
+});
+
+// ========== DEBUG ENDPOINTS ==========
+app.get('/api/debug/nck-sheets', async (req, res) => {
+  try {
+    const spreadsheetId = req.spreadsheetId;
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetId,
+      fields: 'sheets.properties'
+    });
+    
+    const sheetNames = response.data.sheets.map(s => s.properties.title);
+    res.json({ 
+      spreadsheetId, 
+      sheetNames,
+      year: req.headers['x-year'],
+      examType: req.headers['x-exam-type']
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
