@@ -283,8 +283,83 @@
   
   function exportAnalyticsReport() { showNotification('Preparing comprehensive report...', false); setTimeout(() => { showNotification('Report feature - Would export all analytics data to CSV', false); }, 1000); }
   
-  async function showLecturerAnalytics() { showLoading('Loading your analytics...'); const lecturerSubjects=currentUser.subjects||[]; let myData=[]; for(let subj of lecturerSubjects){ const parts=subj.split('|'); const block=parts[0]; const subject=parts[1]; const marks=await apiCall(`/api/marks/${block}/${subject}`,{}); if(marks&&marks.length){ const scores=marks.map(m=>parseFloat(m.final)).filter(s=>s>0); const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0; myData.push({block,subject,avg,students:scores.length}); } } let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div><div class="card"><div class="card-title">📊 My Subjects Performance</div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th></tr></thead><tbody>`; for(let d of myData){ html+=`<tr class="${d.avg>=60?'pass-row':'fail-row'}"><td style="padding:8px;">${d.block.replace('_',' ')}</td><td style="padding:8px;"><strong>${d.subject}</strong></td><td style="padding:8px;"><strong>${d.avg.toFixed(1)}%</strong></td><td style="padding:8px;">${d.students}</td></tr>`; } html+=`</tbody></table></div></div>`; document.getElementById('contentArea').innerHTML=html; hideLoading(); }
+async function showLecturerAnalytics() { 
+  showLoading('Loading your analytics...'); 
+  const lecturerSubjects = currentUser.subjects || []; 
+  const settings = await apiCall('/api/mark-entry/settings', {});
   
+  let myData = []; 
+  for (let subj of lecturerSubjects) { 
+    const parts = subj.split('|'); 
+    const block = parts[0]; 
+    const subject = parts[1]; 
+    
+    // Check if entry is open for this subject
+    let isOpen = true;
+    if (settings.global?.enabled === false) isOpen = false;
+    else if (settings[`${currentYear}_all`]?.enabled === false) isOpen = false;
+    else if (settings[`${block}_${subject}`]?.enabled === false) isOpen = false;
+    
+    const marks = await apiCall(`/api/marks/${block}/${subject}`, {}); 
+    if (marks && marks.length) { 
+      const scores = marks.map(m => parseFloat(m.final)).filter(s => s > 0); 
+      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0; 
+      myData.push({
+        block, 
+        subject, 
+        avg, 
+        students: scores.length,
+        isOpen: isOpen
+      }); 
+    } 
+  } 
+  
+  let html = `
+    <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+    <div class="header">
+      <h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 My Subjects Performance</div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%">
+          <thead>
+            <tr style="background:#667eea;color:white">
+              <th>Block</th>
+              <th>Subject</th>
+              <th>Average Score</th>
+              <th>Students</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+  `; 
+  
+  for (let d of myData) { 
+    const statusBadge = d.isOpen 
+      ? '<span class="badge badge-pass" style="background:#10b981;">🔓 Open</span>'
+      : '<span class="badge badge-fail" style="background:#dc2626;">🔒 Closed</span>';
+    
+    html += `
+      <tr class="${d.avg >= 60 ? 'pass-row' : 'fail-row'}">
+        <td style="padding:8px;">${d.block.replace('_', ' ')}</td>
+        <td style="padding:8px;"><strong>${d.subject}</strong></td>
+        <td style="padding:8px;"><strong>${d.avg.toFixed(1)}%</strong></td>
+        <td style="padding:8px;">${d.students}</td>
+        <td style="padding:8px;">${statusBadge}</td>
+      </tr>
+    `; 
+  } 
+  
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `; 
+  document.getElementById('contentArea').innerHTML = html; 
+  hideLoading(); 
+}  
   async function showFullReports() { const students=await apiCall('/api/students',{}); exportToCSV(students,'students_report'); }
   
   // ========== NCK MARKS (FULL ORIGINAL FUNCTIONS) ==========
@@ -396,8 +471,104 @@
   
   window.exportAdminMarks=function(){ if(window.currentAdminMarks){ const data=window.currentAdminMarks.map((m,i)=>({Admission:m.admission,Name:m.name,CAT1:document.getElementById(`acat1_${i}`)?.value||'',CAT2:document.getElementById(`acat2_${i}`)?.value||'',Exam:document.getElementById(`aexam_${i}`)?.value||'',Total:document.getElementById(`atotal_${i}`)?.innerHTML||''})); exportToCSV(data,'internal_marks'); } };
   
-  async function showLecturerSubjects() { showLoading('Loading your subjects...'); const blocks=['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']; const lecturerSubjects=currentUser.subjects||[]; const config=await getConfig(); const subjectsByBlock={}; for(let b of blocks) subjectsByBlock[b]=[]; for(let subj of lecturerSubjects){ const parts=subj.split('|'); const block=parts[0]; const name=parts[1]; let atype='full'; if(config&&config[block]){ const found=config[block].find(c=>c.name===name); if(found) atype=found.assessmentType||'full'; } if(subjectsByBlock[block]) subjectsByBlock[block].push({name,assessmentType:atype}); } let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks</p></div>`; for(let b of blocks){ if(subjectsByBlock[b].length){ html+=`<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_',' ')}</h3></div><div class="subject-list">`; for(let s of subjectsByBlock[b]){ const typeIcon=s.assessmentType==='full'?'📊':(s.assessmentType==='single_cat'?'📝':'📖'); const typeLabel=s.assessmentType==='full'?'CAT1+CAT2+Exam':(s.assessmentType==='single_cat'?'CAT+Exam':'Exam Only'); html+=`<div class="subject-card" onclick="openMarksEntry('${b}', '${s.name.replace(/'/g,"\\'")}', '${s.assessmentType}')"><h4>${typeIcon} ${s.name}</h4><p><i class="fas fa-layer-group"></i> ${b.replace('_',' ')} | ${typeLabel}</p></div>`; } html+=`</div>`; } } document.getElementById('contentArea').innerHTML=html; hideLoading(); }
+async function showLecturerSubjects() { 
+  showLoading('Loading your subjects...'); 
+  const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']; 
+  const lecturerSubjects = currentUser.subjects || []; 
+  const config = await getConfig(); 
   
+  // Get entry settings
+  const settings = await apiCall('/api/mark-entry/settings', {});
+  console.log('Entry settings:', settings);
+  
+  const subjectsByBlock = {}; 
+  for (let b of blocks) subjectsByBlock[b] = []; 
+  
+  for (let subj of lecturerSubjects) { 
+    const parts = subj.split('|'); 
+    const block = parts[0]; 
+    const name = parts[1]; 
+    let atype = 'full'; 
+    if (config && config[block]) { 
+      const found = config[block].find(c => c.name === name); 
+      if (found) atype = found.assessmentType || 'full'; 
+    } 
+    
+    // Check if subject is open or closed for entry
+    let isOpen = true;
+    let closedReason = '';
+    
+    // Check global
+    if (settings.global && settings.global.enabled === false) {
+      isOpen = false;
+      closedReason = 'Global entry closed';
+    }
+    // Check class
+    else if (settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false) {
+      isOpen = false;
+      closedReason = `Entry closed for March ${currentYear} class`;
+    }
+    // Check specific subject
+    else if (settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false) {
+      isOpen = false;
+      closedReason = `Entry closed for this subject`;
+    }
+    
+    if (subjectsByBlock[block]) {
+      subjectsByBlock[block].push({ 
+        name, 
+        assessmentType: atype,
+        isOpen: isOpen,
+        closedReason: closedReason
+      }); 
+    }
+  } 
+  
+  let html = `
+    <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+    <div class="header">
+      <h3><i class="fas fa-book"></i> My Subjects</h3>
+      <p>Click on any subject card to enter marks - ${isOpen ? '🔓 Open for entry' : '🔒 Closed for entry'}</p>
+    </div>
+  `; 
+  
+  for (let b of blocks) { 
+    if (subjectsByBlock[b] && subjectsByBlock[b].length) { 
+      html += `<div style="margin:20px 0 10px;">
+        <h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_',' ')}</h3>
+      </div>
+      <div class="subject-list">`; 
+      
+      for (let s of subjectsByBlock[b]) { 
+        const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
+        const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+        
+        // Show closed status badge if entry is closed
+        const statusBadge = s.isOpen 
+          ? '<span class="badge badge-pass" style="background:#10b981; color:white;"><i class="fas fa-lock-open"></i> Open</span>'
+          : `<span class="badge badge-fail" style="background:#dc2626; color:white;"><i class="fas fa-lock"></i> Closed</span>`;
+        
+        const onclickAttr = s.isOpen 
+          ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"`
+          : `onclick="showNotification('${s.closedReason}', true)"`;
+        
+        html += `
+          <div class="subject-card" style="${!s.isOpen ? 'opacity:0.7; background:#fef2f2;' : ''}" ${onclickAttr}>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h4>${typeIcon} ${s.name}</h4>
+              ${statusBadge}
+            </div>
+            <p><i class="fas fa-layer-group"></i> ${b.replace('_',' ')} | ${typeLabel}</p>
+            ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
+          </div>
+        `; 
+      } 
+      html += `</div>`; 
+    } 
+  } 
+  document.getElementById('contentArea').innerHTML = html; 
+  hideLoading(); 
+}  
   window.openMarksEntry=function(block,subject,atype){ currentMarksBlock=block; currentMarksSubject=subject; currentAssessmentType=atype; loadMarksForSubject(block,subject,atype); };
   
   async function loadMarksForSubject(block,subject,atype){ showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`,{}); let html=`<button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_',' ')} | ${atype==='full'?'CAT1+CAT2+Exam':(atype==='single_cat'?'CAT+Exam':'Exam Only')}</p></div><div id="marksTableContainer"></div>`; document.getElementById('contentArea').innerHTML=html; displayLecturerMarksTable(marks,block,subject,atype); hideLoading(); }
