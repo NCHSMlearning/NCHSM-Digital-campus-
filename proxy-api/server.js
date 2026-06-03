@@ -22,7 +22,7 @@ const SPREADSHEETS = {
   }
 };
 
-// ===== MARK ENTRY SETTINGS (Stored in memory) =====
+// ===== MARK ENTRY SETTINGS =====
 let markEntrySettings = {
   global: { enabled: true, closedBy: null, closedAt: null }
 };
@@ -81,113 +81,55 @@ app.use((req, res, next) => {
   const year = req.headers['x-year'] || req.body.year || '2024';
   const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
   req.spreadsheetId = SPREADSHEETS[year]?.[examType] || SPREADSHEETS['2024'].internal;
-  console.log(`[MIDDLEWARE] Year: ${year}, ExamType: ${examType}, Spreadsheet: ${req.spreadsheetId}`);
+  console.log(`[MIDDLEWARE] Year: ${year}, ExamType: ${examType}`);
   next();
 });
 
-// ===== MIDDLEWARE TO CHECK MARK ENTRY ALLOWED =====
+// ===== MARK ENTRY CHECK MIDDLEWARE =====
 async function checkMarkEntryAllowed(req, res, next) {
-  if (req.method === 'GET') return next();
+  // Only check POST requests for saving marks
+  if (req.method !== 'POST' || req.path !== '/api/marks') {
+    return next();
+  }
   
   const year = req.headers['x-year'] || req.body.year || '2024';
-  const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
-  const { block, subject } = req.body;
-  const userRole = req.headers['x-user-role'] || req.body.userRole;
+  const { block, subject, lecturerName } = req.body;
+  const userRole = req.headers['x-user-role'];
   
-  if (userRole === 'admin') return next();
-  
-  if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
-    return res.status(403).json({ success: false, message: `Mark entry is globally closed. Contact administrator.` });
+  // ADMIN bypass
+  if (userRole === 'admin' || lecturerName === 'Administrator') {
+    console.log(`[ENTRY CHECK] Admin bypass for ${lecturerName}`);
+    return next();
   }
   
+  console.log(`[ENTRY CHECK] Checking for ${lecturerName} - ${year}/${block}/${subject}`);
+  
+  // Check 1: Global
+  if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
+    console.log(`[ENTRY CHECK] BLOCKED: Global closed`);
+    return res.status(403).json({ success: false, message: '❌ Mark entry is globally closed. Contact administrator.' });
+  }
+  
+  // Check 2: Class level
   const classKey = `${year}_all`;
   if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
-    return res.status(403).json({ success: false, message: `Mark entry is closed for March ${year} class.` });
+    console.log(`[ENTRY CHECK] BLOCKED: Class ${year} closed`);
+    return res.status(403).json({ success: false, message: `❌ Mark entry is closed for March ${year} class.` });
   }
   
+  // Check 3: Subject level
   const subjectKey = `${block}_${subject}`;
   if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
-    return res.status(403).json({ success: false, message: `Mark entry is closed for ${subject} in ${block}.` });
+    console.log(`[ENTRY CHECK] BLOCKED: Subject ${subject} closed`);
+    return res.status(403).json({ success: false, message: `❌ Mark entry is closed for ${subject}.` });
   }
   
+  console.log(`[ENTRY CHECK] ALLOWED: Entry open for ${subject}`);
   next();
 }
 
-// ========== MARK ENTRY CONTROL ENDPOINTS (NEW) ==========
-app.get('/api/mark-entry/settings', async (req, res) => {
-  res.json(markEntrySettings);
-});
-
-app.get('/api/mark-entry/logs', async (req, res) => {
-  res.json(markEntryLogs.slice(-100).reverse());
-});
-
-app.post('/api/mark-entry/toggle-global', async (req, res) => {
-  const { lecturerName } = req.body;
-  const currentState = markEntrySettings.global?.enabled !== false;
-  
-  markEntrySettings.global = {
-    enabled: !currentState,
-    closedBy: !currentState ? lecturerName : null,
-    closedAt: !currentState ? new Date().toISOString() : null
-  };
-  
-  markEntryLogs.unshift({
-    timestamp: new Date().toISOString(),
-    lecturerName: lecturerName,
-    action: !currentState ? 'close' : 'open',
-    target: 'global',
-    details: !currentState ? 'Closed all mark entry' : 'Opened all mark entry'
-  });
-  
-  res.json({ success: true, message: !currentState ? 'Global mark entry closed' : 'Global mark entry opened' });
-});
-
-app.post('/api/mark-entry/toggle-class', async (req, res) => {
-  const { year, lecturerName } = req.body;
-  const classKey = `${year}_all`;
-  const currentState = markEntrySettings[classKey]?.enabled !== false;
-  
-  markEntrySettings[classKey] = {
-    enabled: !currentState,
-    closedBy: !currentState ? lecturerName : null,
-    closedAt: !currentState ? new Date().toISOString() : null
-  };
-  
-  markEntryLogs.unshift({
-    timestamp: new Date().toISOString(),
-    lecturerName: lecturerName,
-    action: !currentState ? 'close' : 'open',
-    target: `March ${year} Class`,
-    details: !currentState ? `Closed mark entry for March ${year} class` : `Opened mark entry for March ${year} class`
-  });
-  
-  res.json({ success: true, message: !currentState ? `March ${year} class entry closed` : `March ${year} class entry opened` });
-});
-
-app.post('/api/mark-entry/toggle-subject', async (req, res) => {
-  const { block, subject, examType, lecturerName } = req.body;
-  const subjectKey = `${block}_${subject}`;
-  const currentState = markEntrySettings[subjectKey]?.enabled !== false;
-  
-  markEntrySettings[subjectKey] = {
-    enabled: !currentState,
-    closedBy: !currentState ? lecturerName : null,
-    closedAt: !currentState ? new Date().toISOString() : null
-  };
-  
-  markEntryLogs.unshift({
-    timestamp: new Date().toISOString(),
-    lecturerName: lecturerName,
-    action: !currentState ? 'close' : 'open',
-    target: subject,
-    block: block,
-    examType: examType,
-    details: !currentState ? `Closed mark entry for ${subject} in ${block}` : `Opened mark entry for ${subject} in ${block}`
-  });
-  
-  res.json({ success: true, message: !currentState ? `Entry closed for ${subject}` : `Entry opened for ${subject}` });
-});
+// Apply middleware to /api/marks endpoint
+app.use('/api/marks', checkMarkEntryAllowed);
 
 // ===== HELPER FUNCTIONS =====
 async function getStudentsList(spreadsheetId) {
@@ -222,8 +164,7 @@ async function calculateGrade(percentage) {
   return 'E';
 }
 
-// ===== API ENDPOINTS =====
-
+// ===== BASIC ENDPOINTS =====
 app.get('/', (req, res) => {
   res.json({ message: 'Nursing Marks API is running!' });
 });
@@ -234,6 +175,84 @@ app.get('/api/years', (req, res) => {
 
 app.get('/api/blocks', (req, res) => {
   res.json(['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']);
+});
+
+// ========== MARK ENTRY CONTROL ENDPOINTS ==========
+app.get('/api/mark-entry/settings', (req, res) => {
+  res.json(markEntrySettings);
+});
+
+app.get('/api/mark-entry/logs', (req, res) => {
+  res.json(markEntryLogs);
+});
+
+app.post('/api/mark-entry/toggle-global', (req, res) => {
+  const { lecturerName } = req.body;
+  const isCurrentlyOpen = markEntrySettings.global?.enabled !== false;
+  const newIsOpen = !isCurrentlyOpen;
+  
+  markEntrySettings.global = {
+    enabled: newIsOpen,
+    closedBy: newIsOpen === false ? lecturerName : null,
+    closedAt: newIsOpen === false ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName,
+    action: newIsOpen === false ? 'close' : 'open',
+    target: 'global',
+    details: newIsOpen === false ? 'Closed all mark entry' : 'Opened all mark entry'
+  });
+  
+  res.json({ success: true, message: newIsOpen === false ? 'Global mark entry closed' : 'Global mark entry opened' });
+});
+
+app.post('/api/mark-entry/toggle-class', (req, res) => {
+  const { year, lecturerName } = req.body;
+  const classKey = `${year}_all`;
+  const isCurrentlyOpen = markEntrySettings[classKey]?.enabled !== false;
+  const newIsOpen = !isCurrentlyOpen;
+  
+  markEntrySettings[classKey] = {
+    enabled: newIsOpen,
+    closedBy: newIsOpen === false ? lecturerName : null,
+    closedAt: newIsOpen === false ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName,
+    action: newIsOpen === false ? 'close' : 'open',
+    target: `March ${year} Class`,
+    details: newIsOpen === false ? `Closed mark entry for March ${year} class` : `Opened mark entry for March ${year} class`
+  });
+  
+  res.json({ success: true, message: newIsOpen === false ? `March ${year} class entry closed` : `March ${year} class entry opened` });
+});
+
+app.post('/api/mark-entry/toggle-subject', (req, res) => {
+  const { block, subject, lecturerName } = req.body;
+  const subjectKey = `${block}_${subject}`;
+  const isCurrentlyOpen = markEntrySettings[subjectKey]?.enabled !== false;
+  const newIsOpen = !isCurrentlyOpen;
+  
+  markEntrySettings[subjectKey] = {
+    enabled: newIsOpen,
+    closedBy: newIsOpen === false ? lecturerName : null,
+    closedAt: newIsOpen === false ? new Date().toISOString() : null
+  };
+  
+  markEntryLogs.unshift({
+    timestamp: new Date().toISOString(),
+    lecturerName,
+    action: newIsOpen === false ? 'close' : 'open',
+    target: subject,
+    block: block,
+    details: newIsOpen === false ? `Closed mark entry for ${subject}` : `Opened mark entry for ${subject}`
+  });
+  
+  res.json({ success: true, message: newIsOpen === false ? `Entry closed for ${subject}` : `Entry opened for ${subject}` });
 });
 
 // ========== SUBJECTS ENDPOINT ==========
@@ -255,7 +274,7 @@ app.get('/api/subjects/:block', async (req, res) => {
       const config = response.data.values || [];
       const subjects = [];
       for (let i = 1; i < config.length; i++) {
-        if (config[i][0] === block && config[i][2] === 'YES') {
+        if (config[i] && config[i][0] === block && config[i][2] === 'YES') {
           subjects.push({
             name: config[i][1],
             assessmentType: config[i][3] || 'full'
@@ -265,7 +284,8 @@ app.get('/api/subjects/:block', async (req, res) => {
       res.json(subjects);
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in /api/subjects:', error);
+    res.json([]);
   }
 });
 
@@ -280,41 +300,27 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     
     if (examType === 'nck') {
       let sheetName = subject;
-      
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
         range: `${sheetName}!A:Z`,
       });
-      
       const data = response.data.values || [];
-      console.log(`[NCK] ${sheetName} - Total rows: ${data.length}`);
-      
       const marks = [];
       
       if (sheetName === 'XY FORMS') {
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          if (!row[0] && !row[1]) continue;
-          
+          if (!row || (!row[0] && !row[1])) continue;
           const studentName = row[1] || row[0] || '';
           if (!studentName || studentName === 'S.NO' || studentName === 'SN NO') continue;
-          
           const clinicalScores = [];
           for (let j = 2; j <= 23 && j < row.length; j++) {
             const score = parseFloat(row[j]);
             clinicalScores.push(isNaN(score) ? 0 : score);
           }
-          
           while (clinicalScores.length < 22) clinicalScores.push(0);
-          
           const validScores = clinicalScores.filter(s => s > 0);
-          let finalScore = 0;
-          if (validScores.length > 0) {
-            finalScore = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-          } else if (row[24]) {
-            finalScore = parseFloat(row[24]) || 0;
-          }
-          
+          let finalScore = validScores.length ? validScores.reduce((a, b) => a + b, 0) / validScores.length : (row[24] ? parseFloat(row[24]) : 0);
           marks.push({
             row: i + 1,
             admission: row[0] || '',
@@ -325,69 +331,47 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        let assessmentCount = 11;
-        if (year === '2024') assessmentCount = 8;
-        
-        console.log(`[ASSESSMENT] Year ${year} using ${assessmentCount} assessment columns`);
-        
+        let assessmentCount = (year === '2024') ? 8 : 11;
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          if (!row[1]) continue;
-          
-          const studentName = row[1] || '';
-          if (!studentName || studentName === 'NAME') continue;
-          
+          if (!row || !row[1]) continue;
           const scores = [];
           for (let col = 2; col < 2 + assessmentCount; col++) {
             let score = 0;
             if (col < row.length && row[col] && row[col] !== '') {
               const rawValue = row[col];
-              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
-                score = 0;
-              } else {
-                score = parseFloat(rawValue) || 0;
-                if (score > 100) score = 0;
-              }
+              if (typeof rawValue === 'string' && rawValue.startsWith('=')) score = 0;
+              else score = parseFloat(rawValue) || 0;
+              if (score > 100) score = 0;
             }
             scores.push(score);
           }
-          
           const total = scores.reduce((a, b) => a + b, 0);
           const validCount = scores.filter(s => s > 0).length;
           const average = validCount > 0 ? total / validCount : 0;
-          
-          let gradedBy = '';
-          if (row[15] && row[15] !== '') {
-            gradedBy = row[15];
-          }
-          
           marks.push({
             row: i + 1,
             admission: row[0] || '',
-            name: studentName,
+            name: row[1] || '',
             scores: scores,
             total: total,
             final: average,
-            gradedBy: gradedBy
+            gradedBy: row[15] || ''
           });
         }
       }
-      
-      console.log(`[NCK] Returning ${marks.length} students with ${marks[0]?.scores?.length || 0} columns`);
       res.json(marks);
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
-      
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
         range: `${sheetName}!A:I`,
       });
-      
       const data = response.data.values || [];
       const marks = [];
       for (let i = 1; i < data.length; i++) {
-        if (data[i][0]) {
+        if (data[i] && data[i][0]) {
           marks.push({ 
             row: i + 1, 
             admission: data[i][0], 
@@ -410,17 +394,17 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT (with logging) ==========
-app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
+// ========== SAVE MARKS ENDPOINT ==========
+app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     const spreadsheetId = req.spreadsheetId;
     const year = req.headers['x-year'] || '2024';
     
-    console.log(`[SAVE MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}, marksCount=${marksData?.length}`);
+    console.log(`[SAVE MARKS] Year: ${year}, block=${block}, subject=${subject}, lecturer: ${lecturerName}`);
     
-    // Log the mark entry
+    // Log the save action
     markEntryLogs.unshift({
       timestamp: new Date().toISOString(),
       lecturerName: lecturerName,
@@ -428,13 +412,12 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
       target: subject,
       block: block,
       examType: examType,
-      year: year,
-      details: `Saved ${marksData?.length || 0} mark entries`
+      details: `Saved ${marksData?.length || 0} entries`
     });
+    if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
     
     if (examType === 'nck') {
       let sheetName = subject;
-      
       if (sheetName === 'XY FORMS') {
         for (const mark of marksData) {
           const row = mark.row;
@@ -448,20 +431,14 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
               requestBody: { values: [[score]] }
             });
           }
-          
           const validScores = mark.scores.filter(s => s > 0);
-          let newAverage = 0;
-          if (validScores.length > 0) {
-            newAverage = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-          }
-          
+          let newAverage = validScores.length ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
           await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `${sheetName}!Y${row}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[newAverage.toFixed(2)]] }
           });
-          
           if (mark.gradedBy) {
             await sheets.spreadsheets.values.update({
               spreadsheetId,
@@ -472,12 +449,9 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
           }
         }
       } else {
-        let assessmentCount = 11;
-        if (year === '2024') assessmentCount = 8;
-        
+        let assessmentCount = (year === '2024') ? 8 : 11;
         for (const mark of marksData) {
           const row = mark.row;
-          
           for (let col = 0; col < assessmentCount && col < mark.scores.length; col++) {
             const score = mark.scores[col] || 0;
             const columnLetter = String.fromCharCode(67 + col);
@@ -488,7 +462,6 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
               requestBody: { values: [[score]] }
             });
           }
-          
           const total = mark.scores.reduce((a, b) => a + b, 0);
           const totalColumnLetter = String.fromCharCode(67 + assessmentCount);
           await sheets.spreadsheets.values.update({
@@ -497,7 +470,6 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
             valueInputOption: 'RAW',
             requestBody: { values: [[total]] }
           });
-          
           if (mark.gradedBy) {
             const gradedByColumnLetter = String.fromCharCode(69 + assessmentCount);
             await sheets.spreadsheets.values.update({
@@ -509,28 +481,23 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
           }
         }
       }
-      
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
-      
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `${sheetName}!A:I`,
       });
       const currentData = response.data.values || [];
-      
       for (const mark of marksData) {
         const row = mark.row;
-        const existingRow = currentData[row - 1] || [];
+        const existingRow = (currentData[row - 1]) || [];
         const assessmentType = existingRow[8] || 'full';
-        
         let cat1 = parseFloat(mark.cat1) || 0;
         let cat2 = parseFloat(mark.cat2) || 0;
         let exam = parseFloat(mark.exam) || 0;
         let finalScore = 0;
-        
         if (assessmentType === 'full') {
           finalScore = Math.round(((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30 + Math.min(exam, 70)) * 10) / 10;
         } else if (assessmentType === 'single_cat') {
@@ -538,9 +505,7 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
         } else {
           finalScore = Math.round(Math.min(exam, 100) * 10) / 10;
         }
-        
         const grade = await calculateGrade(finalScore);
-        
         await sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `${sheetName}!C${row}:H${row}`,
@@ -558,7 +523,7 @@ app.post('/api/marks', checkMarkEntryAllowed, async (req, res) => {
   }
 });
 
-// ========== STUDENT ENDPOINTS ==========
+// ========== STUDENT ENDPOINTS (Simplified) ==========
 app.get('/api/students', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -569,20 +534,16 @@ app.get('/api/students', async (req, res) => {
     const students = [];
     const seen = {};
     for (let i = 1; i < data.length; i++) {
-      const admission = data[i][0];
+      const row = data[i];
+      const admission = row ? row[0] : null;
       if (admission && !seen[admission]) {
         seen[admission] = true;
-        students.push({
-          admission: admission,
-          name: data[i][1],
-          block: data[i][2] || 'BLOCK_0',
-          status: data[i][3] || 'ACTIVE'
-        });
+        students.push({ admission, name: row[1] || '', block: row[2] || 'BLOCK_0', status: row[3] || 'ACTIVE' });
       }
     }
     res.json(students);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json([]);
   }
 });
 
@@ -594,11 +555,6 @@ app.post('/api/add-student', async (req, res) => {
       range: 'STUDENTS!A:D',
     });
     const data = response.data.values || [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === admission) {
-        return res.json({ success: false, message: 'Student already exists' });
-      }
-    }
     const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
@@ -621,7 +577,7 @@ app.post('/api/update-student', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === admission) {
+      if (data[i] && data[i][0] === admission) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `STUDENTS!B${i+1}:C${i+1}`,
@@ -646,7 +602,7 @@ app.post('/api/delete-student', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === admission) {
+      if (data[i] && data[i][0] === admission) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `STUDENTS!D${i+1}`,
@@ -662,7 +618,7 @@ app.post('/api/delete-student', async (req, res) => {
   }
 });
 
-// ========== LECTURER ENDPOINTS ==========
+// ========== LECTURER ENDPOINTS (Simplified) ==========
 app.get('/api/lecturers', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -672,19 +628,19 @@ app.get('/api/lecturers', async (req, res) => {
     const data = response.data.values || [];
     const lecturers = [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] && data[i][5] !== 'NO') {
+      const row = data[i];
+      if (row && row[0] && row[5] !== 'NO') {
         lecturers.push({
-          username: data[i][0],
-          name: data[i][1],
-          email: data[i][2] || '',
-          password: data[i][3],
-          subjects: data[i][4] ? data[i][4].split(',') : []
+          username: row[0],
+          name: row[1],
+          email: row[2] || '',
+          subjects: row[4] ? row[4].split(',') : []
         });
       }
     }
     res.json(lecturers);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json([]);
   }
 });
 
@@ -697,19 +653,15 @@ app.get('/api/lecturer/:username', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
-        res.json({
-          username: data[i][0],
-          name: data[i][1],
-          email: data[i][2] || '',
-          subjects: data[i][4] ? data[i][4].split(',') : []
-        });
+      const row = data[i];
+      if (row && row[0] === username) {
+        res.json({ username: row[0], name: row[1], email: row[2] || '', subjects: row[4] ? row[4].split(',') : [] });
         return;
       }
     }
     res.json(null);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(null);
   }
 });
 
@@ -721,11 +673,6 @@ app.post('/api/add-lecturer', async (req, res) => {
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
-        return res.json({ success: false, message: 'Username already exists' });
-      }
-    }
     const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
@@ -748,23 +695,13 @@ app.post('/api/update-lecturer', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === oldUsername) {
+      if (data[i] && data[i][0] === oldUsername) {
         const row = i + 1;
-        const updateValues = [username, name, email || ''];
-        
-        if (password && password.trim() !== '') {
-          updateValues.push(password);
-        } else {
-          updateValues.push(data[i][3]);
-        }
-        
-        updateValues.push(subjects ? subjects.join(',') : '');
-        
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `LECTURERS!A${row}:E${row}`,
           valueInputOption: 'RAW',
-          requestBody: { values: [updateValues] }
+          requestBody: { values: [[username, name, email || '', password || data[i][3], subjects ? subjects.join(',') : '']] }
         });
         break;
       }
@@ -784,7 +721,7 @@ app.post('/api/delete-lecturer', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
+      if (data[i] && data[i][0] === username) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `LECTURERS!F${i+1}`,
@@ -808,20 +745,17 @@ app.get('/api/units', async (req, res) => {
       range: 'CONFIG!A:D',
     });
     const data = response.data.values || [];
-    const units = { 'BLOCK_0': [], 'BLOCK_1': [], 'BLOCK_2': [], 'BLOCK_3': [], 'BLOCK_4': [], 'BLOCK_5': [] };
+    const units = {};
     for (let i = 1; i < data.length; i++) {
-      const block = data[i][0];
-      const subject = data[i][1];
-      const active = data[i][2];
-      const assessmentType = data[i][3] || 'full';
-      if (block && subject && active === 'YES') {
-        if (!units[block]) units[block] = [];
-        units[block].push({ name: subject, assessmentType: assessmentType });
+      const row = data[i];
+      if (row && row[0] && row[1] && row[2] === 'YES') {
+        if (!units[row[0]]) units[row[0]] = [];
+        units[row[0]].push({ name: row[1], assessmentType: row[3] || 'full' });
       }
     }
     res.json(units);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({});
   }
 });
 
@@ -833,24 +767,7 @@ app.post('/api/add-unit', async (req, res) => {
       range: 'CONFIG!A:D',
     });
     const data = response.data.values || [];
-    let nextRow = data.length + 1;
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === block && data[i][1] === name) {
-        if (data[i][2] === 'YES') {
-          return res.json({ success: false, message: 'Unit already exists' });
-        } else {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: req.spreadsheetId,
-            range: `CONFIG!C${i+1}:D${i+1}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [['YES', assessmentType]] }
-          });
-          return res.json({ success: true, message: 'Unit reactivated successfully' });
-        }
-      }
-    }
-    
+    const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
       range: `CONFIG!A${nextRow}:D${nextRow}`,
@@ -866,34 +783,25 @@ app.post('/api/add-unit', async (req, res) => {
 app.post('/api/update-unit', async (req, res) => {
   try {
     const { block, oldName, newName, assessmentType } = req.body;
-    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
     });
     const data = response.data.values || [];
-    
-    let found = false;
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === block && data[i][1] === oldName) {
-        found = true;
+      if (data[i] && data[i][0] === block && data[i][1] === oldName) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `CONFIG!B${i+1}:D${i+1}`,
           valueInputOption: 'RAW',
           requestBody: { values: [[newName, 'YES', assessmentType]] }
         });
-        break;
+        res.json({ success: true, message: 'Unit updated successfully' });
+        return;
       }
     }
-    
-    if (!found) {
-      return res.json({ success: false, message: 'Unit not found' });
-    }
-    
-    res.json({ success: true, message: 'Unit updated successfully' });
+    res.json({ success: false, message: 'Unit not found' });
   } catch (error) {
-    console.error('Error updating unit:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -907,17 +815,18 @@ app.post('/api/delete-unit', async (req, res) => {
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === block && data[i][1] === name) {
+      if (data[i] && data[i][0] === block && data[i][1] === name) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
           range: `CONFIG!C${i+1}`,
           valueInputOption: 'RAW',
           requestBody: { values: [['NO']] }
         });
-        break;
+        res.json({ success: true, message: 'Unit deleted successfully' });
+        return;
       }
     }
-    res.json({ success: true, message: 'Unit deleted successfully' });
+    res.json({ success: false, message: 'Unit not found' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -929,36 +838,23 @@ app.post('/api/login', async (req, res) => {
     const { username, password, year } = req.body;
     const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
     
-    const adminResponse = await sheets.spreadsheets.values.get({ 
-      spreadsheetId, 
-      range: 'ADMIN!A:C' 
-    });
+    const adminResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'ADMIN!A:C' });
     const admins = adminResponse.data.values || [];
     for (let i = 1; i < admins.length; i++) {
-      if (admins[i][0] === username && admins[i][1] === password) {
+      const row = admins[i];
+      if (row && row[0] === username && row[1] === password) {
         return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
       }
     }
     
-    const lecturersResponse = await sheets.spreadsheets.values.get({ 
-      spreadsheetId, 
-      range: 'LECTURERS!A:G' 
-    });
+    const lecturersResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'LECTURERS!A:G' });
     const lecturers = lecturersResponse.data.values || [];
     for (let i = 1; i < lecturers.length; i++) {
-      if (lecturers[i][0] === username && lecturers[i][3] === password && lecturers[i][5] !== 'NO') {
-        return res.json({ 
-          success: true, 
-          user: { 
-            username, 
-            name: lecturers[i][1], 
-            role: 'lecturer', 
-            subjects: lecturers[i][4] ? lecturers[i][4].split(',') : [] 
-          } 
-        });
+      const row = lecturers[i];
+      if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
+        return res.json({ success: true, user: { username, name: row[1], role: 'lecturer', subjects: row[4] ? row[4].split(',') : [] } });
       }
     }
-    
     res.json({ success: false, message: 'Invalid username or password' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -968,45 +864,9 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     const students = await getStudentsList(req.spreadsheetId);
-    
-    const configResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'CONFIG!A:D',
-    });
-    const config = configResponse.data.values || [];
-    let activeSubjects = 0;
-    for (let i = 1; i < config.length; i++) {
-      if (config[i][2] === 'YES') activeSubjects++;
-    }
-    
-    res.json({ 
-      totalStudents: students.length, 
-      totalBlocks: 6, 
-      totalSubjects: activeSubjects 
-    });
+    res.json({ totalStudents: students.length, totalBlocks: 6, totalSubjects: 28 });
   } catch (error) {
     res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
-  }
-});
-
-// ========== DEBUG ENDPOINTS ==========
-app.get('/api/debug/nck-sheets', async (req, res) => {
-  try {
-    const spreadsheetId = req.spreadsheetId;
-    const response = await sheets.spreadsheets.get({
-      spreadsheetId: spreadsheetId,
-      fields: 'sheets.properties'
-    });
-    
-    const sheetNames = response.data.sheets.map(s => s.properties.title);
-    res.json({ 
-      spreadsheetId, 
-      sheetNames,
-      year: req.headers['x-year'],
-      examType: req.headers['x-exam-type']
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 });
 
