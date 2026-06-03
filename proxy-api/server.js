@@ -157,13 +157,14 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT (FIXED) ==========
+// ========== GET MARKS ENDPOINT (FIXED FOR 2025) ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
+    const year = req.headers['x-year'] || '2024';
     
-    console.log(`[GET MARKS] block=${block}, subject=${subject}, examType=${examType}`);
+    console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}`);
     
     if (examType === 'nck') {
       let sheetName = subject;
@@ -186,17 +187,14 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           const studentName = row[1] || row[0] || '';
           if (!studentName || studentName === 'S.NO' || studentName === 'SN NO') continue;
           
-          // Collect ALL 22 clinical scores (columns C-X, indices 2-23)
           const clinicalScores = [];
           for (let j = 2; j <= 23 && j < row.length; j++) {
             const score = parseFloat(row[j]);
             clinicalScores.push(isNaN(score) ? 0 : score);
           }
           
-          // Pad to 22 columns if needed
           while (clinicalScores.length < 22) clinicalScores.push(0);
           
-          // Calculate average from individual scores or use pre-calculated
           const validScores = clinicalScores.filter(s => s > 0);
           let finalScore = 0;
           if (validScores.length > 0) {
@@ -215,37 +213,65 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        // ASSESSMENT AND CASE sheet - dynamic column count
-        // Get headers to determine number of assessment columns
-        const headers = data[0] || [];
-        let assessmentStartCol = 2; // Column C
-        let assessmentEndCol = headers.length - 3; // Leave last 3 for total, status, graded by
+        // ===== ASSESSMENT AND CASE - FIXED FOR 2025 =====
+        // For 2025: 11 assessment columns (C through M)
+        // For 2024: 8 assessment columns (C through J)
+        
+        let assessmentCount = 11; // Default for 2025/2026
+        if (year === '2024') {
+          assessmentCount = 8;
+        }
+        
+        console.log(`[ASSESSMENT] Year ${year} using ${assessmentCount} assessment columns`);
         
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           if (!row[1]) continue;
           
+          const studentName = row[1] || '';
+          if (!studentName || studentName === 'NAME') continue;
+          
+          // Read exactly 'assessmentCount' columns starting from column C (index 2)
           const scores = [];
-          for (let j = assessmentStartCol; j <= assessmentEndCol && j < row.length; j++) {
-            const score = parseFloat(row[j]);
-            if (!isNaN(score)) scores.push(score);
+          for (let col = 2; col < 2 + assessmentCount; col++) {
+            let score = 0;
+            if (col < row.length && row[col] && row[col] !== '') {
+              const rawValue = row[col];
+              // Skip if it's a formula
+              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
+                score = 0;
+              } else {
+                score = parseFloat(rawValue) || 0;
+                // If score > 100, it's probably a TOTAL column, set to 0
+                if (score > 100) score = 0;
+              }
+            }
+            scores.push(score);
           }
+          
           const total = scores.reduce((a, b) => a + b, 0);
-          const average = scores.length > 0 ? total / scores.length : 0;
+          const validCount = scores.filter(s => s > 0).length;
+          const average = validCount > 0 ? total / validCount : 0;
+          
+          // Graded by is usually in column P (index 15)
+          let gradedBy = '';
+          if (row[15] && row[15] !== '') {
+            gradedBy = row[15];
+          }
           
           marks.push({
             row: i + 1,
             admission: row[0] || '',
-            name: row[1] || '',
+            name: studentName,
             scores: scores,
             total: total,
             final: average,
-            gradedBy: row[row.length - 1] || ''
+            gradedBy: gradedBy
           });
         }
       }
       
-      console.log(`[NCK] Returning ${marks.length} students`);
+      console.log(`[NCK] Returning ${marks.length} students with ${marks[0]?.scores?.length || 0} columns`);
       res.json(marks);
     } else {
       // Internal exams
@@ -283,75 +309,23 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT (FIXED FOR NCK) ==========
+// ========== SAVE MARKS ENDPOINT (FIXED FOR 2025) ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     const spreadsheetId = req.spreadsheetId;
+    const year = req.headers['x-year'] || '2024';
     
-    console.log(`[SAVE MARKS] block=${block}, subject=${subject}, examType=${examType}, marksCount=${marksData?.length}`);
+    console.log(`[SAVE MARKS] Year: ${year}, block=${block}, subject=${subject}, examType=${examType}, marksCount=${marksData?.length}`);
     
     if (examType === 'nck') {
       let sheetName = subject;
       
       if (sheetName === 'XY FORMS') {
-        // Save ALL 22 clinical areas for XY FORMS
         for (const mark of marksData) {
           const row = mark.row;
-          
-          // Update ALL 22 clinical area scores (columns C-X, indices 0-21)
           for (let col = 0; col < 22; col++) {
-            const score = mark.scores[col] || 0;
-            const columnLetter = String.fromCharCode(67 + col); // C=67, D=68, ..., X=88
-            await sheets.spreadsheets.values.update({
-              spreadsheetId,
-              range: `${sheetName}!${columnLetter}${row}`,
-              valueInputOption: 'RAW',
-              requestBody: { values: [[score]] }
-            });
-          }
-          
-          // Calculate average from all valid scores
-          const validScores = mark.scores.filter(s => s > 0);
-          let newAverage = 0;
-          if (validScores.length > 0) {
-            newAverage = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-          }
-          
-          // Update FINAL CLINICAL SCORE (column Y - index 24)
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!Y${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[newAverage.toFixed(2)]] }
-          });
-          
-          // Update graded by (column Z - index 25)
-          if (mark.gradedBy) {
-            await sheets.spreadsheets.values.update({
-              spreadsheetId,
-              range: `${sheetName}!Z${row}`,
-              valueInputOption: 'RAW',
-              requestBody: { values: [[mark.gradedBy]] }
-            });
-          }
-        }
-      } else {
-        // ASSESSMENT AND CASE sheet - dynamic column count
-        // First, get the current headers to determine column count
-        const headersResponse = await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: `${sheetName}!1:1`,
-        });
-        const headers = headersResponse.data.values?.[0] || [];
-        let assessmentColumns = headers.length - 4; // Subtract SN, NAME, TOTAL, GRADED_BY
-        
-        for (const mark of marksData) {
-          const row = mark.row;
-          
-          // Update assessment scores (start from column C)
-          for (let col = 0; col < mark.scores.length && col < assessmentColumns; col++) {
             const score = mark.scores[col] || 0;
             const columnLetter = String.fromCharCode(67 + col);
             await sheets.spreadsheets.values.update({
@@ -362,9 +336,49 @@ app.post('/api/marks', async (req, res) => {
             });
           }
           
-          // Calculate and update total
+          const validScores = mark.scores.filter(s => s > 0);
+          let newAverage = 0;
+          if (validScores.length > 0) {
+            newAverage = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+          }
+          
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!Y${row}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[newAverage.toFixed(2)]] }
+          });
+          
+          if (mark.gradedBy) {
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!Z${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[mark.gradedBy]] }
+            });
+          }
+        }
+      } else {
+        // ASSESSMENT AND CASE
+        let assessmentCount = 11;
+        if (year === '2024') assessmentCount = 8;
+        
+        for (const mark of marksData) {
+          const row = mark.row;
+          
+          for (let col = 0; col < assessmentCount && col < mark.scores.length; col++) {
+            const score = mark.scores[col] || 0;
+            const columnLetter = String.fromCharCode(67 + col);
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!${columnLetter}${row}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[score]] }
+            });
+          }
+          
           const total = mark.scores.reduce((a, b) => a + b, 0);
-          const totalColumnLetter = String.fromCharCode(67 + assessmentColumns);
+          const totalColumnLetter = String.fromCharCode(67 + assessmentCount);
           await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `${sheetName}!${totalColumnLetter}${row}`,
@@ -372,18 +386,8 @@ app.post('/api/marks', async (req, res) => {
             requestBody: { values: [[total]] }
           });
           
-          // Update average
-          const average = mark.scores.length > 0 ? (total / assessmentColumns).toFixed(2) : 0;
-          const avgColumnLetter = String.fromCharCode(68 + assessmentColumns);
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${sheetName}!${avgColumnLetter}${row}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[average]] }
-          });
-          
           if (mark.gradedBy) {
-            const gradedByColumnLetter = String.fromCharCode(69 + assessmentColumns);
+            const gradedByColumnLetter = String.fromCharCode(69 + assessmentCount);
             await sheets.spreadsheets.values.update({
               spreadsheetId,
               range: `${sheetName}!${gradedByColumnLetter}${row}`,
