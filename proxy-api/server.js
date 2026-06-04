@@ -243,7 +243,7 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT ==========
+// ========== GET MARKS ENDPOINT - FIXED FOR 12 COLUMNS ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -285,24 +285,50 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        let assessmentCount = (year === '2024') ? 8 : 11;
+        // ===== ASSESSMENT AND CASE - FIXED: Read ALL 12 columns (C through N) =====
+        // Column C = index 2 (ANC WARD) through Column N = index 13 (COMMUNITY DIAGNOSIS)
+        // Total 12 assessment columns
+        const assessmentStartCol = 2;  // Column C
+        const assessmentEndCol = 13;   // Column N
+        const assessmentCount = assessmentEndCol - assessmentStartCol + 1; // 12 columns
+        
+        console.log(`[ASSESSMENT] Reading ${assessmentCount} columns (${assessmentStartCol} to ${assessmentEndCol})`);
+        
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           if (!row || !row[1]) continue;
+          
           const scores = [];
-          for (let col = 2; col < 2 + assessmentCount; col++) {
+          // Read ALL 12 assessment columns (C through N)
+          for (let col = assessmentStartCol; col <= assessmentEndCol && col < row.length; col++) {
             let score = 0;
-            if (col < row.length && row[col] && row[col] !== '') {
+            if (row[col] && row[col] !== '') {
               const rawValue = row[col];
-              if (typeof rawValue === 'string' && rawValue.startsWith('=')) score = 0;
-              else score = parseFloat(rawValue) || 0;
-              if (score > 100) score = 0;
+              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
+                score = 0;
+              } else {
+                score = parseFloat(rawValue) || 0;
+                // DO NOT cap at 100 - case studies can have scores over 100 (e.g., 453)
+                // Only cap if it's unreasonably high (over 1000)
+                if (score > 1000) score = 0;
+              }
             }
             scores.push(score);
           }
+          
+          // Ensure we have exactly 12 scores
+          while (scores.length < assessmentCount) scores.push(0);
+          
           const total = scores.reduce((a, b) => a + b, 0);
           const validCount = scores.filter(s => s > 0).length;
           const average = validCount > 0 ? total / validCount : 0;
+          
+          // Graded by is in column Q (index 16)
+          let gradedBy = '';
+          if (row[16] && row[16] !== '') {
+            gradedBy = row[16];
+          }
+          
           marks.push({
             row: i + 1,
             admission: row[0] || '',
@@ -310,7 +336,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             scores: scores,
             total: total,
             final: average,
-            gradedBy: row[15] || ''
+            gradedBy: gradedBy
           });
         }
       }
@@ -438,7 +464,8 @@ app.post('/api/marks', async (req, res) => {
           }
         }
       } else {
-        let assessmentCount = (year === '2024') ? 8 : 11;
+        // ASSESSMENT AND CASE - Save all 12 columns (C through N)
+        const assessmentCount = 12;
         for (const mark of marksData) {
           const row = mark.row;
           for (let col = 0; col < assessmentCount && col < mark.scores.length; col++) {
