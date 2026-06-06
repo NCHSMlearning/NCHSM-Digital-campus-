@@ -123,7 +123,10 @@
   let currentAdminMarks = null, currentAdminAssessmentType = null, currentAdminBlock = null, currentAdminSubject = null;
   let currentNCKMarks = null, currentNCKSheet = null;
   let fastEntryVisible = false;
+  let autoSaveInterval = null;
+  let unsavedChanges = false;
   
+  // ======================= CORE FUNCTIONS =======================
   function showLoading(msg) { let l=document.querySelector('.loader'); if(l) l.remove(); l=document.createElement('div'); l.className='loader'; l.innerHTML=`<div class="spinner"></div><div class="loader-text">${msg||'Loading...'}</div>`; document.body.appendChild(l); }
   function hideLoading() { let l=document.querySelector('.loader'); if(l) l.remove(); }
   function showNotification(msg,isErr) { let t=document.createElement('div'); t.className='notification-toast'; if(isErr) t.classList.add('error'); t.innerHTML=`<i class="fas ${isErr?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
@@ -148,10 +151,38 @@
   function toggleDarkMode() { document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode',document.body.classList.contains('dark-mode')); }
   function closeModal() { document.querySelectorAll('.modal').forEach(m=>m.remove()); }
   
+  function startAutoSave(saveFunction, interval = 30000) {
+    if(autoSaveInterval) clearInterval(autoSaveInterval);
+    autoSaveInterval = setInterval(() => {
+      if(unsavedChanges && saveFunction) {
+        saveFunction();
+        unsavedChanges = false;
+        showNotification('Auto-saved!', 'warning');
+      }
+    }, interval);
+  }
+  function markUnsaved() { unsavedChanges = true; }
+  
+  function fillDownValues() { 
+    const inputs = document.querySelectorAll('#marksTable input[type="number"], #nckMarksContainer input[type="number"]'); 
+    if(inputs.length === 0){ 
+      showNotification('No inputs found', 'error'); 
+      return; 
+    } 
+    const val = inputs[0].value; 
+    for(let i = 1; i < inputs.length; i++){ 
+      inputs[i].value = val; 
+      inputs[i].dispatchEvent(new Event('change')); 
+    } 
+    showNotification(`Filled down: ${val || 'empty'} to ${inputs.length-1} cells`); 
+    markUnsaved(); 
+  }
+  
+  // ======================= LOGIN & MAIN =======================
   function checkLogin() { initDarkMode(); const saved=localStorage.getItem('nursingUser'); if(saved){ currentUser=JSON.parse(saved); const savedYear=localStorage.getItem('selectedYear'); currentYear=(savedYear&&INTAKE_YEARS.includes(savedYear))?savedYear:'2026'; showMain(); } else { showLogin(); } }
   function showLogin() { const yearOptions=INTAKE_YEARS.map(y=>`<option value="${y}" ${y==='2026'?'selected':''}>🎓 March ${y} Class</option>`).join(''); document.getElementById('app').innerHTML=`<div class="login-container"><div style="text-align:center;margin-bottom:24px;"><i class="fas fa-graduation-cap" style="font-size:48px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;color:transparent;"></i></div><h2>Nursing School System</h2><p style="text-align:center;color:#64748b;margin-bottom:32px;">Nakuru College of Health Sciences</p><select id="loginYear">${yearOptions}</select><input type="text" id="username" placeholder="👤 Username"><input type="password" id="password" placeholder="🔒 Password"><button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button><div id="loginError" style="color:#ef4444;margin-top:16px;text-align:center;"></div></div>`; }
   async function doLogin() { showLoading('Logging in...'); const username=document.getElementById('username').value; const password=document.getElementById('password').value; const year=document.getElementById('loginYear').value; currentYear=year; localStorage.setItem('selectedYear',currentYear); const result=await apiCall('/api/login',{method:'POST',body:JSON.stringify({username,password,year:currentYear})}); hideLoading(); if(result.success){ currentUser=result.user; localStorage.setItem('nursingUser',JSON.stringify(currentUser)); showMain(); showNotification(`Welcome ${currentUser.name}!`); } else { document.getElementById('loginError').innerHTML=result.message; } }
-  function logout() { localStorage.removeItem('nursingUser'); currentUser=null; configCache=null; showLogin(); }
+  function logout() { localStorage.removeItem('nursingUser'); currentUser=null; configCache=null; if(autoSaveInterval) clearInterval(autoSaveInterval); showLogin(); }
   
   async function showMain() { 
     showLoading('Loading Dashboard...'); 
@@ -288,7 +319,7 @@
           for (let mark of marks) {
             const admission = mark.admission;
             if (!allStudentPerformance[admission]) {
-              allStudentPerformance[admission] = { name: mark.name, subjects: [], totalScore: 0, subjectCount: 0, clinicalAvg: 0 };
+              allStudentPerformance[admission] = { name: mark.name, subjects: [], totalScore: 0, subjectCount: 0 };
             }
             const finalScore = parseFloat(mark.final) || 0;
             if (finalScore > 0) {
@@ -373,58 +404,229 @@
   
   async function showFullReports() { const students=await apiCall('/api/students',{}); exportToCSV(students,'students_report'); }
   
-  // ========== NCK MARKS (UPDATED TO 12 ASSESSMENT COLUMNS) ==========
-  async function showNCKMarks() { document.getElementById('contentArea').innerHTML=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div><div class="selector-group"><label><i class="fas fa-table-list"></i> Select Sheet:</label><select id="nckSheetSelect" style="min-width:250px;"><option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option><option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option></select><button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button></div><div id="nckMarksContainer"></div>`; document.getElementById('nckSheetSelect').onchange=()=>loadNCKMarks(); loadNCKMarks(); }
-  
-  async function loadNCKMarks() { const sheetName=document.getElementById('nckSheetSelect').value; showLoading(`Loading ${sheetName}...`); const marks=await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`,{}); console.log(`NCK ${sheetName} data:`,marks); if(sheetName==='XY FORMS'){ displayXYFormsMarks(marks); } else { displayAssessmentMarks(marks); } hideLoading(); }
-  
-  function displayXYFormsMarks(marks) { 
-    if(!marks||marks.length===0){ document.getElementById('nckMarksContainer').innerHTML='<div class="card" style="text-align:center;">No data found.</div>'; return; } 
-    const areaGroups=[{name:'🏥 MEDICAL',areas:['MED1','MED2','MED3']},{name:'🤰 MCH',areas:['MCH1','MCH2','MCH3']},{name:'🤱 MATERNITY',areas:['MAT1','MAT2','MAT3']},{name:'👶 PAEDIATRICS',areas:['PEAD1','PEAD2']},{name:'🔪 SURGERY',areas:['SURG1','SURG2','SURG3']},{name:'🚑 OTHER',areas:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; 
-    let html=`<div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><strong><i class="fas fa-bolt"></i> Quick Actions:</strong><button class="save-btn" onclick="openFastEntryPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>${currentUser.role==='admin'?`<button class="save-btn" onclick="showNCKColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}</div><div style="font-size:12px;color:#666;margin-top:8px;"><i class="fas fa-info-circle"></i> Tip: Click "Fast Entry Mode" for focused entry</div></div><div style="overflow-x:auto;"><table style="min-width:1200px;"><thead><tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;"><th>#</th><th>Student Name</th>`; for(let group of areaGroups){ html+=`<th colspan="${group.areas.length}" style="text-align:center;">${group.name}</th>`; } html+=`<th>Avg</th><th>Status</th><th>Graded By</th></tr></thead><tbody>`; 
-    currentNCKMarks=marks; 
-    for(let i=0;i<marks.length;i++){ 
-      const m=marks[i]; let scores=m.scores||[]; while(scores.length<22) scores.push(0); 
-      const validScores=scores.filter(s=>s>0); let avg=validScores.length?validScores.reduce((a,b)=>a+b,0)/validScores.length:(m.final||0); 
-      const status=avg>=60?'PASS':(validScores.length?'FAIL':'PENDING'); 
-      html+=`<tr class="${status==='PASS'?'pass-row':status==='FAIL'?'fail-row':'pending-row'}"><td>${i+1}</td><td><strong>${m.name||'Unnamed'}</strong></td>`; 
-      let scoreIdx=0; for(let group of areaGroups){ for(let area of group.areas){ const score=scores[scoreIdx]||0; html+=`<td><input type="number" id="xy_${i}_${scoreIdx}" value="${score}" min="0" max="100" step="0.5" style="width:55px" onchange="updateXYAverage(${i})"></td>`; scoreIdx++; } } 
-      html+=`<td id="xyAvg_${i}">${avg.toFixed(2)}</td><td id="xyStatus_${i}"><span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span></td><td><input type="text" id="xyGraded_${i}" value="${m.gradedBy||''}" placeholder="Lecturer" style="width:80px"></td></tr>`; 
-    } 
-    html+=`</tbody></table></div><div style="text-align:center;margin-top:20px;"><button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button></div>`; 
-    document.getElementById('nckMarksContainer').innerHTML=html; if(fastEntryVisible) closeFastEntryModal(); 
+  // ========== NCK MARKS - XY FORMS (FULLY IMPLEMENTED) ==========
+  async function showNCKMarks() { 
+    document.getElementById('contentArea').innerHTML=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div><div class="selector-group"><label><i class="fas fa-table-list"></i> Select Sheet:</label><select id="nckSheetSelect" style="min-width:250px;"><option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option><option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option></select><button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button></div><div id="nckMarksContainer"></div>`; 
+    document.getElementById('nckSheetSelect').onchange=()=>loadNCKMarks(); 
+    loadNCKMarks(); 
   }
   
-  // UPDATED: 12 assessment columns for ASSESSMENT AND CASE
+  async function loadNCKMarks() { 
+    const sheetName=document.getElementById('nckSheetSelect').value; 
+    showLoading(`Loading ${sheetName}...`); 
+    const marks=await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`,{}); 
+    console.log(`NCK ${sheetName} data:`,marks); 
+    if(sheetName==='XY FORMS'){ displayXYFormsMarks(marks); } else { displayAssessmentMarks(marks); } 
+    hideLoading(); 
+  }
+  
+  function displayXYFormsMarks(marks) { 
+    if(!marks||marks.length===0){ 
+      document.getElementById('nckMarksContainer').innerHTML='<div class="card" style="text-align:center;">No data found.</div>'; 
+      return; 
+    } 
+    
+    const areaGroups = [
+      {name:'🏥 MEDICAL', areas:['MED1','MED2','MED3']},
+      {name:'🤰 MCH', areas:['MCH1','MCH2','MCH3']},
+      {name:'🤱 MATERNITY', areas:['MAT1','MAT2','MAT3']},
+      {name:'👶 PAEDIATRICS', areas:['PEAD1','PEAD2']},
+      {name:'🔪 SURGERY', areas:['SURG1','SURG2','SURG3']},
+      {name:'🚑 OTHER', areas:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}
+    ]; 
+    
+    let html = `<div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
+        <button class="save-btn" onclick="openFastEntryPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>
+        ${currentUser.role==='admin'?`<button class="save-btn" onclick="showNCKColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}
+      </div>
+      <div style="font-size:12px;color:#666;margin-top:8px;">
+        <i class="fas fa-info-circle"></i> Tip: Click on student name to edit all marks in popup
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="min-width:1200px;">
+        <thead>
+          <tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+            <th style="position:sticky;left:0;background:#667eea;">#</th>
+            <th style="position:sticky;left:60px;background:#667eea;">Student Name</th>`;
+    
+    for(let group of areaGroups){ 
+      html += `<th colspan="${group.areas.length}" style="text-align:center;">${group.name}</th>`; 
+    } 
+    
+    html += `<th>Avg</th><th>Status</th><th>Graded By</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    
+    currentNCKMarks = marks; 
+    
+    for(let i = 0; i < marks.length; i++){ 
+      const m = marks[i]; 
+      let scores = m.scores || []; 
+      while(scores.length < 22) scores.push(0); 
+      
+      const validScores = scores.filter(s => s > 0); 
+      let avg = validScores.length ? validScores.reduce((a,b) => a+b, 0) / validScores.length : (m.final || 0); 
+      const status = avg >= 60 ? 'PASS' : (validScores.length ? 'FAIL' : 'PENDING'); 
+      const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row');
+      
+      const safeName = (m.name || 'Unnamed').replace(/'/g, "\\'");
+      
+      html += `<tr class="${rowClass}">
+        <td style="position:sticky;left:0;background:white;font-weight:500;">${i+1}</td>
+        <td style="position:sticky;left:60px;background:white;font-weight:500;cursor:pointer;color:#6366f1;text-decoration:underline;" 
+            onclick="openXYEditModal(${i}, '${safeName}')">
+          ${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i>
+        </td>`;
+      
+      let scoreIdx = 0; 
+      for(let group of areaGroups){ 
+        for(let area of group.areas){ 
+          const score = scores[scoreIdx] || 0; 
+          const scoreStyle = score > 0 ? 'background:#d1fae5;' : 'background:#fff3e0;';
+          html += `<td style="padding:4px;">
+            <input type="number" id="xy_${i}_${scoreIdx}" value="${score}" min="0" max="100" step="0.5" 
+                   style="width:55px;padding:4px;border-radius:6px;text-align:center;${scoreStyle}" 
+                   onchange="updateXYAverage(${i})">
+          </td>`; 
+          scoreIdx++; 
+        } 
+      } 
+      
+      html += `<td id="xyAvg_${i}" style="font-weight:bold;text-align:center;background:${avg>=60?'#d1fae5':'#fee2e2'};">${avg.toFixed(2)}</td>
+        <td id="xyStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span></td>
+        <td style="padding:4px;"><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width:80px;padding:4px;border-radius:6px;"></td>
+      </tr>`; 
+    } 
+    
+    html += `</tbody>
+      </table>
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
+    </div>`; 
+    
+    document.getElementById('nckMarksContainer').innerHTML = html; 
+    if(fastEntryVisible) closeFastEntryModal(); 
+  }
+  
+  // ========== XY FORMS EDIT MODAL ==========
+  function openXYEditModal(studentIdx, studentName) {
+    const m = currentNCKMarks[studentIdx];
+    if (!m) return;
+    
+    const scores = m.scores || [];
+    const gradedBy = m.gradedBy || '';
+    
+    const areaNames = [
+      'MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3',
+      'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2',
+      'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 
+      'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL'
+    ];
+    
+    const groups = [
+      { title: '🏥 MEDICAL', start: 0, end: 2 },
+      { title: '🤰 MCH', start: 3, end: 5 },
+      { title: '🤱 MATERNITY', start: 6, end: 8 },
+      { title: '👶 PAEDIATRICS', start: 9, end: 10 },
+      { title: '🔪 SURGERY', start: 11, end: 13 },
+      { title: '🚑 OTHER', start: 14, end: 21 }
+    ];
+    
+    let groupsHtml = '';
+    for (let group of groups) {
+      groupsHtml += `<div style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;">
+        <h4 style="margin-bottom:12px;color:#667eea;">${group.title}</h4>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">`;
+      for (let i = group.start; i <= group.end; i++) {
+        const score = scores[i] || 0;
+        groupsHtml += `
+          <div>
+            <label style="display:inline-block;width:80px;font-weight:600;">${areaNames[i]}:</label>
+            <input type="number" id="edit_xy_${i}" value="${score}" min="0" max="100" step="0.5" 
+                   style="width:80px;padding:6px;border-radius:8px;border:1px solid #ccc;">
+          </div>
+        `;
+      }
+      groupsHtml += `</div></div>`;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    
+    modal.innerHTML = `
+      <div style="background:white;border-radius:24px;width:650px;max-width:95%;max-height:85vh;overflow-y:auto;">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px 20px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;"><i class="fas fa-edit"></i> Edit Clinical Marks - ${studentName}</h3>
+          <button class="back-btn" onclick="this.closest('.modal').remove()" style="padding:6px 12px;background:rgba(255,255,255,0.2);">&times;</button>
+        </div>
+        <div style="padding:20px;">
+          ${groupsHtml}
+          <div style="margin-top:20px;padding-top:15px;border-top:1px solid #e2e8f0;">
+            <label style="display:block;font-weight:600;margin-bottom:8px;">✍️ Graded By (Lecturer Name):</label>
+            <input type="text" id="edit_xy_graded_by" value="${gradedBy}" placeholder="Enter your name" 
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+            <button class="back-btn" onclick="this.closest('.modal').remove()">Cancel</button>
+            <button class="save-btn" onclick="saveXYEditedMarks(${studentIdx}, '${studentName}')">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+  
+  function saveXYEditedMarks(studentIdx, studentName) {
+    for (let i = 0; i < 22; i++) {
+      const editInput = document.getElementById(`edit_xy_${i}`);
+      if (editInput) {
+        const mainInput = document.getElementById(`xy_${studentIdx}_${i}`);
+        if (mainInput) {
+          mainInput.value = editInput.value;
+          mainInput.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+    
+    const editGraded = document.getElementById('edit_xy_graded_by');
+    if (editGraded) {
+      const mainGraded = document.getElementById(`xyGraded_${studentIdx}`);
+      if (mainGraded) {
+        mainGraded.value = editGraded.value;
+      }
+    }
+    
+    updateXYAverage(studentIdx);
+    
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+    
+    showNotification(`✅ Marks saved for ${studentName}`, false);
+  }
+  
+  // ========== ASSESSMENT AND CASE DISPLAY ==========
   function displayAssessmentMarks(marks) {
     if (!marks || marks.length === 0) { 
       document.getElementById('nckMarksContainer').innerHTML = '<div class="card" style="text-align:center;">No assessment data found.</div>'; 
       return; 
     }
     
-    // 12 assessment columns (8 Practical + 4 Case Studies)
     const columnCount = 12;
     let assessmentNames = [
-      // 8 Practical Assessments
-      'ANC WARD',
-      'PREGNANT WOMAN ASSESSMENT',
-      'NURSING CARE',
-      'PSYCHIATRY ASSESSMENT',
-      'NBU ASSESSMENT',
-      'MIDWIFERY ASSESSMENT',
-      'WARD MANAGEMENT',
-      'MCH/FP CLINIC',
-      // 4 Case Studies
-      'PSYCHIATRY CASE STUDY',
-      'GENERAL NURSING CASE STUDY',
-      'MIDWIFERY CASE STUDY',
-      'COMMUNITY DIAGNOSIS'
+      'ANC WARD', 'PREGNANT WOMAN ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
+      'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
+      'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
     ];
     
-    // Save column names
     localStorage.setItem(`assessmentColumnNames_${currentYear}`, JSON.stringify(assessmentNames));
     
-    // Build column headers
     let columnHeaders = ''; 
     for (let i = 0; i < columnCount; i++) { 
       columnHeaders += `<th>${assessmentNames[i]}<br><span style="font-size:9px;font-weight:normal;">(0-100)</span></th>`; 
@@ -437,7 +639,7 @@
         <button class="save-btn" onclick="openFastAssessmentPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>
       </div>
       <div style="font-size:12px;color:#666;margin-top:8px;">
-        <i class="fas fa-info-circle"></i> 8 Practical Assessments + 4 Case Studies | Total = Sum of all | Average = Total / 12
+        <i class="fas fa-info-circle"></i> Tip: Click on student name to edit marks
       </div>
     </div>
     <div style="overflow-x:auto;">
@@ -460,12 +662,9 @@
     for (let i = 0; i < marks.length; i++) { 
       const m = marks[i]; 
       let scores = m.scores || []; 
-      
-      // Ensure we have exactly 12 scores
       while (scores.length < columnCount) scores.push(0);
       scores = scores.slice(0, columnCount);
       
-      // Calculate total and average
       const validScores = scores.filter(s => typeof s === 'number' && !isNaN(s) && s > 0);
       const total = validScores.reduce((a, b) => a + b, 0);
       const average = validScores.length > 0 ? (total / columnCount) : 0;
@@ -475,9 +674,14 @@
       let gradedBy = m.gradedBy || ''; 
       if (gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().includes('.')) gradedBy = ''; 
       
+      const safeName = (m.name || 'Unnamed').replace(/'/g, "\\'");
+      
       html += `<tr class="${rowClass}">
         <td style="position:sticky;left:0;background:white;font-weight:500;">${i+1}</td>
-        <td style="position:sticky;left:60px;background:white;font-weight:500;cursor:pointer;" onclick="openFastAssessmentEntry(${i}, '${(m.name || 'Unnamed').replace(/'/g, "\\'")}')">${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i></td>`;
+        <td style="position:sticky;left:60px;background:white;font-weight:500;cursor:pointer;color:#6366f1;text-decoration:underline;" 
+            onclick="openAssessmentEditModal(${i}, '${safeName}')">
+          ${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i>
+        </td>`;
       
       for (let c = 0; c < columnCount; c++) { 
         const score = scores[c]; 
@@ -485,7 +689,8 @@
         const scoreStyle = hasScore ? 'background:#d1fae5;' : 'background:#fff3e0;';
         const displayValue = hasScore ? score : '';
         html += `<td style="padding:4px;">
-          <input type="number" id="ac_${i}_${c}" value="${displayValue}" min="0" max="100" step="0.5" style="width:70px;padding:6px;border-radius:8px;text-align:center;${scoreStyle}" placeholder="-" onchange="updateACTotal(${i})">
+          <input type="number" id="ac_${i}_${c}" value="${displayValue}" min="0" max="100" step="0.5" 
+                 style="width:70px;padding:6px;border-radius:8px;text-align:center;${scoreStyle}" placeholder="-" onchange="updateACTotal(${i})">
         </td>`; 
       } 
       
@@ -496,17 +701,109 @@
       </tr>`; 
     } 
     
-    html += `</tbody></table></div>
-      <div style="text-align:center;margin-top:20px;">
-        <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
-      </div>`; 
+    html += `</tbody>
+      </table>
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <button class="save-btn" onclick="saveNCKMarks()"><i class="fas fa-save"></i> Save All NCK Marks</button>
+    </div>`; 
     
     document.getElementById('nckMarksContainer').innerHTML = html; 
     if (fastEntryVisible) closeFastEntryModal(); 
   }
   
+  // ========== ASSESSMENT EDIT MODAL ==========
+  function openAssessmentEditModal(studentIdx, studentName) {
+    const m = currentNCKMarks[studentIdx];
+    if (!m) return;
+    
+    const columnCount = 12;
+    const assessmentNames = [
+      'ANC WARD', 'PREGNANT WOMAN ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
+      'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
+      'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
+    ];
+    const scores = m.scores || [];
+    const gradedBy = m.gradedBy || '';
+    
+    let areasHtml = '';
+    for (let i = 0; i < columnCount; i++) {
+      const score = scores[i] || 0;
+      areasHtml += `
+        <div style="margin-bottom:10px;">
+          <label style="display:inline-block;width:200px;font-weight:600;">${assessmentNames[i]}:</label>
+          <input type="number" id="edit_assessment_${i}" value="${score}" min="0" max="100" step="0.5" 
+                 style="width:80px;padding:6px;border-radius:8px;border:1px solid #ccc;">
+        </div>
+      `;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    
+    modal.innerHTML = `
+      <div style="background:white;border-radius:24px;width:500px;max-width:95%;max-height:85vh;overflow-y:auto;">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px 20px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;"><i class="fas fa-edit"></i> Edit Assessment - ${studentName}</h3>
+          <button class="back-btn" onclick="this.closest('.modal').remove()" style="padding:6px 12px;background:rgba(255,255,255,0.2);">&times;</button>
+        </div>
+        <div style="padding:20px;">
+          <div style="max-height:400px;overflow-y:auto;padding:10px;">
+            ${areasHtml}
+          </div>
+          <div style="margin-top:20px;padding-top:15px;border-top:1px solid #e2e8f0;">
+            <label style="display:block;font-weight:600;margin-bottom:8px;">✍️ Graded By (Lecturer Name):</label>
+            <input type="text" id="edit_assessment_graded_by" value="${gradedBy}" placeholder="Enter your name" 
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+            <button class="back-btn" onclick="this.closest('.modal').remove()">Cancel</button>
+            <button class="save-btn" onclick="saveAssessmentEditedMarks(${studentIdx}, '${studentName}')">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+  
+  function saveAssessmentEditedMarks(studentIdx, studentName) {
+    const columnCount = 12;
+    for (let i = 0; i < columnCount; i++) {
+      const editInput = document.getElementById(`edit_assessment_${i}`);
+      if (editInput) {
+        const mainInput = document.getElementById(`ac_${studentIdx}_${i}`);
+        if (mainInput) {
+          mainInput.value = editInput.value;
+          mainInput.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+    
+    const editGraded = document.getElementById('edit_assessment_graded_by');
+    if (editGraded) {
+      const mainGraded = document.getElementById(`acGraded_${studentIdx}`);
+      if (mainGraded) {
+        mainGraded.value = editGraded.value;
+      }
+    }
+    
+    updateACTotal(studentIdx);
+    
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+    
+    showNotification(`✅ Assessment marks saved for ${studentName}`, false);
+  }
+  
+  // ========== UPDATE FUNCTIONS ==========
   window.updateXYAverage = function(idx) { 
-    let scores=[]; for(let c=0;c<22;c++){ const val=parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value); if(!isNaN(val)&&val>0) scores.push(val); } 
+    let scores=[]; 
+    for(let c=0;c<22;c++){ 
+      const val=parseFloat(document.getElementById(`xy_${idx}_${c}`)?.value); 
+      if(!isNaN(val)&&val>0) scores.push(val); 
+    } 
     const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0; 
     const status=avg>=60?'PASS':(scores.length?'FAIL':'PENDING'); 
     document.getElementById(`xyAvg_${idx}`).innerHTML=avg.toFixed(2); 
@@ -515,7 +812,6 @@
     if(row) row.className=status==='PASS'?'pass-row':(status==='FAIL'?'fail-row':'pending-row'); 
   };
   
-  // UPDATED: 12 columns for updateACTotal
   window.updateACTotal = function(idx) { 
     const columnCount = 12;
     let scores = []; 
@@ -546,7 +842,6 @@
     if(row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row'); 
   };
   
-  // UPDATED: Save with 12 columns
   window.saveNCKMarks = async function() { 
     const sheetName = document.getElementById('nckSheetSelect').value; 
     let marksData = []; 
@@ -589,46 +884,880 @@
     if (result.success) loadNCKMarks(); 
   };
   
-  // ========== FAST ENTRY FUNCTIONS ==========
-  function openFastEntryPanel() { if(!currentNCKMarks||currentNCKMarks.length===0){ showNotification('No data loaded',true); return; } if(fastEntryVisible){ closeFastEntryModal(); return; } const areaGroups=[{title:'🏥 MEDICAL',cols:[0,1,2],names:['MED1','MED2','MED3']},{title:'🤰 MCH',cols:[3,4,5],names:['MCH1','MCH2','MCH3']},{title:'🤱 MATERNITY',cols:[6,7,8],names:['MAT1','MAT2','MAT3']},{title:'👶 PAEDIATRICS',cols:[9,10],names:['PEAD1','PEAD2']},{title:'🔪 SURGERY',cols:[11,12,13],names:['SURG1','SURG2','SURG3']},{title:'🚑 OTHER',cols:[14,15,16,17,18,19,20,21],names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; const modal=document.createElement('div'); modal.id='fastEntryModal'; modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; modal.innerHTML=`<div style="background:white;border-radius:24px;max-width:1400px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;"><div style="display:flex;align-items:center;gap:15px;"><i class="fas fa-expand-alt" style="font-size:20px;"></i><span style="font-size:20px;font-weight:700;"><i class="fas fa-bolt"></i> Full Screen Fast Entry - XY FORMS (March ${currentYear})</span></div><div><button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;font-weight:600;"><i class="fas fa-times"></i> Close (ESC)</button></div></div><div style="padding:24px;"><div style="margin-bottom:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;"><div style="flex:2;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-user-graduate"></i> Select Student:</label><select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;border:2px solid #e2e8f0;font-size:14px;font-weight:500;">${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}</select></div><div style="flex:1;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-chart-line"></i> Current Average:</label><div id="currentAvgDisplay" style="padding:12px;background:#f0fdf4;border-radius:12px;font-weight:bold;text-align:center;font-size:18px;">0.00</div></div><div style="flex:1;"><label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-flag-checkered"></i> Status:</label><div id="currentStatusDisplay" style="padding:12px;background:#fef3c7;border-radius:12px;font-weight:bold;text-align:center;">PENDING</div></div></div><div id="fastEntryFields" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;"></div><div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;"><button class="save-btn" onclick="applyFastEntry()" style="flex:1;padding:14px;font-size:16px;"><i class="fas fa-save"></i> Save & Next Student (Enter)</button><button class="back-btn" onclick="applyFastEntryAndStay()" style="flex:1;padding:14px;font-size:16px;">Save & Stay (Shift+Enter)</button><button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;padding:14px;">Close (ESC)</button></div><div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;"><i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Enter</kbd> = Save & Next | <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Shift+Enter</kbd> = Save & Stay | <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">ESC</kbd> = Close</div></div></div>`; document.body.appendChild(modal); fastEntryVisible=true; loadFastEntryFields(0); document.getElementById('fastStudentSelect').onchange=()=>{ loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value)); }; document.addEventListener('keydown',handleFastEntryKeyboard); }
+  // ========== FAST ENTRY FUNCTIONS (FULLY IMPLEMENTED) ==========
+  function openFastEntryPanel() { 
+    if(!currentNCKMarks||currentNCKMarks.length===0){ 
+      showNotification('No data loaded', true); 
+      return; 
+    } 
+    if(fastEntryVisible){ 
+      closeFastEntryModal(); 
+      return; 
+    } 
+    
+    const areaGroups = [
+      {title:'🏥 MEDICAL', cols:[0,1,2], names:['MED1','MED2','MED3']},
+      {title:'🤰 MCH', cols:[3,4,5], names:['MCH1','MCH2','MCH3']},
+      {title:'🤱 MATERNITY', cols:[6,7,8], names:['MAT1','MAT2','MAT3']},
+      {title:'👶 PAEDIATRICS', cols:[9,10], names:['PEAD1','PEAD2']},
+      {title:'🔪 SURGERY', cols:[11,12,13], names:['SURG1','SURG2','SURG3']},
+      {title:'🚑 OTHER', cols:[14,15,16,17,18,19,20,21], names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}
+    ]; 
+    
+    const modal = document.createElement('div'); 
+    modal.id = 'fastEntryModal'; 
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; 
+    
+    modal.innerHTML = `
+      <div style="background:white;border-radius:24px;max-width:1400px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;">
+          <div style="display:flex;align-items:center;gap:15px;">
+            <i class="fas fa-expand-alt" style="font-size:20px;"></i>
+            <span style="font-size:20px;font-weight:700;"><i class="fas fa-bolt"></i> Full Screen Fast Entry - XY FORMS (March ${currentYear})</span>
+          </div>
+          <div>
+            <button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;font-weight:600;">
+              <i class="fas fa-times"></i> Close (ESC)
+            </button>
+          </div>
+        </div>
+        <div style="padding:24px;">
+          <div style="margin-bottom:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+            <div style="flex:2;">
+              <label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-user-graduate"></i> Select Student:</label>
+              <select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;border:2px solid #e2e8f0;font-size:14px;font-weight:500;">
+                ${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
+              </select>
+            </div>
+            <div style="flex:1;">
+              <label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-chart-line"></i> Current Average:</label>
+              <div id="currentAvgDisplay" style="padding:12px;background:#f0fdf4;border-radius:12px;font-weight:bold;text-align:center;font-size:18px;">0.00</div>
+            </div>
+            <div style="flex:1;">
+              <label style="font-weight:600;display:block;margin-bottom:8px;"><i class="fas fa-flag-checkered"></i> Status:</label>
+              <div id="currentStatusDisplay" style="padding:12px;background:#fef3c7;border-radius:12px;font-weight:bold;text-align:center;">PENDING</div>
+            </div>
+          </div>
+          <div id="fastEntryFields" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;"></div>
+          <div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;">
+            <button class="save-btn" onclick="applyFastEntry()" style="flex:1;padding:14px;font-size:16px;">
+              <i class="fas fa-save"></i> Save & Next Student (Enter)
+            </button>
+            <button class="back-btn" onclick="applyFastEntryAndStay()" style="flex:1;padding:14px;font-size:16px;">
+              Save & Stay (Shift+Enter)
+            </button>
+            <button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;padding:14px;">
+              Close (ESC)
+            </button>
+          </div>
+          <div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;">
+            <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> 
+            <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Enter</kbd> = Save & Next | 
+            <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">Shift+Enter</kbd> = Save & Stay | 
+            <kbd style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">ESC</kbd> = Close
+          </div>
+        </div>
+      </div>
+    `; 
+    
+    document.body.appendChild(modal); 
+    fastEntryVisible = true; 
+    loadFastEntryFields(0); 
+    
+    document.getElementById('fastStudentSelect').onchange = () => { 
+      loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value)); 
+    }; 
+    
+    document.addEventListener('keydown', handleFastEntryKeyboard); 
+  }
   
-  function handleFastEntryKeyboard(e) { if(!fastEntryVisible) return; if(e.key==='Escape'){ closeFastEntryModal(); } else if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); applyFastEntry(); } else if(e.key==='Enter'&&e.shiftKey){ e.preventDefault(); applyFastEntryAndStay(); } }
-  function closeFastEntryModal() { const modal=document.getElementById('fastEntryModal'); if(modal) modal.remove(); fastEntryVisible=false; document.removeEventListener('keydown',handleFastEntryKeyboard); }
-  function loadFastEntryFields(studentIdx) { const container=document.getElementById('fastEntryFields'); if(!container) return; const scores=[]; for(let c=0;c<22;c++){ const input=document.getElementById(`xy_${studentIdx}_${c}`); scores.push(input?input.value:0); } const gradedBy=document.getElementById(`xyGraded_${studentIdx}`)?.value||''; const validScores=scores.filter(s=>parseFloat(s)>0); let currentAvg=0; if(validScores.length>0){ currentAvg=validScores.reduce((a,b)=>parseFloat(a)+parseFloat(b),0)/validScores.length; } const currentStatus=currentAvg>=60?'PASS':(validScores.length>0?'FAIL':'PENDING'); document.getElementById('currentAvgDisplay').innerHTML=currentAvg.toFixed(2); document.getElementById('currentStatusDisplay').innerHTML=`<span class="badge ${currentStatus==='PASS'?'badge-pass':'badge-fail'}">${currentStatus}</span>`; const areaGroups=[{title:'🏥 MEDICAL',cols:[0,1,2],names:['MED1','MED2','MED3']},{title:'🤰 MCH',cols:[3,4,5],names:['MCH1','MCH2','MCH3']},{title:'🤱 MATERNITY',cols:[6,7,8],names:['MAT1','MAT2','MAT3']},{title:'👶 PAEDIATRICS',cols:[9,10],names:['PEAD1','PEAD2']},{title:'🔪 SURGERY',cols:[11,12,13],names:['SURG1','SURG2','SURG3']},{title:'🚑 OTHER',cols:[14,15,16,17,18,19,20,21],names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}]; let html=``; for(let group of areaGroups){ html+=`<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;"><h4 style="margin-bottom:15px;color:#667eea;font-size:16px;">${group.title}</h4>`; for(let i=0;i<group.cols.length;i++){ const colIdx=group.cols[i]; const score=scores[colIdx]||0; html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><label style="font-size:14px;font-weight:500;">${group.names[i]}:</label><input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" style="width:100px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;text-align:center;" onchange="updateFastPreview(${studentIdx})" onkeypress="handleFastEntryKey(event, ${colIdx})"></div>`; } html+=`</div>`; } html+=`<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;"><h4 style="margin-bottom:15px;color:#667eea;">📝 Grading Information</h4><div style="display:flex;justify-content:space-between;align-items:center;"><label style="font-size:14px;font-weight:500;">Graded By (Lecturer Name):</label><input type="text" id="fast_graded" value="${gradedBy}" placeholder="Enter your name" style="flex:1;margin-left:20px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;"></div></div>`; container.innerHTML=html; setTimeout(()=>{ const firstInput=container.querySelector('input[type="number"]'); if(firstInput) firstInput.focus(); },100); }
-  function updateFastPreview(studentIdx) { let scores=[]; for(let c=0;c<22;c++){ const val=parseFloat(document.getElementById(`fast_${c}`)?.value); scores.push(isNaN(val)?0:val); } const validScores=scores.filter(s=>s>0); let avg=0; if(validScores.length>0){ avg=validScores.reduce((a,b)=>a+b,0)/validScores.length; } const status=avg>=60?'PASS':(validScores.length>0?'FAIL':'PENDING'); document.getElementById('currentAvgDisplay').innerHTML=avg.toFixed(2); document.getElementById('currentStatusDisplay').innerHTML=`<span class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span>`; }
-  function handleFastEntryKey(event,colIdx) { if(event.key==='Enter'){ event.preventDefault(); const nextCol=colIdx+1; const nextInput=document.getElementById(`fast_${nextCol}`); if(nextInput){ nextInput.focus(); } else { applyFastEntry(); } } }
-  function applyFastEntry() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); for(let c=0;c<22;c++){ const fastVal=document.getElementById(`fast_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`xy_${studentIdx}_${c}`); if(mainInput) mainInput.value=fastVal; } } const gradedVal=document.getElementById('fast_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`xyGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateXYAverage(studentIdx); const nextIdx=studentIdx+1; if(nextIdx<currentNCKMarks.length){ document.getElementById('fastStudentSelect').value=nextIdx; loadFastEntryFields(nextIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`); } else { closeFastEntryModal(); showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.'); } }
-  function applyFastEntryAndStay() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); for(let c=0;c<22;c++){ const fastVal=document.getElementById(`fast_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`xy_${studentIdx}_${c}`); if(mainInput) mainInput.value=fastVal; } } const gradedVal=document.getElementById('fast_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`xyGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateXYAverage(studentIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`); }
-  function openFastEntryForStudent(studentIdx,studentName) { openFastEntryPanel(); setTimeout(()=>{ const select=document.getElementById('fastStudentSelect'); if(select){ select.value=studentIdx; loadFastEntryFields(studentIdx); } },200); }
+  function handleFastEntryKeyboard(e) { 
+    if(!fastEntryVisible) return; 
+    if(e.key === 'Escape'){ 
+      closeFastEntryModal(); 
+    } else if(e.key === 'Enter' && !e.shiftKey){ 
+      e.preventDefault(); 
+      applyFastEntry(); 
+    } else if(e.key === 'Enter' && e.shiftKey){ 
+      e.preventDefault(); 
+      applyFastEntryAndStay(); 
+    } 
+  }
   
-  function openFastAssessmentPanel() { if(!currentNCKMarks||currentNCKMarks.length===0){ showNotification('No data loaded',true); return; } if(fastEntryVisible){ closeFastEntryModal(); return; } const columnCount=12; let assessmentNames=['ANC WARD','PREGNANT WOMAN ASSESSMENT','NURSING CARE','PSYCHIATRY ASSESSMENT','NBU ASSESSMENT','MIDWIFERY ASSESSMENT','WARD MANAGEMENT','MCH/FP CLINIC','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','COMMUNITY DIAGNOSIS']; const savedNames=localStorage.getItem(`assessmentColumnNames_${currentYear}`); if(savedNames){ assessmentNames=JSON.parse(savedNames); } const modal=document.createElement('div'); modal.id='fastEntryModal'; modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; modal.innerHTML=`<div style="background:white;border-radius:24px;max-width:700px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;"><div><i class="fas fa-expand-alt"></i> <strong>Full Screen Fast Entry - Assessments (March ${currentYear})</strong></div><button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;"><i class="fas fa-times"></i> Close (ESC)</button></div><div style="padding:24px;"><div style="margin-bottom:20px;"><label style="font-weight:600;">Select Student:</label><select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;margin-top:8px;">${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}</select></div><div id="fastAssessmentFields"></div><div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;"><button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex:1;padding:14px;"><i class="fas fa-save"></i> Save & Next (Enter)</button><button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex:1;padding:14px;">Save & Stay (Shift+Enter)</button><button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;">Close (ESC)</button></div><div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;"><i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> Enter = Save & Next | Shift+Enter = Save & Stay | ESC = Close</div></div></div>`; document.body.appendChild(modal); fastEntryVisible=true; loadFastAssessmentFields(0); document.getElementById('fastStudentSelect').onchange=()=>{ loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value)); }; }
+  function closeFastEntryModal() { 
+    const modal = document.getElementById('fastEntryModal'); 
+    if(modal) modal.remove(); 
+    fastEntryVisible = false; 
+    document.removeEventListener('keydown', handleFastEntryKeyboard); 
+  }
   
-  function loadFastAssessmentFields(studentIdx) { const container=document.getElementById('fastAssessmentFields'); if(!container) return; const columnCount=12; const scores=[]; for(let c=0;c<columnCount;c++){ const input=document.getElementById(`ac_${studentIdx}_${c}`); let val=input?input.value:''; if(val===''||val===undefined) val=0; scores.push(parseFloat(val)||0); } let gradedBy=document.getElementById(`acGraded_${studentIdx}`)?.value||''; if(gradedBy&&!isNaN(parseFloat(gradedBy))&&gradedBy.toString().length>2&&!isNaN(parseInt(gradedBy))){ gradedBy=''; } const total=scores.reduce((a,b)=>a+b,0); const average=columnCount>0?(total/columnCount).toFixed(2):0; const status=average>=60?'PASS':(scores.some(s=>s>0)?'FAIL':'PENDING'); let assessmentNames=['ANC WARD','PREGNANT WOMAN ASSESSMENT','NURSING CARE','PSYCHIATRY ASSESSMENT','NBU ASSESSMENT','MIDWIFERY ASSESSMENT','WARD MANAGEMENT','MCH/FP CLINIC','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','COMMUNITY DIAGNOSIS']; const savedNames=localStorage.getItem(`assessmentColumnNames_${currentYear}`); if(savedNames){ assessmentNames=JSON.parse(savedNames); } let assessmentInputs=''; for(let c=0;c<columnCount;c++){ const colName=assessmentNames[c]||`Assessment ${c+1}`; const scoreValue=scores[c]||0; const hasScore=scoreValue>0; const inputStyle=hasScore?'border:2px solid #10b981;':'border:2px solid #f59e0b;background:#fef3c7;'; assessmentInputs+=`<div style="margin-bottom:15px;"><label style="font-weight:600;display:block;margin-bottom:8px;">📋 ${colName}:</label><input type="number" id="fast_ac_${c}" value="${scoreValue}" min="0" max="100" step="0.5" style="width:100%;padding:12px;border-radius:8px;${inputStyle}" onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, ${c})">${scoreValue===0?'<span style="font-size:11px;color:#f59e0b;">⚠️ Score not entered yet</span>':''}</div>`; } container.innerHTML=`<div style="margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:15px;"><div style="padding:15px;background:#d1fae5;border-radius:12px;text-align:center;"><strong>Total Score:</strong><br><span id="currentTotalDisplay" style="font-size:28px;font-weight:bold;">${total}</span></div><div style="padding:15px;background:${average>=60?'#d1fae5':'#fee2e2'};border-radius:12px;text-align:center;"><strong>Average Score:</strong><br><span id="currentAverageDisplay" style="font-size:28px;font-weight:bold;">${average}%</span></div></div><div style="margin-bottom:15px;padding:10px;background:#f0fdf4;border-radius:12px;text-align:center;"><strong>Status: <span id="currentAssessmentStatus" class="badge ${status==='PASS'?'badge-pass':'badge-fail'}">${status}</span></strong></div><div style="border:1px solid #e2e8f0;border-radius:16px;padding:24px;background:#fafafa;">${assessmentInputs}<div style="margin-top:20px;padding-top:15px;border-top:1px solid #e2e8f0;"><label style="font-weight:600;display:block;margin-bottom:8px;">✍️ Graded By (Lecturer Name):</label><input type="text" id="fast_ac_graded" value="${gradedBy}" placeholder="Enter your name" style="width:100%;padding:12px;border-radius:8px;border:1px solid #cbd5e1;"></div></div>`; setTimeout(()=>{ const firstInput=container.querySelector('input[type="number"]'); if(firstInput) firstInput.focus(); },100); }
+  function loadFastEntryFields(studentIdx) { 
+    const container = document.getElementById('fastEntryFields'); 
+    if(!container) return; 
+    
+    const scores = []; 
+    for(let c = 0; c < 22; c++){ 
+      const input = document.getElementById(`xy_${studentIdx}_${c}`); 
+      scores.push(input ? input.value : 0); 
+    } 
+    
+    const gradedBy = document.getElementById(`xyGraded_${studentIdx}`)?.value || ''; 
+    const validScores = scores.filter(s => parseFloat(s) > 0); 
+    let currentAvg = 0; 
+    if(validScores.length > 0){ 
+      currentAvg = validScores.reduce((a,b) => parseFloat(a) + parseFloat(b), 0) / validScores.length; 
+    } 
+    const currentStatus = currentAvg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING'); 
+    
+    document.getElementById('currentAvgDisplay').innerHTML = currentAvg.toFixed(2); 
+    document.getElementById('currentStatusDisplay').innerHTML = `<span class="badge ${currentStatus === 'PASS' ? 'badge-pass' : 'badge-fail'}">${currentStatus}</span>`; 
+    
+    const areaGroups = [
+      {title:'🏥 MEDICAL', cols:[0,1,2], names:['MED1','MED2','MED3']},
+      {title:'🤰 MCH', cols:[3,4,5], names:['MCH1','MCH2','MCH3']},
+      {title:'🤱 MATERNITY', cols:[6,7,8], names:['MAT1','MAT2','MAT3']},
+      {title:'👶 PAEDIATRICS', cols:[9,10], names:['PEAD1','PEAD2']},
+      {title:'🔪 SURGERY', cols:[11,12,13], names:['SURG1','SURG2','SURG3']},
+      {title:'🚑 OTHER', cols:[14,15,16,17,18,19,20,21], names:['OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']}
+    ]; 
+    
+    let html = ''; 
+    for(let group of areaGroups){ 
+      html += `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;">
+        <h4 style="margin-bottom:15px;color:#667eea;font-size:16px;">${group.title}</h4>`;
+      for(let i = 0; i < group.cols.length; i++){ 
+        const colIdx = group.cols[i]; 
+        const score = scores[colIdx] || 0; 
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <label style="font-size:14px;font-weight:500;">${group.names[i]}:</label>
+          <input type="number" id="fast_${colIdx}" value="${score}" min="0" max="100" step="0.5" 
+                 style="width:100px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;text-align:center;" 
+                 onchange="updateFastPreview(${studentIdx})" onkeypress="handleFastEntryKey(event, ${colIdx})">
+        </div>`; 
+      } 
+      html += `</div>`; 
+    } 
+    
+    html += `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#fafafa;">
+      <h4 style="margin-bottom:15px;color:#667eea;">📝 Grading Information</h4>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <label style="font-size:14px;font-weight:500;">Graded By (Lecturer Name):</label>
+        <input type="text" id="fast_graded" value="${gradedBy}" placeholder="Enter your name" 
+               style="flex:1;margin-left:20px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
+      </div>
+    </div>`; 
+    
+    container.innerHTML = html; 
+    setTimeout(() => { 
+      const firstInput = container.querySelector('input[type="number"]'); 
+      if(firstInput) firstInput.focus(); 
+    }, 100); 
+  }
   
-  function updateFastAssessmentPreview() { const columnCount=12; let scores=[]; let total=0; for(let c=0;c<columnCount;c++){ const val=parseFloat(document.getElementById(`fast_ac_${c}`)?.value)||0; scores.push(val); total+=val; } const average=columnCount>0?(total/columnCount).toFixed(2):0; const status=average>=60?'PASS':(scores.some(s=>s>0)?'FAIL':'PENDING'); document.getElementById('currentTotalDisplay').innerHTML=total; document.getElementById('currentAverageDisplay').innerHTML=average+'%'; document.getElementById('currentAssessmentStatus').innerHTML=status; document.getElementById('currentAssessmentStatus').className=`badge ${status==='PASS'?'badge-pass':'badge-fail'}`; const avgDiv=document.getElementById('currentAverageDisplay').parentElement; if(avgDiv){ avgDiv.style.background=average>=60?'#d1fae5':'#fee2e2'; } }
-  function handleFastAssessmentKey(event,fieldIdx) { if(event.key==='Enter'){ event.preventDefault(); if(fieldIdx<11){ const nextInput=document.getElementById(`fast_ac_${fieldIdx+1}`); if(nextInput) nextInput.focus(); } else { applyFastAssessmentEntry(); } } }
-  function applyFastAssessmentEntry() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); const columnCount=12; for(let c=0;c<columnCount;c++){ const fastVal=document.getElementById(`fast_ac_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`ac_${studentIdx}_${c}`); if(mainInput){ const val=parseFloat(fastVal); if(isNaN(val)||val===0){ mainInput.value=''; } else { mainInput.value=val; } } } } const gradedVal=document.getElementById('fast_ac_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`acGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateACTotal(studentIdx); const nextIdx=studentIdx+1; if(nextIdx<currentNCKMarks.length){ document.getElementById('fastStudentSelect').value=nextIdx; loadFastAssessmentFields(nextIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`); } else { closeFastEntryModal(); showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.'); } }
-  function applyFastAssessmentEntryAndStay() { const studentIdx=parseInt(document.getElementById('fastStudentSelect').value); const columnCount=12; for(let c=0;c<columnCount;c++){ const fastVal=document.getElementById(`fast_ac_${c}`)?.value; if(fastVal!==undefined){ const mainInput=document.getElementById(`ac_${studentIdx}_${c}`); if(mainInput){ const val=parseFloat(fastVal); if(isNaN(val)||val===0){ mainInput.value=''; } else { mainInput.value=val; } } } } const gradedVal=document.getElementById('fast_ac_graded')?.value; if(gradedVal!==undefined){ const gradedInput=document.getElementById(`acGraded_${studentIdx}`); if(gradedInput) gradedInput.value=gradedVal; } updateACTotal(studentIdx); showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`); }
-  function openFastAssessmentEntry(studentIdx,studentName) { openFastAssessmentPanel(); setTimeout(()=>{ const select=document.getElementById('fastStudentSelect'); if(select){ select.value=studentIdx; loadFastAssessmentFields(studentIdx); } },200); }
-  function closeFastEntryPanel() { closeFastEntryModal(); }
+  function updateFastPreview(studentIdx) { 
+    let scores = []; 
+    for(let c = 0; c < 22; c++){ 
+      const val = parseFloat(document.getElementById(`fast_${c}`)?.value); 
+      scores.push(isNaN(val) ? 0 : val); 
+    } 
+    const validScores = scores.filter(s => s > 0); 
+    let avg = 0; 
+    if(validScores.length > 0){ 
+      avg = validScores.reduce((a,b) => a + b, 0) / validScores.length; 
+    } 
+    const status = avg >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING'); 
+    document.getElementById('currentAvgDisplay').innerHTML = avg.toFixed(2); 
+    document.getElementById('currentStatusDisplay').innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>`; 
+  }
   
-  // ========== COLUMN MANAGEMENT FUNCTIONS ==========
-  async function showNCKColumnManagerWithClass() { if(currentUser.role!=='admin'){ showNotification('Only administrators can manage NCK columns',true); return; } const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { showNotification('Invalid class year selected', true); return; } const originalYear = currentYear; currentYear = classIntake; const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS'; showLoading(`Loading columns for March ${classIntake} class...`); const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); let currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else if (marks && marks.length > 0 && marks[0].scores) { while (currentAreas.length < marks[0].scores.length) { currentAreas.push(`Area ${currentAreas.length + 1}`); } while (currentAreas.length > marks[0].scores.length && currentAreas.length > 22) { currentAreas.pop(); } } const modalHtml = `<div id="nckColumnModal" class="modal"><div class="modal-content" style="width: 750px;"><div class="modal-header"><h3><i class="fas fa-columns"></i> Manage NCK Columns - March ${classIntake} Class</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;"><i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}</div><div style="margin-bottom: 20px;"><h4><i class="fas fa-plus-circle"></i> Add New Clinical Area</h4><div style="display: flex; gap: 10px;"><input type="text" id="newAreaName" placeholder="e.g., ICU, EMERGENCY, CRITICAL CARE" style="flex: 1;"><button class="save-btn" onclick="addNCKColumnForClass('${classIntake}', '${sheetName}')">Add Column</button></div></div><div style="margin-bottom: 20px;"><h4><i class="fas fa-list"></i> Current Clinical Areas (${currentAreas.length})</h4><div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">${currentAreas.map((area, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;"><span><strong>${idx+1}.</strong> ${area}</span><button class="delete-btn" onclick="deleteNCKColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button></div>`).join('')}</div></div><div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class. Deleting a column removes all scores for that area.</div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="back-btn" onclick="closeModal()">Close</button><button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); hideLoading(); window.selectedColumnClass = classIntake; window.selectedColumnSheet = sheetName; }
-  async function addNCKColumnForClass(classIntake, sheetName) { const newName = document.getElementById('newAreaName')?.value.trim(); if (!newName) { showNotification('Enter column name', true); return; } let currentAreas = []; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else { currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; } currentAreas.push(newName); localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Added column for March ${classIntake} class: ${newName}`, false); closeModal(); setTimeout(() => showNCKColumnManagerWithClass(), 500); }
-  async function deleteNCKColumnForClass(colIdx, classIntake, sheetName) { if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class? This removes ALL scores in this column.`)) return; let currentAreas = []; const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } if (currentAreas[colIdx]) { currentAreas.splice(colIdx, 1); localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); } closeModal(); setTimeout(() => showNCKColumnManagerWithClass(), 500); }
-  async function showAssessmentColumnManagerWithClass() { if(currentUser.role!=='admin'){ showNotification('Only administrators can manage assessment columns',true); return; } const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { showNotification('Invalid class year selected', true); return; } const originalYear = currentYear; currentYear = classIntake; const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE'; showLoading(`Loading assessment columns for March ${classIntake} class...`); const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); let currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else if (marks && marks.length > 0 && marks[0].scores) { while (currentAreas.length < marks[0].scores.length) { currentAreas.push(`Assessment ${currentAreas.length + 1}`); } } const modalHtml = `<div id="nckColumnModal" class="modal"><div class="modal-content" style="width: 750px;"><div class="modal-header"><h3><i class="fas fa-columns"></i> Manage Assessment Columns - March ${classIntake} Class</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;"><i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}</div><div style="margin-bottom: 20px;"><h4><i class="fas fa-plus-circle"></i> Add New Assessment Area</h4><div style="display: flex; gap: 10px;"><input type="text" id="newAreaName" placeholder="e.g., EMERGENCY ASSESSMENT, ICU CARE" style="flex: 1;"><button class="save-btn" onclick="addAssessmentColumnForClass('${classIntake}', '${sheetName}')">Add Column</button></div></div><div><h4><i class="fas fa-list"></i> Current Assessments (${currentAreas.length})</h4><div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">${currentAreas.map((area, idx) => `<div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;"><span><strong>${idx+1}.</strong> ${area}</span><button class="delete-btn" onclick="deleteAssessmentColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button></div>`).join('')}</div></div><div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class.</div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="back-btn" onclick="closeModal()">Close</button><button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); hideLoading(); }
-  async function addAssessmentColumnForClass(classIntake, sheetName) { const newName = document.getElementById('newAreaName')?.value.trim(); if (!newName) { showNotification('Enter column name', true); return; } let currentAreas = []; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } else { currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; } currentAreas.push(newName); localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Added assessment column for March ${classIntake} class: ${newName}`, false); closeModal(); setTimeout(() => showAssessmentColumnManagerWithClass(), 500); }
-  async function deleteAssessmentColumnForClass(colIdx, classIntake, sheetName) { if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class?`)) return; let currentAreas = []; const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); if (savedConfig) { currentAreas = JSON.parse(savedConfig); } if (currentAreas[colIdx]) { currentAreas.splice(colIdx, 1); localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); } closeModal(); setTimeout(() => showAssessmentColumnManagerWithClass(), 500); }
-  function closeModalAndReload(classIntake) { closeModal(); currentYear = classIntake; localStorage.setItem('selectedYear', currentYear); showNotification(`Switched to March ${classIntake} class. Reloading data...`); setTimeout(() => loadNCKMarks(), 500); }
+  function handleFastEntryKey(event, colIdx) { 
+    if(event.key === 'Enter'){ 
+      event.preventDefault(); 
+      const nextCol = colIdx + 1; 
+      const nextInput = document.getElementById(`fast_${nextCol}`); 
+      if(nextInput){ 
+        nextInput.focus(); 
+      } else { 
+        applyFastEntry(); 
+      } 
+    } 
+  }
   
-  // ========== INTERNAL MARKS (ADMIN & LECTURER) ==========
-  async function showAdminMarks() { document.getElementById('contentArea').innerHTML=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3></div><select id="blockSelect"><option>Loading blocks...</option></select><select id="subjectSelect" style="display:none;"></select><div id="marksTable"></div>`; const blocks=await apiCall('/api/blocks',{}); const sel=document.getElementById('blockSelect'); sel.innerHTML='<option value="">-- Select Block --</option>'; blocks.forEach(b=>sel.innerHTML+=`<option value="${b}">${b.replace('_',' ')}</option>`); sel.onchange=()=>loadAdminSubjects(sel.value); }
-  async function loadAdminSubjects(block) { if(!block) return; showLoading('Loading subjects...'); const subjects=await apiCall(`/api/subjects/${block}`,{}); const sel=document.getElementById('subjectSelect'); sel.style.display='block'; sel.innerHTML='<option value="">-- Select Subject --</option>'; subjects.forEach(s=>sel.innerHTML+=`<option value="${s.name}" data-type="${s.assessmentType}">${s.name} (${s.assessmentType==='full'?'CAT1+CAT2+Exam':(s.assessmentType==='single_cat'?'CAT+Exam':'Exam Only')})</option>`); sel.onchange=()=>{ if(sel.value) loadAdminMarks(block,sel.value,sel.selectedOptions[0].dataset.type); }; hideLoading(); }
-  async function loadAdminMarks(block,subject,at) { showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${block}/${subject}`,{}); let html=`<div class="export-bar"><button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`; if(at==='full') html+='<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>'; else if(at==='single_cat') html+='<th>CAT (0-30)</th><th>Exam (0-70)</th>'; else html+='<th>Exam (0-100)</th>'; html+='<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>'; window.currentAdminMarks=marks; window.currentAdminAssessmentType=at; window.currentAdminBlock=block; window.currentAdminSubject=subject; for(let i=0;i<marks.length;i++){ const m=marks[i]; const cat1=m.cat1||'',cat2=m.cat2||'',exam=m.exam||''; let ncat1=parseFloat(cat1)||0,ncat2=parseFloat(cat2)||0,nexam=parseFloat(exam)||0,total=0; if(at==='full') total=Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30+Math.min(nexam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10; else total=Math.round(Math.min(nexam,100)*10)/10; const status=total>=60?'PASS':(total>0?'FAIL':''); const rowClass=total>=60?'pass-row':'fail-row'; html+=`<tr class="${rowClass}"><td style="padding:10px;">${m.admission}</td><td style="padding:10px;"><strong>${m.name}</strong></td>`; if(at==='full'){ html+=`<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } else if(at==='single_cat'){ html+=`<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td><td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } else { html+=`<td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`; } html+=`<td id="atotal_${i}" style="font-weight:bold;">${total}</td><td id="astatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy||'-'}</td></tr>`; } html+=`</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks</button></div>`; document.getElementById('marksTable').innerHTML=html; hideLoading(); }
-  window.updateAdminTotal=function(idx){ const at=window.currentAdminAssessmentType||'full'; let cat1=parseFloat(document.getElementById(`acat1_${idx}`)?.value)||0,cat2=parseFloat(document.getElementById(`acat2_${idx}`)?.value)||0,exam=parseFloat(document.getElementById(`aexam_${idx}`)?.value)||0,total=0; if(at==='full') total=Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30+Math.min(exam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10; else total=Math.round(Math.min(exam,100)*10)/10; document.getElementById(`atotal_${idx}`).innerHTML=total; document.getElementById(`astatus_${idx}`).innerHTML=total>=60?'PASS':'FAIL'; const row=document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement; if(row) row.className=total>=60?'pass-row':'fail-row'; };
-  window.saveAdminMarks=async function(){ let marksData=[]; const len=window.currentAdminMarks?.length||0; const at=window.currentAdminAssessmentType||'full'; for(let i=0;i<len;i++){ if(at==='full') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:document.getElementById(`acat2_${i}`)?.value||'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else if(at==='single_cat') marksData.push({row:i+2,cat1:document.getElementById(`acat1_${i}`)?.value||'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); else marksData.push({row:i+2,cat1:'',cat2:'',exam:document.getElementById(`aexam_${i}`)?.value||''}); } showLoading('Saving...'); const res=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:window.currentAdminBlock,subject:window.currentAdminSubject,marksData,lecturerName:currentUser.name})}); hideLoading(); showNotification(res?.success?'Saved!':'Error',!res?.success); if(res?.success) loadAdminMarks(window.currentAdminBlock,window.currentAdminSubject,window.currentAdminAssessmentType); };
-  window.exportAdminMarks=function(){ if(window.currentAdminMarks){ const data=window.currentAdminMarks.map((m,i)=>({Admission:m.admission,Name:m.name,CAT1:document.getElementById(`acat1_${i}`)?.value||'',CAT2:document.getElementById(`acat2_${i}`)?.value||'',Exam:document.getElementById(`aexam_${i}`)?.value||'',Total:document.getElementById(`atotal_${i}`)?.innerHTML||''})); exportToCSV(data,'internal_marks'); } };
+  function applyFastEntry() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+    for(let c = 0; c < 22; c++){ 
+      const fastVal = document.getElementById(`fast_${c}`)?.value; 
+      if(fastVal !== undefined){ 
+        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`); 
+        if(mainInput) mainInput.value = fastVal; 
+      } 
+    } 
+    const gradedVal = document.getElementById('fast_graded')?.value; 
+    if(gradedVal !== undefined){ 
+      const gradedInput = document.getElementById(`xyGraded_${studentIdx}`); 
+      if(gradedInput) gradedInput.value = gradedVal; 
+    } 
+    updateXYAverage(studentIdx); 
+    
+    const nextIdx = studentIdx + 1; 
+    if(nextIdx < currentNCKMarks.length){ 
+      document.getElementById('fastStudentSelect').value = nextIdx; 
+      loadFastEntryFields(nextIdx); 
+      showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false); 
+    } else { 
+      closeFastEntryModal(); 
+      showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false); 
+    } 
+  }
   
+  function applyFastEntryAndStay() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+    for(let c = 0; c < 22; c++){ 
+      const fastVal = document.getElementById(`fast_${c}`)?.value; 
+      if(fastVal !== undefined){ 
+        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`); 
+        if(mainInput) mainInput.value = fastVal; 
+      } 
+    } 
+    const gradedVal = document.getElementById('fast_graded')?.value; 
+    if(gradedVal !== undefined){ 
+      const gradedInput = document.getElementById(`xyGraded_${studentIdx}`); 
+      if(gradedInput) gradedInput.value = gradedVal; 
+    } 
+    updateXYAverage(studentIdx); 
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false); 
+  }
+  
+  // ========== FAST ASSESSMENT ENTRY ==========
+  function openFastAssessmentPanel() { 
+    if(!currentNCKMarks || currentNCKMarks.length === 0){ 
+      showNotification('No data loaded', true); 
+      return; 
+    } 
+    if(fastEntryVisible){ 
+      closeFastEntryModal(); 
+      return; 
+    } 
+    
+    const columnCount = 12; 
+    let assessmentNames = [
+      'ANC WARD', 'PREGNANT WOMAN ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
+      'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
+      'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
+    ]; 
+    
+    const savedNames = localStorage.getItem(`assessmentColumnNames_${currentYear}`); 
+    if(savedNames){ 
+      assessmentNames = JSON.parse(savedNames); 
+    } 
+    
+    const modal = document.createElement('div'); 
+    modal.id = 'fastEntryModal'; 
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;'; 
+    
+    modal.innerHTML = `
+      <div style="background:white;border-radius:24px;max-width:800px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <i class="fas fa-expand-alt"></i> 
+            <strong>Full Screen Fast Entry - Assessments (March ${currentYear})</strong>
+          </div>
+          <button class="back-btn" onclick="closeFastEntryModal()" style="padding:8px 20px;background:rgba(255,255,255,0.2);border:none;border-radius:40px;color:white;cursor:pointer;">
+            <i class="fas fa-times"></i> Close (ESC)
+          </button>
+        </div>
+        <div style="padding:24px;">
+          <div style="margin-bottom:20px;">
+            <label style="font-weight:600;">Select Student:</label>
+            <select id="fastStudentSelect" style="width:100%;padding:12px;border-radius:12px;margin-top:8px;">
+              ${currentNCKMarks.map((m,i)=>`<option value="${i}">${i+1}. ${m.name}</option>`).join('')}
+            </select>
+          </div>
+          <div id="fastAssessmentFields"></div>
+          <div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;">
+            <button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex:1;padding:14px;">
+              <i class="fas fa-save"></i> Save & Next (Enter)
+            </button>
+            <button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex:1;padding:14px;">
+              Save & Stay (Shift+Enter)
+            </button>
+            <button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;">
+              Close (ESC)
+            </button>
+          </div>
+          <div style="margin-top:15px;text-align:center;font-size:12px;color:#666;padding:10px;background:#f8fafc;border-radius:12px;">
+            <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> 
+            Enter = Save & Next | Shift+Enter = Save & Stay | ESC = Close
+          </div>
+        </div>
+      </div>
+    `; 
+    
+    document.body.appendChild(modal); 
+    fastEntryVisible = true; 
+    loadFastAssessmentFields(0); 
+    document.getElementById('fastStudentSelect').onchange = () => { 
+      loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value)); 
+    }; 
+  }
+  
+  function loadFastAssessmentFields(studentIdx) { 
+    const container = document.getElementById('fastAssessmentFields'); 
+    if(!container) return; 
+    
+    const columnCount = 12; 
+    const scores = []; 
+    for(let c = 0; c < columnCount; c++){ 
+      const input = document.getElementById(`ac_${studentIdx}_${c}`); 
+      let val = input ? input.value : ''; 
+      if(val === '' || val === undefined) val = 0; 
+      scores.push(parseFloat(val) || 0); 
+    } 
+    
+    let gradedBy = document.getElementById(`acGraded_${studentIdx}`)?.value || ''; 
+    if(gradedBy && !isNaN(parseFloat(gradedBy)) && gradedBy.toString().length > 2 && !isNaN(parseInt(gradedBy))){ 
+      gradedBy = ''; 
+    } 
+    
+    const total = scores.reduce((a,b) => a + b, 0); 
+    const average = columnCount > 0 ? (total / columnCount).toFixed(2) : 0; 
+    const status = average >= 60 ? 'PASS' : (scores.some(s => s > 0) ? 'FAIL' : 'PENDING'); 
+    
+    let assessmentNames = [
+      'ANC WARD', 'PREGNANT WOMAN ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
+      'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
+      'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
+    ]; 
+    
+    const savedNames = localStorage.getItem(`assessmentColumnNames_${currentYear}`); 
+    if(savedNames){ 
+      assessmentNames = JSON.parse(savedNames); 
+    } 
+    
+    let assessmentInputs = ''; 
+    for(let c = 0; c < columnCount; c++){ 
+      const colName = assessmentNames[c] || `Assessment ${c+1}`; 
+      const scoreValue = scores[c] || 0; 
+      const hasScore = scoreValue > 0; 
+      const inputStyle = hasScore ? 'border:2px solid #10b981;' : 'border:2px solid #f59e0b;background:#fef3c7;'; 
+      assessmentInputs += `
+        <div style="margin-bottom:15px;">
+          <label style="font-weight:600;display:block;margin-bottom:8px;">📋 ${colName}:</label>
+          <input type="number" id="fast_ac_${c}" value="${scoreValue}" min="0" max="100" step="0.5" 
+                 style="width:100%;padding:12px;border-radius:8px;${inputStyle}" 
+                 onchange="updateFastAssessmentPreview()" onkeypress="handleFastAssessmentKey(event, ${c})">
+          ${scoreValue === 0 ? '<span style="font-size:11px;color:#f59e0b;">⚠️ Score not entered yet</span>' : ''}
+        </div>
+      `; 
+    } 
+    
+    container.innerHTML = `
+      <div style="margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div style="padding:15px;background:#d1fae5;border-radius:12px;text-align:center;">
+          <strong>Total Score:</strong><br>
+          <span id="currentTotalDisplay" style="font-size:28px;font-weight:bold;">${total}</span>
+        </div>
+        <div style="padding:15px;background:${average >= 60 ? '#d1fae5' : '#fee2e2'};border-radius:12px;text-align:center;">
+          <strong>Average Score:</strong><br>
+          <span id="currentAverageDisplay" style="font-size:28px;font-weight:bold;">${average}%</span>
+        </div>
+      </div>
+      <div style="margin-bottom:15px;padding:10px;background:#f0fdf4;border-radius:12px;text-align:center;">
+        <strong>Status: <span id="currentAssessmentStatus" class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span></strong>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-radius:16px;padding:24px;background:#fafafa;">
+        ${assessmentInputs}
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid #e2e8f0;">
+          <label style="font-weight:600;display:block;margin-bottom:8px;">✍️ Graded By (Lecturer Name):</label>
+          <input type="text" id="fast_ac_graded" value="${gradedBy}" placeholder="Enter your name" 
+                 style="width:100%;padding:12px;border-radius:8px;border:1px solid #cbd5e1;">
+        </div>
+      </div>
+    `; 
+    
+    setTimeout(() => { 
+      const firstInput = container.querySelector('input[type="number"]'); 
+      if(firstInput) firstInput.focus(); 
+    }, 100); 
+  }
+  
+  function updateFastAssessmentPreview() { 
+    const columnCount = 12; 
+    let scores = []; 
+    let total = 0; 
+    for(let c = 0; c < columnCount; c++){ 
+      const val = parseFloat(document.getElementById(`fast_ac_${c}`)?.value) || 0; 
+      scores.push(val); 
+      total += val; 
+    } 
+    const average = columnCount > 0 ? (total / columnCount).toFixed(2) : 0; 
+    const status = average >= 60 ? 'PASS' : (scores.some(s => s > 0) ? 'FAIL' : 'PENDING'); 
+    document.getElementById('currentTotalDisplay').innerHTML = total; 
+    document.getElementById('currentAverageDisplay').innerHTML = average + '%'; 
+    document.getElementById('currentAssessmentStatus').innerHTML = status; 
+    document.getElementById('currentAssessmentStatus').className = `badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}`; 
+    const avgDiv = document.getElementById('currentAverageDisplay').parentElement; 
+    if(avgDiv){ 
+      avgDiv.style.background = average >= 60 ? '#d1fae5' : '#fee2e2'; 
+    } 
+  }
+  
+  function handleFastAssessmentKey(event, fieldIdx) { 
+    if(event.key === 'Enter'){ 
+      event.preventDefault(); 
+      if(fieldIdx < 11){ 
+        const nextInput = document.getElementById(`fast_ac_${fieldIdx+1}`); 
+        if(nextInput) nextInput.focus(); 
+      } else { 
+        applyFastAssessmentEntry(); 
+      } 
+    } 
+  }
+  
+  function applyFastAssessmentEntry() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+    const columnCount = 12; 
+    for(let c = 0; c < columnCount; c++){ 
+      const fastVal = document.getElementById(`fast_ac_${c}`)?.value; 
+      if(fastVal !== undefined){ 
+        const mainInput = document.getElementById(`ac_${studentIdx}_${c}`); 
+        if(mainInput){ 
+          const val = parseFloat(fastVal); 
+          if(isNaN(val) || val === 0){ 
+            mainInput.value = ''; 
+          } else { 
+            mainInput.value = val; 
+          } 
+        } 
+      } 
+    } 
+    const gradedVal = document.getElementById('fast_ac_graded')?.value; 
+    if(gradedVal !== undefined){ 
+      const gradedInput = document.getElementById(`acGraded_${studentIdx}`); 
+      if(gradedInput) gradedInput.value = gradedVal; 
+    } 
+    updateACTotal(studentIdx); 
+    
+    const nextIdx = studentIdx + 1; 
+    if(nextIdx < currentNCKMarks.length){ 
+      document.getElementById('fastStudentSelect').value = nextIdx; 
+      loadFastAssessmentFields(nextIdx); 
+      showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false); 
+    } else { 
+      closeFastEntryModal(); 
+      showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false); 
+    } 
+  }
+  
+  function applyFastAssessmentEntryAndStay() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+    const columnCount = 12; 
+    for(let c = 0; c < columnCount; c++){ 
+      const fastVal = document.getElementById(`fast_ac_${c}`)?.value; 
+      if(fastVal !== undefined){ 
+        const mainInput = document.getElementById(`ac_${studentIdx}_${c}`); 
+        if(mainInput){ 
+          const val = parseFloat(fastVal); 
+          if(isNaN(val) || val === 0){ 
+            mainInput.value = ''; 
+          } else { 
+            mainInput.value = val; 
+          } 
+        } 
+      } 
+    } 
+    const gradedVal = document.getElementById('fast_ac_graded')?.value; 
+    if(gradedVal !== undefined){ 
+      const gradedInput = document.getElementById(`acGraded_${studentIdx}`); 
+      if(gradedInput) gradedInput.value = gradedVal; 
+    } 
+    updateACTotal(studentIdx); 
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false); 
+  }
+  
+  // ========== COLUMN MANAGEMENT FUNCTIONS (FULLY IMPLEMENTED) ==========
+  async function showNCKColumnManagerWithClass() { 
+    if(currentUser.role !== 'admin'){ 
+      showNotification('Only administrators can manage NCK columns', true); 
+      return; 
+    } 
+    
+    const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); 
+    if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { 
+      showNotification('Invalid class year selected', true); 
+      return; 
+    } 
+    
+    const originalYear = currentYear; 
+    currentYear = classIntake; 
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS'; 
+    showLoading(`Loading columns for March ${classIntake} class...`); 
+    
+    const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); 
+    
+    let currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; 
+    
+    const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } else if (marks && marks.length > 0 && marks[0].scores) { 
+      while (currentAreas.length < marks[0].scores.length) { 
+        currentAreas.push(`Area ${currentAreas.length + 1}`); 
+      } 
+      while (currentAreas.length > marks[0].scores.length && currentAreas.length > 22) { 
+        currentAreas.pop(); 
+      } 
+    } 
+    
+    const modalHtml = `
+      <div id="nckColumnModal" class="modal">
+        <div class="modal-content" style="width: 750px;">
+          <div class="modal-header">
+            <h3><i class="fas fa-columns"></i> Manage NCK Columns - March ${classIntake} Class</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;">
+              <i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}
+            </div>
+            <div style="margin-bottom: 20px;">
+              <h4><i class="fas fa-plus-circle"></i> Add New Clinical Area</h4>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="newAreaName" placeholder="e.g., ICU, EMERGENCY, CRITICAL CARE" style="flex: 1;">
+                <button class="save-btn" onclick="addNCKColumnForClass('${classIntake}', '${sheetName}')">Add Column</button>
+              </div>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <h4><i class="fas fa-list"></i> Current Clinical Areas (${currentAreas.length})</h4>
+              <div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">
+                ${currentAreas.map((area, idx) => `
+                  <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span><strong>${idx+1}.</strong> ${area}</span>
+                    <button class="delete-btn" onclick="deleteNCKColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;">
+              <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class. Deleting a column removes all scores for that area.
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+              <button class="back-btn" onclick="closeModal()">Close</button>
+              <button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `; 
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml); 
+    hideLoading(); 
+    window.selectedColumnClass = classIntake; 
+    window.selectedColumnSheet = sheetName; 
+  }
+  
+  async function addNCKColumnForClass(classIntake, sheetName) { 
+    const newName = document.getElementById('newAreaName')?.value.trim(); 
+    if (!newName) { 
+      showNotification('Enter column name', true); 
+      return; 
+    } 
+    
+    let currentAreas = []; 
+    const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } else { 
+      currentAreas = ['MED1','MED2','MED3','MCH1','MCH2','MCH3','MAT1','MAT2','MAT3','PEAD1','PEAD2','SURG1','SURG2','SURG3','OPD','NBU1','NBU2','THEATRE','PSYCHIATRY','RURALS','DISTRICT','SPECIAL']; 
+    } 
+    
+    currentAreas.push(newName); 
+    localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); 
+    showNotification(`Added column for March ${classIntake} class: ${newName}`, false); 
+    closeModal(); 
+    setTimeout(() => showNCKColumnManagerWithClass(), 500); 
+  }
+  
+  async function deleteNCKColumnForClass(colIdx, classIntake, sheetName) { 
+    if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class? This removes ALL scores in this column.`)) return; 
+    
+    let currentAreas = []; 
+    const savedConfig = localStorage.getItem(`nck_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } 
+    
+    if (currentAreas[colIdx]) { 
+      currentAreas.splice(colIdx, 1); 
+      localStorage.setItem(`nck_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); 
+      showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); 
+    } 
+    
+    closeModal(); 
+    setTimeout(() => showNCKColumnManagerWithClass(), 500); 
+  }
+  
+  async function showAssessmentColumnManagerWithClass() { 
+    if(currentUser.role !== 'admin'){ 
+      showNotification('Only administrators can manage assessment columns', true); 
+      return; 
+    } 
+    
+    const classIntake = prompt('Select Class Year:\n2024\n2025\n2026\n\nEnter the year (2024, 2025, or 2026):', currentYear); 
+    if (!classIntake || !INTAKE_YEARS.includes(classIntake)) { 
+      showNotification('Invalid class year selected', true); 
+      return; 
+    } 
+    
+    const originalYear = currentYear; 
+    currentYear = classIntake; 
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE'; 
+    showLoading(`Loading assessment columns for March ${classIntake} class...`); 
+    
+    const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); 
+    
+    let currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; 
+    
+    const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } else if (marks && marks.length > 0 && marks[0].scores) { 
+      while (currentAreas.length < marks[0].scores.length) { 
+        currentAreas.push(`Assessment ${currentAreas.length + 1}`); 
+      } 
+    } 
+    
+    const modalHtml = `
+      <div id="nckColumnModal" class="modal">
+        <div class="modal-content" style="width: 750px;">
+          <div class="modal-header">
+            <h3><i class="fas fa-columns"></i> Manage Assessment Columns - March ${classIntake} Class</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border-radius: 12px;">
+              <i class="fas fa-info-circle"></i> <strong>Class: March ${classIntake}</strong> | Sheet: ${sheetName}
+            </div>
+            <div style="margin-bottom: 20px;">
+              <h4><i class="fas fa-plus-circle"></i> Add New Assessment Area</h4>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="newAreaName" placeholder="e.g., EMERGENCY ASSESSMENT, ICU CARE" style="flex: 1;">
+                <button class="save-btn" onclick="addAssessmentColumnForClass('${classIntake}', '${sheetName}')">Add Column</button>
+              </div>
+            </div>
+            <div>
+              <h4><i class="fas fa-list"></i> Current Assessments (${currentAreas.length})</h4>
+              <div id="areasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px;">
+                ${currentAreas.map((area, idx) => `
+                  <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span><strong>${idx+1}.</strong> ${area}</span>
+                    <button class="delete-btn" onclick="deleteAssessmentColumnForClass(${idx}, '${classIntake}', '${sheetName}')" style="padding: 4px 10px; font-size: 11px;">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 12px;">
+              <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Changes only affect March ${classIntake} class.
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+              <button class="back-btn" onclick="closeModal()">Close</button>
+              <button class="save-btn" onclick="closeModalAndReload('${classIntake}')">Apply & Reload</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `; 
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml); 
+    hideLoading(); 
+  }
+  
+  async function addAssessmentColumnForClass(classIntake, sheetName) { 
+    const newName = document.getElementById('newAreaName')?.value.trim(); 
+    if (!newName) { 
+      showNotification('Enter column name', true); 
+      return; 
+    } 
+    
+    let currentAreas = []; 
+    const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } else { 
+      currentAreas = ['ANC WARD','PREGNANT WOMAN ASSESMENT','NURSING CARE','PSYCHIATRY assesment','NBU ASSESSMENT','MIDWIFERYASSESSMENT','PSYCHIATRY CASE STUDY','GENERAL NURSING CASE STUDY','MIDWIFERY CASE STUDY','MCH CASE STUDY','PROJECT']; 
+    } 
+    
+    currentAreas.push(newName); 
+    localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); 
+    showNotification(`Added assessment column for March ${classIntake} class: ${newName}`, false); 
+    closeModal(); 
+    setTimeout(() => showAssessmentColumnManagerWithClass(), 500); 
+  }
+  
+  async function deleteAssessmentColumnForClass(colIdx, classIntake, sheetName) { 
+    if (!confirm(`Delete column ${colIdx+1} for March ${classIntake} class?`)) return; 
+    
+    let currentAreas = []; 
+    const savedConfig = localStorage.getItem(`assessment_columns_${classIntake}_${sheetName}`); 
+    if (savedConfig) { 
+      currentAreas = JSON.parse(savedConfig); 
+    } 
+    
+    if (currentAreas[colIdx]) { 
+      currentAreas.splice(colIdx, 1); 
+      localStorage.setItem(`assessment_columns_${classIntake}_${sheetName}`, JSON.stringify(currentAreas)); 
+      showNotification(`Deleted column ${colIdx+1} for March ${classIntake} class`, false); 
+    } 
+    
+    closeModal(); 
+    setTimeout(() => showAssessmentColumnManagerWithClass(), 500); 
+  }
+  
+  function closeModalAndReload(classIntake) { 
+    closeModal(); 
+    currentYear = classIntake; 
+    localStorage.setItem('selectedYear', currentYear); 
+    showNotification(`Switched to March ${classIntake} class. Reloading data...`, false); 
+    setTimeout(() => loadNCKMarks(), 500); 
+  }
+  
+  // ========== INTERNAL MARKS (ADMIN) ==========
+  async function showAdminMarks() { 
+    document.getElementById('contentArea').innerHTML = `
+      <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3></div>
+      <select id="blockSelect" style="width:100%; margin-bottom:16px;"><option value="">-- Select Block --</option></select>
+      <select id="subjectSelect" style="display:none; width:100%; margin-bottom:16px;"></select>
+      <div id="marksTable"></div>
+    `; 
+    
+    const blocks = await apiCall('/api/blocks', {}); 
+    const sel = document.getElementById('blockSelect'); 
+    blocks.forEach(b => sel.innerHTML += `<option value="${b}">${b.replace('_', ' ')}</option>`); 
+    sel.onchange = () => loadAdminSubjects(sel.value); 
+  }
+  
+  async function loadAdminSubjects(block) { 
+    if(!block) return; 
+    showLoading('Loading subjects...'); 
+    const subjects = await apiCall(`/api/subjects/${block}`, {}); 
+    const sel = document.getElementById('subjectSelect'); 
+    sel.style.display = 'block'; 
+    sel.innerHTML = '<option value="">-- Select Subject --</option>'; 
+    subjects.forEach(s => sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${s.name}</option>`); 
+    sel.onchange = () => { if(sel.value) loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type); }; 
+    hideLoading(); 
+  }
+  
+  async function loadAdminMarks(block, subject, at) { 
+    showLoading('Loading marks...'); 
+    const marks = await apiCall(`/api/marks/${block}/${subject}`, {}); 
+    
+    let html = `<div class="export-bar" style="margin-bottom:16px;"><button class="export-btn" onclick="exportAdminMarks()">Export CSV</button><button class="btn-info" onclick="fillDownValues()" style="margin-left:10px;">Fill Down</button></div>
+      <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+    
+    if(at === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+    else if(at === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+    else html += '<th>Exam (0-100)</th>';
+    
+    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+    
+    window.currentAdminMarks = marks; 
+    window.currentAdminAssessmentType = at; 
+    window.currentAdminBlock = block; 
+    window.currentAdminSubject = subject; 
+    window.currentSaveFunction = saveAdminMarks;
+    
+    for(let i = 0; i < marks.length; i++){ 
+      const m = marks[i]; 
+      const cat1 = m.cat1 || ''; 
+      const cat2 = m.cat2 || ''; 
+      const exam = m.exam || ''; 
+      let ncat1 = parseFloat(cat1) || 0; 
+      let ncat2 = parseFloat(cat2) || 0; 
+      let nexam = parseFloat(exam) || 0; 
+      let total = 0; 
+      
+      if(at === 'full') total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+      else if(at === 'single_cat') total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+      else total = Math.round(Math.min(nexam,100) * 10) / 10;
+      
+      const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
+      const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+      
+      html += `<tr class="${rowClass}"><td style="padding:10px;">${m.admission}<\/td><td style="padding:10px;"><strong>${m.name}</strong><\/td>`;
+      
+      if(at === 'full'){ 
+        html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+      } else if(at === 'single_cat'){ 
+        html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+      } else { 
+        html += `<td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+      } 
+      
+      html += `<td id="atotal_${i}" style="font-weight:bold;">${total}<\/td>
+        <td id="astatus_${i}">${status}<\/td>
+        <td style="padding:10px;">${m.gradedBy || '-'}<\/td><\/tr>`; 
+    } 
+    
+    html += `</tbody><\/table><\/div>
+      <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks<\/button><\/div>`; 
+    
+    document.getElementById('marksTable').innerHTML = html; 
+    hideLoading(); 
+    startAutoSave(saveAdminMarks, 30000);
+  }
+  
+  window.updateAdminTotal = function(idx){ 
+    const at = window.currentAdminAssessmentType || 'full'; 
+    let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0; 
+    let cat2 = parseFloat(document.getElementById(`acat2_${idx}`)?.value) || 0; 
+    let exam = parseFloat(document.getElementById(`aexam_${idx}`)?.value) || 0; 
+    let total = 0; 
+    
+    if(at === 'full') total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    else if(at === 'single_cat') total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    else total = Math.round(Math.min(exam,100) * 10) / 10;
+    
+    document.getElementById(`atotal_${idx}`).innerHTML = total; 
+    document.getElementById(`astatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL'; 
+    const row = document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement; 
+    if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row'; 
+  };
+  
+  window.saveAdminMarks = async function(){ 
+    let marksData = []; 
+    const len = window.currentAdminMarks?.length || 0; 
+    const at = window.currentAdminAssessmentType || 'full'; 
+    
+    for(let i = 0; i < len; i++){ 
+      if(at === 'full') marksData.push({ row: i + 2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: document.getElementById(`acat2_${i}`)?.value || '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
+      else if(at === 'single_cat') marksData.push({ row: i + 2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
+      else marksData.push({ row: i + 2, cat1: '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
+    } 
+    
+    showLoading('Saving marks...'); 
+    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentAdminBlock, subject: window.currentAdminSubject, marksData: marksData, lecturerName: currentUser.name }) }); 
+    hideLoading(); 
+    showNotification(result?.success ? 'Marks saved successfully!' : 'Error saving marks', !result?.success); 
+    if(result?.success) loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType); 
+  };
+  
+  window.exportAdminMarks = function(){ 
+    if(window.currentAdminMarks){ 
+      const data = window.currentAdminMarks.map((m, i) => ({ Admission: m.admission, Name: m.name, CAT1: document.getElementById(`acat1_${i}`)?.value || '', CAT2: document.getElementById(`acat2_${i}`)?.value || '', Exam: document.getElementById(`aexam_${i}`)?.value || '', Total: document.getElementById(`atotal_${i}`)?.innerHTML || '' })); 
+      exportToCSV(data, 'internal_marks'); 
+    } 
+  };
+  
+  // ========== LECTURER SUBJECTS ==========
   async function showLecturerSubjects() { 
     showLoading('Loading your subjects...'); 
     const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']; 
@@ -637,23 +1766,30 @@
     const settings = await apiCall('/api/mark-entry/settings', {});
     
     const subjectsByBlock = {}; 
-    for (let b of blocks) subjectsByBlock[b] = []; 
+    for(let b of blocks) subjectsByBlock[b] = []; 
     
-    for (let subj of lecturerSubjects) { 
+    for(let subj of lecturerSubjects){ 
       const parts = subj.split('|'); 
       const block = parts[0]; 
       const name = parts[1]; 
       let atype = 'full'; 
-      if (config && config[block]) { 
+      if(config && config[block]){ 
         const found = config[block].find(c => c.name === name); 
-        if (found) atype = found.assessmentType || 'full'; 
+        if(found) atype = found.assessmentType || 'full'; 
       } 
       
       let isSubjectOpen = true;
       let closedReason = '';
-      if (settings.global && settings.global.enabled === false) { isSubjectOpen = false; closedReason = 'Global entry closed'; }
-      else if (settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false) { isSubjectOpen = false; closedReason = `Entry closed for March ${currentYear} class`; }
-      else if (settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false) { isSubjectOpen = false; closedReason = `Entry closed for this subject`; }
+      if(settings.global && settings.global.enabled === false){ 
+        isSubjectOpen = false; 
+        closedReason = 'Global entry closed by administrator';
+      } else if(settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false){ 
+        isSubjectOpen = false; 
+        closedReason = `Entry closed for March ${currentYear} class`;
+      } else if(settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false){ 
+        isSubjectOpen = false; 
+        closedReason = `Entry closed for this subject`;
+      }
       
       subjectsByBlock[block].push({ name, assessmentType: atype, isOpen: isSubjectOpen, closedReason }); 
     } 
@@ -661,20 +1797,17 @@
     let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
       <div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks - ${currentYear} Class</p></div>`; 
     
-    for (let b of blocks) { 
-      if (subjectsByBlock[b] && subjectsByBlock[b].length) { 
-        html += `<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_',' ')}</h3></div><div class="subject-list">`; 
-        for (let s of subjectsByBlock[b]) { 
+    for(let b of blocks){ 
+      if(subjectsByBlock[b] && subjectsByBlock[b].length){ 
+        html += `<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_', ' ')}</h3></div><div class="subject-list">`; 
+        for(let s of subjectsByBlock[b]){ 
           const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
           const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
           const statusBadge = s.isOpen ? '<span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>' : '<span class="badge badge-fail"><i class="fas fa-lock"></i> Closed</span>';
           const onclickAttr = s.isOpen ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"` : `onclick="showNotification('${s.closedReason}', true)"`;
-          html += `<div class="subject-card" style="${!s.isOpen ? 'opacity:0.7; background:#fef2f2; cursor:not-allowed;' : ''}" ${onclickAttr}>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h4>${typeIcon} ${s.name}</h4>
-              ${statusBadge}
-            </div>
-            <p><i class="fas fa-layer-group"></i> ${b.replace('_',' ')} | ${typeLabel}</p>
+          html += `<div class="subject-card ${!s.isOpen ? 'closed' : ''}" ${onclickAttr}>
+            <div style="display:flex; justify-content:space-between; align-items:center;"><h4>${typeIcon} ${s.name}</h4>${statusBadge}</div>
+            <p><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')} | ${typeLabel}</p>
             ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
           </div>`; 
         } 
@@ -685,40 +1818,365 @@
     hideLoading(); 
   }
   
-  window.openMarksEntry=function(block,subject,atype){ currentMarksBlock=block; currentMarksSubject=subject; currentAssessmentType=atype; loadMarksForSubject(block,subject,atype); };
+  window.openMarksEntry = function(block, subject, atype){ 
+    currentMarksBlock = block; 
+    currentMarksSubject = subject; 
+    currentAssessmentType = atype; 
+    loadMarksForSubject(block, subject, atype); 
+  };
   
-  async function loadMarksForSubject(block,subject,atype){ showLoading('Loading marks...'); const marks=await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`,{}); let html=`<button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_',' ')} | ${atype==='full'?'CAT1+CAT2+Exam':(atype==='single_cat'?'CAT+Exam':'Exam Only')}</p></div><div id="marksTableContainer"></div>`; document.getElementById('contentArea').innerHTML=html; displayLecturerMarksTable(marks,block,subject,atype); hideLoading(); }
+  async function loadMarksForSubject(block, subject, atype){ 
+    showLoading('Loading marks...'); 
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {}); 
+    let html = `<button class="back-btn" onclick="showLecturerSubjects()">Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_', ' ')} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p></div><div id="marksTableContainer"></div>`; 
+    document.getElementById('contentArea').innerHTML = html; 
+    displayLecturerMarksTable(marks, block, subject, atype); 
+    hideLoading(); 
+  }
   
-  function displayLecturerMarksTable(marks,block,subject,atype){ if(!marks||!marks.length){ document.getElementById('marksTableContainer').innerHTML='<div class="card" style="text-align:center;">No data found</div>'; return; } let html=`<div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`; if(atype==='full') html+='<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>'; else if(atype==='single_cat') html+='<th>CAT (0-30)</th><th>Exam (0-70)</th>'; else html+='<th>Exam (0-100)</th>'; html+='<th>Total</th><th>Status</th><th>Graded By</th><tr></thead><tbody>'; window.currentMarksData=marks; window.currentMarksSubject=subject; window.currentMarksBlock=block; window.currentAssessmentType=atype; for(let i=0;i<marks.length;i++){ const m=marks[i]; const cat1=m.cat1||'',cat2=m.cat2||'',exam=m.exam||''; let ncat1=parseFloat(cat1)||0,ncat2=parseFloat(cat2)||0,nexam=parseFloat(exam)||0,total=0; if(atype==='full') total=Math.round(((Math.min(ncat1,30)+Math.min(ncat2,30))/60*30+Math.min(nexam,70))*10)/10; else if(atype==='single_cat') total=Math.round((Math.min(ncat1,30)+Math.min(nexam,70))*10)/10; else total=Math.round(Math.min(nexam,100)*10)/10; const status=total>=60?'PASS':(total>0?'FAIL':''); const rowClass=total>=60?'pass-row':'fail-row'; html+=`<tr class="${rowClass}"><td style="padding:10px;">${m.admission}</td><td style="padding:10px;"><strong>${m.name}</strong></td>`; if(atype==='full'){ html+=`<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } else if(atype==='single_cat'){ html+=`<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"></td><td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } else { html+=`<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"></td>`; } html+=`<td id="ltotal_${i}" style="font-weight:bold;">${total}</td><td id="lstatus_${i}">${status}</td><td style="padding:10px;">${m.gradedBy||'-'}</td></tr>`; } html+=`</tbody></table></div><div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`; document.getElementById('marksTableContainer').innerHTML=html; }
+  function displayLecturerMarksTable(marks, block, subject, atype){ 
+    if(!marks || !marks.length){ 
+      document.getElementById('marksTableContainer').innerHTML = '<div class="card" style="text-align:center;">No data found</div>'; 
+      return; 
+    } 
+    
+    let html = `<div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+    
+    if(atype === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+    else if(atype === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+    else html += '<th>Exam (0-100)</th>';
+    
+    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+    
+    window.currentMarksData = marks; 
+    window.currentMarksSubject = subject; 
+    window.currentMarksBlock = block; 
+    window.currentAssessmentType = atype; 
+    window.currentSaveFunction = saveLecturerMarks;
+    
+    for(let i = 0; i < marks.length; i++){ 
+      const m = marks[i]; 
+      const cat1 = m.cat1 || ''; 
+      const cat2 = m.cat2 || ''; 
+      const exam = m.exam || ''; 
+      let ncat1 = parseFloat(cat1) || 0; 
+      let ncat2 = parseFloat(cat2) || 0; 
+      let nexam = parseFloat(exam) || 0; 
+      let total = 0; 
+      
+      if(atype === 'full') total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+      else if(atype === 'single_cat') total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+      else total = Math.round(Math.min(nexam,100) * 10) / 10;
+      
+      const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
+      const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+      
+      html += `<tr class="${rowClass}"><td style="padding:10px;">${m.admission}<\/td><td style="padding:10px;"><strong>${m.name}</strong><\/td>`;
+      
+      if(atype === 'full'){ 
+        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+      } else if(atype === 'single_cat'){ 
+        html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+          <td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+      } else { 
+        html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+      } 
+      
+      html += `<td id="ltotal_${i}" style="font-weight:bold;">${total}<\/td>
+        <td id="lstatus_${i}">${status}<\/td>
+        <td style="padding:10px;">${m.gradedBy || '-'}<\/td><\/tr>`; 
+    } 
+    
+    html += `</tbody><\/table><\/div>
+      <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks<\/button><\/div>`; 
+    
+    document.getElementById('marksTableContainer').innerHTML = html; 
+    startAutoSave(saveLecturerMarks, 30000);
+  }
   
-  window.updateLecturerTotal=function(idx){ const at=window.currentAssessmentType||'full'; let cat1=parseFloat(document.getElementById(`cat1_${idx}`)?.value)||0,cat2=parseFloat(document.getElementById(`cat2_${idx}`)?.value)||0,exam=parseFloat(document.getElementById(`exam_${idx}`)?.value)||0,total=0; if(at==='full') total=Math.round(((Math.min(cat1,30)+Math.min(cat2,30))/60*30+Math.min(exam,70))*10)/10; else if(at==='single_cat') total=Math.round((Math.min(cat1,30)+Math.min(exam,70))*10)/10; else total=Math.round(Math.min(exam,100)*10)/10; document.getElementById(`ltotal_${idx}`).innerHTML=total; document.getElementById(`lstatus_${idx}`).innerHTML=total>=60?'PASS':'FAIL'; const row=document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement; if(row) row.className=total>=60?'pass-row':'fail-row'; };
+  window.updateLecturerTotal = function(idx){ 
+    const at = window.currentAssessmentType || 'full'; 
+    let cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0; 
+    let cat2 = parseFloat(document.getElementById(`cat2_${idx}`)?.value) || 0; 
+    let exam = parseFloat(document.getElementById(`exam_${idx}`)?.value) || 0; 
+    let total = 0; 
+    
+    if(at === 'full') total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    else if(at === 'single_cat') total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    else total = Math.round(Math.min(exam,100) * 10) / 10;
+    
+    document.getElementById(`ltotal_${idx}`).innerHTML = total; 
+    document.getElementById(`lstatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL'; 
+    const row = document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement; 
+    if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row'; 
+  };
   
-  window.saveLecturerMarks=async function(){ let marksData=[]; const len=window.currentMarksData?.length||0; const at=window.currentAssessmentType||'full'; for(let i=0;i<len;i++){ if(at==='full') marksData.push({row:i+2,cat1:document.getElementById(`cat1_${i}`)?.value||'',cat2:document.getElementById(`cat2_${i}`)?.value||'',exam:document.getElementById(`exam_${i}`)?.value||''}); else if(at==='single_cat') marksData.push({row:i+2,cat1:document.getElementById(`cat1_${i}`)?.value||'',cat2:'',exam:document.getElementById(`exam_${i}`)?.value||''}); else marksData.push({row:i+2,cat1:'',cat2:'',exam:document.getElementById(`exam_${i}`)?.value||''}); } showLoading('Saving...'); const res=await apiCall('/api/marks',{method:'POST',body:JSON.stringify({block:window.currentMarksBlock,subject:window.currentMarksSubject,marksData,lecturerName:currentUser.name})}); hideLoading(); showNotification(res?.success?'Saved!':'Error',!res?.success); if(res?.success) loadMarksForSubject(window.currentMarksBlock,window.currentMarksSubject,window.currentAssessmentType); };
+  window.saveLecturerMarks = async function(){ 
+    let marksData = []; 
+    const len = window.currentMarksData?.length || 0; 
+    const at = window.currentAssessmentType || 'full'; 
+    
+    for(let i = 0; i < len; i++){ 
+      if(at === 'full') marksData.push({ row: i + 2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: document.getElementById(`cat2_${i}`)?.value || '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
+      else if(at === 'single_cat') marksData.push({ row: i + 2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
+      else marksData.push({ row: i + 2, cat1: '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
+    } 
+    
+    showLoading('Saving marks...'); 
+    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentMarksBlock, subject: window.currentMarksSubject, marksData: marksData, lecturerName: currentUser.name }) }); 
+    hideLoading(); 
+    showNotification(result?.success ? 'Marks saved successfully!' : 'Error saving marks', !result?.success); 
+    if(result?.success) loadMarksForSubject(window.currentMarksBlock, window.currentMarksSubject, window.currentAssessmentType); 
+  };
   
   // ========== STUDENT MANAGEMENT ==========
-  async function showStudents() { const students=await apiCall('/api/students',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3><button class="save-btn" onclick="showAddStudentModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Student</button><button class="export-btn" onclick="exportToCSV(students,'students')"><i class="fas fa-download"></i> Export</button></div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>`; students.forEach(s=>{ html+=`<tr class="${s.status==='ACTIVE'?'pass-row':'fail-row'}"><td style="padding:8px;">${s.admission}</td><td style="padding:8px;"><strong>${s.name}</strong></td><td style="padding:8px;">${s.block}</td><td style="padding:8px;"><span class="badge ${s.status==='ACTIVE'?'badge-pass':'badge-fail'}">${s.status}</span></td><td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal('${s.admission}','${s.name}','${s.block}')">Edit</button> <button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button></td>`; }); html+=`</tbody></table></div>`; document.getElementById('contentArea').innerHTML=html; }
-  function showAddStudentModal() { const modal=`<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div><div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div><div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option>${b}</option>`).join('')}</select></div><button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  async function saveNewStudent() { const admission=document.getElementById('studentAdmission').value, name=document.getElementById('studentName').value, block=document.getElementById('studentBlock').value; if(!admission||!name){ showNotification('Fill all fields',true); return; } showLoading('Adding...'); await apiCall('/api/add-student',{method:'POST',body:JSON.stringify({admission,name,block})}); hideLoading(); closeModal(); showNotification('Student added!'); showStudents(); }
-  function showEditStudentModal(adm,name,block) { const modal=`<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Admission</label><input type="text" value="${adm}" readonly></div><div class="field"><label>Name</label><input type="text" id="studentName" value="${name}"></div><div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option ${b===block?'selected':''}>${b}</option>`).join('')}</select></div><button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  async function updateStudent(adm) { const name=document.getElementById('studentName').value, block=document.getElementById('studentBlock').value; showLoading('Updating...'); await apiCall('/api/update-student',{method:'POST',body:JSON.stringify({admission:adm,name,block})}); hideLoading(); closeModal(); showNotification('Updated!'); showStudents(); }
-  async function deleteStudent(adm) { if(confirm('Delete this student?')){ showLoading('Deleting...'); await apiCall('/api/delete-student',{method:'POST',body:JSON.stringify({admission:adm})}); hideLoading(); showNotification('Deleted!'); showStudents(); } }
+  async function showStudents() { 
+    const students = await apiCall('/api/students', {}); 
+    let html = `<button class="back-btn" onclick="showMain()">Back</button>
+      <div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3>
+      <button class="save-btn" onclick="showAddStudentModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Student</button>
+      <button class="export-btn" onclick="exportToCSV(students, 'students')">Export</button></div>
+      <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody>`; 
+    
+    students.forEach(s => { 
+      html += `<tr class="${s.status === 'ACTIVE' ? 'pass-row' : 'fail-row'}">
+        <td style="padding:8px;">${s.admission}<\/td><td style="padding:8px;"><strong>${s.name}</strong><\/td>
+        <td style="padding:8px;">${s.block}<\/td><td style="padding:8px;"><span class="badge ${s.status === 'ACTIVE' ? 'badge-pass' : 'badge-fail'}">${s.status}</span><\/td>
+        <td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal('${s.admission}', '${s.name.replace(/'/g, "\\'")}', '${s.block}')">Edit</button>
+        <button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button><\/td><\/tr>`; 
+    }); 
+    
+    html += `</tbody><\/table><\/div>`; 
+    document.getElementById('contentArea').innerHTML = html; 
+  }
+  
+  function showAddStudentModal() { 
+    const modal = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div>
+      <div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select></div>
+      <button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button>
+    </div></div></div>`; 
+    document.body.insertAdjacentHTML('beforeend', modal); 
+  }
+  
+  async function saveNewStudent() { 
+    const admission = document.getElementById('studentAdmission').value; 
+    const name = document.getElementById('studentName').value; 
+    const block = document.getElementById('studentBlock').value; 
+    if(!admission || !name){ showNotification('Fill all fields', true); return; } 
+    showLoading('Adding student...'); 
+    const result = await apiCall('/api/add-student', { method: 'POST', body: JSON.stringify({ admission, name, block }) }); 
+    hideLoading(); closeModal(); 
+    showNotification(result.success ? 'Student added successfully!' : (result.message || 'Error adding student'), !result.success); 
+    if(result.success) showStudents(); 
+  }
+  
+  function showEditStudentModal(adm, name, block) { 
+    const modal = `<div id="studentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Student</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Admission</label><input type="text" value="${adm}" readonly></div>
+      <div class="field"><label>Name</label><input type="text" id="studentName" value="${name}"></div>
+      <div class="field"><label>Block</label><select id="studentBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option ${b === block ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
+      <button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button>
+    </div></div></div>`; 
+    document.body.insertAdjacentHTML('beforeend', modal); 
+  }
+  
+  async function updateStudent(adm) { 
+    const name = document.getElementById('studentName').value; 
+    const block = document.getElementById('studentBlock').value; 
+    showLoading('Updating student...'); 
+    const result = await apiCall('/api/update-student', { method: 'POST', body: JSON.stringify({ admission: adm, name, block }) }); 
+    hideLoading(); closeModal(); 
+    showNotification(result.success ? 'Student updated successfully!' : (result.message || 'Error updating student'), !result.success); 
+    if(result.success) showStudents(); 
+  }
+  
+  async function deleteStudent(adm) { 
+    if(confirm('Delete this student? This will mark them as INACTIVE.')){ 
+      showLoading('Deleting student...'); 
+      const result = await apiCall('/api/delete-student', { method: 'POST', body: JSON.stringify({ admission: adm }) }); 
+      hideLoading(); 
+      showNotification(result.success ? 'Student deleted successfully!' : (result.message || 'Error deleting student'), !result.success); 
+      if(result.success) showStudents(); 
+    } 
+  }
   
   // ========== LECTURER MANAGEMENT ==========
-  async function showLecturers() { const lecturers=await apiCall('/api/lecturers',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3><button class="save-btn" onclick="showAddLecturerModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Lecturer</button></div>`; lecturers.forEach(l=>{ const badges=(l.subjects||[]).map(s=>`<span class="subject-badge">${s.split('|')[1]}</span>`).join(''); html+=`<div class="lecturer-card"><div><strong>${l.name}</strong><br><small>${l.username}</small></div><div>${badges}</div><div><button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button> <button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button></div></div>`; }); document.getElementById('contentArea').innerHTML=html; }
-  function showAddLecturerModal() { const modal=`<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Username</label><input type="text" id="lecUser"></div><div class="field"><label>Full Name</label><input type="text" id="lecName"></div><div class="field"><label>Email</label><input type="email" id="lecEmail"></div><div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div><button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  async function saveNewLecturer() { const username=document.getElementById('lecUser').value, name=document.getElementById('lecName').value, email=document.getElementById('lecEmail').value, pass=document.getElementById('lecPass').value; if(!username||!name){ showNotification('Fill required fields',true); return; } showLoading('Adding...'); await apiCall('/api/add-lecturer',{method:'POST',body:JSON.stringify({username,name,email,password:pass,subjects:[]})}); hideLoading(); closeModal(); showNotification('Lecturer added!'); showLecturers(); }
-  async function showEditLecturerModal(username) { const lecturer=await apiCall(`/api/lecturer/${username}`,{}); const config=await getConfig(); let subjectOptions=''; for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ const units=config[b]||[]; if(units.length){ subjectOptions+=`<optgroup label="${b.replace('_',' ')}">`; units.forEach(u=>{ const selected=(lecturer.subjects||[]).includes(`${b}|${u.name}`); subjectOptions+=`<option value="${b}|${u.name}" ${selected?'selected':''}>${u.name} (${u.assessmentType})</option>`; }); subjectOptions+=`</optgroup>`; } } const modal=`<div id="lecturerModal" class="modal"><div class="modal-content" style="max-width:600px;"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Username</label><input type="text" value="${lecturer.username}" readonly></div><div class="field"><label>Name</label><input type="text" id="lecName" value="${lecturer.name}"></div><div class="field"><label>Email</label><input type="email" id="lecEmail" value="${lecturer.email||''}"></div><div class="field"><label>Password (leave blank to keep)</label><input type="password" id="lecPass" placeholder="New password"></div><div class="field"><label>Assigned Subjects</label><select id="lecSubjects" multiple size="6" style="width:100%">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div><button onclick="updateLecturer('${lecturer.username}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  async function updateLecturer(oldUsername) { const name=document.getElementById('lecName').value, email=document.getElementById('lecEmail').value, password=document.getElementById('lecPass').value, select=document.getElementById('lecSubjects'), subjects=Array.from(select.selectedOptions).map(o=>o.value); showLoading('Updating...'); await apiCall('/api/update-lecturer',{method:'POST',body:JSON.stringify({oldUsername,username:oldUsername,name,email,password,subjects})}); hideLoading(); closeModal(); showNotification('Updated!'); showLecturers(); }
-  async function deleteLecturer(username) { if(confirm('Delete this lecturer?')){ showLoading('Deleting...'); await apiCall('/api/delete-lecturer',{method:'POST',body:JSON.stringify({username})}); hideLoading(); showNotification('Deleted!'); showLecturers(); } }
+  async function showLecturers() { 
+    const lecturers = await apiCall('/api/lecturers', {}); 
+    let html = `<button class="back-btn" onclick="showMain()">Back</button>
+      <div class="header"><h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3>
+      <button class="save-btn" onclick="showAddLecturerModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Lecturer</button></div>`; 
+    
+    lecturers.forEach(l => { 
+      const badges = (l.subjects || []).map(s => `<span class="subject-badge">${s.split('|')[1]}</span>`).join(''); 
+      html += `<div class="lecturer-card"><div><strong>${l.name}</strong><br><small>${l.username}</small></div><div>${badges}</div>
+        <div><button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button>
+        <button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button></div></div>`; 
+    }); 
+    document.getElementById('contentArea').innerHTML = html; 
+  }
+  
+  function showAddLecturerModal() { 
+    const modal = `<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Username</label><input type="text" id="lecUser"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="lecName"></div>
+      <div class="field"><label>Email</label><input type="email" id="lecEmail"></div>
+      <div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div>
+      <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save</button>
+    </div></div></div>`; 
+    document.body.insertAdjacentHTML('beforeend', modal); 
+  }
+  
+  async function saveNewLecturer() { 
+    const username = document.getElementById('lecUser').value; 
+    const name = document.getElementById('lecName').value; 
+    const email = document.getElementById('lecEmail').value; 
+    const pass = document.getElementById('lecPass').value; 
+    if(!username || !name){ showNotification('Fill required fields', true); return; } 
+    showLoading('Adding lecturer...'); 
+    const result = await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: pass, subjects: [] }) }); 
+    hideLoading(); closeModal(); 
+    showNotification(result.success ? 'Lecturer added successfully!' : (result.message || 'Error adding lecturer'), !result.success); 
+    if(result.success) showLecturers(); 
+  }
+  
+  async function showEditLecturerModal(username) { 
+    const lecturer = await apiCall(`/api/lecturer/${username}`, {}); 
+    const config = await getConfig(); 
+    let subjectOptions = ''; 
+    for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ 
+      const units = config[b] || []; 
+      if(units.length){ 
+        subjectOptions += `<optgroup label="${b.replace('_', ' ')}">`; 
+        units.forEach(u => { 
+          const selected = (lecturer.subjects || []).includes(`${b}|${u.name}`); 
+          subjectOptions += `<option value="${b}|${u.name}" ${selected ? 'selected' : ''}>${u.name} (${u.assessmentType})</option>`; 
+        }); 
+        subjectOptions += `</optgroup>`; 
+      } 
+    } 
+    
+    const modal = `<div id="lecturerModal" class="modal"><div class="modal-content" style="max-width:600px;"><div class="modal-header"><h3><i class="fas fa-user-edit"></i> Edit Lecturer: ${lecturer.name}</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Username</label><input type="text" value="${lecturer.username}" readonly></div>
+      <div class="field"><label>Name</label><input type="text" id="lecName" value="${lecturer.name}"></div>
+      <div class="field"><label>Email</label><input type="email" id="lecEmail" value="${lecturer.email || ''}"></div>
+      <div class="field"><label>Password (leave blank to keep)</label><input type="password" id="lecPass" placeholder="New password"></div>
+      <div class="field"><label>Assigned Subjects</label><select id="lecSubjects" multiple size="6" style="width:100%">${subjectOptions}</select><small>Hold Ctrl/Cmd to select multiple</small></div>
+      <button onclick="updateLecturer('${lecturer.username}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button>
+    </div></div></div>`; 
+    document.body.insertAdjacentHTML('beforeend', modal); 
+  }
+  
+  async function updateLecturer(oldUsername) { 
+    const name = document.getElementById('lecName').value; 
+    const email = document.getElementById('lecEmail').value; 
+    const password = document.getElementById('lecPass').value; 
+    const select = document.getElementById('lecSubjects'); 
+    const subjects = Array.from(select.selectedOptions).map(o => o.value); 
+    showLoading('Updating lecturer...'); 
+    const result = await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username: oldUsername, name, email, password, subjects }) }); 
+    hideLoading(); closeModal(); 
+    showNotification(result.success ? 'Lecturer updated successfully!' : (result.message || 'Error updating lecturer'), !result.success); 
+    if(result.success) showLecturers(); 
+  }
+  
+  async function deleteLecturer(username) { 
+    if(confirm('Delete this lecturer?')){ 
+      showLoading('Deleting lecturer...'); 
+      const result = await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }); 
+      hideLoading(); 
+      showNotification(result.success ? 'Lecturer deleted successfully!' : (result.message || 'Error deleting lecturer'), !result.success); 
+      if(result.success) showLecturers(); 
+    } 
+  }
   
   // ========== UNIT MANAGEMENT ==========
-  async function showUnits() { const units=await apiCall('/api/units',{}); let html=`<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div><div class="card"><h4><i class="fas fa-plus-circle"></i> Add New Unit</h4><div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;"><div><label>Block</label><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b=>`<option>${b}</option>`).join('')}</select></div><div><label>Subject Name</label><input type="text" id="newUnitName" placeholder="Subject Name"></div><div><label>Assessment Type</label><select id="newUnitType"><option value="full">📊 Full (CAT1+CAT2+Exam)</option><option value="single_cat">📝 Single CAT (CAT+Exam)</option><option value="exam_only">📖 Exam Only</option></select></div><div><button class="save-btn" onclick="addNewUnit()"><i class="fas fa-plus"></i> Add Unit</button></div></div></div>`; for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ const blockUnits=units[b]||[]; if(blockUnits.length){ html+=`<div style="margin-top:24px;"><h3><i class="fas fa-layer-group"></i> ${b.replace('_',' ')}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:12px;">`; blockUnits.forEach(u=>{ html+=`<div class="unit-card"><div><strong>${u.name}</strong><span class="badge badge-${u.assessmentType}" style="margin-left:8px;">${u.assessmentType}</span></div><div style="margin-top:12px;"><button class="edit-btn" onclick="showEditUnitModal('${b}','${u.name}','${u.assessmentType}')">Edit</button> <button class="delete-btn" onclick="deleteUnit('${b}','${u.name}')">Delete</button></div></div>`; }); html+=`</div></div>`; } } document.getElementById('contentArea').innerHTML=html; }
-  async function addNewUnit() { const block=document.getElementById('newUnitBlock').value, name=document.getElementById('newUnitName').value.trim().toUpperCase(), type=document.getElementById('newUnitType').value; if(!name){ showNotification('Enter subject name',true); return; } showLoading('Adding...'); await apiCall('/api/add-unit',{method:'POST',body:JSON.stringify({block,name,assessmentType:type})}); hideLoading(); configCache=null; showNotification('Unit added!'); showUnits(); }
-  function showEditUnitModal(block,name,curType) { const modal=`<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body"><div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div><div class="field"><label>Assessment Type</label><select id="editUnitType"><option value="full" ${curType==='full'?'selected':''}>Full (CAT1+CAT2+Exam)</option><option value="single_cat" ${curType==='single_cat'?'selected':''}>Single CAT (CAT+Exam)</option><option value="exam_only" ${curType==='exam_only'?'selected':''}>Exam Only</option></select></div><button onclick="updateUnit('${block}','${name}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button></div></div></div>`; document.body.insertAdjacentHTML('beforeend',modal); }
-  async function updateUnit(block,oldName) { const newName=document.getElementById('editUnitName').value.trim().toUpperCase(), newType=document.getElementById('editUnitType').value; if(!newName){ showNotification('Enter subject name',true); return; } showLoading('Updating...'); await apiCall('/api/update-unit',{method:'POST',body:JSON.stringify({block,oldName,newName,assessmentType:newType})}); hideLoading(); closeModal(); configCache=null; showNotification('Unit updated!'); showUnits(); }
-  async function deleteUnit(block,name) { if(confirm(`Delete unit "${name}"? This will delete ALL marks!`)){ showLoading('Deleting...'); await apiCall('/api/delete-unit',{method:'POST',body:JSON.stringify({block,name})}); hideLoading(); configCache=null; showNotification('Unit deleted!'); showUnits(); } }
+  async function showUnits() { 
+    const units = await apiCall('/api/units', {}); 
+    let html = `<button class="back-btn" onclick="showMain()">Back</button>
+      <div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div>
+      <div class="card"><h4><i class="fas fa-plus-circle"></i> Add New Unit</h4>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+        <div><label>Block</label><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select></div>
+        <div><label>Subject Name</label><input type="text" id="newUnitName" placeholder="Subject Name"></div>
+        <div><label>Assessment Type</label><select id="newUnitType"><option value="full">Full (CAT1+CAT2+Exam)</option><option value="single_cat">Single CAT (CAT+Exam)</option><option value="exam_only">Exam Only</option></select></div>
+        <div><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div>
+      </div></div>`; 
+    
+    for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ 
+      const blockUnits = units[b] || []; 
+      if(blockUnits.length){ 
+        html += `<div style="margin-top:24px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_', ' ')}</h3>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:12px;">`; 
+        blockUnits.forEach(u => { 
+          const typeIcon = u.assessmentType === 'full' ? '📊' : (u.assessmentType === 'single_cat' ? '📝' : '📖');
+          const typeLabel = u.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (u.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+          html += `<div class="unit-card"><div><strong>${typeIcon} ${u.name}</strong><span class="badge" style="margin-left:8px;">${typeLabel}</span></div>
+            <div style="margin-top:12px;"><button class="edit-btn" onclick="showEditUnitModal('${b}', '${u.name.replace(/'/g, "\\'")}', '${u.assessmentType}')">Edit</button>
+            <button class="delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')">Delete</button></div></div>`; 
+        }); 
+        html += `</div></div>`; 
+      } 
+    } 
+    document.getElementById('contentArea').innerHTML = html; 
+  }
   
-  let sy=localStorage.getItem('selectedYear'); if(sy&&INTAKE_YEARS.includes(sy)) currentYear=sy; let set=localStorage.getItem('selectedExamType'); if(set) currentExamType=set; checkLogin();
+  async function addNewUnit() { 
+    const block = document.getElementById('newUnitBlock').value; 
+    const name = document.getElementById('newUnitName').value.trim().toUpperCase(); 
+    const type = document.getElementById('newUnitType').value; 
+    if(!name){ showNotification('Enter subject name', true); return; } 
+    showLoading('Adding unit...'); 
+    const result = await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) }); 
+    hideLoading(); 
+    showNotification(result.success ? 'Unit added successfully!' : (result.message || 'Error adding unit'), !result.success); 
+    if(result.success){ configCache = null; showUnits(); } 
+  }
+  
+  function showEditUnitModal(block, name, curType) { 
+    const modal = `<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
+      <div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div>
+      <div class="field"><label>Assessment Type</label><select id="editUnitType">
+        <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
+        <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
+        <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+      </select></div>
+      <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%">Save Changes</button>
+    </div></div></div>`; 
+    document.body.insertAdjacentHTML('beforeend', modal); 
+  }
+  
+  async function updateUnit(block, oldName) { 
+    const newName = document.getElementById('editUnitName').value.trim().toUpperCase(); 
+    const newType = document.getElementById('editUnitType').value; 
+    if(!newName){ showNotification('Enter subject name', true); return; } 
+    showLoading('Updating unit...'); 
+    const result = await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) }); 
+    hideLoading(); closeModal(); 
+    showNotification(result.success ? 'Unit updated successfully!' : (result.message || 'Error updating unit'), !result.success); 
+    if(result.success){ configCache = null; showUnits(); } 
+  }
+  
+  async function deleteUnit(block, name) { 
+    if(confirm(`Delete unit "${name}"? This will delete ALL marks for this subject!`)){ 
+      showLoading('Deleting unit...'); 
+      const result = await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }); 
+      hideLoading(); 
+      showNotification(result.success ? 'Unit deleted successfully!' : (result.message || 'Error deleting unit'), !result.success); 
+      if(result.success){ configCache = null; showUnits(); } 
+    } 
+  }
+  
+  // ======================= INITIALIZATION =======================
+  let sy = localStorage.getItem('selectedYear'); 
+  if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
+  let set = localStorage.getItem('selectedExamType'); 
+  if(set) currentExamType = set; 
+  checkLogin();
 </script>
 </body>
 </html>
