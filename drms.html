@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>DRMS | Document Records Management System - NCHSM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="drms.css">
+</head>
+<body>
+    <div class="drms-app">
+        <!-- Header -->
+        <header class="drms-header">
+            <div class="drms-logo">
+                <h1><i class="fas fa-folder-open"></i> NCHSM Document Records System</h1>
+                <p>Student Document Lifecycle Management | Admission → Current → Graduation</p>
+            </div>
+            <div class="drms-header-right">
+                <div class="drms-user">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="drmsUserName">Super Admin</span>
+                </div>
+                <button id="drmsLogoutBtn" class="drms-btn drms-btn-outline">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <button id="drmsBackBtn" class="drms-btn drms-btn-outline" onclick="window.location.href='superadmin.html'">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="drms-container">
+            <!-- Sidebar Navigation -->
+            <aside class="drms-sidebar">
+                <nav class="drms-nav">
+                    <div class="drms-nav-group">
+                        <div class="drms-nav-header">DOCUMENT MANAGEMENT</div>
+                        <a href="#" data-view="dashboard" class="drms-nav-item active">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        <a href="#" data-view="students" class="drms-nav-item">
+                            <i class="fas fa-user-graduate"></i> Student Records
+                        </a>
+                        <a href="#" data-view="upload" class="drms-nav-item">
+                            <i class="fas fa-upload"></i> Upload Document
+                        </a>
+                        <a href="#" data-view="categories" class="drms-nav-item">
+                            <i class="fas fa-tags"></i> Document Categories
+                        </a>
+                    </div>
+                    <div class="drms-nav-group">
+                        <div class="drms-nav-header">COMPLIANCE</div>
+                        <a href="#" data-view="audit" class="drms-nav-item">
+                            <i class="fas fa-history"></i> Audit Trail
+                        </a>
+                        <a href="#" data-view="retention" class="drms-nav-item">
+                            <i class="fas fa-archive"></i> Retention Policy
+                        </a>
+                    </div>
+                    <div class="drms-nav-group">
+                        <div class="drms-nav-header">REPORTS</div>
+                        <a href="#" data-view="reports" class="drms-nav-item">
+                            <i class="fas fa-chart-bar"></i> Analytics & Reports
+                        </a>
+                    </div>
+                </nav>
+                <div class="drms-sidebar-footer">
+                    <small>DRMS v1.0</small>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="drms-main" id="drmsMainContent">
+                <!-- Dynamic content loads here -->
+                <div class="drms-loading">Loading dashboard...</div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Document Viewer Modal -->
+    <div id="docViewerModal" class="drms-modal">
+        <div class="drms-modal-content drms-modal-lg">
+            <div class="drms-modal-header">
+                <h3 id="viewerTitle"><i class="fas fa-file-pdf"></i> Document Preview</h3>
+                <button class="drms-modal-close" onclick="closeDocumentViewer()">&times;</button>
+            </div>
+            <div class="drms-modal-body">
+                <iframe id="documentIframe" src="about:blank" style="width:100%; height:60vh; border:none;"></iframe>
+            </div>
+            <div class="drms-modal-footer">
+                <button id="downloadDocBtn" class="drms-btn drms-btn-primary">Download</button>
+                <button class="drms-btn drms-btn-outline" onclick="closeDocumentViewer()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Document Modal -->
+    <div id="uploadModal" class="drms-modal">
+        <div class="drms-modal-content">
+            <div class="drms-modal-header">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Upload Document</h3>
+                <button class="drms-modal-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="drms-modal-body">
+                <form id="drmsUploadForm">
+                    <div class="drms-form-group">
+                        <label>Select Student *</label>
+                        <select id="uploadStudentId" class="drms-select" required>
+                            <option value="">-- Select Student --</option>
+                        </select>
+                    </div>
+                    <div class="drms-form-group">
+                        <label>Document Title *</label>
+                        <input type="text" id="docTitle" class="drms-input" placeholder="e.g., Admission Letter, Transcript, ID Copy" required>
+                    </div>
+                    <div class="drms-form-group">
+                        <label>Document Category *</label>
+                        <select id="docCategory" class="drms-select" required>
+                            <option value="Admission">📬 Admission Documents</option>
+                            <option value="Academic">📚 Academic Records</option>
+                            <option value="Financial">💰 Financial Records</option>
+                            <option value="Medical">🏥 Medical Records</option>
+                            <option value="Disciplinary">⚠️ Disciplinary Records</option>
+                            <option value="Personal">🆔 Personal ID</option>
+                        </select>
+                    </div>
+                    <div class="drms-form-group">
+                        <label>Description (optional)</label>
+                        <textarea id="docDescription" class="drms-textarea" rows="2" placeholder="Brief description of the document..."></textarea>
+                    </div>
+                    <div class="drms-form-group">
+                        <label>Select File * (PDF, JPG, PNG, DOC)</label>
+                        <input type="file" id="docFile" class="drms-file-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                        <small class="drms-hint">Max file size: 10MB</small>
+                    </div>
+                    <div class="drms-form-actions">
+                        <button type="submit" class="drms-btn drms-btn-success"><i class="fas fa-upload"></i> Upload Document</button>
+                        <button type="button" class="drms-btn drms-btn-outline" onclick="closeUploadModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Record Modal (Complete Lifecycle) -->
+    <div id="studentRecordModal" class="drms-modal">
+        <div class="drms-modal-content drms-modal-xl">
+            <div class="drms-modal-header">
+                <h3 id="studentRecordTitle"><i class="fas fa-user-graduate"></i> Student Complete Record</h3>
+                <button class="drms-modal-close" onclick="closeStudentRecordModal()">&times;</button>
+            </div>
+            <div class="drms-modal-body" id="studentRecordBody">
+                <!-- Dynamic student record content -->
+            </div>
+            <div class="drms-modal-footer">
+                <button class="drms-btn drms-btn-primary" onclick="exportStudentRecord()"><i class="fas fa-download"></i> Export Record</button>
+                <button class="drms-btn drms-btn-outline" onclick="closeStudentRecordModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="drmsToast" class="drms-toast" style="display: none;"></div>
+
+    <script src="drms.js"></script>
+</body>
+</html>
