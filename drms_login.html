@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRMS Login | Document Records Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a2a3b 0%, #123e52 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            color: #0a2a3b;
+            font-size: 1.8rem;
+        }
+        .logo p {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #f4b942;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #0a2a3b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            background: #123e52;
+        }
+        .error-message {
+            background: #fee2e2;
+            color: #c53030;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            text-align: center;
+            display: none;
+        }
+        .info-box {
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.75rem;
+            color: #166534;
+            text-align: center;
+        }
+        @media (max-width: 500px) {
+            .login-container { margin: 20px; padding: 30px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <i class="fas fa-folder-open" style="font-size: 48px; color: #f4b942;"></i>
+            <h1>NCHSM DRMS</h1>
+            <p>Document Records Management System</p>
+        </div>
+
+        <div id="errorMsg" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" id="email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> Password</label>
+                <input type="password" id="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-login"><i class="fas fa-sign-in-alt"></i> Login</button>
+        </form>
+
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i> Demo Credentials:<br>
+            Admin: admin@nchsm.ac.ke | Lecturer: lecturer@nchsm.ac.ke | Student: student@nchsm.ac.ke
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMsg');
+            
+            errorDiv.style.display = 'none';
+            
+            try {
+                // 1. Sign in with Supabase Auth
+                const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (authError) throw new Error(authError.message);
+                
+                if (!authData.user) throw new Error('Login failed');
+                
+                // 2. Get user profile from consolidated_user_profiles_table
+                const { data: profile, error: profileError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', authData.user.id)
+                    .single();
+                
+                if (profileError) {
+                    console.warn('Profile fetch error:', profileError);
+                    // Try alternative query
+                    const { data: altProfile } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('email', email)
+                        .single();
+                    
+                    if (!altProfile) throw new Error('User profile not found in database');
+                    
+                    // Store session with profile
+                    const sessionData = {
+                        user_id: authData.user.id,
+                        email: email,
+                        full_name: altProfile.full_name || email.split('@')[0],
+                        role: altProfile.role || 'student',
+                        program: altProfile.program || 'KRCHN',
+                        intake_year: altProfile.intake_year,
+                        block: altProfile.block,
+                        status: altProfile.status
+                    };
+                    
+                    localStorage.setItem('drms_session', JSON.stringify(sessionData));
+                } else {
+                    // Store session with profile
+                    const sessionData = {
+                        user_id: authData.user.id,
+                        email: email,
+                        full_name: profile.full_name || email.split('@')[0],
+                        role: profile.role || 'student',
+                        program: profile.program || 'KRCHN',
+                        intake_year: profile.intake_year,
+                        block: profile.block,
+                        status: profile.status
+                    };
+                    
+                    localStorage.setItem('drms_session', JSON.stringify(sessionData));
+                }
+                
+                // Redirect to main DRMS page
+                window.location.href = 'drms_dashboard.html';
+                
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Login failed. Please check your credentials.';
+                errorDiv.style.display = 'block';
+                console.error('Login error:', error);
+            }
+        });
+        
+        // Check if already logged in
+        const existingSession = localStorage.getItem('drms_session');
+        if (existingSession) {
+            try {
+                const session = JSON.parse(existingSession);
+                if (session.user_id) {
+                    window.location.href = 'drms_dashboard.html';
+                }
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
