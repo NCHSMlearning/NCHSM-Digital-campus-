@@ -76,8 +76,8 @@
         .file-input { width: 100%; padding: 0.5rem; border: 1px dashed var(--gray-200); border-radius: 10px; background: var(--gray-50); }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; border-radius: 20px; width: 90%; max-width: 600px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
-        .modal-lg { max-width: 800px; }
+        .modal-content { background: white; border-radius: 20px; width: 90%; max-width: 1000px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-lg { max-width: 1000px; }
         .modal-xl { max-width: 1000px; }
         .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; background: var(--gray-50); }
         .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
@@ -91,6 +91,8 @@
         
         .chart-container { background: white; padding: 1rem; border-radius: 16px; margin-bottom: 1.5rem; }
         .version-timeline-item { border-left: 2px solid var(--accent); padding-left: 15px; margin-bottom: 15px; }
+        .pdf-viewer { width: 100%; height: 70vh; border: none; }
+        .doc-viewer-fallback { text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; }
         
         @media (max-width: 768px) { .app-container { flex-direction: column; } .sidebar { width: 100%; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     </style>
@@ -112,7 +114,21 @@
 </div>
 
 <!-- Modals -->
-<div id="docViewerModal" class="modal"><div class="modal-content modal-lg"><div class="modal-header"><h3 id="viewerTitle">Document Preview</h3><button class="modal-close" onclick="closeDocViewer()">&times;</button></div><div class="modal-body"><iframe id="docIframe" src="about:blank" style="width:100%; height:60vh; border:none;"></iframe></div><div class="modal-footer"><button id="downloadDocBtn" class="btn btn-primary">Download</button><button class="btn btn-outline" onclick="closeDocViewer()">Close</button></div></div></div>
+<div id="docViewerModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="viewerTitle">Document Preview</h3>
+            <button class="modal-close" onclick="closeDocViewer()">&times;</button>
+        </div>
+        <div class="modal-body" id="docViewerBody">
+            <div class="loading"><div class="spinner"></div> Loading document...</div>
+        </div>
+        <div class="modal-footer">
+            <button id="downloadDocBtn" class="btn btn-primary"><i class="fas fa-download"></i> Download</button>
+            <button class="btn btn-outline" onclick="closeDocViewer()">Close</button>
+        </div>
+    </div>
+</div>
 <div id="uploadModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Upload Document</h3><button class="modal-close" onclick="closeUploadModal()">&times;</button></div><div class="modal-body"><form id="uploadForm"><div class="form-group"><label>Student *</label><select id="uploadStudentId" class="form-select" required></select></div><div class="form-group"><label>Title *</label><input type="text" id="docTitle" class="form-input" required></div><div class="form-group"><label>Category *</label><select id="docCategory" class="form-select"><option>Admission</option><option>Academic</option><option>Financial</option><option>Medical</option></select></div><div class="form-group"><label>Description</label><textarea id="docDesc" class="form-textarea" rows="2"></textarea></div><div class="form-group"><label>File *</label><input type="file" id="docFile" class="file-input" accept=".pdf,.jpg,.png,.doc,.docx" required></div><div class="form-actions"><button type="submit" class="btn btn-success">Upload</button><button type="button" class="btn btn-outline" onclick="closeUploadModal()">Cancel</button></div></form></div></div></div>
 <div id="studentRecordModal" class="modal"><div class="modal-content modal-xl"><div class="modal-header"><h3 id="studentRecordTitle">Student Complete Record</h3><button class="modal-close" onclick="closeStudentRecordModal()">&times;</button></div><div class="modal-body" id="studentRecordBody"></div><div class="modal-footer"><button class="btn btn-primary" onclick="exportStudentPDF()">Export PDF</button><button class="btn btn-outline" onclick="closeStudentRecordModal()">Close</button></div></div></div>
 <div id="editStudentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Student</h3><button class="modal-close" onclick="closeEditModal()">&times;</button></div><div class="modal-body"><form id="editForm"><input type="hidden" id="editId"><div class="form-group"><label>Full Name</label><input type="text" id="editName" class="form-input" required></div><div class="form-group"><label>Email</label><input type="email" id="editEmail" class="form-input" required></div><div class="form-group"><label>Program</label><select id="editProgram" class="form-select"><option value="KRCHN">KRCHN Nursing</option><option value="DPOTT">DPOTT</option><option value="DCH">DCH</option></select></div><div class="form-group"><label>Intake Year</label><input type="text" id="editIntake" class="form-input"></div><div class="form-group"><label>Block/Term</label><input type="text" id="editBlock" class="form-input"></div><div class="form-group"><label>Status</label><select id="editStatus" class="form-select"><option value="active">Active</option><option value="inactive">Inactive</option><option value="graduated">Graduated</option></select></div><div class="form-actions"><button type="submit" class="btn btn-success">Save</button><button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button></div></form></div></div></div>
@@ -135,6 +151,61 @@ function escapeHtml(s) { if (!s) return ''; return String(s).replace(/[&<>]/g, f
 async function sendEmailNotification(to, subject, message) { console.log('📧 Email would send to:', to, subject); showToast(`Email notification sent to ${to}`); }
 async function addAudit(action, details) { await sb.from('drms_audit_logs').insert([{ user_id: currentUser?.user_id, user_name: currentUser?.full_name, action, details, created_at: new Date().toISOString() }]); }
 
+// FIXED: Document Viewer that actually displays files instead of downloading
+window.viewDoc = async function(id) {
+    const doc = allDocs.find(d => d.id === id);
+    if(!doc) return;
+    
+    const fileUrl = doc.file_url;
+    const fileName = doc.file_name || 'document';
+    const fileExt = (fileName.split('.').pop() || '').toLowerCase();
+    
+    document.getElementById('viewerTitle').innerHTML = `<i class="fas fa-file"></i> ${escapeHtml(doc.title)}`;
+    
+    let viewerHtml = '';
+    
+    // PDF files - display directly
+    if (fileExt === 'pdf') {
+        viewerHtml = `<iframe src="${fileUrl}#toolbar=1&navpanes=1" class="pdf-viewer" style="width:100%; height:70vh; border:none;"></iframe>`;
+    }
+    // Images - display directly
+    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
+        viewerHtml = `<div style="text-align:center; padding:20px;"><img src="${fileUrl}" style="max-width:100%; max-height:70vh; border-radius:8px;" alt="${escapeHtml(doc.title)}"></div>`;
+    }
+    // Office documents (DOC, DOCX, XLS, XLSX, PPT) - use Google Docs Viewer
+    else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(fileExt)) {
+        const encodedUrl = encodeURIComponent(fileUrl);
+        viewerHtml = `<iframe src="https://docs.google.com/gview?url=${encodedUrl}&embedded=true" class="pdf-viewer" style="width:100%; height:70vh; border:none;"></iframe>
+        <div class="doc-viewer-fallback" style="margin-top:10px; text-align:center; padding:10px; background:#f8f9fa; border-radius:8px;">
+            <i class="fas fa-info-circle"></i> Google Docs Viewer is loading the document. 
+            <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-primary">Click here to download if not visible</a>
+        </div>`;
+    }
+    // Text files - display as text
+    else if (['txt', 'csv', 'json', 'xml'].includes(fileExt)) {
+        try {
+            const response = await fetch(fileUrl);
+            const text = await response.text();
+            viewerHtml = `<pre style="background:#f8f9fa; padding:15px; border-radius:8px; overflow:auto; max-height:70vh;">${escapeHtml(text)}</pre>`;
+        } catch(e) {
+            viewerHtml = `<div class="doc-viewer-fallback"><p>Could not load text content. <a href="${fileUrl}" target="_blank">Download file</a></p></div>`;
+        }
+    }
+    // Other files - show download option
+    else {
+        viewerHtml = `<div class="doc-viewer-fallback" style="text-align:center; padding:40px;">
+            <i class="fas fa-file fa-4x" style="color:#999; margin-bottom:20px;"></i>
+            <h4>${escapeHtml(fileExt.toUpperCase())} File</h4>
+            <p>Preview not available for this file type.</p>
+            <a href="${fileUrl}" class="btn btn-primary" download>📥 Download File</a>
+        </div>`;
+    }
+    
+    document.getElementById('docViewerBody').innerHTML = viewerHtml;
+    document.getElementById('downloadDocBtn').onclick = () => window.open(fileUrl, '_blank');
+    document.getElementById('docViewerModal').style.display = 'flex';
+};
+
 async function loadStudents() { let q = sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student'); if (currentUser?.role === 'lecturer' && currentUser?.program) q = q.eq('program', currentUser.program); const { data } = await q; allStudents = data || []; return allStudents; }
 async function loadDocs() { let q = sb.from('drms_documents').select('*').order('created_at', false); if (currentUser?.role === 'student') q = q.eq('student_id', currentUser.user_id); if (currentUser?.role === 'lecturer' && currentUser?.program) { const { data: studentsInProgram } = await sb.from('consolidated_user_profiles_table').select('user_id').eq('program', currentUser.program); const ids = studentsInProgram?.map(s => s.user_id) || []; if (ids.length) q = q.in('student_id', ids); } const { data } = await q; allDocs = data || []; return allDocs; }
 async function loadVersions() { const { data } = await sb.from('drms_versions').select('*').order('version_date', false); allVersions = data || []; return allVersions; }
@@ -146,7 +217,6 @@ async function renderDashboard() {
     const pendingApprovals = allDocs.filter(d => d.status === 'pending').length;
     const expiringDocs = allDocs.filter(d => { const age = (new Date() - new Date(d.created_at)) / (1000*60*60*24*365); return age > 4.5 && age < 5; }).length;
     
-    // Chart data
     const categoryCount = { Admission:0, Academic:0, Financial:0, Medical:0 };
     allDocs.forEach(d => { if(categoryCount[d.category] !== undefined) categoryCount[d.category]++; });
     
@@ -164,7 +234,7 @@ async function renderDashboard() {
             <div class="stat-card"><div class="stat-number">${allStudents.length}</div><div class="stat-label">Active Students</div></div>
         </div>
         <div class="chart-container"><canvas id="statsChart" width="400" height="200"></canvas></div>
-        <div class="table-container"><h3 style="padding:1rem">📋 Recent Documents</h3><table><thead><tr><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>${allDocs.slice(0,10).map(d => { const s = allStudents.find(st => st.user_id === d.student_id); return `<tr><td>${escapeHtml(s?.full_name || 'Unknown')}</td><td>${escapeHtml(d.title)}</td><td><span class="badge">${d.category}</span></td><td>${new Date(d.created_at).toLocaleDateString()}</td><td><span class="badge ${d.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${d.status || 'pending'}</span></td><td><button class="btn btn-sm btn-primary" onclick="viewDoc(${d.id})">View</button> <button class="btn btn-sm btn-outline" onclick="viewVersionHistory(${d.id})">Versions</button></td></tr>`}).join('') || '<tr><td colspan="6">No documents</td></tr>'}</tbody></div>`;
+        <div class="table-container"><h3 style="padding:1rem">📋 Recent Documents</h3><tr><thead><tr><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>${allDocs.slice(0,10).map(d => { const s = allStudents.find(st => st.user_id === d.student_id); return `</tr><td>${escapeHtml(s?.full_name || 'Unknown')}</td><td>${escapeHtml(d.title)}</td><td><span class="badge">${d.category}</span></td><td>${new Date(d.created_at).toLocaleDateString()}</td><td><span class="badge ${d.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${d.status || 'pending'}</span></td><td><button class="btn btn-sm btn-primary" onclick="viewDoc(${d.id})">View</button> <button class="btn btn-sm btn-outline" onclick="viewVersionHistory(${d.id})">Versions</button></td></tr>`}).join('') || '<tr><td colspan="6">No documents</tr>'}</tbody></div>`;
 }
 
 async function renderAllDocuments() {
@@ -184,7 +254,7 @@ async function renderAllDocuments() {
             <button id="bulkDownloadBtn" class="btn btn-success">📦 Bulk Download (ZIP)</button>
             <button id="bulkApproveBtn" class="btn btn-warning">✓ Bulk Approve</button>
         </div>
-        <div class="table-container"><h3 style="padding:1rem">📋 All Documents (${allDocs.length})</h3></td><thead><td><th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Signed By</th><th>Actions</th></tr></thead><tbody id="docsBody">${html || '<tr><td colspan="8">No documents found</td></tr>'}</tbody></div>`;
+        <div class="table-container"><h3 style="padding:1rem">📋 All Documents (${allDocs.length})</h3><table><thead><tr><th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Signed By</th><th>Actions</th></tr></thead><tbody id="docsBody">${html || '<tr><td colspan="8">No documents found</tr>'}</tbody></div>`;
     
     document.getElementById('searchBtn').onclick = () => { let term = document.getElementById('docSearch').value.toLowerCase(); let cat = document.getElementById('categoryFilter').value; let from = document.getElementById('dateFrom').value; let to = document.getElementById('dateTo').value; let rows = document.querySelectorAll('#docsBody tr'); for(let r of rows) { let text = r.innerText.toLowerCase(); let match = text.includes(term) && (!cat || text.includes(cat.toLowerCase())); if(from && to) { let dateText = r.cells[4]?.innerText; if(dateText && (new Date(dateText) < new Date(from) || new Date(dateText) > new Date(to))) match = false; } r.style.display = match ? '' : 'none'; } };
     document.getElementById('bulkDownloadBtn').onclick = () => downloadSelectedAsZip();
@@ -236,7 +306,7 @@ async function renderStudents() {
         let docCount = allDocs.filter(d => d.student_id === s.user_id).length;
         html += `<tr><td class="checkbox-col"><input type="checkbox" class="student-bulk-select" value="${s.user_id}"></td><td><strong>${escapeHtml(s.full_name)}</strong><br><small>${escapeHtml(s.email)}</small></td><td><span class="program-badge program-${s.program === 'KRCHN' ? 'krchn' : 'tvet'}">${escapeHtml(s.program)}</span></td><td>${escapeHtml(s.intake_year || '-')}</td><td>${escapeHtml(s.block || '-')}</td><td>${docCount}</td><td><button class="btn btn-sm btn-primary" onclick="viewStudentRecord('${s.user_id}')">View Record</button> ${currentUser?.role === 'admin' || currentUser?.role === 'superadmin' ? `<button class="btn btn-sm btn-outline" onclick="openEditStudent('${s.user_id}')">Edit</button>` : ''} <button class="btn btn-sm btn-success" onclick="downloadStudentFolder('${s.user_id}')">📦 ZIP</button></td></tr>`;
     }
-    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><input type="text" id="studentSearch" class="search-input" placeholder="Search..."><button id="searchBtn" class="btn btn-primary">Search</button></div><div class="table-container"><h3 style="padding:1rem">👨‍🎓 Student Records</h3><table><thead><td><th class="checkbox-col"></th><th>Name</th><th>Program</th><th>Intake</th><th>Block</th><th>Documents</th><th>Actions</th></tr></thead><tbody id="studentsBody">${html || '<tr><td colspan="7">No students found</td></tr>'}</tbody></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><input type="text" id="studentSearch" class="search-input" placeholder="Search..."><button id="searchBtn" class="btn btn-primary">Search</button></div><div class="table-container"><h3 style="padding:1rem">👨‍🎓 Student Records</h3><tr><thead><tr><th class="checkbox-col"></th><th>Name</th><th>Program</th><th>Intake</th><th>Block</th><th>Documents</th><th>Actions</th></tr></thead><tbody id="studentsBody">${html || '<tr><td colspan="7">No students found</td>'}</tbody></div>`;
     document.getElementById('searchBtn').onclick = () => { let term = document.getElementById('studentSearch').value.toLowerCase(); let rows = document.querySelectorAll('#studentsBody tr'); for(let r of rows) r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none'; };
 }
 
@@ -302,7 +372,7 @@ async function renderApprovals() {
         const s = allStudents.find(st => st.user_id === d.student_id);
         html += `<tr><td class="checkbox-col"><input type="checkbox" class="approval-select" value="${d.id}"></td><td>${escapeHtml(s?.full_name || 'Unknown')}</td><td>${escapeHtml(d.title)}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td><span class="badge">${d.category}</span></td><td>${new Date(d.created_at).toLocaleDateString()}</td><td><button class="btn btn-sm btn-success" onclick="openApproval(${d.id})">Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectDoc(${d.id})">Reject</button> <button class="btn btn-sm btn-outline" onclick="viewDoc(${d.id})">View</button></td></tr>`;
     }
-    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><button id="bulkApprovalBtn" class="btn btn-warning">✓ Bulk Approve Selected</button></div><div class="table-container"><h3 style="padding:1rem">📋 Pending Approvals (${allDocs.filter(d => d.status === 'pending').length})</h3><table><thead><td><th class="checkbox-col"><input type="checkbox" id="selectAllApprovals" onchange="toggleSelectAllApprovals()"></th><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Actions</th></tr></thead><tbody id="approvalsBody">${html || '<tr><td colspan="6">No pending approvals</td>'}</tbody></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><button id="bulkApprovalBtn" class="btn btn-warning">✓ Bulk Approve Selected</button></div><div class="table-container"><h3 style="padding:1rem">📋 Pending Approvals (${allDocs.filter(d => d.status === 'pending').length})</h3><tr><thead><tr><th class="checkbox-col"><input type="checkbox" id="selectAllApprovals" onchange="toggleSelectAllApprovals()"></th><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Actions</th></tr></thead><tbody id="approvalsBody">${html || '<tr><td colspan="6">No pending approvals</td>'}</tbody></div>`;
     document.getElementById('bulkApprovalBtn').onclick = () => openBulkApprovalModal();
 }
 window.toggleSelectAllApprovals = function() { let isChecked = document.getElementById('selectAllApprovals').checked; document.querySelectorAll('.approval-select').forEach(cb => cb.checked = isChecked); };
@@ -315,7 +385,7 @@ async function renderRequests() {
         const s = allStudents.find(st => st.user_id === r.student_id);
         html += `<tr><td>${escapeHtml(s?.full_name || 'Unknown')}</td><td>${r.doc_type}</td><td>${r.reason || '-'}</td><td>${r.delivery_method || 'Email'}</td><td><span class="badge badge-pending">${r.status || 'pending'}</span></td><td>${new Date(r.created_at).toLocaleDateString()}</td><td>${currentUser?.role === 'admin' ? `<button class="btn btn-sm btn-success" onclick="approveRequest('${r.id}')">Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectRequest('${r.id}')">Reject</button>` : '-'}</td></tr>`;
     }
-    document.getElementById('mainContent').innerHTML = `<div class="table-container"><h3 style="padding:1rem">📋 Document Requests</h3><table><thead><tr><th>Student</th><th>Document Type</th><th>Reason</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>${html || '<tr><td colspan="7">No requests found</td>'}</tbody></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="table-container"><h3 style="padding:1rem">📋 Document Requests</h3><tr><thead><tr><th>Student</th><th>Document Type</th><th>Reason</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>${html || '<tr><td colspan="7">No requests found</td>'}</tbody></div>`;
     if(currentUser?.role === 'student') document.getElementById('mainContent').innerHTML += `<div style="margin-top:1rem"><button class="btn btn-primary" onclick="openRequestModal()">+ Request Document</button></div>`;
 }
 
@@ -334,7 +404,7 @@ async function renderAudit() {
     const { data } = await sb.from('drms_audit_logs').select('*').order('created_at', false).limit(200);
     let html = '';
     for(let a of (data || [])) html += `<tr><td>${new Date(a.created_at).toLocaleString()}</td><td>${escapeHtml(a.user_name)}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${a.action}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${escapeHtml(a.details)}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td></tr>`;
-    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><button id="exportAuditBtn" class="btn btn-primary">📊 Export to Excel</button></div><div class="table-container"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></table></thead><tbody>${html || '<tr><td colspan="4">No audit logs</td>'}</tbody></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="search-bar"><button id="exportAuditBtn" class="btn btn-primary">📊 Export to Excel</button></div><div class="table-container"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody>${html || '<tr><td colspan="4">No audit logs</td>'}</tbody></div>`;
     document.getElementById('exportAuditBtn').onclick = () => { let csv = "Time,User,Action,Details\n"; (data || []).forEach(a => csv += `"${a.created_at}","${a.user_name}","${a.action}","${a.details}"\n`); const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `audit_log_${Date.now()}.csv`; a.click(); showToast('Audit log exported'); };
 }
 
@@ -345,9 +415,9 @@ async function renderExpiryAlerts() {
     for(let d of expiringDocs) {
         const s = allStudents.find(st => st.user_id === d.student_id);
         const daysLeft = Math.ceil((5*365 - (new Date() - new Date(d.created_at)) / (1000*60*60*24)));
-        html += `<tr><td>${escapeHtml(s?.full_name || 'Unknown')}</td><td>${escapeHtml(d.title)}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${d.category}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${new Date(d.created_at).toLocaleDateString()}</td><td class="badge-expiring">Expires in ${daysLeft} days</td><td><button class="btn btn-sm btn-primary" onclick="viewDoc(${d.id})">Review</button></td></tr>`;
+        html += `<tr><td>${escapeHtml(s?.full_name || 'Unknown')}<tr><td>${escapeHtml(d.title)}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${d.category}</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td>${new Date(d.created_at).toLocaleDateString()}</td><td class="badge-expiring">Expires in ${daysLeft} days</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td><td><button class="btn btn-sm btn-primary" onclick="viewDoc(${d.id})">Review</button></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td></tr>`;
     }
-    document.getElementById('mainContent').innerHTML = `<div class="table-container"><h3 style="padding:1rem">⚠️ Documents Expiring Soon (Retention: 5 years)</h3></table><thead><tr><th>Student</th><th>Title</th><th>Category</th><th>Upload Date</th><th>Status</th><th>Action</th></tr></thead><tbody>${html || '<tr><td colspan="6">No documents expiring soon</td>'}</tbody></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="table-container"><h3 style="padding:1rem">⚠️ Documents Expiring Soon (Retention: 5 years)</h3></table><thead><tr><th>Student</th><th>Title</th><th>Category</th><th>Upload Date</th><th>Status</th><th>Action</th></tr></thead><tbody>${html || '<tr><td colspan="6">No documents expiring soon</small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></small></td>'}</tbody></div>`;
 }
 
 window.viewVersionHistory = async function(docId) {
@@ -359,14 +429,6 @@ window.viewVersionHistory = async function(docId) {
     document.getElementById('versionModal').style.display = 'flex';
 };
 
-window.viewDoc = async function(id) {
-    const d = allDocs.find(dc => dc.id === id);
-    if(!d) return;
-    document.getElementById('viewerTitle').innerHTML = d.title;
-    document.getElementById('docIframe').src = d.file_url;
-    document.getElementById('downloadDocBtn').onclick = () => window.open(d.file_url, '_blank');
-    document.getElementById('docViewerModal').style.display = 'flex';
-};
 window.deleteDoc = async function(id) { if(!confirm('Delete?')) return; await sb.from('drms_documents').delete().eq('id', id); showToast('Deleted'); await loadDocs(); renderAllDocuments(); renderDashboard(); };
 window.openApproval = function(id) { currentApprovalDoc = id; document.getElementById('approvalModal').style.display = 'flex'; };
 window.submitApproval = async function(status) {
@@ -386,7 +448,7 @@ window.submitApproval = async function(status) {
 window.rejectDoc = async function(id) { await sb.from('drms_documents').update({ status: 'rejected' }).eq('id', id); showToast('Rejected'); await loadDocs(); renderApprovals(); renderDashboard(); };
 window.openEditStudent = function(id) { const s = allStudents.find(st => st.user_id === id); if(!s) return; document.getElementById('editId').value = s.user_id; document.getElementById('editName').value = s.full_name; document.getElementById('editEmail').value = s.email; document.getElementById('editProgram').value = s.program; document.getElementById('editIntake').value = s.intake_year; document.getElementById('editBlock').value = s.block; document.getElementById('editStatus').value = s.status; document.getElementById('editStudentModal').style.display = 'flex'; };
 document.getElementById('editForm').onsubmit = async function(e) { e.preventDefault(); await sb.from('consolidated_user_profiles_table').update({ full_name: document.getElementById('editName').value, email: document.getElementById('editEmail').value, program: document.getElementById('editProgram').value, intake_year: document.getElementById('editIntake').value, block: document.getElementById('editBlock').value, status: document.getElementById('editStatus').value }).eq('user_id', document.getElementById('editId').value); showToast('Student updated!'); closeEditModal(); await loadStudents(); renderStudents(); };
-function closeDocViewer() { document.getElementById('docViewerModal').style.display = 'none'; }
+function closeDocViewer() { document.getElementById('docViewerModal').style.display = 'none'; document.getElementById('docViewerBody').innerHTML = '<div class="loading"><div class="spinner"></div> Loading document...</div>'; }
 function closeUploadModal() { document.getElementById('uploadModal').style.display = 'none'; }
 function closeStudentRecordModal() { document.getElementById('studentRecordModal').style.display = 'none'; }
 function closeEditModal() { document.getElementById('editStudentModal').style.display = 'none'; }
