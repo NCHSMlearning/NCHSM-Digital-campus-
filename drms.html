@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>DRMS | Document Records Management System - NCHSM</title>
+    <title>DRMS Ultimate | Document Records Management System - NCHSM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,68 +15,45 @@
         <header class="drms-header">
             <div class="drms-logo">
                 <h1><i class="fas fa-folder-open"></i> NCHSM Document Records System</h1>
-                <p>Student Document Lifecycle Management | Admission → Current → Graduation</p>
+                <p>Complete Student Lifecycle | Admission → Current → Graduation</p>
             </div>
             <div class="drms-header-right">
                 <div class="drms-user">
                     <i class="fas fa-user-circle"></i>
                     <span id="drmsUserName">Super Admin</span>
                 </div>
-                <button id="drmsLogoutBtn" class="drms-btn drms-btn-outline">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
-                <button id="drmsBackBtn" class="drms-btn drms-btn-outline" onclick="window.location.href='superadmin.html'">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </button>
+                <button id="drmsLogoutBtn" class="drms-btn drms-btn-outline"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                <button id="drmsBackBtn" class="drms-btn drms-btn-outline"><i class="fas fa-arrow-left"></i> Back</button>
             </div>
         </header>
 
-        <!-- Main Layout -->
         <div class="drms-container">
-            <!-- Sidebar Navigation -->
+            <!-- Sidebar -->
             <aside class="drms-sidebar">
                 <nav class="drms-nav">
                     <div class="drms-nav-group">
                         <div class="drms-nav-header">DOCUMENT MANAGEMENT</div>
-                        <a href="#" data-view="dashboard" class="drms-nav-item active">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                        <a href="#" data-view="students" class="drms-nav-item">
-                            <i class="fas fa-user-graduate"></i> Student Records
-                        </a>
-                        <a href="#" data-view="upload" class="drms-nav-item">
-                            <i class="fas fa-upload"></i> Upload Document
-                        </a>
-                        <a href="#" data-view="categories" class="drms-nav-item">
-                            <i class="fas fa-tags"></i> Document Categories
-                        </a>
+                        <a href="#" data-view="dashboard" class="drms-nav-item active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        <a href="#" data-view="students" class="drms-nav-item"><i class="fas fa-user-graduate"></i> Student Records</a>
+                        <a href="#" data-view="upload" class="drms-nav-item"><i class="fas fa-upload"></i> Upload Document</a>
+                        <a href="#" data-view="bulkUpload" class="drms-nav-item"><i class="fas fa-layer-group"></i> Bulk Upload</a>
+                        <a href="#" data-view="categories" class="drms-nav-item"><i class="fas fa-tags"></i> Categories</a>
                     </div>
                     <div class="drms-nav-group">
                         <div class="drms-nav-header">COMPLIANCE</div>
-                        <a href="#" data-view="audit" class="drms-nav-item">
-                            <i class="fas fa-history"></i> Audit Trail
-                        </a>
-                        <a href="#" data-view="retention" class="drms-nav-item">
-                            <i class="fas fa-archive"></i> Retention Policy
-                        </a>
+                        <a href="#" data-view="audit" class="drms-nav-item"><i class="fas fa-history"></i> Audit Trail</a>
+                        <a href="#" data-view="retention" class="drms-nav-item"><i class="fas fa-archive"></i> Retention</a>
                     </div>
                     <div class="drms-nav-group">
                         <div class="drms-nav-header">REPORTS</div>
-                        <a href="#" data-view="reports" class="drms-nav-item">
-                            <i class="fas fa-chart-bar"></i> Analytics & Reports
-                        </a>
+                        <a href="#" data-view="reports" class="drms-nav-item"><i class="fas fa-chart-bar"></i> Analytics</a>
                     </div>
                 </nav>
-                <div class="drms-sidebar-footer">
-                    <small>DRMS v1.0</small>
-                </div>
+                <div class="drms-sidebar-footer"><small>DRMS v3.0</small></div>
             </aside>
 
-            <!-- Main Content Area -->
-            <main class="drms-main" id="drmsMainContent">
-                <!-- Dynamic content loads here -->
-                <div class="drms-loading">Loading dashboard...</div>
-            </main>
+            <!-- Main Content -->
+            <main class="drms-main" id="drmsMainContent"><div class="drms-loading">Loading dashboard...</div></main>
         </div>
     </div>
 
@@ -97,7 +74,7 @@
         </div>
     </div>
 
-    <!-- Upload Document Modal -->
+    <!-- Upload Modal -->
     <div id="uploadModal" class="drms-modal">
         <div class="drms-modal-content">
             <div class="drms-modal-header">
@@ -106,65 +83,60 @@
             </div>
             <div class="drms-modal-body">
                 <form id="drmsUploadForm">
-                    <div class="drms-form-group">
-                        <label>Select Student *</label>
-                        <select id="uploadStudentId" class="drms-select" required>
-                            <option value="">-- Select Student --</option>
-                        </select>
-                    </div>
-                    <div class="drms-form-group">
-                        <label>Document Title *</label>
-                        <input type="text" id="docTitle" class="drms-input" placeholder="e.g., Admission Letter, Transcript, ID Copy" required>
-                    </div>
-                    <div class="drms-form-group">
-                        <label>Document Category *</label>
-                        <select id="docCategory" class="drms-select" required>
-                            <option value="Admission">📬 Admission Documents</option>
-                            <option value="Academic">📚 Academic Records</option>
-                            <option value="Financial">💰 Financial Records</option>
-                            <option value="Medical">🏥 Medical Records</option>
-                            <option value="Disciplinary">⚠️ Disciplinary Records</option>
-                            <option value="Personal">🆔 Personal ID</option>
-                        </select>
-                    </div>
-                    <div class="drms-form-group">
-                        <label>Description (optional)</label>
-                        <textarea id="docDescription" class="drms-textarea" rows="2" placeholder="Brief description of the document..."></textarea>
-                    </div>
-                    <div class="drms-form-group">
-                        <label>Select File * (PDF, JPG, PNG, DOC)</label>
-                        <input type="file" id="docFile" class="drms-file-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
-                        <small class="drms-hint">Max file size: 10MB</small>
-                    </div>
-                    <div class="drms-form-actions">
-                        <button type="submit" class="drms-btn drms-btn-success"><i class="fas fa-upload"></i> Upload Document</button>
-                        <button type="button" class="drms-btn drms-btn-outline" onclick="closeUploadModal()">Cancel</button>
-                    </div>
+                    <div class="drms-form-group"><label>Student *</label><select id="uploadStudentId" class="drms-select" required><option value="">-- Select Student --</option></select></div>
+                    <div class="drms-form-group"><label>Title *</label><input type="text" id="docTitle" class="drms-input" placeholder="e.g., Admission Letter" required></div>
+                    <div class="drms-form-group"><label>Category *</label><select id="docCategory" class="drms-select" required><option value="Admission">Admission</option><option value="Academic">Academic</option><option value="Financial">Financial</option><option value="Medical">Medical</option><option value="Disciplinary">Disciplinary</option><option value="Personal">Personal</option></select></div>
+                    <div class="drms-form-group"><label>Description</label><textarea id="docDescription" class="drms-textarea" rows="2"></textarea></div>
+                    <div class="drms-form-group"><label>File *</label><input type="file" id="docFile" class="drms-file-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required><small class="drms-hint">Max 10MB</small></div>
+                    <div class="drms-form-actions"><button type="submit" class="drms-btn drms-btn-success">Upload</button><button type="button" class="drms-btn drms-btn-outline" onclick="closeUploadModal()">Cancel</button></div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Student Record Modal (Complete Lifecycle) -->
-    <div id="studentRecordModal" class="drms-modal">
-        <div class="drms-modal-content drms-modal-xl">
-            <div class="drms-modal-header">
-                <h3 id="studentRecordTitle"><i class="fas fa-user-graduate"></i> Student Complete Record</h3>
-                <button class="drms-modal-close" onclick="closeStudentRecordModal()">&times;</button>
-            </div>
-            <div class="drms-modal-body" id="studentRecordBody">
-                <!-- Dynamic student record content -->
-            </div>
-            <div class="drms-modal-footer">
-                <button class="drms-btn drms-btn-primary" onclick="exportStudentRecord()"><i class="fas fa-download"></i> Export Record</button>
-                <button class="drms-btn drms-btn-outline" onclick="closeStudentRecordModal()">Close</button>
+    <!-- Bulk Upload Modal -->
+    <div id="bulkUploadModal" class="drms-modal">
+        <div class="drms-modal-content">
+            <div class="drms-modal-header"><h3><i class="fas fa-layer-group"></i> Bulk Upload Documents</h3><button class="drms-modal-close" onclick="closeBulkUploadModal()">&times;</button></div>
+            <div class="drms-modal-body">
+                <form id="bulkUploadForm">
+                    <div class="drms-form-group"><label>Student *</label><select id="bulkStudentId" class="drms-select" required><option value="">-- Select Student --</option></select></div>
+                    <div class="drms-form-group"><label>Multiple Files</label><input type="file" id="bulkFiles" class="drms-file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required><small class="drms-hint">Select multiple files at once</small></div>
+                    <div class="drms-form-group"><label>Default Category</label><select id="bulkCategory" class="drms-select"><option value="Admission">Admission</option><option value="Academic">Academic</option><option value="Financial">Financial</option><option value="Medical">Medical</option></select></div>
+                    <div class="drms-form-actions"><button type="submit" class="drms-btn drms-btn-success">Upload All</button><button type="button" class="drms-btn drms-btn-outline" onclick="closeBulkUploadModal()">Cancel</button></div>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="drmsToast" class="drms-toast" style="display: none;"></div>
+    <!-- Student Record Modal -->
+    <div id="studentRecordModal" class="drms-modal">
+        <div class="drms-modal-content drms-modal-xl">
+            <div class="drms-modal-header"><h3 id="studentRecordTitle"><i class="fas fa-user-graduate"></i> Student Complete Record</h3><button class="drms-modal-close" onclick="closeStudentRecordModal()">&times;</button></div>
+            <div class="drms-modal-body" id="studentRecordBody"></div>
+            <div class="drms-modal-footer"><button class="drms-btn drms-btn-primary" onclick="exportStudentRecordPDF()"><i class="fas fa-file-pdf"></i> Export PDF</button><button class="drms-btn drms-btn-outline" onclick="closeStudentRecordModal()">Close</button></div>
+        </div>
+    </div>
 
+    <!-- Edit Student Modal -->
+    <div id="editStudentModal" class="drms-modal">
+        <div class="drms-modal-content">
+            <div class="drms-modal-header"><h3><i class="fas fa-user-edit"></i> Edit Student</h3><button class="drms-modal-close" onclick="closeEditStudentModal()">&times;</button></div>
+            <div class="drms-modal-body">
+                <form id="editStudentForm"><input type="hidden" id="editStudentId">
+                    <div class="drms-form-group"><label>Full Name</label><input type="text" id="editFullName" class="drms-input" required></div>
+                    <div class="drms-form-group"><label>Email</label><input type="email" id="editEmail" class="drms-input" required></div>
+                    <div class="drms-form-group"><label>School/Program</label><select id="editProgram" class="drms-select" required><option value="KRCHN">🎓 KRCHN Nursing School</option><option value="DPOTT">🛠️ TVET - DPOTT</option><option value="DCH">🛠️ TVET - DCH</option><option value="DHRIT">🛠️ TVET - DHRIT</option><option value="DSL">🛠️ TVET - DSL</option><option value="DSW">🛠️ TVET - DSW</option><option value="DCJS">🛠️ TVET - DCJS</option><option value="DICT">🛠️ TVET - DICT</option><option value="CCH">📜 TVET Certificate - CCH</option><option value="CICT">📜 TVET Certificate - CICT</option></select></div>
+                    <div class="drms-form-group"><label>Intake Year</label><input type="text" id="editIntakeYear" class="drms-input"></div>
+                    <div class="drms-form-group"><label>Block/Term</label><input type="text" id="editBlock" class="drms-input"></div>
+                    <div class="drms-form-group"><label>Status</label><select id="editStatus" class="drms-select"><option value="active">Active</option><option value="inactive">Inactive</option><option value="graduated">Graduated</option></select></div>
+                    <div class="drms-form-actions"><button type="submit" class="drms-btn drms-btn-success">Save</button><button type="button" class="drms-btn drms-btn-outline" onclick="closeEditStudentModal()">Cancel</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="drmsToast" class="drms-toast" style="display: none;"></div>
     <script src="drms.js"></script>
 </body>
 </html>
