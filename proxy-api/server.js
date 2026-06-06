@@ -783,18 +783,93 @@ app.post('/api/add-unit', async (req, res) => {
       range: 'CONFIG!A:D',
     });
     const data = response.data.values || [];
-    const nextRow = data.length + 1;
+    let nextRow = data.length + 1;
+    
+    // Check if unit already exists
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === block && data[i][1] === name) {
+        if (data[i][2] === 'YES') {
+          return res.json({ success: false, message: 'Unit already exists' });
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: req.spreadsheetId,
+            range: `CONFIG!C${i+1}:D${i+1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [['YES', assessmentType]] }
+          });
+          // Also create the marksheet with students
+          await createMarksheetWithStudents(req.spreadsheetId, block, name, assessmentType);
+          return res.json({ success: true, message: 'Unit reactivated successfully' });
+        }
+      }
+    }
+    
+    // Add to CONFIG
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
       range: `CONFIG!A${nextRow}:D${nextRow}`,
       valueInputOption: 'RAW',
       requestBody: { values: [[block, name, 'YES', assessmentType]] }
     });
+    
+    // Create marksheet with students
+    await createMarksheetWithStudents(req.spreadsheetId, block, name, assessmentType);
+    
     res.json({ success: true, message: 'Unit added successfully' });
   } catch (error) {
+    console.error('Error adding unit:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Helper function to create marksheet with students
+async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType) {
+  try {
+    // Get students from STUDENTS sheet
+    const studentsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'STUDENTS!A:D',
+    });
+    const students = studentsResponse.data.values || [];
+    
+    // Clean subject name for sheet title
+    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+    const sheetName = `${block}_${cleanSubject}`;
+    
+    // Prepare rows
+    const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE']];
+    
+    // Add all active students
+    for (let i = 1; i < students.length; i++) {
+      const row = students[i];
+      if (row && row[0] && row[3] !== 'INACTIVE') {
+        rows.push([row[0], row[1] || '', '', '', '', '', '', '', assessmentType]);
+      }
+    }
+    
+    // Check if sheet already exists
+    try {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
+      });
+    } catch (e) {
+      console.log('Sheet may already exist:', e.message);
+    }
+    
+    // Write data to sheet
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A1:I${rows.length}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: rows }
+    });
+    
+    console.log(`Created marksheet for ${subject} with ${rows.length - 1} students`);
+  } catch (error) {
+    console.error('Error creating marksheet:', error);
+  }
+}
 
 app.post('/api/update-unit', async (req, res) => {
   try {
