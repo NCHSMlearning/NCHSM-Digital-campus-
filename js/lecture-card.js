@@ -1,4 +1,5 @@
-// lecture-card.js - Complete Lecture Card Module (WORKS FOR ALL BLOCKS)
+// lecture-card.js - Complete Lecture Card Module
+// Works for ALL blocks and ALL programs (KRCHN & TVET)
 (function() {
     'use strict';
     
@@ -7,6 +8,8 @@
     const LectureCardModule = {
         currentData: null,
         userBlock: null,
+        userProgram: null,
+        isTVETStudent: false,
         lecturerMap: {},
         unitDetailsMap: {},
         allTimetableData: [],
@@ -21,14 +24,19 @@
             const container = document.getElementById('lecture-card-content');
             if (!container) return;
             
-            // Get student's block from profile
+            // Get student's block and program from profile
             if (window.currentUserProfile) {
-                this.userBlock = window.currentUserProfile.block || 'Block 4';
-            } else if (window.db?.currentUserProfile) {
-                this.userBlock = window.db.currentUserProfile.block || 'Block 4';
+                this.userBlock = window.currentUserProfile.block || window.currentUserProfile.term || 'Block 4';
+                this.userProgram = window.currentUserProfile.program || 'KRCHN';
+                
+                // Check if TVET student
+                const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                                      'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                                      'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+                this.isTVETStudent = tvetPrograms.includes(this.userProgram);
             }
             
-            console.log(`📌 Student Block: ${this.userBlock}`);
+            console.log(`📌 Student: ${this.userProgram}, Block: ${this.userBlock}, TVET: ${this.isTVETStudent}`);
             
             container.innerHTML = `
                 <div class="loading-state">
@@ -78,9 +86,8 @@
             }
         },
         
-        // Build lecturer map by querying timetables for the student's specific block
         buildLecturerMapFromTimetables: async function() {
-            console.log(`📚 Building lecturer map from timetables for block: ${this.userBlock}`);
+            console.log(`📚 Building lecturer map from timetables for: ${this.userBlock}`);
             
             try {
                 const supabase = window.db?.supabase;
@@ -107,21 +114,20 @@
                 if (data && data.length > 0) {
                     this.allTimetableData = data;
                     
-                    // Build lecturer map with multiple matching strategies
                     data.forEach(item => {
                         const courseName = item.course_name || item.session_name;
                         if (courseName && item.lecturer_name) {
-                            // Store by exact course name
+                            // Store original
                             this.lecturerMap[courseName] = item.lecturer_name;
                             this.lecturerMap[courseName.toLowerCase()] = item.lecturer_name;
                             
-                            // Store by session name if different
-                            if (item.session_name && item.session_name !== courseName) {
-                                this.lecturerMap[item.session_name] = item.lecturer_name;
-                                this.lecturerMap[item.session_name.toLowerCase()] = item.lecturer_name;
+                            // Store simplified version (remove punctuation for better matching)
+                            const simplified = courseName.replace(/[&:]/g, ' ').replace(/\s+/g, ' ').trim();
+                            if (simplified !== courseName) {
+                                this.lecturerMap[simplified] = item.lecturer_name;
+                                this.lecturerMap[simplified.toLowerCase()] = item.lecturer_name;
                             }
                             
-                            // Store venue info
                             if (item.venue) {
                                 this.unitDetailsMap[courseName] = {
                                     lecturer: item.lecturer_name,
@@ -131,8 +137,7 @@
                         }
                     });
                     
-                    console.log(`✅ Loaded ${Object.keys(this.lecturerMap).length} lecturer mappings from timetables for ${this.userBlock}`);
-                    console.log('📋 Sample mappings:', Object.entries(this.lecturerMap).slice(0, 5));
+                    console.log(`✅ Loaded ${Object.keys(this.lecturerMap).length} lecturer mappings for ${this.userBlock}`);
                 } else {
                     console.log(`⚠️ No timetable data found for block: ${this.userBlock}`);
                 }
@@ -143,7 +148,6 @@
         },
         
         getStudentProfile: async function() {
-            // Try multiple sources for student profile
             const sources = [
                 () => window.currentUserProfile,
                 () => window.db?.currentUserProfile,
@@ -157,7 +161,6 @@
             for (const source of sources) {
                 const profile = source();
                 if (profile && (profile.full_name || profile.student_id)) {
-                    // Ensure block is set
                     if (!profile.block && this.userBlock) {
                         profile.block = this.userBlock;
                     }
@@ -165,11 +168,10 @@
                 }
             }
             
-            // Return basic structure with block
             return {
                 full_name: 'Student Name',
                 student_id: 'NCHSM/2024/001',
-                program: 'KRCHN',
+                program: this.userProgram || 'KRCHN',
                 intake_year: '2024',
                 block: this.userBlock || 'Block 4'
             };
@@ -181,7 +183,9 @@
             // Try to get from unit registration module
             if (window.unitRegistrationModule && window.unitRegistrationModule.registeredUnits) {
                 const registered = window.unitRegistrationModule.registeredUnits;
-                const approvedUnits = registered.filter(u => u.status === 'approved' && u.block === this.userBlock);
+                const approvedUnits = registered.filter(u => 
+                    u.status === 'approved' && u.block === this.userBlock
+                );
                 
                 if (approvedUnits && approvedUnits.length > 0) {
                     console.log('✅ Found approved units:', approvedUnits.length);
@@ -196,7 +200,6 @@
             
             // If no registered units, get units from timetables for this block
             if (this.allTimetableData && this.allTimetableData.length > 0) {
-                // Extract unique courses from timetables
                 const uniqueCourses = new Map();
                 this.allTimetableData.forEach(item => {
                     const courseName = item.course_name || item.session_name;
@@ -218,69 +221,79 @@
             return [];
         },
         
-        // Extract unit code from course name (e.g., "Medical-Surgical Nursing IV" -> "NCHSGN 3xx")
         extractUnitCode: function(courseName) {
             const codeMap = {
                 'Teaching and Learning Methodology': 'NCHSCH 303',
-                'Leadership & Management I': 'NCHSCH 304',
+                'Teaching & Learning Methodology': 'NCHSCH 303',
                 'Leadership and Management I': 'NCHSCH 304',
+                'Leadership & Management I': 'NCHSCH 304',
                 'Communicable & Vector-Borne Diseases': 'NCHSCH 305',
                 'Community Diagnosis': 'NCHSCH 306',
                 'Medical Surgical Nursing IV: Dermatology & Burns': 'NCHSGN 301',
                 'Medical Surgical Nursing IV: ENT Disorders': 'NCHSGN 302',
-                'Medical-Surgical Nursing III': 'NCHSGN 2xx',
-                'Medical-Surgical Nursing II': 'NCHSGN 1xx',
+                'Medical-Surgical Nursing IV': 'NCHSGN 30x',
+                'Critical Care Nursing': 'NCHCRC 301',
                 'Paediatric Nursing': 'NCHPED 301',
                 'Midwifery III': 'NCHMID 301',
                 'Research Process': 'NCHRES 301',
                 'Epidemiology & Demography': 'NCHEPI 301',
                 'Sexual & Reproductive Health II': 'NCHSRH 301',
-                'Peri-Operative Nursing': 'NCHPER 301',
-                'Critical Care Nursing': 'NCHCRC 301'
+                'Peri-Operative Nursing': 'NCHPER 301'
             };
             return codeMap[courseName] || 'NCHxxx';
         },
         
         getLecturerName: function(unitName, unitCode) {
-            // Try multiple matching strategies
+            // Special mappings for name mismatches (handles & vs and, colons, etc.)
+            const specialMappings = {
+                'Medical Surgical Nursing IV: Dermatology & Burns': 'Medical-Surgical Nursing IV',
+                'Medical Surgical Nursing IV: ENT Disorders': 'Medical-Surgical Nursing IV',
+                'Medical Surgical Nursing IV: Dermatology and Burns': 'Medical-Surgical Nursing IV',
+                'Teaching and Learning Methodology': 'Teaching & Learning Methodology',
+                'Leadership and Management I': 'Leadership & Management I'
+            };
             
-            // Strategy 1: Exact match by unit name
-            if (this.lecturerMap[unitName]) {
-                return this.lecturerMap[unitName];
+            // Check if we need to map the name
+            let searchName = unitName;
+            if (specialMappings[unitName]) {
+                searchName = specialMappings[unitName];
             }
             
-            // Strategy 2: Match by unit code
-            if (this.lecturerMap[unitCode]) {
-                return this.lecturerMap[unitCode];
+            // Try exact match with mapped name
+            if (this.lecturerMap[searchName]) {
+                return this.lecturerMap[searchName];
             }
             
-            // Strategy 3: Case-insensitive match
-            const lowerName = unitName.toLowerCase();
+            // Try case-insensitive match
+            const lowerSearch = searchName.toLowerCase();
             for (const [key, lecturer] of Object.entries(this.lecturerMap)) {
-                if (key.toLowerCase() === lowerName) {
+                if (key.toLowerCase() === lowerSearch) {
                     return lecturer;
                 }
             }
             
-            // Strategy 4: Partial match (e.g., "Communicable & Vector-Borne" matches "Communicable & Vector-Borne Diseases")
+            // Try partial match
             for (const [key, lecturer] of Object.entries(this.lecturerMap)) {
                 const keyLower = key.toLowerCase();
-                if (lowerName.includes(keyLower) || keyLower.includes(lowerName)) {
+                if (lowerSearch.includes(keyLower) || keyLower.includes(lowerSearch)) {
                     return lecturer;
                 }
             }
             
-            // Strategy 5: Look for course in timetable data
-            if (this.allTimetableData) {
-                for (const item of this.allTimetableData) {
-                    const courseName = (item.course_name || '').toLowerCase();
-                    const sessionName = (item.session_name || '').toLowerCase();
-                    if (courseName.includes(lowerName) || lowerName.includes(courseName) ||
-                        sessionName.includes(lowerName) || lowerName.includes(sessionName)) {
-                        if (item.lecturer_name && item.lecturer_name !== '—') {
-                            return item.lecturer_name;
-                        }
-                    }
+            // Check by unit code
+            const codeMappings = {
+                'NCHSGN 301': 'Medical-Surgical Nursing IV',
+                'NCHSGN 302': 'Medical-Surgical Nursing IV',
+                'NCHSCH 303': 'Teaching & Learning Methodology',
+                'NCHSCH 304': 'Leadership & Management I',
+                'NCHSCH 305': 'Communicable & Vector-Borne Diseases',
+                'NCHSCH 306': 'Community Diagnosis'
+            };
+            
+            if (codeMappings[unitCode]) {
+                const mappedCourse = codeMappings[unitCode];
+                if (this.lecturerMap[mappedCourse]) {
+                    return this.lecturerMap[mappedCourse];
                 }
             }
             
@@ -288,7 +301,6 @@
         },
         
         getApprovals: async function() {
-            // Check if student has approved units or timetable entries
             let hasData = false;
             
             if (window.unitRegistrationModule?.registeredUnits) {
@@ -313,6 +325,7 @@
             const currentYear = new Date().getFullYear();
             const nextYear = currentYear + 1;
             const displayBlock = this.userBlock || student.block || 'Current Block';
+            const programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
             
             // Build units table rows
             let unitsRows = '';
@@ -350,7 +363,7 @@
                         <div style="text-align: center; border-bottom: 2px solid #4C1D95; padding-bottom: 16px; margin-bottom: 20px;">
                             <h2 style="color: #4C1D95; margin: 0; font-size: 24px;">NCHSM - OFFICIAL LECTURE CARD</h2>
                             <p style="margin: 5px 0 0; color: #6b7280;">${currentYear}/${nextYear} ACADEMIC YEAR</p>
-                            <p style="margin: 5px 0 0; color: #4C1D95; font-weight: 500;">BLOCK: ${this.escapeHtml(displayBlock)}</p>
+                            <p style="margin: 5px 0 0; color: #4C1D95; font-weight: 500;">${programType} | BLOCK: ${this.escapeHtml(displayBlock)}</p>
                         </div>
                         
                         ${approvals.allApproved ? `
@@ -373,7 +386,7 @@
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                                 <div><strong>Student:</strong> ${this.escapeHtml(student.full_name || student.name || 'N/A')}</div>
                                 <div><strong>Reg No:</strong> ${this.escapeHtml(student.student_id || student.registration_number || 'N/A')}</div>
-                                <div><strong>Program:</strong> ${this.escapeHtml(student.program || 'KRCHN')}</div>
+                                <div><strong>Program:</strong> ${this.escapeHtml(student.program || this.userProgram || 'KRCHN')}</div>
                                 <div><strong>Intake:</strong> ${this.escapeHtml(student.intake_year || student.admission_year || '2024')}</div>
                                 <div><strong>Current Block:</strong> ${this.escapeHtml(displayBlock)}</div>
                                 <div><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: 600;">${approvalStatus}</span></div>
@@ -491,5 +504,5 @@
         LectureCardModule.init();
     }
     
-    console.log('✅ Lecture Card Module loaded and ready (works for all blocks)');
+    console.log('✅ Lecture Card Module loaded and ready (works for ALL blocks and programs)');
 })();
