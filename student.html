@@ -1585,8 +1585,8 @@ setTimeout(function() {
     }
 })();
 </script>
-    <script>
-// FINAL FIX - Force Lecture Card clickability
+  <script>
+// FINAL FIX - Force Lecture Card clickability (UPDATED)
 (function() {
     console.log('🔧 Applying permanent Lecture Card fix...');
     
@@ -1616,10 +1616,21 @@ setTimeout(function() {
                 if (ddMenu) ddMenu.style.display = 'none';
             }
             
-            // Show tab
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            // Hide ALL tabs properly
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.style.display = 'none';
+                t.classList.remove('active');
+                t.setAttribute('hidden', '');  // Add hidden attribute
+            });
+            
+            // Show Lecture Card tab - CRITICAL: Remove hidden and set display
             const tab = document.getElementById('hub-lecture-card');
-            if (tab) tab.style.display = 'block';
+            if (tab) {
+                tab.removeAttribute('hidden');  // ← THIS IS THE KEY LINE YOU WERE MISSING!
+                tab.style.display = 'block';
+                tab.classList.add('active');
+                console.log('✅ Lecture Card tab is now VISIBLE');
+            }
             
             // Load content
             if (window.lectureCardModule?.loadLectureCard) {
