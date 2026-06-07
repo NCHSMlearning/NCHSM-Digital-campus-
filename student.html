@@ -1585,30 +1585,56 @@ setTimeout(function() {
     }
 })();
 </script>
-  <script>
-// FINAL FIX - Force Lecture Card clickability (UPDATED)
+<script>
+// ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
 (function() {
-    console.log('🔧 Applying permanent Lecture Card fix...');
+    'use strict';
     
-    // Wait for DOM
-    function applyFix() {
-        const lectureLink = document.querySelector('a[data-tab="hub-lecture-card"]');
-        if (!lectureLink) {
-            setTimeout(applyFix, 500);
+    console.log('🔧 Installing PERMANENT SUPER FIX for Lecture Card...');
+    
+    function installSuperFix() {
+        const oldLink = document.querySelector('a[data-tab="hub-lecture-card"]');
+        if (!oldLink) {
+            console.log('Waiting for Lecture Card link...');
+            setTimeout(installSuperFix, 200);
             return;
         }
         
-        // Remove old and add new
-        const newLink = lectureLink.cloneNode(true);
-        lectureLink.parentNode.replaceChild(newLink, lectureLink);
+        console.log('Found Lecture Card link, applying SUPER FIX...');
         
-        newLink.addEventListener('click', function(e) {
+        const li = oldLink.parentElement;
+        const newLink = document.createElement('a');
+        newLink.href = '#';
+        newLink.setAttribute('data-tab', 'hub-lecture-card');
+        newLink.setAttribute('role', 'menuitem');
+        newLink.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Lecture Card';
+        newLink.className = oldLink.className;
+        
+        li.replaceChild(newLink, oldLink);
+        
+        newLink.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             
-            console.log('📖 Opening Lecture Card');
+            console.log('🎯 Lecture Card clicked - OPENING NOW!');
             
-            // Close dropdown
+            const tab = document.getElementById('hub-lecture-card');
+            if (tab) {
+                tab.removeAttribute('hidden');
+                tab.style.display = 'block';
+                tab.classList.add('active');
+                console.log('✅ Lecture Card tab is now VISIBLE');
+            }
+            
+            document.querySelectorAll('.tab-content').forEach(t => {
+                if (t.id !== 'hub-lecture-card') {
+                    t.style.display = 'none';
+                    t.classList.remove('active');
+                    t.setAttribute('hidden', '');
+                }
+            });
+            
             const ddParent = document.querySelector('.has-dropdown');
             if (ddParent) {
                 ddParent.classList.remove('open');
@@ -1616,40 +1642,29 @@ setTimeout(function() {
                 if (ddMenu) ddMenu.style.display = 'none';
             }
             
-            // Hide ALL tabs properly
-            document.querySelectorAll('.tab-content').forEach(t => {
-                t.style.display = 'none';
-                t.classList.remove('active');
-                t.setAttribute('hidden', '');  // Add hidden attribute
+            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+                link.classList.remove('active');
             });
+            newLink.classList.add('active');
             
-            // Show Lecture Card tab - CRITICAL: Remove hidden and set display
-            const tab = document.getElementById('hub-lecture-card');
-            if (tab) {
-                tab.removeAttribute('hidden');  // ← THIS IS THE KEY LINE YOU WERE MISSING!
-                tab.style.display = 'block';
-                tab.classList.add('active');
-                console.log('✅ Lecture Card tab is now VISIBLE');
-            }
-            
-            // Load content
-            if (window.lectureCardModule?.loadLectureCard) {
+            if (window.lectureCardModule && window.lectureCardModule.loadLectureCard) {
                 setTimeout(() => window.lectureCardModule.loadLectureCard(), 50);
             }
             
-            // Update active state
-            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(l => l.classList.remove('active'));
-            newLink.classList.add('active');
-        });
+            return false;
+        };
         
-        console.log('✅ Lecture Card click fix applied');
+        console.log('✅ PERMANENT SUPER FIX INSTALLED!');
     }
     
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyFix);
+        document.addEventListener('DOMContentLoaded', installSuperFix);
     } else {
-        applyFix();
+        installSuperFix();
     }
+    
+    setTimeout(installSuperFix, 1000);
+    setTimeout(installSuperFix, 3000);
 })();
 </script>
     <!-- PWA Service Worker Registration -->
@@ -1739,4 +1754,3 @@ window.addEventListener('appinstalled', () => {
 </script>
 </body>
 </html>
-
