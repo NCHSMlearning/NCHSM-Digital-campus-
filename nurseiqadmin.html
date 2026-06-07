@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>NurseIQ Ultimate · Complete Admin Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="nurseiq-admin-style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -39,11 +38,11 @@
         .sidebar-header { padding: 28px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .sidebar-header h2 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
         .sidebar-header h2 i { color: #fbbf24; font-size: 1.6rem; }
-        .sidebar-subtitle { font-size: 0.75rem; opacity: 0.7; margin-top: 8px; letter-spacing: 0.5px; }
-        .sidebar-stats { padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-subtitle { font-size: 0.75rem; opacity: 0.7; margin-top: 8px; }
+        .sidebar-stats { padding: 20px 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .stat-badge { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 12px 8px; text-align: center; }
-        .stat-badge-value { font-size: 1.5rem; font-weight: 800; }
-        .stat-badge-label { font-size: 0.7rem; opacity: 0.8; margin-top: 4px; }
+        .stat-badge-value { font-size: 1.2rem; font-weight: 800; }
+        .stat-badge-label { font-size: 0.65rem; opacity: 0.8; margin-top: 4px; }
         .sidebar-nav { flex: 1; padding: 20px 16px; }
         .nav-section { margin-bottom: 28px; }
         .nav-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 12px; padding-left: 12px; display: flex; align-items: center; gap: 8px; }
@@ -62,18 +61,15 @@
         .stat-card-main:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
         .stat-value-main { font-size: 36px; font-weight: 800; color: #0f3b5c; }
         .stat-label-main { font-size: 13px; color: #64748b; margin-top: 8px; }
-        .preview-container { max-height: 500px; overflow-y: auto; margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
-        .preview-item { padding: 16px; border-bottom: 1px solid #e2e8f0; background: white; margin: 8px; border-radius: 12px; }
-        .preview-question { font-weight: 700; color: #0f3b5c; margin-bottom: 8px; }
-        .preview-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; font-size: 13px; }
-        .preview-correct { background: #d1fae5; padding: 4px 10px; border-radius: 20px; display: inline-block; font-size: 12px; color: #065f46; margin-top: 8px; }
-        .preview-explanation { background: #fef3c7; padding: 8px 12px; border-radius: 12px; margin-top: 8px; font-size: 12px; color: #92400e; }
         .badge { display: inline-block; padding: 4px 12px; border-radius: 30px; font-size: 11px; font-weight: 600; }
         .badge-success { background: #d1fae5; color: #065f46; }
         .badge-warning { background: #fed7aa; color: #92400e; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-primary { background: #dbeafe; color: #1e40af; }
         .badge-info { background: #e0f2fe; color: #0369a1; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #d1fae5; color: #065f46; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
         .progress-bar { background: #e2e8f0; border-radius: 12px; height: 8px; overflow: hidden; margin: 12px 0; }
         .progress-fill { background: #10b981; height: 100%; border-radius: 12px; transition: width 0.3s; }
         .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
@@ -82,6 +78,18 @@
         .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: white; padding: 12px 20px; border-radius: 40px; z-index: 2000; animation: slideIn 0.3s ease; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .question-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 16px; transition: all 0.2s; position: relative; }
+        .question-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .question-status { position: absolute; top: 15px; right: 15px; }
+        .preview-container { max-height: 500px; overflow-y: auto; margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
+        .preview-item { padding: 16px; border-bottom: 1px solid #e2e8f0; background: white; margin: 8px; border-radius: 12px; }
+        .preview-question { font-weight: 700; color: #0f3b5c; margin-bottom: 8px; }
+        .preview-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; font-size: 13px; }
+        .preview-correct { background: #d1fae5; padding: 4px 10px; border-radius: 20px; display: inline-block; font-size: 12px; color: #065f46; margin-top: 8px; }
+        .preview-explanation { background: #fef3c7; padding: 8px 12px; border-radius: 12px; margin-top: 8px; font-size: 12px; color: #92400e; }
+        .courses-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .course-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
+        .course-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #3b82f6; }
         .student-progress-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; }
         .student-progress-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(4px); }
         .search-input { width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 16px; margin-bottom: 20px; font-size: 14px; }
@@ -89,16 +97,10 @@
         .alert-info { background: #dbeafe; color: #1e40af; }
         .alert-success { background: #d1fae5; color: #065f46; }
         .alert-error { background: #fee2e2; color: #991b1b; }
-        .courses-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
-        .course-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; cursor: pointer; }
-        .course-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #3b82f6; }
-        .course-info h3 { font-size: 1rem; margin-bottom: 5px; }
-        .course-unit { font-size: 0.75rem; color: #64748b; margin-top: 5px; }
-        .question-count { font-size: 0.7rem; color: #3b82f6; margin-top: 5px; }
         .table { width: 100%; border-collapse: collapse; }
         .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .table th { background: #f8fafc; font-weight: 600; color: #475569; }
-        .question-item { padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 12px; background: white; }
+        .approval-actions { display: flex; gap: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -133,25 +135,27 @@
                     <p class="sidebar-subtitle">Admin Control Panel</p>
                 </div>
                 <div class="sidebar-stats">
-                    <div class="stat-badge"><div class="stat-badge-value" id="stat-questions">0</div><div class="stat-badge-label">Questions</div></div>
-                    <div class="stat-badge"><div class="stat-badge-value" id="stat-students">0</div><div class="stat-badge-label">Users</div></div>
-                    <div class="stat-badge"><div class="stat-badge-value" id="stat-courses">0</div><div class="stat-badge-label">Courses</div></div>
+                    <div class="stat-badge"><div class="stat-badge-value" id="stat-questions">0</div><div class="stat-badge-label">Total</div></div>
+                    <div class="stat-badge"><div class="stat-badge-value" id="stat-approved">0</div><div class="stat-badge-label">Approved</div></div>
+                    <div class="stat-badge"><div class="stat-badge-value" id="stat-pending">0</div><div class="stat-badge-label">Pending</div></div>
+                    <div class="stat-badge"><div class="stat-badge-value" id="stat-students">0</div><div class="stat-badge-label">Students</div></div>
                 </div>
                 <div class="sidebar-nav">
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-chart-line"></i> MAIN</div>
-                        <button onclick="showPage('dashboard')" class="sidebar-nav-item" id="nav-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
+                        <button onclick="showPage('dashboard')" class="sidebar-nav-item"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-database"></i> QUESTION BANK</div>
-                        <button onclick="showPage('question-bank')" class="sidebar-nav-item" id="nav-question-bank"><i class="fas fa-list"></i> View Questions</button>
-                        <button onclick="showPage('add-question')" class="sidebar-nav-item admin-only" id="nav-add-question"><i class="fas fa-plus-circle"></i> Add Question</button>
-                        <button onclick="showPage('bulk-import')" class="sidebar-nav-item admin-only" id="nav-bulk-import"><i class="fas fa-upload"></i> Bulk Import</button>
+                        <button onclick="showPage('question-bank')" class="sidebar-nav-item"><i class="fas fa-list"></i> All Questions</button>
+                        <button onclick="showPage('add-question')" class="sidebar-nav-item" id="nav-add-question"><i class="fas fa-plus-circle"></i> Add Question</button>
+                        <button onclick="showPage('bulk-import')" class="sidebar-nav-item" id="nav-bulk-import"><i class="fas fa-upload"></i> Bulk Import</button>
+                        <button onclick="showPage('pending-approval')" class="sidebar-nav-item" id="nav-pending"><i class="fas fa-clock"></i> Pending Approval</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
-                        <button onclick="showPage('courses')" class="sidebar-nav-item admin-only" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
-                        <button onclick="showPage('students')" class="sidebar-nav-item admin-only" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
+                        <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
+                        <button onclick="showPage('students')" class="sidebar-nav-item" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-chart-simple"></i> PROGRESS</div>
@@ -170,7 +174,7 @@
                 <div class="top-bar">
                     <div class="welcome-text">
                         <i class="fas fa-hospital-user"></i> Welcome, <span id="user-name">Admin</span>
-                        <br><small id="user-role-badge">NurseIQ Ultimate Portal</small>
+                        <br><small id="user-role-badge"></small>
                     </div>
                     <div class="user-info">
                         <div class="user-avatar"><i class="fas fa-user-shield"></i></div>
@@ -202,6 +206,8 @@
             document.getElementById('admin-section').classList.remove('hidden');
             await loadAllData(); 
             updateSidebarByRole();
+            document.getElementById('user-name').innerHTML = `<i class="fas ${currentAdmin.role === 'superadmin' ? 'fa-crown' : currentAdmin.role === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher'}"></i> ${currentAdmin.full_name || 'User'}`;
+            document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${currentAdmin.role.toUpperCase()}</span> Portal`;
             if (currentAdmin.role === 'superadmin') renderSuperAdminDashboard();
             else if (currentAdmin.role === 'admin') renderDashboard();
             else renderLecturerDashboard();
@@ -219,16 +225,15 @@
             if (error || !data?.length) throw new Error('User not found');
             const userData = data[0];
             const userRole = userData.role || 'student';
-            if (!['superadmin', 'admin', 'lecturer'].includes(userRole)) throw new Error('Access denied. Admin or Lecturer privileges required.');
+            if (!['superadmin', 'admin', 'lecturer'].includes(userRole)) throw new Error('Access denied');
             localStorage.setItem('nurseiq_admin_session', JSON.stringify({ id: userData.id, email, name: userData.full_name, role: userRole }));
             currentAdmin = userData;
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('admin-section').classList.remove('hidden');
-            const roleIcon = userRole === 'superadmin' ? 'fa-crown' : (userRole === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher');
-            document.getElementById('user-name').innerHTML = `<i class="fas ${roleIcon}"></i> ${userData.full_name || 'User'}`;
-            document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${userRole.toUpperCase()}</span> Portal`;
             await loadAllData();
             updateSidebarByRole();
+            document.getElementById('user-name').innerHTML = `<i class="fas ${userRole === 'superadmin' ? 'fa-crown' : userRole === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher'}"></i> ${userData.full_name || 'User'}`;
+            document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${userRole.toUpperCase()}</span> Portal`;
             if (userRole === 'superadmin') renderSuperAdminDashboard();
             else if (userRole === 'admin') renderDashboard();
             else renderLecturerDashboard();
@@ -243,8 +248,13 @@
 
     function updateSidebarByRole() {
         const role = currentAdmin?.role;
-        document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', role !== 'admin' && role !== 'superadmin'));
-        document.querySelectorAll('.superadmin-only').forEach(el => el.classList.toggle('hidden', role !== 'superadmin'));
+        const isAdmin = role === 'admin' || role === 'superadmin';
+        document.getElementById('nav-add-question').style.display = 'flex';
+        document.getElementById('nav-bulk-import').style.display = isAdmin ? 'flex' : 'flex';
+        document.getElementById('nav-courses').style.display = isAdmin ? 'flex' : 'none';
+        document.getElementById('nav-students').style.display = isAdmin ? 'flex' : 'none';
+        document.getElementById('nav-pending').style.display = isAdmin ? 'flex' : 'none';
+        document.querySelectorAll('.superadmin-only').forEach(el => el.style.display = role === 'superadmin' ? 'flex' : 'none');
     }
 
     async function loadAllData() {
@@ -258,8 +268,9 @@
         userProgress = {};
         if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
         document.getElementById('stat-questions').innerText = allQuestions.length;
+        document.getElementById('stat-approved').innerText = allQuestions.filter(q => q.status === 'approved').length;
+        document.getElementById('stat-pending').innerText = allQuestions.filter(q => q.status === 'pending').length;
         document.getElementById('stat-students').innerText = allStudents.length;
-        document.getElementById('stat-courses').innerText = allCourses.length;
     }
 
     function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
@@ -284,14 +295,14 @@
         });
         const markedWithDetails = markedQuestions.map(marked => {
             const question = allQuestions.find(q => q.id === marked.qid);
-            return { ...marked, questionText: question?.question_text || 'Question not found', courseName: question?.courses?.course_name || 'Unknown' };
+            return { ...marked, questionText: question?.question_text || 'Question not found' };
         });
         return { answers: answersWithDetails, markedQuestions: markedWithDetails, totalAnswered: total, correctCount: correct, accuracy, hasProgress: total > 0 };
     }
 
     async function renderDashboard() {
         const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
-        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Users</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3>Recent Activity</h3></div><div id="recent-activity"></div></div>`;
+        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allQuestions.filter(q => q.status === 'approved').length}</div><div class="stat-label-main">Approved</div></div><div class="stat-card-main"><div class="stat-value-main">${allQuestions.filter(q => q.status === 'pending').length}</div><div class="stat-label-main">Pending</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3>Recent Activity</h3></div><div id="recent-activity"></div></div>`;
         const recentDiv = document.getElementById('recent-activity');
         if (recentDiv) {
             const recent = Object.entries(userProgress).slice(0, 10);
@@ -308,7 +319,7 @@
 
     async function renderSuperAdminDashboard() {
         const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
-        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Users</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3><i class="fas fa-users-cog"></i> User Management</h3><button onclick="addNewUser()" class="btn btn-success btn-sm">+ Add User</button></div><div id="user-management"></div></div>`;
+        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Users</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3>User Management</h3><button onclick="addNewUser()" class="btn btn-success btn-sm">+ Add User</button></div><div id="user-management"></div></div>`;
         const userDiv = document.getElementById('user-management');
         if (userDiv) {
             userDiv.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody>${allStudents.map(user => `<tr><td>${escapeHtml(user.full_name || '—')}</td><td>${escapeHtml(user.email)}</td><td><select onchange="updateUserRole('${user.id}', this.value)" class="form-control" style="width:120px;"><option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option><option value="lecturer" ${user.role === 'lecturer' ? 'selected' : ''}>Lecturer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option><option value="superadmin" ${user.role === 'superadmin' ? 'selected' : ''}>Super Admin</option></select></td><td><button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')">Delete</button></td></tr>`).join('')}</tbody></table>`;
@@ -317,29 +328,51 @@
 
     async function renderLecturerDashboard() {
         const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
-        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Students</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3><i class="fas fa-book-open"></i> Courses</h3></div><div id="lecturer-courses" class="courses-list"></div></div><div class="card"><div class="card-header"><h3>Student Progress</h3></div><div id="progress-summary"></div></div>`;
-        const coursesDiv = document.getElementById('lecturer-courses');
-        if (coursesDiv) coursesDiv.innerHTML = allCourses.map(c => `<div class="course-item" onclick="viewCourseQuestions('${c.id}')"><div class="course-info"><h3>${escapeHtml(c.course_name)}</h3><div class="course-unit">${c.unit_code || 'N/A'}</div><div class="question-count">${allQuestions.filter(q => q.course_id === c.id).length} questions</div></div><div class="course-actions"><span class="badge badge-primary"><i class="fas fa-eye"></i> View</span></div></div>`).join('');
-        const progressDiv = document.getElementById('progress-summary');
-        if (progressDiv) {
-            const stats = allStudents.map(s => { const prog = getStudentProgress(s.id); return { student: s, total: prog.totalAnswered, correct: prog.correctCount, accuracy: prog.accuracy }; }).filter(s => s.total > 0).sort((a,b) => b.total - a.total).slice(0, 10);
-            if (stats.length === 0) progressDiv.innerHTML = '<div class="empty-state">No activity yet</div>';
-            else progressDiv.innerHTML = stats.map(s => `<div class="student-progress-card" onclick="viewStudentDetails('${s.student.id}')"><div><strong>${s.student.full_name || 'Unknown'}</strong><span class="badge ${s.accuracy >= 70 ? 'badge-success' : s.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${s.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div><div><small>${s.total} answered | ${s.correct} correct</small></div></div>`).join('');
+        panel.innerHTML = `<div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allQuestions.filter(q => q.status === 'approved').length}</div><div class="stat-label-main">Approved</div></div><div class="stat-card-main"><div class="stat-value-main">${allQuestions.filter(q => q.status === 'pending' && q.created_by === currentAdmin.id).length}</div><div class="stat-label-main">My Pending</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Answers</div></div></div><div class="card"><div class="card-header"><h3>My Questions</h3><button onclick="showPage('add-question')" class="btn btn-primary btn-sm">+ Add Question</button></div><div id="my-questions"></div></div>`;
+        const myQuestions = allQuestions.filter(q => q.created_by === currentAdmin.id);
+        const container = document.getElementById('my-questions');
+        if (container) {
+            if (myQuestions.length === 0) container.innerHTML = '<div class="empty-state">No questions added yet</div>';
+            else container.innerHTML = myQuestions.map(q => `<div class="question-item"><div class="question-status"><span class="badge ${q.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${q.status?.toUpperCase() || 'PENDING'}</span></div><div><strong>${escapeHtml(q.question_text)}</strong></div><div class="preview-options" style="margin-top:10px;"><div>A: ${escapeHtml(q.option_a || 'N/A')}</div><div>B: ${escapeHtml(q.option_b || 'N/A')}</div><div>C: ${escapeHtml(q.option_c || 'N/A')}</div><div>D: ${escapeHtml(q.option_d || 'N/A')}</div></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div class="approval-actions"><button class="btn btn-warning btn-sm" onclick="editMyQuestion('${q.id}')">Edit</button></div></div>`).join('');
         }
     }
 
-    window.viewCourseQuestions = async (courseId) => {
-        const course = allCourses.find(c => c.id === courseId);
-        const questions = allQuestions.filter(q => q.course_id === courseId);
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>${escapeHtml(course?.course_name)} - Questions</h2><button onclick="${currentAdmin?.role === 'lecturer' ? 'renderLecturerDashboard()' : 'showPage(\'question-bank\')'}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back</button></div>${questions.map((q, i) => `<div class="question-item"><div class="badge badge-primary">Q${i+1}</div><div class="question-text" style="margin:10px 0;"><strong>${escapeHtml(q.question_text)}</strong></div><div class="options" style="margin:10px 0; padding-left:20px;"><div>A. ${escapeHtml(q.option_a || 'N/A')}</div><div>B. ${escapeHtml(q.option_b || 'N/A')}</div><div>C. ${escapeHtml(q.option_c || 'N/A')}</div><div>D. ${escapeHtml(q.option_d || 'N/A')}</div></div><div class="correct-answer" style="margin-top:10px; padding:8px; background:#d1fae5; border-radius:8px;"><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div class="explanation" style="margin-top:8px; padding:8px; background:#fef3c7; border-radius:8px;"><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div></div>`).join('')}</div>`;
+    window.editMyQuestion = async (questionId) => {
+        const q = allQuestions.find(q => q.id === questionId);
+        if (!q) return;
+        if (q.status === 'approved') {
+            showToast('Approved questions cannot be edited. Contact admin.', 'error');
+            return;
+        }
+        const modal = document.createElement('div'); modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save Changes</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        document.body.appendChild(modal);
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString(), status: 'pending' };
+            const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
+            if (error) alert('Error: ' + error.message);
+            else { alert('Question updated and sent for approval!'); modal.remove(); await loadAllData(); renderLecturerDashboard(); showToast('Question updated! Pending approval.', 'success'); }
+        });
     };
 
-    window.viewStudentDetails = async (studentId) => {
-        const student = allStudents.find(s => s.id === studentId);
-        const prog = getStudentProgress(studentId);
-        const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><div class="card-header"><h3>${student?.full_name || 'Student'} - Report</h3><button onclick="this.closest('.modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button></div><div class="stats-grid-main" style="grid-template-columns:repeat(3,1fr);"><div class="stat-card-main"><div class="stat-value-main">${prog.totalAnswered}</div><div>Answered</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.correctCount}</div><div>Correct</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.accuracy}%</div><div>Accuracy</div></div></div><h4>Marked for Review (${prog.markedQuestions.length})</h4><div>${prog.markedQuestions.length === 0 ? '<div class="empty-state">No marked questions</div>' : prog.markedQuestions.map(m => `<div style="background:#fffbeb;padding:12px;border-radius:12px;margin-bottom:10px;"><strong>${escapeHtml(m.questionText)}</strong><br><small>${new Date(m.timestamp).toLocaleString()}</small></div>`).join('')}</div><h4>Answered Questions</h4><div>${prog.answers.map((a,i) => `<div style="padding:10px;border-bottom:1px solid #e2e8f0;"><span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span> <strong>Q${i+1}:</strong> ${escapeHtml(a.questionText?.substring(0,80))}...<br><small>Your: ${a.selectedOption} | Correct: ${a.correctAnswer}</small></div>`).join('')}</div><div style="margin-top:20px;"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`;
-        document.body.appendChild(modal);
+    async function renderPendingApproval() {
+        const pendingQuestions = allQuestions.filter(q => q.status === 'pending');
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Pending Approval (${pendingQuestions.length})</h2></div>${pendingQuestions.length === 0 ? '<div class="empty-state">No pending questions</div>' : pendingQuestions.map(q => `<div class="question-item"><div><strong>${escapeHtml(q.question_text)}</strong></div><div class="preview-options" style="margin-top:10px;"><div>A: ${escapeHtml(q.option_a || 'N/A')}</div><div>B: ${escapeHtml(q.option_b || 'N/A')}</div><div>C: ${escapeHtml(q.option_c || 'N/A')}</div><div>D: ${escapeHtml(q.option_d || 'N/A')}</div></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div><div class="approval-actions"><button class="btn btn-success btn-sm" onclick="approveQuestion('${q.id}')"><i class="fas fa-check"></i> Approve</button><button class="btn btn-danger btn-sm" onclick="rejectQuestion('${q.id}')"><i class="fas fa-times"></i> Reject</button></div></div>`).join('')}</div>`;
+    }
+
+    window.approveQuestion = async (id) => {
+        const { error } = await sb.from('medical_assessments').update({ status: 'approved', reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+        if (error) showToast('Error: ' + error.message, 'error');
+        else { await loadAllData(); renderPendingApproval(); showToast('Question approved!', 'success'); }
+    };
+
+    window.rejectQuestion = async (id) => {
+        const reason = prompt('Enter rejection reason:');
+        if (reason === null) return;
+        const { error } = await sb.from('medical_assessments').update({ status: 'rejected', reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString(), rejection_reason: reason }).eq('id', id);
+        if (error) showToast('Error: ' + error.message, 'error');
+        else { await loadAllData(); renderPendingApproval(); showToast('Question rejected!', 'success'); }
     };
 
     window.updateUserRole = async (userId, newRole) => {
@@ -415,82 +448,76 @@
         if (pendingImportData.length === 0) { alert('Preview first'); return; }
         const courseId = document.getElementById('bulk-course').value;
         if (!courseId) { alert('Select course'); return; }
+        const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
         let saved = 0;
         for (let q of pendingImportData) {
-            const payload = { question_text: q.question, option_a: q.options.A, option_b: q.options.B, option_c: q.options.C, option_d: q.options.D, correct_answer: q.correctText, explanation: q.explanation.substring(0,1000), course_id: courseId, difficulty: 'medium', question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
+            const payload = { question_text: q.question, option_a: q.options.A, option_b: q.options.B, option_c: q.options.C, option_d: q.options.D, correct_answer: q.correctText, explanation: q.explanation.substring(0,1000), course_id: courseId, difficulty: 'medium', question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString(), status: isAdmin ? 'approved' : 'pending', created_by: currentAdmin.id };
             const { error } = await sb.from('medical_assessments').insert([payload]);
             if (!error) saved++;
         }
-        if (saved > 0) { await loadAllData(); showToast(`${saved} questions imported!`, 'success'); document.getElementById('bulk-text').value = ''; document.getElementById('preview-area').style.display = 'none'; document.getElementById('confirm-import-btn').classList.add('hidden'); pendingImportData = []; }
+        if (saved > 0) { await loadAllData(); showToast(`${saved} questions imported! ${isAdmin ? '' : 'Pending admin approval.'}`, 'success'); document.getElementById('bulk-text').value = ''; document.getElementById('preview-area').style.display = 'none'; document.getElementById('confirm-import-btn').classList.add('hidden'); pendingImportData = []; }
         else document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">Import failed</div>';
     };
 
     async function renderQuestionBank() {
         await loadAllData();
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Question Bank</h2><button onclick="exportAllQuestions()" class="btn btn-success btn-sm">Export CSV</button></div><div class="toolbar"><div><span id="selected-count">0</span> selected <button id="delete-selected-btn" class="btn btn-danger btn-sm hidden" onclick="openDeleteModal()">Delete</button></div><div><button onclick="toggleSelectAll()" class="btn btn-secondary btn-sm">Select All</button>${(currentAdmin?.role === 'admin' || currentAdmin?.role === 'superadmin') ? `<button onclick="enableReorderMode()" class="btn btn-info btn-sm">Reorder</button><button id="save-order-btn" class="btn btn-success btn-sm hidden" onclick="saveNewOrder()">Save Order</button>` : ''}</div></div><div class="filters" style="display:flex;gap:10px;margin-bottom:20px;"><select id="filter-course" class="form-control"><option value="">All Courses</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select><select id="filter-difficulty" class="form-control"><option value="">All</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><input type="text" id="search-questions" class="form-control" placeholder="Search..."></div><div id="questions-grid"></div></div>`;
-        document.getElementById('filter-course')?.addEventListener('change', () => renderQuestionsList());
-        document.getElementById('filter-difficulty')?.addEventListener('change', () => renderQuestionsList());
-        document.getElementById('search-questions')?.addEventListener('input', () => renderQuestionsList());
-        renderQuestionsList();
+        const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
+        const showAll = isAdmin || currentAdmin.role === 'superadmin';
+        const questionsToShow = showAll ? allQuestions : allQuestions.filter(q => q.status === 'approved');
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Question Bank</h2><button onclick="exportAllQuestions()" class="btn btn-success btn-sm">Export CSV</button></div><div class="toolbar"><div><span id="selected-count">0</span> selected ${isAdmin ? '<button id="delete-selected-btn" class="btn btn-danger btn-sm hidden" onclick="openDeleteModal()">Delete</button>' : ''}</div><div><button onclick="toggleSelectAll()" class="btn btn-secondary btn-sm">Select All</button></div></div><div class="filters" style="display:flex;gap:10px;margin-bottom:20px;"><select id="filter-course" class="form-control"><option value="">All Courses</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select><select id="filter-status" class="form-control"><option value="">All Status</option><option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option></select><input type="text" id="search-questions" class="form-control" placeholder="Search..."></div><div id="questions-list"></div></div>`;
+        document.getElementById('filter-course')?.addEventListener('change', () => filterQuestions());
+        document.getElementById('filter-status')?.addEventListener('change', () => filterQuestions());
+        document.getElementById('search-questions')?.addEventListener('input', () => filterQuestions());
+        filterQuestions();
     }
 
-    function renderQuestionsList() {
+    function filterQuestions() {
         const courseId = document.getElementById('filter-course')?.value;
-        const difficulty = document.getElementById('filter-difficulty')?.value;
+        const status = document.getElementById('filter-status')?.value;
         const search = document.getElementById('search-questions')?.value.toLowerCase() || '';
         let filtered = [...allQuestions];
         if (courseId) filtered = filtered.filter(q => q.course_id === courseId);
-        if (difficulty) filtered = filtered.filter(q => q.difficulty === difficulty);
+        if (status) filtered = filtered.filter(q => q.status === status);
         if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
-        currentQuestionsList = filtered;
-        const container = document.getElementById('questions-grid');
+        const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
+        const container = document.getElementById('questions-list');
         if (!container) return;
         if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">No questions found</div>'; return; }
-        container.innerHTML = filtered.map((q, idx) => `<div class="student-progress-card" data-question-id="${q.id}" data-index="${idx}"><div>${reorderMode ? `<span class="reorder-handle" style="cursor:grab;margin-right:10px;"><i class="fas fa-grip-vertical"></i></span>` : ''}<input type="checkbox" class="question-checkbox" data-id="${q.id}" onchange="updateSelectionCount()"> <span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span> <span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${q.difficulty || 'medium'}</span></div><div style="margin-top:10px;"><strong>${escapeHtml(q.question_text)}</strong></div><div style="margin-top:8px;"><small>A: ${escapeHtml(q.option_a || 'N/A')} | B: ${escapeHtml(q.option_b || 'N/A')} | C: ${escapeHtml(q.option_c || 'N/A')} | D: ${escapeHtml(q.option_d || 'N/A')}</small></div><div style="margin-top:8px;"><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div style="margin-top:8px; font-size:12px;"><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div>${(currentAdmin?.role === 'admin' || currentAdmin?.role === 'superadmin') ? `<div style="margin-top:10px;"><button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button></div>` : ''}</div>`).join('');
-        if (reorderMode) makeDraggable();
+        container.innerHTML = filtered.map(q => `<div class="question-item"><div class="question-status"><span class="badge ${q.status === 'approved' ? 'badge-approved' : q.status === 'pending' ? 'badge-pending' : 'badge-danger'}">${q.status?.toUpperCase() || 'PENDING'}</span></div><div><input type="checkbox" class="question-checkbox" data-id="${q.id}" onchange="updateSelectionCount()"> <span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span> <span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${q.difficulty || 'medium'}</span></div><div style="margin:10px 0;"><strong>${escapeHtml(q.question_text)}</strong></div><div class="preview-options"><div>A: ${escapeHtml(q.option_a || 'N/A')}</div><div>B: ${escapeHtml(q.option_b || 'N/A')}</div><div>C: ${escapeHtml(q.option_c || 'N/A')}</div><div>D: ${escapeHtml(q.option_d || 'N/A')}</div></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div>${isAdmin ? `<div class="approval-actions" style="margin-top:10px;"><button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button></div>` : (q.created_by === currentAdmin.id && q.status !== 'approved' ? `<div class="approval-actions" style="margin-top:10px;"><button class="btn btn-warning btn-sm" onclick="editMyQuestion('${q.id}')">Edit</button></div>` : '')}</div>`).join('');
         updateSelectionCount();
     }
 
-    function makeDraggable() {
-        const cards = document.querySelectorAll('.student-progress-card');
-        cards.forEach(card => {
-            card.setAttribute('draggable', 'true');
-            card.addEventListener('dragstart', e => { dragSourceIndex = parseInt(e.target.closest('.student-progress-card').getAttribute('data-index')); e.target.closest('.student-progress-card').classList.add('dragging'); });
-            card.addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.student-progress-card')?.classList.add('drag-over'); });
-            card.addEventListener('drop', e => {
-                e.preventDefault();
-                const targetCard = e.target.closest('.student-progress-card');
-                if (!targetCard) return;
-                targetCard.classList.remove('drag-over');
-                const dragTargetIndex = parseInt(targetCard.getAttribute('data-index'));
-                if (dragSourceIndex === dragTargetIndex) return;
-                const reordered = [...currentQuestionsList];
-                const [movedItem] = reordered.splice(dragSourceIndex, 1);
-                reordered.splice(dragTargetIndex, 0, movedItem);
-                currentQuestionsList = reordered;
-                renderQuestionsList();
-            });
-            card.addEventListener('dragend', () => document.querySelectorAll('.student-progress-card').forEach(c => c.classList.remove('dragging', 'drag-over')));
-        });
-    }
-
-    function enableReorderMode() { reorderMode = true; document.getElementById('save-order-btn')?.classList.remove('hidden'); renderQuestionsList(); showToast('Reorder mode enabled', 'info'); }
-    async function saveNewOrder() { for (let i = 0; i < currentQuestionsList.length; i++) await sb.from('medical_assessments').update({ sort_order: i + 1 }).eq('id', currentQuestionsList[i].id); reorderMode = false; document.getElementById('save-order-btn')?.classList.add('hidden'); await loadAllData(); renderQuestionsList(); showToast('Order saved!', 'success'); }
     function updateSelectionCount() { const count = document.querySelectorAll('.question-checkbox:checked').length; document.getElementById('selected-count').innerText = count; document.getElementById('delete-selected-btn')?.classList.toggle('hidden', count === 0); selectedQuestionsForDelete = Array.from(document.querySelectorAll('.question-checkbox:checked')).map(cb => cb.dataset.id); }
     function toggleSelectAll() { const checkboxes = document.querySelectorAll('.question-checkbox'); const allChecked = Array.from(checkboxes).every(cb => cb.checked); checkboxes.forEach(cb => cb.checked = !allChecked); updateSelectionCount(); }
     function openDeleteModal() { if (selectedQuestionsForDelete.length === 0) return; if(confirm(`Delete ${selectedQuestionsForDelete.length} question(s)?`)) confirmDeleteSelected(); }
-    async function confirmDeleteSelected() { for (const id of selectedQuestionsForDelete) await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Deleted', 'success'); }
-    async function deleteSingleQuestion(id) { if(confirm('Delete?')) { await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Deleted', 'success'); } }
+    async function confirmDeleteSelected() { for (const id of selectedQuestionsForDelete) await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); filterQuestions(); showToast('Deleted', 'success'); }
+    async function deleteSingleQuestion(id) { if(confirm('Delete?')) { await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); filterQuestions(); showToast('Deleted', 'success'); } }
+
+    window.openEditModal = async (questionId) => {
+        const q = allQuestions.find(q => q.id === questionId);
+        const modal = document.createElement('div'); modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        document.body.appendChild(modal);
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
+            const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
+            if (error) alert('Error: ' + error.message);
+            else { alert('Updated!'); modal.remove(); await loadAllData(); filterQuestions(); showToast('Question updated!', 'success'); }
+        });
+    };
 
     function renderAddQuestion() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add Question</h2></div><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer</label><input id="q-correct" class="form-control" placeholder="Full correct answer text" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">Save</button></form><div id="add-result"></div></div>`;
+        const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add Question</h2></div><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer</label><input id="q-correct" class="form-control" placeholder="Full correct answer text" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">${isAdmin ? 'Save Question' : 'Submit for Approval'}</button></form><div id="add-result"></div></div>`;
         document.getElementById('add-question-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
+            const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
+            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString(), status: isAdmin ? 'approved' : 'pending', created_by: currentAdmin.id };
             const { error } = await sb.from('medical_assessments').insert([payload]);
             const resultDiv = document.getElementById('add-result');
             if (error) resultDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
-            else { resultDiv.innerHTML = `<div class="alert alert-success">Question added!</div>`; document.getElementById('add-question-form').reset(); await loadAllData(); setTimeout(() => resultDiv.innerHTML = '', 3000); }
+            else { resultDiv.innerHTML = `<div class="alert alert-success">Question added! ${isAdmin ? '' : 'Pending admin approval.'}</div>`; document.getElementById('add-question-form').reset(); await loadAllData(); setTimeout(() => resultDiv.innerHTML = '', 3000); }
         });
     }
 
@@ -514,8 +541,15 @@
         const search = document.getElementById('student-search')?.value.toLowerCase() || '';
         const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search));
         const container = document.getElementById('students-list');
-        if(container) container.innerHTML = filtered.map(s => { const prog = getStudentProgress(s.id); return `<div class="student-progress-card"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge badge-primary">${s.role || 'student'}</span></div><div><small>${s.email}</small></div><div class="progress-stats" style="margin-top:8px;"><span>${prog.totalAnswered} answered</span><span>${prog.markedQuestions.length} marked</span></div><div style="margin-top:10px;"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View Progress</button> <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></div></div>`; }).join('');
+        if(container) container.innerHTML = filtered.map(s => { const prog = getStudentProgress(s.id); return `<div class="student-progress-card"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge badge-primary">${s.role || 'student'}</span></div><div><small>${s.email}</small></div><div><span>${prog.totalAnswered} answered | ${prog.markedQuestions.length} marked</span></div><div style="margin-top:10px;"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View Progress</button> <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></div></div>`; }).join('');
     }
+    window.viewStudentDetails = async (studentId) => {
+        const student = allStudents.find(s => s.id === studentId);
+        const prog = getStudentProgress(studentId);
+        const modal = document.createElement('div'); modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content"><div class="card-header"><h3>${student?.full_name || 'Student'} - Report</h3><button onclick="this.closest('.modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button></div><div class="stats-grid-main" style="grid-template-columns:repeat(3,1fr);"><div class="stat-card-main"><div class="stat-value-main">${prog.totalAnswered}</div><div>Answered</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.correctCount}</div><div>Correct</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.accuracy}%</div><div>Accuracy</div></div></div><h4>Marked for Review (${prog.markedQuestions.length})</h4><div>${prog.markedQuestions.length === 0 ? '<div class="empty-state">No marked questions</div>' : prog.markedQuestions.map(m => `<div style="background:#fffbeb;padding:12px;border-radius:12px;margin-bottom:10px;"><strong>${escapeHtml(m.questionText)}</strong><br><small>${new Date(m.timestamp).toLocaleString()}</small></div>`).join('')}</div><h4>Answered Questions</h4><div>${prog.answers.map((a,i) => `<div style="padding:10px;border-bottom:1px solid #e2e8f0;"><span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span> <strong>Q${i+1}:</strong> ${escapeHtml(a.questionText?.substring(0,80))}...<br><small>Your: ${a.selectedOption} | Correct: ${a.correctAnswer}</small></div>`).join('')}</div><div style="margin-top:20px;"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`;
+        document.body.appendChild(modal);
+    };
     window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
 
     async function renderIndividualProgress() {
@@ -539,27 +573,13 @@
     }
 
     function renderSettings() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Settings</h2></div><div><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button> <button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button> <button onclick="exportStudentProgressCSV()" class="btn btn-info">Export Progress (CSV)</button></div><div style="margin-top:15px;"><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Progress</button></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div>Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div>Users</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div>Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${Object.keys(userProgress).length}</div><div>Active Students</div></div></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Settings</h2></div><div><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button> <button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button> <button onclick="exportStudentProgressCSV()" class="btn btn-info">Export Progress (CSV)</button></div><div style="margin-top:15px;"><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Progress</button></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div>Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allQuestions.filter(q => q.status === 'pending').length}</div><div>Pending Approval</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div>Users</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div>Courses</div></div></div></div>`;
     }
 
     window.exportAllData = () => { const data = { questions: allQuestions, courses: allCourses, students: allStudents, progress: userProgress }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); showToast('Exported', 'success'); };
-    window.exportAllQuestions = () => { const csv = ['Question,Correct Answer,Course,Difficulty', ...allQuestions.map(q => `"${(q.question_text || '').replace(/"/g, '""')}","${(q.correct_answer || '').replace(/"/g, '""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}"`)].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `questions_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
+    window.exportAllQuestions = () => { const csv = ['Question,Correct Answer,Course,Difficulty,Status', ...allQuestions.map(q => `"${(q.question_text || '').replace(/"/g, '""')}","${(q.correct_answer || '').replace(/"/g, '""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}","${q.status || ''}"`)].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `questions_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.exportStudentProgressCSV = () => { const rows = [['Student', 'Email', 'Answered', 'Correct', 'Accuracy', 'Marked']]; for (const student of allStudents) { const prog = getStudentProgress(student.id); rows.push([student.full_name || 'Unknown', student.email || '', prog.totalAnswered, prog.correctCount, prog.accuracy, prog.markedQuestions.length]); } const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `progress_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.clearAllStudentProgress = async () => { if(confirm('Delete ALL student progress?')) { await sb.from('user_progress').delete().neq('user_id', ''); await loadAllData(); showToast('All progress cleared', 'success'); } };
-
-    window.openEditModal = async (questionId) => {
-        const q = allQuestions.find(q => q.id === questionId);
-        const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
-        document.body.appendChild(modal);
-        document.getElementById('edit-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
-            const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
-            if (error) alert('Error: ' + error.message);
-            else { alert('Updated!'); modal.remove(); await loadAllData(); renderQuestionsList(); }
-        });
-    };
 
     function escapeHtml(text) { if(!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     function showToast(msg, type) { const toast = document.createElement('div'); toast.className = 'toast'; toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
@@ -569,6 +589,7 @@
         else if(page === 'question-bank') renderQuestionBank();
         else if(page === 'add-question') renderAddQuestion();
         else if(page === 'bulk-import') renderBulkImport();
+        else if(page === 'pending-approval') renderPendingApproval();
         else if(page === 'courses') renderCourses();
         else if(page === 'students') renderStudents();
         else if(page === 'individual-progress') renderIndividualProgress();
@@ -577,8 +598,6 @@
         else if(page === 'user-management') renderSuperAdminDashboard();
     };
     window.logout = logout;
-    window.enableReorderMode = enableReorderMode;
-    window.saveNewOrder = saveNewOrder;
     window.toggleSelectAll = toggleSelectAll;
     window.openDeleteModal = openDeleteModal;
     window.confirmDeleteSelected = confirmDeleteSelected;
