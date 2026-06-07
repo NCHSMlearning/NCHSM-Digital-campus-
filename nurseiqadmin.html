@@ -672,6 +672,20 @@ async function renderMarkedReview() {
         </div>
     `;
 }
+    // Add this function to your Admin Portal JavaScript
+function toggleStudentMarked(studentId) {
+    const div = document.getElementById(`student-marked-${studentId}`);
+    if (div) {
+        if (div.style.display === 'none' || div.style.display === '') {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+        }
+    }
+}
+
+// Also make sure it's globally accessible
+window.toggleStudentMarked = toggleStudentMarked;
     async function renderIndividualProgress() {
         panel.innerHTML = `<div class="card"><div class="card-header"><h3>Student Progress</h3></div><input type="text" id="searchStudent" class="search-input" placeholder="Search..."><div id="studentsList"></div></div>`;
         filterIndividualStudents();
