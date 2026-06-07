@@ -142,6 +142,7 @@
                             <li role="none"><a href="#" data-tab="hub-register" role="menuitem"><i class="fas fa-plus-circle"></i> Register Units</a></li>
                             <li role="none"><a href="#" data-tab="hub-online-learning" role="menuitem"><i class="fas fa-video"></i> Online Learning</a></li>
                             <li role="none"><a href="#" data-tab="hub-exam-card" role="menuitem"><i class="fas fa-id-card"></i> Exam Card</a></li>
+                            <li role="none"><a href="#" data-tab="hub-lecture-card" role="menuitem"><i class="fas fa-chalkboard-teacher"></i> Lecture Card</a></li>
                             <li class="dropdown-divider"></li>
                             <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i> Exams & Grades</a></li>
                             <li role="none"><a href="#" data-tab="academic-reports" role="menuitem"><i class="fas fa-file-alt"></i> Academic Reports</a></li>
@@ -774,6 +775,26 @@
                 <div class="exam-card-container"><div class="section-header"><h2><i class="fas fa-id-card"></i> Exam Card</h2><p>Your exam entry permit - Valid only with approved units and cleared fees</p></div><div id="exam-card-content-standalone"><div class="loading-state"><div class="loading-spinner"></div><p>Loading exam card...</p></div></div></div>
             </section>
             <!-- END HUB EXAM CARD -->
+             <!-- ==================== HUB LECTURE CARD TAB (NEW - AFTER EXAM CARD) ==================== -->
+            <section id="hub-lecture-card" class="tab-content" hidden>
+                <div class="lecture-card-wrapper">
+                    <div id="lecture-card-content">
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p>Loading lecture card...</p>
+                        </div>
+                    </div>
+                    <div class="lecture-card-actions" style="margin-top: 20px; text-align: center;">
+                        <button id="print-lecture-card-btn" class="btn-primary" style="display: none;">
+                            <i class="fas fa-print"></i> Print Lecture Card
+                        </button>
+                        <button id="refresh-lecture-card-btn" class="btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <!-- END HUB LECTURE CARD -->
 
             <!-- ==================== EXAMS & GRADES TAB ==================== -->
             <section id="cats" class="tab-content" hidden>
@@ -1163,6 +1184,7 @@
      </div>
 
     <!-- SCRIPTS -->
+       <!-- SCRIPTS -->
     <script src="./js/database.js"></script>
     <script src="./js/utils.js"></script>
     <script src="./js/ui.js"></script>
@@ -1179,6 +1201,7 @@
     <script src="./js/student-tickets.js"></script>
     <script src="./js/nurseiq.js"></script>
     <script src="./js/exam-card.js"></script>
+    <script src="./js/lecture-card.js"></script>
     <script src="./js/academic-reports.js"></script>
     <script src="./js/timetable-manager.js"></script>
 
@@ -1190,53 +1213,53 @@
     console.log('🎯 MAIN NAVIGATION HANDLER');
     
     function showTab(tabId) {
-        console.log('📂 Opening tab:', tabId);
-        
-        if (window.innerWidth <= 768) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            if (sidebar) sidebar.classList.remove('active', 'open');
-            if (overlay) overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-        
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        const target = document.getElementById(tabId);
-        if (target) {
-            target.style.display = 'block';
-            target.classList.add('active');
-        }
-        
-        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-            }
-        });
-        
-        localStorage.setItem('nchsm_current_tab', tabId);
-        
-        setTimeout(() => {
-            if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
-            else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
-            else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
-            else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-            else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
-            else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
-            else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
-            else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-            else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
-        }, 100);
+    console.log('📂 Opening tab:', tabId);
+    
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        if (sidebar) sidebar.classList.remove('active', 'open');
+        if (overlay) overlay.classList.remove('active');
+        document.body.style.overflow = '';
     }
+    
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    const target = document.getElementById(tabId);
+    if (target) {
+        target.style.display = 'block';
+        target.classList.add('active');
+    }
+    
+    document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-tab') === tabId) {
+            link.classList.add('active');
+        }
+    });
+    
+    localStorage.setItem('nchsm_current_tab', tabId);
+    
+    setTimeout(() => {
+        if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
+        else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
+        else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
+        else if (tabId === 'hub-lecture-card' && window.lectureCardModule?.loadLectureCard) window.lectureCardModule.loadLectureCard();
+        else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+        else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
+        else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
+        else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
+        else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+        else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
+    }, 100);
+}
     
     const dropdownParent = document.querySelector('.has-dropdown');
     const dropdownToggle = document.querySelector('.has-dropdown > a');
     const dropdownMenu = document.querySelector('.dropdown-submenu');
-    
     if (dropdownToggle && dropdownMenu) {
         const newToggle = dropdownToggle.cloneNode(true);
         dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
