@@ -431,7 +431,7 @@
                                 </div>
                                 <div style="text-align: center; flex: 1;">
                                     <div style="border-top: 1px solid #374151; width: 200px; margin: 0 auto;"></div>
-                                    <div style="font-size: 12px; margin-top: 5px;">Academic Registrar</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">Principal</div>>
                                 </div>
                             </div>
                         </div>
