@@ -157,11 +157,12 @@
                         <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
                         <button onclick="showPage('students')" class="sidebar-nav-item" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
                     </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title"><i class="fas fa-chart-simple"></i> PROGRESS</div>
-                        <button onclick="showPage('individual-progress')" class="sidebar-nav-item"><i class="fas fa-user-chart"></i> Student Progress</button>
-                        <button onclick="showPage('attempts')" class="sidebar-nav-item"><i class="fas fa-history"></i> Progress Summary</button>
-                    </div>
+                   <div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-chart-simple"></i> PROGRESS</div>
+    <button onclick="showPage('individual-progress')" class="sidebar-nav-item"><i class="fas fa-user-chart"></i> Student Progress</button>
+    <button onclick="showPage('marked-review')" class="sidebar-nav-item"><i class="fas fa-flag-checkered"></i> Marked for Review</button>
+    <button onclick="showPage('attempts')" class="sidebar-nav-item"><i class="fas fa-history"></i> Progress Summary</button>
+</div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-cog"></i> SYSTEM</div>
                         <button onclick="showPage('settings')" class="sidebar-nav-item superadmin-only" id="nav-settings"><i class="fas fa-sliders-h"></i> Settings</button>
@@ -551,7 +552,108 @@
         document.body.appendChild(modal);
     };
     window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
+async function renderMarkedReview() {
+    // Collect all marked questions from all students
+    let allMarked = [];
+    
+    for (const student of allStudents) {
+        const progress = userProgress[student.id] || {};
+        let markedQuestions = [];
+        
+        // Check different storage structures
+        if (progress.markedForReview) {
+            markedQuestions = Object.entries(progress.markedForReview).map(([qid, data]) => ({
+                qid: qid,
+                timestamp: data.timestamp,
+                note: data.note || '',
+                student: student
+            }));
+        } else {
+            markedQuestions = Object.entries(progress)
+                .filter(([key, val]) => val && val.marked && key !== 'markedForReview' && !key.includes('version'))
+                .map(([qid, data]) => ({
+                    qid: qid,
+                    timestamp: data.timestamp,
+                    note: data.markedNote || '',
+                    student: student
+                }));
+        }
+        
+        allMarked.push(...markedQuestions);
+    }
+    
+    allMarked.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    if (allMarked.length === 0) {
+        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions</h3></div><div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review by any student</p></div></div>`;
+        return;
+    }
+    
+    // Group by student
+    const groupedByStudent = {};
+    for (let marked of allMarked) {
+        const studentId = marked.student.id;
+        if (!groupedByStudent[studentId]) {
+            groupedByStudent[studentId] = {
+                student: marked.student,
+                questions: []
+            };
+        }
+        const question = allQuestions.find(q => q.id === marked.qid);
+        if (question) {
+            groupedByStudent[studentId].questions.push({
+                ...marked,
+                questionText: question.question_text,
+                courseName: question.courses?.course_name || 'Unknown',
+                options: { A: question.option_a, B: question.option_b, C: question.option_c, D: question.option_d }
+            });
+        }
+    }
+    
+    panel.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions (${allMarked.length})</h3>
+            </div>
+            ${Object.values(groupedByStudent).map(group => `
+                <div class="student-group" style="margin-bottom:20px; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                    <div onclick="toggleStudentMarked('${group.student.id}')" style="cursor:pointer; background:#f1f5f9; padding:15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <i class="fas fa-user-graduate"></i> <strong>${escapeHtml(group.student.full_name || 'Unknown')}</strong>
+                            <div style="font-size:12px; color:#64748b;">${group.student.email}</div>
+                        </div>
+                        <span class="badge badge-warning">${group.questions.length} marked</span>
+                    </div>
+                    <div id="student-marked-${group.student.id}" style="display:none; padding:15px;">
+                        ${group.questions.map(q => `
+                            <div style="border:1px solid #e2e8f0; border-radius:12px; padding:15px; margin-bottom:15px; background:#fffbeb;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                                    <span class="badge badge-primary">${escapeHtml(q.courseName)}</span>
+                                    <span class="badge badge-warning"><i class="fas fa-clock"></i> ${new Date(q.timestamp).toLocaleString()}</span>
+                                </div>
+                                <div style="margin-bottom:10px;"><strong>${escapeHtml(q.questionText)}</strong></div>
+                                <div style="margin:10px 0; padding-left:20px;">
+                                    <div>A. ${escapeHtml(q.options.A || 'N/A')}</div>
+                                    <div>B. ${escapeHtml(q.options.B || 'N/A')}</div>
+                                    <div>C. ${escapeHtml(q.options.C || 'N/A')}</div>
+                                    <div>D. ${escapeHtml(q.options.D || 'N/A')}</div>
+                                </div>
+                                ${q.note ? `<div style="margin-top:10px; padding:8px; background:#fef3c7; border-radius:8px;"><i class="fas fa-sticky-note"></i> Note: ${escapeHtml(q.note)}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
 
+window.toggleStudentMarked = (studentId) => {
+    const div = document.getElementById(`student-marked-${studentId}`);
+    if (div) {
+        div.style.display = div.style.display === 'none' ? 'block' : 'none';
+    }
+};
     async function renderIndividualProgress() {
         panel.innerHTML = `<div class="card"><div class="card-header"><h3>Student Progress</h3></div><input type="text" id="searchStudent" class="search-input" placeholder="Search..."><div id="studentsList"></div></div>`;
         filterIndividualStudents();
@@ -595,6 +697,7 @@
         else if(page === 'individual-progress') renderIndividualProgress();
         else if(page === 'attempts') renderAttempts();
         else if(page === 'settings') renderSettings();
+            else if(page === 'marked-review') renderMarkedReview();
         else if(page === 'user-management') renderSuperAdminDashboard();
     };
     window.logout = logout;
