@@ -553,55 +553,67 @@
     };
     window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
 async function renderMarkedReview() {
-    // Collect all marked questions from all students
     let allMarked = [];
+    
+    console.log('🔍 Searching for marked questions...');
     
     for (const student of allStudents) {
         const progress = userProgress[student.id] || {};
-        let markedQuestions = [];
         
-        // Check different storage structures
+        // Look for marked questions in answers object (Student Portal structure)
+        if (progress.answers) {
+            const markedInAnswers = Object.entries(progress.answers)
+                .filter(([qid, answer]) => answer && answer.marked === true)
+                .map(([qid, answer]) => ({
+                    qid: qid,
+                    timestamp: answer.timestamp || new Date().toISOString(),
+                    note: answer.markedNote || '',
+                    student: student
+                }));
+            
+            if (markedInAnswers.length > 0) {
+                console.log(`✅ Found ${markedInAnswers.length} marked questions for student: ${student.full_name}`);
+            }
+            
+            allMarked.push(...markedInAnswers);
+        }
+        
+        // Also check for markedForReview property (alternative structure)
         if (progress.markedForReview) {
-            markedQuestions = Object.entries(progress.markedForReview).map(([qid, data]) => ({
+            const additionalMarked = Object.entries(progress.markedForReview).map(([qid, data]) => ({
                 qid: qid,
                 timestamp: data.timestamp,
                 note: data.note || '',
                 student: student
             }));
-        } else {
-            markedQuestions = Object.entries(progress)
-                .filter(([key, val]) => val && val.marked && key !== 'markedForReview' && !key.includes('version'))
-                .map(([qid, data]) => ({
-                    qid: qid,
-                    timestamp: data.timestamp,
-                    note: data.markedNote || '',
-                    student: student
-                }));
+            allMarked.push(...additionalMarked);
         }
-        
-        allMarked.push(...markedQuestions);
     }
     
-    allMarked.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // Remove duplicates
+    const uniqueMarked = [];
+    const seen = new Set();
+    for (const marked of allMarked) {
+        const key = `${marked.student.id}-${marked.qid}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueMarked.push(marked);
+        }
+    }
     
-    if (allMarked.length === 0) {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions</h3></div><div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review by any student</p></div></div>`;
+    uniqueMarked.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    if (uniqueMarked.length === 0) {
+        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions</h3></div><div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review by any student</p><p style="margin-top:10px; font-size:12px;">Students can mark questions by clicking the "Mark for Review" button during practice.</p></div></div>`;
         return;
     }
     
-    // Group by student
-    const groupedByStudent = {};
-    for (let marked of allMarked) {
-        const studentId = marked.student.id;
-        if (!groupedByStudent[studentId]) {
-            groupedByStudent[studentId] = {
-                student: marked.student,
-                questions: []
-            };
-        }
+    // Get question details for each marked question
+    const markedWithDetails = [];
+    for (let marked of uniqueMarked) {
         const question = allQuestions.find(q => q.id === marked.qid);
         if (question) {
-            groupedByStudent[studentId].questions.push({
+            markedWithDetails.push({
                 ...marked,
                 questionText: question.question_text,
                 courseName: question.courses?.course_name || 'Unknown',
@@ -610,10 +622,23 @@ async function renderMarkedReview() {
         }
     }
     
+    // Group by student
+    const groupedByStudent = {};
+    for (let marked of markedWithDetails) {
+        const studentId = marked.student.id;
+        if (!groupedByStudent[studentId]) {
+            groupedByStudent[studentId] = {
+                student: marked.student,
+                questions: []
+            };
+        }
+        groupedByStudent[studentId].questions.push(marked);
+    }
+    
     panel.innerHTML = `
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions (${allMarked.length})</h3>
+                <h3><i class="fas fa-flag-checkered"></i> Students' Marked for Review Questions (${markedWithDetails.length})</h3>
             </div>
             ${Object.values(groupedByStudent).map(group => `
                 <div class="student-group" style="margin-bottom:20px; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
@@ -647,13 +672,6 @@ async function renderMarkedReview() {
         </div>
     `;
 }
-
-window.toggleStudentMarked = (studentId) => {
-    const div = document.getElementById(`student-marked-${studentId}`);
-    if (div) {
-        div.style.display = div.style.display === 'none' ? 'block' : 'none';
-    }
-};
     async function renderIndividualProgress() {
         panel.innerHTML = `<div class="card"><div class="card-header"><h3>Student Progress</h3></div><input type="text" id="searchStudent" class="search-input" placeholder="Search..."><div id="studentsList"></div></div>`;
         filterIndividualStudents();
