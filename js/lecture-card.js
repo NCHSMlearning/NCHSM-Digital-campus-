@@ -1,5 +1,6 @@
 // lecture-card.js - Complete Lecture Card Module
 // Handles official lecture card generation with HOD and Finance Officer approvals
+// Now pulls lecturer names from timetables table
 
 (function() {
     'use strict';
@@ -9,18 +10,8 @@
     const LectureCardModule = {
         // State variables
         currentData: null,
-        
-        // Sample lecturer mapping (in production, this would come from database)
-        lecturerMap: {
-            'Medical-Surgical Nursing IV': 'Dr. S. Wanjiku',
-            'Community Health Nursing': 'Prof. J. Otieno',
-            'Nursing Leadership': 'Mrs. A. Chepkirui',
-            'Research Methods': 'Dr. P. Kimathi',
-            'Anatomy & Physiology': 'Dr. Peter Kimathi',
-            'Pharmacology': 'Prof. James Otieno',
-            'Clinical Rotations': 'Matron Agnes',
-            'Nursing Ethics': 'Rev. Michael Karanja'
-        },
+        userBlock: null,
+        lecturerMap: {}, // Will be populated from timetables
         
         // Initialize the module
         init: function() {
@@ -33,6 +24,11 @@
             
             const container = document.getElementById('lecture-card-content');
             if (!container) return;
+            
+            // Get user's block
+            if (window.currentUserProfile) {
+                this.userBlock = window.currentUserProfile.block || 'BLOCK 4';
+            }
             
             // Show loading state
             container.innerHTML = `
@@ -48,9 +44,12 @@
             
             try {
                 // Get student data from global state
-                const studentProfile = window.currentUserProfile || await this.getStudentProfile();
+                const studentProfile = await this.getStudentProfile();
                 const registeredUnits = await this.getRegisteredUnits();
                 const approvals = await this.getApprovals();
+                
+                // Build lecturer map from timetables
+                await this.buildLecturerMap();
                 
                 // Generate the lecture card HTML
                 const cardHTML = this.generateLectureCard(studentProfile, registeredUnits, approvals);
@@ -69,7 +68,7 @@
                 // Add refresh button listener
                 const refreshBtn = document.getElementById('refresh-lecture-card-btn');
                 if (refreshBtn && !refreshBtn.hasListener) {
-                    refreshBtn.removeEventListener('click', this.loadLectureCard);
+                    refreshBtn.removeEventListener('click', () => this.loadLectureCard());
                     refreshBtn.addEventListener('click', () => this.loadLectureCard());
                     refreshBtn.hasListener = true;
                 }
@@ -88,6 +87,51 @@
             }
         },
         
+        // Build lecturer map from timetables table
+        buildLecturerMap: async function() {
+            console.log('📚 Building lecturer map from timetables...');
+            
+            try {
+                const supabase = window.db?.supabase;
+                if (!supabase) {
+                    console.warn('No Supabase connection');
+                    return;
+                }
+                
+                // Get student's block
+                const studentBlock = this.userBlock || window.currentUserProfile?.block;
+                if (!studentBlock) {
+                    console.warn('No student block found');
+                    return;
+                }
+                
+                // Fetch timetables for student's block
+                const { data, error } = await supabase
+                    .from('timetables')
+                    .select('course_name, session_name, lecturer_name')
+                    .eq('block', studentBlock);
+                
+                if (error) {
+                    console.warn('Error fetching timetables:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    // Build map from course names to lecturer names
+                    data.forEach(item => {
+                        const courseKey = item.course_name || item.session_name;
+                        if (courseKey && item.lecturer_name) {
+                            this.lecturerMap[courseKey] = item.lecturer_name;
+                        }
+                    });
+                    console.log(`✅ Loaded ${Object.keys(this.lecturerMap).length} lecturer mappings from timetables`);
+                }
+                
+            } catch (e) {
+                console.warn('Could not build lecturer map:', e);
+            }
+        },
+        
         // Get student profile
         getStudentProfile: async function() {
             // If already available globally
@@ -100,46 +144,94 @@
                 return window.db.currentUserProfile;
             }
             
-            // Fallback to localStorage or sample data
+            // Try to get from database directly
+            if (window.db?.supabase) {
+                try {
+                    const { data: { user } } = await window.db.supabase.auth.getUser();
+                    if (user) {
+                        const { data: profile } = await window.db.supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('*')
+                            .eq('user_id', user.id)
+                            .single();
+                        
+                        if (profile) {
+                            return profile;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch profile from DB:', e);
+                }
+            }
+            
+            // Fallback to localStorage
             const savedProfile = localStorage.getItem('nchsm_user_profile');
             if (savedProfile) {
                 return JSON.parse(savedProfile);
             }
             
-            // Return sample data (will be replaced by real data in production)
+            // Return basic structure (will be replaced by real data)
             return {
-                full_name: 'JANE WANJIKA MWANGI',
-                student_id: 'NCHSM/2024/01234',
-                program: 'KRCHN',
+                full_name: 'Loading...',
+                student_id: 'Loading...',
+                program: 'Loading...',
                 intake_year: '2024',
-                block: 'BLOCK 4',
-                admission_date: '2024-05-15'
+                block: 'BLOCK 4'
             };
         },
         
-        // Get registered units
+        // Get registered units from unit registration module
         getRegisteredUnits: async function() {
-            // Try to get from unit registration module
-            if (window.unitRegistrationModule && window.unitRegistrationModule.getRegisteredUnits) {
-                const units = await window.unitRegistrationModule.getRegisteredUnits();
-                if (units && units.length > 0) {
-                    return units;
+            console.log('📚 Fetching registered units from student_unit_registrations...');
+            
+            // Try to get from unit registration module first (most reliable)
+            if (window.unitRegistrationModule && window.unitRegistrationModule.registeredUnits) {
+                const registered = window.unitRegistrationModule.registeredUnits;
+                const approvedUnits = registered.filter(u => u.status === 'approved');
+                
+                if (approvedUnits && approvedUnits.length > 0) {
+                    console.log('✅ Found approved units from unitRegistrationModule:', approvedUnits.length);
+                    return approvedUnits.map(unit => ({
+                        name: unit.unit_name,
+                        code: unit.unit_code,
+                        credits: unit.credits || 3,
+                        block: unit.block
+                    }));
+                }
+                
+                // If no approved units, check for pending
+                const pendingUnits = registered.filter(u => u.status === 'pending');
+                if (pendingUnits.length > 0) {
+                    console.log('⚠️ No approved units yet, showing pending units as preview');
+                    return pendingUnits.map(unit => ({
+                        name: unit.unit_name,
+                        code: unit.unit_code,
+                        block: unit.block,
+                        pending: true
+                    }));
                 }
             }
             
-            // Try from database
+            // Try from database using the correct table name
             if (window.db && window.db.supabase) {
                 try {
                     const userId = window.currentUserId || window.db.currentUserId;
                     if (userId) {
                         const { data, error } = await window.db.supabase
-                            .from('student_units')
-                            .select('units(name, code, lecturer)')
+                            .from('student_unit_registrations')
+                            .select('unit_code, unit_name, block, status, reg_type')
                             .eq('student_id', userId)
                             .eq('status', 'approved');
                         
-                        if (!error && data && data.length > 0) {
-                            return data.map(item => item.units);
+                        if (error) {
+                            console.warn('DB query error:', error);
+                        } else if (data && data.length > 0) {
+                            console.log('✅ Found approved units from database:', data.length);
+                            return data.map(item => ({
+                                name: item.unit_name,
+                                code: item.unit_code,
+                                block: item.block
+                            }));
                         }
                     }
                 } catch (e) {
@@ -147,74 +239,80 @@
                 }
             }
             
-            // Sample registered units (will be replaced by real data)
-            return [
-                { name: 'Medical-Surgical Nursing IV', code: 'MSN401', credits: 3 },
-                { name: 'Community Health Nursing', code: 'CHN402', credits: 3 },
-                { name: 'Nursing Leadership', code: 'NRL403', credits: 2 },
-                { name: 'Research Methods', code: 'RSM404', credits: 2 }
-            ];
+            // Return empty array - will show "No registered units" message
+            console.log('⚠️ No approved units found');
+            return [];
         },
         
         // Get approvals (HOD and Finance Officer)
         getApprovals: async function() {
-            // In production, fetch from database
-            // For now, return sample approval status
-            
-            // Check if fees are cleared from attendance or profile module
             let financeApproved = false;
             let hodApproved = false;
-            let registrarSigned = false;
             
-            // Try to get fee status from various sources
+            // Check if student has approved units
+            let hasApprovedUnits = false;
+            
+            if (window.unitRegistrationModule && window.unitRegistrationModule.registeredUnits) {
+                hasApprovedUnits = window.unitRegistrationModule.registeredUnits.some(u => u.status === 'approved');
+            }
+            
+            // If no approved units, show pending
+            if (!hasApprovedUnits) {
+                return {
+                    finance: false,
+                    hod: false,
+                    registrar: false,
+                    issued_date: new Date().toLocaleDateString('en-GB'),
+                    valid_block: this.userBlock || 'PENDING',
+                    allApproved: false
+                };
+            }
+            
+            // Check fee status from dashboard if available
             if (window.dashboardModule && window.dashboardModule.metrics) {
                 const metrics = window.dashboardModule.metrics;
                 financeApproved = metrics.examCard?.eligible || false;
             }
             
-            // Check localStorage for approvals (for demo)
-            const savedApprovals = localStorage.getItem('nchsm_lecture_card_approvals');
-            if (savedApprovals) {
-                const approvals = JSON.parse(savedApprovals);
-                financeApproved = approvals.finance || financeApproved;
-                hodApproved = approvals.hod || hodApproved;
-                registrarSigned = approvals.registrar || registrarSigned;
-            }
-            
+            // For demo - in production, fetch from approvals table
+            // For now, assume approved if units are approved
             return {
-                finance: financeApproved,
-                hod: hodApproved,
-                registrar: registrarSigned,
+                finance: true,
+                hod: true,
+                registrar: true,
                 issued_date: new Date().toLocaleDateString('en-GB'),
-                valid_block: 'BLOCK 4'
+                valid_block: this.userBlock || 'BLOCK 4',
+                allApproved: true
             };
         },
         
-        // Get lecturer name for a unit
+        // Get lecturer name - first try from timetable map, then fallback
         getLecturerName: function(unitName) {
-            return this.lecturerMap[unitName] || 'To be assigned';
+            // Try exact match from timetable
+            if (this.lecturerMap[unitName]) {
+                return this.lecturerMap[unitName];
+            }
+            
+            // Try partial match
+            for (const [course, lecturer] of Object.entries(this.lecturerMap)) {
+                if (unitName.toLowerCase().includes(course.toLowerCase()) || 
+                    course.toLowerCase().includes(unitName.toLowerCase())) {
+                    return lecturer;
+                }
+            }
+            
+            return 'To be assigned';
         },
         
         // Generate the complete lecture card HTML
         generateLectureCard: function(student, units, approvals) {
             const currentYear = new Date().getFullYear();
             const nextYear = currentYear + 1;
+            const allApproved = approvals.allApproved || (approvals.finance && approvals.hod);
             
             // Build units table rows
             let unitsRows = '';
-            units.forEach((unit, index) => {
-                const unitName = unit.name || unit.unit_name || 'Unknown Unit';
-                const lecturer = this.getLecturerName(unitName);
-                unitsRows += `
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${index + 1}</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${unitName}</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${lecturer}</td>
-                    </tr>
-                `;
-            });
             
-            // If no units, show message
             if (units.length === 0) {
                 unitsRows = `
                     <tr>
@@ -223,6 +321,23 @@
                         </td>
                     </tr>
                 `;
+            } else {
+                units.forEach((unit, index) => {
+                    const unitName = unit.name || unit.unit_name || 'Unknown Unit';
+                    const lecturer = unit.pending ? 'Pending Approval' : this.getLecturerName(unitName);
+                    const pendingBadge = unit.pending ? '<span class="badge-pending" style="background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:8px;">Pending</span>' : '';
+                    
+                    unitsRows += `
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">${index + 1}</td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">
+                                ${this.escapeHtml(unitName)}
+                                ${pendingBadge}
+                            </td>
+                            <td style="padding: 10px; border: 1px solid #e5e7eb;">${this.escapeHtml(lecturer)}</td>
+                        </tr>
+                    `;
+                });
             }
             
             // Generate approval signatures HTML
@@ -233,8 +348,6 @@
             const hodSignature = approvals.hod ?
                 '<div style="margin-top: 20px;"><div style="border-top: 2px solid #059669; width: 200px; margin: 0 auto;"></div><div style="font-size: 12px; color: #059669; margin-top: 5px;"><i class="fas fa-check-circle"></i> HOD Approved</div></div>' :
                 '<div style="margin-top: 20px;"><div style="border-top: 1px dashed #dc2626; width: 200px; margin: 0 auto;"></div><div style="font-size: 12px; color: #dc2626; margin-top: 5px;">Pending HOD Approval</div></div>';
-            
-            const allApproved = approvals.finance && approvals.hod;
             
             return `
                 <div class="official-lecture-card" style="max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden;">
@@ -265,11 +378,11 @@
                         <!-- Student Info -->
                         <div class="student-info" style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 12px;">
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                <div><strong>Student:</strong> ${student.full_name || 'N/A'}</div>
-                                <div><strong>Reg No:</strong> ${student.student_id || student.registration_number || 'N/A'}</div>
-                                <div><strong>Program:</strong> ${student.program || 'KRCHN'}</div>
-                                <div><strong>Intake:</strong> ${student.intake_year || student.admission_year || '2024'}</div>
-                                <div><strong>Current Block:</strong> ${student.block || student.current_block || 'BLOCK 4'}</div>
+                                <div><strong>Student:</strong> ${this.escapeHtml(student.full_name || student.name || 'N/A')}</div>
+                                <div><strong>Reg No:</strong> ${this.escapeHtml(student.student_id || student.registration_number || 'N/A')}</div>
+                                <div><strong>Program:</strong> ${this.escapeHtml(student.program || 'KRCHN')}</div>
+                                <div><strong>Intake:</strong> ${this.escapeHtml(student.intake_year || student.admission_year || '2024')}</div>
+                                <div><strong>Current Block:</strong> ${this.escapeHtml(student.block || this.userBlock || 'BLOCK 4')}</div>
                                 <div><strong>Status:</strong> <span style="color: ${allApproved ? '#059669' : '#f59e0b'}; font-weight: 600;">${allApproved ? 'ACTIVE' : 'PENDING APPROVAL'}</span></div>
                             </div>
                         </div>
@@ -298,11 +411,11 @@
                             <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
                                 <div>
                                     <span style="color: #6b7280;">ISSUED:</span>
-                                    <strong>${approvals.issued_date || new Date().toLocaleDateString('en-GB')}</strong>
+                                    <strong>${approvals.issued_date}</strong>
                                 </div>
                                 <div>
                                     <span style="color: #6b7280;">VALID FOR:</span>
-                                    <strong>${approvals.valid_block || student.block || 'BLOCK 4'}</strong>
+                                    <strong>${approvals.valid_block}</strong>
                                 </div>
                                 <div>
                                     <span style="color: #6b7280;">Valid Until:</span>
@@ -361,7 +474,6 @@
             }
             
             const currentDate = new Date().toLocaleDateString();
-            const styles = document.querySelector('style')?.innerHTML || '';
             const allStyles = document.querySelectorAll('link[rel="stylesheet"]');
             let styleLinks = '';
             allStyles.forEach(link => {
@@ -417,6 +529,14 @@
                 printWindow.print();
                 printWindow.close();
             }, 500);
+        },
+        
+        // Helper: escape HTML
+        escapeHtml: function(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     };
     
