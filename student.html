@@ -1585,6 +1585,62 @@ setTimeout(function() {
     }
 })();
 </script>
+    <script>
+// FINAL FIX - Force Lecture Card clickability
+(function() {
+    console.log('🔧 Applying permanent Lecture Card fix...');
+    
+    // Wait for DOM
+    function applyFix() {
+        const lectureLink = document.querySelector('a[data-tab="hub-lecture-card"]');
+        if (!lectureLink) {
+            setTimeout(applyFix, 500);
+            return;
+        }
+        
+        // Remove old and add new
+        const newLink = lectureLink.cloneNode(true);
+        lectureLink.parentNode.replaceChild(newLink, lectureLink);
+        
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('📖 Opening Lecture Card');
+            
+            // Close dropdown
+            const ddParent = document.querySelector('.has-dropdown');
+            if (ddParent) {
+                ddParent.classList.remove('open');
+                const ddMenu = ddParent.querySelector('.dropdown-submenu');
+                if (ddMenu) ddMenu.style.display = 'none';
+            }
+            
+            // Show tab
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            const tab = document.getElementById('hub-lecture-card');
+            if (tab) tab.style.display = 'block';
+            
+            // Load content
+            if (window.lectureCardModule?.loadLectureCard) {
+                setTimeout(() => window.lectureCardModule.loadLectureCard(), 50);
+            }
+            
+            // Update active state
+            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(l => l.classList.remove('active'));
+            newLink.classList.add('active');
+        });
+        
+        console.log('✅ Lecture Card click fix applied');
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyFix);
+    } else {
+        applyFix();
+    }
+})();
+</script>
     <!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
