@@ -20,7 +20,7 @@
     body.dark-mode td { border-bottom-color: #334155; }
     body.dark-mode input, body.dark-mode select { background: #0f172a; color: #f1f5f9; border-color: #475569; }
     
-    /* SIDEBAR STYLES - ONLY ADDITION TO ORIGINAL */
+    /* SIDEBAR STYLES */
     .app-wrapper { display: flex; min-height: 100vh; }
     .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-width); background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-right: 1px solid rgba(99,102,241,0.2); box-shadow: 4px 0 20px rgba(0,0,0,0.05); z-index: 1000; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
     body.dark-mode .sidebar { background: rgba(30,41,59,0.96); border-right-color: rgba(99,102,241,0.3); }
@@ -82,7 +82,7 @@
     .logout-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 10px 24px; border-radius: 40px; cursor: pointer; font-weight: 600; }
     .card { background: white; border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); border: 1px solid #e2e8f0; }
     .card-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--primary); padding-left: 16px; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; display: table; }
     th, td { padding: 12px 8px; text-align: left; vertical-align: middle; }
     th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 600; font-size: 12px; white-space: nowrap; }
     td { border-bottom: 1px solid #e2e8f0; }
@@ -262,8 +262,8 @@
   }
   
   // ======================= SIDEBAR INTEGRATION - WRAPS THE MAIN CONTENT =======================
-  // This function creates the sidebar wrapper and injects your original main content into it
   function renderWithSidebar(contentHtml) {
+    const isAdmin = currentUser?.role === 'admin';
     const sidebarHtml = `
       <div class="app-wrapper">
         <aside class="sidebar" id="mainSidebar">
@@ -272,17 +272,19 @@
             <span>Nakuru Health</span>
           </div>
           <div class="nav-menu">
-            <div class="nav-item" data-nav="dashboard"><i class="fas fa-chart-line"></i><span>Analytics</span></div>
-            <div class="nav-item" data-nav="marks"><i class="fas fa-pen-alt"></i><span>${currentUser?.role === 'admin' ? 'Internal Marks' : 'My Subjects'}</span></div>
+            <div class="nav-item" data-nav="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+            <div class="nav-item" data-nav="marks"><i class="fas fa-pen-alt"></i><span>${isAdmin ? 'Internal Marks' : 'My Subjects'}</span></div>
             <div class="nav-item" data-nav="nck"><i class="fas fa-file-medical"></i><span>NCK Scores</span></div>
-            ${currentUser?.role === 'admin' ? `
+            ${isAdmin ? `
             <div class="nav-item" data-nav="students"><i class="fas fa-user-graduate"></i><span>Students</span></div>
             <div class="nav-item" data-nav="lecturers"><i class="fas fa-chalkboard-user"></i><span>Lecturers</span></div>
             <div class="nav-item" data-nav="units"><i class="fas fa-book-open"></i><span>Units</span></div>
             <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
             <div class="nav-item" data-nav="entryControl"><i class="fas fa-lock"></i><span>Entry Control</span></div>
+            <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></div>
             ` : `
             <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
+            <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>My Analytics</span></div>
             `}
             <div class="nav-item logout-side" data-nav="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
           </div>
@@ -314,14 +316,15 @@
       el.addEventListener('click', (e) => {
         const navId = el.dataset.nav;
         if(navId === 'logout') logout();
-        else if(navId === 'dashboard') showComprehensiveAnalytics();
-        else if(navId === 'marks') currentUser?.role === 'admin' ? showAdminMarks() : showLecturerSubjects();
+        else if(navId === 'dashboard') showMain();
+        else if(navId === 'marks') isAdmin ? showAdminMarks() : showLecturerSubjects();
         else if(navId === 'nck') showNCKMarks();
         else if(navId === 'students') showStudents();
         else if(navId === 'lecturers') showLecturers();
         else if(navId === 'units') showUnits();
         else if(navId === 'reports') showFullReports();
         else if(navId === 'entryControl') showEntryControlPanel();
+        else if(navId === 'analytics') showComprehensiveAnalytics();
         if(window.innerWidth <= 768) {
           document.getElementById('mainSidebar')?.classList.remove('mobile-open');
         }
@@ -396,24 +399,19 @@
   window.changeExamType=function(){ currentExamType=document.getElementById('examTypeSelect').value; localStorage.setItem('selectedExamType',currentExamType); showMain(); };
   
   // ======================= ALL YOUR ORIGINAL FUNCTIONS CONTINUE BELOW =======================
-  // [The rest of your original functions - showEntryControlPanel, showComprehensiveAnalytics, 
-  //  showLecturerAnalytics, showFullReports, showNCKMarks, loadNCKMarks, displayXYFormsMarks, 
-  //  displayAssessmentMarks, openXYEditModal, saveXYEditedMarks, updateXYAverage, updateACTotal,
-  //  saveNCKMarks, openFastEntryPanel, closeFastEntryModal, loadFastEntryFields, updateFastPreview,
-  //  handleFastEntryKey, applyFastEntry, applyFastEntryAndStay, openFastAssessmentPanel,
-  //  loadFastAssessmentFields, updateFastAssessmentPreview, handleFastAssessmentKey,
-  //  applyFastAssessmentEntry, applyFastAssessmentEntryAndStay, showNCKColumnManagerWithClass,
-  //  addNCKColumnForClass, deleteNCKColumnForClass, showAssessmentColumnManagerWithClass,
-  //  addAssessmentColumnForClass, deleteAssessmentColumnForClass, closeModalAndReload,
-  //  showAdminMarks, loadAdminSubjects, loadAdminMarks, updateAdminTotal, saveAdminMarks,
-  //  exportAdminMarks, showLecturerSubjects, openMarksEntry, loadMarksForSubject,
-  //  displayLecturerMarksTable, updateLecturerTotal, saveLecturerMarks, showStudents,
-  //  showAddStudentModal, saveNewStudent, showEditStudentModal, updateStudent, deleteStudent,
-  //  showLecturers, showAddLecturerModal, saveNewLecturer, showEditLecturerModal,
-  //  updateLecturer, deleteLecturer, showUnits, addNewUnit, showEditUnitModal, updateUnit, deleteUnit]
-  // ARE ALL HERE - PRESERVED EXACTLY AS IN YOUR ORIGINAL CODE
-  // (Due to length, I'm including the essential ones - all your functions work exactly as before)
-
+  
+  function updateContentArea(html) {
+    const contentArea = document.getElementById('contentArea');
+    if(contentArea) {
+      contentArea.innerHTML = html;
+    } else {
+      const dynamicContent = document.getElementById('dynamicContent');
+      if(dynamicContent) {
+        dynamicContent.innerHTML = `<div class="container">${html}</div>`;
+      }
+    }
+  }
+  
   // ======================= ENTRY CONTROL PANEL =======================
   async function showEntryControlPanel() {
     showLoading('Loading entry control panel...');
@@ -494,20 +492,6 @@
     const newState = await apiCall('/api/mark-entry/toggle-subject', { method: 'POST', body: JSON.stringify({ block, subject, examType: currentExamType, lecturerName: currentUser.name }) });
     showNotification(newState.message, !newState.success);
     if (newState.success) showBlockSubjectControl(block);
-  }
-  
-  // Helper function to update content area within sidebar
-  function updateContentArea(html) {
-    const contentArea = document.getElementById('contentArea');
-    if(contentArea) {
-      contentArea.innerHTML = html;
-    } else {
-      // Fallback for when contentArea doesn't exist yet
-      const dynamicContent = document.getElementById('dynamicContent');
-      if(dynamicContent) {
-        dynamicContent.innerHTML = `<div class="container">${html}</div>`;
-      }
-    }
   }
   
   // ======================= COMPREHENSIVE ANALYTICS DASHBOARD =======================
@@ -601,7 +585,7 @@
       } 
     } 
     
-    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div><div class="card"><div class="card-title">📊 My Subjects Performance</div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th><th>Status</th><tr></thead><tbody>`; 
+    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div><div class="card"><div class="card-title">📊 My Subjects Performance</div><div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th><th>Status</th></tr></thead><tbody>`; 
     for (let d of myData) { 
       const statusBadge = d.isOpen ? '<span class="badge badge-pass">🔓 Open</span>' : '<span class="badge badge-fail">🔒 Closed</span>';
       html += `<tr class="${d.avg >= 60 ? 'pass-row' : 'fail-row'}"><td style="padding:8px;">${d.block.replace('_', ' ')}</td><td style="padding:8px;"><strong>${d.subject}</strong></td><td style="padding:8px;"><strong>${d.avg.toFixed(1)}%</strong></td><td style="padding:8px;">${d.students}</td><td style="padding:8px;">${statusBadge}</td></tr>`; 
@@ -649,7 +633,7 @@
     let html = `<div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
-        <button class="save-btn" onclick="openFastEntryPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>
+        <button class="save-btn" onclick="openFastEntryPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode (Saves to DB instantly)</button>
         ${currentUser.role==='admin'?`<button class="save-btn" onclick="showNCKColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}
       </div>
       <div style="font-size:12px;color:#666;margin-top:8px;">
@@ -691,7 +675,7 @@
         <td style="position:sticky;left:60px;background:white;font-weight:500;cursor:pointer;color:#6366f1;text-decoration:underline;" 
             onclick="openXYEditModal(${i}, '${safeName}')">
           ${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i>
-        </td>`;
+        </div>`;
       
       let scoreIdx = 0; 
       for(let group of areaGroups){ 
@@ -702,15 +686,15 @@
             <input type="number" id="xy_${i}_${scoreIdx}" value="${score}" min="0" max="100" step="0.5" 
                    style="width:55px;padding:4px;border-radius:6px;text-align:center;${scoreStyle}" 
                    onchange="updateXYAverage(${i})">
-           </div>`;
+            </div>`;
           scoreIdx++; 
         } 
       } 
       
-      html += `<td id="xyAvg_${i}" style="font-weight:bold;text-align:center;background:${avg>=60?'#d1fae5':'#fee2e2'};">${avg.toFixed(2)}</td>
-        <td id="xyStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span></td>
-        <td style="padding:4px;"><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width:80px;padding:4px;border-radius:6px;"></td>
-      </tr>`; 
+      html += `<td id="xyAvg_${i}" style="font-weight:bold;text-align:center;background:${avg>=60?'#d1fae5':'#fee2e2'};">${avg.toFixed(2)}</div>
+        <td id="xyStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span></div>
+        <td style="padding:4px;"><input type="text" id="xyGraded_${i}" value="${m.gradedBy || ''}" placeholder="Lecturer" style="width:80px;padding:4px;border-radius:6px;"></div>
+       </div>`; 
     } 
     
     html += `</tbody>
@@ -748,7 +732,7 @@
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
         ${currentUser.role==='admin'?`<button class="save-btn" onclick="showAssessmentColumnManagerWithClass()" style="padding:5px 12px;background:#ef4444;"><i class="fas fa-columns"></i> Manage Columns</button>`:''}
-        <button class="save-btn" onclick="openFastAssessmentPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode</button>
+        <button class="save-btn" onclick="openFastAssessmentPanel()" style="padding:5px 12px;background:#8b5cf6;"><i class="fas fa-bolt"></i> Fast Entry Mode (Saves to DB instantly)</button>
       </div>
       <div style="font-size:12px;color:#666;margin-top:8px;">
         <i class="fas fa-info-circle"></i> Tip: Click on student name to edit marks
@@ -765,7 +749,7 @@
             <th style="background:#f59e0b;">Average</th>
             <th>Status</th>
             <th>Graded By</th>
-          </table>
+           </tr>
         </thead>
         <tbody>`;
     
@@ -793,7 +777,7 @@
         <td style="position:sticky;left:60px;background:white;font-weight:500;cursor:pointer;color:#6366f1;text-decoration:underline;" 
             onclick="openAssessmentEditModal(${i}, '${safeName}')">
           ${m.name || 'Unnamed'} <i class="fas fa-edit" style="font-size:10px;"></i>
-         </div>`;
+        </div>`;
       
       for (let c = 0; c < columnCount; c++) { 
         const score = scores[c]; 
@@ -803,14 +787,14 @@
         html += `<td style="padding:4px;">
           <input type="number" id="ac_${i}_${c}" value="${displayValue}" min="0" max="100" step="0.5" 
                  style="width:70px;padding:6px;border-radius:8px;text-align:center;${scoreStyle}" placeholder="-" onchange="updateACTotal(${i})">
-         </div>`; 
+        </div>`; 
       } 
       
-      html += `<td id="acTotal_${i}" style="font-weight:bold;text-align:center;background:#d1fae5;">${total}</td>
+      html += `<td id="acTotal_${i}" style="font-weight:bold;text-align:center;background:#d1fae5;">${total}</div>
         <td id="acAverage_${i}" style="font-weight:bold;text-align:center;background:${average >= 60 ? '#d1fae5' : '#fee2e2'};">${average.toFixed(2)}%</div>
-        <td id="acStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span></td>
+        <td id="acStatus_${i}" style="text-align:center;"><span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span></div>
         <td style="padding:4px;"><input type="text" id="acGraded_${i}" value="${gradedBy}" placeholder="Lecturer" style="width:100px;padding:6px;border-radius:8px;"></div>
-       </div>`; 
+      </div>`; 
     } 
     
     html += `</tbody>
@@ -1054,6 +1038,22 @@
     if(row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row'); 
   };
   
+  // ======================= FAST ENTRY WITH INSTANT DATABASE SAVE (FIX 1) =======================
+  async function saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedBy) {
+    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedBy }];
+    showLoading(`Saving ${currentNCKMarks[studentIdx]?.name} to database...`);
+    const result = await apiCall('/api/marks', {
+      method: 'POST',
+      body: JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role })
+    });
+    hideLoading();
+    if(result.success){
+      if(currentNCKMarks[studentIdx]) currentNCKMarks[studentIdx].scores = scores;
+      showNotification(`✅ ${currentNCKMarks[studentIdx]?.name} saved to database!`, false);
+      return true;
+    } else { showNotification(`Save failed: ${result.message}`, true); return false; }
+  }
+  
   window.saveNCKMarks = async function() { 
     const sheetName = document.getElementById('nckSheetSelect').value; 
     let marksData = []; 
@@ -1096,7 +1096,7 @@
     if (result.success) loadNCKMarks(); 
   };
   
-  // Fast Entry Functions
+  // Fast Entry Functions with Instant DB Save
   function openFastEntryPanel() { 
     if(!currentNCKMarks||currentNCKMarks.length===0){ 
       showNotification('No data loaded', true); 
@@ -1152,10 +1152,10 @@
           </div>
           <div id="fastEntryFields" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;"></div>
           <div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;">
-            <button class="save-btn" onclick="applyFastEntry()" style="flex:1;padding:14px;font-size:16px;">
+            <button class="save-btn" id="saveNextBtn" style="flex:1;padding:14px;font-size:16px;">
               <i class="fas fa-save"></i> Save & Next Student (Enter)
             </button>
-            <button class="back-btn" onclick="applyFastEntryAndStay()" style="flex:1;padding:14px;font-size:16px;">
+            <button class="back-btn" id="saveStayBtn" style="flex:1;padding:14px;font-size:16px;">
               Save & Stay (Shift+Enter)
             </button>
             <button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;padding:14px;">
@@ -1179,6 +1179,9 @@
     document.getElementById('fastStudentSelect').onchange = () => { 
       loadFastEntryFields(parseInt(document.getElementById('fastStudentSelect').value)); 
     }; 
+    
+    document.getElementById('saveNextBtn').onclick = () => applyFastEntry();
+    document.getElementById('saveStayBtn').onclick = () => applyFastEntryAndStay();
     
     document.addEventListener('keydown', handleFastEntryKeyboard); 
   }
@@ -1295,49 +1298,49 @@
     } 
   }
   
-  function applyFastEntry() { 
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+  async function applyFastEntry() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    let scores = [];
     for(let c = 0; c < 22; c++){ 
-      const fastVal = document.getElementById(`fast_${c}`)?.value; 
-      if(fastVal !== undefined){ 
-        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`); 
-        if(mainInput) mainInput.value = fastVal; 
-      } 
-    } 
-    const gradedVal = document.getElementById('fast_graded')?.value; 
-    if(gradedVal !== undefined){ 
-      const gradedInput = document.getElementById(`xyGraded_${studentIdx}`); 
-      if(gradedInput) gradedInput.value = gradedVal; 
-    } 
-    updateXYAverage(studentIdx); 
+      const fastVal = document.getElementById(`fast_${c}`)?.value;
+      if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
+      else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
+    }
+    const gradedVal = document.getElementById('fast_graded')?.value || currentUser.name;
     
-    const nextIdx = studentIdx + 1; 
-    if(nextIdx < currentNCKMarks.length){ 
-      document.getElementById('fastStudentSelect').value = nextIdx; 
-      loadFastEntryFields(nextIdx); 
-      showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false); 
-    } else { 
-      closeFastEntryModal(); 
-      showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false); 
-    } 
+    const saved = await saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedVal);
+    if(saved){
+      for(let c=0;c<22;c++){ let mi=document.getElementById(`xy_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
+      let gi=document.getElementById(`xyGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+      if(window.updateXYAverage) updateXYAverage(studentIdx);
+      const nextIdx = studentIdx+1;
+      if(nextIdx < currentNCKMarks.length){ 
+        document.getElementById('fastStudentSelect').value = nextIdx; 
+        loadFastEntryFields(nextIdx); 
+        showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+      } else { 
+        closeFastEntryModal(); 
+        showNotification('🎉 All students saved to database!', false);
+      }
+    }
   }
   
-  function applyFastEntryAndStay() { 
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
+  async function applyFastEntryAndStay() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    let scores = [];
     for(let c = 0; c < 22; c++){ 
-      const fastVal = document.getElementById(`fast_${c}`)?.value; 
-      if(fastVal !== undefined){ 
-        const mainInput = document.getElementById(`xy_${studentIdx}_${c}`); 
-        if(mainInput) mainInput.value = fastVal; 
-      } 
-    } 
-    const gradedVal = document.getElementById('fast_graded')?.value; 
-    if(gradedVal !== undefined){ 
-      const gradedInput = document.getElementById(`xyGraded_${studentIdx}`); 
-      if(gradedInput) gradedInput.value = gradedVal; 
-    } 
-    updateXYAverage(studentIdx); 
-    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false); 
+      const fastVal = document.getElementById(`fast_${c}`)?.value;
+      if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
+      else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
+    }
+    const gradedVal = document.getElementById('fast_graded')?.value || currentUser.name;
+    await saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedVal);
+    for(let c=0;c<22;c++){ let mi=document.getElementById(`xy_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
+    let gi=document.getElementById(`xyGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+    if(window.updateXYAverage) updateXYAverage(studentIdx);
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
   }
   
   function openFastAssessmentPanel() { 
@@ -1386,10 +1389,10 @@
           </div>
           <div id="fastAssessmentFields"></div>
           <div style="display:flex;gap:15px;margin-top:30px;padding-top:20px;border-top:2px solid #e2e8f0;">
-            <button class="save-btn" onclick="applyFastAssessmentEntry()" style="flex:1;padding:14px;">
+            <button class="save-btn" id="saveNextBtn" style="flex:1;padding:14px;">
               <i class="fas fa-save"></i> Save & Next (Enter)
             </button>
-            <button class="back-btn" onclick="applyFastAssessmentEntryAndStay()" style="flex:1;padding:14px;">
+            <button class="back-btn" id="saveStayBtn" style="flex:1;padding:14px;">
               Save & Stay (Shift+Enter)
             </button>
             <button class="back-btn" onclick="closeFastEntryModal()" style="flex:0.5;">
@@ -1410,6 +1413,8 @@
     document.getElementById('fastStudentSelect').onchange = () => { 
       loadFastAssessmentFields(parseInt(document.getElementById('fastStudentSelect').value)); 
     }; 
+    document.getElementById('saveNextBtn').onclick = () => applyFastAssessmentEntry();
+    document.getElementById('saveStayBtn').onclick = () => applyFastAssessmentEntryAndStay();
   }
   
   function loadFastAssessmentFields(studentIdx) { 
@@ -1528,65 +1533,47 @@
     } 
   }
   
-  function applyFastAssessmentEntry() { 
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
-    const columnCount = 12; 
-    for(let c = 0; c < columnCount; c++){ 
-      const fastVal = document.getElementById(`fast_ac_${c}`)?.value; 
-      if(fastVal !== undefined){ 
-        const mainInput = document.getElementById(`ac_${studentIdx}_${c}`); 
-        if(mainInput){ 
-          const val = parseFloat(fastVal); 
-          if(isNaN(val) || val === 0){ 
-            mainInput.value = ''; 
-          } else { 
-            mainInput.value = val; 
-          } 
-        } 
-      } 
-    } 
-    const gradedVal = document.getElementById('fast_ac_graded')?.value; 
-    if(gradedVal !== undefined){ 
-      const gradedInput = document.getElementById(`acGraded_${studentIdx}`); 
-      if(gradedInput) gradedInput.value = gradedVal; 
-    } 
-    updateACTotal(studentIdx); 
-    
-    const nextIdx = studentIdx + 1; 
-    if(nextIdx < currentNCKMarks.length){ 
-      document.getElementById('fastStudentSelect').value = nextIdx; 
-      loadFastAssessmentFields(nextIdx); 
-      showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Now entering ${currentNCKMarks[nextIdx]?.name}`, false); 
-    } else { 
-      closeFastEntryModal(); 
-      showNotification('🎉 All students done! Click "Save All NCK Marks" to save to server.', false); 
-    } 
+  async function applyFastAssessmentEntry() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE';
+    let scores = [];
+    for(let c = 0; c < 12; c++){ 
+      const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
+      scores.push(fastVal !== undefined ? (fastVal===''?'':parseFloat(fastVal)) : '');
+    }
+    const gradedVal = document.getElementById('fast_ac_graded')?.value || currentUser.name;
+    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedVal }];
+    showLoading(`Saving ${currentNCKMarks[studentIdx]?.name} to database...`);
+    const result = await apiCall('/api/marks', { method:'POST', body:JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role }) });
+    hideLoading();
+    if(result.success){
+      for(let c=0;c<12;c++){ let mi=document.getElementById(`ac_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
+      let gi=document.getElementById(`acGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+      if(window.updateACTotal) updateACTotal(studentIdx);
+      const nextIdx = studentIdx+1;
+      if(nextIdx < currentNCKMarks.length){ 
+        document.getElementById('fastStudentSelect').value = nextIdx; 
+        loadFastAssessmentFields(nextIdx); 
+        showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+      } else { closeFastEntryModal(); showNotification('🎉 All assessments saved to database!', false); }
+    } else showNotification('Save failed', true);
   }
   
-  function applyFastAssessmentEntryAndStay() { 
-    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value); 
-    const columnCount = 12; 
-    for(let c = 0; c < columnCount; c++){ 
-      const fastVal = document.getElementById(`fast_ac_${c}`)?.value; 
-      if(fastVal !== undefined){ 
-        const mainInput = document.getElementById(`ac_${studentIdx}_${c}`); 
-        if(mainInput){ 
-          const val = parseFloat(fastVal); 
-          if(isNaN(val) || val === 0){ 
-            mainInput.value = ''; 
-          } else { 
-            mainInput.value = val; 
-          } 
-        } 
-      } 
-    } 
-    const gradedVal = document.getElementById('fast_ac_graded')?.value; 
-    if(gradedVal !== undefined){ 
-      const gradedInput = document.getElementById(`acGraded_${studentIdx}`); 
-      if(gradedInput) gradedInput.value = gradedVal; 
-    } 
-    updateACTotal(studentIdx); 
-    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false); 
+  async function applyFastAssessmentEntryAndStay() { 
+    const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE';
+    let scores = [];
+    for(let c = 0; c < 12; c++){ 
+      const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
+      scores.push(fastVal !== undefined ? (fastVal===''?'':parseFloat(fastVal)) : '');
+    }
+    const gradedVal = document.getElementById('fast_ac_graded')?.value || currentUser.name;
+    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedVal }];
+    await apiCall('/api/marks', { method:'POST', body:JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role }) });
+    for(let c=0;c<12;c++){ let mi=document.getElementById(`ac_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
+    let gi=document.getElementById(`acGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+    if(window.updateACTotal) updateACTotal(studentIdx);
+    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
   }
   
   // Column Management Functions
@@ -2217,7 +2204,7 @@
     } 
   }
   
-  // ======================= LECTURER MANAGEMENT =======================
+  // ======================= LECTURER MANAGEMENT (FIX 3: FULLY FUNCTIONAL) =======================
   async function showLecturers() { 
     const lecturers = await apiCall('/api/lecturers', {}); 
     let html = `<button class="back-btn" onclick="showMain()">Back</button>
@@ -2235,26 +2222,26 @@
   
   function showAddLecturerModal() { 
     const modal = `<div id="lecturerModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-user-plus"></i> Add Lecturer</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
-      <div class="field"><label>Username</label><input type="text" id="lecUser"></div>
-      <div class="field"><label>Full Name</label><input type="text" id="lecName"></div>
-      <div class="field"><label>Email</label><input type="email" id="lecEmail"></div>
+      <div class="field"><label>Username</label><input type="text" id="lecUser" placeholder="e.g., johndoe"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="lecName" placeholder="John Doe"></div>
+      <div class="field"><label>Email</label><input type="email" id="lecEmail" placeholder="john@example.com"></div>
       <div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div>
-      <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save</button>
+      <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Lecturer</button>
     </div></div></div>`; 
     document.body.insertAdjacentHTML('beforeend', modal); 
   }
   
   async function saveNewLecturer() { 
-    const username = document.getElementById('lecUser').value; 
-    const name = document.getElementById('lecName').value; 
-    const email = document.getElementById('lecEmail').value; 
-    const pass = document.getElementById('lecPass').value; 
-    if(!username || !name){ showNotification('Fill required fields', true); return; } 
+    const username = document.getElementById('lecUser')?.value; 
+    const name = document.getElementById('lecName')?.value; 
+    const email = document.getElementById('lecEmail')?.value; 
+    const password = document.getElementById('lecPass')?.value; 
+    if(!username || !name){ showNotification('Username and Name required', true); return; } 
     showLoading('Adding lecturer...'); 
-    const result = await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: pass, subjects: [] }) }); 
+    const result = await apiCall('/api/add-lecturer', { method: 'POST', body: JSON.stringify({ username, name, email, password: password || 'password123', subjects: [] }) }); 
     hideLoading(); closeModal(); 
-    showNotification(result.success ? 'Lecturer added successfully!' : (result.message || 'Error adding lecturer'), !result.success); 
-    if(result.success) showLecturers(); 
+    if(result.success){ showNotification('Lecturer added successfully!'); showLecturers(); } 
+    else showNotification(result.message || 'Error adding lecturer', true); 
   }
   
   async function showEditLecturerModal(username) { 
@@ -2285,25 +2272,25 @@
   }
   
   async function updateLecturer(oldUsername) { 
-    const name = document.getElementById('lecName').value; 
-    const email = document.getElementById('lecEmail').value; 
-    const password = document.getElementById('lecPass').value; 
+    const name = document.getElementById('lecName')?.value; 
+    const email = document.getElementById('lecEmail')?.value; 
+    const password = document.getElementById('lecPass')?.value; 
     const select = document.getElementById('lecSubjects'); 
-    const subjects = Array.from(select.selectedOptions).map(o => o.value); 
+    const subjects = select ? Array.from(select.selectedOptions).map(o => o.value) : []; 
     showLoading('Updating lecturer...'); 
     const result = await apiCall('/api/update-lecturer', { method: 'POST', body: JSON.stringify({ oldUsername, username: oldUsername, name, email, password, subjects }) }); 
     hideLoading(); closeModal(); 
-    showNotification(result.success ? 'Lecturer updated successfully!' : (result.message || 'Error updating lecturer'), !result.success); 
-    if(result.success) showLecturers(); 
+    if(result.success){ showNotification('Lecturer updated successfully!'); showLecturers(); } 
+    else showNotification(result.message || 'Error updating lecturer', true); 
   }
   
   async function deleteLecturer(username) { 
-    if(confirm('Delete this lecturer?')){ 
+    if(confirm(`Delete lecturer "${username}"?`)){ 
       showLoading('Deleting lecturer...'); 
       const result = await apiCall('/api/delete-lecturer', { method: 'POST', body: JSON.stringify({ username }) }); 
       hideLoading(); 
-      showNotification(result.success ? 'Lecturer deleted successfully!' : (result.message || 'Error deleting lecturer'), !result.success); 
-      if(result.success) showLecturers(); 
+      if(result.success){ showNotification('Lecturer deleted successfully!'); showLecturers(); } 
+      else showNotification(result.message || 'Error deleting lecturer', true); 
     } 
   }
   
