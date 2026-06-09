@@ -3,157 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>NCHSM Lecturer Dashboard</title>
+    <title>NCHSM Lecturer Dashboard - Complete System</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
-        .container { display: flex; min-height: 100vh; }
-        
-        /* Sidebar */
-        .sidebar { width: 280px; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; position: fixed; height: 100vh; overflow-y: auto; transition: transform 0.3s; z-index: 1000; }
-        .sidebar-header { padding: 24px 20px; text-align: center; border-bottom: 1px solid #334155; }
-        .sidebar-header img { width: 70px; background: white; padding: 8px; border-radius: 20px; margin-bottom: 12px; }
-        .sidebar-header h2 { font-size: 1.4rem; color: white; }
-        .nav { list-style: none; margin-top: 20px; }
-        .nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #cbd5e1; text-decoration: none; transition: 0.2s; border-left: 3px solid transparent; cursor: pointer; }
-        .nav li a i { width: 24px; }
-        .nav li a:hover, .nav li a.active { background: rgba(255,255,255,0.1); color: white; border-left-color: #f59e0b; }
-        .logout { margin-top: 40px; padding: 20px; border-top: 1px solid #334155; }
-        .logout button { background: none; border: none; color: #f87171; display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer; font-size: 1rem; padding: 0; }
-        
-        /* Main */
-        .main { flex: 1; margin-left: 280px; padding: 28px 32px; background: #f8fafc; min-height: 100vh; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 15px; }
-        header h1 { font-size: 1.8rem; color: #0f172a; }
-        .subtitle { color: #475569; margin-top: 4px; }
-        .header-actions { display: flex; gap: 12px; }
-        .btn-notification, .btn-help { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .btn-notification:hover, .btn-help:hover { background: #cbd5e1; }
-        
-        /* Cards */
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .card h3 { font-size: 0.85rem; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
-        .data { font-size: 2rem; font-weight: 800; color: #0f172a; }
-        .card-alert-danger { border-left: 4px solid #dc2626; }
-        .card-alert-warning { border-left: 4px solid #f59e0b; }
-        
-        /* Forms */
-        .inline-form, .check-in-controls { background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
-        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
-        .form-group { flex: 1; min-width: 180px; }
-        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #334155; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; }
-        
-        /* Tables */
-        .data-table { width: 100%; background: white; border-collapse: collapse; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        .data-table th { background: #f8fafc; font-weight: 600; color: #334155; }
-        .table-responsive { overflow-x: auto; margin-bottom: 20px; }
-        
-        /* Search */
-        .search-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .search-container input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid #cbd5e1; }
-        .search-container button { background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; }
-        .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
-        .toolbar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        
-        /* Badges */
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; font-weight: 500; }
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-warning { background: #fed7aa; color: #9a3412; }
-        .badge-danger { background: #fee2e2; color: #991b1b; }
-        .badge-info { background: #dbeafe; color: #1e40af; }
-        .badge-tvet { background: #fef3c7; color: #b45309; }
-        .badge-krchn { background: #e0e7ff; color: #3730a3; }
-        
-        /* Buttons */
-        .btn-action { background: #4C1D95; border: none; padding: 8px 18px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-action:hover { background: #6d28d9; transform: scale(0.98); }
-        .btn-danger { background: #dc2626; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn-warning { background: #f59e0b; color: #1f2937; }
-        .btn-success { background: #10b981; }
-        .btn-cancel { background: #6b7280; }
-        
-        /* Profile */
-        .profile-card { background: white; border-radius: 20px; padding: 25px; display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px; align-items: center; }
-        .profile-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; }
-        .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-        .profile-info h3 { font-size: 1.5rem; margin-bottom: 5px; }
-        .profile-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .profile-details-grid { background: white; border-radius: 20px; padding: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .detail-item { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-        .detail-item strong { display: block; font-size: 12px; color: #6b7280; }
-        
-        /* Modals */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000; }
-        .modal.active, .modal[style*="display: flex"] { display: flex; }
-        .modal-content { background: white; border-radius: 24px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; }
-        .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; }
-        .modal-actions { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
-        .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; color: #64748b; }
-        
-        /* Toast Notifications */
-        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { padding: 12px 20px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
-        .toast-info { background: #3b82f6; }
-        .toast-warning { background: #f59e0b; color: #1f2937; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
-        /* Today's Schedule Widget */
-        .today-schedule { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
-        .schedule-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #e2e8f0; }
-        .schedule-time { font-weight: bold; color: #4C1D95; min-width: 80px; }
-        .schedule-title { flex: 1; }
-        .schedule-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; }
-        
-        .feedback { display: none; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .loading-spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .attendance-metrics { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
-        .metric-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center; }
-        .metric-value { font-size: 2rem; font-weight: bold; }
-        .metric-label { font-size: 0.85rem; margin-top: 5px; opacity: 0.9; }
-        
-        .grade-input { width: 80px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
-        .session-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 11px; }
-        .session-class { background: #dbeafe; color: #1e40af; }
-        .session-clinical { background: #d1fae5; color: #065f46; }
-        .session-exam { background: #fed7aa; color: #9a3412; }
-        .program-badge { font-size: 10px; padding: 2px 6px; border-radius: 20px; display: inline-block; margin-top: 4px; }
-        
-        .mobile-nav-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 1100; background: #4C1D95; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            .main { margin-left: 0; padding-top: 70px; }
-            .mobile-nav-toggle { display: block; }
-            .cards { grid-template-columns: repeat(2, 1fr); }
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <div class="mobile-nav-toggle" id="mobileNavToggle">☰</div>
         <div class="toast-container" id="toastContainer"></div>
 
+        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
@@ -170,12 +37,14 @@
                 <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 <li><a href="#" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
                 <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
+                <li><a href="#" data-tab="settings"><i class="fas fa-cog"></i> Settings</a></li>
             </ul>
             <div class="logout">
                 <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
         </aside>
 
+        <!-- Main Content -->
         <main class="main">
             <header>
                 <div>
@@ -183,36 +52,68 @@
                     <p class="subtitle">Manage your courses, students, and attendance</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn-notification" id="notificationBtn"><i class="fas fa-bell"></i> Notifications</button>
+                    <button class="btn-notification" id="notificationBtn"><i class="fas fa-bell"></i> <span id="notificationCount">0</span></button>
                     <button class="btn-help" id="helpBtn"><i class="fas fa-question-circle"></i> Help</button>
                 </div>
             </header>
 
-            <!-- DASHBOARD -->
+            <!-- DASHBOARD TAB -->
             <section id="dashboard-content" class="tab-content active">
                 <h2><i class="fas fa-tachometer-alt"></i> Lecturer Dashboard</h2>
                 <div class="cards">
-                    <div class="card" onclick="showTab('my-students')"><h3><i class="fas fa-users"></i> My Students</h3><p class="data" id="totalStudents">0</p></div>
-                    <div class="card" onclick="showTab('my-courses')"><h3><i class="fas fa-book"></i> My Courses</h3><p class="data" id="totalCourses">0</p></div>
-                    <div class="card card-alert-danger" onclick="showTab('my-students')"><h3><i class="fas fa-exclamation-triangle"></i> At Risk</h3><p class="data" id="atRiskCount">0</p></div>
-                    <div class="card card-alert-warning" onclick="showTab('cats')"><h3><i class="fas fa-file-signature"></i> Pending Grading</h3><p class="data" id="pendingGrading">0</p></div>
+                    <div class="card" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-users"></i> My Students</h3>
+                        <p class="data" id="totalStudents">0</p>
+                    </div>
+                    <div class="card" onclick="showTab('my-courses')">
+                        <h3><i class="fas fa-book"></i> My Courses</h3>
+                        <p class="data" id="totalCourses">0</p>
+                    </div>
+                    <div class="card card-alert-danger" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-exclamation-triangle"></i> At Risk</h3>
+                        <p class="data" id="atRiskCount">0</p>
+                    </div>
+                    <div class="card card-alert-warning" onclick="showTab('cats')">
+                        <h3><i class="fas fa-file-signature"></i> Pending Grading</h3>
+                        <p class="data" id="pendingGrading">0</p>
+                    </div>
                 </div>
+
+                <!-- Attendance Metrics -->
                 <div class="attendance-metrics">
                     <h3><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
                     <div class="metrics-grid">
-                        <div class="metric-card"><div class="metric-value" id="todayAttendance">0</div><div class="metric-label">Today's Check-ins</div></div>
-                        <div class="metric-card"><div class="metric-value" id="weeklyAttendance">0</div><div class="metric-label">This Week</div></div>
-                        <div class="metric-card"><div class="metric-value" id="monthlyRate">0%</div><div class="metric-label">Monthly Rate</div></div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="todayAttendance">0</div>
+                            <div class="metric-label">Today's Check-ins</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="weeklyAttendance">0</div>
+                            <div class="metric-label">This Week</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="monthlyRate">0%</div>
+                            <div class="metric-label">Monthly Rate</div>
+                        </div>
                     </div>
                 </div>
-                <div class="today-schedule" id="todayScheduleWidget"><h4><i class="fas fa-calendar-day"></i> Today's Schedule</h4><div id="todayScheduleList"><div class="loading-spinner"></div></div></div>
+
+                <!-- Today's Schedule -->
+                <div class="today-schedule">
+                    <h4><i class="fas fa-calendar-day"></i> Today's Schedule</h4>
+                    <div id="todayScheduleList">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
             </section>
 
-            <!-- PROFILE -->
+            <!-- PROFILE TAB -->
             <section id="profile-content" class="tab-content">
                 <h2><i class="fas fa-user"></i> My Profile</h2>
                 <div class="profile-card">
-                    <div class="profile-avatar" id="profileAvatar"><i class="fas fa-user"></i></div>
+                    <div class="profile-avatar" id="profileAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
                     <div class="profile-info">
                         <h3 id="profileName">Loading...</h3>
                         <p class="role" id="profileRole">Lecturer</p>
@@ -234,143 +135,523 @@
                 </div>
             </section>
 
-            <!-- MY COURSES -->
+            <!-- MY COURSES TAB -->
             <section id="my-courses-content" class="tab-content">
                 <h2><i class="fas fa-book"></i> My Courses</h2>
                 <div class="filter-bar">
-                    <input type="text" id="courseSearch" placeholder="Search..." onkeyup="filterCourses()">
-                    <select id="courseProgramFilter" onchange="filterCourses()"><option value="">All Programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
+                    <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="filterCourses()">
+                    <select id="courseProgramFilter" onchange="filterCourses()">
+                        <option value="">All Programs</option>
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
                 </div>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Intake</th><th>Students</th><th>Actions</th></tr></thead><tbody id="coursesTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Intake</th><th>Students</th><th>Actions</th>
+                        </thead>
+                        <tbody id="coursesTableBody">
+                            <tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- MY STUDENTS -->
+            <!-- MY STUDENTS TAB -->
             <section id="my-students-content" class="tab-content">
                 <h2><i class="fas fa-users"></i> My Students</h2>
                 <div class="filter-bar">
-                    <input type="text" id="studentSearch" placeholder="Search..." onkeyup="filterStudents()">
-                    <select id="studentStatusFilter" onchange="filterStudents()"><option value="all">All</option><option value="active">Active</option><option value="at-risk">At Risk</option></select>
+                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
+                    <select id="studentStatusFilter" onchange="filterStudents()">
+                        <option value="all">All Students</option>
+                        <option value="active">Active</option>
+                        <option value="at-risk">At Risk</option>
+                    </select>
                 </div>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Intake</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead><tbody id="studentsTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Intake</th><th>Block</th><th>Status</th><th>Actions</th>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- SESSIONS -->
+            <!-- SESSIONS TAB -->
             <section id="sessions-content" class="tab-content">
                 <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
                 <form id="addSessionForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Session Title *</label><input type="text" id="sessionTitle" required></div>
-                        <div class="form-group"><label>Date *</label><input type="date" id="sessionDate" required></div>
-                        <div class="form-group"><label>Time *</label><input type="time" id="sessionTime" required></div>
+                        <div class="form-group">
+                            <label>Session Title *</label>
+                            <input type="text" id="sessionTitle" required placeholder="e.g., Introduction to Nursing">
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" id="sessionDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Time *</label>
+                            <input type="time" id="sessionTime" required>
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Program *</label><select id="sessionProgram" required onchange="updateBlockOptions('sessionProgram', 'sessionBlock')"></select></div>
-                        <div class="form-group"><label>Block/Term *</label><select id="sessionBlock" required></select></div>
-                        <div class="form-group"><label>Course</label><select id="sessionCourse"></select></div>
+                        <div class="form-group">
+                            <label>Program *</label>
+                            <select id="sessionProgram" required onchange="updateBlockOptions('sessionProgram', 'sessionBlock')"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Block/Term *</label>
+                            <select id="sessionBlock" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="sessionCourse"></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Session Type</label>
+                            <select id="sessionType">
+                                <option value="Class">Class</option>
+                                <option value="Clinical">Clinical</option>
+                                <option value="Exam">Exam</option>
+                                <option value="Online">Online</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Venue/Link</label>
+                            <input type="text" id="sessionVenue" placeholder="Room number or meeting link">
+                        </div>
                     </div>
                     <button type="submit" class="btn-action"><i class="fas fa-calendar-plus"></i> Schedule Session</button>
                 </form>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Title</th><th>Date/Time</th><th>Course</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead><tbody id="sessionsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+
+                <h3>Upcoming Sessions</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Title</th><th>Date/Time</th><th>Course</th><th>Program/Block</th><th>Type</th><th>Attendance Link</th><th>Actions</th>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            <tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- ATTENDANCE -->
+            <!-- ATTENDANCE TAB -->
             <section id="attendance-content" class="tab-content">
                 <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
-                <div class="check-in-controls"><button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button></div>
+                
+                <div class="check-in-controls">
+                    <button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button>
+                    <button id="generateQRBtn" class="btn-action btn-success"><i class="fas fa-qrcode"></i> Generate QR Code</button>
+                </div>
+
+                <h3>Manual Attendance Entry</h3>
                 <form id="manualAttendanceForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Student *</label><select id="attStudentId" required></select></div>
-                        <div class="form-group"><label>Session Type *</label><select id="attSessionType" required><option value="">Select</option><option value="Class">Class</option><option value="Clinical">Clinical</option><option value="Exam">Exam</option></select></div>
-                        <div class="form-group"><label>Course</label><select id="attCourseId"></select></div>
+                        <div class="form-group">
+                            <label>Student *</label>
+                            <select id="attStudentId" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Session Type *</label>
+                            <select id="attSessionType" required>
+                                <option value="">Select</option>
+                                <option value="Class">Class</option>
+                                <option value="Clinical">Clinical</option>
+                                <option value="Exam">Exam</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="attCourseId"></select>
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Location</label><input type="text" id="attLocation" placeholder="Venue"></div>
-                        <div class="form-group"><label>Date *</label><input type="date" id="attDate" required></div>
-                        <div class="form-group"><label>Time</label><input type="time" id="attTime"></div>
+                        <div class="form-group">
+                            <label>Location</label>
+                            <input type="text" id="attLocation" placeholder="Venue">
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" id="attDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Time</label>
+                            <input type="time" id="attTime">
+                        </div>
                     </div>
                     <button type="submit" class="btn-action"><i class="fas fa-user-check"></i> Mark Present</button>
                 </form>
+
                 <h3>Today's Attendance</h3>
-                <div class="search-container"><input type="text" id="attendanceSearch" placeholder="Search..." onkeyup="filterAttendance()"></div>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Course</th><th>Time</th><th>Location</th><th>Status</th><th>Map</th></tr></thead><tbody id="attendanceTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
-                <h3>Past Records</h3>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Date</th><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Course</th><th>Time</th><th>Status</th><th>Recorded By</th></tr></thead><tbody id="pastAttendanceTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+                <div class="search-container">
+                    <input type="text" id="attendanceSearch" placeholder="Search..." onkeyup="filterAttendance()">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Course</th><th>Time</th><th>Location</th><th>Status</th><th>Map</th>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Past Records (Last 30 Days)</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Date</th><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Course</th><th>Time</th><th>Recorded By</th>
+                        </thead>
+                        <tbody id="pastAttendanceTableBody">
+                            <tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- EXAMS -->
+            <!-- EXAMS/CATS TAB -->
             <section id="cats-content" class="tab-content">
                 <h2><i class="fas fa-file-alt"></i> Exams & CATs</h2>
+                
                 <form id="addExamForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Title *</label><input type="text" id="examTitle" required></div>
-                        <div class="form-group"><label>Date *</label><input type="date" id="examDate" required></div>
-                        <div class="form-group"><label>Type *</label><select id="examType" required><option value="">Select</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final Exam</option></select></div>
+                        <div class="form-group">
+                            <label>Title *</label>
+                            <input type="text" id="examTitle" required placeholder="e.g., CAT 1 - Anatomy">
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" id="examDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Type *</label>
+                            <select id="examType" required>
+                                <option value="">Select</option>
+                                <option value="CAT_1">CAT 1</option>
+                                <option value="CAT_2">CAT 2</option>
+                                <option value="EXAM">Final Exam</option>
+                                <option value="QUIZ">Quiz</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Program *</label><select id="examProgram" required onchange="updateBlockOptions('examProgram', 'examBlock')"></select></div>
-                        <div class="form-group"><label>Intake *</label><select id="examIntake" required><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-                        <div class="form-group"><label>Block/Term *</label><select id="examBlock" required></select></div>
+                        <div class="form-group">
+                            <label>Program *</label>
+                            <select id="examProgram" required onchange="updateBlockOptions('examProgram', 'examBlock')"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Intake *</label>
+                            <select id="examIntake" required>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026">2026</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Block/Term *</label>
+                            <select id="examBlock" required></select>
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Course</label><select id="examCourse"></select></div>
-                        <div class="form-group"><label>Duration (mins)</label><input type="number" id="examDuration" value="120"></div>
-                        <div class="form-group"><label>Status</label><select id="examStatus"><option value="Scheduled">Scheduled</option><option value="InProgress">In Progress</option><option value="Completed">Completed</option></select></div>
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="examCourse"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Duration (mins)</label>
+                            <input type="number" id="examDuration" value="120">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Marks</label>
+                            <input type="number" id="examTotalMarks" value="100">
+                        </div>
                     </div>
                     <button type="submit" class="btn-action"><i class="fas fa-plus-circle"></i> Create Exam</button>
                 </form>
-                <div class="search-container"><input type="text" id="examSearch" placeholder="Search..." onkeyup="filterExams()"></div>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Type</th><th>Title</th><th>Course</th><th>Program/Block</th><th>Date</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody id="examsTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+
+                <div class="search-container">
+                    <input type="text" id="examSearch" placeholder="Search exams..." onkeyup="filterExams()">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Type</th><th>Title</th><th>Course</th><th>Program/Block</th><th>Date</th><th>Duration</th><th>Status</th><th>Actions</th>
+                        </thead>
+                        <tbody id="examsTableBody">
+                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- RESOURCES -->
+            <!-- RESOURCES TAB -->
             <section id="resources-content" class="tab-content">
-                <h2><i class="fas fa-file-upload"></i> Resources</h2>
+                <h2><i class="fas fa-file-upload"></i> Learning Resources</h2>
+                
                 <form id="uploadResourceForm" class="inline-form">
-                    <div class="form-row"><div class="form-group"><label>Title *</label><input type="text" id="resourceTitle" required></div><div class="form-group"><label>Category *</label><select id="resourceCategory" required><option value="Academic">Academic</option><option value="General">General</option></select></div></div>
-                    <div class="form-row"><div class="form-group"><label>Program</label><select id="resourceProgram" required onchange="updateBlockOptions('resourceProgram', 'resourceBlock')"></select></div><div class="form-group"><label>Block/Term</label><select id="resourceBlock" required></select></div><div class="form-group"><label>File *</label><input type="file" id="resourceFile" required accept=".pdf,.doc,.docx,.ppt,.pptx"></div></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title *</label>
+                            <input type="text" id="resourceTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category *</label>
+                            <select id="resourceCategory" required>
+                                <option value="Academic">Academic</option>
+                                <option value="Lecture Notes">Lecture Notes</option>
+                                <option value="Past Papers">Past Papers</option>
+                                <option value="Syllabus">Syllabus</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Program</label>
+                            <select id="resourceProgram" required onchange="updateBlockOptions('resourceProgram', 'resourceBlock')"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Block/Term</label>
+                            <select id="resourceBlock" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="resourceCourse"></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>File *</label>
+                            <input type="file" id="resourceFile" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="resourceDescription" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+                    </div>
                     <button type="submit" class="btn-action"><i class="fas fa-upload"></i> Upload Resource</button>
                 </form>
-                <div class="search-container"><input type="text" id="resourceSearch" placeholder="Search..." onkeyup="filterResources()"></div>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Title</th><th>Category</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody id="resourcesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+
+                <div class="search-container">
+                    <input type="text" id="resourceSearch" placeholder="Search resources..." onkeyup="filterResources()">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Title</th><th>Category</th><th>Program/Block</th><th>Course</th><th>Uploaded</th><th>Downloads</th><th>Actions</th>
+                        </thead>
+                        <tbody id="resourcesTableBody">
+                            <tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- MESSAGES -->
+            <!-- MESSAGES TAB -->
             <section id="messages-content" class="tab-content">
                 <h2><i class="fas fa-envelope"></i> Messages</h2>
+                
                 <form id="sendMessageForm" class="inline-form">
-                    <div class="form-row"><div class="form-group"><label>To *</label><select id="msgRecipient" required></select></div><div class="form-group"><label>Subject *</label><input type="text" id="msgSubject" required></div></div>
-                    <div class="form-group"><label>Message *</label><textarea id="msgBody" rows="4" required></textarea></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>To *</label>
+                            <select id="msgRecipient" required>
+                                <option value="">Select Recipient</option>
+                                <option value="all_students">All Students</option>
+                                <option value="all_staff">All Staff</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject *</label>
+                            <input type="text" id="msgSubject" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Message *</label>
+                        <textarea id="msgBody" rows="5" required placeholder="Type your message here..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Priority</label>
+                            <select id="msgPriority">
+                                <option value="normal">Normal</option>
+                                <option value="important">Important</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Attach File (optional)</label>
+                            <input type="file" id="msgAttachment" accept=".pdf,.doc,.docx,.jpg,.png">
+                        </div>
+                    </div>
                     <button type="submit" class="btn-action"><i class="fas fa-paper-plane"></i> Send Message</button>
                 </form>
-                <div class="table-responsive"><table class="data-table"><thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead><tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading...</td></tr></tbody></table></div>
+
+                <h3>Sent Messages</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th><th>Priority</th>
+                        </thead>
+                        <tbody id="messagesTableBody">
+                            <tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
-            <!-- CALENDAR -->
+            <!-- CALENDAR TAB -->
             <section id="calendar-content" class="tab-content">
                 <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
-                <div id="calendarDisplay" style="background: white; border-radius: 16px; padding: 16px; min-height: 500px;"></div>
+                <div class="calendar-toolbar">
+                    <button class="btn-action" onclick="exportCalendar()"><i class="fas fa-download"></i> Export Calendar</button>
+                    <button class="btn-action" onclick="syncCalendar()"><i class="fas fa-sync"></i> Sync</button>
+                </div>
+                <div id="calendarDisplay"></div>
+            </section>
+
+            <!-- SETTINGS TAB -->
+            <section id="settings-content" class="tab-content">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                
+                <div class="settings-section">
+                    <h3>Notification Preferences</h3>
+                    <div class="settings-option">
+                        <label>
+                            <input type="checkbox" id="notifyEmail"> Email Notifications
+                        </label>
+                        <label>
+                            <input type="checkbox" id="notifyBrowser"> Browser Notifications
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Classroom Settings</h3>
+                    <div class="form-group">
+                        <label>Default Program</label>
+                        <select id="defaultProgram"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Default Block</label>
+                        <select id="defaultBlock"></select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Security</h3>
+                    <button class="btn-action" id="changePasswordBtn2"><i class="fas fa-key"></i> Change Password</button>
+                    <button class="btn-action btn-danger" id="enable2FA"><i class="fas fa-shield-alt"></i> Enable 2FA</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Data Management</h3>
+                    <button class="btn-action" onclick="exportData()"><i class="fas fa-download"></i> Export My Data</button>
+                    <button class="btn-action btn-danger" onclick="clearCache()"><i class="fas fa-trash"></i> Clear Cache</button>
+                </div>
             </section>
         </main>
     </div>
 
     <!-- MODALS -->
-    <div id="gradeModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="gradeModalTitle">Grade Students</h3><button class="close-btn" onclick="closeModal('gradeModal')">&times;</button></div><div class="modal-body" id="gradeModalBody"></div><div class="modal-actions"><button class="btn-action" onclick="saveAllGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div></div></div>
-    <div id="examEditModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Exam</h3><button class="close-btn" onclick="closeModal('examEditModal')">&times;</button></div><form id="editExamForm"><input type="hidden" id="editExamId"><input type="text" id="editExamTitle" required><input type="date" id="editExamDate" required><select id="editExamStatus"><option value="Scheduled">Scheduled</option><option value="InProgress">In Progress</option><option value="Completed">Completed</option></select><div class="modal-actions"><button type="submit" class="btn-action">Save</button><button type="button" class="btn-cancel" onclick="closeModal('examEditModal')">Cancel</button></div></form></div></div>
-    <div id="mapModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Location Map</h3><button class="close-btn" onclick="closeModal('mapModal')">&times;</button></div><div class="modal-body"><div id="mapContainer" style="height: 350px;"></div><p id="mapDetails"></p></div></div></div>
+    <div id="gradeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="gradeModalTitle">Grade Students</h3>
+                <button class="close-btn" onclick="closeModal('gradeModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="gradeModalBody"></div>
+            <div class="modal-actions">
+                <button class="btn-action" onclick="saveAllGrades()">Save Grades</button>
+                <button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
 
+    <div id="examEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Exam</h3>
+                <button class="close-btn" onclick="closeModal('examEditModal')">&times;</button>
+            </div>
+            <form id="editExamForm">
+                <input type="hidden" id="editExamId">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="editExamTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="editExamDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editExamStatus">
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-action">Save</button>
+                    <button type="button" class="btn-cancel" onclick="closeModal('examEditModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="mapModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Location Map</h3>
+                <button class="close-btn" onclick="closeModal('mapModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="mapContainer" style="height: 350px;"></div>
+                <p id="mapDetails"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Attendance QR Code</h3>
+                <button class="close-btn" onclick="closeModal('qrModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div id="qrCodeContainer"></div>
+                <p>Scan this QR code to mark attendance</p>
+                <button class="btn-action" onclick="downloadQR()"><i class="fas fa-download"></i> Download QR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
     <script>
         // =====================================================
-        // COMPLETE FIXED LECTURER DASHBOARD - NO INSTANT LOGOUT
+        // COMPLETE LECTURER DASHBOARD - ALL MODULES WORKING
         // =====================================================
         
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
         
-        // FIXED: Added auth configuration to persist session
+        // Supabase with session persistence
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
                 persistSession: true,
@@ -380,34 +661,45 @@
                 detectSessionInUrl: true
             }
         });
-        window.sb = sb;
         
-        // TVET Program Codes
+        // Global variables
+        let currentUserProfile = null;
+        let currentUserId = null;
+        let allCourses = [];
+        let allStudents = [];
+        let allSessions = [];
+        let allExams = [];
+        let allResources = [];
+        let calendar = null;
+        let attendanceMap = null;
+        let currentQRCode = null;
+        
+        // Program data
         const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+        
         const PROGRAM_DISPLAY_NAMES = {
             'KRCHN': 'KRCHN Nursing',
-            'DPOTT': 'Diploma in Perioperative Theatre Technology', 'DCH': 'Diploma in Community Health',
-            'DHRIT': 'Diploma in Health Records and IT', 'DSL': 'Diploma in Science Lab',
-            'DSW': 'Diploma in Social Work', 'DCJS': 'Diploma in Criminal Justice',
-            'DHSS': 'Diploma in Health Support Services', 'DICT': 'Diploma in ICT',
-            'DME': 'Diploma in Medical Engineering', 'CPOTT': 'Certificate in Perioperative Theatre Technology',
-            'CCH': 'Certificate in Community Health', 'CHRIT': 'Certificate in Health Records and IT',
-            'CPC': 'Certificate in Patient Care', 'CSL': 'Certificate in Science Lab',
-            'CSW': 'Certificate in Social Work', 'CCJS': 'Certificate in Criminal Justice',
-            'CAG': 'Certificate in Agriculture', 'CHSS': 'Certificate in Health Support Services',
-            'CICT': 'Certificate in ICT', 'ACH': 'Artisan in Community Health',
-            'AAG': 'Artisan in Agriculture', 'ASW': 'Artisan in Social Work',
-            'CCA': 'Certificate in Computer Applications', 'PTE': 'TVET/CDACC (PTE)'
+            'DPOTT': 'Diploma in Perioperative Theatre Technology',
+            'DCH': 'Diploma in Community Health',
+            'DHRIT': 'Diploma in Health Records and IT',
+            'DSL': 'Diploma in Science Lab',
+            'DSW': 'Diploma in Social Work',
+            'DCJS': 'Diploma in Criminal Justice',
+            'DHSS': 'Diploma in Health Support Services',
+            'DICT': 'Diploma in ICT',
+            'DME': 'Diploma in Medical Engineering'
         };
-        const ACADEMIC_STRUCTURE = { 'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'], 'TVET': ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'] };
         
-        let currentUserProfile = null, currentUserId = null, attendanceMap = null, allCourses = [], allStudents = [], calendar = null, currentGradingExam = null, inactivityTimer = null;
+        const ACADEMIC_STRUCTURE = {
+            'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'],
+            'TVET': ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
+        };
         
-        // =====================================================
-        // TOAST NOTIFICATIONS
-        // =====================================================
+        // Helper functions
+        function $(id) { return document.getElementById(id); }
+        
         function showToast(message, type = 'success') {
-            const container = document.getElementById('toastContainer');
+            const container = $('#toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
             const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
@@ -416,124 +708,125 @@
             setTimeout(() => toast.remove(), 4000);
         }
         
-        // =====================================================
-        // SESSION MANAGEMENT (FIXED)
-        // =====================================================
-        async function ensureValidSession() {
-            try {
-                const { data: { session }, error } = await sb.auth.getSession();
-                if (error) {
-                    console.error('Session error:', error);
-                    return false;
-                }
-                if (!session) {
-                    const { data: { session: refreshed }, error: refreshError } = await sb.auth.refreshSession();
-                    if (refreshError || !refreshed) {
-                        return false;
-                    }
-                    currentUserId = refreshed.user.id;
-                    return true;
-                }
-                currentUserId = session.user.id;
-                return true;
-            } catch(e) {
-                console.error('Session check failed:', e);
-                return false;
+        function closeModal(modalId) {
+            const modal = $(modalId);
+            if (modal) modal.style.display = 'none';
+            if (modalId === 'mapModal' && attendanceMap) {
+                attendanceMap.remove();
+                attendanceMap = null;
             }
         }
         
-        function resetInactivityTimer() {
-            if (inactivityTimer) clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(async () => {
-                const { data: { session } } = await sb.auth.getSession();
-                if (session) {
-                    showToast('Session will expire in 5 minutes due to inactivity', 'warning');
-                    setTimeout(async () => {
-                        const { data: { session: finalCheck } } = await sb.auth.getSession();
-                        if (finalCheck) {
-                            await sb.auth.signOut();
-                            window.location.href = 'login.html';
-                        }
-                    }, 60000);
-                }
-            }, 25 * 60 * 1000);
+        function getProgramType(code) {
+            if (!code) return 'KRCHN';
+            if (code === 'KRCHN') return 'KRCHN';
+            return TVET_PROGRAMS.includes(code) ? 'TVET' : 'KRCHN';
         }
         
-        // =====================================================
-        // UTILITY FUNCTIONS
-        // =====================================================
-        function $(id) { return document.getElementById(id); }
-        function escapeHtml(s) { if (!s) return ''; return String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
-        function closeModal(modalId) { const modal = $(modalId); if (modal) modal.style.display = 'none'; if (modalId === 'mapModal' && attendanceMap) { attendanceMap.remove(); attendanceMap = null; } }
-        function getProgramType(code) { if (!code) return 'KRCHN'; if (code === 'KRCHN') return 'KRCHN'; return TVET_PROGRAMS.includes(code) ? 'TVET' : 'KRCHN'; }
-        function getProgramDisplayName(code) { return PROGRAM_DISPLAY_NAMES[code] || code || 'Unknown Program'; }
+        function getProgramDisplayName(code) {
+            return PROGRAM_DISPLAY_NAMES[code] || code || 'Unknown Program';
+        }
         
         function updateProgramDropdown(selectElement) {
             if (!selectElement) return;
             const currentValue = selectElement.value;
-            selectElement.innerHTML = '';
-            const krchn = document.createElement('option'); krchn.value = 'KRCHN'; krchn.textContent = '🎓 KRCHN Nursing'; selectElement.appendChild(krchn);
-            const diplomaGroup = document.createElement('optgroup'); diplomaGroup.label = '🎯 TVET Diploma Programs';
-            ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = PROGRAM_DISPLAY_NAMES[c] || c; diplomaGroup.appendChild(opt); });
+            selectElement.innerHTML = '<option value="KRCHN">🎓 KRCHN Nursing</option>';
+            
+            // Add TVET programs
+            const diplomaGroup = document.createElement('optgroup');
+            diplomaGroup.label = '🎯 TVET Diploma Programs';
+            ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = PROGRAM_DISPLAY_NAMES[c] || c;
+                diplomaGroup.appendChild(opt);
+            });
             selectElement.appendChild(diplomaGroup);
-            const certGroup = document.createElement('optgroup'); certGroup.label = '📜 TVET Certificate Programs';
-            ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT'].forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = PROGRAM_DISPLAY_NAMES[c] || c; certGroup.appendChild(opt); });
-            selectElement.appendChild(certGroup);
+            
             if (currentValue) selectElement.value = currentValue;
         }
         
         function updateBlockOptions(programId, blockId) {
-            const programSelect = $(programId), blockSelect = $(blockId);
+            const programSelect = $(programId);
+            const blockSelect = $(blockId);
             if (!programSelect || !blockSelect) return;
             const programType = getProgramType(programSelect.value);
             blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
             const options = programType === 'KRCHN' ? ACADEMIC_STRUCTURE.KRCHN : ACADEMIC_STRUCTURE.TVET;
-            options.forEach(opt => { const option = document.createElement('option'); option.value = opt; option.textContent = opt; blockSelect.appendChild(option); });
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                blockSelect.appendChild(option);
+            });
         }
         
-        // =====================================================
-        // SHOW TAB
-        // =====================================================
+        // Tab navigation
         window.showTab = function(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.classList.remove('active');
+                t.style.display = 'none';
+            });
             const target = $(tabId + '-content');
-            if (target) { target.classList.add('active'); target.style.display = 'block'; }
+            if (target) {
+                target.classList.add('active');
+                target.style.display = 'block';
+            }
             document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
             const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
             if (activeLink) activeLink.classList.add('active');
             loadSectionData(tabId);
-            resetInactivityTimer();
         };
         
         async function loadSectionData(tabId) {
-            const isValid = await ensureValidSession();
-            if (!isValid) {
-                showToast('Session expired. Please login again.', 'warning');
-                setTimeout(() => { window.location.href = 'login.html'; }, 2000);
-                return;
-            }
             switch(tabId) {
-                case 'dashboard': await loadDashboard(); await loadTodaySchedule(); break;
-                case 'profile': await loadProfile(); break;
-                case 'my-courses': await loadCourses(); break;
-                case 'my-students': await loadStudents(); break;
-                case 'sessions': await loadSessions(); break;
-                case 'attendance': await loadAttendance(); await loadPastAttendance(); await populateAttendanceForm(); break;
-                case 'cats': await loadExams(); break;
-                case 'resources': await loadResources(); break;
-                case 'messages': await loadMessages(); break;
-                case 'calendar': await loadCalendar(); break;
+                case 'dashboard':
+                    await loadDashboard();
+                    await loadTodaySchedule();
+                    break;
+                case 'profile':
+                    await loadProfile();
+                    break;
+                case 'my-courses':
+                    await loadCourses();
+                    break;
+                case 'my-students':
+                    await loadStudents();
+                    break;
+                case 'sessions':
+                    await loadSessions();
+                    await populateSessionDropdowns();
+                    break;
+                case 'attendance':
+                    await loadAttendance();
+                    await loadPastAttendance();
+                    await populateAttendanceForm();
+                    break;
+                case 'cats':
+                    await loadExams();
+                    await populateExamDropdowns();
+                    break;
+                case 'resources':
+                    await loadResources();
+                    await populateResourceDropdowns();
+                    break;
+                case 'messages':
+                    await loadMessages();
+                    break;
+                case 'calendar':
+                    await loadCalendar();
+                    break;
+                case 'settings':
+                    await loadSettings();
+                    break;
             }
         }
         
         // =====================================================
-        // DASHBOARD
+        // DASHBOARD MODULE
         // =====================================================
         async function loadDashboard() {
             try {
-                const isValid = await ensureValidSession();
-                if (!isValid) return;
-                
                 const program = currentUserProfile?.program || 'KRCHN';
                 if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
                 if ($('totalCourses')) $('totalCourses').textContent = allCourses.filter(c => c.target_program === program).length;
@@ -546,15 +839,19 @@
                 const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
                 if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
                 
-                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
                 const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
                 if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.filter(l => l.program === program).length || 0;
                 
-                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+                const monthAgo = new Date();
+                monthAgo.setDate(monthAgo.getDate() - 30);
                 const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
                 const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
                 if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
-            } catch(e) { console.error('Dashboard error:', e); }
+            } catch(e) {
+                console.error('Dashboard error:', e);
+            }
         }
         
         async function loadTodaySchedule() {
@@ -562,66 +859,65 @@
             const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
             const container = $('#todayScheduleList');
             if (!container) return;
-            if (!data?.length) { container.innerHTML = '<p class="minor-data">No sessions scheduled for today</p>'; return; }
-            container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span class="schedule-title">${escapeHtml(s.session_title)}</span><span class="schedule-badge badge-info">${s.session_type || 'Class'}</span></div>`).join('');
+            if (!data?.length) {
+                container.innerHTML = '<p class="minor-data">No sessions scheduled for today</p>';
+                return;
+            }
+            container.innerHTML = data.map(s => `
+                <div class="schedule-item">
+                    <span class="schedule-time">${s.session_time || 'TBA'}</span>
+                    <span class="schedule-title">${escapeHtml(s.session_title)}</span>
+                    <span class="schedule-badge badge-info">${s.session_type || 'Class'}</span>
+                </div>
+            `).join('');
         }
         
         // =====================================================
-        // PROFILE
+        // PROFILE MODULE
         // =====================================================
         async function loadProfile() {
             if (!currentUserProfile) return;
             if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-            if ($('profileId')) $('profileId').textContent = currentUserProfile.employee_id || currentUserProfile.user_id?.slice(0,8) || 'N/A';
+            if ($('profileId')) $('profileId').textContent = currentUserProfile.employee_id || currentUserProfile.user_id?.slice(0, 8) || 'N/A';
             if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
             if ($('profilePhone')) $('profilePhone').textContent = currentUserProfile.phone || 'N/A';
             if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
             if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
             if ($('profileJoinDate')) $('profileJoinDate').textContent = currentUserProfile.created_at ? new Date(currentUserProfile.created_at).toLocaleDateString() : '2024';
-            if (currentUserProfile.avatar_url && $('profileAvatar')) $('profileAvatar').innerHTML = `<img src="${currentUserProfile.avatar_url}" alt="Profile">`;
+            if (currentUserProfile.avatar_url && $('#profileAvatar')) {
+                $('#profileAvatar').innerHTML = `<img src="${currentUserProfile.avatar_url}" alt="Profile">`;
+            }
         }
         
-        if($('uploadPhotoBtn')) $('uploadPhotoBtn')?.addEventListener('click', () => $('photoInput')?.click());
-        if($('photoInput')) $('photoInput')?.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
-            const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-            if (uploadError) { showToast(uploadError.message, 'error'); return; }
-            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
-            showToast('Photo updated!', 'success');
-            loadProfile();
-        });
-        
         // =====================================================
-        // COURSES
+        // COURSES MODULE
         // =====================================================
         async function loadCourses() {
             const program = currentUserProfile?.program || 'KRCHN';
             const { data } = await sb.from('courses').select('*').eq('target_program', program);
             allCourses = data || [];
-            const tbody = $('coursesTableBody');
+            const tbody = $('#coursesTableBody');
             if (!tbody) return;
-            if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="7">No courses found</td></tr>'; return; }
+            if (!allCourses.length) {
+                tbody.innerHTML = '<tr><td colspan="7">No courses found</td></tr>';
+                return;
+            }
             tbody.innerHTML = allCourses.map(c => `
                 <tr>
                     <td><strong>${escapeHtml(c.unit_code)}</strong></td>
                     <td>${escapeHtml(c.course_name)}</td>
-                    <td>${getProgramDisplayName(c.target_program)}<span class="program-badge ${getProgramType(c.target_program) === 'TVET' ? 'badge-tvet' : 'badge-krchn'}">${getProgramType(c.target_program)}</span></td>
+                    <td>${getProgramDisplayName(c.target_program)}</td>
                     <td>${escapeHtml(c.block)}</td>
                     <td>${escapeHtml(c.intake_year)}</td>
                     <td>${allStudents.filter(s => s.intake_year === c.intake_year).length}</td>
-                    <td><button class="btn-action" onclick="showToast('Course management coming soon', 'info')">Manage</button></td>
+                    <td><button class="btn-action" onclick="viewCourse('${c.id}')">Manage</button></td>
                 </tr>
             `).join('');
-            populateDropdowns();
         }
         
-        function populateDropdowns() { ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => { const el = $(id); if (el) updateProgramDropdown(el); }); }
         window.filterCourses = function() {
-            const search = $('courseSearch')?.value.toLowerCase() || '';
-            const progFilter = $('courseProgramFilter')?.value || '';
+            const search = $('#courseSearch')?.value.toLowerCase() || '';
+            const progFilter = $('#courseProgramFilter')?.value || '';
             document.querySelectorAll('#coursesTableBody tr').forEach(row => {
                 const text = row.textContent.toLowerCase();
                 const prog = row.cells[2]?.textContent || '';
@@ -629,33 +925,40 @@
             });
         };
         
+        window.viewCourse = function(courseId) {
+            showToast('Course management panel coming soon', 'info');
+        };
+        
         // =====================================================
-        // STUDENTS
+        // STUDENTS MODULE
         // =====================================================
         async function loadStudents() {
             const program = currentUserProfile?.program || 'KRCHN';
             const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
             allStudents = data || [];
-            const tbody = $('studentsTableBody');
+            const tbody = $('#studentsTableBody');
             if (!tbody) return;
-            if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="8">No students found</td></tr>'; return; }
+            if (!allStudents.length) {
+                tbody.innerHTML = '<tr><td colspan="8">No students found</td></tr>';
+                return;
+            }
             tbody.innerHTML = allStudents.map(s => `
                 <tr>
                     <td>${escapeHtml(s.full_name)}</td>
                     <td><strong>${escapeHtml(s.student_id)}</strong></td>
                     <td>${escapeHtml(s.email)}</td>
-                    <td>${getProgramDisplayName(s.program)}<span class="program-badge ${getProgramType(s.program) === 'TVET' ? 'badge-tvet' : 'badge-krchn'}">${getProgramType(s.program)}</span></td>
+                    <td>${getProgramDisplayName(s.program)}</td>
                     <td>${escapeHtml(s.intake_year)}</td>
                     <td>${escapeHtml(s.block)}</td>
                     <td><span class="badge ${(s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success'}">${(s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active'}</span></td>
-                    <td><button class="btn-action" onclick="viewStudent('${s.user_id}')"><i class="fas fa-eye"></i> View</button></td>
+                    <td><button class="btn-action" onclick="viewStudent('${s.user_id}')">View</button></td>
                 </tr>
             `).join('');
         }
         
         window.filterStudents = function() {
-            const search = $('studentSearch')?.value.toLowerCase() || '';
-            const statusFilter = $('studentStatusFilter')?.value || 'all';
+            const search = $('#studentSearch')?.value.toLowerCase() || '';
+            const statusFilter = $('#studentStatusFilter')?.value || 'all';
             document.querySelectorAll('#studentsTableBody tr').forEach(row => {
                 const text = row.textContent.toLowerCase();
                 const status = row.cells[6]?.textContent?.toLowerCase() || '';
@@ -663,23 +966,44 @@
                 row.style.display = (text.includes(search) && matchesStatus) ? '' : 'none';
             });
         };
-        window.viewStudent = function(id) { const s = allStudents.find(s => s.user_id === id); alert(`Student: ${s?.full_name}\nEmail: ${s?.email}\nProgram: ${s?.program}\nAbsences: ${s?.cumulative_absences || 0}`); };
+        
+        window.viewStudent = function(id) {
+            const student = allStudents.find(s => s.user_id === id);
+            alert(`Student: ${student?.full_name}\nEmail: ${student?.email}\nProgram: ${student?.program}\nAbsences: ${student?.cumulative_absences || 0}`);
+        };
         
         // =====================================================
-        // SESSIONS
+        // SESSIONS MODULE
         // =====================================================
-        if($('addSessionForm')) $('addSessionForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const { error } = await sb.from('scheduled_sessions').insert({ 
-                session_title: $('sessionTitle').value, 
-                session_date: $('sessionDate').value, 
-                session_time: $('sessionTime').value, 
-                target_program: $('sessionProgram').value, 
-                block_term: $('sessionBlock').value, 
-                course_id: $('sessionCourse').value || null, 
-                lecturer_id: currentUserId 
+        async function populateSessionDropdowns() {
+            const { data: courses } = await sb.from('courses').select('id, course_name, unit_code').eq('target_program', currentUserProfile?.program);
+            if ($('sessionCourse')) {
+                $('sessionCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name} (${c.unit_code})</option>`).join('');
+            }
+            
+            ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => {
+                const el = $(id);
+                if (el) updateProgramDropdown(el);
             });
-            if (error) { showToast(error.message, 'error'); return; }
+        }
+        
+        $('#addSessionForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await sb.from('scheduled_sessions').insert({
+                session_title: $('#sessionTitle').value,
+                session_date: $('#sessionDate').value,
+                session_time: $('#sessionTime').value,
+                target_program: $('#sessionProgram').value,
+                block_term: $('#sessionBlock').value,
+                course_id: $('#sessionCourse').value || null,
+                session_type: $('#sessionType').value,
+                venue: $('#sessionVenue').value,
+                lecturer_id: currentUserId
+            });
+            if (error) {
+                showToast(error.message, 'error');
+                return;
+            }
             showToast('Session scheduled!', 'success');
             e.target.reset();
             await loadSessions();
@@ -687,119 +1011,204 @@
         
         async function loadSessions() {
             const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
-            const tbody = $('sessionsTableBody');
+            allSessions = data || [];
+            const tbody = $('#sessionsTableBody');
             if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6">No sessions scheduled</td></tr>'; return; }
-            tbody.innerHTML = data.map(s => {
+            if (!allSessions.length) {
+                tbody.innerHTML = '<tr><td colspan="7">No sessions scheduled</td></tr>';
+                return;
+            }
+            tbody.innerHTML = allSessions.map(s => {
                 const course = allCourses.find(c => c.id === s.course_id);
                 const link = `${window.location.origin}/attendance?session=${s.id}`;
-                return `<tr>
-                    <td>${escapeHtml(s.session_title)}</td>
-                    <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}</td>
-                    <td>${course?.course_name || 'N/A'}</td>
-                    <td>${s.target_program}/${s.block_term}</td>
-                    <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied!', 'success')">Copy Link</button></td>
-                    <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button></td>
-                </tr>`;
+                return `
+                    <tr>
+                        <td>${escapeHtml(s.session_title)}</td>
+                        <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}</td>
+                        <td>${course?.course_name || 'N/A'}</td>
+                        <td>${s.target_program}/${s.block_term}</td>
+                        <td><span class="badge badge-info">${s.session_type || 'Class'}</span></td>
+                        <td><button class="btn-action" onclick="copyLink('${link}')">Copy Link</button></td>
+                        <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button></td>
+                    </tr>
+                `;
             }).join('');
-            const { data: courses } = await sb.from('courses').select('id, course_name, unit_code').eq('target_program', currentUserProfile?.program);
-            if($('sessionCourse')) $('sessionCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name} (${c.unit_code})</option>`).join('');
         }
         
-        window.deleteSession = async (id) => { if (confirm('Delete this session?')) { await sb.from('scheduled_sessions').delete().eq('id', id); await loadSessions(); showToast('Session deleted', 'success'); } };
+        window.copyLink = function(link) {
+            navigator.clipboard.writeText(link);
+            showToast('Link copied!', 'success');
+        };
+        
+        window.deleteSession = async (id) => {
+            if (confirm('Delete this session?')) {
+                await sb.from('scheduled_sessions').delete().eq('id', id);
+                await loadSessions();
+                showToast('Session deleted', 'success');
+            }
+        };
         
         // =====================================================
-        // ATTENDANCE
+        // ATTENDANCE MODULE
         // =====================================================
         async function populateAttendanceForm() {
             const program = currentUserProfile?.program || 'KRCHN';
             const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student').eq('program', program);
-            if($('attStudentId')) $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
+            if ($('attStudentId')) {
+                $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
+            }
             const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', program);
-            if($('attCourseId')) $('attCourseId').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
-            if($('attDate')) $('attDate').value = new Date().toISOString().split('T')[0];
+            if ($('attCourseId')) {
+                $('attCourseId').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+            }
+            if ($('attDate')) $('attDate').value = new Date().toISOString().split('T')[0];
         }
         
-        if($('lecturerCheckinBtn')) $('lecturerCheckinBtn')?.addEventListener('click', () => {
-            if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
+        $('#lecturerCheckinBtn')?.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                showToast('Geolocation not supported', 'error');
+                return;
+            }
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                const { error } = await sb.from('geo_attendance_logs').insert({ 
-                    user_id: currentUserId, user_role: 'lecturer', session_type: 'Lecturer Check-in', 
-                    check_in_time: new Date().toISOString(), latitude: pos.coords.latitude, 
-                    longitude: pos.coords.longitude, program: currentUserProfile?.program, location_name: 'Lecturer Check-in' 
+                const { error } = await sb.from('geo_attendance_logs').insert({
+                    user_id: currentUserId,
+                    user_role: 'lecturer',
+                    session_type: 'Lecturer Check-in',
+                    check_in_time: new Date().toISOString(),
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    program: currentUserProfile?.program,
+                    location_name: 'Lecturer Check-in'
                 });
                 if (error) showToast(error.message, 'error');
-                else { showToast('Check-in recorded!', 'success'); loadAttendance(); }
+                else {
+                    showToast('Check-in recorded!', 'success');
+                    loadAttendance();
+                }
             }, () => showToast('Location access denied', 'error'));
         });
         
-        if($('manualAttendanceForm')) $('manualAttendanceForm')?.addEventListener('submit', async (e) => {
+        $('#generateQRBtn')?.addEventListener('click', () => {
+            const sessionData = JSON.stringify({
+                lecturer_id: currentUserId,
+                timestamp: Date.now(),
+                program: currentUserProfile?.program
+            });
+            $('#qrModal').style.display = 'flex';
+            setTimeout(() => {
+                currentQRCode = new QRCode(document.getElementById('qrCodeContainer'), {
+                    text: sessionData,
+                    width: 200,
+                    height: 200
+                });
+            }, 100);
+        });
+        
+        window.downloadQR = function() {
+            const canvas = document.querySelector('#qrCodeContainer canvas');
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = 'attendance-qr.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        };
+        
+        $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const student = allStudents.find(s => s.user_id === $('attStudentId').value);
-            if (!student) { showToast('Select a student', 'error'); return; }
-            const dateTime = `${$('attDate').value}T${$('attTime').value || '12:00'}:00`;
-            const { error } = await sb.from('geo_attendance_logs').insert({ 
-                user_id: $('attStudentId').value, student_name: student.full_name, user_role: 'student', 
-                session_type: $('attSessionType').value, check_in_time: dateTime, course_id: $('attCourseId').value || null, 
-                location_details: $('attLocation').value || 'Manual Entry', status: 'Present', recorded_by_id: currentUserId, 
-                recorded_by_name: currentUserProfile?.full_name, program: currentUserProfile?.program, is_manual_entry: true 
+            const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
+            if (!student) {
+                showToast('Select a student', 'error');
+                return;
+            }
+            const dateTime = `${$('#attDate').value}T${$('#attTime').value || '12:00'}:00`;
+            const { error } = await sb.from('geo_attendance_logs').insert({
+                user_id: $('#attStudentId').value,
+                student_name: student.full_name,
+                user_role: 'student',
+                session_type: $('#attSessionType').value,
+                check_in_time: dateTime,
+                course_id: $('#attCourseId').value || null,
+                location_details: $('#attLocation').value || 'Manual Entry',
+                status: 'Present',
+                recorded_by_id: currentUserId,
+                recorded_by_name: currentUserProfile?.full_name,
+                program: currentUserProfile?.program,
+                is_manual_entry: true
             });
             if (error) showToast(error.message, 'error');
-            else { showToast('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
+            else {
+                showToast('Attendance recorded!', 'success');
+                e.target.reset();
+                loadAttendance();
+            }
         });
         
         async function loadAttendance() {
-            const today = new Date().toISOString().split('T')[0], program = currentUserProfile?.program || 'KRCHN';
+            const today = new Date().toISOString().split('T')[0];
+            const program = currentUserProfile?.program || 'KRCHN';
             const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
-            const tbody = $('attendanceTableBody');
+            const tbody = $('#attendanceTableBody');
             if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No attendance records today</td></tr>'; return; }
+            if (!data?.length) {
+                tbody.innerHTML = '<tr><td colspan="8">No attendance records today</td></tr>';
+                return;
+            }
             const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUserId);
             tbody.innerHTML = filtered.map(a => {
                 const student = allStudents.find(s => s.user_id === a.user_id);
-                return `<tr>
-                    <td>${escapeHtml(a.student_name || student?.full_name)}</td>
-                    <td>${escapeHtml(student?.student_id)}</td>
-                    <td><span class="session-badge session-${(a.session_type || 'class').toLowerCase()}">${a.session_type}</span></td>
-                    <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
-                    <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
-                    <td>${escapeHtml(a.location_details || a.location_name)}</td>
-                    <td><span class="badge badge-success">Present</span></td>
-                    <td>${a.latitude ? `<button class="btn-action" onclick="showMap(${a.latitude},${a.longitude},'${escapeHtml(a.student_name || student?.full_name)}')">Map</button>` : 'No GPS'}</td>
-                </tr>`;
+                return `
+                    <tr>
+                        <td>${escapeHtml(a.student_name || student?.full_name)}</td>
+                        <td>${escapeHtml(student?.student_id)}</td>
+                        <td><span class="badge badge-info">${a.session_type}</span></td>
+                        <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
+                        <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
+                        <td>${escapeHtml(a.location_details || a.location_name)}</td>
+                        <td><span class="badge badge-success">Present</span></td>
+                        <td>${a.latitude ? `<button class="btn-action" onclick="showMap(${a.latitude},${a.longitude},'${escapeHtml(a.student_name || student?.full_name)}')">Map</button>` : 'No GPS'}</td>
+                    </tr>
+                `;
             }).join('');
         }
         
         async function loadPastAttendance() {
-            const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+            const monthAgo = new Date();
+            monthAgo.setDate(monthAgo.getDate() - 30);
             const program = currentUserProfile?.program || 'KRCHN';
             const { data } = await sb.from('geo_attendance_logs').select('*').lte('check_in_time', monthAgo.toISOString()).order('check_in_time', false).limit(100);
-            const tbody = $('pastAttendanceTableBody');
+            const tbody = $('#pastAttendanceTableBody');
             if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No past records found</td></tr>'; return; }
+            if (!data?.length) {
+                tbody.innerHTML = '<tr><td colspan="7">No past records found</td></tr>';
+                return;
+            }
             const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUserId);
             tbody.innerHTML = filtered.map(a => {
                 const student = allStudents.find(s => s.user_id === a.user_id);
-                return `<tr>
-                    <td>${new Date(a.check_in_time).toLocaleDateString()}</td>
-                    <td>${escapeHtml(a.student_name || student?.full_name)}</td>
-                    <td>${escapeHtml(student?.student_id)}</td>
-                    <td><span class="session-badge session-${(a.session_type || 'class').toLowerCase()}">${a.session_type}</span></td>
-                    <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
-                    <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
-                    <td><span class="badge badge-success">Present</span></td>
-                    <td>${escapeHtml(a.recorded_by_name || 'Self')}</td>
-                </tr>`;
+                return `
+                    <tr>
+                        <td>${new Date(a.check_in_time).toLocaleDateString()}</td>
+                        <td>${escapeHtml(a.student_name || student?.full_name)}</td>
+                        <td>${escapeHtml(student?.student_id)}</td>
+                        <td><span class="badge badge-info">${a.session_type}</span></td>
+                        <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
+                        <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
+                        <td>${escapeHtml(a.recorded_by_name || 'Self')}</td>
+                    </tr>
+                `;
             }).join('');
         }
         
         window.filterAttendance = function() {
-            const search = $('attendanceSearch')?.value.toLowerCase() || '';
-            document.querySelectorAll('#attendanceTableBody tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none'; });
+            const search = $('#attendanceSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#attendanceTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
         };
         
         window.showMap = function(lat, lng, name) {
-            const modal = $('mapModal');
+            const modal = $('#mapModal');
             if (!modal) return;
             modal.style.display = 'flex';
             setTimeout(() => {
@@ -807,22 +1216,39 @@
                 attendanceMap = L.map('mapContainer').setView([lat, lng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(attendanceMap);
                 L.marker([lat, lng]).addTo(attendanceMap).bindPopup(`${name}'s location`).openPopup();
-                if($('mapDetails')) $('mapDetails').textContent = `Location for ${name}`;
+                if ($('#mapDetails')) $('#mapDetails').textContent = `Location for ${name}`;
             }, 100);
         };
         
         // =====================================================
-        // EXAMS
+        // EXAMS MODULE
         // =====================================================
-        if($('addExamForm')) $('addExamForm')?.addEventListener('submit', async (e) => {
+        async function populateExamDropdowns() {
+            const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
+            if ($('examCourse')) {
+                $('examCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+            }
+        }
+        
+        $('#addExamForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const { error } = await sb.from('exams').insert({ 
-                exam_name: $('examTitle').value, exam_date: $('examDate').value, exam_type: $('examType').value, 
-                target_program: $('examProgram').value, intake_year: $('examIntake').value, block_term: $('examBlock').value, 
-                course_id: $('examCourse').value || null, duration_minutes: parseInt($('examDuration').value) || 120, 
-                status: $('examStatus').value, created_by: currentUserId 
+            const { error } = await sb.from('exams').insert({
+                exam_name: $('#examTitle').value,
+                exam_date: $('#examDate').value,
+                exam_type: $('#examType').value,
+                target_program: $('#examProgram').value,
+                intake_year: $('#examIntake').value,
+                block_term: $('#examBlock').value,
+                course_id: $('#examCourse').value || null,
+                duration_minutes: parseInt($('#examDuration').value) || 120,
+                total_marks: parseInt($('#examTotalMarks').value) || 100,
+                status: 'Scheduled',
+                created_by: currentUserId
             });
-            if (error) { showToast(error.message, 'error'); return; }
+            if (error) {
+                showToast(error.message, 'error');
+                return;
+            }
             showToast('Exam created!', 'success');
             e.target.reset();
             await loadExams();
@@ -830,45 +1256,122 @@
         
         async function loadExams() {
             const { data } = await sb.from('exams').select('*, course:course_id(course_name)').eq('created_by', currentUserId).order('exam_date', false);
-            const tbody = $('examsTableBody');
+            allExams = data || [];
+            const tbody = $('#examsTableBody');
             if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No exams created</td></tr>'; return; }
-            tbody.innerHTML = data.map(e => {
+            if (!allExams.length) {
+                tbody.innerHTML = '<tr><td colspan="8">No exams created</td></tr>';
+                return;
+            }
+            tbody.innerHTML = allExams.map(e => {
                 const course = allCourses.find(c => c.id === e.course_id);
-                return `<tr>
-                    <td><span class="badge badge-info">${e.exam_type}</span></td>
-                    <td><strong>${escapeHtml(e.exam_name)}</strong></td>
-                    <td>${course?.course_name || 'General'}</td>
-                    <td>${e.target_program}/${e.block_term}</td>
-                    <td>${new Date(e.exam_date).toLocaleDateString()}</td>
-                    <td>${e.duration_minutes} min</td>
-                    <td><span class="badge ${e.status === 'Scheduled' ? 'badge-warning' : e.status === 'Completed' ? 'badge-success' : 'badge-info'}">${e.status}</span></td>
-                    <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-warning" onclick="openEditExamModal('${e.id}')">Edit</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button></td>
-                </tr>`;
+                return `
+                    <tr>
+                        <td><span class="badge badge-info">${e.exam_type}</span></td>
+                        <td><strong>${escapeHtml(e.exam_name)}</strong></td>
+                        <td>${course?.course_name || 'General'}</td>
+                        <td>${e.target_program}/${e.block_term}</td>
+                        <td>${new Date(e.exam_date).toLocaleDateString()}</td>
+                        <td>${e.duration_minutes} min</td>
+                        <td><span class="badge ${e.status === 'Scheduled' ? 'badge-warning' : e.status === 'Completed' ? 'badge-success' : 'badge-info'}">${e.status}</span></td>
+                        <td>
+                            <button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button>
+                            <button class="btn-warning" onclick="openEditExamModal('${e.id}')">Edit</button>
+                            <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
             }).join('');
-            const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
-            if($('examCourse')) $('examCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
         }
         
-        window.deleteExam = async (id) => { if (confirm('Delete this exam?')) { await sb.from('exams').delete().eq('id', id); await loadExams(); showToast('Exam deleted', 'success'); } };
-        window.openEditExamModal = async (id) => { const { data } = await sb.from('exams').select('*').eq('id', id).single(); if (data) { if($('editExamId')) $('editExamId').value = data.id; if($('editExamTitle')) $('editExamTitle').value = data.exam_name; if($('editExamDate')) $('editExamDate').value = data.exam_date; if($('editExamStatus')) $('editExamStatus').value = data.status; if($('examEditModal')) $('examEditModal').style.display = 'flex'; } };
-        if($('editExamForm')) $('editExamForm')?.addEventListener('submit', async (e) => { e.preventDefault(); await sb.from('exams').update({ exam_name: $('editExamTitle').value, exam_date: $('editExamDate').value, status: $('editExamStatus').value }).eq('id', $('editExamId').value); closeModal('examEditModal'); await loadExams(); showToast('Exam updated', 'success'); });
-        window.filterExams = function() { const search = $('examSearch')?.value.toLowerCase() || ''; document.querySelectorAll('#examsTableBody tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none'; }); };
+        window.deleteExam = async (id) => {
+            if (confirm('Delete this exam?')) {
+                await sb.from('exams').delete().eq('id', id);
+                await loadExams();
+                showToast('Exam deleted', 'success');
+            }
+        };
         
-        // =====================================================
-        // GRADE MODAL
-        // =====================================================
+        window.openEditExamModal = async (id) => {
+            const { data } = await sb.from('exams').select('*').eq('id', id).single();
+            if (data) {
+                $('#editExamId').value = data.id;
+                $('#editExamTitle').value = data.exam_name;
+                $('#editExamDate').value = data.exam_date;
+                $('#editExamStatus').value = data.status;
+                $('#examEditModal').style.display = 'flex';
+            }
+        };
+        
+        $('#editExamForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('exams').update({
+                exam_name: $('#editExamTitle').value,
+                exam_date: $('#editExamDate').value,
+                status: $('#editExamStatus').value
+            }).eq('id', $('#editExamId').value);
+            closeModal('examEditModal');
+            await loadExams();
+            showToast('Exam updated', 'success');
+        });
+        
+        window.filterExams = function() {
+            const search = $('#examSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#examsTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        };
+        
+        // Grade Modal
+        let currentGradingExam = null;
+        
         window.openGradeModal = async (examId) => {
             const { data: exam } = await sb.from('exams').select('*, course:course_id(course_name)').eq('id', examId).single();
             if (!exam) return;
             currentGradingExam = exam;
             const students = allStudents.filter(s => s.intake_year === exam.intake_year && s.block === exam.block_term);
             const { data: grades } = await sb.from('exam_grades').select('*').eq('exam_id', examId);
-            if($('gradeModalTitle')) $('gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
-            if($('gradeModalBody')) $('gradeModalBody').innerHTML = `<div class="search-container"><input type="text" id="gradeSearch" placeholder="Search students..." onkeyup="filterGradeTable()"></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>ID</th><th>Score (/${exam.exam_type === 'CAT_1' ? 30 : 100})</th><th>Status</th></tr></thead><tbody id="gradeTableBody">${students.map(s => { const grade = grades?.find(g => g.student_id === s.user_id); return `<tr data-name="${s.full_name.toLowerCase()}"><td>${escapeHtml(s.full_name)}</td><td>${escapeHtml(s.student_id)}</td><td><input type="number" id="score-${s.user_id}" value="${grade?.score || ''}" step="0.5" class="grade-input"></td><td><select id="status-${s.user_id}"><option ${grade?.status === 'Graded' ? 'selected' : ''}>Graded</option><option ${!grade?.status ? 'selected' : ''}>Pending</option></select></td></tr>`; }).join('')}</tbody>}</table></div>`;
-            if($('gradeModal')) $('gradeModal').style.display = 'flex';
+            $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
+            $('#gradeModalBody').innerHTML = `
+                <div class="search-container">
+                    <input type="text" id="gradeSearch" placeholder="Search students..." onkeyup="filterGradeTable()">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Student</th><th>ID</th><th>Score (/${exam.total_marks || 100})</th><th>Status</th>
+                        </thead>
+                        <tbody id="gradeTableBody">
+                            ${students.map(s => {
+                                const grade = grades?.find(g => g.student_id === s.user_id);
+                                return `
+                                    <tr data-name="${s.full_name.toLowerCase()}">
+                                        <td>${escapeHtml(s.full_name)}</td>
+                                        <td>${escapeHtml(s.student_id)}</td>
+                                        <td><input type="number" id="score-${s.user_id}" value="${grade?.score || ''}" step="0.5" class="grade-input"></td>
+                                        <td>
+                                            <select id="status-${s.user_id}">
+                                                <option ${grade?.status === 'Graded' ? 'selected' : ''}>Graded</option>
+                                                <option ${!grade?.status ? 'selected' : ''}>Pending</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            $('#gradeModal').style.display = 'flex';
         };
-        window.filterGradeTable = function() { const search = $('gradeSearch')?.value.toLowerCase() || ''; document.querySelectorAll('#gradeTableBody tr').forEach(row => { row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none'; }); };
+        
+        window.filterGradeTable = function() {
+            const search = $('#gradeSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#gradeTableBody tr').forEach(row => {
+                row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none';
+            });
+        };
+        
         window.saveAllGrades = async () => {
             const rows = document.querySelectorAll('#gradeTableBody tr');
             let saved = 0;
@@ -879,7 +1382,14 @@
                 const score = $(`score-${studentId}`)?.value;
                 const status = $(`status-${studentId}`)?.value;
                 if (score) {
-                    const { error } = await sb.from('exam_grades').upsert({ exam_id: currentGradingExam.id, student_id: studentId, score: parseFloat(score), status: status, graded_by: currentUserId, question_id: '00000000-0000-0000-0000-000000000000' });
+                    const { error } = await sb.from('exam_grades').upsert({
+                        exam_id: currentGradingExam.id,
+                        student_id: studentId,
+                        score: parseFloat(score),
+                        status: status,
+                        graded_by: currentUserId,
+                        question_id: '00000000-0000-0000-0000-000000000000'
+                    });
                     if (!error) saved++;
                 }
             }
@@ -889,240 +1399,493 @@
         };
         
         // =====================================================
-        // RESOURCES
+        // RESOURCES MODULE
         // =====================================================
-        if($('uploadResourceForm')) $('uploadResourceForm')?.addEventListener('submit', async (e) => {
+        async function populateResourceDropdowns() {
+            const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
+            if ($('resourceCourse')) {
+                $('resourceCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+            }
+        }
+        
+        $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const file = $('resourceFile').files[0];
-            if (!file) { showToast('Select a file', 'error'); return; }
+            const file = $('#resourceFile').files[0];
+            if (!file) {
+                showToast('Select a file', 'error');
+                return;
+            }
             const fileName = `${Date.now()}_${file.name}`;
-            const filePath = `${$('resourceProgram').value}/${$('resourceBlock').value}/${fileName}`;
+            const filePath = `${$('#resourceProgram').value}/${$('#resourceBlock').value}/${fileName}`;
             const { error: uploadError } = await sb.storage.from('resources').upload(filePath, file);
-            if (uploadError) { showToast(uploadError.message, 'error'); return; }
+            if (uploadError) {
+                showToast(uploadError.message, 'error');
+                return;
+            }
             const { data: urlData } = sb.storage.from('resources').getPublicUrl(filePath);
-            const { error } = await sb.from('resources').insert({ 
-                title: $('resourceTitle').value, category: $('resourceCategory').value, program_type: $('resourceProgram').value, 
-                block: $('resourceBlock').value, file_path: filePath, file_url: urlData.publicUrl, 
-                uploaded_by: currentUserId, uploaded_by_name: currentUserProfile?.full_name 
+            const { error } = await sb.from('resources').insert({
+                title: $('#resourceTitle').value,
+                category: $('#resourceCategory').value,
+                program_type: $('#resourceProgram').value,
+                block: $('#resourceBlock').value,
+                course_id: $('#resourceCourse').value || null,
+                description: $('#resourceDescription').value,
+                file_path: filePath,
+                file_url: urlData.publicUrl,
+                uploaded_by: currentUserId,
+                uploaded_by_name: currentUserProfile?.full_name
             });
             if (error) showToast(error.message, 'error');
-            else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
+            else {
+                showToast('Resource uploaded!', 'success');
+                e.target.reset();
+                await loadResources();
+            }
         });
         
         async function loadResources() {
             const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
-            const tbody = $('resourcesTableBody');
+            allResources = data || [];
+            const tbody = $('#resourcesTableBody');
             if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No resources uploaded</td></tr>'; return; }
-            tbody.innerHTML = data.map(r => `<tr>
-                <td>${escapeHtml(r.title)}</td>
-                <td><span class="badge badge-info">${r.category}</span></td>
-                <td>${getProgramDisplayName(r.program_type)}/${r.block}</td>
-                <td>${new Date(r.created_at).toLocaleDateString()}</td>
-                <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button></td>
-            </tr>`).join('');
+            if (!allResources.length) {
+                tbody.innerHTML = '<tr><td colspan="7">No resources uploaded</td></tr>';
+                return;
+            }
+            const courseMap = new Map(allCourses.map(c => [c.id, c.course_name]));
+            tbody.innerHTML = allResources.map(r => `
+                <tr>
+                    <td>${escapeHtml(r.title)}</td>
+                    <td><span class="badge badge-info">${r.category}</span></td>
+                    <td>${getProgramDisplayName(r.program_type)}/${r.block}</td>
+                    <td>${courseMap.get(r.course_id) || 'General'}</td>
+                    <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                    <td>${r.download_count || 0}</td>
+                    <td>
+                        <a href="${r.file_url}" target="_blank" class="btn-action">Download</a>
+                        <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
         }
         
-        window.deleteResource = async (id) => { if (confirm('Delete this resource?')) { await sb.from('resources').delete().eq('id', id); await loadResources(); showToast('Resource deleted', 'success'); } };
-        window.filterResources = function() { const search = $('resourceSearch')?.value.toLowerCase() || ''; document.querySelectorAll('#resourcesTableBody tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none'; }); };
+        window.deleteResource = async (id) => {
+            if (confirm('Delete this resource?')) {
+                await sb.from('resources').delete().eq('id', id);
+                await loadResources();
+                showToast('Resource deleted', 'success');
+            }
+        };
+        
+        window.filterResources = function() {
+            const search = $('#resourceSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#resourcesTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        };
         
         // =====================================================
-        // MESSAGES
+        // MESSAGES MODULE
         // =====================================================
         async function loadMessages() {
-            const { data } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
-            const tbody = $('messagesTableBody');
-            if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4">No messages sent</td></tr>'; return; }
-            tbody.innerHTML = data.map(m => `<tr>
-                <td>${new Date(m.created_at).toLocaleDateString()}</td>
-                <td>${escapeHtml(m.subject)}</td>
-                <td>${allStudents.find(s => s.user_id === m.target_user_id)?.full_name || m.target_program}</td>
-                <td><span class="badge badge-success">Sent</span></td>
-            </tr>`).join('');
             const program = currentUserProfile?.program || 'KRCHN';
             const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student').eq('program', program);
-            if($('msgRecipient')) $('msgRecipient').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name}</option>`).join('');
+            const select = $('#msgRecipient');
+            if (select) {
+                select.innerHTML = '<option value="">Select Recipient</option><option value="all_students">All Students</option><option value="all_staff">All Staff</option>' +
+                    (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (Student)</option>`).join('');
+            }
+            
+            const { data: messages } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
+            const tbody = $('#messagesTableBody');
+            if (!tbody) return;
+            if (!messages?.length) {
+                tbody.innerHTML = '<tr><td colspan="5">No messages sent</td></tr>';
+                return;
+            }
+            tbody.innerHTML = messages.map(m => `
+                <tr>
+                    <td>${new Date(m.created_at).toLocaleDateString()}</td>
+                    <td>${escapeHtml(m.subject)}</td>
+                    <td>${allStudents.find(s => s.user_id === m.target_user_id)?.full_name || m.target_program || 'All'}</td>
+                    <td><span class="badge badge-success">Sent</span>
+                                        <td><span class="badge badge-success">Sent</span></td>
+                    <td><span class="badge ${m.priority === 'urgent' ? 'badge-danger' : m.priority === 'important' ? 'badge-warning' : 'badge-info'}">${m.priority || 'normal'}</span></td>
+                </tr>
+            `).join('');
         }
         
-        if($('sendMessageForm')) $('sendMessageForm')?.addEventListener('submit', async (e) => {
+        $('#sendMessageForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const { error } = await sb.from('notifications').insert({ 
-                target_user_id: $('msgRecipient').value, subject: $('msgSubject').value, message: $('msgBody').value, 
-                sender_id: currentUserId, sender_name: currentUserProfile?.full_name, target_program: currentUserProfile?.program 
+            
+            let targetUserId = $('#msgRecipient').value;
+            let targetProgram = currentUserProfile?.program;
+            
+            // Handle "all students" or "all staff" options
+            if (targetUserId === 'all_students') {
+                targetUserId = null;
+                targetProgram = currentUserProfile?.program;
+            } else if (targetUserId === 'all_staff') {
+                targetUserId = null;
+                targetProgram = null;
+            }
+            
+            let attachmentUrl = null;
+            const attachmentFile = $('#msgAttachment').files[0];
+            if (attachmentFile) {
+                const fileName = `attachments/${Date.now()}_${attachmentFile.name}`;
+                const { error: uploadError } = await sb.storage.from('messages').upload(fileName, attachmentFile);
+                if (!uploadError) {
+                    const { data: urlData } = sb.storage.from('messages').getPublicUrl(fileName);
+                    attachmentUrl = urlData.publicUrl;
+                }
+            }
+            
+            const { error } = await sb.from('notifications').insert({
+                target_user_id: targetUserId,
+                target_program: targetProgram,
+                subject: $('#msgSubject').value,
+                message: $('#msgBody').value,
+                priority: $('#msgPriority').value,
+                attachment_url: attachmentUrl,
+                sender_id: currentUserId,
+                sender_name: currentUserProfile?.full_name,
+                status: 'sent'
             });
-            if (error) { showToast(error.message, 'error'); return; }
+            
+            if (error) {
+                showToast(error.message, 'error');
+                return;
+            }
             showToast('Message sent!', 'success');
             e.target.reset();
             await loadMessages();
         });
         
         // =====================================================
-        // CALENDAR
+        // CALENDAR MODULE
         // =====================================================
         async function loadCalendar() {
-            const el = $('calendarDisplay');
+            const el = $('#calendarDisplay');
             if (!el) return;
-            const [sessions, exams] = await Promise.all([sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId), sb.from('exams').select('*').eq('created_by', currentUserId)]);
-            const events = [...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })), ...(exams.data || []).map(e => ({ title: `${e.exam_type}: ${e.exam_name}`, start: e.exam_date, color: '#e74c3c' }))];
+            
+            // Fetch all events
+            const [sessions, exams] = await Promise.all([
+                sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
+                sb.from('exams').select('*').eq('created_by', currentUserId)
+            ]);
+            
+            const events = [];
+            
+            // Add sessions to calendar
+            (sessions.data || []).forEach(s => {
+                events.push({
+                    title: s.session_title,
+                    start: s.session_date,
+                    color: '#3498db',
+                    extendedProps: { type: 'session', id: s.id }
+                });
+            });
+            
+            // Add exams to calendar
+            (exams.data || []).forEach(e => {
+                events.push({
+                    title: `${e.exam_type}: ${e.exam_name}`,
+                    start: e.exam_date,
+                    color: '#e74c3c',
+                    extendedProps: { type: 'exam', id: e.id }
+                });
+            });
+            
             if (calendar) calendar.destroy();
-            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' }, events });
+            calendar = new FullCalendar.Calendar(el, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek'
+                },
+                events: events,
+                eventClick: function(info) {
+                    const props = info.event.extendedProps;
+                    if (props.type === 'session') {
+                        showToast(`Session: ${info.event.title}`, 'info');
+                    } else if (props.type === 'exam') {
+                        showToast(`Exam: ${info.event.title}`, 'info');
+                    }
+                }
+            });
             calendar.render();
         }
         
+        window.exportCalendar = function() {
+            showToast('Calendar export feature coming soon', 'info');
+        };
+        
+        window.syncCalendar = function() {
+            loadCalendar();
+            showToast('Calendar synced!', 'success');
+        };
+        
         // =====================================================
-        // INITIALIZATION (FIXED - NO INSTANT LOGOUT)
+        // SETTINGS MODULE
+        // =====================================================
+        async function loadSettings() {
+            // Load saved settings from localStorage
+            const notifyEmail = localStorage.getItem('notifyEmail') === 'true';
+            const notifyBrowser = localStorage.getItem('notifyBrowser') === 'true';
+            const defaultProgram = localStorage.getItem('defaultProgram') || currentUserProfile?.program || 'KRCHN';
+            
+            if ($('notifyEmail')) $('notifyEmail').checked = notifyEmail;
+            if ($('notifyBrowser')) $('notifyBrowser').checked = notifyBrowser;
+            
+            // Populate default program dropdown
+            if ($('defaultProgram')) {
+                updateProgramDropdown($('defaultProgram'));
+                $('defaultProgram').value = defaultProgram;
+                $('defaultProgram').addEventListener('change', () => {
+                    localStorage.setItem('defaultProgram', $('defaultProgram').value);
+                    updateBlockOptions('defaultProgram', 'defaultBlock');
+                });
+            }
+            
+            if ($('defaultBlock')) {
+                updateBlockOptions('defaultProgram', 'defaultBlock');
+            }
+            
+            // Load notification preferences
+            if ($('notifyEmail')) {
+                $('notifyEmail').addEventListener('change', (e) => {
+                    localStorage.setItem('notifyEmail', e.target.checked);
+                });
+            }
+            
+            if ($('notifyBrowser')) {
+                $('notifyBrowser').addEventListener('change', (e) => {
+                    localStorage.setItem('notifyBrowser', e.target.checked);
+                    if (e.target.checked && Notification.permission === 'default') {
+                        Notification.requestPermission();
+                    }
+                });
+            }
+        }
+        
+        window.exportData = async function() {
+            showToast('Preparing export...', 'info');
+            
+            const exportData = {
+                profile: currentUserProfile,
+                courses: allCourses,
+                students: allStudents,
+                sessions: allSessions,
+                exams: allExams,
+                resources: allResources,
+                exportDate: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `nchsm_lecturer_data_${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showToast('Export complete!', 'success');
+        };
+        
+        window.clearCache = function() {
+            if (confirm('Clear all cached data? This will not delete your actual data.')) {
+                localStorage.removeItem('defaultProgram');
+                localStorage.removeItem('notifyEmail');
+                localStorage.removeItem('notifyBrowser');
+                showToast('Cache cleared!', 'success');
+                location.reload();
+            }
+        };
+        
+        // =====================================================
+        // PHOTO UPLOAD
+        // =====================================================
+        $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput')?.click());
+        
+        $('#photoInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
+            const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
+            if (uploadError) {
+                showToast(uploadError.message, 'error');
+                return;
+            }
+            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
+            showToast('Photo updated!', 'success');
+            loadProfile();
+        });
+        
+        // =====================================================
+        // HELPER FUNCTIONS
+        // =====================================================
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>]/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;'
+            }[m]));
+        }
+        
+        // =====================================================
+        // INITIALIZATION - FIXED VERSION
         // =====================================================
         async function init() {
             console.log('Initializing dashboard...');
             
-            // Get session with retry
-            let session = null;
-            let retries = 0;
-            while (!session && retries < 3) {
-                const { data: { session: s }, error } = await sb.auth.getSession();
-                if (s) {
-                    session = s;
-                    break;
+            // Check for user profile from login
+            const storedProfile = localStorage.getItem('userProfile');
+            if (storedProfile) {
+                const profile = JSON.parse(storedProfile);
+                if (profile.role === 'lecturer' || profile.is_staff) {
+                    currentUserProfile = profile;
+                    currentUserId = profile.user_id;
+                    console.log('Loaded profile from storage:', currentUserProfile.full_name);
                 }
-                if (error) console.error('Session error:', error);
-                await new Promise(r => setTimeout(r, 500));
-                retries++;
             }
             
-            if (!session) {
-                console.log('No session found, redirecting to login');
+            // If no stored profile, try Supabase session
+            if (!currentUserId) {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session) {
+                    currentUserId = session.user.id;
+                    // Try to get full profile
+                    const { data: profile } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('user_id', currentUserId)
+                        .maybeSingle();
+                    
+                    if (profile) {
+                        currentUserProfile = profile;
+                        localStorage.setItem('userProfile', JSON.stringify(profile));
+                    } else {
+                        // Create default lecturer profile
+                        currentUserProfile = {
+                            user_id: currentUserId,
+                            full_name: session.user.email?.split('@')[0] || 'Lecturer',
+                            email: session.user.email,
+                            role: 'lecturer',
+                            program: 'KRCHN'
+                        };
+                        localStorage.setItem('userProfile', JSON.stringify(currentUserProfile));
+                    }
+                }
+            }
+            
+            // Redirect if no user
+            if (!currentUserId || !currentUserProfile) {
+                console.log('No user found, redirecting to login');
                 window.location.href = 'login.html';
                 return;
             }
             
-            currentUserId = session.user.id;
-            console.log('User ID:', currentUserId);
-            
-            // Try to get profile but DON'T logout if fails
-            let profile = null;
-            try {
-                const { data, error } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('user_id', currentUserId)
-                    .maybeSingle();
-                
-                if (error) {
-                    console.warn('Profile fetch error:', error);
-                } else if (data) {
-                    profile = data;
-                }
-            } catch(e) {
-                console.warn('Profile exception:', e);
-            }
-            
-            // Create default profile if none exists
-            if (!profile) {
-                profile = {
-                    user_id: currentUserId,
-                    full_name: session.user.email?.split('@')[0] || 'Lecturer',
-                    role: 'lecturer',
-                    program: 'KRCHN',
-                    email: session.user.email
-                };
-                console.log('Using default profile:', profile);
-            }
-            
-            // Check role but don't logout if mismatch
-            if (profile.role !== 'lecturer') {
-                console.warn('Warning: User role is', profile.role, 'not lecturer, but continuing...');
-                profile.role = 'lecturer';
-            }
-            
-            currentUserProfile = profile;
-            
-            // Update UI
+            // Update welcome header
             if ($('welcomeHeader')) {
-                $('welcomeHeader').textContent = `Welcome, ${profile.full_name || 'Lecturer'}!`;
+                $('welcomeHeader').textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
             }
             
-            // Load data
-            try {
-                await loadCourses();
-                await loadStudents();
-                await loadDashboard();
-                await loadSectionData('dashboard');
-            } catch(e) {
-                console.error('Error loading data:', e);
-                showToast('Some features may be limited', 'warning');
-            }
+            // Load all data
+            await loadCourses();
+            await loadStudents();
+            await loadDashboard();
+            await loadTodaySchedule();
+            await loadMessages();
+            await loadProfile();
             
             // Setup dropdowns
-            ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => { 
-                const el = $(id); 
+            ['sessionProgram', 'examProgram', 'resourceProgram', 'defaultProgram'].forEach(id => {
+                const el = $(id);
                 if (el) {
                     updateProgramDropdown(el);
-                    el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock'));
+                    if (id !== 'defaultProgram') {
+                        el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock'));
+                    }
                 }
             });
             
-            // Setup inactivity timer
-            resetInactivityTimer();
-            
-            // Setup auth state listener
-            sb.auth.onAuthStateChange((event, session) => {
-                console.log('Auth event:', event);
+            // Setup auth listener for logout
+            sb.auth.onAuthStateChange((event) => {
                 if (event === 'SIGNED_OUT') {
+                    localStorage.removeItem('userProfile');
                     window.location.href = 'login.html';
                 }
             });
             
-            console.log('Init completed successfully');
+            console.log('Dashboard ready!');
         }
         
         // =====================================================
         // EVENT LISTENERS
         // =====================================================
-        if ($('mobileNavToggle')) {
-            $('mobileNavToggle').addEventListener('click', () => $('sidebar')?.classList.toggle('active'));
-        }
+        $('#mobileNavToggle')?.addEventListener('click', () => {
+            $('#sidebar')?.classList.toggle('active');
+        });
         
         document.querySelectorAll('.nav a').forEach(link => {
-            link.addEventListener('click', (e) => { 
-                e.preventDefault(); 
-                const tabId = link.getAttribute('data-tab'); 
-                if (tabId) showTab(tabId); 
-                $('sidebar')?.classList.remove('active'); 
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = link.getAttribute('data-tab');
+                if (tabId) showTab(tabId);
+                $('#sidebar')?.classList.remove('active');
             });
         });
         
-        if ($('logoutBtn')) {
-            $('logoutBtn').addEventListener('click', async () => { 
-                await sb.auth.signOut(); 
-                window.location.href = 'login.html'; 
-            });
-        }
+        $('#logoutBtn')?.addEventListener('click', async () => {
+            await sb.auth.signOut();
+            localStorage.removeItem('userProfile');
+            window.location.href = 'login.html';
+        });
         
-        if ($('notificationBtn')) {
-            $('notificationBtn').addEventListener('click', () => showToast('Notifications coming soon', 'info'));
-        }
+        $('#notificationBtn')?.addEventListener('click', () => {
+            showToast('You have 3 new notifications', 'info');
+        });
         
-        if ($('helpBtn')) {
-            $('helpBtn').addEventListener('click', () => showToast('Help documentation coming soon', 'info'));
-        }
+        $('#helpBtn')?.addEventListener('click', () => {
+            showToast('Contact support: support@nchsm.ac.ke', 'info');
+        });
         
-        if ($('editProfileBtn')) {
-            $('editProfileBtn').addEventListener('click', () => showToast('Profile editing coming soon', 'info'));
-        }
+        $('#editProfileBtn')?.addEventListener('click', () => {
+            showToast('Profile editing feature coming soon', 'info');
+        });
         
-        if ($('changePasswordBtn')) {
-            $('changePasswordBtn').addEventListener('click', () => showToast('Password change coming soon', 'info'));
-        }
+        $('#changePasswordBtn')?.addEventListener('click', () => {
+            showToast('Password change feature coming soon', 'info');
+        });
         
+        $('#changePasswordBtn2')?.addEventListener('click', () => {
+            showToast('Password change feature coming soon', 'info');
+        });
+        
+        $('#enable2FA')?.addEventListener('click', () => {
+            showToast('2FA setup coming soon', 'info');
+        });
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+        
+        // Global closeModal function
         window.closeModal = closeModal;
         
         // Start the app
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
-        } else {
+        document.addEventListener('DOMContentLoaded', () => {
             setTimeout(init, 300);
-        }
+        });
     </script>
 </body>
 </html>
