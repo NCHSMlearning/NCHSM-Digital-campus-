@@ -1494,27 +1494,72 @@
         // INITIALIZATION
         // =====================================================
         async function init() {
-            console.log('Initializing Lecturer Dashboard...');
-            const { data: { session } } = await sb.auth.getSession();
-            if (!session) { window.location.href = 'login.html'; return; }
-            currentUserId = session.user.id;
-            
-            const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).maybeSingle();
-            currentUserProfile = profile || { user_id: currentUserId, full_name: session.user.email?.split('@')[0] || 'Lecturer', role: 'lecturer', program: 'KRCHN', email: session.user.email };
-            
-            if ($('welcomeHeader')) $('welcomeHeader').textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
-            
-            await loadCourses(); await loadStudents(); await loadDashboard(); await loadMessages(); await loadProfile();
-            
-            ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => {
-                const el = $(id);
-                if (el) { updateProgramDropdown(el); el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock')); }
-            });
-            
-            sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') window.location.href = 'login.html'; });
-            console.log('Dashboard ready!');
+    console.log('Initializing Lecturer Dashboard...');
+    
+    // Get session from Supabase (same as working Super Admin)
+    const { data: { session }, error: sessionError } = await sb.auth.getSession();
+    
+    if (sessionError || !session) {
+        console.warn('Session check failed, redirecting to login');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    currentUserId = session.user.id;
+    console.log('User ID:', currentUserId);
+    
+    // Get profile from consolidated_user_profiles_table
+    const { data: profile, error: profileError } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+    
+    if (profileError || !profile) {
+        console.warn('Profile not found, using default');
+        currentUserProfile = {
+            user_id: currentUserId,
+            full_name: session.user.email?.split('@')[0] || 'Lecturer',
+            role: 'lecturer',
+            program: 'KRCHN',
+            email: session.user.email
+        };
+    } else {
+        currentUserProfile = profile;
+    }
+    
+    // Update UI
+    const welcomeHeader = document.getElementById('welcomeHeader');
+    if (welcomeHeader) {
+        welcomeHeader.textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
+    }
+    
+    // Load all data
+    await loadCourses();
+    await loadStudents();
+    await loadDashboard();
+    await loadTodaySchedule();
+    await loadMessages();
+    await loadProfile();
+    
+    // Setup dropdowns
+    ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => {
+        const el = $(id);
+        if (el) {
+            updateProgramDropdown(el);
+            el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock'));
         }
-        
+    });
+    
+    // Setup auth listener (same as Super Admin)
+    sb.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') {
+            window.location.href = 'login.html';
+        }
+    });
+    
+    console.log('Dashboard ready!');
+}
         // Event listeners
         $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
         document.querySelectorAll('.nav a').forEach(link => {
