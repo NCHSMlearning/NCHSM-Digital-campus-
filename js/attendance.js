@@ -1176,55 +1176,223 @@
         }
     }
     
-    function initializeAttendanceUI() {
-        console.log('🚀 Initializing Enhanced Attendance System...');
-        
-        const sessionTypeSelect = document.getElementById('session-type');
-        const attendanceTab = document.querySelector('.nav a[data-tab="attendance"]');
-        const historyFilter = document.getElementById('history-filter');
-        const refreshHistoryBtn = document.getElementById('refresh-history');
-        
-        // Add streak container
-        const attendanceStats = document.querySelector('.attendance-stats');
-        if (attendanceStats && !document.getElementById('attendance-streak-container')) {
-            const streakContainer = document.createElement('div');
-            streakContainer.id = 'attendance-streak-container';
-            attendanceStats.insertAdjacentElement('afterend', streakContainer);
-        }
-        
-        if (attendanceTab) {
-            attendanceTab.addEventListener('click', async (e) => {
-                e.preventDefault();
-                switchToTab('attendance');
-            });
-        }
-        
-        if (sessionTypeSelect) {
-            sessionTypeSelect.addEventListener('change', handleSessionTypeChange);
-        }
-        
-        if (historyFilter) {
-            historyFilter.addEventListener('change', () => {
-                loadGeoAttendanceHistory(historyFilter.value);
-            });
-        }
-        
-        if (refreshHistoryBtn) {
-            refreshHistoryBtn.addEventListener('click', () => {
-                const currentFilter = historyFilter?.value || 'today';
-                showToast('Refreshing history...', 'info');
-                loadGeoAttendanceHistory(currentFilter);
-            });
-        }
-        
-        updateTimeDisplay();
-        setInterval(updateTimeDisplay, 60000);
-        setInterval(updateRequirementsList, 1000);
-        
-        startLocationMonitoring();
-        loadAttendanceData();
+   function initializeAttendanceUI() {
+    console.log('🚀 Initializing Enhanced Attendance System...');
+    
+    const sessionTypeSelect = document.getElementById('session-type');
+    const attendanceTab = document.querySelector('.nav a[data-tab="attendance"]');
+    const historyFilter = document.getElementById('history-filter');
+    const refreshHistoryBtn = document.getElementById('refresh-history');
+    
+    // Add streak container
+    const attendanceStats = document.querySelector('.attendance-stats');
+    if (attendanceStats && !document.getElementById('attendance-streak-container')) {
+        const streakContainer = document.createElement('div');
+        streakContainer.id = 'attendance-streak-container';
+        attendanceStats.insertAdjacentElement('afterend', streakContainer);
     }
     
+    if (attendanceTab) {
+        attendanceTab.addEventListener('click', async (e) => {
+            e.preventDefault();
+            switchToTab('attendance');
+        });
+    }
+    
+    if (sessionTypeSelect) {
+        sessionTypeSelect.addEventListener('change', handleSessionTypeChange);
+    }
+    
+    // ============================================
+    // FIXED CHECK-IN BUTTON HANDLER (PERMANENT)
+    // ============================================
+    const checkInBtn = document.getElementById('check-in-button');
+    if (checkInBtn) {
+        // Remove existing handlers by cloning
+        const newCheckInBtn = checkInBtn.cloneNode(true);
+        checkInBtn.parentNode.replaceChild(newCheckInBtn, checkInBtn);
+        
+        // Style the button
+        newCheckInBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        newCheckInBtn.style.border = 'none';
+        newCheckInBtn.style.borderRadius = '12px';
+        newCheckInBtn.style.padding = '14px 28px';
+        newCheckInBtn.style.fontSize = '16px';
+        newCheckInBtn.style.fontWeight = 'bold';
+        newCheckInBtn.style.color = 'white';
+        newCheckInBtn.style.cursor = 'pointer';
+        newCheckInBtn.style.transition = 'transform 0.2s, box-shadow 0.2s';
+        newCheckInBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+        
+        newCheckInBtn.onmouseover = () => {
+            newCheckInBtn.style.transform = 'translateY(-2px)';
+            newCheckInBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
+        };
+        newCheckInBtn.onmouseout = () => {
+            newCheckInBtn.style.transform = 'translateY(0)';
+            newCheckInBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+        };
+        
+        // Add click handler
+        newCheckInBtn.onclick = async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🖱️ Check-in button CLICKED!');
+            
+            // Get selected target from dropdown
+            const targetSelect = document.getElementById('attendance-target');
+            let target = selectedTarget;
+            
+            if (!target && targetSelect && targetSelect.value) {
+                const parts = targetSelect.value.split('|');
+                if (parts.length >= 6) {
+                    target = {
+                        id: parts[0],
+                        name: parts[1],
+                        type: parts[2],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseInt(parts[5]) || VERIFIED_DISTANCE
+                    };
+                    selectedTarget = target;
+                    console.log('✅ Recovered target from dropdown:', target.name);
+                }
+            }
+            
+            if (!target) {
+                showToast('Please select a course from the dropdown first', 'warning');
+                return;
+            }
+            
+            if (!navigator.geolocation) {
+                showToast('Geolocation not supported', 'error');
+                return;
+            }
+            
+            // Disable button and show loading
+            newCheckInBtn.disabled = true;
+            newCheckInBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting GPS...';
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    console.log('📍 GPS acquired');
+                    
+                    const distance = calculateDistance(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        target.latitude,
+                        target.longitude
+                    );
+                    
+                    const status = distance <= VERIFIED_DISTANCE ? 'Present' : 
+                                  (distance <= PENDING_DISTANCE ? 'Pending' : 'Absent');
+                    const isVerified = distance <= VERIFIED_DISTANCE;
+                    
+                    console.log(`📏 Distance: ${distance.toFixed(0)}m, Status: ${status}`);
+                    
+                    const confirmed = await showConfirmationModal(distance);
+                    if (!confirmed) {
+                        newCheckInBtn.disabled = false;
+                        newCheckInBtn.innerHTML = '<i class="fas fa-fingerprint"></i><span class="btn-text">Check In Now</span><span class="btn-subtext">GPS verification required</span>';
+                        return;
+                    }
+                    
+                    newCheckInBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                    
+                    const studentId = getCurrentStudentId();
+                    const supabaseClient = window.db?.supabase;
+                    
+                    if (!supabaseClient) throw new Error('Database error');
+                    
+                    const unitCode = target.name.split(' - ')[0];
+                    const selectedUnit = approvedUnits.find(u => u.unit_code === unitCode);
+                    
+                    const checkInData = {
+                        student_id: studentId,
+                        check_in_time: new Date().toISOString(),
+                        session_type: 'class',
+                        target_id: target.id,
+                        target_name: target.name,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy_m: position.coords.accuracy,
+                        distance_meters: distance,
+                        is_verified: isVerified,
+                        student_name: attendanceUserProfile?.full_name || window.db?.currentUserProfile?.full_name,
+                        program: attendanceUserProfile?.program || window.db?.currentUserProfile?.program,
+                        block: attendanceUserProfile?.block || window.db?.currentUserProfile?.block,
+                        intake_year: attendanceUserProfile?.intake_year || window.db?.currentUserProfile?.intake_year,
+                        attendance_status: status,
+                        target_latitude: target.latitude,
+                        target_longitude: target.longitude,
+                        unit_code: unitCode,
+                        unit_name: selectedUnit?.unit_name || target.name
+                    };
+                    
+                    const { error } = await supabaseClient
+                        .from('geo_attendance_logs')
+                        .insert([checkInData]);
+                    
+                    if (error) throw error;
+                    
+                    const statusEmoji = status === 'Present' ? '✅' : (status === 'Pending' ? '⚠️' : '❌');
+                    showToast(`${statusEmoji} Check-in successful! Status: ${status} (${distance.toFixed(0)}m)`, 'success');
+                    
+                    await loadTodayAttendanceCount();
+                    await loadGeoAttendanceHistory('today');
+                    await loadAttendanceStreak();
+                    
+                    newCheckInBtn.disabled = false;
+                    newCheckInBtn.innerHTML = '<i class="fas fa-fingerprint"></i><span class="btn-text">Check In Now</span><span class="btn-subtext">GPS verification required</span>';
+                    
+                },
+                (error) => {
+                    console.error('GPS Error:', error);
+                    let msg = '';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            msg = 'Please allow location access';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            msg = 'Cannot get location. Enable GPS';
+                            break;
+                        case error.TIMEOUT:
+                            msg = 'GPS timeout. Try again';
+                            break;
+                        default:
+                            msg = 'GPS error: ' + error.message;
+                    }
+                    showToast(msg, 'error');
+                    newCheckInBtn.disabled = false;
+                    newCheckInBtn.innerHTML = '<i class="fas fa-fingerprint"></i><span class="btn-text">Check In Now</span><span class="btn-subtext">GPS verification required</span>';
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        };
+    }
+    
+    if (historyFilter) {
+        historyFilter.addEventListener('change', () => {
+            loadGeoAttendanceHistory(historyFilter.value);
+        });
+    }
+    
+    if (refreshHistoryBtn) {
+        refreshHistoryBtn.addEventListener('click', () => {
+            const currentFilter = historyFilter?.value || 'today';
+            showToast('Refreshing history...', 'info');
+            loadGeoAttendanceHistory(currentFilter);
+        });
+    }
+    
+    updateTimeDisplay();
+    setInterval(updateTimeDisplay, 60000);
+    setInterval(updateRequirementsList, 1000);
+    
+    startLocationMonitoring();
+    loadAttendanceData();
+}
     // Add CSS animations
     const style = document.createElement('style');
     style.textContent = `
