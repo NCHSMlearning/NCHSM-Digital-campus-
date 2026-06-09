@@ -1,4 +1,4 @@
-// js/academic-reports.js - COMPLETE FIXED VERSION (Works with exams.js)
+// js/academic-reports.js - COMPLETE WITH DYNAMIC BLOCK/TERM FILTERING
 (function() {
     'use strict';
     
@@ -57,7 +57,6 @@
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
-            /* Purple Theme for Academic Reports */
             .gpa-summary .gpa-card {
                 background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%) !important;
                 border: none !important;
@@ -101,6 +100,19 @@
                 padding: 4px 12px !important;
                 border-radius: 20px !important;
             }
+            .filter-info-bar {
+                background: #f3e8ff;
+                padding: 8px 16px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            .filter-info-bar i {
+                color: #7c3aed;
+            }
         `;
         document.head.appendChild(style);
         console.log('🎨 Purple theme styles added');
@@ -117,6 +129,36 @@
             return { type: 'TVET', level: level, code: programCode };
         }
         return { type: 'KRCHN', level: 'KRCHN', code: 'KRCHN' };
+    }
+    
+    // Get available blocks/terms based on program type
+    function getFilterOptions() {
+        const programInfo = determineProgramType();
+        
+        if (programInfo.type === 'TVET') {
+            // TVET Terms
+            return [
+                { value: 'all', label: '📚 All Terms', icon: 'fa-layer-group' },
+                { value: 'Term 1', label: '📘 Term 1', icon: 'fa-book' },
+                { value: 'Term 2', label: '📗 Term 2', icon: 'fa-book' },
+                { value: 'Term 3', label: '📙 Term 3', icon: 'fa-book' },
+                { value: 'Term 4', label: '📕 Term 4', icon: 'fa-book' },
+                { value: 'Term 5', label: '📔 Term 5', icon: 'fa-book' },
+                { value: 'Term 6', label: '📓 Term 6', icon: 'fa-book' }
+            ];
+        } else {
+            // KRCHN Nursing Blocks
+            return [
+                { value: 'all', label: '📚 All Blocks', icon: 'fa-layer-group' },
+                { value: 'Introductory Block', label: '🎓 Introductory Block', icon: 'fa-flag-checkered' },
+                { value: 'Block 1', label: '📖 Block 1', icon: 'fa-book' },
+                { value: 'Block 2', label: '📗 Block 2', icon: 'fa-book' },
+                { value: 'Block 3', label: '📘 Block 3', icon: 'fa-book' },
+                { value: 'Block 4', label: '📙 Block 4', icon: 'fa-book' },
+                { value: 'Block 5', label: '📕 Block 5', icon: 'fa-book' },
+                { value: 'Final Block', label: '🏆 Final Block', icon: 'fa-trophy' }
+            ];
+        }
     }
     
     function calculateLetterGrade(percentage) {
@@ -157,7 +199,7 @@
         console.log(`Found ${examsData.length} total exams`);
         
         if (examsData.length === 0) {
-            console.warn('⚠️ No exam data found. Please complete some exams first.');
+            console.warn('⚠️ No exam data found.');
             currentData = {
                 grades: [],
                 totalGpa: '0.00',
@@ -170,7 +212,7 @@
             return [];
         }
         
-        // Filter ONLY released and completed exams (with valid scores)
+        // Filter ONLY released and completed exams
         const releasedExams = examsData.filter(exam => 
             exam.isReleased === true && 
             exam.totalPercentage !== null && 
@@ -181,7 +223,7 @@
         console.log(`Found ${releasedExams.length} released exams with grades`);
         
         if (releasedExams.length === 0) {
-            console.warn('⚠️ No released exam results found. Grades will appear after admin releases them.');
+            console.warn('⚠️ No released exam results found.');
             currentData = {
                 grades: [],
                 totalGpa: '0.00',
@@ -203,7 +245,10 @@
             const percentage = parseFloat(exam.totalPercentage);
             const grade = calculateLetterGrade(percentage);
             const gpa = calculateGPAFromPercentage(percentage);
-            const credits = 3; // Standard credit per course
+            const credits = 3;
+            
+            // Determine the block/term from exam data
+            let blockTerm = exam.block_term || exam.semester || 'General';
             
             processedGrades.push({
                 courseCode: exam.unit_code || exam.course_code || exam.id?.toString().substring(0, 8) || 'N/A',
@@ -216,7 +261,7 @@
                 grade: grade,
                 gpa: gpa,
                 status: percentage >= 60 ? 'PASS' : 'FAIL',
-                semester: exam.block_term || exam.semester || 'Current',
+                blockTerm: blockTerm,
                 year: exam.intake_year || '2024',
                 examDate: exam.formattedGradedDate || exam.exam_date,
                 examName: exam.exam_name
@@ -227,13 +272,13 @@
             }
             totalPercentageSum += percentage;
             
-            console.log(`✅ Processed: ${exam.exam_name} - ${percentage}% (${grade}) - ${exam.status || (percentage >= 60 ? 'PASS' : 'FAIL')}`);
+            console.log(`✅ Processed: ${exam.exam_name} - ${percentage}% (${grade}) - Block: ${blockTerm}`);
         });
         
-        // Filter by selected semester if needed
+        // Filter by selected block/term
         let filteredGrades = processedGrades;
-        if (currentFilter !== 'all' && currentFilter !== '2024-2025') {
-            filteredGrades = processedGrades.filter(g => g.semester === currentFilter || g.year === currentFilter);
+        if (currentFilter !== 'all') {
+            filteredGrades = processedGrades.filter(g => g.blockTerm === currentFilter);
         }
         
         // Calculate statistics
@@ -241,7 +286,7 @@
         const overallGpa = filteredGrades.length > 0 ? (totalPercentageSum / filteredGrades.length / 25).toFixed(2) : '0.00';
         const overallGrade = calculateLetterGrade(averagePercentage);
         
-        // Calculate class rank (simulated based on GPA)
+        // Calculate class rank based on GPA
         let classRank = 'N/A';
         if (filteredGrades.length > 0) {
             const gpaNum = parseFloat(overallGpa);
@@ -264,7 +309,6 @@
         };
         
         console.log(`✅ Loaded ${filteredGrades.length} released exams, GPA: ${overallGpa}, Credits: ${totalCreditsEarned}`);
-        console.log(`📊 Grade breakdown: ${filteredGrades.map(g => `${g.courseName}: ${g.total}% (${g.grade})`).join(', ')}`);
         
         return filteredGrades;
     }
@@ -281,8 +325,8 @@
         if (!grades || grades.length === 0) {
             elements.gradesTableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 60px 20px; color: #64748b;">
                 <i class="fas fa-chart-line" style="font-size: 56px; margin-bottom: 20px; opacity: 0.4;"></i>
-                <p style="font-size: 1.1rem;">No released exam results yet</p>
-                <small>Grades will appear here after your exams are completed and released by administration.</small>
+                <p style="font-size: 1.1rem;">No released exam results for ${currentFilter === 'all' ? 'any block' : currentFilter}</p>
+                <small>Grades appear here after exams are completed and released by administration.</small>
             </td></tr>`;
             return;
         }
@@ -366,7 +410,7 @@
             
             html += `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 12px 12px; color: #1e293b;">${escapeHtml(grade.semester)}</td>
+                    <td style="padding: 12px 12px; color: #1e293b;">${escapeHtml(grade.blockTerm)}</td>
                     <td style="padding: 12px 12px; color: #1e293b;">${escapeHtml(grade.courseCode)}</td>
                     <td style="padding: 12px 12px; color: #1e293b;">${escapeHtml(grade.courseName)}</td>
                     <td style="padding: 12px 12px; text-align: center; color: #1e293b;">${grade.credits}</td>
@@ -382,8 +426,7 @@
         
         elements.transcriptTableBody.innerHTML = html;
         
-        const totalCredits = grades.reduce((sum, g) => sum + g.credits, 0);
-        const cumulativeGpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
+        const cumulativeGpa = totalAttempted > 0 ? (totalPoints / totalAttempted).toFixed(2) : '0.00';
         
         if (elements.totalAttempted) elements.totalAttempted.textContent = totalAttempted;
         if (elements.totalEarned) elements.totalEarned.textContent = totalEarned;
@@ -495,13 +538,27 @@
     function populateFilterDropdown() {
         if (!elements.filterSelect) return;
         
-        const options = [
-            { value: 'all', label: '📚 All Semesters' },
-            { value: 'Current', label: '📘 Current Block' },
-            { value: 'Previous', label: '📗 Previous Blocks' }
-        ];
+        const programInfo = determineProgramType();
+        const options = getFilterOptions();
         
-        elements.filterSelect.innerHTML = options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+        elements.filterSelect.innerHTML = options.map(opt => 
+            `<option value="${opt.value}" ${currentFilter === opt.value ? 'selected' : ''}>
+                <i class="fas ${opt.icon}"></i> ${opt.label}
+            </option>`
+        ).join('');
+        
+        // Update program type indicator
+        if (elements.programTypeIndicator) {
+            const isTVET = programInfo.type === 'TVET';
+            elements.programTypeIndicator.innerHTML = `
+                <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 40px; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas ${isTVET ? 'fa-tools' : 'fa-graduation-cap'}"></i>
+                    ${isTVET ? `TVET Program - ${programInfo.level}` : 'KRCHN Nursing'}
+                </span>
+            `;
+        }
+        
+        console.log(`📋 Filter dropdown populated for ${programInfo.type} with ${options.length} options`);
     }
     
     function escapeHtml(str) {
@@ -566,7 +623,7 @@
     }
     
     async function refreshAll() {
-        console.log('🚀 Loading Academic Reports with REAL released results...');
+        console.log('🚀 Loading Academic Reports...');
         
         try {
             if (elements.gradesTableBody) {
@@ -585,7 +642,6 @@
             
             console.log(`✅ Academic Reports loaded: ${currentData.grades.length} released exams`);
             
-            // Show success toast
             if (currentData.grades.length > 0) {
                 const toast = document.getElementById('toast');
                 if (toast) {
@@ -633,5 +689,5 @@
     
     init();
     
-    console.log('✅ Academic Reports Module Ready - Purple Theme, Only Released Results');
+    console.log('✅ Academic Reports Module Ready - KRCHN Blocks / TVET Terms');
 })();
