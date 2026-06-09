@@ -3,13 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>NCHSM Lecturer Dashboard - Complete System</title>
+    <title>NCHSM Lecturer Dashboard</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* Additional critical styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
+        .container { display: flex; min-height: 100vh; }
+        .sidebar { width: 280px; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; position: fixed; height: 100vh; overflow-y: auto; transition: transform 0.3s; z-index: 1000; }
+        .sidebar-header { padding: 24px 20px; text-align: center; border-bottom: 1px solid #334155; }
+        .sidebar-header img { width: 70px; background: white; padding: 8px; border-radius: 20px; margin-bottom: 12px; }
+        .sidebar-header h2 { font-size: 1.4rem; color: white; }
+        .nav { list-style: none; margin-top: 20px; }
+        .nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #cbd5e1; text-decoration: none; transition: 0.2s; border-left: 3px solid transparent; cursor: pointer; }
+        .nav li a i { width: 24px; }
+        .nav li a:hover, .nav li a.active { background: rgba(255,255,255,0.1); color: white; border-left-color: #f59e0b; }
+        .logout { margin-top: 40px; padding: 20px; border-top: 1px solid #334155; }
+        .logout button { background: none; border: none; color: #f87171; display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer; font-size: 1rem; padding: 0; }
+        .main { flex: 1; margin-left: 280px; padding: 28px 32px; background: #f8fafc; min-height: 100vh; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 15px; }
+        header h1 { font-size: 1.8rem; color: #0f172a; }
+        .subtitle { color: #475569; margin-top: 4px; }
+        .header-actions { display: flex; gap: 12px; }
+        .btn-notification, .btn-help { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .card h3 { font-size: 0.85rem; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
+        .data { font-size: 2rem; font-weight: 800; color: #0f172a; }
+        .card-alert-danger { border-left: 4px solid #dc2626; }
+        .card-alert-warning { border-left: 4px solid #f59e0b; }
+        .inline-form, .check-in-controls { background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #334155; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; }
+        .data-table { width: 100%; background: white; border-collapse: collapse; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .data-table th { background: #f8fafc; font-weight: 600; color: #334155; }
+        .table-responsive { overflow-x: auto; margin-bottom: 20px; }
+        .search-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-container input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid #cbd5e1; }
+        .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; font-weight: 500; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fed7aa; color: #9a3412; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .btn-action { background: #4C1D95; border: none; padding: 8px 18px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-action:hover { background: #6d28d9; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #f59e0b; color: #1f2937; }
+        .btn-cancel { background: #6b7280; color: white; border: none; padding: 8px 18px; border-radius: 40px; cursor: pointer; }
+        .profile-card { background: white; border-radius: 20px; padding: 25px; display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px; align-items: center; }
+        .profile-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; overflow: hidden; }
+        .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .profile-info h3 { font-size: 1.5rem; margin-bottom: 5px; }
+        .profile-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .profile-details-grid { background: white; border-radius: 20px; padding: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .detail-item { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .detail-item strong { display: block; font-size: 12px; color: #6b7280; }
+        .detail-item span { display: block; margin-top: 5px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; border-radius: 24px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; }
+        .modal-actions { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
+        .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; color: #64748b; }
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; min-width: 250px; }
+        .toast-success { background: #10b981; }
+        .toast-error { background: #ef4444; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .loading-spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .attendance-metrics { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
+        .metric-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center; }
+        .metric-value { font-size: 2rem; font-weight: bold; }
+        .metric-label { font-size: 0.85rem; margin-top: 5px; opacity: 0.9; }
+        .today-schedule { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
+        .schedule-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .schedule-time { font-weight: bold; color: #4C1D95; min-width: 80px; }
+        .grade-input { width: 80px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
+        .mobile-nav-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 1100; background: #4C1D95; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .main { margin-left: 0; padding-top: 70px; }
+            .mobile-nav-toggle { display: block; }
+            .cards { grid-template-columns: repeat(2, 1fr); }
+            .form-row { flex-direction: column; }
+            .form-group { min-width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .cards { grid-template-columns: 1fr; }
+            .main { padding: 15px; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -32,9 +134,6 @@
                 <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 <li><a href="#" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
                 <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
-                <li><a href="#" data-tab="grades"><i class="fas fa-chart-line"></i> Grade Center</a></li>
-                <li><a href="#" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</a></li>
-                <li><a href="#" data-tab="timetable"><i class="fas fa-clock"></i> My Timetable</a></li>
             </ul>
             <div class="logout">
                 <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -45,10 +144,10 @@
             <header>
                 <div>
                     <h1 id="welcomeHeader">Welcome, Lecturer!</h1>
-                    <p class="subtitle">Manage your courses, students, attendance, and grades</p>
+                    <p class="subtitle">Manage your courses, students, and attendance</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn-notification" id="notificationBtn"><i class="fas fa-bell"></i> <span id="notificationCount">0</span></button>
+                    <button class="btn-notification" id="notificationBtn"><i class="fas fa-bell"></i> Notifications</button>
                     <button class="btn-help" id="helpBtn"><i class="fas fa-question-circle"></i> Help</button>
                 </div>
             </header>
@@ -56,144 +155,86 @@
             <!-- DASHBOARD TAB -->
             <section id="dashboard-content" class="tab-content active">
                 <h2><i class="fas fa-tachometer-alt"></i> Lecturer Dashboard</h2>
-                <div class="stats-grid">
-                    <div class="stat-card" onclick="showTab('my-students')">
-                        <div class="stat-icon"><i class="fas fa-users"></i></div>
-                        <div class="stat-info">
-                            <h3>My Students</h3>
-                            <p class="stat-number" id="totalStudents">0</p>
-                        </div>
+                <div class="cards">
+                    <div class="card" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-users"></i> My Students</h3>
+                        <p class="data" id="totalStudents">0</p>
                     </div>
-                    <div class="stat-card" onclick="showTab('my-courses')">
-                        <div class="stat-icon"><i class="fas fa-book"></i></div>
-                        <div class="stat-info">
-                            <h3>My Courses</h3>
-                            <p class="stat-number" id="totalCourses">0</p>
-                        </div>
+                    <div class="card" onclick="showTab('my-courses')">
+                        <h3><i class="fas fa-book"></i> My Courses</h3>
+                        <p class="data" id="totalCourses">0</p>
                     </div>
-                    <div class="stat-card" onclick="showTab('attendance')">
-                        <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                        <div class="stat-info">
-                            <h3>Today's Sessions</h3>
-                            <p class="stat-number" id="todaySessions">0</p>
-                        </div>
+                    <div class="card card-alert-danger" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-exclamation-triangle"></i> At Risk</h3>
+                        <p class="data" id="atRiskCount">0</p>
                     </div>
-                    <div class="stat-card" onclick="showTab('cats')">
-                        <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
-                        <div class="stat-info">
-                            <h3>Pending Grading</h3>
-                            <p class="stat-number" id="pendingGrading">0</p>
-                        </div>
+                    <div class="card card-alert-warning" onclick="showTab('cats')">
+                        <h3><i class="fas fa-file-signature"></i> Pending Grading</h3>
+                        <p class="data" id="pendingGrading">0</p>
                     </div>
                 </div>
 
-                <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-chart-line"></i> Attendance Overview</h3>
-                        <canvas id="attendanceChart" width="400" height="200"></canvas>
+                <div class="attendance-metrics">
+                    <h3><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card"><div class="metric-value" id="todayAttendance">0</div><div class="metric-label">Today's Check-ins</div></div>
+                        <div class="metric-card"><div class="metric-value" id="weeklyAttendance">0</div><div class="metric-label">This Week</div></div>
+                        <div class="metric-card"><div class="metric-value" id="monthlyRate">0%</div><div class="metric-label">Monthly Rate</div></div>
                     </div>
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-calendar-week"></i> Today's Schedule</h3>
-                        <div id="todayScheduleList" class="schedule-list"></div>
-                    </div>
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> At-Risk Students</h3>
-                        <div id="atRiskList" class="student-list"></div>
-                    </div>
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-bell"></i> Recent Activity</h3>
-                        <div id="recentActivity" class="activity-list"></div>
-                    </div>
+                </div>
+
+                <div class="today-schedule">
+                    <h4><i class="fas fa-calendar-day"></i> Today's Schedule</h4>
+                    <div id="todayScheduleList"><div class="loading-spinner"></div></div>
                 </div>
             </section>
 
             <!-- PROFILE TAB -->
             <section id="profile-content" class="tab-content">
-                <h2><i class="fas fa-user-circle"></i> My Profile</h2>
-                <div class="profile-container">
-                    <div class="profile-sidebar">
-                        <div class="profile-avatar" id="profileAvatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <button class="btn-action" id="uploadPhotoBtn"><i class="fas fa-camera"></i> Change Photo</button>
-                        <input type="file" id="photoInput" accept="image/*" style="display:none">
-                    </div>
-                    <div class="profile-details">
-                        <div class="info-group">
-                            <label>Full Name</label>
-                            <p id="profileName">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Employee ID</label>
-                            <p id="profileId">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Email Address</label>
-                            <p id="profileEmail">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Phone Number</label>
-                            <p id="profilePhone">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Department</label>
-                            <p id="profileDept">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Program</label>
-                            <p id="profileProgram">-</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Join Date</label>
-                            <p id="profileJoinDate">-</p>
+                <h2><i class="fas fa-user"></i> My Profile</h2>
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profileAvatar"><i class="fas fa-user"></i></div>
+                    <div class="profile-info">
+                        <h3 id="profileName">Loading...</h3>
+                        <p class="role" id="profileRole">Lecturer</p>
+                        <div class="profile-actions">
+                            <button class="btn-action" id="uploadPhotoBtn"><i class="fas fa-camera"></i> Upload Photo</button>
+                            <input type="file" id="photoInput" accept="image/*" style="display:none">
                         </div>
                     </div>
+                </div>
+                <div class="profile-details-grid">
+                    <div class="detail-item"><strong>Employee ID</strong><span id="profileId">-</span></div>
+                    <div class="detail-item"><strong>Email</strong><span id="profileEmail">-</span></div>
+                    <div class="detail-item"><strong>Department</strong><span id="profileDept">-</span></div>
+                    <div class="detail-item"><strong>Program</strong><span id="profileProgram">-</span></div>
                 </div>
             </section>
 
             <!-- MY COURSES TAB -->
             <section id="my-courses-content" class="tab-content">
-                <h2><i class="fas fa-book-open"></i> My Courses</h2>
-                <div class="toolbar">
-                    <input type="text" id="courseSearch" placeholder="Search courses..." class="search-input">
-                    <select id="courseProgramFilter" class="filter-select">
-                        <option value="">All Programs</option>
-                        <option value="KRCHN">KRCHN</option>
-                        <option value="TVET">TVET</option>
-                    </select>
-                    <button class="btn-action" onclick="exportCourses()"><i class="fas fa-download"></i> Export</button>
+                <h2><i class="fas fa-book"></i> My Courses</h2>
+                <div class="filter-bar">
+                    <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="filterCourses()">
                 </div>
-                <div class="courses-grid" id="coursesGrid"></div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
+                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- MY STUDENTS TAB -->
             <section id="my-students-content" class="tab-content">
                 <h2><i class="fas fa-users"></i> My Students</h2>
-                <div class="toolbar">
-                    <input type="text" id="studentSearch" placeholder="Search by name, reg no, or email..." class="search-input">
-                    <select id="studentStatusFilter" class="filter-select">
-                        <option value="all">All Students</option>
-                        <option value="active">Active</option>
-                        <option value="at-risk">At Risk</option>
-                    </select>
-                    <button class="btn-action" onclick="exportStudents()"><i class="fas fa-download"></i> Export CSV</button>
-                    <button class="btn-action" onclick="sendBulkMessage()"><i class="fas fa-envelope"></i> Bulk Message</button>
+                <div class="filter-bar">
+                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Reg No.</th>
-                                <th>Email</th>
-                                <th>Program</th>
-                                <th>Block</th>
-                                <th>Attendance %</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentsTableBody"></tbody>
+                        <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -201,80 +242,22 @@
             <!-- SESSIONS TAB -->
             <section id="sessions-content" class="tab-content">
                 <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
-                <div class="form-card">
-                    <h3>Schedule New Session</h3>
-                    <form id="addSessionForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Session Title *</label>
-                                <input type="text" id="sessionTitle" required placeholder="e.g., Introduction to Nursing">
-                            </div>
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="sessionDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Time *</label>
-                                <input type="time" id="sessionTime" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Duration (minutes)</label>
-                                <input type="number" id="sessionDuration" value="120">
-                            </div>
-                            <div class="form-group">
-                                <label>Venue</label>
-                                <input type="text" id="sessionVenue" placeholder="Room number or online link">
-                            </div>
-                            <div class="form-group">
-                                <label>Session Type</label>
-                                <select id="sessionType">
-                                    <option value="Lecture">Lecture</option>
-                                    <option value="Practical">Practical</option>
-                                    <option value="Clinical">Clinical</option>
-                                    <option value="Online">Online</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program *</label>
-                                <select id="sessionProgram" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block/Term *</label>
-                                <select id="sessionBlock" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="sessionCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <textarea id="sessionDescription" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-action"><i class="fas fa-calendar-plus"></i> Schedule Session</button>
-                    </form>
-                </div>
-
-                <h3>Upcoming Sessions</h3>
+                <form id="addSessionForm" class="inline-form">
+                    <div class="form-row">
+                        <div class="form-group"><label>Session Title *</label><input type="text" id="sessionTitle" required></div>
+                        <div class="form-group"><label>Date *</label><input type="date" id="sessionDate" required></div>
+                        <div class="form-group"><label>Time *</label><input type="time" id="sessionTime" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Program *</label><select id="sessionProgram" required></select></div>
+                        <div class="form-group"><label>Block/Term *</label><select id="sessionBlock" required></select></div>
+                    </div>
+                    <button type="submit" class="btn-action"><i class="fas fa-calendar-plus"></i> Schedule Session</button>
+                </form>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Date/Time</th>
-                                <th>Duration</th>
-                                <th>Venue</th>
-                                <th>Type</th>
-                                <th>Program/Block</th>
-                                <th>Attendance</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionsTableBody"></tbody>
+                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -282,1091 +265,766 @@
             <!-- ATTENDANCE TAB -->
             <section id="attendance-content" class="tab-content">
                 <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
-                
-                <div class="action-buttons">
-                    <button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button>
-                    <button id="generateQRBtn" class="btn-action btn-success"><i class="fas fa-qrcode"></i> Generate QR Code</button>
-                    <button id="bulkAttendanceBtn" class="btn-action"><i class="fas fa-upload"></i> Bulk Upload</button>
-                </div>
-
-                <div class="form-card">
-                    <h3>Manual Attendance Entry</h3>
-                    <form id="manualAttendanceForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Student *</label>
-                                <select id="attStudentId" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Session Type *</label>
-                                <select id="attSessionType" required>
-                                    <option value="">Select</option>
-                                    <option value="Lecture">Lecture</option>
-                                    <option value="Practical">Practical</option>
-                                    <option value="Clinical">Clinical</option>
-                                    <option value="Exam">Exam</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="attCourseId"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="attDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Time</label>
-                                <input type="time" id="attTime">
-                            </div>
-                            <div class="form-group">
-                                <label>Location</label>
-                                <input type="text" id="attLocation" placeholder="Venue/Room">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Notes (optional)</label>
-                            <textarea id="attNotes" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-action"><i class="fas fa-user-check"></i> Mark Present</button>
-                    </form>
-                </div>
-
-                <h3>Today's Attendance <span id="todayAttendanceCount" class="badge badge-info">0</span></h3>
+                <div class="check-in-controls"><button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button></div>
+                <form id="manualAttendanceForm" class="inline-form">
+                    <div class="form-row">
+                        <div class="form-group"><label>Student *</label><select id="attStudentId" required></select></div>
+                        <div class="form-group"><label>Session Type *</label><select id="attSessionType" required><option value="">Select</option><option value="Class">Class</option><option value="Clinical">Clinical</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Date *</label><input type="date" id="attDate" required></div>
+                        <div class="form-group"><label>Location</label><input type="text" id="attLocation" placeholder="Venue"></div>
+                    </div>
+                    <button type="submit" class="btn-action"><i class="fas fa-user-check"></i> Mark Present</button>
+                </form>
+                <h3>Today's Attendance</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Reg No.</th>
-                                <th>Session Type</th>
-                                <th>Course</th>
-                                <th>Time</th>
-                                <th>Location</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendanceTableBody"></tbody>
+                        <thead><tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Time</th><th>Location</th></tr></thead>
+                        <tbody id="attendanceTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
                     </table>
                 </div>
-
-                <h3>Attendance Summary by Course</h3>
-                <div id="attendanceSummary" class="attendance-summary"></div>
             </section>
 
-            <!-- EXAMS/CATS TAB -->
+            <!-- EXAMS TAB -->
             <section id="cats-content" class="tab-content">
-                <h2><i class="fas fa-file-alt"></i> Exams & CATs Management</h2>
-                
-                <div class="form-card">
-                    <h3>Create New Assessment</h3>
-                    <form id="addExamForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Title *</label>
-                                <input type="text" id="examTitle" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="examDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Type *</label>
-                                <select id="examType" required>
-                                    <option value="">Select</option>
-                                    <option value="CAT_1">CAT 1 (30 marks)</option>
-                                    <option value="CAT_2">CAT 2 (30 marks)</option>
-                                    <option value="EXAM">Final Exam (100 marks)</option>
-                                    <option value="QUIZ">Quiz (20 marks)</option>
-                                    <option value="ASSIGNMENT">Assignment (40 marks)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program *</label>
-                                <select id="examProgram" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block *</label>
-                                <select id="examBlock" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="examCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Duration (minutes)</label>
-                                <input type="number" id="examDuration" value="120">
-                            </div>
-                            <div class="form-group">
-                                <label>Venue/Room</label>
-                                <input type="text" id="examVenue">
-                            </div>
-                            <div class="form-group">
-                                <label>Online Link</label>
-                                <input type="url" id="examLink" placeholder="https://...">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Instructions</label>
-                            <textarea id="examInstructions" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-action"><i class="fas fa-plus-circle"></i> Create Assessment</button>
-                    </form>
-                </div>
-
-                <div class="toolbar">
-                    <input type="text" id="examSearch" placeholder="Search exams..." class="search-input">
-                    <select id="examStatusFilter" class="filter-select">
-                        <option value="all">All Status</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
-                </div>
+                <h2><i class="fas fa-file-alt"></i> Exams & CATs</h2>
+                <form id="addExamForm" class="inline-form">
+                    <div class="form-row">
+                        <div class="form-group"><label>Title *</label><input type="text" id="examTitle" required></div>
+                        <div class="form-group"><label>Date *</label><input type="date" id="examDate" required></div>
+                        <div class="form-group"><label>Type *</label><select id="examType" required><option value="">Select</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final Exam</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Program *</label><select id="examProgram" required></select></div>
+                        <div class="form-group"><label>Block *</label><select id="examBlock" required></select></div>
+                    </div>
+                    <button type="submit" class="btn-action"><i class="fas fa-plus-circle"></i> Create Exam</button>
+                </form>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Title</th>
-                                <th>Course</th>
-                                <th>Program/Block</th>
-                                <th>Date</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th>Submissions</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="examsTableBody"></tbody>
+                        <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- RESOURCES TAB -->
             <section id="resources-content" class="tab-content">
-                <h2><i class="fas fa-folder-open"></i> Learning Resources</h2>
-                
-                <div class="form-card">
-                    <h3>Upload Resource</h3>
-                    <form id="uploadResourceForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Title *</label>
-                                <input type="text" id="resourceTitle" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Category *</label>
-                                <select id="resourceCategory" required>
-                                    <option value="Lecture Notes">Lecture Notes</option>
-                                    <option value="Past Paper">Past Paper</option>
-                                    <option value="Syllabus">Syllabus</option>
-                                    <option value="Reading Material">Reading Material</option>
-                                    <option value="Video">Video</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program</label>
-                                <select id="resourceProgram"></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block</label>
-                                <select id="resourceBlock"></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="resourceCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>File *</label>
-                                <input type="file" id="resourceFile" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4">
-                            </div>
-                            <div class="form-group">
-                                <label>Thumbnail (optional)</label>
-                                <input type="file" id="resourceThumb" accept="image/*">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea id="resourceDescription" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-action"><i class="fas fa-upload"></i> Upload Resource</button>
-                    </form>
+                <h2><i class="fas fa-file-upload"></i> Resources</h2>
+                <form id="uploadResourceForm" class="inline-form">
+                    <div class="form-row"><div class="form-group"><label>Title *</label><input type="text" id="resourceTitle" required></div></div>
+                    <div class="form-row"><div class="form-group"><label>File *</label><input type="file" id="resourceFile" required accept=".pdf,.doc,.docx"></div></div>
+                    <button type="submit" class="btn-action"><i class="fas fa-upload"></i> Upload Resource</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Title</th><th>Uploaded</th><th>Actions</th></tr></thead>
+                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                    </table>
                 </div>
-
-                <div class="toolbar">
-                    <input type="text" id="resourceSearch" placeholder="Search resources..." class="search-input">
-                    <select id="resourceCategoryFilter" class="filter-select">
-                        <option value="all">All Categories</option>
-                        <option value="Lecture Notes">Lecture Notes</option>
-                        <option value="Past Paper">Past Paper</option>
-                        <option value="Syllabus">Syllabus</option>
-                    </select>
-                </div>
-                <div class="resources-grid" id="resourcesGrid"></div>
             </section>
 
             <!-- MESSAGES TAB -->
             <section id="messages-content" class="tab-content">
                 <h2><i class="fas fa-envelope"></i> Messages</h2>
-                
-                <div class="messages-layout">
-                    <div class="messages-sidebar">
-                        <button class="btn-action" id="newMessageBtn" style="width:100%; margin-bottom:15px;"><i class="fas fa-plus"></i> New Message</button>
-                        <div class="message-folders">
-                            <div class="folder active" data-folder="inbox">📥 Inbox <span id="inboxCount">0</span></div>
-                            <div class="folder" data-folder="sent">📤 Sent</div>
-                            <div class="folder" data-folder="drafts">📝 Drafts</div>
-                        </div>
-                    </div>
-                    <div class="messages-content">
-                        <div id="messageList" class="message-list"></div>
-                        <div id="messageView" class="message-view" style="display:none;"></div>
-                        <div id="messageCompose" class="message-compose" style="display:none;">
-                            <form id="sendMessageForm">
-                                <div class="form-group">
-                                    <label>To *</label>
-                                    <select id="msgRecipient" required>
-                                        <option value="">Select Recipient</option>
-                                        <option value="all_students">📢 All Students</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Subject *</label>
-                                    <input type="text" id="msgSubject" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Message *</label>
-                                    <textarea id="msgBody" rows="6" required></textarea>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Priority</label>
-                                        <select id="msgPriority">
-                                            <option value="normal">Normal</option>
-                                            <option value="important">Important</option>
-                                            <option value="urgent">Urgent</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Attachment</label>
-                                        <input type="file" id="msgAttachment">
-                                    </div>
-                                </div>
-                                <div class="form-actions">
-                                    <button type="submit" class="btn-action"><i class="fas fa-paper-plane"></i> Send</button>
-                                    <button type="button" class="btn-cancel" onclick="cancelCompose()">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                <form id="sendMessageForm" class="inline-form">
+                    <div class="form-row"><div class="form-group"><label>To *</label><select id="msgRecipient" required></select></div></div>
+                    <div class="form-group"><label>Subject *</label><input type="text" id="msgSubject" required></div>
+                    <div class="form-group"><label>Message *</label><textarea id="msgBody" rows="4" required></textarea></div>
+                    <button type="submit" class="btn-action"><i class="fas fa-paper-plane"></i> Send Message</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
+                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                    </table>
                 </div>
             </section>
 
             <!-- CALENDAR TAB -->
             <section id="calendar-content" class="tab-content">
-                <h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
-                <div id="calendarDisplay"></div>
-            </section>
-
-            <!-- GRADE CENTER TAB -->
-            <section id="grades-content" class="tab-content">
-                <h2><i class="fas fa-chart-line"></i> Grade Center</h2>
-                
-                <div class="toolbar">
-                    <select id="gradeCourseFilter" class="filter-select">
-                        <option value="">Select Course</option>
-                    </select>
-                    <select id="gradeExamFilter" class="filter-select">
-                        <option value="">Select Assessment</option>
-                    </select>
-                    <button class="btn-action" onclick="loadGradeSheet()"><i class="fas fa-chart-simple"></i> Load Grade Sheet</button>
-                    <button class="btn-action" onclick="exportGrades()"><i class="fas fa-download"></i> Export Grades</button>
-                </div>
-
-                <div id="gradeSheetContainer"></div>
-
-                <div class="grade-summary" id="gradeSummary"></div>
-            </section>
-
-            <!-- ANALYTICS TAB -->
-            <section id="analytics-content" class="tab-content">
-                <h2><i class="fas fa-chart-pie"></i> Analytics Dashboard</h2>
-                
-                <div class="toolbar">
-                    <select id="analyticsCourse" class="filter-select">
-                        <option value="">Select Course</option>
-                    </select>
-                    <select id="analyticsPeriod" class="filter-select">
-                        <option value="week">Last 7 Days</option>
-                        <option value="month">This Month</option>
-                        <option value="semester">This Semester</option>
-                    </select>
-                    <button class="btn-action" onclick="refreshAnalytics()"><i class="fas fa-chart-line"></i> Refresh</button>
-                </div>
-
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <h3>Attendance Trends</h3>
-                        <canvas id="attendanceTrendChart" width="400" height="200"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>Performance Distribution</h3>
-                        <canvas id="performanceChart" width="400" height="200"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>Top Performers</h3>
-                        <div id="topPerformersList" class="ranked-list"></div>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>At-Risk Students</h3>
-                        <div id="atRiskAnalyticsList" class="ranked-list"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- MY TIMETABLE TAB -->
-            <section id="timetable-content" class="tab-content">
-                <h2><i class="fas fa-clock"></i> My Timetable</h2>
-                <div id="timetableView"></div>
+                <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
+                <div id="calendarDisplay" style="background: white; border-radius: 16px; padding: 16px; min-height: 500px;"></div>
             </section>
         </main>
     </div>
 
     <!-- MODALS -->
-    <div id="gradeModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h3 id="gradeModalTitle">Grade Students</h3>
-                <button class="close-btn" onclick="closeModal('gradeModal')">&times;</button>
-            </div>
-            <div class="modal-body" id="gradeModalBody"></div>
-            <div class="modal-actions">
-                <button class="btn-action" onclick="saveAllGrades()">Save All Grades</button>
-                <button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button>
-            </div>
-        </div>
-    </div>
+    <div id="gradeModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="gradeModalTitle">Grade Students</h3><button class="close-btn" onclick="closeModal('gradeModal')">&times;</button></div><div class="modal-body" id="gradeModalBody"></div><div class="modal-actions"><button class="btn-action" onclick="saveAllGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div></div></div>
 
-    <div id="studentDetailModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="studentDetailTitle">Student Details</h3>
-                <button class="close-btn" onclick="closeModal('studentDetailModal')">&times;</button>
-            </div>
-            <div class="modal-body" id="studentDetailBody"></div>
-        </div>
-    </div>
-
-    <div id="qrModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Attendance QR Code</h3>
-                <button class="close-btn" onclick="closeModal('qrModal')">&times;</button>
-            </div>
-            <div class="modal-body" style="text-align:center">
-                <div id="qrCodeContainer"></div>
-                <p>Scan this QR code to mark attendance</p>
-                <button class="btn-action" onclick="downloadQR()"><i class="fas fa-download"></i> Download QR</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-  <script>
-    // =====================================================
-    // COMPLETE LECTURER DASHBOARD - FIXED SESSION
-    // =====================================================
-    
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    
-    // IMPORTANT: Same as working Super Admin - NO extra auth config
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.sb = sb;
-    
-    // Global variables
-    let currentUserProfile = null;
-    let currentUserId = null;
-    let allCourses = [];
-    let allStudents = [];
-    let allSessions = [];
-    let allExams = [];
-    let allResources = [];
-    let calendar = null;
-    let attendanceMap = null;
-    
-    // Program data
-    const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
-    
-    const PROGRAM_DISPLAY_NAMES = {
-        'KRCHN': 'KRCHN Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and IT',
-        'DSL': 'Diploma in Science Lab',
-        'DSW': 'Diploma in Social Work',
-        'DCJS': 'Diploma in Criminal Justice',
-        'DHSS': 'Diploma in Health Support Services',
-        'DICT': 'Diploma in ICT',
-        'DME': 'Diploma in Medical Engineering'
-    };
-    
-    const ACADEMIC_STRUCTURE = {
-        'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'],
-        'TVET': ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
-    };
-    
-    // Helper functions
-    function $(id) { return document.getElementById(id); }
-    
-    function showToast(message, type = 'success') {
-        const container = $('#toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
-        toast.innerHTML = `<i class="fas ${icons[type] || 'fa-info-circle'}"></i> ${message}`;
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
-    }
-    
-    function closeModal(modalId) {
-        const modal = $(modalId);
-        if (modal) modal.style.display = 'none';
-        if (modalId === 'mapModal' && attendanceMap) {
-            attendanceMap.remove();
-            attendanceMap = null;
+    <script>
+        // =====================================================
+        // COMPLETE LECTURER DASHBOARD - FIXED SESSION
+        // =====================================================
+        
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        
+        // IMPORTANT: Same as working Super Admin - NO extra auth config
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sb;
+        
+        // Global variables
+        let currentUserProfile = null;
+        let currentUserId = null;
+        let allCourses = [];
+        let allStudents = [];
+        let allSessions = [];
+        let allExams = [];
+        let allResources = [];
+        let calendar = null;
+        let attendanceMap = null;
+        
+        // Program data
+        const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+        
+        const PROGRAM_DISPLAY_NAMES = {
+            'KRCHN': 'KRCHN Nursing',
+            'DPOTT': 'Diploma in Perioperative Theatre Technology',
+            'DCH': 'Diploma in Community Health',
+            'DHRIT': 'Diploma in Health Records and IT',
+            'DSL': 'Diploma in Science Lab',
+            'DSW': 'Diploma in Social Work',
+            'DCJS': 'Diploma in Criminal Justice',
+            'DHSS': 'Diploma in Health Support Services',
+            'DICT': 'Diploma in ICT',
+            'DME': 'Diploma in Medical Engineering'
+        };
+        
+        const ACADEMIC_STRUCTURE = {
+            'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'],
+            'TVET': ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
+        };
+        
+        // Helper functions
+        function $(id) { return document.getElementById(id); }
+        
+        function showToast(message, type = 'success') {
+            const container = $('#toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+            toast.innerHTML = `<i class="fas ${icons[type] || 'fa-info-circle'}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
         }
-    }
-    
-    function escapeHtml(s) {
-        if (!s) return '';
-        return String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
-    }
-    
-    function getProgramType(code) {
-        if (!code) return 'KRCHN';
-        if (code === 'KRCHN') return 'KRCHN';
-        return TVET_PROGRAMS.includes(code) ? 'TVET' : 'KRCHN';
-    }
-    
-    function getProgramDisplayName(code) {
-        return PROGRAM_DISPLAY_NAMES[code] || code || 'Unknown Program';
-    }
-    
-    function updateProgramDropdown(selectElement) {
-        if (!selectElement) return;
-        const currentValue = selectElement.value;
-        selectElement.innerHTML = '<option value="KRCHN">🎓 KRCHN Nursing</option>';
-        const diplomaGroup = document.createElement('optgroup');
-        diplomaGroup.label = '🎯 TVET Diploma Programs';
-        ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c;
-            opt.textContent = PROGRAM_DISPLAY_NAMES[c] || c;
-            diplomaGroup.appendChild(opt);
-        });
-        selectElement.appendChild(diplomaGroup);
-        if (currentValue) selectElement.value = currentValue;
-    }
-    
-    function updateBlockOptions(programId, blockId) {
-        const programSelect = $(programId);
-        const blockSelect = $(blockId);
-        if (!programSelect || !blockSelect) return;
-        const programType = getProgramType(programSelect.value);
-        blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
-        const options = programType === 'KRCHN' ? ACADEMIC_STRUCTURE.KRCHN : ACADEMIC_STRUCTURE.TVET;
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt;
-            blockSelect.appendChild(option);
-        });
-    }
-    
-    // Tab navigation
-    window.showTab = function(tabId) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        const target = $(tabId + '-content');
-        if (target) target.classList.add('active');
-        document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
-        if (activeLink) activeLink.classList.add('active');
-        loadSectionData(tabId);
-    };
-    
-    async function loadSectionData(tabId) {
-        switch(tabId) {
-            case 'dashboard': await loadDashboard(); await loadTodaySchedule(); break;
-            case 'profile': await loadProfile(); break;
-            case 'my-courses': await loadCourses(); break;
-            case 'my-students': await loadStudents(); break;
-            case 'sessions': await loadSessions(); await populateSessionDropdowns(); break;
-            case 'attendance': await loadAttendance(); await populateAttendanceForm(); break;
-            case 'cats': await loadExams(); await populateExamDropdowns(); break;
-            case 'resources': await loadResources(); break;
-            case 'messages': await loadMessages(); break;
-            case 'calendar': await loadCalendar(); break;
+        
+        function closeModal(modalId) {
+            const modal = $(modalId);
+            if (modal) modal.style.display = 'none';
+            if (modalId === 'mapModal' && attendanceMap) {
+                attendanceMap.remove();
+                attendanceMap = null;
+            }
         }
-    }
-    
-    // Dashboard functions
-    async function loadDashboard() {
-        try {
-            const program = currentUserProfile?.program || 'KRCHN';
-            if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-            if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-            if ($('atRiskCount')) $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-            
-            const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
-            if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
-            
+        
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        }
+        
+        function getProgramType(code) {
+            if (!code) return 'KRCHN';
+            if (code === 'KRCHN') return 'KRCHN';
+            return TVET_PROGRAMS.includes(code) ? 'TVET' : 'KRCHN';
+        }
+        
+        function getProgramDisplayName(code) {
+            return PROGRAM_DISPLAY_NAMES[code] || code || 'Unknown Program';
+        }
+        
+        function updateProgramDropdown(selectElement) {
+            if (!selectElement) return;
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = '<option value="KRCHN">🎓 KRCHN Nursing</option>';
+            const diplomaGroup = document.createElement('optgroup');
+            diplomaGroup.label = '🎯 TVET Diploma Programs';
+            ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = PROGRAM_DISPLAY_NAMES[c] || c;
+                diplomaGroup.appendChild(opt);
+            });
+            selectElement.appendChild(diplomaGroup);
+            if (currentValue) selectElement.value = currentValue;
+        }
+        
+        function updateBlockOptions(programId, blockId) {
+            const programSelect = $(programId);
+            const blockSelect = $(blockId);
+            if (!programSelect || !blockSelect) return;
+            const programType = getProgramType(programSelect.value);
+            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
+            const options = programType === 'KRCHN' ? ACADEMIC_STRUCTURE.KRCHN : ACADEMIC_STRUCTURE.TVET;
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                blockSelect.appendChild(option);
+            });
+        }
+        
+        // Tab navigation
+        window.showTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const target = $(tabId + '-content');
+            if (target) target.classList.add('active');
+            document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
+            if (activeLink) activeLink.classList.add('active');
+            loadSectionData(tabId);
+        };
+        
+        async function loadSectionData(tabId) {
+            switch(tabId) {
+                case 'dashboard': await loadDashboard(); await loadTodaySchedule(); break;
+                case 'profile': await loadProfile(); break;
+                case 'my-courses': await loadCourses(); break;
+                case 'my-students': await loadStudents(); break;
+                case 'sessions': await loadSessions(); await populateSessionDropdowns(); break;
+                case 'attendance': await loadAttendance(); await populateAttendanceForm(); break;
+                case 'cats': await loadExams(); await populateExamDropdowns(); break;
+                case 'resources': await loadResources(); break;
+                case 'messages': await loadMessages(); break;
+                case 'calendar': await loadCalendar(); break;
+            }
+        }
+        
+        // Dashboard functions
+        async function loadDashboard() {
+            try {
+                const program = currentUserProfile?.program || 'KRCHN';
+                if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
+                if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
+                if ($('atRiskCount')) $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
+                
+                const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
+                if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
+                
+                const today = new Date().toISOString().split('T')[0];
+                const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+                if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
+                
+                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
+                if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.filter(l => l.program === program).length || 0;
+                
+                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+                const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
+                const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
+                if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
+            } catch(e) { console.error('Dashboard error:', e); }
+        }
+        
+        async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
-            const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-            if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
-            
-            const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-            const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-            if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.filter(l => l.program === program).length || 0;
-            
-            const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-            const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
-            const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
-            if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
-        } catch(e) { console.error('Dashboard error:', e); }
-    }
-    
-    async function loadTodaySchedule() {
-        const today = new Date().toISOString().split('T')[0];
-        const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
-        const container = $('#todayScheduleList');
-        if (!container) return;
-        if (!data?.length) { container.innerHTML = '<p>No sessions scheduled for today</p>'; return; }
-        container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
-    }
-    
-    // Profile
-    async function loadProfile() {
-        if (!currentUserProfile) return;
-        if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-        if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
-        if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
-        if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
-        if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
-        if (currentUserProfile.avatar_url && $('#profileAvatar')) {
-            $('#profileAvatar').innerHTML = `<img src="${currentUserProfile.avatar_url}">`;
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
+            const container = $('#todayScheduleList');
+            if (!container) return;
+            if (!data?.length) { container.innerHTML = '<p>No sessions scheduled for today</p>'; return; }
+            container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
         }
-    }
-    
-    // Courses
-    async function loadCourses() {
-        const program = currentUserProfile?.program || 'KRCHN';
-        const { data } = await sb.from('courses').select('*').eq('target_program', program);
-        allCourses = data || [];
-        const tbody = $('#coursesTableBody');
-        if (!tbody) return;
-        if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
-        tbody.innerHTML = allCourses.map(c => `
-            <tr>
-                <td><strong>${escapeHtml(c.unit_code)}<\/strong><\/td>
-                <td>${escapeHtml(c.course_name)}<\/td>
-                <td>${getProgramDisplayName(c.target_program)}<\/td>
-                <td>${escapeHtml(c.block)}<\/td>
-                <td><button class="btn-action" onclick="showToast('Course management coming soon', 'info')">Manage</button><\/td>
-            <\/tr>
-        `).join('');
-        populateDropdowns();
-    }
-    
-    window.filterCourses = function() {
-        const search = $('#courseSearch')?.value.toLowerCase() || '';
-        document.querySelectorAll('#coursesTableBody tr').forEach(row => {
-            row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
-        });
-    };
-    
-    function populateDropdowns() {
-        ['sessionProgram', 'examProgram'].forEach(id => {
-            const el = $(id);
-            if (el) updateProgramDropdown(el);
-        });
-    }
-    
-    // Students
-    async function loadStudents() {
-        const program = currentUserProfile?.program || 'KRCHN';
-        const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
-        allStudents = data || [];
-        const tbody = $('#studentsTableBody');
-        if (!tbody) return;
-        if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
-        tbody.innerHTML = allStudents.map(s => `
-            <tr>
-                <td>${escapeHtml(s.full_name)}<\/td>
-                <td><strong>${escapeHtml(s.student_id)}<\/strong><\/td>
-                <td>${escapeHtml(s.email)}<\/td>
-                <td>${getProgramDisplayName(s.program)}<\/td>
-                <td>${escapeHtml(s.block)}<\/td>
-                <td><span class="badge ${(s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success'}">${(s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active'}</span><\/td>
-                <td><button class="btn-action" onclick="viewStudent('${s.user_id}')">View</button><\/td>
-            <\/tr>
-        `).join('');
-    }
-    
-    window.filterStudents = function() {
-        const search = $('#studentSearch')?.value.toLowerCase() || '';
-        document.querySelectorAll('#studentsTableBody tr').forEach(row => {
-            row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
-        });
-    };
-    
-    window.viewStudent = function(id) {
-        const s = allStudents.find(s => s.user_id === id);
-        alert(`Student: ${s?.full_name}\nEmail: ${s?.email}\nProgram: ${s?.program}\nAbsences: ${s?.cumulative_absences || 0}`);
-    };
-    
-    // Sessions
-    async function populateSessionDropdowns() {
-        const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
-        if ($('sessionCourse')) {
-            $('sessionCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+        
+        // Profile
+        async function loadProfile() {
+            if (!currentUserProfile) return;
+            if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
+            if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
+            if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
+            if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
+            if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
+            if (currentUserProfile.avatar_url && $('#profileAvatar')) {
+                $('#profileAvatar').innerHTML = `<img src="${currentUserProfile.avatar_url}">`;
+            }
         }
-    }
-    
-    $('#addSessionForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('scheduled_sessions').insert({
-            session_title: $('#sessionTitle').value,
-            session_date: $('#sessionDate').value,
-            session_time: $('#sessionTime').value,
-            target_program: $('#sessionProgram').value,
-            block_term: $('#sessionBlock').value,
-            lecturer_id: currentUserId
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Session scheduled!', 'success');
-        e.target.reset();
-        await loadSessions();
-    });
-    
-    async function loadSessions() {
-        const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
-        allSessions = data || [];
-        const tbody = $('#sessionsTableBody');
-        if (!tbody) return;
-        if (!allSessions.length) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
-        tbody.innerHTML = allSessions.map(s => {
-            const link = `${window.location.origin}/attendance?session=${s.id}`;
-            return `
+        
+        // Courses
+        async function loadCourses() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data } = await sb.from('courses').select('*').eq('target_program', program);
+            allCourses = data || [];
+            const tbody = $('#coursesTableBody');
+            if (!tbody) return;
+            if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
+            tbody.innerHTML = allCourses.map(c => `
                 <tr>
-                    <td>${escapeHtml(s.session_title)}<\/td>
-                    <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}<\/td>
-                    <td>${s.target_program}/${s.block_term}<\/td>
-                    <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied!', 'success')">Copy Link</button><\/td>
-                    <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button><\/td>
+                    <td><strong>${escapeHtml(c.unit_code)}<\/strong><\/td>
+                    <td>${escapeHtml(c.course_name)}<\/td>
+                    <td>${getProgramDisplayName(c.target_program)}<\/td>
+                    <td>${escapeHtml(c.block)}<\/td>
+                    <td><button class="btn-action" onclick="showToast('Course management coming soon', 'info')">Manage</button><\/td>
                 <\/tr>
-            `;
-        }).join('');
-    }
-    
-    window.deleteSession = async (id) => {
-        if (confirm('Delete this session?')) {
-            await sb.from('scheduled_sessions').delete().eq('id', id);
+            `).join('');
+            populateDropdowns();
+        }
+        
+        window.filterCourses = function() {
+            const search = $('#courseSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#coursesTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        };
+        
+        function populateDropdowns() {
+            ['sessionProgram', 'examProgram'].forEach(id => {
+                const el = $(id);
+                if (el) updateProgramDropdown(el);
+            });
+        }
+        
+        // Students
+        async function loadStudents() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
+            allStudents = data || [];
+            const tbody = $('#studentsTableBody');
+            if (!tbody) return;
+            if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
+            tbody.innerHTML = allStudents.map(s => `
+                <tr>
+                    <td>${escapeHtml(s.full_name)}<\/td>
+                    <td><strong>${escapeHtml(s.student_id)}<\/strong><\/td>
+                    <td>${escapeHtml(s.email)}<\/td>
+                    <td>${getProgramDisplayName(s.program)}<\/td>
+                    <td>${escapeHtml(s.block)}<\/td>
+                    <td><span class="badge ${(s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success'}">${(s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active'}</span><\/td>
+                    <td><button class="btn-action" onclick="viewStudent('${s.user_id}')">View</button><\/td>
+                <\/tr>
+            `).join('');
+        }
+        
+        window.filterStudents = function() {
+            const search = $('#studentSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#studentsTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        };
+        
+        window.viewStudent = function(id) {
+            const s = allStudents.find(s => s.user_id === id);
+            alert(`Student: ${s?.full_name}\nEmail: ${s?.email}\nProgram: ${s?.program}\nAbsences: ${s?.cumulative_absences || 0}`);
+        };
+        
+        // Sessions
+        async function populateSessionDropdowns() {
+            const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
+            if ($('sessionCourse')) {
+                $('sessionCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+            }
+        }
+        
+        $('#addSessionForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await sb.from('scheduled_sessions').insert({
+                session_title: $('#sessionTitle').value,
+                session_date: $('#sessionDate').value,
+                session_time: $('#sessionTime').value,
+                target_program: $('#sessionProgram').value,
+                block_term: $('#sessionBlock').value,
+                lecturer_id: currentUserId
+            });
+            if (error) { showToast(error.message, 'error'); return; }
+            showToast('Session scheduled!', 'success');
+            e.target.reset();
             await loadSessions();
-            showToast('Session deleted', 'success');
+        });
+        
+        async function loadSessions() {
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
+            allSessions = data || [];
+            const tbody = $('#sessionsTableBody');
+            if (!tbody) return;
+            if (!allSessions.length) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
+            tbody.innerHTML = allSessions.map(s => {
+                const link = `${window.location.origin}/attendance?session=${s.id}`;
+                return `
+                    <tr>
+                        <td>${escapeHtml(s.session_title)}<\/td>
+                        <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}<\/td>
+                        <td>${s.target_program}/${s.block_term}<\/td>
+                        <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied!', 'success')">Copy Link</button><\/td>
+                        <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button><\/td>
+                    <\/tr>
+                `;
+            }).join('');
         }
-    };
-    
-    // Attendance
-    async function populateAttendanceForm() {
-        const program = currentUserProfile?.program || 'KRCHN';
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student').eq('program', program);
-        if ($('attStudentId')) {
-            $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
+        
+        window.deleteSession = async (id) => {
+            if (confirm('Delete this session?')) {
+                await sb.from('scheduled_sessions').delete().eq('id', id);
+                await loadSessions();
+                showToast('Session deleted', 'success');
+            }
+        };
+        
+        // Attendance
+        async function populateAttendanceForm() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student').eq('program', program);
+            if ($('attStudentId')) {
+                $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
+            }
+            if ($('attDate')) $('attDate').value = new Date().toISOString().split('T')[0];
         }
-        if ($('attDate')) $('attDate').value = new Date().toISOString().split('T')[0];
-    }
-    
-    $('#lecturerCheckinBtn')?.addEventListener('click', () => {
-        if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
-        navigator.geolocation.getCurrentPosition(async (pos) => {
+        
+        $('#lecturerCheckinBtn')?.addEventListener('click', () => {
+            if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { error } = await sb.from('geo_attendance_logs').insert({
+                    user_id: currentUserId,
+                    user_role: 'lecturer',
+                    session_type: 'Lecturer Check-in',
+                    check_in_time: new Date().toISOString(),
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    program: currentUserProfile?.program,
+                    location_name: 'Lecturer Check-in'
+                });
+                if (error) showToast(error.message, 'error');
+                else { showToast('Check-in recorded!', 'success'); loadAttendance(); }
+            }, () => showToast('Location access denied', 'error'));
+        });
+        
+        $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
+            if (!student) { showToast('Select a student', 'error'); return; }
+            const dateTime = `${$('#attDate').value}T12:00:00`;
             const { error } = await sb.from('geo_attendance_logs').insert({
-                user_id: currentUserId,
-                user_role: 'lecturer',
-                session_type: 'Lecturer Check-in',
-                check_in_time: new Date().toISOString(),
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                program: currentUserProfile?.program,
-                location_name: 'Lecturer Check-in'
+                user_id: $('#attStudentId').value,
+                student_name: student.full_name,
+                user_role: 'student',
+                session_type: $('#attSessionType').value,
+                check_in_time: dateTime,
+                location_details: $('#attLocation').value || 'Manual Entry',
+                recorded_by_id: currentUserId,
+                recorded_by_name: currentUserProfile?.full_name,
+                program: currentUserProfile?.program
             });
             if (error) showToast(error.message, 'error');
-            else { showToast('Check-in recorded!', 'success'); loadAttendance(); }
-        }, () => showToast('Location access denied', 'error'));
-    });
-    
-    $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
-        if (!student) { showToast('Select a student', 'error'); return; }
-        const dateTime = `${$('#attDate').value}T12:00:00`;
-        const { error } = await sb.from('geo_attendance_logs').insert({
-            user_id: $('#attStudentId').value,
-            student_name: student.full_name,
-            user_role: 'student',
-            session_type: $('#attSessionType').value,
-            check_in_time: dateTime,
-            location_details: $('#attLocation').value || 'Manual Entry',
-            recorded_by_id: currentUserId,
-            recorded_by_name: currentUserProfile?.full_name,
-            program: currentUserProfile?.program
+            else { showToast('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
         });
-        if (error) showToast(error.message, 'error');
-        else { showToast('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
-    });
-    
-    async function loadAttendance() {
-        const today = new Date().toISOString().split('T')[0];
-        const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
-        const tbody = $('#attendanceTableBody');
-        if (!tbody) return;
-        if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No attendance today<\/td><\/tr>'; return; }
-        tbody.innerHTML = data.map(a => {
-            const student = allStudents.find(s => s.user_id === a.user_id);
-            return `
-                <tr>
-                    <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
-                    <td>${escapeHtml(student?.student_id)}<\/td>
-                    <td>${a.session_type || 'Class'}<\/td>
-                    <td>${new Date(a.check_in_time).toLocaleTimeString()}<\/td>
-                    <td>${escapeHtml(a.location_details || a.location_name)}<\/td>
-                <\/tr>
-            `;
-        }).join('');
-    }
-    
-    // Exams
-    async function populateExamDropdowns() {
-        const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
-        if ($('examCourse')) {
-            $('examCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+        
+        async function loadAttendance() {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
+            const tbody = $('#attendanceTableBody');
+            if (!tbody) return;
+            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No attendance today<\/td><\/tr>'; return; }
+            tbody.innerHTML = data.map(a => {
+                const student = allStudents.find(s => s.user_id === a.user_id);
+                return `
+                    <tr>
+                        <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
+                        <td>${escapeHtml(student?.student_id)}<\/td>
+                        <td>${a.session_type || 'Class'}<\/td>
+                        <td>${new Date(a.check_in_time).toLocaleTimeString()}<\/td>
+                        <td>${escapeHtml(a.location_details || a.location_name)}<\/td>
+                    <\/tr>
+                `;
+            }).join('');
         }
-    }
-    
-    $('#addExamForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('exams').insert({
-            exam_name: $('#examTitle').value,
-            exam_date: $('#examDate').value,
-            exam_type: $('#examType').value,
-            target_program: $('#examProgram').value,
-            block_term: $('#examBlock').value,
-            status: 'Scheduled',
-            created_by: currentUserId
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Exam created!', 'success');
-        e.target.reset();
-        await loadExams();
-    });
-    
-    async function loadExams() {
-        const { data } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
-        allExams = data || [];
-        const tbody = $('#examsTableBody');
-        if (!tbody) return;
-        if (!allExams.length) { tbody.innerHTML = '<tr><td colspan="6">No exams created<\/td><\/tr>'; return; }
-        tbody.innerHTML = allExams.map(e => `
-            <tr>
-                <td><span class="badge badge-info">${e.exam_type}</span><\/td>
-                <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
-                <td>${e.target_program}/${e.block_term}<\/td>
-                <td>${new Date(e.exam_date).toLocaleDateString()}<\/td>
-                <td><span class="badge badge-warning">${e.status}</span><\/td>
-                <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
-            <\/tr>
-        `).join('');
-    }
-    
-    window.deleteExam = async (id) => {
-        if (confirm('Delete this exam?')) {
-            await sb.from('exams').delete().eq('id', id);
+        
+        // Exams
+        async function populateExamDropdowns() {
+            const { data: courses } = await sb.from('courses').select('id, course_name').eq('target_program', currentUserProfile?.program);
+            if ($('examCourse')) {
+                $('examCourse').innerHTML = '<option value="">Select Course</option>' + (courses || []).map(c => `<option value="${c.id}">${c.course_name}</option>`).join('');
+            }
+        }
+        
+        $('#addExamForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await sb.from('exams').insert({
+                exam_name: $('#examTitle').value,
+                exam_date: $('#examDate').value,
+                exam_type: $('#examType').value,
+                target_program: $('#examProgram').value,
+                block_term: $('#examBlock').value,
+                status: 'Scheduled',
+                created_by: currentUserId
+            });
+            if (error) { showToast(error.message, 'error'); return; }
+            showToast('Exam created!', 'success');
+            e.target.reset();
             await loadExams();
-            showToast('Exam deleted', 'success');
-        }
-    };
-    
-    // Grade Modal
-    let currentGradingExam = null;
-    
-    window.openGradeModal = async (examId) => {
-        const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
-        if (!exam) return;
-        currentGradingExam = exam;
-        const students = allStudents.filter(s => s.block === exam.block_term);
-        const maxScore = exam.exam_type === 'CAT_1' || exam.exam_type === 'CAT_2' ? 30 : 100;
-        $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
-        $('#gradeModalBody').innerHTML = `
-            <div class="search-container"><input type="text" id="gradeSearch" placeholder="Search students..." onkeyup="filterGradeTable()"></div>
-            <div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>ID</th><th>Score (/${maxScore})</th><th>Status</th></tr></thead>
-            <tbody id="gradeTableBody">${students.map(s => {
-                return `<tr data-name="${s.full_name.toLowerCase()}"><td>${escapeHtml(s.full_name)}<\/td><td>${escapeHtml(s.student_id)}<\/td>
-                <td><input type="number" id="score-${s.user_id}" step="0.5" class="grade-input" min="0" max="${maxScore}"><\/td>
-                <td><select id="status-${s.user_id}"><option>Graded</option><option selected>Pending</option></select><\/td><\/tr>`;
-            }).join('')}</tbody></table></div>
-        `;
-        $('#gradeModal').style.display = 'flex';
-    };
-    
-    window.filterGradeTable = function() {
-        const search = $('#gradeSearch')?.value.toLowerCase() || '';
-        document.querySelectorAll('#gradeTableBody tr').forEach(row => {
-            row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none';
         });
-    };
-    
-    window.saveAllGrades = async () => {
-        const rows = document.querySelectorAll('#gradeTableBody tr');
-        let saved = 0;
-        for (const row of rows) {
-            if (row.style.display === 'none') continue;
-            const studentId = row.querySelector('input')?.id.replace('score-', '');
-            if (!studentId) continue;
-            const score = $(`score-${studentId}`)?.value;
-            const status = $(`status-${studentId}`)?.value;
-            if (score) {
-                const { error } = await sb.from('exam_grades').upsert({
-                    exam_id: currentGradingExam.id,
-                    student_id: studentId,
-                    score: parseFloat(score),
-                    status: status,
-                    graded_by: currentUserId,
-                    question_id: '00000000-0000-0000-0000-000000000000'
-                });
-                if (!error) saved++;
+        
+        async function loadExams() {
+            const { data } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
+            allExams = data || [];
+            const tbody = $('#examsTableBody');
+            if (!tbody) return;
+            if (!allExams.length) { tbody.innerHTML = '<tr><td colspan="6">No exams created<\/td><\/tr>'; return; }
+            tbody.innerHTML = allExams.map(e => `
+                <tr>
+                    <td><span class="badge badge-info">${e.exam_type}</span><\/td>
+                    <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
+                    <td>${e.target_program}/${e.block_term}<\/td>
+                    <td>${new Date(e.exam_date).toLocaleDateString()}<\/td>
+                    <td><span class="badge badge-warning">${e.status}</span><\/td>
+                    <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
+                <\/tr>
+            `).join('');
+        }
+        
+        window.deleteExam = async (id) => {
+            if (confirm('Delete this exam?')) {
+                await sb.from('exams').delete().eq('id', id);
+                await loadExams();
+                showToast('Exam deleted', 'success');
             }
-        }
-        showToast(`Saved ${saved} grades!`, 'success');
-        closeModal('gradeModal');
-        await loadExams();
-    };
-    
-    // Resources
-    $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const file = $('#resourceFile').files[0];
-        if (!file) { showToast('Select a file', 'error'); return; }
-        const fileName = `${Date.now()}_${file.name}`;
-        const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-        if (uploadError) { showToast(uploadError.message, 'error'); return; }
-        const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
-        const { error } = await sb.from('resources').insert({
-            title: $('#resourceTitle').value,
-            file_path: fileName,
-            file_url: urlData.publicUrl,
-            uploaded_by: currentUserId,
-            uploaded_by_name: currentUserProfile?.full_name
-        });
-        if (error) showToast(error.message, 'error');
-        else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
-    });
-    
-    async function loadResources() {
-        const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
-        allResources = data || [];
-        const tbody = $('#resourcesTableBody');
-        if (!tbody) return;
-        if (!allResources.length) { tbody.innerHTML = '<tr><td colspan="3">No resources<\/td><\/tr>'; return; }
-        tbody.innerHTML = allResources.map(r => `
-            <tr>
-                <td>${escapeHtml(r.title)}<\/td>
-                <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
-                <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
-            <\/tr>
-        `).join('');
-    }
-    
-    window.deleteResource = async (id) => {
-        if (confirm('Delete this resource?')) {
-            await sb.from('resources').delete().eq('id', id);
-            await loadResources();
-            showToast('Resource deleted', 'success');
-        }
-    };
-    
-    // Messages
-    async function loadMessages() {
-        const program = currentUserProfile?.program || 'KRCHN';
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student').eq('program', program);
-        if ($('msgRecipient')) {
-            $('msgRecipient').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name}</option>`).join('');
-        }
+        };
         
-        const { data: messages } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
-        const tbody = $('#messagesTableBody');
-        if (!tbody) return;
-        if (!messages?.length) { tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>'; return; }
-        tbody.innerHTML = messages.map(m => `
-            <tr>
-                <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
-                <td>${escapeHtml(m.subject)}<\/td>
-                <td>${allStudents.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
-                <td><span class="badge badge-success">Sent</span><\/td>
-            <\/tr>
-        `).join('');
-    }
-    
-    $('#sendMessageForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('notifications').insert({
-            target_user_id: $('#msgRecipient').value,
-            subject: $('#msgSubject').value,
-            message: $('#msgBody').value,
-            sender_id: currentUserId,
-            sender_name: currentUserProfile?.full_name,
-            target_program: currentUserProfile?.program
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Message sent!', 'success');
-        e.target.reset();
-        await loadMessages();
-    });
-    
-    // Calendar
-    async function loadCalendar() {
-        const el = $('#calendarDisplay');
-        if (!el) return;
-        const [sessions, exams] = await Promise.all([
-            sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
-            sb.from('exams').select('*').eq('created_by', currentUserId)
-        ]);
-        const events = [
-            ...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })),
-            ...(exams.data || []).map(e => ({ title: `${e.exam_type}: ${e.exam_name}`, start: e.exam_date, color: '#e74c3c' }))
-        ];
-        if (calendar) calendar.destroy();
-        calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' }, events });
-        calendar.render();
-    }
-    
-    // Photo upload
-    $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput')?.click());
-    $('#photoInput')?.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
-        const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-        if (uploadError) { showToast(uploadError.message, 'error'); return; }
-        const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-        await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
-        showToast('Photo updated!', 'success');
-        loadProfile();
-    });
-    
-    // =====================================================
-    // INITIALIZATION - FIXED (matches Super Admin pattern)
-    // =====================================================
-    async function init() {
-        console.log('Initializing Lecturer Dashboard...');
+        // Grade Modal
+        let currentGradingExam = null;
         
-        // Get session from Supabase (same as working Super Admin)
-        const { data: { session }, error: sessionError } = await sb.auth.getSession();
+        window.openGradeModal = async (examId) => {
+            const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
+            if (!exam) return;
+            currentGradingExam = exam;
+            const students = allStudents.filter(s => s.block === exam.block_term);
+            const maxScore = exam.exam_type === 'CAT_1' || exam.exam_type === 'CAT_2' ? 30 : 100;
+            $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
+            $('#gradeModalBody').innerHTML = `
+                <div class="search-container"><input type="text" id="gradeSearch" placeholder="Search students..." onkeyup="filterGradeTable()"></div>
+                <div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>ID</th><th>Score (/${maxScore})</th><th>Status</th></tr></thead>
+                <tbody id="gradeTableBody">${students.map(s => {
+                    return `<tr data-name="${s.full_name.toLowerCase()}"><td>${escapeHtml(s.full_name)}<\/td><td>${escapeHtml(s.student_id)}<\/td>
+                    <td><input type="number" id="score-${s.user_id}" step="0.5" class="grade-input" min="0" max="${maxScore}"><\/td>
+                    <td><select id="status-${s.user_id}"><option>Graded</option><option selected>Pending</option></select><\/td><\/tr>`;
+                }).join('')}</tbody></table></div>
+            `;
+            $('#gradeModal').style.display = 'flex';
+        };
         
-        if (sessionError || !session) {
-            console.warn('Session check failed, redirecting to login');
-            window.location.href = 'login.html';
-            return;
-        }
+        window.filterGradeTable = function() {
+            const search = $('#gradeSearch')?.value.toLowerCase() || '';
+            document.querySelectorAll('#gradeTableBody tr').forEach(row => {
+                row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none';
+            });
+        };
         
-        currentUserId = session.user.id;
-        console.log('User ID:', currentUserId);
-        
-        // Get profile from consolidated_user_profiles_table
-        const { data: profile, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .maybeSingle();
-        
-        if (profileError || !profile) {
-            console.warn('Profile not found, using default');
-            currentUserProfile = {
-                user_id: currentUserId,
-                full_name: session.user.email?.split('@')[0] || 'Lecturer',
-                role: 'lecturer',
-                program: 'KRCHN',
-                email: session.user.email
-            };
-        } else {
-            currentUserProfile = profile;
-        }
-        
-        // Update UI
-        const welcomeHeader = document.getElementById('welcomeHeader');
-        if (welcomeHeader) {
-            welcomeHeader.textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
-        }
-        
-        // Load all data
-        await loadCourses();
-        await loadStudents();
-        await loadDashboard();
-        await loadTodaySchedule();
-        await loadMessages();
-        await loadProfile();
-        
-        // Setup dropdowns
-        ['sessionProgram', 'examProgram'].forEach(id => {
-            const el = $(id);
-            if (el) {
-                updateProgramDropdown(el);
-                el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : 'examBlock'));
+        window.saveAllGrades = async () => {
+            const rows = document.querySelectorAll('#gradeTableBody tr');
+            let saved = 0;
+            for (const row of rows) {
+                if (row.style.display === 'none') continue;
+                const studentId = row.querySelector('input')?.id.replace('score-', '');
+                if (!studentId) continue;
+                const score = $(`score-${studentId}`)?.value;
+                const status = $(`status-${studentId}`)?.value;
+                if (score) {
+                    const { error } = await sb.from('exam_grades').upsert({
+                        exam_id: currentGradingExam.id,
+                        student_id: studentId,
+                        score: parseFloat(score),
+                        status: status,
+                        graded_by: currentUserId,
+                        question_id: '00000000-0000-0000-0000-000000000000'
+                    });
+                    if (!error) saved++;
+                }
             }
+            showToast(`Saved ${saved} grades!`, 'success');
+            closeModal('gradeModal');
+            await loadExams();
+        };
+        
+        // Resources
+        $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = $('#resourceFile').files[0];
+            if (!file) { showToast('Select a file', 'error'); return; }
+            const fileName = `${Date.now()}_${file.name}`;
+            const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
+            if (uploadError) { showToast(uploadError.message, 'error'); return; }
+            const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
+            const { error } = await sb.from('resources').insert({
+                title: $('#resourceTitle').value,
+                file_path: fileName,
+                file_url: urlData.publicUrl,
+                uploaded_by: currentUserId,
+                uploaded_by_name: currentUserProfile?.full_name
+            });
+            if (error) showToast(error.message, 'error');
+            else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
         });
         
-        // Setup auth listener (same as Super Admin)
-        sb.auth.onAuthStateChange((event) => {
-            if (event === 'SIGNED_OUT') {
+        async function loadResources() {
+            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
+            allResources = data || [];
+            const tbody = $('#resourcesTableBody');
+            if (!tbody) return;
+            if (!allResources.length) { tbody.innerHTML = '<tr><td colspan="3">No resources<\/td><\/tr>'; return; }
+            tbody.innerHTML = allResources.map(r => `
+                <tr>
+                    <td>${escapeHtml(r.title)}<\/td>
+                    <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
+                    <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
+                <\/tr>
+            `).join('');
+        }
+        
+        window.deleteResource = async (id) => {
+            if (confirm('Delete this resource?')) {
+                await sb.from('resources').delete().eq('id', id);
+                await loadResources();
+                showToast('Resource deleted', 'success');
+            }
+        };
+        
+        // Messages
+        async function loadMessages() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student').eq('program', program);
+            if ($('msgRecipient')) {
+                $('msgRecipient').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name}</option>`).join('');
+            }
+            
+            const { data: messages } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
+            const tbody = $('#messagesTableBody');
+            if (!tbody) return;
+            if (!messages?.length) { tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>'; return; }
+            tbody.innerHTML = messages.map(m => `
+                <tr>
+                    <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
+                    <td>${escapeHtml(m.subject)}<\/td>
+                    <td>${allStudents.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
+                    <td><span class="badge badge-success">Sent</span><\/td>
+                <\/tr>
+            `).join('');
+        }
+        
+        $('#sendMessageForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await sb.from('notifications').insert({
+                target_user_id: $('#msgRecipient').value,
+                subject: $('#msgSubject').value,
+                message: $('#msgBody').value,
+                sender_id: currentUserId,
+                sender_name: currentUserProfile?.full_name,
+                target_program: currentUserProfile?.program
+            });
+            if (error) { showToast(error.message, 'error'); return; }
+            showToast('Message sent!', 'success');
+            e.target.reset();
+            await loadMessages();
+        });
+        
+        // Calendar
+        async function loadCalendar() {
+            const el = $('#calendarDisplay');
+            if (!el) return;
+            const [sessions, exams] = await Promise.all([
+                sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
+                sb.from('exams').select('*').eq('created_by', currentUserId)
+            ]);
+            const events = [
+                ...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })),
+                ...(exams.data || []).map(e => ({ title: `${e.exam_type}: ${e.exam_name}`, start: e.exam_date, color: '#e74c3c' }))
+            ];
+            if (calendar) calendar.destroy();
+            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' }, events });
+            calendar.render();
+        }
+        
+        // Photo upload
+        $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput')?.click());
+        $('#photoInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
+            const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
+            if (uploadError) { showToast(uploadError.message, 'error'); return; }
+            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
+            showToast('Photo updated!', 'success');
+            loadProfile();
+        });
+        
+        // =====================================================
+        // INITIALIZATION - FIXED (matches Super Admin pattern)
+        // =====================================================
+        async function init() {
+            console.log('Initializing Lecturer Dashboard...');
+            
+            const { data: { session }, error: sessionError } = await sb.auth.getSession();
+            
+            if (sessionError || !session) {
+                console.warn('Session check failed, redirecting to login');
                 window.location.href = 'login.html';
+                return;
             }
-        });
+            
+            currentUserId = session.user.id;
+            console.log('User ID:', currentUserId);
+            
+            const { data: profile, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', currentUserId)
+                .maybeSingle();
+            
+            if (profileError || !profile) {
+                console.warn('Profile not found, using default');
+                currentUserProfile = {
+                    user_id: currentUserId,
+                    full_name: session.user.email?.split('@')[0] || 'Lecturer',
+                    role: 'lecturer',
+                    program: 'KRCHN',
+                    email: session.user.email
+                };
+            } else {
+                currentUserProfile = profile;
+            }
+            
+            const welcomeHeader = document.getElementById('welcomeHeader');
+            if (welcomeHeader) {
+                welcomeHeader.textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
+            }
+            
+            await loadCourses();
+            await loadStudents();
+            await loadDashboard();
+            await loadTodaySchedule();
+            await loadMessages();
+            await loadProfile();
+            
+            ['sessionProgram', 'examProgram'].forEach(id => {
+                const el = $(id);
+                if (el) {
+                    updateProgramDropdown(el);
+                    el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : 'examBlock'));
+                }
+            });
+            
+            sb.auth.onAuthStateChange((event) => {
+                if (event === 'SIGNED_OUT') {
+                    window.location.href = 'login.html';
+                }
+            });
+            
+            console.log('Dashboard ready!');
+        }
         
-        console.log('Dashboard ready!');
-    }
-    
-    // Event listeners
-    $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
-    document.querySelectorAll('.nav a').forEach(link => {
-        link.addEventListener('click', (e) => { e.preventDefault(); const tabId = link.getAttribute('data-tab'); if (tabId) showTab(tabId); $('#sidebar')?.classList.remove('active'); });
-    });
-    $('#logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'login.html'; });
-    $('#notificationBtn')?.addEventListener('click', () => showToast('No new notifications', 'info'));
-    $('#helpBtn')?.addEventListener('click', () => showToast('Contact support: support@nchsm.ac.ke', 'info'));
-    window.closeModal = closeModal;
-    
-    // Start app - same as Super Admin
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded, starting dashboard...');
+        // Event listeners
+        $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', (e) => { e.preventDefault(); const tabId = link.getAttribute('data-tab'); if (tabId) showTab(tabId); $('#sidebar')?.classList.remove('active'); });
+        });
+        $('#logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'login.html'; });
+        $('#notificationBtn')?.addEventListener('click', () => showToast('No new notifications', 'info'));
+        $('#helpBtn')?.addEventListener('click', () => showToast('Contact support: support@nchsm.ac.ke', 'info'));
+        window.closeModal = closeModal;
+        
+        // Start app
         init();
-    });
-</script>
-    </body>
+    </script>
+</body>
 </html>
