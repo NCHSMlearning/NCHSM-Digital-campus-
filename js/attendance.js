@@ -37,221 +37,254 @@
     // LOAD APPROVED UNITS FROM REGISTRATIONS (FIXED)
     // ============================================
     
-    async function loadApprovedUnits() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            
-            // Get user ID and profile
-            let studentId = null;
-            let userProgram = null;
-            let userBlock = null;
-            
-            // Get user profile from multiple sources
-            if (attendanceUserProfile) {
-                userProgram = attendanceUserProfile.program;
-                userBlock = attendanceUserProfile.block;
-                studentId = attendanceUserProfile.id || attendanceUserProfile.user_id;
-            } else if (window.db?.currentUserProfile) {
-                userProgram = window.db.currentUserProfile.program;
-                userBlock = window.db.currentUserProfile.block;
-                studentId = window.db.currentUserProfile.id || window.db.currentUserProfile.user_id;
-            } else if (window.unitRegistrationModule?.userProfile) {
-                userProgram = window.unitRegistrationModule.userProfile.program;
-                userBlock = window.unitRegistrationModule.userProfile.block;
-                studentId = window.unitRegistrationModule.userProfile.id || window.unitRegistrationModule.userProfile.user_id;
-            }
-            
-            console.log('📚 Loading APPROVED units for attendance check-in...', { 
-                studentId, 
-                program: userProgram, 
-                block: userBlock 
-            });
-            
-            if (!supabaseClient) {
-                console.error('❌ Supabase client not available');
-                return [];
-            }
-            
-            if (!studentId) {
-                console.error('❌ No student ID available - cannot load approved units');
-                return [];
-            }
-            
-            // ONLY load units with status = 'approved' from student_unit_registrations
-            const { data: approvedRegistrations, error: regError } = await supabaseClient
-                .from('student_unit_registrations')
-                .select('*')
-                .eq('student_id', studentId)
-                .eq('status', 'approved')  // ONLY approved units
-                .order('unit_code', { ascending: true });
-            
-            if (regError) {
-                console.error('❌ Error loading approved registrations:', regError);
-                return [];
-            }
-            
-            console.log(`📊 Found ${approvedRegistrations?.length || 0} APPROVED units for student`);
-            
-            if (!approvedRegistrations || approvedRegistrations.length === 0) {
-                console.warn('⚠️ No approved units found! Student cannot check in until units are approved.');
-                
-                // Show warning in UI
-                const targetSelect = document.getElementById('attendance-target');
-                if (targetSelect) {
-                    targetSelect.innerHTML = '<option value="">⚠️ No approved units - Register units first</option>';
-                    targetSelect.disabled = true;
+   async function loadApprovedUnits() {
+    try {
+        const supabaseClient = window.db?.supabase;
+        
+        // Get user ID and profile from multiple sources
+        let studentId = null;
+        let userProgram = null;
+        let userBlock = null;
+        
+        // Try to get from attendanceUserProfile first
+        if (attendanceUserProfile) {
+            studentId = attendanceUserProfile.id || attendanceUserProfile.user_id;
+            userProgram = attendanceUserProfile.program;
+            userBlock = attendanceUserProfile.block;
+        } 
+        // Then from window.db.currentUserProfile
+        else if (window.db?.currentUserProfile) {
+            studentId = window.db.currentUserProfile.id || window.db.currentUserProfile.user_id;
+            userProgram = window.db.currentUserProfile.program;
+            userBlock = window.db.currentUserProfile.block;
+        } 
+        // Then from unitRegistrationModule
+        else if (window.unitRegistrationModule?.userProfile) {
+            studentId = window.unitRegistrationModule.userProfile.id || window.unitRegistrationModule.userProfile.user_id;
+            userProgram = window.unitRegistrationModule.userProfile.program;
+            userBlock = window.unitRegistrationModule.userProfile.block;
+        }
+        
+        // If still no studentId, try to get from localStorage
+        if (!studentId) {
+            try {
+                const storedProfile = localStorage.getItem('userProfile');
+                if (storedProfile) {
+                    const profile = JSON.parse(storedProfile);
+                    studentId = profile.id || profile.user_id;
+                    userProgram = profile.program;
+                    userBlock = profile.block;
                 }
-                
-                // Dispatch event with zero units
-                document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
-                    detail: { units: [], count: 0, message: 'No approved units available' }
-                }));
-                
-                return [];
+            } catch (e) {
+                console.warn('Could not get profile from localStorage');
             }
-            
-            // Map approved registrations to attendance format
-            approvedUnits = approvedRegistrations.map(reg => ({
-                id: reg.id,
-                unit_code: reg.unit_code,
-                unit_name: reg.unit_name,
-                block: reg.block || userBlock,
-                status: reg.status,
-                credits: 3,
-                course_id: reg.id,
-                registration_id: reg.id,
-                approved_date: reg.approval_date || reg.updated_at,
-                is_active: true
-            }));
-            
-            console.log(`✅ Loaded ${approvedUnits.length} APPROVED units available for check-in:`);
-            approvedUnits.forEach((unit, i) => {
-                console.log(`   ${i+1}. ${unit.unit_code} - ${unit.unit_name} (Approved)`);
-            });
-            
-            // Dispatch event for other modules
-            document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
-                detail: { 
-                    units: approvedUnits, 
-                    count: approvedUnits.length,
-                    source: 'student_unit_registrations',
-                    status: 'approved_only'
-                }
-            }));
-            
-            return approvedUnits;
-            
-        } catch (error) {
-            console.error('❌ Error loading approved units:', error);
+        }
+        
+        console.log('📚 Loading APPROVED units for attendance check-in...', { 
+            studentId, 
+            program: userProgram, 
+            block: userBlock 
+        });
+        
+        if (!supabaseClient) {
+            console.error('❌ Supabase client not available');
             return [];
         }
+        
+        if (!studentId) {
+            console.error('❌ No student ID available - cannot load approved units');
+            console.log('💡 Make sure user is logged in');
+            
+            // Show message in dropdown
+            const targetSelect = document.getElementById('attendance-target');
+            if (targetSelect) {
+                targetSelect.innerHTML = '<option value="">⚠️ Please log in to see your units</option>';
+                targetSelect.disabled = true;
+            }
+            return [];
+        }
+        
+        // ONLY load units with status = 'approved' from student_unit_registrations
+        const { data: approvedRegistrations, error: regError } = await supabaseClient
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('status', 'approved')  // ONLY approved units
+            .order('unit_code', { ascending: true });
+        
+        if (regError) {
+            console.error('❌ Error loading approved registrations:', regError);
+            return [];
+        }
+        
+        console.log(`📊 Found ${approvedRegistrations?.length || 0} APPROVED units for student ${studentId}`);
+        
+        if (!approvedRegistrations || approvedRegistrations.length === 0) {
+            console.warn('⚠️ No approved units found! Student cannot check in until units are approved.');
+            
+            // Show warning in UI
+            const targetSelect = document.getElementById('attendance-target');
+            if (targetSelect) {
+                targetSelect.innerHTML = '<option value="">⚠️ No approved units - Register units first</option>';
+                targetSelect.disabled = true;
+            }
+            
+            // Dispatch event with zero units
+            document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+                detail: { units: [], count: 0, message: 'No approved units available' }
+            }));
+            
+            return [];
+        }
+        
+        // Map approved registrations to attendance format
+        const units = approvedRegistrations.map(reg => ({
+            id: reg.id,
+            unit_code: reg.unit_code,
+            unit_name: reg.unit_name,
+            block: reg.block || userBlock,
+            status: reg.status,
+            credits: 3,
+            course_id: reg.id,
+            registration_id: reg.id,
+            approved_date: reg.approval_date || reg.updated_at,
+            is_active: true
+        }));
+        
+        // Store globally for this student
+        window.approvedUnits = units;
+        
+        console.log(`✅ Loaded ${units.length} APPROVED units available for check-in:`);
+        units.slice(0, 5).forEach((unit, i) => {
+            console.log(`   ${i+1}. ${unit.unit_code} - ${unit.unit_name} (Approved)`);
+        });
+        if (units.length > 5) {
+            console.log(`   ... and ${units.length - 5} more`);
+        }
+        
+        // Dispatch event for other modules
+        document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+            detail: { 
+                units: units, 
+                count: units.length,
+                source: 'student_unit_registrations',
+                status: 'approved_only',
+                studentId: studentId
+            }
+        }));
+        
+        return units;
+        
+    } catch (error) {
+        console.error('❌ Error loading approved units:', error);
+        return [];
     }
+}
     
     // ============================================
     // POPULATE TARGET OPTIONS (FIXED)
     // ============================================
     
-    async function populateTargetOptions(sessionType) {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        
-        targetSelect.innerHTML = '<option value="">Loading options...</option>';
-        targetSelect.disabled = true;
-        
-        try {
-            if (sessionType === 'clinical') {
-                if (clinicalLocations.length === 0) {
-                    await loadClinicalLocations();
-                }
-                
-                if (clinicalLocations.length === 0) {
-                    targetSelect.innerHTML = '<option value="">🏥 No clinical locations available</option>';
-                    targetSelect.disabled = false;
-                    showToast('No clinical locations assigned for your program', 'warning');
-                    return;
-                }
-                
-                targetSelect.innerHTML = '<option value="">🏥 Select clinical location...</option>';
-                clinicalLocations.forEach(loc => {
-                    const opt = document.createElement('option');
-                    opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|${VERIFIED_DISTANCE}`;
-                    opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
-                    targetSelect.appendChild(opt);
-                });
-                
-                showToast(`${clinicalLocations.length} clinical location(s) available`, 'success');
-                
-            } else {
-                // CLASS SESSION - Load from approved units (NOT courses table)
-                if (approvedUnits.length === 0) {
-                    await loadApprovedUnits();
-                }
-                
-                if (approvedUnits.length === 0) {
-                    targetSelect.innerHTML = '<option value="">📚 No approved units found</option>';
-                    targetSelect.disabled = false;
-                    showToast('Please register and get units approved first', 'warning');
-                    return;
-                }
-                
-                targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
-                approvedUnits.forEach(unit => {
-                    const opt = document.createElement('option');
-                    let displayText = `${unit.unit_code} - ${unit.unit_name}`;
-                    if (unit.block) displayText += ` [${unit.block}]`;
-                    
-                    opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
-                    opt.textContent = displayText;
-                    opt.setAttribute('data-approved', 'true');
-                    opt.setAttribute('data-status', 'approved');
-                    targetSelect.appendChild(opt);
-                });
-                
-                console.log(`✅ Populated dropdown with ${approvedUnits.length} approved units`);
-                showToast(`${approvedUnits.length} approved course(s) available for check-in`, 'success');
+   async function populateTargetOptions(sessionType) {
+    const targetSelect = document.getElementById('attendance-target');
+    if (!targetSelect) return;
+    
+    targetSelect.innerHTML = '<option value="">Loading options...</option>';
+    targetSelect.disabled = true;
+    
+    try {
+        if (sessionType === 'clinical') {
+            // Clinical locations code (unchanged)
+            if (clinicalLocations.length === 0) {
+                await loadClinicalLocations();
             }
-        } catch (error) {
-            console.error('Error populating targets:', error);
-            targetSelect.innerHTML = '<option value="">Error loading options</option>';
+            
+            if (clinicalLocations.length === 0) {
+                targetSelect.innerHTML = '<option value="">🏥 No clinical locations available</option>';
+                targetSelect.disabled = false;
+                showToast('No clinical locations assigned for your program', 'warning');
+                return;
+            }
+            
+            targetSelect.innerHTML = '<option value="">🏥 Select clinical location...</option>';
+            clinicalLocations.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|${VERIFIED_DISTANCE}`;
+                opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
+                targetSelect.appendChild(opt);
+            });
+            
+            showToast(`${clinicalLocations.length} clinical location(s) available`, 'success');
+            
+        } else {
+            // CLASS SESSION - Load from approved units for THIS student
+            if (approvedUnits.length === 0) {
+                await loadApprovedUnits();  // This now gets the current student's units
+            }
+            
+            if (approvedUnits.length === 0) {
+                targetSelect.innerHTML = '<option value="">📚 No approved units found</option>';
+                targetSelect.disabled = false;
+                showToast('Please register and get units approved first', 'warning');
+                return;
+            }
+            
+            targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
+            approvedUnits.forEach(unit => {
+                const opt = document.createElement('option');
+                let displayText = `${unit.unit_code} - ${unit.unit_name}`;
+                if (unit.block) displayText += ` [${unit.block}]`;
+                
+                opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
+                opt.textContent = displayText;
+                opt.setAttribute('data-approved', 'true');
+                opt.setAttribute('data-status', 'approved');
+                targetSelect.appendChild(opt);
+            });
+            
+            console.log(`✅ Populated dropdown with ${approvedUnits.length} approved units for student`);
+            showToast(`${approvedUnits.length} approved course(s) available for check-in`, 'success');
         }
-        
-        targetSelect.disabled = false;
-        
-        // Add change event listener for target selection
-        targetSelect.addEventListener('change', () => {
-            const value = targetSelect.value;
-            if (value && value !== '') {
-                const parts = value.split('|');
-                if (parts.length >= 6) {
-                    selectedTarget = {
-                        id: parts[0],
-                        name: parts[1],
-                        type: parts[2],
-                        latitude: parseFloat(parts[3]),
-                        longitude: parseFloat(parts[4]),
-                        radius: parseInt(parts[5]) || VERIFIED_DISTANCE
-                    };
-                    console.log('✅ Target selected:', selectedTarget.name);
-                    updateLiveDistanceMeter();
-                    updateCheckInButton();
-                    
-                    // Show distance status
-                    const distanceStatus = document.getElementById('distance-status');
-                    if (distanceStatus) {
-                        distanceStatus.style.display = 'block';
-                    }
-                }
-            } else {
-                selectedTarget = null;
-                const distanceStatus = document.getElementById('distance-status');
-                if (distanceStatus) {
-                    distanceStatus.style.display = 'none';
-                }
-                updateCheckInButton();
-            }
-        });
+    } catch (error) {
+        console.error('Error populating targets:', error);
+        targetSelect.innerHTML = '<option value="">Error loading options</option>';
     }
     
+    targetSelect.disabled = false;
+    
+    // Add change event listener for target selection
+    targetSelect.addEventListener('change', () => {
+        const value = targetSelect.value;
+        if (value && value !== '') {
+            const parts = value.split('|');
+            if (parts.length >= 6) {
+                selectedTarget = {
+                    id: parts[0],
+                    name: parts[1],
+                    type: parts[2],
+                    latitude: parseFloat(parts[3]),
+                    longitude: parseFloat(parts[4]),
+                    radius: parseInt(parts[5]) || VERIFIED_DISTANCE
+                };
+                console.log('✅ Target selected:', selectedTarget.name);
+                updateLiveDistanceMeter();
+                updateCheckInButton();
+                
+                const distanceStatus = document.getElementById('distance-status');
+                if (distanceStatus) {
+                    distanceStatus.style.display = 'block';
+                }
+            }
+        } else {
+            selectedTarget = null;
+            const distanceStatus = document.getElementById('distance-status');
+            if (distanceStatus) {
+                distanceStatus.style.display = 'none';
+            }
+            updateCheckInButton();
+        }
+    });
+}
     // ============================================
     // LOAD CLINICAL LOCATIONS
     // ============================================
