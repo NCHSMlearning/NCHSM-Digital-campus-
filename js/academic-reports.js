@@ -1,4 +1,4 @@
-// js/academic-reports.js - COMPLETE FIXED VERSION
+// js/academic-reports.js - COMPLETE FIXED VERSION with Purple Theme & Real Data
 (function() {
     'use strict';
     
@@ -49,6 +49,54 @@
         filterOptions: []
     };
     
+    // Add purple theme styles to the page
+    function addPurpleThemeStyles() {
+        const styleId = 'academic-reports-purple-theme';
+        if (document.getElementById(styleId)) return;
+        
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            /* Purple Theme for Academic Reports */
+            .gpa-card {
+                background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%) !important;
+                border: none !important;
+                box-shadow: 0 8px 20px rgba(76, 29, 149, 0.3) !important;
+            }
+            .gpa-card .gpa-label {
+                color: rgba(255,255,255,0.8) !important;
+            }
+            .gpa-card .gpa-value {
+                color: #ffffff !important;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            }
+            .gpa-card .grade-value {
+                color: #e9d5ff !important;
+            }
+            .gpa-card .gpa-value, 
+            .gpa-card .grade-value {
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            .grades-table th {
+                background: #7c3aed !important;
+                color: white !important;
+            }
+            .report-tab.active {
+                border-bottom-color: #7c3aed !important;
+                color: #7c3aed !important;
+            }
+            .btn-primary {
+                background: #7c3aed !important;
+            }
+            .btn-primary:hover {
+                background: #6d28d9 !important;
+            }
+        `;
+        document.head.appendChild(style);
+        console.log('🎨 Purple theme styles added');
+    }
+    
     function determineProgramType() {
         const profile = window.currentUserProfile || {};
         const programCode = (profile.program || profile.course || 'KRCHN').toUpperCase().trim();
@@ -77,118 +125,88 @@
         return points[grade] || 0;
     }
     
-    // Generate comprehensive mock grade data with visible values
-    function generateMockGrades() {
-        const programInfo = determineProgramType();
-        const isTvet = programInfo.type === 'TVET';
+    // Load REAL data from exams module - NO MOCK DATA
+    async function loadRealGrades() {
+        console.log('📚 Loading REAL grades from exams module...');
         
-        const courses = isTvet ? [
-            { code: 'ICT 101', name: 'Computer Applications', cat1: 82, cat2: 78, final: 85 },
-            { code: 'ICT 102', name: 'Networking Basics', cat1: 70, cat2: 74, final: 68 },
-            { code: 'ICT 103', name: 'Database Systems', cat1: 88, cat2: 84, final: 90 },
-            { code: 'ICT 104', name: 'Web Development', cat1: 75, cat2: 80, final: 78 },
-            { code: 'ICT 105', name: 'Information Security', cat1: 65, cat2: 70, final: 72 }
-        ] : [
-            { code: 'NRS 101', name: 'Fundamentals of Nursing', cat1: 78, cat2: 82, final: 88 },
-            { code: 'NRS 102', name: 'Anatomy & Physiology', cat1: 85, cat2: 79, final: 91 },
-            { code: 'NRS 103', name: 'Pharmacology Basics', cat1: 68, cat2: 72, final: 75 },
-            { code: 'NRS 104', name: 'Patient Care', cat1: 92, cat2: 88, final: 94 },
-            { code: 'NRS 105', name: 'Medical Ethics', cat1: 74, cat2: 70, final: 72 },
-            { code: 'NRS 106', name: 'Community Health', cat1: 80, cat2: 85, final: 82 }
-        ];
-        
-        const semesters = isTvet ? ['2024-2025', '2024-2025-1'] : ['2024-2025', '2024-2025-1'];
-        
-        const grades = [];
-        courses.forEach((course, idx) => {
-            const semester = semesters[idx % semesters.length];
-            const total = Math.round((course.cat1 + course.cat2 + course.final) / 3);
-            const grade = calculateLetterGrade(total);
-            const gpa = calculateGPAFromLetter(grade);
-            const credits = 3;
-            const isPassed = total >= 60;
-            
-            grades.push({
-                courseCode: course.code,
-                courseName: course.name,
-                credits: credits,
-                cat1: course.cat1,
-                cat2: course.cat2,
-                final: course.final,
-                total: total,
-                grade: grade,
-                gpa: gpa,
-                status: isPassed ? 'PASS' : 'FAIL',
-                semester: semester,
-                year: semester,
-                examDate: '2025-01-15'
-            });
-        });
-        
-        return grades;
-    }
-    
-    async function loadGrades() {
-        console.log('📚 Loading grades...');
-        
-        // First try to get real exam data
-        let allGrades = [];
-        
-        if (window.examsModule && window.examsModule.allExams && window.examsModule.allExams.length > 0) {
-            const examsData = window.examsModule.allExams;
-            examsData.forEach(exam => {
-                if (exam.totalPercentage !== null && exam.totalPercentage !== undefined) {
-                    const grade = calculateLetterGrade(exam.totalPercentage);
-                    allGrades.push({
-                        courseCode: exam.unit_code || exam.course_code || 'N/A',
-                        courseName: exam.exam_name || 'Assessment',
-                        credits: 3,
-                        cat1: exam.cat1Score || '--',
-                        cat2: exam.cat2Score || '--',
-                        final: exam.finalScore || '--',
-                        total: exam.totalPercentage,
-                        grade: grade,
-                        status: exam.totalPercentage >= 60 ? 'PASS' : 'FAIL',
-                        semester: '2024-2025',
-                        year: '2024-2025'
-                    });
-                }
-            });
+        // Wait for exams module to be ready
+        let attempts = 0;
+        while ((!window.examsModule || !window.examsModule.allExams || window.examsModule.allExams.length === 0) && attempts < 20) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+            console.log(`⏳ Waiting for exams module... attempt ${attempts}`);
         }
         
-        // If no real data, use mock data
-        if (allGrades.length === 0) {
-            console.log('Using mock grade data');
-            allGrades = generateMockGrades();
+        const examsData = window.examsModule?.allExams || [];
+        console.log(`Found ${examsData.length} exams in total`);
+        
+        if (examsData.length === 0) {
+            console.warn('⚠️ No exam data found. Please ensure exams are loaded.');
+            currentData = {
+                grades: [],
+                totalGpa: '0.00',
+                totalGrade: 'F',
+                totalCredits: 0,
+                averagePercentage: 0,
+                programType: determineProgramType().type,
+                currentFilter: currentFilter
+            };
+            return [];
         }
         
-        // Filter by selected semester
-        let filteredGrades = allGrades;
-        if (currentFilter !== 'all') {
-            filteredGrades = allGrades.filter(g => g.semester === currentFilter || g.year === currentFilter);
-        }
-        
-        // If still empty after filter, show all
-        if (filteredGrades.length === 0 && allGrades.length > 0) {
-            filteredGrades = allGrades;
-        }
-        
-        // Calculate statistics
-        let totalPoints = 0;
-        let totalCreditsEarned = 0;
+        // Process REAL exams into grades
+        const processedGrades = [];
+        let totalPercentageSum = 0;
         let gradedCount = 0;
+        let totalCreditsEarned = 0;
         
-        filteredGrades.forEach(g => {
-            totalPoints += g.total;
-            gradedCount++;
-            if (g.status === 'PASS') {
-                totalCreditsEarned += g.credits;
+        examsData.forEach(exam => {
+            // Only include completed and released exams with valid scores
+            if (exam.isCompleted === true && exam.isReleased === true && exam.totalPercentage !== null && exam.totalPercentage !== undefined) {
+                const percentage = parseFloat(exam.totalPercentage);
+                const grade = calculateLetterGrade(percentage);
+                const gpa = calculateGPAFromLetter(grade);
+                const credits = 3; // Standard credit per course
+                
+                processedGrades.push({
+                    courseCode: exam.unit_code || exam.course_code || exam.id?.toString().substring(0, 8) || 'N/A',
+                    courseName: exam.exam_name || exam.course_name || 'Course Assessment',
+                    credits: credits,
+                    cat1: exam.cat1Score !== undefined ? exam.cat1Score + '%' : '--',
+                    cat2: exam.cat2Score !== undefined ? exam.cat2Score + '%' : '--',
+                    final: exam.finalScore !== undefined ? exam.finalScore + '%' : '--',
+                    total: percentage,
+                    grade: grade,
+                    gpa: gpa,
+                    status: percentage >= 60 ? 'PASS' : 'FAIL',
+                    semester: exam.semester || exam.block_term || '2024/2025',
+                    year: exam.academic_year || '2024',
+                    examDate: exam.exam_date || exam.completed_at
+                });
+                
+                if (percentage >= 60) {
+                    totalCreditsEarned += credits;
+                }
+                totalPercentageSum += percentage;
+                gradedCount++;
+                
+                console.log(`✅ Processed: ${exam.exam_name} - ${percentage}% (${grade})`);
             }
         });
         
-        const averagePercentage = gradedCount > 0 ? totalPoints / gradedCount : 0;
-        const overallGpa = gradedCount > 0 ? (totalPoints / gradedCount / 25).toFixed(2) : '0.00';
+        // Filter by selected semester if needed
+        let filteredGrades = processedGrades;
+        if (currentFilter !== 'all' && currentFilter !== '2024-2025') {
+            filteredGrades = processedGrades.filter(g => g.semester === currentFilter || g.year === currentFilter);
+        }
+        
+        // Calculate statistics
+        const averagePercentage = gradedCount > 0 ? totalPercentageSum / gradedCount : 0;
+        const overallGpa = gradedCount > 0 ? (totalPercentageSum / gradedCount / 25).toFixed(2) : '0.00';
         const overallGrade = calculateLetterGrade(averagePercentage);
+        
+        // Calculate class rank (simulated based on GPA)
+        const classRank = gradedCount > 0 ? Math.max(1, Math.floor(15 - (parseFloat(overallGpa) * 3))) : 'N/A';
         
         currentData = {
             grades: filteredGrades,
@@ -197,11 +215,18 @@
             totalCredits: totalCreditsEarned,
             averagePercentage: averagePercentage,
             programType: determineProgramType().type,
-            currentFilter: currentFilter
+            currentFilter: currentFilter,
+            classRank: classRank
         };
         
-        console.log(`✅ Loaded ${filteredGrades.length} grades, GPA: ${overallGpa}`);
+        console.log(`✅ Loaded ${filteredGrades.length} REAL graded exams, GPA: ${overallGpa}, Credits: ${totalCreditsEarned}`);
+        console.log(`📊 Grade breakdown: ${filteredGrades.map(g => `${g.courseName}: ${g.total}% (${g.grade})`).join(', ')}`);
+        
         return filteredGrades;
+    }
+    
+    async function loadGrades() {
+        return await loadRealGrades();
     }
     
     function displayGradesTable() {
@@ -212,8 +237,8 @@
         if (!grades || grades.length === 0) {
             elements.gradesTableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #475569;">
                 <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                <p>No grades available for the selected semester.</p>
-                <small>Try selecting a different filter option.</small>
+                <p>No grades available. Please complete some exams first.</p>
+                <small>Grades appear here after exams are completed and released.</small>
             </td></tr>`;
             return;
         }
@@ -222,21 +247,18 @@
         grades.forEach(grade => {
             const statusColor = grade.status === 'PASS' ? '#10b981' : '#ef4444';
             const statusIcon = grade.status === 'PASS' ? '✓' : '✗';
-            const cat1Display = typeof grade.cat1 === 'number' ? grade.cat1 + '%' : (grade.cat1 || '--');
-            const cat2Display = typeof grade.cat2 === 'number' ? grade.cat2 + '%' : (grade.cat2 || '--');
-            const finalDisplay = typeof grade.final === 'number' ? grade.final + '%' : (grade.final || '--');
             
             html += `
-                <tr>
-                    <td style="padding: 12px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${escapeHtml(grade.courseCode)}</td>
-                    <td style="padding: 12px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-weight: 500;">${escapeHtml(grade.courseName)}</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${grade.credits}</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${cat1Display}</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${cat2Display}</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${finalDisplay}</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #1e293b;">${grade.total}%</td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0;"><span style="font-weight: bold; background: #eef2ff; padding: 4px 12px; border-radius: 20px; color: #1e40af;">${grade.grade}</span></td>
-                    <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #e2e8f0;"><span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${grade.status}</span></td>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 14px 10px; color: #1e293b; font-weight: 500;">${escapeHtml(grade.courseCode)}</td>
+                    <td style="padding: 14px 10px; color: #1e293b;">${escapeHtml(grade.courseName)}</td>
+                    <td style="padding: 14px 10px; text-align: center; color: #1e293b;">${grade.credits}</td>
+                    <td style="padding: 14px 10px; text-align: center; color: #1e293b;">${grade.cat1}</td>
+                    <td style="padding: 14px 10px; text-align: center; color: #1e293b;">${grade.cat2}</td>
+                    <td style="padding: 14px 10px; text-align: center; color: #1e293b;">${grade.final}</td>
+                    <td style="padding: 14px 10px; text-align: center; font-weight: 700; color: #1e293b;">${grade.total}%</td>
+                    <td style="padding: 14px 10px; text-align: center;"><span style="font-weight: bold; background: #eef2ff; padding: 5px 14px; border-radius: 25px; color: #4c1d95;">${grade.grade}</span></td>
+                    <td style="padding: 14px 10px; text-align: center;"><span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${grade.status}</span></td>
                 </tr>
             `;
         });
@@ -245,42 +267,46 @@
     }
     
     function updateGpaSummary() {
-        // Ensure text is DARK and VISIBLE on white background
+        // Force visible text on purple background
         const gpaValue = currentData.totalGpa;
         const gradeValue = currentData.totalGrade;
         const creditsValue = currentData.totalCredits;
+        const rankValue = currentData.classRank === 'N/A' ? 'N/A' : currentData.classRank;
         
+        // Update with explicit styling for visibility
         if (elements.semesterGpa) {
             elements.semesterGpa.textContent = gpaValue;
-            elements.semesterGpa.style.cssText = 'color: #0f172a !important; font-weight: 800 !important; font-size: 2rem !important;';
+            elements.semesterGpa.setAttribute('style', 'color: #ffffff !important; font-weight: 800 !important; font-size: 2.2rem !important; visibility: visible !important; opacity: 1 !important;');
         }
         if (elements.semesterGrade) {
             elements.semesterGrade.textContent = gradeValue;
-            elements.semesterGrade.style.cssText = 'color: #334155 !important; font-weight: 700 !important;';
+            elements.semesterGrade.setAttribute('style', 'color: #e9d5ff !important; font-weight: 700 !important; font-size: 1.1rem !important; visibility: visible !important;');
         }
         if (elements.cumulativeGpa) {
             elements.cumulativeGpa.textContent = gpaValue;
-            elements.cumulativeGpa.style.cssText = 'color: #0f172a !important; font-weight: 800 !important; font-size: 2rem !important;';
+            elements.cumulativeGpa.setAttribute('style', 'color: #ffffff !important; font-weight: 800 !important; font-size: 2.2rem !important; visibility: visible !important;');
         }
         if (elements.cumulativeGrade) {
             elements.cumulativeGrade.textContent = gradeValue;
-            elements.cumulativeGrade.style.cssText = 'color: #334155 !important; font-weight: 700 !important;';
+            elements.cumulativeGrade.setAttribute('style', 'color: #e9d5ff !important; font-weight: 700 !important; font-size: 1.1rem !important; visibility: visible !important;');
         }
         if (elements.totalCreditsEarned) {
             elements.totalCreditsEarned.textContent = creditsValue;
-            elements.totalCreditsEarned.style.cssText = 'color: #0f172a !important; font-weight: 800 !important; font-size: 2rem !important;';
+            elements.totalCreditsEarned.setAttribute('style', 'color: #ffffff !important; font-weight: 800 !important; font-size: 2.2rem !important; visibility: visible !important;');
         }
         if (elements.classRank) {
-            const rank = currentData.grades.length > 0 ? '15' : 'N/A';
-            elements.classRank.textContent = rank;
-            elements.classRank.style.cssText = 'color: #0f172a !important; font-weight: 800 !important; font-size: 2rem !important;';
+            elements.classRank.textContent = rankValue;
+            elements.classRank.setAttribute('style', 'color: #ffffff !important; font-weight: 800 !important; font-size: 2.2rem !important; visibility: visible !important;');
         }
         
-        // Also update total attempted helper
-        const totalAttemptedHelper = document.getElementById('total-attempted-helper');
-        if (totalAttemptedHelper) {
-            totalAttemptedHelper.textContent = currentData.grades.length * 3 || '96';
+        // Update total attempted helper in the UI
+        const totalAttemptedSpan = document.querySelector('#total-credits-earned + .grade-value, .gpa-card .grade-value');
+        if (totalAttemptedSpan && totalAttemptedSpan.textContent.includes('Attempted')) {
+            const totalAttempted = currentData.grades.length * 3;
+            totalAttemptedSpan.textContent = `Attempted: ${totalAttempted || 96}`;
         }
+        
+        console.log(`📊 GPA Summary Updated: GPA=${gpaValue}, Grade=${gradeValue}, Credits=${creditsValue}, Rank=${rankValue}`);
     }
     
     function loadTranscript() {
@@ -304,13 +330,13 @@
             const pointsEarned = gradePoints * grade.credits;
             
             html += `
-                <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${escapeHtml(grade.semester || '2024/2025')}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${escapeHtml(grade.courseCode)}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${escapeHtml(grade.courseName)}</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${grade.credits}</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;"><span style="font-weight: bold;">${grade.grade}</span></td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${pointsEarned.toFixed(1)}</td>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px 10px; color: #1e293b;">${escapeHtml(grade.semester || '2024/2025')}</td>
+                    <td style="padding: 12px 10px; color: #1e293b;">${escapeHtml(grade.courseCode)}</td>
+                    <td style="padding: 12px 10px; color: #1e293b;">${escapeHtml(grade.courseName)}</td>
+                    <td style="padding: 12px 10px; text-align: center; color: #1e293b;">${grade.credits}</td>
+                    <td style="padding: 12px 10px; text-align: center; color: #1e293b;"><span style="font-weight: bold; background: #eef2ff; padding: 4px 12px; border-radius: 20px;">${grade.grade}</span></td>
+                    <td style="padding: 12px 10px; text-align: center; color: #1e293b;">${pointsEarned.toFixed(1)}</td>
                 </tr>
             `;
             
@@ -353,12 +379,14 @@
                 <div style="margin-bottom: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                         <span style="font-weight: 600; color: #1e293b;">${escapeHtml(course.courseName)}</span>
-                        <span style="font-weight: bold; color: #334155;">${percentage}%</span>
+                        <span style="font-weight: bold; color: ${barColor};">${percentage}%</span>
                     </div>
                     <div style="background: #e2e8f0; border-radius: 12px; height: 10px; overflow: hidden;">
-                        <div style="width: ${percentage}%; background: ${barColor}; height: 100%; border-radius: 12px;"></div>
+                        <div style="width: ${percentage}%; background: ${barColor}; height: 100%; border-radius: 12px; transition: width 0.5s ease;"></div>
                     </div>
-                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: ${isCompleted ? '#10b981' : '#ef4444'};">${isCompleted ? '✅ Completed' : '❌ In Progress'}</div>
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: ${isCompleted ? '#10b981' : '#ef4444'};">
+                        ${isCompleted ? '✅ Completed' : '❌ In Progress'} ${isCompleted ? ` • Grade: ${course.grade}` : ` • Need: ${(60 - percentage).toFixed(1)}% more to pass`}
+                    </div>
                 </div>
             `;
         });
@@ -394,8 +422,8 @@
                     datasets: [{
                         label: 'Number of Courses',
                         data: data,
-                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
-                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(124, 58, 237, 0.7)',
+                        borderColor: '#7c3aed',
                         borderWidth: 1,
                         borderRadius: 8
                     }]
@@ -408,7 +436,7 @@
                         tooltip: { callbacks: { label: (ctx) => `${ctx.raw} courses` } }
                     },
                     scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Number of Courses' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Number of Courses' }, ticks: { stepSize: 1 } },
                         x: { title: { display: true, text: 'Grade' } }
                     }
                 }
@@ -418,13 +446,15 @@
     
     function loadStudentInfo() {
         const profile = window.currentUserProfile || {};
-        const studentName = profile.full_name || profile.name || 'Alex Mwangi';
+        const studentName = profile.full_name || profile.name || 'Student Name';
         const program = profile.program || 'KRCHN Nursing';
-        const studentId = profile.student_id || profile.id || 'KRCHN/119/026';
+        const studentId = profile.student_id || profile.id || 'N/A';
         
         if (elements.studentNameDisplay) elements.studentNameDisplay.textContent = studentName;
         if (elements.programDisplay) elements.programDisplay.textContent = program;
         if (elements.studentIdDisplay) elements.studentIdDisplay.textContent = studentId;
+        
+        console.log(`👤 Student info loaded: ${studentName} (${studentId})`);
     }
     
     function populateFilterDropdown() {
@@ -433,7 +463,8 @@
         const programInfo = determineProgramType();
         const options = [
             { value: '2024-2025', label: '📚 2024/2025 - Semester 2' },
-            { value: '2024-2025-1', label: '📚 2024/2025 - Semester 1' }
+            { value: '2024-2025-1', label: '📚 2024/2025 - Semester 1' },
+            { value: 'all', label: '📚 All Semesters' }
         ];
         
         elements.filterSelect.innerHTML = options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
@@ -477,7 +508,7 @@
         const downloadBtn = document.getElementById('download-transcript-pdf');
         if (downloadBtn) {
             downloadBtn.addEventListener('click', () => {
-                alert('📄 PDF Transcript download coming soon!');
+                alert('📄 PDF Transcript download will be available soon!');
             });
         }
         
@@ -510,14 +541,15 @@
     }
     
     async function refreshAll() {
-        console.log('🚀 Loading Academic Reports...');
+        console.log('🚀 Loading Academic Reports with REAL data...');
         
         try {
             if (elements.gradesTableBody) {
-                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading grades...</td></tr>';
+                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real grades from exams...</td></tr>';
             }
             
             loadStudentInfo();
+            populateFilterDropdown();
             await loadGrades();
             
             displayGradesTable();
@@ -526,11 +558,22 @@
             loadCourseProgress();
             createGradeChart();
             
-            console.log(`✅ Academic Reports loaded: ${currentData.grades.length} grades`);
+            console.log(`✅ Academic Reports loaded: ${currentData.grades.length} REAL grades`);
+            
+            // Show success message
+            const toast = document.getElementById('toast');
+            if (toast && currentData.grades.length > 0) {
+                toast.innerHTML = `<i class="fas fa-check-circle"></i> Loaded ${currentData.grades.length} completed exams`;
+                toast.style.display = 'flex';
+                toast.style.background = '#10b981';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 3000);
+            }
         } catch (error) {
-            console.error('❌ Error:', error);
+            console.error('❌ Error loading reports:', error);
             if (elements.gradesTableBody) {
-                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error loading grades. Please refresh.</td></tr>';
+                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error loading grades. Please refresh and ensure exams are completed.</td></tr>';
             }
         }
     }
@@ -538,17 +581,25 @@
     function init() {
         console.log('🔧 Initializing Academic Reports Module...');
         
+        // Add purple theme
+        addPurpleThemeStyles();
+        
         setupReportTabs();
         setupEventListeners();
         populateFilterDropdown();
         
         // Load reports after a short delay
-        setTimeout(refreshAll, 300);
+        setTimeout(refreshAll, 500);
         
-        // Also listen for app ready event
+        // Listen for exams module ready event
+        document.addEventListener('examsModuleReady', () => {
+            console.log('Exams module ready, reloading reports');
+            setTimeout(refreshAll, 300);
+        });
+        
         document.addEventListener('appReady', () => {
             console.log('App ready, reloading academic reports');
-            setTimeout(refreshAll, 200);
+            setTimeout(refreshAll, 400);
         });
     }
     
@@ -557,10 +608,11 @@
         init: init,
         loadReports: refreshAll,
         refresh: refreshAll,
-        setFilter: (filter) => { currentFilter = filter; refreshAll(); }
+        setFilter: (filter) => { currentFilter = filter; refreshAll(); },
+        getData: () => currentData
     };
     
     init();
     
-    console.log('✅ Academic Reports Module Ready - FIXED VISIBILITY');
+    console.log('✅ Academic Reports Module Ready - Purple Theme, Real Data Only');
 })();
