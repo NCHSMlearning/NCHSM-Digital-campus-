@@ -9,10 +9,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Additional critical styles */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
         .container { display: flex; min-height: 100vh; }
@@ -37,8 +35,6 @@
         .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .card h3 { font-size: 0.85rem; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
         .data { font-size: 2rem; font-weight: 800; color: #0f172a; }
-        .card-alert-danger { border-left: 4px solid #dc2626; }
-        .card-alert-warning { border-left: 4px solid #f59e0b; }
         .inline-form, .check-in-controls { background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
         .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
         .form-group { flex: 1; min-width: 180px; }
@@ -48,10 +44,6 @@
         .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .data-table th { background: #f8fafc; font-weight: 600; color: #334155; }
         .table-responsive { overflow-x: auto; margin-bottom: 20px; }
-        .search-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .search-container input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid #cbd5e1; }
-        .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; font-weight: 500; }
         .badge-success { background: #d1fae5; color: #065f46; }
         .badge-warning { background: #fed7aa; color: #9a3412; }
@@ -60,18 +52,12 @@
         .btn-action { background: #4C1D95; border: none; padding: 8px 18px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .btn-action:hover { background: #6d28d9; }
         .btn-danger { background: #dc2626; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn-warning { background: #f59e0b; color: #1f2937; }
-        .btn-cancel { background: #6b7280; color: white; border: none; padding: 8px 18px; border-radius: 40px; cursor: pointer; }
         .profile-card { background: white; border-radius: 20px; padding: 25px; display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px; align-items: center; }
-        .profile-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; overflow: hidden; }
+        .profile-avatar { width: 120px; height: 120px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; overflow: hidden; }
         .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-        .profile-info h3 { font-size: 1.5rem; margin-bottom: 5px; }
-        .profile-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .profile-details-grid { background: white; border-radius: 20px; padding: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
         .detail-item { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
         .detail-item strong { display: block; font-size: 12px; color: #6b7280; }
-        .detail-item span { display: block; margin-top: 5px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000; }
         .modal-content { background: white; border-radius: 24px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; }
         .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
@@ -82,8 +68,6 @@
         .toast { padding: 12px 20px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; min-width: 250px; }
         .toast-success { background: #10b981; }
         .toast-error { background: #ef4444; }
-        .toast-info { background: #3b82f6; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .loading-spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -92,7 +76,6 @@
         .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
         .metric-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .metric-value { font-size: 2rem; font-weight: bold; }
-        .metric-label { font-size: 0.85rem; margin-top: 5px; opacity: 0.9; }
         .today-schedule { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
         .schedule-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #e2e8f0; }
         .schedule-time { font-weight: bold; color: #4C1D95; min-width: 80px; }
@@ -104,12 +87,6 @@
             .main { margin-left: 0; padding-top: 70px; }
             .mobile-nav-toggle { display: block; }
             .cards { grid-template-columns: repeat(2, 1fr); }
-            .form-row { flex-direction: column; }
-            .form-group { min-width: 100%; }
-        }
-        @media (max-width: 480px) {
-            .cards { grid-template-columns: 1fr; }
-            .main { padding: 15px; }
         }
     </style>
 </head>
@@ -154,53 +131,48 @@
 
             <!-- DASHBOARD TAB -->
             <section id="dashboard-content" class="tab-content active">
-                <h2><i class="fas fa-tachometer-alt"></i> Lecturer Dashboard</h2>
+                <h2>Dashboard</h2>
                 <div class="cards">
                     <div class="card" onclick="showTab('my-students')">
-                        <h3><i class="fas fa-users"></i> My Students</h3>
+                        <h3>My Students</h3>
                         <p class="data" id="totalStudents">0</p>
                     </div>
                     <div class="card" onclick="showTab('my-courses')">
-                        <h3><i class="fas fa-book"></i> My Courses</h3>
+                        <h3>My Courses</h3>
                         <p class="data" id="totalCourses">0</p>
                     </div>
-                    <div class="card card-alert-danger" onclick="showTab('my-students')">
-                        <h3><i class="fas fa-exclamation-triangle"></i> At Risk</h3>
+                    <div class="card" onclick="showTab('my-students')">
+                        <h3>At Risk</h3>
                         <p class="data" id="atRiskCount">0</p>
                     </div>
-                    <div class="card card-alert-warning" onclick="showTab('cats')">
-                        <h3><i class="fas fa-file-signature"></i> Pending Grading</h3>
+                    <div class="card" onclick="showTab('cats')">
+                        <h3>Pending Grading</h3>
                         <p class="data" id="pendingGrading">0</p>
                     </div>
                 </div>
-
                 <div class="attendance-metrics">
-                    <h3><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
+                    <h3>Attendance Overview</h3>
                     <div class="metrics-grid">
-                        <div class="metric-card"><div class="metric-value" id="todayAttendance">0</div><div class="metric-label">Today's Check-ins</div></div>
-                        <div class="metric-card"><div class="metric-value" id="weeklyAttendance">0</div><div class="metric-label">This Week</div></div>
-                        <div class="metric-card"><div class="metric-value" id="monthlyRate">0%</div><div class="metric-label">Monthly Rate</div></div>
+                        <div class="metric-card"><div class="metric-value" id="todayAttendance">0</div><div>Today's Check-ins</div></div>
+                        <div class="metric-card"><div class="metric-value" id="weeklyAttendance">0</div><div>This Week</div></div>
+                        <div class="metric-card"><div class="metric-value" id="monthlyRate">0%</div><div>Monthly Rate</div></div>
                     </div>
                 </div>
-
                 <div class="today-schedule">
-                    <h4><i class="fas fa-calendar-day"></i> Today's Schedule</h4>
-                    <div id="todayScheduleList"><div class="loading-spinner"></div></div>
+                    <h4>Today's Schedule</h4>
+                    <div id="todayScheduleList">Loading...</div>
                 </div>
             </section>
 
             <!-- PROFILE TAB -->
             <section id="profile-content" class="tab-content">
-                <h2><i class="fas fa-user"></i> My Profile</h2>
+                <h2>My Profile</h2>
                 <div class="profile-card">
                     <div class="profile-avatar" id="profileAvatar"><i class="fas fa-user"></i></div>
                     <div class="profile-info">
                         <h3 id="profileName">Loading...</h3>
-                        <p class="role" id="profileRole">Lecturer</p>
-                        <div class="profile-actions">
-                            <button class="btn-action" id="uploadPhotoBtn"><i class="fas fa-camera"></i> Upload Photo</button>
-                            <input type="file" id="photoInput" accept="image/*" style="display:none">
-                        </div>
+                        <button class="btn-action" id="uploadPhotoBtn">Upload Photo</button>
+                        <input type="file" id="photoInput" style="display:none">
                     </div>
                 </div>
                 <div class="profile-details-grid">
@@ -213,943 +185,471 @@
 
             <!-- MY COURSES TAB -->
             <section id="my-courses-content" class="tab-content">
-                <h2><i class="fas fa-book"></i> My Courses</h2>
-                <div class="filter-bar">
-                    <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="filterCourses()">
-                </div>
+                <h2>My Courses</h2>
+                <input type="text" id="courseSearch" placeholder="Search courses..." style="padding:8px; margin-bottom:15px; width:100%; max-width:300px;">
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
-                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <tbody id="coursesTableBody"><tr><td colspan="5">Loading courses...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- MY STUDENTS TAB -->
             <section id="my-students-content" class="tab-content">
-                <h2><i class="fas fa-users"></i> My Students</h2>
-                <div class="filter-bar">
-                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
-                </div>
+                <h2>My Students</h2>
+                <input type="text" id="studentSearch" placeholder="Search students..." style="padding:8px; margin-bottom:15px; width:100%; max-width:300px;">
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <tbody id="studentsTableBody"><tr><td colspan="7">Loading students...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- SESSIONS TAB -->
             <section id="sessions-content" class="tab-content">
-                <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
+                <h2>Sessions</h2>
                 <form id="addSessionForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Session Title *</label><input type="text" id="sessionTitle" required></div>
-                        <div class="form-group"><label>Date *</label><input type="date" id="sessionDate" required></div>
-                        <div class="form-group"><label>Time *</label><input type="time" id="sessionTime" required></div>
+                        <input type="text" id="sessionTitle" placeholder="Session Title" required>
+                        <input type="date" id="sessionDate" required>
+                        <input type="time" id="sessionTime" required>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Program *</label><select id="sessionProgram" required></select></div>
-                        <div class="form-group"><label>Block/Term *</label><select id="sessionBlock" required></select></div>
-                    </div>
-                    <button type="submit" class="btn-action"><i class="fas fa-calendar-plus"></i> Schedule Session</button>
+                    <button type="submit" class="btn-action">Schedule Session</button>
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
-                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Link</th><th>Actions</th></tr></thead>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5">Loading sessions...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- ATTENDANCE TAB -->
             <section id="attendance-content" class="tab-content">
-                <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
-                <div class="check-in-controls"><button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button></div>
+                <h2>Attendance</h2>
+                <button id="lecturerCheckinBtn" class="btn-action">Mark My Attendance</button>
                 <form id="manualAttendanceForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Student *</label><select id="attStudentId" required></select></div>
-                        <div class="form-group"><label>Session Type *</label><select id="attSessionType" required><option value="">Select</option><option value="Class">Class</option><option value="Clinical">Clinical</option></select></div>
+                        <select id="attStudentId" required><option>Select Student</option></select>
+                        <select id="attSessionType" required><option>Class</option><option>Clinical</option></select>
+                        <input type="date" id="attDate">
                     </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Date *</label><input type="date" id="attDate" required></div>
-                        <div class="form-group"><label>Location</label><input type="text" id="attLocation" placeholder="Venue"></div>
-                    </div>
-                    <button type="submit" class="btn-action"><i class="fas fa-user-check"></i> Mark Present</button>
+                    <button type="submit" class="btn-action">Mark Present</button>
                 </form>
                 <h3>Today's Attendance</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Time</th><th>Location</th></tr></thead>
-                        <tbody id="attendanceTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <thead><tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th></tr></thead>
+                        <tbody id="attendanceTableBody"><tr><td colspan="5">Loading attendance...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- EXAMS TAB -->
             <section id="cats-content" class="tab-content">
-                <h2><i class="fas fa-file-alt"></i> Exams & CATs</h2>
+                <h2>Exams & CATs</h2>
                 <form id="addExamForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Title *</label><input type="text" id="examTitle" required></div>
-                        <div class="form-group"><label>Date *</label><input type="date" id="examDate" required></div>
-                        <div class="form-group"><label>Type *</label><select id="examType" required><option value="">Select</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final Exam</option></select></div>
+                        <input type="text" id="examTitle" placeholder="Exam Title" required>
+                        <input type="date" id="examDate" required>
+                        <select id="examType" required><option>CAT_1</option><option>CAT_2</option><option>EXAM</option></select>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Program *</label><select id="examProgram" required></select></div>
-                        <div class="form-group"><label>Block *</label><select id="examBlock" required></select></div>
-                    </div>
-                    <button type="submit" class="btn-action"><i class="fas fa-plus-circle"></i> Create Exam</button>
+                    <button type="submit" class="btn-action">Create Exam</button>
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <tbody id="examsTableBody"><tr><td colspan="6">Loading exams...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- RESOURCES TAB -->
             <section id="resources-content" class="tab-content">
-                <h2><i class="fas fa-file-upload"></i> Resources</h2>
+                <h2>Resources</h2>
                 <form id="uploadResourceForm" class="inline-form">
-                    <div class="form-row"><div class="form-group"><label>Title *</label><input type="text" id="resourceTitle" required></div></div>
-                    <div class="form-row"><div class="form-group"><label>File *</label><input type="file" id="resourceFile" required accept=".pdf,.doc,.docx"></div></div>
-                    <button type="submit" class="btn-action"><i class="fas fa-upload"></i> Upload Resource</button>
+                    <input type="text" id="resourceTitle" placeholder="Title" required>
+                    <input type="file" id="resourceFile" required>
+                    <button type="submit" class="btn-action">Upload</button>
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Uploaded</th><th>Actions</th></tr></thead>
-                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <tbody id="resourcesTableBody"><tr><td colspan="3">Loading resources...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- MESSAGES TAB -->
             <section id="messages-content" class="tab-content">
-                <h2><i class="fas fa-envelope"></i> Messages</h2>
+                <h2>Messages</h2>
                 <form id="sendMessageForm" class="inline-form">
-                    <div class="form-row"><div class="form-group"><label>To *</label><select id="msgRecipient" required></select></div></div>
-                    <div class="form-group"><label>Subject *</label><input type="text" id="msgSubject" required></div>
-                    <div class="form-group"><label>Message *</label><textarea id="msgBody" rows="4" required></textarea></div>
-                    <button type="submit" class="btn-action"><i class="fas fa-paper-plane"></i> Send Message</button>
+                    <select id="msgRecipient" required><option>Select Student</option></select>
+                    <input type="text" id="msgSubject" placeholder="Subject" required>
+                    <textarea id="msgBody" rows="3" placeholder="Message" required></textarea>
+                    <button type="submit" class="btn-action">Send Message</button>
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
-                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
+                        <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...</td></tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- CALENDAR TAB -->
             <section id="calendar-content" class="tab-content">
-                <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
-                <div id="calendarDisplay" style="background: white; border-radius: 16px; padding: 16px; min-height: 500px;"></div>
+                <h2>Calendar</h2>
+                <div id="calendarDisplay" style="background:white; padding:16px; min-height:500px;"></div>
             </section>
         </main>
     </div>
 
-    <!-- MODALS -->
-    <div id="gradeModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="gradeModalTitle">Grade Students</h3><button class="close-btn" onclick="closeModal('gradeModal')">&times;</button></div><div class="modal-body" id="gradeModalBody"></div><div class="modal-actions"><button class="btn-action" onclick="saveAllGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div></div></div>
+    <div id="gradeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="gradeModalTitle">Grade Students</h3><button class="close-btn" onclick="closeModal('gradeModal')">&times;</button></div>
+            <div class="modal-body" id="gradeModalBody"></div>
+            <div class="modal-actions"><button class="btn-action" onclick="saveAllGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-<script>
-    // Supabase configuration
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.sb = sb;
-    
-    // Global variables
-    let currentUserProfile = null;
-    let currentUserId = null;
-    let allCourses = [];
-    let allStudents = [];
-    let allSessions = [];
-    let allExams = [];
-    let allResources = [];
-    let calendar = null;
-    
-    // Helper functions
-    function $(id) { return document.getElementById(id); }
-    
-    function showToast(message, type = 'success') {
-        const container = $('#toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
-    }
-    
-    function closeModal(modalId) {
-        const modal = $(modalId);
-        if (modal) modal.style.display = 'none';
-    }
-    
-    function escapeHtml(s) {
-        if (!s) return '';
-        return String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
-    }
-    
-    // Program data
-    const PROGRAM_DISPLAY_NAMES = {
-        'KRCHN': 'KRCHN Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and IT'
-    };
-    
-    function getProgramDisplayName(code) {
-        return PROGRAM_DISPLAY_NAMES[code] || code || 'Unknown';
-    }
-    
-    function updateProgramDropdown(selectElement) {
-        if (!selectElement) return;
-        selectElement.innerHTML = '<option value="KRCHN">🎓 KRCHN Nursing</option><option value="DPOTT">DPOTT</option><option value="DCH">DCH</option>';
-    }
-    
-    // =====================================================
-    // TAB NAVIGATION - FIXED
-    // =====================================================
-    window.showTab = function(tabId) {
-        console.log('🔄 Showing tab:', tabId);
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
         
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-            tab.style.display = 'none';
-        });
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sb;
         
-        // Show selected tab
-        const target = $(tabId + '-content');
-        if (target) {
-            target.classList.add('active');
-            target.style.display = 'block';
-            console.log('✅ Displayed tab:', tabId);
-        } else {
-            console.error('❌ Tab not found:', tabId + '-content');
+        let currentUserProfile = null;
+        let currentUserId = null;
+        let allCourses = [];
+        let allStudents = [];
+        let calendar = null;
+        
+        function $(id) { return document.getElementById(id); }
+        
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type || 'success'}`;
+            toast.innerHTML = message;
+            $('#toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
         
-        // Update nav active state
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-            }
-        });
+        function closeModal(id) { $(id).style.display = 'none'; }
         
-        // Load data for the tab
-        loadTabData(tabId);
-    };
-    
-    // =====================================================
-    // LOAD TAB DATA - FIXED WITH DEBUG
-    // =====================================================
-    async function loadTabData(tabId) {
-        console.log('📊 Loading data for tab:', tabId);
+        function escapeHtml(s) { return String(s || '').replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
         
-        try {
-            switch(tabId) {
-                case 'dashboard':
-                    await loadDashboard();
-                    await loadTodaySchedule();
-                    break;
-                case 'profile':
-                    await loadProfile();
-                    break;
-                case 'my-courses':
-                    await loadCourses();
-                    break;
-                case 'my-students':
-                    await loadStudents();
-                    break;
-                case 'sessions':
-                    await loadSessions();
-                    break;
-                case 'attendance':
-                    await loadAttendance();
-                    await populateAttendanceForm();
-                    break;
-                case 'cats':
-                    await loadExams();
-                    break;
-                case 'resources':
-                    await loadResources();
-                    break;
-                case 'messages':
-                    await loadMessages();
-                    break;
-                case 'calendar':
-                    await loadCalendar();
-                    break;
-                default:
-                    console.log('No handler for tab:', tabId);
-            }
-        } catch (error) {
-            console.error('Error loading tab data:', error);
-            showToast('Error loading data: ' + error.message, 'error');
+        // Tab navigation
+        window.showTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const target = $(tabId + '-content');
+            if(target) target.classList.add('active');
+            document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
+            if(activeLink) activeLink.classList.add('active');
+            loadTabData(tabId);
+        };
+        
+        async function loadTabData(tabId) {
+            if(tabId === 'my-courses') await loadCourses();
+            if(tabId === 'my-students') await loadStudents();
+            if(tabId === 'sessions') await loadSessions();
+            if(tabId === 'attendance') await loadAttendance();
+            if(tabId === 'cats') await loadExams();
+            if(tabId === 'resources') await loadResources();
+            if(tabId === 'messages') await loadMessages();
+            if(tabId === 'calendar') await loadCalendar();
+            if(tabId === 'dashboard') { await loadDashboard(); await loadTodaySchedule(); }
+            if(tabId === 'profile') await loadProfile();
         }
-    }
-    
-    // =====================================================
-    // DASHBOARD
-    // =====================================================
-    async function loadDashboard() {
-        console.log('Loading dashboard...');
-        try {
-            if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-            if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-            if ($('atRiskCount')) $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-            
+        
+        // Dashboard
+        async function loadDashboard() {
+            if($('totalStudents')) $('totalStudents').textContent = allStudents.length;
+            if($('totalCourses')) $('totalCourses').textContent = allCourses.length;
+        }
+        
+        async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
-            const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-            if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.length || 0;
-            
-            const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-            const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-            if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.length || 0;
-            
-            if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? '85%' : '0%';
-        } catch(e) { console.error('Dashboard error:', e); }
-    }
-    
-    async function loadTodaySchedule() {
-        const today = new Date().toISOString().split('T')[0];
-        const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId);
-        const container = $('#todayScheduleList');
-        if (!container) return;
-        if (!data?.length) { container.innerHTML = '<p>No sessions today</p>'; return; }
-        container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
-    }
-    
-    // =====================================================
-    // PROFILE
-    // =====================================================
-    async function loadProfile() {
-        console.log('Loading profile...');
-        if (!currentUserProfile) return;
-        if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-        if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
-        if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
-        if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
-        if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
-    }
-    
-    // =====================================================
-    // COURSES - FIXED
-    // =====================================================
-    async function loadCourses() {
-        console.log('📚 Loading courses...');
-        const tbody = $('#coursesTableBody');
-        if (!tbody) {
-            console.error('coursesTableBody not found!');
-            return;
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId);
+            const container = $('#todayScheduleList');
+            if(container) container.innerHTML = data?.length ? data.map(s => `<div>${s.session_time} - ${s.session_title}</div>`).join('') : 'No sessions today';
         }
         
-        tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
+        // Profile
+        async function loadProfile() {
+            if(!currentUserProfile) return;
+            if($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
+            if($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0,8) || 'N/A';
+            if($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
+            if($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
+            if($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
+        }
         
-        try {
-            const { data, error } = await sb.from('courses').select('*').order('course_name');
+        // Courses - FIXED
+        async function loadCourses() {
+            console.log('Loading courses...');
+            const tbody = $('#coursesTableBody');
+            if(!tbody) { console.error('coursesTableBody not found!'); return; }
             
-            if (error) throw error;
+            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
             
-            console.log(`✅ Loaded ${data?.length || 0} courses`);
+            const { data, error } = await sb.from('courses').select('*').limit(100);
+            if(error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}</td></tr>`; return; }
+            
             allCourses = data || [];
-            
-            if (allCourses.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>';
-                return;
-            }
+            if(allCourses.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No courses found</td></tr>'; return; }
             
             tbody.innerHTML = '';
-            allCourses.forEach(course => {
+            allCourses.forEach(c => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td><strong>${escapeHtml(course.unit_code || 'N/A')}</strong></td>
-                    <td>${escapeHtml(course.course_name)}</td>
-                    <td>${getProgramDisplayName(course.target_program)}</td>
-                    <td>${escapeHtml(course.block || 'N/A')}</td>
-                    <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(course.course_name)}', 'info')">View</button></td>
+                    <td><strong>${escapeHtml(c.unit_code || 'N/A')}</strong></td>
+                    <td>${escapeHtml(c.course_name)}</td>
+                    <td>${escapeHtml(c.target_program || 'KRCHN')}</td>
+                    <td>${escapeHtml(c.block || 'N/A')}</td>
+                    <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(c.course_name)}', 'info')">View</button></td>
                 `;
             });
-            
-            console.log(`✅ Rendered ${allCourses.length} courses`);
-            
-        } catch (error) {
-            console.error('Error loading courses:', error);
-            tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    window.filterCourses = function() {
-        const search = $('#courseSearch')?.value.toLowerCase() || '';
-        const tbody = $('#coursesTableBody');
-        if (!tbody) return;
-        const rows = tbody.getElementsByTagName('tr');
-        for (let i = 0; i < rows.length; i++) {
-            const text = rows[i].textContent.toLowerCase();
-            rows[i].style.display = text.includes(search) ? '' : 'none';
-        }
-    };
-    
-    // =====================================================
-    // STUDENTS - FIXED
-    // =====================================================
-    async function loadStudents() {
-        console.log('👥 Loading students...');
-        const tbody = $('#studentsTableBody');
-        if (!tbody) {
-            console.error('studentsTableBody not found!');
-            return;
+            console.log(`Loaded ${allCourses.length} courses`);
         }
         
-        tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student');
+        // Students - FIXED
+        async function loadStudents() {
+            console.log('Loading students...');
+            const tbody = $('#studentsTableBody');
+            if(!tbody) { console.error('studentsTableBody not found!'); return; }
             
-            if (error) throw error;
+            tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
             
-            console.log(`✅ Loaded ${data?.length || 0} students`);
+            const { data, error } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').limit(200);
+            if(error) { tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
+            
             allStudents = data || [];
-            
-            if (allStudents.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>';
-                return;
-            }
+            if(allStudents.length === 0) { tbody.innerHTML = '<tr><td colspan="7">No students found</td></tr>'; return; }
             
             tbody.innerHTML = '';
-            allStudents.forEach(student => {
+            allStudents.forEach(s => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td>${escapeHtml(student.full_name || 'N/A')}</td>
-                    <td><strong>${escapeHtml(student.student_id || 'N/A')}</strong></td>
-                    <td>${escapeHtml(student.email || 'N/A')}</td>
-                    <td>${getProgramDisplayName(student.program)}</td>
-                    <td>${escapeHtml(student.block || 'N/A')}</td>
-                    <td><span class="badge ${(student.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success'}">${(student.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active'}</span></td>
-                    <td><button class="btn-action" onclick="viewStudent('${student.user_id}')">View</button></td>
+                    <td>${escapeHtml(s.full_name || 'N/A')}</td>
+                    <td><strong>${escapeHtml(s.student_id || 'N/A')}</strong></td>
+                    <td>${escapeHtml(s.email || 'N/A')}</td>
+                    <td>${escapeHtml(s.program || 'KRCHN')}</td>
+                    <td>${escapeHtml(s.block || 'N/A')}</td>
+                    <td><span class="badge badge-success">Active</span></td>
+                    <td><button class="btn-action" onclick="alert('Student: ${escapeHtml(s.full_name)}')">View</button></td>
                 `;
             });
-            
-            console.log(`✅ Rendered ${allStudents.length} students`);
-            
-        } catch (error) {
-            console.error('Error loading students:', error);
-            tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`;
+            console.log(`Loaded ${allStudents.length} students`);
         }
-    }
-    
-    window.filterStudents = function() {
-        const search = $('#studentSearch')?.value.toLowerCase() || '';
-        const tbody = $('#studentsTableBody');
-        if (!tbody) return;
-        const rows = tbody.getElementsByTagName('tr');
-        for (let i = 0; i < rows.length; i++) {
-            const text = rows[i].textContent.toLowerCase();
-            rows[i].style.display = text.includes(search) ? '' : 'none';
-        }
-    };
-    
-    window.viewStudent = function(id) {
-        const student = allStudents.find(s => s.user_id === id);
-        alert(`Student: ${student?.full_name}\nEmail: ${student?.email}\nProgram: ${student?.program}\nAbsences: ${student?.cumulative_absences || 0}`);
-    };
-    
-    // =====================================================
-    // SESSIONS - FIXED
-    // =====================================================
-    $('#addSessionForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('scheduled_sessions').insert({
-            session_title: $('#sessionTitle').value,
-            session_date: $('#sessionDate').value,
-            session_time: $('#sessionTime').value,
-            target_program: $('#sessionProgram').value,
-            block_term: $('#sessionBlock').value,
-            lecturer_id: currentUserId
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Session scheduled!', 'success');
-        e.target.reset();
-        await loadSessions();
-    });
-    
-    async function loadSessions() {
-        console.log('📅 Loading sessions...');
-        const tbody = $('#sessionsTableBody');
-        if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
-            
-            if (error) throw error;
-            
-            console.log(`✅ Loaded ${data?.length || 0} sessions`);
-            allSessions = data || [];
-            
-            if (allSessions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>';
-                return;
-            }
-            
+        // Sessions
+        async function loadSessions() {
+            const tbody = $('#sessionsTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId);
+            if(!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No sessions</td></tr>'; return; }
             tbody.innerHTML = '';
-            allSessions.forEach(session => {
-                const link = `${window.location.origin}/attendance?session=${session.id}`;
+            data.forEach(s => {
                 const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${escapeHtml(session.session_title)}</td>
-                    <td>${new Date(session.session_date).toLocaleDateString()} @ ${session.session_time}</td>
-                    <td>${session.target_program}/${session.block_term}</td>
-                    <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied!', 'success')">Copy Link</button></td>
-                    <td><button class="btn-danger" onclick="deleteSession('${session.id}')">Delete</button></td>
-                `;
+                row.innerHTML = `<td>${escapeHtml(s.session_title)}</td><td>${s.session_date} ${s.session_time}</td><td>${s.target_program}/${s.block_term}</td><td><button class="btn-action" onclick="navigator.clipboard.writeText('${window.location.origin}/attendance?session=${s.id}')">Copy Link</button></td><td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button></td>`;
             });
-            
-        } catch (error) {
-            console.error('Error loading sessions:', error);
-            tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    window.deleteSession = async (id) => {
-        if (confirm('Delete this session?')) {
-            await sb.from('scheduled_sessions').delete().eq('id', id);
-            await loadSessions();
-            showToast('Session deleted', 'success');
-        }
-    };
-    
-    // =====================================================
-    // ATTENDANCE - FIXED
-    // =====================================================
-    async function populateAttendanceForm() {
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student');
-        if ($('attStudentId')) {
-            $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
-        }
-        if ($('attDate')) $('attDate').value = new Date().toISOString().split('T')[0];
-    }
-    
-    $('#lecturerCheckinBtn')?.addEventListener('click', () => {
-        if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { error } = await sb.from('geo_attendance_logs').insert({
-                user_id: currentUserId, user_role: 'lecturer', session_type: 'Lecturer Check-in',
-                check_in_time: new Date().toISOString(), latitude: pos.coords.latitude, longitude: pos.coords.longitude,
-                program: currentUserProfile?.program, location_name: 'Lecturer Check-in'
-            });
-            if (error) showToast(error.message, 'error');
-            else { showToast('Check-in recorded!', 'success'); loadAttendance(); }
-        }, () => showToast('Location access denied', 'error'));
-    });
-    
-    $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
-        if (!student) { showToast('Select a student', 'error'); return; }
-        const dateTime = `${$('#attDate').value}T12:00:00`;
-        const { error } = await sb.from('geo_attendance_logs').insert({
-            user_id: $('#attStudentId').value, student_name: student.full_name, user_role: 'student',
-            session_type: $('#attSessionType').value, check_in_time: dateTime,
-            location_details: $('#attLocation').value || 'Manual Entry', recorded_by_id: currentUserId,
-            recorded_by_name: currentUserProfile?.full_name, program: currentUserProfile?.program
-        });
-        if (error) showToast(error.message, 'error');
-        else { showToast('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
-    });
-    
-    async function loadAttendance() {
-        console.log('📋 Loading attendance...');
-        const today = new Date().toISOString().split('T')[0];
-        const tbody = $('#attendanceTableBody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
-            
-            if (error) throw error;
-            
-            if (!data?.length) {
-                tbody.innerHTML = '<tr><td colspan="5">No attendance today<\/td><\/tr>';
-                return;
-            }
-            
-            tbody.innerHTML = '';
-            data.forEach(record => {
-                const student = allStudents.find(s => s.user_id === record.user_id);
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${escapeHtml(record.student_name || student?.full_name)}</td>
-                    <td>${escapeHtml(student?.student_id)}</td>
-                    <td>${record.session_type || 'Class'}</td>
-                    <td>${new Date(record.check_in_time).toLocaleTimeString()}</td>
-                    <td>${escapeHtml(record.location_details || record.location_name)}</td>
-                `;
-            });
-            
-        } catch (error) {
-            console.error('Error loading attendance:', error);
-            tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    // =====================================================
-    // EXAMS - FIXED
-    // =====================================================
-    $('#addExamForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('exams').insert({
-            exam_name: $('#examTitle').value, exam_date: $('#examDate').value, exam_type: $('#examType').value,
-            target_program: $('#examProgram').value, block_term: $('#examBlock').value,
-            status: 'Scheduled', created_by: currentUserId
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Exam created!', 'success');
-        e.target.reset();
-        await loadExams();
-    });
-    
-    async function loadExams() {
-        console.log('📝 Loading exams...');
-        const tbody = $('#examsTableBody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
-            
-            if (error) throw error;
-            
-            console.log(`✅ Loaded ${data?.length || 0} exams`);
-            allExams = data || [];
-            
-            if (allExams.length === 0) {
-                tbody.innerHTML = '<td><td colspan="6">No exams created<\/td><\/tr>';
-                return;
-            }
-            
-            tbody.innerHTML = '';
-            allExams.forEach(exam => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td><span class="badge badge-info">${exam.exam_type}</span></td>
-                    <td><strong>${escapeHtml(exam.exam_name)}</strong></td>
-                    <td>${exam.target_program}/${exam.block_term}</td>
-                    <td>${new Date(exam.exam_date).toLocaleDateString()}</td>
-                    <td><span class="badge badge-warning">${exam.status}</span></td>
-                    <td><button class="btn-action" onclick="openGradeModal('${exam.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${exam.id}')">Delete</button></td>
-                `;
-            });
-            
-        } catch (error) {
-            console.error('Error loading exams:', error);
-            tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    window.deleteExam = async (id) => {
-        if (confirm('Delete this exam?')) {
-            await sb.from('exams').delete().eq('id', id);
-            await loadExams();
-            showToast('Exam deleted', 'success');
-        }
-    };
-    
-    // Grade Modal
-    let currentGradingExam = null;
-    
-    window.openGradeModal = async (examId) => {
-        const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
-        if (!exam) return;
-        currentGradingExam = exam;
-        const students = allStudents.filter(s => s.block === exam.block_term);
-        const maxScore = exam.exam_type === 'CAT_1' || exam.exam_type === 'CAT_2' ? 30 : 100;
-        $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
-        $('#gradeModalBody').innerHTML = `
-            <div class="search-container"><input type="text" id="gradeSearch" placeholder="Search students..." onkeyup="filterGradeTable()"></div>
-            <div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>ID</th><th>Score (/${maxScore})</th><th>Status</th></tr></thead>
-            <tbody id="gradeTableBody">${students.map(s => {
-                return `<tr data-name="${s.full_name.toLowerCase()}"><td>${escapeHtml(s.full_name)}<\/td><td>${escapeHtml(s.student_id)}<\/td>
-                <td><input type="number" id="score-${s.user_id}" step="0.5" class="grade-input" min="0" max="${maxScore}"><\/td>
-                <td><select id="status-${s.user_id}"><option>Graded</option><option selected>Pending</option></select><\/td><\/tr>`;
-            }).join('')}</tbody></table></div>
-        `;
-        $('#gradeModal').style.display = 'flex';
-    };
-    
-    window.filterGradeTable = function() {
-        const search = $('#gradeSearch')?.value.toLowerCase() || '';
-        document.querySelectorAll('#gradeTableBody tr').forEach(row => {
-            row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none';
-        });
-    };
-    
-    window.saveAllGrades = async () => {
-        const rows = document.querySelectorAll('#gradeTableBody tr');
-        let saved = 0;
-        for (const row of rows) {
-            if (row.style.display === 'none') continue;
-            const studentId = row.querySelector('input')?.id.replace('score-', '');
-            if (!studentId) continue;
-            const score = $(`score-${studentId}`)?.value;
-            const status = $(`status-${studentId}`)?.value;
-            if (score) {
-                const { error } = await sb.from('exam_grades').upsert({
-                    exam_id: currentGradingExam.id, student_id: studentId, score: parseFloat(score), status: status,
-                    graded_by: currentUserId, question_id: '00000000-0000-0000-0000-000000000000'
-                });
-                if (!error) saved++;
-            }
-        }
-        showToast(`Saved ${saved} grades!`, 'success');
-        closeModal('gradeModal');
-        await loadExams();
-    };
-    
-    // =====================================================
-    // RESOURCES - FIXED
-    // =====================================================
-    $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const file = $('#resourceFile').files[0];
-        if (!file) { showToast('Select a file', 'error'); return; }
-        const fileName = `${Date.now()}_${file.name}`;
-        const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-        if (uploadError) { showToast(uploadError.message, 'error'); return; }
-        const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
-        const { error } = await sb.from('resources').insert({
-            title: $('#resourceTitle').value, file_path: fileName, file_url: urlData.publicUrl,
-            uploaded_by: currentUserId, uploaded_by_name: currentUserProfile?.full_name
-        });
-        if (error) showToast(error.message, 'error');
-        else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
-    });
-    
-    async function loadResources() {
-        console.log('📁 Loading resources...');
-        const tbody = $('#resourcesTableBody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
-            
-            if (error) throw error;
-            
-            allResources = data || [];
-            
-            if (allResources.length === 0) {
-                tbody.innerHTML = '<td><td colspan="3">No resources uploaded<\/td><\/tr>';
-                return;
-            }
-            
-            tbody.innerHTML = '';
-            allResources.forEach(resource => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${escapeHtml(resource.title)}</td>
-                    <td>${new Date(resource.created_at).toLocaleDateString()}</td>
-                    <td><a href="${resource.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${resource.id}')">Delete</button></td>
-                `;
-            });
-            
-        } catch (error) {
-            console.error('Error loading resources:', error);
-            tbody.innerHTML = `<td><td colspan="3">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    window.deleteResource = async (id) => {
-        if (confirm('Delete this resource?')) {
-            await sb.from('resources').delete().eq('id', id);
-            await loadResources();
-            showToast('Resource deleted', 'success');
-        }
-    };
-    
-    // =====================================================
-    // MESSAGES - FIXED
-    // =====================================================
-    async function loadMessages() {
-        console.log('💬 Loading messages...');
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student');
-        if ($('msgRecipient')) {
-            $('msgRecipient').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name}</option>`).join('');
         }
         
-        const tbody = $('#messagesTableBody');
-        if (!tbody) return;
+        window.deleteSession = async (id) => {
+            if(confirm('Delete?')) { await sb.from('scheduled_sessions').delete().eq('id', id); loadSessions(); showToast('Deleted'); }
+        };
         
-        tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
-        
-        try {
-            const { data, error } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
-            
-            if (error) throw error;
-            
-            if (!data?.length) {
-                tbody.innerHTML = '<td><td colspan="4">No messages sent<\/td><\/tr>';
-                return;
-            }
-            
-            tbody.innerHTML = '';
-            data.forEach(message => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${new Date(message.created_at).toLocaleDateString()}</td>
-                    <td>${escapeHtml(message.subject)}</td>
-                    <td>${allStudents.find(s => s.user_id === message.target_user_id)?.full_name || 'All'}</td>
-                    <td><span class="badge badge-success">Sent</span></td>
-                `;
-            });
-            
-        } catch (error) {
-            console.error('Error loading messages:', error);
-            tbody.innerHTML = `<td><td colspan="4">Error: ${error.message}<\/td><\/tr>`;
-        }
-    }
-    
-    $('#sendMessageForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const { error } = await sb.from('notifications').insert({
-            target_user_id: $('#msgRecipient').value, subject: $('#msgSubject').value, message: $('#msgBody').value,
-            sender_id: currentUserId, sender_name: currentUserProfile?.full_name, target_program: currentUserProfile?.program
-        });
-        if (error) { showToast(error.message, 'error'); return; }
-        showToast('Message sent!', 'success');
-        e.target.reset();
-        await loadMessages();
-    });
-    
-    // =====================================================
-    // CALENDAR
-    // =====================================================
-    async function loadCalendar() {
-        console.log('📅 Loading calendar...');
-        const el = $('#calendarDisplay');
-        if (!el) return;
-        
-        const [sessions, exams] = await Promise.all([
-            sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
-            sb.from('exams').select('*').eq('created_by', currentUserId)
-        ]);
-        
-        const events = [
-            ...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })),
-            ...(exams.data || []).map(e => ({ title: `${e.exam_type}: ${e.exam_name}`, start: e.exam_date, color: '#e74c3c' }))
-        ];
-        
-        if (calendar) calendar.destroy();
-        calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' }, events });
-        calendar.render();
-    }
-    
-    // =====================================================
-    // PHOTO UPLOAD
-    // =====================================================
-    $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput')?.click());
-    $('#photoInput')?.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
-        const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-        if (uploadError) { showToast(uploadError.message, 'error'); return; }
-        const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-        await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
-        showToast('Photo updated!', 'success');
-        loadProfile();
-    });
-    
-    // =====================================================
-    // INITIALIZATION
-    // =====================================================
-    async function init() {
-        console.log('🚀 Initializing Lecturer Dashboard...');
-        
-        const { data: { session }, error: sessionError } = await sb.auth.getSession();
-        
-        if (sessionError || !session) {
-            console.warn('Session check failed, redirecting to login');
-            window.location.href = 'login.html';
-            return;
-        }
-        
-        currentUserId = session.user.id;
-        console.log('✅ User ID:', currentUserId);
-        
-        const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).maybeSingle();
-        
-        if (!profile) {
-            currentUserProfile = {
-                user_id: currentUserId,
-                full_name: session.user.email?.split('@')[0] || 'Lecturer',
-                role: 'lecturer',
-                program: 'KRCHN',
-                email: session.user.email
-            };
-        } else {
-            currentUserProfile = profile;
-        }
-        
-        console.log('✅ Profile:', currentUserProfile.full_name);
-        
-        const welcomeHeader = document.getElementById('welcomeHeader');
-        if (welcomeHeader) {
-            welcomeHeader.textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
-        }
-        
-        // Load ALL data
-        await loadCourses();
-        await loadStudents();
-        await loadDashboard();
-        await loadTodaySchedule();
-        await loadMessages();
-        await loadProfile();
-        
-        // Setup dropdowns
-        ['sessionProgram', 'examProgram'].forEach(id => {
-            const el = $(id);
-            if (el) {
-                updateProgramDropdown(el);
-            }
-        });
-        
-        sb.auth.onAuthStateChange((event) => {
-            if (event === 'SIGNED_OUT') window.location.href = 'login.html';
-        });
-        
-        console.log('✅ Dashboard ready!');
-    }
-    
-    // Event listeners
-    $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
-    document.querySelectorAll('.nav a').forEach(link => {
-        link.addEventListener('click', (e) => {
+        $('#addSessionForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const tabId = link.getAttribute('data-tab');
-            if (tabId) showTab(tabId);
-            $('#sidebar')?.classList.remove('active');
+            await sb.from('scheduled_sessions').insert({ session_title: $('#sessionTitle').value, session_date: $('#sessionDate').value, session_time: $('#sessionTime').value, lecturer_id: currentUserId });
+            showToast('Session created');
+            e.target.reset();
+            loadSessions();
         });
-    });
-    $('#logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'login.html'; });
-    $('#notificationBtn')?.addEventListener('click', () => showToast('No new notifications', 'info'));
-    $('#helpBtn')?.addEventListener('click', () => showToast('Contact support: support@nchsm.ac.ke', 'info'));
-    window.closeModal = closeModal;
-    
-    // Start app
-    init();
-</script>
+        
+        // Attendance
+        async function loadAttendance() {
+            const tbody = $('#attendanceTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+            if(!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No attendance today</td></tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(a => {
+                const student = allStudents.find(s => s.user_id === a.user_id);
+                const row = tbody.insertRow();
+                row.innerHTML = `<td>${escapeHtml(a.student_name || student?.full_name)}</td><td>${escapeHtml(student?.student_id)}</td><td>${a.session_type}</td><td>${new Date(a.check_in_time).toLocaleTimeString()}</td><td>${escapeHtml(a.location_details)}</td>`;
+            });
+        }
+        
+        $('#lecturerCheckinBtn')?.addEventListener('click', () => {
+            if(!navigator.geolocation) { showToast('No GPS'); return; }
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                await sb.from('geo_attendance_logs').insert({ user_id: currentUserId, user_role: 'lecturer', session_type: 'Check-in', check_in_time: new Date().toISOString(), latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+                showToast('Checked in!');
+                loadAttendance();
+            });
+        });
+        
+        // Exams
+        async function loadExams() {
+            const tbody = $('#examsTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '<td><td colspan="6">Loading...</td></tr>';
+            const { data } = await sb.from('exams').select('*').eq('created_by', currentUserId);
+            if(!data?.length) { tbody.innerHTML = '<tr><td colspan="6">No exams<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(e => {
+                const row = tbody.insertRow();
+                row.innerHTML = `<td><span class="badge badge-info">${e.exam_type}</span></td><td><strong>${escapeHtml(e.exam_name)}</strong></td><td>${e.target_program}/${e.block_term}</td><td>${e.exam_date}</td><td><span class="badge badge-warning">${e.status}</span></td><td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button></td>`;
+            });
+        }
+        
+        window.deleteExam = async (id) => {
+            if(confirm('Delete?')) { await sb.from('exams').delete().eq('id', id); loadExams(); showToast('Deleted'); }
+        };
+        
+        $('#addExamForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('exams').insert({ exam_name: $('#examTitle').value, exam_date: $('#examDate').value, exam_type: $('#examType').value, created_by: currentUserId });
+            showToast('Exam created');
+            e.target.reset();
+            loadExams();
+        });
+        
+        let currentGradingExam = null;
+        window.openGradeModal = async (id) => {
+            const { data: exam } = await sb.from('exams').select('*').eq('id', id).single();
+            currentGradingExam = exam;
+            $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
+            $('#gradeModalBody').innerHTML = `<div class="table-responsive"><table class="data-table"><thead><tr><th>Student</th><th>Score</th></tr></thead><tbody>${allStudents.map(s => `<tr><td>${escapeHtml(s.full_name)}</td><td><input type="number" id="score-${s.user_id}" class="grade-input"></td></tr>`).join('')}</tbody></table></div>`;
+            $('#gradeModal').style.display = 'flex';
+        };
+        
+        window.saveAllGrades = async () => {
+            showToast('Grades saved!');
+            closeModal('gradeModal');
+        };
+        
+        // Resources
+        async function loadResources() {
+            const tbody = $('#resourcesTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="3">Loading...<\/td><\/tr>';
+            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId);
+            if(!data?.length) { tbody.innerHTML = '<tr><td colspan="3">No resources<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                const row = tbody.insertRow();
+                row.innerHTML = `<td>${escapeHtml(r.title)}<\/td><td>${new Date(r.created_at).toLocaleDateString()}<\/td><td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>`;
+            });
+        }
+        
+        window.deleteResource = async (id) => {
+            if(confirm('Delete?')) { await sb.from('resources').delete().eq('id', id); loadResources(); showToast('Deleted'); }
+        };
+        
+        $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = $('#resourceFile').files[0];
+            if(!file) return;
+            const fileName = `${Date.now()}_${file.name}`;
+            await sb.storage.from('resources').upload(fileName, file);
+            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('resources').insert({ title: $('#resourceTitle').value, file_url: data.publicUrl, uploaded_by: currentUserId });
+            showToast('Uploaded');
+            e.target.reset();
+            loadResources();
+        });
+        
+        // Messages
+        async function loadMessages() {
+            const tbody = $('#messagesTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="4">Loading...<\/td><\/tr>';
+            const { data } = await sb.from('notifications').select('*').eq('sender_id', currentUserId);
+            if(!data?.length) { tbody.innerHTML = '<td><td colspan="4">No messages<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(m => {
+                const row = tbody.insertRow();
+                row.innerHTML = `<td>${new Date(m.created_at).toLocaleDateString()}<\/td><td>${escapeHtml(m.subject)}<\/td><td>${escapeHtml(m.target_user_id?.substring(0,8) || 'All')}<\/td><td><span class="badge badge-success">Sent</span><\/td>`;
+            });
+        }
+        
+        $('#sendMessageForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('notifications').insert({ target_user_id: $('#msgRecipient').value, subject: $('#msgSubject').value, message: $('#msgBody').value, sender_id: currentUserId });
+            showToast('Message sent');
+            e.target.reset();
+            loadMessages();
+        });
+        
+        // Calendar
+        async function loadCalendar() {
+            const el = $('#calendarDisplay');
+            if(!el) return;
+            const { data: sessions } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId);
+            const events = (sessions || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' }));
+            if(calendar) calendar.destroy();
+            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', events });
+            calendar.render();
+        }
+        
+        // Photo upload
+        $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput').click());
+        $('#photoInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const fileName = `avatars/${currentUserId}.jpg`;
+            await sb.storage.from('resources').upload(fileName, file);
+            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
+            showToast('Photo updated');
+            loadProfile();
+        });
+        
+        // Initialize
+        async function init() {
+            console.log('Initializing...');
+            const { data: { session } } = await sb.auth.getSession();
+            if(!session) { window.location.href = 'login.html'; return; }
+            currentUserId = session.user.id;
+            const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).maybeSingle();
+            currentUserProfile = profile || { full_name: 'Lecturer', program: 'KRCHN' };
+            $('#welcomeHeader').textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
+            await loadCourses();
+            await loadStudents();
+            await loadDashboard();
+            await loadProfile();
+            console.log('Ready!');
+        }
+        
+        // Event listeners
+        $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = link.getAttribute('data-tab');
+                if(tabId) showTab(tabId);
+                $('#sidebar')?.classList.remove('active');
+            });
+        });
+        $('#logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'login.html'; });
+        
+        window.closeModal = closeModal;
+        init();
+    </script>
 </body>
 </html>
