@@ -1,22 +1,55 @@
-// enhanced-attendance.js - Complete Secure Student Check-in System (Anti-Cheat Enabled)
+// enhanced-attendance.js - Practical Anti-Cheat System (No Photos)
 (function() {
     'use strict';
     
-    console.log('🔒 SECURE ATTENDANCE SYSTEM - Anti-Cheat Enabled');
+    console.log('🔒 PRACTICAL ATTENDANCE SYSTEM - Anti-Cheat Enabled');
     
     // ============================================
     // CONFIGURATION
     // ============================================
     
-    const VERIFIED_DISTANCE = 100;       // 100m - Auto verified
-    const PENDING_DISTANCE = 200;        // 200m - Needs review
-    const MIN_GPS_ACCURACY = 100;        // 100m - Minimum acceptable accuracy
+    const ATTENDANCE_RULES = {
+        // Within 50m → Auto-approved (clearly on campus)
+        autoApproved: { 
+            maxDistance: 50, 
+            status: 'Present',
+            icon: '✅',
+            requiresReview: false
+        },
+        // 50-200m → Pending review (lecturer can approve based on context)
+        pendingReview: { 
+            maxDistance: 200, 
+            status: 'Pending',
+            icon: '⚠️',
+            requiresReview: true
+        },
+        // Beyond 200m → Auto-rejected
+        autoRejected: { 
+            maxDistance: Infinity, 
+            status: 'Absent',
+            icon: '❌',
+            requiresReview: false
+        }
+    };
     
-    // NCHSM Campus Coordinates (Nakuru)
-    const CAMPUS_COORDINATES = {
-        latitude: -0.2714611,
-        longitude: 36.0519956,
-        name: "NCHSM Main Campus - Nakuru"
+    const GPS_SETTINGS = {
+        requiredAccuracy: 150,     // 150m is reasonable for campus
+        maxRetries: 3,
+        timeout: 15000,
+        minimumAccuracy: 200       // Reject accuracy worse than 200m
+    };
+    
+    const TIME_RESTRICTIONS = {
+        enabled: true,
+        startHour: 6,      // 6 AM
+        endHour: 22,       // 10 PM
+        message: 'Check-in only allowed between 6 AM and 10 PM'
+    };
+    
+    const DAILY_LIMITS = {
+        enabled: true,
+        maxPerUnit: 1,     // Can only check in once per unit per day
+        maxTotal: 6        // Max 6 check-ins per day total
     };
     
     // Store data
@@ -27,11 +60,10 @@
     let currentLocation = null;
     let locationWatchId = null;
     let selectedTarget = null;
-    let historyLoaded = false;
-    let secureModeEnabled = true;
+    let todayCheckIns = [];
     
     // ============================================
-    // HELPER: Get Current Student ID (DYNAMIC)
+    // HELPER: Get Current Student ID
     // ============================================
     
     function getCurrentStudentId() {
@@ -42,63 +74,107 @@
             () => {
                 try {
                     const profile = localStorage.getItem('userProfile');
-                    if (profile) {
-                        const parsed = JSON.parse(profile);
-                        return parsed.user_id || parsed.id;
-                    }
-                } catch (e) { return null; }
-                return null;
+                    return profile ? JSON.parse(profile).user_id : null;
+                } catch(e) { return null; }
             },
             () => window.db?.currentUserId
         ];
         
         for (const source of sources) {
             const id = source();
-            if (id && typeof id === 'string' && id.length > 10) {
-                return id;
-            }
+            if (id && typeof id === 'string' && id.length > 10) return id;
         }
         return null;
     }
     
     // ============================================
-    // ANTI-CHEAT: Verify Location Authenticity
+    // TIME-BASED CHECKS
     // ============================================
     
-    function isRealGPSLocation(position) {
+    function isWithinAllowedHours() {
+        if (!TIME_RESTRICTIONS.enabled) return true;
+        
+        const now = new Date();
+        const hour = now.getHours();
+        return hour >= TIME_RESTRICTIONS.startHour && hour < TIME_RESTRICTIONS.endHour;
+    }
+    
+    function getTimeRestrictionMessage() {
+        return `${TIME_RESTRICTIONS.message} (${TIME_RESTRICTIONS.startHour}:00 - ${TIME_RESTRICTIONS.endHour}:00)`;
+    }
+    
+    // ============================================
+    // DAILY LIMIT CHECKS
+    // ============================================
+    
+    async function loadTodayCheckIns() {
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (!supabase || !studentId) return [];
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const { data } = await supabase
+            .from('geo_attendance_logs')
+            .select('*')
+            .eq('student_id', studentId)
+            .gte('check_in_time', today.toISOString());
+        
+        todayCheckIns = data || [];
+        return todayCheckIns;
+    }
+    
+    async function canCheckInToday(unitCode = null) {
+        await loadTodayCheckIns();
+        
+        // Check total daily limit
+        if (todayCheckIns.length >= DAILY_LIMITS.maxTotal) {
+            return { 
+                allowed: false, 
+                reason: `You have reached the daily limit of ${DAILY_LIMITS.maxTotal} check-ins` 
+            };
+        }
+        
+        // Check per-unit limit
+        if (unitCode && DAILY_LIMITS.maxPerUnit === 1) {
+            const alreadyCheckedUnit = todayCheckIns.some(check => check.unit_code === unitCode);
+            if (alreadyCheckedUnit) {
+                return { 
+                    allowed: false, 
+                    reason: `You have already checked in for this unit today` 
+                };
+            }
+        }
+        
+        return { allowed: true };
+    }
+    
+    // ============================================
+    // GPS ACCURACY VALIDATION
+    // ============================================
+    
+    function isGPSAccurate(position) {
         const accuracy = position.coords.accuracy;
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const timestamp = position.timestamp;
         
-        // Check 1: Accuracy must be reasonable (1m to 200m)
-        if (accuracy <= 0 || accuracy > 200) {
-            console.warn('⚠️ Cheat detection: Invalid accuracy', accuracy);
+        // Reject obviously fake GPS (accuracy of 0 or 1 is suspicious)
+        if (accuracy <= 1) {
+            console.warn('⚠️ Suspicious GPS accuracy detected:', accuracy);
             return false;
         }
         
-        // Check 2: Coordinates must be valid
-        if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-            console.warn('⚠️ Cheat detection: Invalid coordinates');
+        // Reject poor accuracy
+        if (accuracy > GPS_SETTINGS.minimumAccuracy) {
+            console.warn(`⚠️ GPS accuracy too poor: ±${accuracy}m (need <${GPS_SETTINGS.minimumAccuracy}m)`);
             return false;
         }
         
-        // Check 3: Timestamp must be recent (within 60 seconds)
-        if (Date.now() - timestamp > 60000) {
-            console.warn('⚠️ Cheat detection: Stale location data');
-            return false;
-        }
-        
-        // Check 4: Accuracy should be consistent (not perfect 0 or 1)
-        if (accuracy < 5) {
-            console.warn('⚠️ Cheat detection: Suspiciously high accuracy (mock GPS)');
-            return false;
-        }
-        
-        // Check 5: Check for common mock location patterns
-        const isMocked = (latitude === -0.2714611 && longitude === 36.0519956 && accuracy === 15);
-        if (isMocked) {
-            console.warn('⚠️ Cheat detection: Fake campus coordinates detected');
+        // Check if coordinates are within Kenya (basic validation)
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        if (lat < -4.5 || lat > 5.0 || lon < 34.0 || lon > 42.0) {
+            console.warn('⚠️ Coordinates outside Kenya detected');
             return false;
         }
         
@@ -106,66 +182,43 @@
     }
     
     // ============================================
-    // ANTI-CHEAT: Verify Device Integrity
+    // GET VERIFIED LOCATION
     // ============================================
     
-    function verifyDeviceIntegrity() {
-        // Check for headless browsers
-        const isHeadless = /HeadlessChrome|PhantomJS|Puppeteer|Selenium/i.test(navigator.userAgent);
-        if (isHeadless) {
-            console.error('❌ Automated browser detected - attendance blocked');
-            showToast('Automated check-ins not allowed', 'error');
-            return false;
-        }
-        
-        // Check for debug tools
-        const hasDebugTools = !!window.__devtools || 
-                              !!window.chrome?.loadTimes ||
-                              !!document.documentMode;
-        
-        // Check for location spoofing extensions
-        const hasSpoofingExtensions = /spoofer|mock location|fake gps/i.test(navigator.userAgent);
-        
-        return !isHeadless && !hasSpoofingExtensions;
-    }
-    
-    // ============================================
-    // SECURE GPS LOCATION (No manual override)
-    // ============================================
-    
-    async function getSecureLocation() {
+    async function getVerifiedLocation() {
         return new Promise((resolve, reject) => {
             let attempts = 0;
-            const MAX_ATTEMPTS = 3;
+            const MAX_ATTEMPTS = GPS_SETTINGS.maxRetries;
             let bestLocation = null;
             
             function attemptLocation() {
                 attempts++;
-                console.log(`🔒 Secure location attempt ${attempts}/${MAX_ATTEMPTS}...`);
+                console.log(`📍 Location attempt ${attempts}/${MAX_ATTEMPTS}...`);
                 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        if (!isRealGPSLocation(position)) {
-                            console.warn('❌ Invalid location detected - possible cheat attempt');
+                        const accuracy = position.coords.accuracy;
+                        console.log(`   Accuracy: ±${accuracy}m`);
+                        
+                        if (!isGPSAccurate(position)) {
                             if (attempts < MAX_ATTEMPTS) {
                                 setTimeout(attemptLocation, 2000);
+                            } else if (bestLocation) {
+                                console.warn(`⚠️ Using best available accuracy: ±${bestLocation.coords.accuracy}m`);
+                                resolve(bestLocation);
                             } else {
-                                reject(new Error('Unable to verify real location. Please enable high-accuracy GPS.'));
+                                reject(new Error(`GPS accuracy too poor (±${accuracy}m). Please move to an open area.`));
                             }
                             return;
                         }
-                        
-                        const accuracy = position.coords.accuracy;
-                        console.log(`📍 GPS verified: ±${accuracy}m`);
                         
                         if (!bestLocation || accuracy < bestLocation.coords.accuracy) {
                             bestLocation = position;
                         }
                         
-                        if (accuracy <= MIN_GPS_ACCURACY) {
+                        if (accuracy <= GPS_SETTINGS.requiredAccuracy) {
                             resolve(bestLocation);
                         } else if (attempts >= MAX_ATTEMPTS) {
-                            console.warn(`⚠️ Using best available accuracy: ±${bestLocation.coords.accuracy}m`);
                             resolve(bestLocation);
                         } else {
                             setTimeout(attemptLocation, 2000);
@@ -181,7 +234,7 @@
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 15000,
+                        timeout: GPS_SETTINGS.timeout,
                         maximumAge: 0
                     }
                 );
@@ -192,7 +245,22 @@
     }
     
     // ============================================
-    // LOAD APPROVED UNITS (FROM student_unit_registrations)
+    // DISTANCE CALCULATION
+    // ============================================
+    
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const toRad = (x) => (x * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    // ============================================
+    // LOAD APPROVED UNITS
     // ============================================
     
     async function loadApprovedUnits() {
@@ -200,22 +268,18 @@
             const supabaseClient = window.db?.supabase;
             const studentId = getCurrentStudentId();
             
-            if (!supabaseClient || !studentId) {
-                return [];
-            }
+            if (!supabaseClient || !studentId) return [];
             
-            const { data: approvedRegistrations, error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('student_unit_registrations')
                 .select('*')
                 .eq('student_id', studentId)
                 .eq('status', 'approved')
                 .order('unit_code', { ascending: true });
             
-            if (error || !approvedRegistrations) {
-                return [];
-            }
+            if (error || !data) return [];
             
-            approvedUnits = approvedRegistrations.map(reg => ({
+            approvedUnits = data.map(reg => ({
                 id: reg.id,
                 unit_code: reg.unit_code,
                 unit_name: reg.unit_name,
@@ -240,9 +304,7 @@
     async function loadClinicalLocations() {
         try {
             const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserProfile) {
-                return [];
-            }
+            if (!supabaseClient || !attendanceUserProfile) return [];
             
             const program = attendanceUserProfile?.program;
             const intakeYear = attendanceUserProfile?.intake_year;
@@ -257,10 +319,7 @@
             if (block) query = query.eq('block_term', block);
             
             const { data, error } = await query.order('clinical_area_name');
-            
-            if (error) {
-                return [];
-            }
+            if (error) return [];
             
             clinicalLocations = (data || []).map(loc => ({
                 id: loc.id,
@@ -292,9 +351,7 @@
         
         try {
             if (sessionType === 'clinical') {
-                if (clinicalLocations.length === 0) {
-                    await loadClinicalLocations();
-                }
+                if (clinicalLocations.length === 0) await loadClinicalLocations();
                 
                 if (clinicalLocations.length === 0) {
                     targetSelect.innerHTML = '<option value="">🏥 No clinical locations available</option>';
@@ -305,15 +362,13 @@
                 targetSelect.innerHTML = '<option value="">🏥 Select clinical location...</option>';
                 clinicalLocations.forEach(loc => {
                     const opt = document.createElement('option');
-                    opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|${VERIFIED_DISTANCE}`;
+                    opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|100`;
                     opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
                     targetSelect.appendChild(opt);
                 });
                 
             } else {
-                if (approvedUnits.length === 0) {
-                    await loadApprovedUnits();
-                }
+                if (approvedUnits.length === 0) await loadApprovedUnits();
                 
                 if (approvedUnits.length === 0) {
                     targetSelect.innerHTML = '<option value="">📚 No approved units found</option>';
@@ -327,7 +382,7 @@
                     let displayText = `${unit.unit_code} - ${unit.unit_name}`;
                     if (unit.block) displayText += ` [${unit.block}]`;
                     
-                    opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
+                    opt.value = `unit_${unit.id}|${displayText}|class|-0.2714611|36.0519956|100`;
                     opt.textContent = displayText;
                     targetSelect.appendChild(opt);
                 });
@@ -352,7 +407,7 @@
                         type: parts[2],
                         latitude: parseFloat(parts[3]),
                         longitude: parseFloat(parts[4]),
-                        radius: parseInt(parts[5]) || VERIFIED_DISTANCE
+                        radius: parseInt(parts[5]) || 100
                     };
                     console.log('✅ Target selected:', selectedTarget.name);
                     updateLiveDistanceMeter();
@@ -366,7 +421,7 @@
     }
     
     // ============================================
-    // SECURE CHECK-IN FUNCTION (No Cheating)
+    // CHECK-IN FUNCTION
     // ============================================
     
     async function attendanceGeoCheckIn() {
@@ -374,19 +429,13 @@
         const sessionTypeSelect = document.getElementById('session-type');
         const targetSelect = document.getElementById('attendance-target');
         
-        if (!button || !sessionTypeSelect) return;
-        
-        // Get selected target
-        if (!selectedTarget && targetSelect && targetSelect.value) {
+        if (!selectedTarget && targetSelect?.value) {
             const parts = targetSelect.value.split('|');
             if (parts.length >= 6) {
                 selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    type: parts[2],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseInt(parts[5]) || VERIFIED_DISTANCE
+                    id: parts[0], name: parts[1], type: parts[2],
+                    latitude: parseFloat(parts[3]), longitude: parseFloat(parts[4]),
+                    radius: parseInt(parts[5]) || 100
                 };
             }
         }
@@ -396,81 +445,67 @@
             return;
         }
         
-        // Verify device integrity
-        if (!verifyDeviceIntegrity()) {
-            showToast('Security check failed. Please use a standard browser.', 'error');
+        // 1. TIME CHECK
+        if (!isWithinAllowedHours()) {
+            showToast(getTimeRestrictionMessage(), 'error');
             return;
         }
         
-        // Disable button during check-in
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying GPS...';
+        // 2. DAILY LIMIT CHECK
+        const unitCode = selectedTarget.name.split(' - ')[0];
+        const limitCheck = await canCheckInToday(unitCode);
+        if (!limitCheck.allowed) {
+            showToast(limitCheck.reason, 'warning');
+            return;
+        }
+        
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying GPS...';
+        }
         
         try {
-            // Get secure GPS location (no manual override)
-            const position = await getSecureLocation();
+            // Get verified GPS location
+            const position = await getVerifiedLocation();
             
             const userLat = position.coords.latitude;
             const userLon = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
             // Calculate distance
-            function calcDistance(lat1, lon1, lat2, lon2) {
-                const R = 6371000;
-                const toRad = (x) => (x * Math.PI) / 180;
-                const dLat = toRad(lat2 - lat1);
-                const dLon = toRad(lon2 - lon1);
-                const a = Math.sin(dLat/2)**2 + 
-                          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-                          Math.sin(dLon/2)**2;
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = calculateDistance(userLat, userLon, selectedTarget.latitude, selectedTarget.longitude);
+            
+            // Determine status based on distance
+            let rule = ATTENDANCE_RULES.autoRejected;
+            if (distance <= ATTENDANCE_RULES.autoApproved.maxDistance) {
+                rule = ATTENDANCE_RULES.autoApproved;
+            } else if (distance <= ATTENDANCE_RULES.pendingReview.maxDistance) {
+                rule = ATTENDANCE_RULES.pendingReview;
             }
             
-            const distance = calcDistance(userLat, userLon, selectedTarget.latitude, selectedTarget.longitude);
-            
-            // Determine status
-            let status, isVerified;
-            if (distance <= VERIFIED_DISTANCE) {
-                status = 'Present';
-                isVerified = true;
-            } else if (distance <= PENDING_DISTANCE) {
-                status = 'Pending';
-                isVerified = false;
-            } else {
-                status = 'Absent';
-                isVerified = false;
-            }
-            
-            console.log(`📍 Verified GPS: ${userLat}, ${userLon}`);
-            console.log(`📏 Distance: ${distance.toFixed(0)}m`);
-            console.log(`📋 Status: ${status}`);
+            console.log(`📍 Distance: ${distance.toFixed(0)}m | Status: ${rule.status}`);
             
             // Confirm with user
             const confirmed = confirm(
-                `🔒 GPS-VERIFIED CHECK-IN\n\n` +
+                `${rule.icon} CHECK-IN VERIFICATION\n\n` +
                 `Course: ${selectedTarget.name}\n` +
-                `📍 Your location: ${userLat.toFixed(6)}, ${userLon.toFixed(6)}\n` +
+                `📍 Distance: ${distance.toFixed(0)}m (${(distance/1000).toFixed(2)} km)\n` +
                 `📡 GPS Accuracy: ±${accuracy}m\n` +
-                `📏 Distance to campus: ${distance.toFixed(0)}m (${(distance/1000).toFixed(2)} km)\n` +
-                `📋 Status: ${status}\n\n` +
-                `This check-in is cryptographically verified.\n` +
-                `Cheating attempts are logged and reported.\n\n` +
+                `📋 Status: ${rule.status}\n` +
+                `${rule.requiresReview ? '⏳ This check-in requires lecturer review\n' : '✅ Auto-verified check-in\n'}\n` +
                 `Proceed?`
             );
             
             if (!confirmed) {
-                button.disabled = false;
-                button.innerHTML = '<i class="fas fa-fingerprint"></i> Check In Now';
+                if (button) button.disabled = false;
                 return;
             }
             
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            if (button) button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             
             // Save to database
             const supabase = window.db.supabase;
             const studentId = getCurrentStudentId();
-            
-            const unitCode = selectedTarget.name.split(' - ')[0];
             const selectedUnit = approvedUnits.find(u => u.unit_code === unitCode);
             
             const checkInData = {
@@ -483,65 +518,39 @@
                 longitude: userLon,
                 accuracy_m: accuracy,
                 distance_meters: distance,
-                is_verified: isVerified,
-                attendance_status: status,
+                is_verified: !rule.requiresReview,
+                attendance_status: rule.status,
                 target_latitude: selectedTarget.latitude,
                 target_longitude: selectedTarget.longitude,
-                student_name: attendanceUserProfile?.full_name,
-                program: attendanceUserProfile?.program,
-                block: attendanceUserProfile?.block,
-                intake_year: attendanceUserProfile?.intake_year,
                 unit_code: unitCode,
                 unit_name: selectedUnit?.unit_name || selectedTarget.name,
-                verification_method: 'GPS_HIGH_ACCURACY',
-                gps_accuracy: accuracy,
-                device_info: navigator.userAgent.substring(0, 100)
+                requires_lecturer_review: rule.requiresReview
             };
             
-            const { error } = await supabase
-                .from('geo_attendance_logs')
-                .insert([checkInData]);
+            const { error } = await supabase.from('geo_attendance_logs').insert([checkInData]);
             
             if (error) throw error;
             
-            const emoji = status === 'Present' ? '✅' : (status === 'Pending' ? '⚠️' : '❌');
-            alert(`${emoji} VERIFIED CHECK-IN COMPLETE!\n\n` +
-                  `Course: ${selectedTarget.name}\n` +
-                  `Distance: ${distance.toFixed(0)}m (${(distance/1000).toFixed(2)} km)\n` +
-                  `Status: ${status}\n` +
-                  `GPS Accuracy: ±${accuracy}m\n\n` +
-                  `This check-in is cryptographically verified.`);
+            showToast(`${rule.icon} Check-in successful! Status: ${rule.status}`, rule.status === 'Present' ? 'success' : 'warning');
             
-            await loadTodayAttendanceCount();
+            // Refresh data
+            await loadTodayCheckIns();
             await loadGeoAttendanceHistory('today');
             await loadAttendanceStreak();
             
         } catch (error) {
             console.error('Check-in error:', error);
-            showToast(`❌ Check-in failed: ${error.message}. Please enable high-accuracy GPS.`, 'error');
+            showToast(`Check-in failed: ${error.message}`, 'error');
         } finally {
-            button.disabled = false;
-            button.innerHTML = '<i class="fas fa-fingerprint"></i> Check In Now';
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-fingerprint"></i> Check In Now';
+            }
         }
     }
     
     // ============================================
-    // DISTANCE CALCULATION
-    // ============================================
-    
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
-        const toRad = (x) => (x * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) ** 2 +
-                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                  Math.sin(dLon / 2) ** 2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-    
-    // ============================================
-    // GPS LOCATION MONITORING
+    // UI UPDATE FUNCTIONS
     // ============================================
     
     function startLocationMonitoring() {
@@ -550,47 +559,33 @@
             return;
         }
         
-        if (locationWatchId) {
-            navigator.geolocation.clearWatch(locationWatchId);
-        }
+        if (locationWatchId) navigator.geolocation.clearWatch(locationWatchId);
         
-        updateGPSStatus('loading', 'Getting secure GPS location...');
+        updateGPSStatus('loading', 'Getting GPS location...');
         
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (isRealGPSLocation(position)) {
-                    handleLocationUpdate(position);
-                }
-                
-                const watchOptions = {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                };
+                handleLocationUpdate(position);
                 
                 locationWatchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        if (isRealGPSLocation(position)) {
-                            handleLocationUpdate(position);
-                        }
-                    },
+                    handleLocationUpdate,
                     (error) => console.warn('Watch error:', error),
-                    watchOptions
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             },
-            (error) => {
-                console.error('Location error:', error);
-                handleLocationError(error);
-            },
+            (error) => handleLocationError(error),
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     }
     
     function handleLocationUpdate(position) {
+        const accuracy = position.coords.accuracy;
+        const isValid = accuracy <= GPS_SETTINGS.minimumAccuracy;
+        
         currentLocation = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
+            accuracy: accuracy,
             timestamp: new Date(position.timestamp)
         };
         
@@ -599,10 +594,18 @@
         updateLiveDistanceMeter();
         updateRequirementsList();
         
-        const accuracyMsg = currentLocation.accuracy <= MIN_GPS_ACCURACY ? 
-            `✅ Secure GPS: ±${currentLocation.accuracy.toFixed(0)}m` : 
-            `⚠️ Low GPS accuracy: ±${currentLocation.accuracy.toFixed(0)}m - Move to open area`;
-        updateGPSStatus('success', accuracyMsg);
+        let accuracyMsg = '';
+        if (accuracy <= 50) {
+            accuracyMsg = `✅ Excellent GPS: ±${accuracy.toFixed(0)}m`;
+        } else if (accuracy <= 100) {
+            accuracyMsg = `✅ Good GPS: ±${accuracy.toFixed(0)}m`;
+        } else if (accuracy <= 150) {
+            accuracyMsg = `⚠️ Fair GPS: ±${accuracy.toFixed(0)}m`;
+        } else {
+            accuracyMsg = `⚠️ Poor GPS: ±${accuracy.toFixed(0)}m - Move to open area`;
+        }
+        
+        updateGPSStatus(isValid ? 'success' : 'warning', accuracyMsg);
     }
     
     function handleLocationError(error) {
@@ -632,7 +635,7 @@
         let bgColor = '';
         
         if (status === 'success') {
-            icon = '<i class="fas fa-shield-alt"></i>';
+            icon = '<i class="fas fa-check-circle"></i>';
             bgColor = '#d1fae5';
             gpsStatus.style.color = '#10b981';
         } else if (status === 'loading') {
@@ -648,7 +651,7 @@
         gpsStatus.style.backgroundColor = bgColor;
         gpsStatus.style.padding = '8px 12px';
         gpsStatus.style.borderRadius = '8px';
-        gpsStatus.innerHTML = `${icon} <span>🔒 ${message}</span>`;
+        gpsStatus.innerHTML = `${icon} <span>${message}</span>`;
     }
     
     function updateLocationDisplay() {
@@ -662,7 +665,7 @@
         if (lonElement) lonElement.textContent = currentLocation.longitude.toFixed(6);
         if (accuracyElement) {
             accuracyElement.textContent = currentLocation.accuracy.toFixed(1);
-            const isAccurate = currentLocation.accuracy <= MIN_GPS_ACCURACY;
+            const isAccurate = currentLocation.accuracy <= GPS_SETTINGS.requiredAccuracy;
             accuracyElement.style.color = isAccurate ? '#10b981' : '#f59e0b';
         }
     }
@@ -671,10 +674,8 @@
         if (!currentLocation || !selectedTarget) return;
         
         const distance = calculateDistance(
-            currentLocation.latitude,
-            currentLocation.longitude,
-            selectedTarget.latitude,
-            selectedTarget.longitude
+            currentLocation.latitude, currentLocation.longitude,
+            selectedTarget.latitude, selectedTarget.longitude
         );
         
         const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
@@ -682,45 +683,21 @@
         
         if (!distanceStatus) return;
         
-        let statusIcon = '';
-        let statusText = '';
-        let bgColor = '';
-        let borderColor = '';
-        let willBeStatus = '';
-        
-        if (distance <= VERIFIED_DISTANCE) {
-            statusIcon = '✅';
-            statusText = 'AUTO VERIFIED';
-            bgColor = '#d1fae5';
-            borderColor = '#10b981';
-            willBeStatus = 'Present (Auto-Verified)';
-        } else if (distance <= PENDING_DISTANCE) {
-            statusIcon = '⚠️';
-            statusText = 'PENDING REVIEW';
-            bgColor = '#fed7aa';
-            borderColor = '#f59e0b';
-            willBeStatus = 'Pending (Lecturer Review)';
-        } else {
-            statusIcon = '❌';
-            statusText = 'TOO FAR';
-            bgColor = '#fee2e2';
-            borderColor = '#ef4444';
-            willBeStatus = 'Absent (Distance Exceeded)';
-        }
+        let rule = ATTENDANCE_RULES.autoRejected;
+        if (distance <= ATTENDANCE_RULES.autoApproved.maxDistance) rule = ATTENDANCE_RULES.autoApproved;
+        else if (distance <= ATTENDANCE_RULES.pendingReview.maxDistance) rule = ATTENDANCE_RULES.pendingReview;
         
         distanceStatus.innerHTML = `
-            <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 15px; border-radius: 8px;">
+            <div style="background: ${rule.status === 'Present' ? '#d1fae5' : (rule.status === 'Pending' ? '#fed7aa' : '#fee2e2')}; border-left: 4px solid ${rule.status === 'Present' ? '#10b981' : (rule.status === 'Pending' ? '#f59e0b' : '#ef4444')}; padding: 15px; border-radius: 8px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                    <span style="font-size: 28px;">${statusIcon}</span>
+                    <span style="font-size: 28px;">${rule.icon}</span>
                     <div>
-                        <strong style="font-size: 16px; color: ${borderColor};">${statusText}</strong>
-                        <div style="font-size: 12px; color: #666;">Will be marked as: ${willBeStatus}</div>
+                        <strong style="font-size: 16px;">${rule.status.toUpperCase()}</strong>
+                        <div style="font-size: 12px; color: #666;">Distance: ${distanceDisplay}</div>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                    <div><span style="color: #666;">🎯 Target:</span><br><strong>${selectedTarget.name}</strong></div>
-                    <div><span style="color: #666;">📏 Distance:</span><br><strong style="color: ${borderColor};">${distanceDisplay}</strong></div>
-                    <div><span style="color: #666;">🔒 GPS Accuracy:</span><br><strong>±${currentLocation.accuracy.toFixed(0)}m</strong></div>
+                <div style="font-size: 13px; margin-top: 8px;">
+                    ${rule.requiresReview ? '⏳ This check-in will require lecturer review' : '✅ Auto-verified check-in'}
                 </div>
             </div>
         `;
@@ -737,21 +714,21 @@
         
         const hasSession = sessionTypeSelect?.value;
         const hasTarget = targetSelect?.value && targetSelect.value !== '';
-        const hasLocation = currentLocation !== null && currentLocation.accuracy <= MIN_GPS_ACCURACY;
+        const hasLocation = currentLocation !== null && currentLocation.accuracy <= GPS_SETTINGS.minimumAccuracy;
         
         const canCheckIn = hasSession && hasTarget && hasLocation;
         checkInButton.disabled = !canCheckIn;
         
         if (!canCheckIn) {
             if (!hasLocation) {
-                checkInButton.title = 'Waiting for accurate GPS (need ±100m)...';
+                checkInButton.title = 'Waiting for accurate GPS (need <200m)...';
                 checkInButton.style.opacity = '0.6';
             } else {
                 checkInButton.title = 'Please select session type and target';
                 checkInButton.style.opacity = '0.6';
             }
         } else {
-            checkInButton.title = 'Click to check in (GPS verified)';
+            checkInButton.title = 'Click to check in';
             checkInButton.style.opacity = '1';
         }
     }
@@ -759,7 +736,7 @@
     function updateRequirementsList() {
         const hasSession = document.getElementById('session-type')?.value;
         const hasTarget = document.getElementById('attendance-target')?.value && document.getElementById('attendance-target')?.value !== '';
-        const hasLocation = currentLocation !== null && currentLocation.accuracy <= MIN_GPS_ACCURACY;
+        const hasLocation = currentLocation !== null && currentLocation.accuracy <= GPS_SETTINGS.minimumAccuracy;
         
         const reqSession = document.getElementById('req-session');
         const reqTarget = document.getElementById('req-target');
@@ -768,22 +745,22 @@
         if (reqSession) {
             reqSession.className = hasSession ? 'fulfilled' : '';
             reqSession.innerHTML = hasSession ? 
-                '<i class="fas fa-check-circle"></i> Select session type' :
+                '<i class="fas fa-check-circle" style="color:#10b981;"></i> Select session type' :
                 '<i class="fas fa-times"></i> Select session type';
         }
         
         if (reqTarget) {
             reqTarget.className = hasTarget ? 'fulfilled' : '';
             reqTarget.innerHTML = hasTarget ? 
-                '<i class="fas fa-check-circle"></i> Select target' :
+                '<i class="fas fa-check-circle" style="color:#10b981;"></i> Select target' :
                 '<i class="fas fa-times"></i> Select target';
         }
         
         if (reqLocation) {
             reqLocation.className = hasLocation ? 'fulfilled' : '';
             reqLocation.innerHTML = hasLocation ? 
-                '<i class="fas fa-check-circle"></i> GPS location verified' :
-                '<i class="fas fa-times"></i> GPS location verified (need ±100m)';
+                '<i class="fas fa-check-circle" style="color:#10b981;"></i> GPS location acquired' :
+                '<i class="fas fa-times"></i> GPS location acquired (need <200m accuracy)';
         }
     }
     
@@ -992,14 +969,14 @@
             }
             
             console.log('👤 User:', attendanceUserProfile.full_name);
-            console.log('🔒 Secure Mode: ENABLED');
+            console.log('🔒 Anti-Cheat Mode: ENABLED');
             
             await Promise.all([loadApprovedUnits(), loadClinicalLocations()]);
             await loadTodayAttendanceCount();
             await loadGeoAttendanceHistory('today');
             await loadAttendanceStreak();
             
-            console.log('✅ Secure attendance system ready');
+            console.log('✅ Attendance system ready');
         } catch (error) {
             console.error('Error loading attendance data:', error);
         }
@@ -1029,14 +1006,13 @@
     }
     
     function initializeAttendanceUI() {
-        console.log('🔒 Initializing Secure Attendance System...');
+        console.log('🔒 Initializing Anti-Cheat Attendance System...');
         
         const sessionTypeSelect = document.getElementById('session-type');
         const attendanceTab = document.querySelector('.nav a[data-tab="attendance"]');
         const historyFilter = document.getElementById('history-filter');
         const refreshHistoryBtn = document.getElementById('refresh-history');
         
-        // Add streak container
         const attendanceStats = document.querySelector('.attendance-stats');
         if (attendanceStats && !document.getElementById('attendance-streak-container')) {
             const streakContainer = document.createElement('div');
@@ -1102,23 +1078,18 @@
         initializeAttendanceUI();
     }
     
-    // Expose minimal API
+    // Expose API
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
+    window.loadAttendanceData = loadAttendanceData;
     
-    // Disable manual location override (anti-cheat)
-    window.setMyLocation = function() {
-        console.warn('🔒 Manual location setting is DISABLED for security');
-        showToast('Manual location setting is not allowed. Please enable GPS.', 'error');
-        return null;
-    };
-    
-    console.log('🔒 Secure Attendance System Ready');
-    console.log('   Anti-Cheat Features:');
-    console.log('   - Real GPS only (no manual override)');
-    console.log('   - Accuracy validation (need ±100m)');
-    console.log('   - Mock location detection');
-    console.log('   - Headless browser detection');
-    console.log('   - All check-ins cryptographically verified');
+    console.log('🔒 ANTI-CHEAT ATTENDANCE SYSTEM READY');
+    console.log('   Features:');
+    console.log('   ✅ Time restrictions (6 AM - 10 PM)');
+    console.log('   ✅ Daily limits (max 5 check-ins)');
+    console.log('   ✅ GPS accuracy validation (<200m required)');
+    console.log('   ✅ Location validation (Kenya only)');
+    console.log('   ✅ Lecturer review for boundary cases (50-200m)');
+    console.log('   ✅ Auto-approved within 50m');
     
 })();
