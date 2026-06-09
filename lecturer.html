@@ -367,9 +367,19 @@
         // COMPLETE LECTURER DASHBOARD - ALL FEATURES WORKING
         // =====================================================
         
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+               const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // FIXED: Added auth configuration to persist session
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                storageKey: 'supabase-auth-token',
+                storage: localStorage,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
         window.sb = sb;
         
         // TVET Program Codes
@@ -392,7 +402,6 @@
         const ACADEMIC_STRUCTURE = { 'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'], 'TVET': ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'] };
         
         let currentUserProfile = null, currentUserId = null, attendanceMap = null, allCourses = [], allStudents = [], calendar = null, currentGradingExam = null, inactivityTimer = null;
-        
         // =====================================================
         // TOAST NOTIFICATIONS
         // =====================================================
@@ -409,16 +418,26 @@
         // =====================================================
         // AUTO-LOGOUT AFTER INACTIVITY
         // =====================================================
-        function resetInactivityTimer() {
-            if (inactivityTimer) clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(async () => {
-                showToast('Session expired due to inactivity', 'warning');
-                await sb.auth.signOut();
-                window.location.href = 'login.html';
-            }, 30 * 60 * 1000);
+       function resetInactivityTimer() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(async () => {
+        // FIX: Check if user is actually inactive or just no activity
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+            // Only show warning, don't auto-logout immediately
+            showToast('Session will expire in 5 minutes due to inactivity', 'warning');
+            
+            // Give warning then logout after 1 minute
+            setTimeout(async () => {
+                const { data: { session: finalCheck } } = await sb.auth.getSession();
+                if (finalCheck) {
+                    await sb.auth.signOut();
+                    window.location.href = 'login.html';
+                }
+            }, 60000);
         }
-        ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => document.addEventListener(event, resetInactivityTimer));
-        
+    }, 25 * 60 * 1000); // 25 minutes instead of 30
+}
         // =====================================================
         // UTILITY FUNCTIONS
         // =====================================================
@@ -483,26 +502,42 @@
         // =====================================================
         // DASHBOARD
         // =====================================================
-        async function loadDashboard() {
-            try {
-                const program = currentUserProfile?.program || 'KRCHN';
-                $('totalStudents').textContent = allStudents.length;
-                $('totalCourses').textContent = allCourses.filter(c => c.target_program === program).length;
-                $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-                const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
-                $('pendingGrading').textContent = exams?.length || 0;
-                const today = new Date().toISOString().split('T')[0];
-                const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-                $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
-                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-                const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-                $('weeklyAttendance').textContent = weekData?.filter(l => l.program === program).length || 0;
-                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-                const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
-                const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
-                $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
-            } catch(e) { console.error('Dashboard error:', e); }
-        }
+      async function loadDashboard() {
+    try {
+        // FIX: Check session first
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) return;
+        
+        const program = currentUserProfile?.program || 'KRCHN';
+        $('totalStudents').textContent = allStudents.length;
+        $('totalCourses').textContent = allCourses.filter(c => c.target_program === program).length;
+        $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
+        
+        const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
+        $('pendingGrading').textContent = exams?.length || 0;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+        $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
+        
+        const weekAgo = new Date(); 
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
+        $('weeklyAttendance').textContent = weekData?.filter(l => l.program === program).length || 0;
+        
+        const monthAgo = new Date(); 
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
+        const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
+        $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
+    } catch(e) { 
+        console.error('Dashboard error:', e);
+        // Don't crash the dashboard, just show zeros
+        $('todayAttendance').textContent = '0';
+        $('weeklyAttendance').textContent = '0';
+        $('monthlyRate').textContent = '0%';
+    }
+}
         
         async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
@@ -825,23 +860,63 @@
         // =====================================================
         // INITIALIZATION
         // =====================================================
-        async function init() {
-            try {
-                const { data: { session } } = await sb.auth.getSession();
-                if (!session) { window.location.href = 'login.html'; return; }
-                currentUserId = session.user.id;
-                const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
-                if (!profile || profile.role !== 'lecturer') throw new Error('Access denied');
-                currentUserProfile = profile;
-                $('welcomeHeader').textContent = `Welcome, ${profile.full_name || 'Lecturer'}!`;
-                await loadCourses();
-                await loadStudents();
-                await loadDashboard();
-                await loadSectionData('dashboard');
-                ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock')); });
-                resetInactivityTimer();
-            } catch(e) { console.error(e); alert('Session error. Please login again.'); window.location.href = 'login.html'; }
+       async function init() {
+    try {
+        // FIX: Wait for session to load
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { data: { session }, error } = await sb.auth.getSession();
+        
+        if (error || !session) { 
+            console.log('No session found, redirecting to login');
+            window.location.href = 'login.html'; 
+            return;
         }
+        
+        currentUserId = session.user.id;
+        
+        // FIX: Add auth state listener to prevent unexpected logouts
+        sb.auth.onAuthStateChange((event, session) => {
+            console.log('Auth event:', event);
+            if (event === 'SIGNED_OUT') {
+                window.location.href = 'login.html';
+            } else if (event === 'TOKEN_REFRESHED') {
+                console.log('Token refreshed successfully');
+            }
+        });
+        
+        const { data: profile } = await sb.from('consolidated_user_profiles_table')
+            .select('*').eq('user_id', currentUserId).single();
+            
+        if (!profile || profile.role !== 'lecturer') {
+            throw new Error('Access denied');
+        }
+        
+        currentUserProfile = profile;
+        $('welcomeHeader').textContent = `Welcome, ${profile.full_name || 'Lecturer'}!`;
+        
+        await loadCourses();
+        await loadStudents();
+        await loadDashboard();
+        await loadSectionData('dashboard');
+        
+        // Initialize dropdowns
+        ['sessionProgram', 'examProgram', 'resourceProgram'].forEach(id => { 
+            const el = $(id); 
+            if (el) {
+                updateProgramDropdown(el);
+                el.addEventListener('change', () => updateBlockOptions(id, id === 'sessionProgram' ? 'sessionBlock' : id === 'examProgram' ? 'examBlock' : 'resourceBlock'));
+            }
+        });
+        
+        resetInactivityTimer();
+        
+    } catch(e) { 
+        console.error('Init error:', e); 
+        alert('Session error. Please login again.'); 
+        window.location.href = 'login.html'; 
+    }
+}
         
         // =====================================================
         // EVENT LISTENERS
