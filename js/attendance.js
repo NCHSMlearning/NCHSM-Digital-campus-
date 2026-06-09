@@ -1,4 +1,4 @@
-// enhanced-attendance.js - Complete Student Check-in System (Auto-load History)
+// enhanced-attendance.js - Complete Student Check-in System (Fixed for Approved Units)
 (function() {
     'use strict';
     
@@ -31,99 +31,230 @@
     let locationWatchId = null;
     let selectedTarget = null;
     let liveTrackingInterval = null;
-    let historyLoaded = false; // Track if history has been loaded
+    let historyLoaded = false;
     
     // ============================================
-    // INITIALIZATION
+    // LOAD APPROVED UNITS FROM REGISTRATIONS (FIXED)
     // ============================================
     
-   async function loadApprovedUnits() {
-    try {
-        const supabaseClient = window.db?.supabase;
-        
-        // Get user ID from multiple possible sources
-        let studentId = null;
-        let userProgram = null;
-        let userBlock = null;
-        
-        // Get user profile
-        if (attendanceUserProfile) {
-            userProgram = attendanceUserProfile.program;
-            userBlock = attendanceUserProfile.block;
-            studentId = attendanceUserProfile.id || attendanceUserProfile.user_id;
-        } else if (window.db?.currentUserProfile) {
-            userProgram = window.db.currentUserProfile.program;
-            userBlock = window.db.currentUserProfile.block;
-            studentId = window.db.currentUserProfile.id || window.db.currentUserProfile.user_id;
-        } else if (window.unitRegistrationModule?.userProfile) {
-            userProgram = window.unitRegistrationModule.userProfile.program;
-            userBlock = window.unitRegistrationModule.userProfile.block;
-        }
-        
-        console.log('📚 Loading courses for:', { program: userProgram, block: userBlock });
-        
-        if (!supabaseClient) {
-            console.error('❌ Supabase client not available');
+    async function loadApprovedUnits() {
+        try {
+            const supabaseClient = window.db?.supabase;
+            
+            // Get user ID and profile
+            let studentId = null;
+            let userProgram = null;
+            let userBlock = null;
+            
+            // Get user profile from multiple sources
+            if (attendanceUserProfile) {
+                userProgram = attendanceUserProfile.program;
+                userBlock = attendanceUserProfile.block;
+                studentId = attendanceUserProfile.id || attendanceUserProfile.user_id;
+            } else if (window.db?.currentUserProfile) {
+                userProgram = window.db.currentUserProfile.program;
+                userBlock = window.db.currentUserProfile.block;
+                studentId = window.db.currentUserProfile.id || window.db.currentUserProfile.user_id;
+            } else if (window.unitRegistrationModule?.userProfile) {
+                userProgram = window.unitRegistrationModule.userProfile.program;
+                userBlock = window.unitRegistrationModule.userProfile.block;
+                studentId = window.unitRegistrationModule.userProfile.id || window.unitRegistrationModule.userProfile.user_id;
+            }
+            
+            console.log('📚 Loading APPROVED units for attendance check-in...', { 
+                studentId, 
+                program: userProgram, 
+                block: userBlock 
+            });
+            
+            if (!supabaseClient) {
+                console.error('❌ Supabase client not available');
+                return [];
+            }
+            
+            if (!studentId) {
+                console.error('❌ No student ID available - cannot load approved units');
+                return [];
+            }
+            
+            // ONLY load units with status = 'approved' from student_unit_registrations
+            const { data: approvedRegistrations, error: regError } = await supabaseClient
+                .from('student_unit_registrations')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('status', 'approved')  // ONLY approved units
+                .order('unit_code', { ascending: true });
+            
+            if (regError) {
+                console.error('❌ Error loading approved registrations:', regError);
+                return [];
+            }
+            
+            console.log(`📊 Found ${approvedRegistrations?.length || 0} APPROVED units for student`);
+            
+            if (!approvedRegistrations || approvedRegistrations.length === 0) {
+                console.warn('⚠️ No approved units found! Student cannot check in until units are approved.');
+                
+                // Show warning in UI
+                const targetSelect = document.getElementById('attendance-target');
+                if (targetSelect) {
+                    targetSelect.innerHTML = '<option value="">⚠️ No approved units - Register units first</option>';
+                    targetSelect.disabled = true;
+                }
+                
+                // Dispatch event with zero units
+                document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+                    detail: { units: [], count: 0, message: 'No approved units available' }
+                }));
+                
+                return [];
+            }
+            
+            // Map approved registrations to attendance format
+            approvedUnits = approvedRegistrations.map(reg => ({
+                id: reg.id,
+                unit_code: reg.unit_code,
+                unit_name: reg.unit_name,
+                block: reg.block || userBlock,
+                status: reg.status,
+                credits: 3,
+                course_id: reg.id,
+                registration_id: reg.id,
+                approved_date: reg.approval_date || reg.updated_at,
+                is_active: true
+            }));
+            
+            console.log(`✅ Loaded ${approvedUnits.length} APPROVED units available for check-in:`);
+            approvedUnits.forEach((unit, i) => {
+                console.log(`   ${i+1}. ${unit.unit_code} - ${unit.unit_name} (Approved)`);
+            });
+            
+            // Dispatch event for other modules
+            document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+                detail: { 
+                    units: approvedUnits, 
+                    count: approvedUnits.length,
+                    source: 'student_unit_registrations',
+                    status: 'approved_only'
+                }
+            }));
+            
+            return approvedUnits;
+            
+        } catch (error) {
+            console.error('❌ Error loading approved units:', error);
             return [];
         }
-        
-        // QUERY FROM COURSES TABLE - NOT student_unit_registrations
-        let query = supabaseClient
-            .from('courses')
-            .select('*')
-            .eq('status', 'Active')
-            .eq('target_program', userProgram);
-        
-        // Filter by block if available
-        if (userBlock) {
-            query = query.eq('block', userBlock);
-        }
-        
-        // Also get courses that match your specific units
-        const { data, error } = await query.order('unit_code', { ascending: true });
-        
-        if (error) {
-            console.error('Error loading courses:', error);
-            return [];
-        }
-        
-        console.log(`✅ Found ${data?.length || 0} courses from courses table`);
-        
-        // Filter for Block 4 specific courses (your units)
-        const block4Courses = (data || []).filter(course => 
-            course.block === 'Block 4' || 
-            course.block === userBlock ||
-            course.unit_code?.includes('30') // Your units have 301-306
-        );
-        
-        // Map courses to approved units format
-        approvedUnits = block4Courses.map(course => ({
-            id: course.id,
-            unit_code: course.unit_code,
-            unit_name: course.name,
-            block: course.block,
-            status: course.status,
-            credits: 3,
-            course_id: course.id
-        }));
-        
-        console.log(`✅ Loaded ${approvedUnits.length} approved units from courses table:`);
-        approvedUnits.forEach((unit, i) => {
-            console.log(`   ${i+1}. ${unit.unit_code} - ${unit.unit_name} [${unit.block}]`);
-        });
-        
-        // Dispatch event for other modules
-        document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
-            detail: { units: approvedUnits, count: approvedUnits.length }
-        }));
-        
-        return approvedUnits;
-        
-    } catch (error) {
-        console.error('Error loading approved units:', error);
-        return [];
     }
-}
+    
+    // ============================================
+    // POPULATE TARGET OPTIONS (FIXED)
+    // ============================================
+    
+    async function populateTargetOptions(sessionType) {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect) return;
+        
+        targetSelect.innerHTML = '<option value="">Loading options...</option>';
+        targetSelect.disabled = true;
+        
+        try {
+            if (sessionType === 'clinical') {
+                if (clinicalLocations.length === 0) {
+                    await loadClinicalLocations();
+                }
+                
+                if (clinicalLocations.length === 0) {
+                    targetSelect.innerHTML = '<option value="">🏥 No clinical locations available</option>';
+                    targetSelect.disabled = false;
+                    showToast('No clinical locations assigned for your program', 'warning');
+                    return;
+                }
+                
+                targetSelect.innerHTML = '<option value="">🏥 Select clinical location...</option>';
+                clinicalLocations.forEach(loc => {
+                    const opt = document.createElement('option');
+                    opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|${VERIFIED_DISTANCE}`;
+                    opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
+                    targetSelect.appendChild(opt);
+                });
+                
+                showToast(`${clinicalLocations.length} clinical location(s) available`, 'success');
+                
+            } else {
+                // CLASS SESSION - Load from approved units (NOT courses table)
+                if (approvedUnits.length === 0) {
+                    await loadApprovedUnits();
+                }
+                
+                if (approvedUnits.length === 0) {
+                    targetSelect.innerHTML = '<option value="">📚 No approved units found</option>';
+                    targetSelect.disabled = false;
+                    showToast('Please register and get units approved first', 'warning');
+                    return;
+                }
+                
+                targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
+                approvedUnits.forEach(unit => {
+                    const opt = document.createElement('option');
+                    let displayText = `${unit.unit_code} - ${unit.unit_name}`;
+                    if (unit.block) displayText += ` [${unit.block}]`;
+                    
+                    opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
+                    opt.textContent = displayText;
+                    opt.setAttribute('data-approved', 'true');
+                    opt.setAttribute('data-status', 'approved');
+                    targetSelect.appendChild(opt);
+                });
+                
+                console.log(`✅ Populated dropdown with ${approvedUnits.length} approved units`);
+                showToast(`${approvedUnits.length} approved course(s) available for check-in`, 'success');
+            }
+        } catch (error) {
+            console.error('Error populating targets:', error);
+            targetSelect.innerHTML = '<option value="">Error loading options</option>';
+        }
+        
+        targetSelect.disabled = false;
+        
+        // Add change event listener for target selection
+        targetSelect.addEventListener('change', () => {
+            const value = targetSelect.value;
+            if (value && value !== '') {
+                const parts = value.split('|');
+                if (parts.length >= 6) {
+                    selectedTarget = {
+                        id: parts[0],
+                        name: parts[1],
+                        type: parts[2],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseInt(parts[5]) || VERIFIED_DISTANCE
+                    };
+                    console.log('✅ Target selected:', selectedTarget.name);
+                    updateLiveDistanceMeter();
+                    updateCheckInButton();
+                    
+                    // Show distance status
+                    const distanceStatus = document.getElementById('distance-status');
+                    if (distanceStatus) {
+                        distanceStatus.style.display = 'block';
+                    }
+                }
+            } else {
+                selectedTarget = null;
+                const distanceStatus = document.getElementById('distance-status');
+                if (distanceStatus) {
+                    distanceStatus.style.display = 'none';
+                }
+                updateCheckInButton();
+            }
+        });
+    }
+    
+    // ============================================
+    // LOAD CLINICAL LOCATIONS
+    // ============================================
     
     async function loadClinicalLocations() {
         try {
@@ -170,7 +301,135 @@
     }
     
     // ============================================
-    // GPS & DISTANCE CALCULATION
+    // CHECK-IN FUNCTION WITH APPROVAL VERIFICATION
+    // ============================================
+    
+    async function attendanceGeoCheckIn() {
+        const button = document.getElementById('check-in-button');
+        const sessionTypeSelect = document.getElementById('session-type');
+        const targetSelect = document.getElementById('attendance-target');
+        
+        if (!button || !sessionTypeSelect || !targetSelect) return;
+        
+        if (!selectedTarget) {
+            showToast('Please select a target first', 'warning');
+            return;
+        }
+        
+        // VERIFY the selected unit is APPROVED before allowing check-in
+        if (sessionTypeSelect.value === 'class') {
+            const unitCode = selectedTarget.name.split(' - ')[0];
+            const isApproved = approvedUnits.some(unit => 
+                unit.unit_code === unitCode && unit.status === 'approved'
+            );
+            
+            if (!isApproved) {
+                showToast('❌ Cannot check in: This unit has not been approved yet. Please wait for lecturer approval.', 'error');
+                console.warn('Check-in blocked: Unit not approved', { unitCode, selectedTarget: selectedTarget.name });
+                return;
+            }
+            
+            console.log('✅ Unit approval verified:', unitCode);
+        }
+        
+        const distance = calculateDistance(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            selectedTarget.latitude,
+            selectedTarget.longitude
+        );
+        
+        // Show confirmation modal
+        const confirmed = await showConfirmationModal(distance);
+        if (!confirmed) return;
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        try {
+            let isVerified = false;
+            let attendanceStatus = 'Present';
+            
+            // Determine status based on distance
+            if (distance <= VERIFIED_DISTANCE) {
+                isVerified = true;
+                attendanceStatus = 'Present';
+            } else if (distance <= PENDING_DISTANCE) {
+                isVerified = false;
+                attendanceStatus = 'Pending';
+            } else {
+                attendanceStatus = 'Absent';
+                isVerified = false;
+            }
+            
+            const supabaseClient = window.db?.supabase;
+            if (!supabaseClient) throw new Error('Database error');
+            
+            const checkInData = {
+                student_id: attendanceUserId,
+                check_in_time: new Date().toISOString(),
+                session_type: sessionTypeSelect.value,
+                target_id: selectedTarget.id,
+                target_name: selectedTarget.name,
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                accuracy_m: currentLocation.accuracy,
+                distance_meters: distance,
+                is_verified: isVerified,
+                student_name: attendanceUserProfile?.full_name || 'Unknown',
+                program: attendanceUserProfile?.program,
+                block: attendanceUserProfile?.block,
+                intake_year: attendanceUserProfile?.intake_year,
+                attendance_status: attendanceStatus,
+                target_latitude: selectedTarget.latitude,
+                target_longitude: selectedTarget.longitude
+            };
+            
+            if (sessionTypeSelect.value === 'class') {
+                let targetId = selectedTarget.id;
+                if (targetId && targetId.startsWith('unit_')) {
+                    targetId = targetId.replace('unit_', '');
+                }
+                const selectedUnit = approvedUnits.find(u => u.id == targetId);
+                if (selectedUnit) {
+                    checkInData.unit_code = selectedUnit.unit_code;
+                    checkInData.unit_name = selectedUnit.unit_name;
+                }
+            }
+            
+            const { error } = await supabaseClient
+                .from('geo_attendance_logs')
+                .insert([checkInData]);
+            
+            if (error) throw error;
+            
+            const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
+            
+            if (attendanceStatus === 'Present') {
+                showToast(`✅ Check-in successful! Verified at ${selectedTarget.name}`, 'success');
+            } else if (attendanceStatus === 'Pending') {
+                showToast(`⚠️ Check-in recorded! Pending review by lecturer`, 'warning');
+            } else if (attendanceStatus === 'Absent') {
+                showToast(`📝 Check-in recorded from ${distanceDisplay} away. Marked as ABSENT.`, 'info');
+            }
+            
+            await loadTodayAttendanceCount();
+            await loadGeoAttendanceHistory('today');
+            await loadAttendanceStreak();
+            
+            updateCheckInButton();
+            
+        } catch (error) {
+            console.error('Check-in error:', error);
+            showToast(`❌ Check-in failed: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-fingerprint"></i><span class="btn-text">Check In Now</span><span class="btn-subtext">GPS verification required</span>';
+        }
+    }
+    
+    // ============================================
+    // HELPER FUNCTIONS (Keep existing ones)
     // ============================================
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -317,10 +576,6 @@
         }
     }
     
-    // ============================================
-    // LIVE DISTANCE METER
-    // ============================================
-    
     function updateLiveDistanceMeter() {
         if (!currentLocation || !selectedTarget) return;
         
@@ -414,118 +669,6 @@
         distanceStatus.style.display = 'block';
     }
     
-    // ============================================
-    // POPULATE TARGET OPTIONS
-    // ============================================
-    
-    async function populateTargetOptions(sessionType) {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        
-        targetSelect.innerHTML = '<option value="">Loading options...</option>';
-        targetSelect.disabled = true;
-        
-        try {
-            if (sessionType === 'clinical') {
-                if (clinicalLocations.length === 0) {
-                    await loadClinicalLocations();
-                }
-                
-                if (clinicalLocations.length === 0) {
-                    targetSelect.innerHTML = '<option value="">🏥 No clinical locations available</option>';
-                    targetSelect.disabled = false;
-                    showToast('No clinical locations assigned for your program', 'warning');
-                    return;
-                }
-                
-                targetSelect.innerHTML = '<option value="">🏥 Select clinical location...</option>';
-                clinicalLocations.forEach(loc => {
-                    const opt = document.createElement('option');
-                    opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|${VERIFIED_DISTANCE}`;
-                    opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
-                    targetSelect.appendChild(opt);
-                });
-                
-                showToast(`${clinicalLocations.length} clinical location(s) available`, 'success');
-                
-            } else {
-                if (approvedUnits.length === 0) {
-                    await loadApprovedUnits();
-                }
-                
-                if (approvedUnits.length === 0) {
-                    targetSelect.innerHTML = '<option value="">📚 No approved units found</option>';
-                    targetSelect.disabled = false;
-                    showToast('Please register for units in Learning Hub first', 'warning');
-                    return;
-                }
-                
-                targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
-                approvedUnits.forEach(unit => {
-                    const opt = document.createElement('option');
-                    let displayText = `${unit.unit_code} - ${unit.unit_name}`;
-                    if (unit.block) displayText += ` [${unit.block}]`;
-                    
-                    opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
-                    opt.textContent = displayText;
-                    targetSelect.appendChild(opt);
-                });
-                
-                showToast(`${approvedUnits.length} approved course(s) available`, 'success');
-            }
-        } catch (error) {
-            console.error('Error populating targets:', error);
-            targetSelect.innerHTML = '<option value="">Error loading options</option>';
-        }
-        
-        targetSelect.disabled = false;
-        targetSelect.addEventListener('change', () => {
-            updateCheckInButton();
-            const value = targetSelect.value;
-            if (value) {
-                const parts = value.split('|');
-                selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    type: parts[2],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseInt(parts[5]) || VERIFIED_DISTANCE
-                };
-                updateLiveDistanceMeter();
-            } else {
-                selectedTarget = null;
-                document.getElementById('distance-status').style.display = 'none';
-            }
-        });
-    }
-    
-    function handleSessionTypeChange() {
-        const sessionTypeSelect = document.getElementById('session-type');
-        const targetControlGroup = document.getElementById('target-control-group');
-        const targetSelect = document.getElementById('attendance-target');
-        
-        if (!sessionTypeSelect || !targetControlGroup || !targetSelect) return;
-        
-        const sessionType = sessionTypeSelect.value;
-        
-        if (sessionType) {
-            targetControlGroup.style.display = 'flex';
-            populateTargetOptions(sessionType);
-        } else {
-            targetControlGroup.style.display = 'none';
-            targetSelect.disabled = true;
-            selectedTarget = null;
-            document.getElementById('distance-status').style.display = 'none';
-        }
-        
-        updateCheckInButton();
-    }
-    
-    // ============================================
-    // UPDATE UI
-    // ============================================
-    
     function updateCheckInButton() {
         const checkInButton = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -536,12 +679,9 @@
         const hasSession = sessionTypeSelect?.value;
         const hasTarget = targetSelect?.value && targetSelect.value !== '';
         const hasLocation = currentLocation !== null;
-        const isAccurate = currentLocation ? currentLocation.accuracy <= MIN_GPS_ACCURACY : false;
         
-        // Allow check-in from ANY distance
         let canCheckIn = hasSession && hasTarget && hasLocation;
         
-        // If not allowing any distance, check distance limits
         if (!ALLOW_CHECKIN_ANY_DISTANCE && canCheckIn && selectedTarget) {
             const distance = calculateDistance(
                 currentLocation.latitude,
@@ -554,7 +694,6 @@
         
         checkInButton.disabled = !canCheckIn;
         
-        // Update button styling and tooltip
         if (!canCheckIn) {
             if (!hasLocation) {
                 checkInButton.title = 'Waiting for GPS signal...';
@@ -602,118 +741,24 @@
         }
     }
     
-    // ============================================
-    // CHECK-IN FUNCTION
-    // ============================================
-    
-    async function attendanceGeoCheckIn() {
-        const button = document.getElementById('check-in-button');
+    function handleSessionTypeChange() {
         const sessionTypeSelect = document.getElementById('session-type');
-        const targetSelect = document.getElementById('attendance-target');
+        const targetControlGroup = document.getElementById('target-control-group');
         
-        if (!button || !sessionTypeSelect || !targetSelect) return;
+        if (!sessionTypeSelect || !targetControlGroup) return;
         
-        if (!selectedTarget) {
-            showToast('Please select a target first', 'warning');
-            return;
+        const sessionType = sessionTypeSelect.value;
+        
+        if (sessionType) {
+            targetControlGroup.style.display = 'flex';
+            populateTargetOptions(sessionType);
+        } else {
+            targetControlGroup.style.display = 'none';
+            selectedTarget = null;
+            document.getElementById('distance-status').style.display = 'none';
         }
         
-        const distance = calculateDistance(
-            currentLocation.latitude,
-            currentLocation.longitude,
-            selectedTarget.latitude,
-            selectedTarget.longitude
-        );
-        
-        // Show confirmation modal
-        const confirmed = await showConfirmationModal(distance);
-        if (!confirmed) return;
-        
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        try {
-            let isVerified = false;
-            let attendanceStatus = 'Present';
-            
-            // Determine status based on distance
-            if (distance <= VERIFIED_DISTANCE) {
-                isVerified = true;
-                attendanceStatus = 'Present';
-            } else if (distance <= PENDING_DISTANCE) {
-                isVerified = false;
-                attendanceStatus = 'Pending';
-            } else {
-                attendanceStatus = 'Absent';
-                isVerified = false;
-            }
-            
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient) throw new Error('Database error');
-            
-            const checkInData = {
-                student_id: attendanceUserId,
-                check_in_time: new Date().toISOString(),
-                session_type: sessionTypeSelect.value,
-                target_id: selectedTarget.id,
-                target_name: selectedTarget.name,
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                accuracy_m: currentLocation.accuracy,
-                distance_meters: distance,
-                is_verified: isVerified,
-                student_name: attendanceUserProfile?.full_name || 'Unknown',
-                program: attendanceUserProfile?.program,
-                block: attendanceUserProfile?.block,
-                intake_year: attendanceUserProfile?.intake_year,
-                attendance_status: attendanceStatus,
-                target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude
-            };
-            
-            if (sessionTypeSelect.value === 'class') {
-                let targetId = selectedTarget.id;
-                if (targetId && targetId.startsWith('unit_')) {
-                    targetId = targetId.replace('unit_', '');
-                }
-                const selectedUnit = approvedUnits.find(u => u.id == targetId);
-                if (selectedUnit) {
-                    checkInData.unit_code = selectedUnit.unit_code;
-                    checkInData.unit_name = selectedUnit.unit_name;
-                }
-            }
-            
-            const { error } = await supabaseClient
-                .from('geo_attendance_logs')
-                .insert([checkInData]);
-            
-            if (error) throw error;
-            
-            const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
-            
-            // Different messages based on status
-            if (attendanceStatus === 'Present') {
-                showToast(`✅ Check-in successful! Verified at ${selectedTarget.name}`, 'success');
-            } else if (attendanceStatus === 'Pending') {
-                showToast(`⚠️ Check-in recorded! Pending review by lecturer`, 'warning');
-            } else if (attendanceStatus === 'Absent') {
-                showToast(`📝 Check-in recorded from ${distanceDisplay} away. Marked as ABSENT.`, 'info');
-            }
-            
-            await loadTodayAttendanceCount();
-            await loadGeoAttendanceHistory('today');
-            await loadAttendanceStreak();
-            
-            // Update button state
-            updateCheckInButton();
-            
-        } catch (error) {
-            console.error('Check-in error:', error);
-            showToast(`❌ Check-in failed: ${error.message}`, 'error');
-        } finally {
-            button.disabled = false;
-            button.innerHTML = '<i class="fas fa-fingerprint"></i><span class="btn-text">Check In Now</span><span class="btn-subtext">GPS verification required</span>';
-        }
+        updateCheckInButton();
     }
     
     function showConfirmationModal(distance) {
@@ -791,10 +836,6 @@
         });
     }
     
-    // ============================================
-    // TOAST NOTIFICATIONS
-    // ============================================
-    
     function showToast(message, type = 'info') {
         const toast = document.createElement('div');
         toast.style.cssText = `
@@ -826,9 +867,98 @@
         }, 100);
     }
     
-    // ============================================
-    // ATTENDANCE STREAK
-    // ============================================
+    async function loadTodayAttendanceCount() {
+        const presentTodayElement = document.getElementById('present-today');
+        if (!presentTodayElement || !attendanceUserId) return;
+        
+        try {
+            const supabaseClient = window.db?.supabase;
+            if (!supabaseClient) return;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const { count, error } = await supabaseClient
+                .from('geo_attendance_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('student_id', attendanceUserId)
+                .eq('attendance_status', 'Present')
+                .gte('check_in_time', today.toISOString());
+            
+            if (!error) presentTodayElement.textContent = count || 0;
+        } catch (error) {
+            console.error('Error loading today count:', error);
+        }
+    }
+    
+    async function loadGeoAttendanceHistory(filter = 'today') {
+        const tableBody = document.getElementById('geo-attendance-history');
+        if (!tableBody || !attendanceUserId) return;
+        
+        tableBody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance history...</td></tr>';
+        
+        try {
+            const supabaseClient = window.db?.supabase;
+            if (!supabaseClient) throw new Error('Database not available');
+            
+            let query = supabaseClient
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', attendanceUserId)
+                .order('check_in_time', { ascending: false })
+                .limit(100);
+            
+            const now = new Date();
+            if (filter === 'today') {
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                query = query.gte('check_in_time', today.toISOString());
+            } else if (filter === 'week') {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                query = query.gte('check_in_time', weekAgo.toISOString());
+            } else if (filter === 'month') {
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                query = query.gte('check_in_time', monthAgo.toISOString());
+            }
+            
+            const { data: logs, error } = await query;
+            if (error) throw error;
+            
+            tableBody.innerHTML = '';
+            
+            if (!logs || logs.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center" style="text-align:center;padding:20px;">📭 No check-in history found</td></tr>';
+                return;
+            }
+            
+            logs.forEach(log => {
+                const time = new Date(log.check_in_time);
+                const timeStr = time.toLocaleString();
+                const distance = log.distance_meters;
+                const distanceDisplay = distance ? (distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`) : 'N/A';
+                const status = log.attendance_status || (log.is_verified ? 'Present' : 'Absent');
+                
+                let statusIcon = status === 'Present' ? '✅' : (status === 'Pending' ? '⏳' : '❌');
+                let statusColor = status === 'Present' ? '#10b981' : (status === 'Pending' ? '#f59e0b' : '#ef4444');
+                
+                tableBody.innerHTML += `
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px;">${timeStr}</td>
+                        <td style="padding: 12px;"><span class="session-badge">${log.session_type || 'N/A'}</span></td>
+                        <td style="padding: 12px;"><strong>${log.target_name || 'N/A'}</strong></td>
+                        <td style="padding: 12px; color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
+                        <td style="padding: 12px;">📍 ${distanceDisplay}</td>
+                        <td style="padding: 12px;">🎯 ±${log.accuracy_m?.toFixed(0) || 'N/A'}m</td>
+                    </tr>
+                `;
+            });
+            
+            historyLoaded = true;
+            
+        } catch (error) {
+            console.error('Error loading history:', error);
+            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;text-align:center;padding:20px;">❌ Error loading history: ' + error.message + '</td></tr>';
+        }
+    }
     
     async function loadAttendanceStreak() {
         const supabaseClient = window.db?.supabase;
@@ -893,115 +1023,6 @@
     }
     
     // ============================================
-    // LOAD HISTORY - FIXED TO AUTO-LOAD
-    // ============================================
-    
-    async function loadTodayAttendanceCount() {
-        const presentTodayElement = document.getElementById('present-today');
-        if (!presentTodayElement || !attendanceUserId) return;
-        
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient) return;
-            
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const { count, error } = await supabaseClient
-                .from('geo_attendance_logs')
-                .select('*', { count: 'exact', head: true })
-                .eq('student_id', attendanceUserId)
-                .eq('attendance_status', 'Present')
-                .gte('check_in_time', today.toISOString());
-            
-            if (!error) presentTodayElement.textContent = count || 0;
-        } catch (error) {
-            console.error('Error loading today count:', error);
-        }
-    }
-    
-    async function loadGeoAttendanceHistory(filter = 'today') {
-        const tableBody = document.getElementById('geo-attendance-history');
-        if (!tableBody || !attendanceUserId) {
-            console.log('History table or user ID not ready yet');
-            return;
-        }
-        
-        console.log('Loading attendance history with filter:', filter);
-        
-        // Show loading state
-        tableBody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance history...</td></tr>';
-        
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient) throw new Error('Database not available');
-            
-            let query = supabaseClient
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', attendanceUserId)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
-            
-            const now = new Date();
-            if (filter === 'today') {
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                query = query.gte('check_in_time', today.toISOString());
-                console.log('Filtering for today:', today.toISOString());
-            } else if (filter === 'week') {
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                query = query.gte('check_in_time', weekAgo.toISOString());
-                console.log('Filtering for last week');
-            } else if (filter === 'month') {
-                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                query = query.gte('check_in_time', monthAgo.toISOString());
-                console.log('Filtering for last month');
-            }
-            
-            const { data: logs, error } = await query;
-            if (error) throw error;
-            
-            tableBody.innerHTML = '';
-            
-            if (!logs || logs.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center" style="text-align:center;padding:20px;">📭 No check-in history found</td></tr>';
-                console.log('No history records found');
-                return;
-            }
-            
-            console.log(`Found ${logs.length} history records`);
-            
-            logs.forEach(log => {
-                const time = new Date(log.check_in_time);
-                const timeStr = time.toLocaleString();
-                const distance = log.distance_meters;
-                const distanceDisplay = distance ? (distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`) : 'N/A';
-                const status = log.attendance_status || (log.is_verified ? 'Present' : 'Absent');
-                
-                let statusIcon = status === 'Present' ? '✅' : (status === 'Pending' ? '⏳' : '❌');
-                let statusColor = status === 'Present' ? '#10b981' : (status === 'Pending' ? '#f59e0b' : '#ef4444');
-                
-                tableBody.innerHTML += `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 12px;">${timeStr}</td>
-                        <td style="padding: 12px;"><span class="session-badge">${log.session_type || 'N/A'}</span></td>
-                        <td style="padding: 12px;"><strong>${log.target_name || 'N/A'}</strong></td>
-                        <td style="padding: 12px; color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
-                        <td style="padding: 12px;">📍 ${distanceDisplay}</td>
-                        <td style="padding: 12px;">🎯 ±${log.accuracy_m?.toFixed(0) || 'N/A'}m</td>
-                    </tr>
-                `;
-            });
-            
-            historyLoaded = true;
-            
-        } catch (error) {
-            console.error('Error loading history:', error);
-            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;text-align:center;padding:20px;">❌ Error loading history: ' + error.message + '</td></tr>';
-        }
-    }
-    
-    // ============================================
     // INITIALIZATION
     // ============================================
     
@@ -1012,7 +1033,6 @@
             
             if (!attendanceUserProfile || !attendanceUserId) {
                 console.log('Waiting for user data...');
-                // Retry after 1 second if not ready
                 setTimeout(() => {
                     if (!attendanceUserProfile || !attendanceUserId) {
                         console.log('Retrying to load user data...');
@@ -1031,9 +1051,8 @@
                 loadClinicalLocations()
             ]);
             
-            // Auto-load all data without requiring check-in
             await loadTodayAttendanceCount();
-            await loadGeoAttendanceHistory('today'); // This will now auto-load
+            await loadGeoAttendanceHistory('today');
             await loadAttendanceStreak();
             
             console.log('✅ All attendance data loaded successfully');
@@ -1063,20 +1082,11 @@
         const activeNav = document.querySelector(`.nav a[data-tab="${tabName}"]`);
         if (activeNav) activeNav.classList.add('active');
         
-        // Auto-load history when attendance tab is opened
         if (tabName === 'attendance' && attendanceUserId && !historyLoaded) {
-            console.log('Attendance tab opened, loading history...');
             loadGeoAttendanceHistory(document.getElementById('history-filter')?.value || 'today');
         } else if (tabName === 'attendance' && attendanceUserId) {
-            // Refresh history even if already loaded (to show latest)
-            console.log('Attendance tab opened, refreshing history...');
             loadGeoAttendanceHistory(document.getElementById('history-filter')?.value || 'today');
         }
-    }
-    
-    function isOnAttendanceTab() {
-        const attendanceTab = document.getElementById('attendance');
-        return attendanceTab && attendanceTab.style.display === 'block';
     }
     
     function initializeAttendanceUI() {
@@ -1088,7 +1098,6 @@
         const historyFilter = document.getElementById('history-filter');
         const refreshHistoryBtn = document.getElementById('refresh-history');
         
-        // Add streak container
         const attendanceStats = document.querySelector('.attendance-stats');
         if (attendanceStats && !document.getElementById('attendance-streak-container')) {
             const streakContainer = document.createElement('div');
@@ -1103,7 +1112,6 @@
                 if (!attendanceUserId) {
                     await loadAttendanceData();
                 } else {
-                    // Refresh history when tab is clicked
                     const currentFilter = historyFilter?.value || 'today';
                     await loadGeoAttendanceHistory(currentFilter);
                     await loadTodayAttendanceCount();
@@ -1143,18 +1151,7 @@
         setInterval(updateRequirementsList, 1000);
         
         startLocationMonitoring();
-        
-        // Auto-load data when page loads
         loadAttendanceData();
-        
-        // If attendance tab is active on load, load history immediately
-        if (isOnAttendanceTab()) {
-            setTimeout(() => {
-                if (attendanceUserId) {
-                    loadGeoAttendanceHistory('today');
-                }
-            }, 500);
-        }
     }
     
     // Add CSS animations
@@ -1164,6 +1161,9 @@
             from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         .session-badge {
             display: inline-block;
             padding: 4px 10px;
@@ -1172,12 +1172,6 @@
             font-weight: 600;
             background: #e0e7ff;
             color: #3730a3;
-        }
-        #gps-status { transition: all 0.3s ease; }
-        .btn-checkin.ready { background: linear-gradient(135deg, #10b981, #059669); }
-        .fulfilled { color: #10b981; }
-        .progress-container {
-            margin-top: 10px;
         }
         .loading-spinner {
             display: inline-block;
@@ -1190,9 +1184,7 @@
             margin-right: 8px;
             vertical-align: middle;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .fulfilled { color: #10b981; }
     `;
     document.head.appendChild(style);
     
@@ -1207,5 +1199,6 @@
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
+    window.loadApprovedUnits = loadApprovedUnits;
     
 })();
