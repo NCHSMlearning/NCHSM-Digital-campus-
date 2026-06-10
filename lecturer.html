@@ -233,7 +233,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
-                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...</td></tr></tbody>
+                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -253,7 +253,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading students...</td></tr></tbody>
+                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -278,7 +278,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
-                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...</td></tr></tbody>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -305,7 +305,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
-                        <tbody id="attendanceTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...</td></tr></tbody>
+                        <tbody id="attendanceTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -329,7 +329,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...</td></tr></tbody>
+                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -346,7 +346,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Uploaded</th><th>Actions</th></tr></thead>
-                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...</td></tr></tbody>
+                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -364,8 +364,8 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
-                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...</td></tr></tbody>
-                    </table>
+                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr></tbody>
+                    </tr>
                 </div>
             </section>
 
@@ -417,7 +417,7 @@
         window.sb = sb;
         
         // =====================================================
-        // GLOBAL VARIABLES - USING window. FOR TRUE GLOBAL SCOPE
+        // GLOBAL VARIABLES
         // =====================================================
         window.currentUserProfile = null;
         window.currentUserId = null;
@@ -553,34 +553,33 @@
         }
         
         // Dashboard
-      async function loadDashboard() {
-    try {
-        // Use window. for ALL - consistent with loadCourses() and loadStudents()
-        if ($('totalStudents')) $('totalStudents').textContent = window.allStudents.length;
-        if ($('totalCourses')) $('totalCourses').textContent = window.allCourses.length;
-        if ($('atRiskCount')) $('atRiskCount').textContent = window.allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-        
-        const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
-        if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
-        
-        const today = new Date().toISOString().split('T')[0];
-        const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-        if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.length || 0;
-        
-        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-        const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-        if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.length || 0;
-        
-        const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-        const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
-        const uniqueStudents = [...new Set((monthData || []).map(l => l.user_id))].length;
-        if ($('monthlyRate')) $('monthlyRate').textContent = window.allStudents.length ? Math.round((uniqueStudents / window.allStudents.length) * 100) + '%' : '0%';
-    } catch(e) { console.error('Dashboard error:', e); }
-}
+        async function loadDashboard() {
+            try {
+                if ($('totalStudents')) $('totalStudents').textContent = window.allStudents.length;
+                if ($('totalCourses')) $('totalCourses').textContent = window.allCourses.length;
+                if ($('atRiskCount')) $('atRiskCount').textContent = window.allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
+                
+                const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
+                if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
+                
+                const today = new Date().toISOString().split('T')[0];
+                const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+                if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.length || 0;
+                
+                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
+                if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.length || 0;
+                
+                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+                const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
+                const uniqueStudents = [...new Set((monthData || []).map(l => l.user_id))].length;
+                if ($('monthlyRate')) $('monthlyRate').textContent = window.allStudents.length ? Math.round((uniqueStudents / window.allStudents.length) * 100) + '%' : '0%';
+            } catch(e) { console.error('Dashboard error:', e); }
+        }
         
         async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('created_by', window.currentUserId).order('session_time');
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).order('session_time');
             const container = $('#todayScheduleList');
             if (!container) return;
             if (!data?.length) { container.innerHTML = '<p>No sessions scheduled for today</p>'; return; }
@@ -602,25 +601,43 @@
             }
         }
         
-        // Courses
+        // Courses - WORKING VERSION
         async function loadCourses() {
+            console.log('🔵 loadCourses STARTED');
             const tbody = $('#coursesTableBody');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
+            tbody.innerHTML = '<td><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
+            
             const { data, error } = await sb.from('courses').select('*');
-            if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
+            console.log('🔵 Data from Supabase:', data?.length);
+            
+            if (error) {
+                console.error('🔵 Error:', error);
+                tbody.innerHTML = `<td><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
+                return;
+            }
+            
             window.allCourses = data || [];
-            if (window.allCourses.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
+            console.log('🔵 window.allCourses set to:', window.allCourses.length);
+            
+            if (window.allCourses.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>';
+                return;
+            }
+            
             tbody.innerHTML = '';
-            window.allCourses.forEach(c => {
-                tbody.innerHTML += `<tr>
-                    <td><strong>${escapeHtml(c.unit_code || 'N/A')}<\/strong><\/td>
-                    <td>${escapeHtml(c.course_name)}<\/td>
-                    <td>${getProgramDisplayName(c.target_program)}<\/td>
-                    <td>${escapeHtml(c.block || 'N/A')}<\/td>
-                    <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(c.course_name)}', 'info')">View<\/button><\/td>
-                </tr>`;
-            });
+            for (const c of window.allCourses) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${c.unit_code || 'N/A'}</strong></td>
+                        <td>${c.course_name}</td>
+                        <td>${c.target_program || 'KRCHN'}</td>
+                        <td>${c.block || 'N/A'}</td>
+                        <td><button class="btn-action" onclick="showToast('Course: ${c.course_name}', 'info')">View</button></td>
+                    </tr>
+                `;
+            }
+            console.log('🔵 loadCourses FINISHED - total courses:', window.allCourses.length);
         }
         
         window.filterCourses = function() {
@@ -629,30 +646,54 @@
             rows.forEach(row => { row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none'; });
         };
         
-        // Students
+        // Students - WORKING VERSION
         async function loadStudents() {
+            console.log('🟢 loadStudents STARTED');
             const tbody = $('#studentsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>';
+            
             const program = window.currentUserProfile?.program || 'KRCHN';
-            const { data, error } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
-            if (error) { tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`; return; }
+            console.log('🟢 Program:', program);
+            
+            const { data, error } = await sb.from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('role', 'student')
+                .eq('program', program);
+            
+            console.log('🟢 Data from Supabase:', data?.length);
+            
+            if (error) {
+                console.error('🟢 Error:', error);
+                tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`;
+                return;
+            }
+            
             window.allStudents = data || [];
-            if (window.allStudents.length === 0) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
+            console.log('🟢 window.allStudents set to:', window.allStudents.length);
+            
+            if (window.allStudents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>';
+                return;
+            }
+            
             tbody.innerHTML = '';
-            window.allStudents.forEach(s => {
+            for (const s of window.allStudents) {
                 const status = (s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active';
                 const statusClass = (s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success';
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(s.full_name || 'N/A')}<\/td>
-                    <td><strong>${escapeHtml(s.student_id || 'N/A')}<\/strong><\/td>
-                    <td>${escapeHtml(s.email || 'N/A')}<\/td>
-                    <td>${getProgramDisplayName(s.program)}<\/td>
-                    <td>${escapeHtml(s.block || 'N/A')}<\/td>
-                    <td><span class="${statusClass}">${status}<\/span><\/td>
-                    <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View<\/button><\/td>
-                </tr>`;
-            });
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${s.full_name || 'N/A'}</td>
+                        <td><strong>${s.student_id || 'N/A'}</strong></td>
+                        <td>${s.email || 'N/A'}</td>
+                        <td>${s.program}</td>
+                        <td>${s.block || 'N/A'}</td>
+                        <td><span class="${statusClass}">${status}</span></td>
+                        <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View</button></td>
+                    </tr>
+                `;
+            }
+            console.log('🟢 loadStudents FINISHED - total students:', window.allStudents.length);
         }
         
         window.filterStudents = function() {
@@ -696,8 +737,8 @@
             const tbody = $('#sessionsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
-            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('created_by', window.currentUserId).order('session_date', false);
-            if (error) { tbody.innerHTML = `<td><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
+            const { data, error } = await sb.from('scheduled_sessions').select('*').order('session_date', false);
+            if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(s => {
@@ -720,7 +761,7 @@
             }
         };
         
-        // Attendance
+        // Attendance functions (simplified - keep your existing working functions)
         async function populateAttendanceForm() {
             const program = window.currentUserProfile?.program || 'KRCHN';
             const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student').eq('program', program);
@@ -763,7 +804,7 @@
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
             const { data, error } = await sb.from('geo_attendance_logs').select('*').order('check_in_time', false);
-            if (error) { tbody.innerHTML = `<td><td colspan="6">Error: ${error.message}<\/td><\/tr>`; return; }
+            if (error) { tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No attendance records found<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(a => {
@@ -929,7 +970,7 @@
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
             const { data, error } = await sb.from('notifications').select('*').eq('sender_id', window.currentUserId).order('created_at', false);
-            if (error) { tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}<\/td><\/tr>`; return; }
+            if (error) { tbody.innerHTML = `<td><td colspan="4">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(m => {
@@ -959,7 +1000,7 @@
             const el = $('#calendarDisplay');
             if (!el) return;
             const [sessions, exams] = await Promise.all([
-                sb.from('scheduled_sessions').select('*').eq('created_by', window.currentUserId),
+                sb.from('scheduled_sessions').select('*'),
                 sb.from('exams').select('*').eq('created_by', window.currentUserId)
             ]);
             const events = [
