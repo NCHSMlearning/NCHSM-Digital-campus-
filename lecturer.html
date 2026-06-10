@@ -11,14 +11,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ============================================ */
-        /* COMPLETE STYLES - ALL MODULES */
-        /* ============================================ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
         .container { display: flex; min-height: 100vh; }
         
-        /* Sidebar */
         .sidebar { width: 280px; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; position: fixed; height: 100vh; overflow-y: auto; transition: transform 0.3s; z-index: 1000; }
         .sidebar-header { padding: 24px 20px; text-align: center; border-bottom: 1px solid #334155; }
         .sidebar-header img { width: 70px; background: white; padding: 8px; border-radius: 20px; margin-bottom: 12px; }
@@ -30,7 +26,6 @@
         .logout { margin-top: 40px; padding: 20px; border-top: 1px solid #334155; }
         .logout button { background: none; border: none; color: #f87171; display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer; font-size: 1rem; padding: 0; }
         
-        /* Main Content */
         .main { flex: 1; margin-left: 280px; padding: 28px 32px; background: #f8fafc; min-height: 100vh; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 15px; }
         header h1 { font-size: 1.8rem; color: #0f172a; }
@@ -38,36 +33,29 @@
         .header-actions { display: flex; gap: 12px; }
         .btn-notification, .btn-help { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         
-        /* Cards */
         .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .card h3 { font-size: 0.85rem; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
         .data { font-size: 2rem; font-weight: 800; color: #0f172a; }
-        .card-alert-danger { border-left: 4px solid #dc2626; }
-        .card-alert-warning { border-left: 4px solid #f59e0b; }
         
-        /* Forms */
         .inline-form, .check-in-controls { background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
         .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
         .form-group { flex: 1; min-width: 180px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #334155; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; }
         
-        /* Tables */
         .data-table { width: 100%; background: white; border-collapse: collapse; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .data-table th { background: #f8fafc; font-weight: 600; color: #334155; }
         .table-responsive { overflow-x: auto; margin-bottom: 20px; }
         
-        /* Badges */
         .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; font-weight: 500; }
         .badge-success { background: #d1fae5; color: #065f46; }
         .badge-warning { background: #fed7aa; color: #9a3412; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-info { background: #dbeafe; color: #1e40af; }
         
-        /* Buttons */
         .btn-action { background: #4C1D95; border: none; padding: 8px 18px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .btn-action:hover { background: #6d28d9; }
         .btn-danger { background: #dc2626; }
@@ -76,7 +64,6 @@
         .btn-success { background: #10b981; }
         .btn-cancel { background: #6b7280; }
         
-        /* Profile */
         .profile-card { background: white; border-radius: 20px; padding: 25px; display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px; align-items: center; }
         .profile-avatar { width: 120px; height: 120px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; overflow: hidden; }
         .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
@@ -87,7 +74,6 @@
         .detail-item strong { display: block; font-size: 12px; color: #6b7280; }
         .detail-item span { display: block; margin-top: 5px; }
         
-        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000; }
         .modal-content { background: white; border-radius: 24px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; }
         .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
@@ -95,41 +81,33 @@
         .modal-actions { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
         .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; color: #64748b; }
         
-        /* Toast */
         .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
         .toast { padding: 12px 20px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; }
         .toast-success { background: #10b981; }
         .toast-error { background: #ef4444; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
-        /* Attendance Metrics */
         .attendance-metrics { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
         .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
         .metric-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .metric-value { font-size: 2rem; font-weight: bold; }
         .metric-label { font-size: 0.85rem; margin-top: 5px; opacity: 0.9; }
         
-        /* Today's Schedule */
         .today-schedule { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
         .schedule-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #e2e8f0; }
         .schedule-time { font-weight: bold; color: #4C1D95; min-width: 80px; }
         .schedule-title { flex: 1; }
         
-        /* Grade Input */
         .grade-input { width: 80px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
         
-        /* Tab Content */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        /* Loading Spinner */
         .loading-spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Mobile Navigation */
         .mobile-nav-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 1100; background: #4C1D95; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
         
-        /* Responsive */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); }
@@ -144,6 +122,11 @@
             .main { padding: 15px; }
             .data-table th, .data-table td { padding: 8px 10px; font-size: 12px; }
         }
+        
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .toolbar input, .toolbar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .export-btn { background: #059669; }
+        .export-btn:hover { background: #047857; }
     </style>
 </head>
 <body>
@@ -250,7 +233,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
-                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr></tbody>
+                        <tbody id="coursesTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -270,7 +253,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr></tbody>
+                        <tbody id="studentsTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading students...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -295,7 +278,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
-                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr></tbody>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -322,7 +305,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
-                        <tbody id="attendanceTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr></tbody>
+                        <tbody id="attendanceTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -346,7 +329,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr></tbody>
+                        <tbody id="examsTableBody"><tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -363,7 +346,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Uploaded</th><th>Actions</th></tr></thead>
-                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr></tbody>
+                        <tbody id="resourcesTableBody"><tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -381,7 +364,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
-                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr></tbody>
+                        <tbody id="messagesTableBody"><tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -433,18 +416,20 @@
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.sb = sb;
         
-       // ✅ CORRECT - Truly global
-window.currentUserProfile = null;
-window.currentUserId = null;
-window.allCourses = [];
-window.allStudents = [];
-window.allSessions = [];
-window.allExams = [];
-window.allResources = [];
-window.calendar = null;
-window.attendanceMap = null;
-window.currentQRCode = null;
-window.currentGradingExam = null;
+        // =====================================================
+        // GLOBAL VARIABLES - USING window. FOR TRUE GLOBAL SCOPE
+        // =====================================================
+        window.currentUserProfile = null;
+        window.currentUserId = null;
+        window.allCourses = [];
+        window.allStudents = [];
+        window.allSessions = [];
+        window.allExams = [];
+        window.allResources = [];
+        window.calendar = null;
+        window.attendanceMap = null;
+        window.currentQRCode = null;
+        window.currentGradingExam = null;
         
         // TVET Program Codes
         const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
@@ -483,9 +468,9 @@ window.currentGradingExam = null;
         function closeModal(modalId) {
             const modal = $(modalId);
             if (modal) modal.style.display = 'none';
-            if (modalId === 'mapModal' && attendanceMap) {
-                attendanceMap.remove();
-                attendanceMap = null;
+            if (modalId === 'mapModal' && window.attendanceMap) {
+                window.attendanceMap.remove();
+                window.attendanceMap = null;
             }
         }
         
@@ -570,9 +555,9 @@ window.currentGradingExam = null;
         // Dashboard
         async function loadDashboard() {
             try {
-                if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-                if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-                if ($('atRiskCount')) $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
+                if ($('totalStudents')) $('totalStudents').textContent = window.allStudents.length;
+                if ($('totalCourses')) $('totalCourses').textContent = window.allCourses.length;
+                if ($('atRiskCount')) $('atRiskCount').textContent = window.allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
                 
                 const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
                 if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
@@ -588,13 +573,13 @@ window.currentGradingExam = null;
                 const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
                 const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
                 const uniqueStudents = [...new Set((monthData || []).map(l => l.user_id))].length;
-                if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) + '%' : '0%';
+                if ($('monthlyRate')) $('monthlyRate').textContent = window.allStudents.length ? Math.round((uniqueStudents / window.allStudents.length) * 100) + '%' : '0%';
             } catch(e) { console.error('Dashboard error:', e); }
         }
         
         async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('created_by', currentUserId).order('session_time');
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('created_by', window.currentUserId).order('session_time');
             const container = $('#todayScheduleList');
             if (!container) return;
             if (!data?.length) { container.innerHTML = '<p>No sessions scheduled for today</p>'; return; }
@@ -603,16 +588,16 @@ window.currentGradingExam = null;
         
         // Profile
         async function loadProfile() {
-            if (!currentUserProfile) return;
-            if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-            if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
-            if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
-            if ($('profilePhone')) $('profilePhone').textContent = currentUserProfile.phone || 'N/A';
-            if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
-            if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
-            if ($('profileJoinDate')) $('profileJoinDate').textContent = currentUserProfile.created_at ? new Date(currentUserProfile.created_at).toLocaleDateString() : '2024';
-            if (currentUserProfile.avatar_url && $('#profileAvatar')) {
-                $('#profileAvatar').innerHTML = `<img src="${currentUserProfile.avatar_url}" alt="Profile">`;
+            if (!window.currentUserProfile) return;
+            if ($('profileName')) $('profileName').textContent = window.currentUserProfile.full_name || 'Lecturer';
+            if ($('profileId')) $('profileId').textContent = window.currentUserProfile.user_id?.substring(0, 8) || 'N/A';
+            if ($('profileEmail')) $('profileEmail').textContent = window.currentUserProfile.email || 'N/A';
+            if ($('profilePhone')) $('profilePhone').textContent = window.currentUserProfile.phone || 'N/A';
+            if ($('profileDept')) $('profileDept').textContent = window.currentUserProfile.department || 'Academic';
+            if ($('profileProgram')) $('profileProgram').textContent = window.currentUserProfile.program || 'KRCHN';
+            if ($('profileJoinDate')) $('profileJoinDate').textContent = window.currentUserProfile.created_at ? new Date(window.currentUserProfile.created_at).toLocaleDateString() : '2024';
+            if (window.currentUserProfile.avatar_url && $('#profileAvatar')) {
+                $('#profileAvatar').innerHTML = `<img src="${window.currentUserProfile.avatar_url}" alt="Profile">`;
             }
         }
         
@@ -623,10 +608,10 @@ window.currentGradingExam = null;
             tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
             const { data, error } = await sb.from('courses').select('*');
             if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
-            window.window.allStudents = data || [];
-            if (allCourses.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
+            window.allCourses = data || [];
+            if (window.allCourses.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
-            allCourses.forEach(c => {
+            window.allCourses.forEach(c => {
                 tbody.innerHTML += `<tr>
                     <td><strong>${escapeHtml(c.unit_code || 'N/A')}<\/strong><\/td>
                     <td>${escapeHtml(c.course_name)}<\/td>
@@ -648,13 +633,13 @@ window.currentGradingExam = null;
             const tbody = $('#studentsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>';
-            const program = currentUserProfile?.program || 'KRCHN';
+            const program = window.currentUserProfile?.program || 'KRCHN';
             const { data, error } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
             if (error) { tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`; return; }
-            allStudents = data || [];
-            if (allStudents.length === 0) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
+            window.allStudents = data || [];
+            if (window.allStudents.length === 0) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
-            allStudents.forEach(s => {
+            window.allStudents.forEach(s => {
                 const status = (s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active';
                 const statusClass = (s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success';
                 tbody.innerHTML += `<tr>
@@ -676,7 +661,7 @@ window.currentGradingExam = null;
         };
         
         window.viewStudentDetails = async function(studentId) {
-            const student = allStudents.find(s => s.user_id === studentId);
+            const student = window.allStudents.find(s => s.user_id === studentId);
             if (!student) return;
             $('#studentDetailTitle').textContent = `${student.full_name} - Student Details`;
             $('#studentDetailBody').innerHTML = `
@@ -698,7 +683,7 @@ window.currentGradingExam = null;
                 session_time: $('#sessionTime').value,
                 target_program: $('#sessionProgram').value,
                 block_term: $('#sessionBlock').value,
-                lecturer_id: currentUserId
+                created_by: window.currentUserId
             });
             if (error) { showToast(error.message, 'error'); return; }
             showToast('Session scheduled!', 'success');
@@ -709,9 +694,9 @@ window.currentGradingExam = null;
         async function loadSessions() {
             const tbody = $('#sessionsTableBody');
             if (!tbody) return;
-            tbody.innerHTML = '<td><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
-            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('created_by', currentUserId).order('session_date', false);
-            if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
+            tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
+            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('created_by', window.currentUserId).order('session_date', false);
+            if (error) { tbody.innerHTML = `<td><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(s => {
@@ -736,7 +721,7 @@ window.currentGradingExam = null;
         
         // Attendance
         async function populateAttendanceForm() {
-            const program = currentUserProfile?.program || 'KRCHN';
+            const program = window.currentUserProfile?.program || 'KRCHN';
             const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').eq('role', 'student').eq('program', program);
             if ($('attStudentId')) {
                 $('attStudentId').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${s.full_name} (${s.student_id})</option>`).join('');
@@ -748,9 +733,9 @@ window.currentGradingExam = null;
             if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const { error } = await sb.from('geo_attendance_logs').insert({
-                    user_id: currentUserId, user_role: 'lecturer', session_type: 'Lecturer Check-in',
+                    user_id: window.currentUserId, user_role: 'lecturer', session_type: 'Lecturer Check-in',
                     check_in_time: new Date().toISOString(), latitude: pos.coords.latitude, longitude: pos.coords.longitude,
-                    program: currentUserProfile?.program, location_name: 'Lecturer Check-in'
+                    program: window.currentUserProfile?.program, location_name: 'Lecturer Check-in'
                 });
                 if (error) showToast(error.message, 'error');
                 else { showToast('Check-in recorded!', 'success'); loadAttendance(); }
@@ -759,14 +744,14 @@ window.currentGradingExam = null;
         
         $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
+            const student = window.allStudents.find(s => s.user_id === $('#attStudentId').value);
             if (!student) { showToast('Select a student', 'error'); return; }
             const dateTime = `${$('#attDate').value}T12:00:00`;
             const { error } = await sb.from('geo_attendance_logs').insert({
                 user_id: $('#attStudentId').value, student_name: student.full_name, user_role: 'student',
                 session_type: $('#attSessionType').value, check_in_time: dateTime,
-                location_details: $('#attLocation').value || 'Manual Entry', recorded_by_id: currentUserId,
-                recorded_by_name: currentUserProfile?.full_name, program: currentUserProfile?.program
+                location_details: $('#attLocation').value || 'Manual Entry', recorded_by_id: window.currentUserId,
+                recorded_by_name: window.currentUserProfile?.full_name, program: window.currentUserProfile?.program
             });
             if (error) showToast(error.message, 'error');
             else { showToast('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
@@ -777,11 +762,11 @@ window.currentGradingExam = null;
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
             const { data, error } = await sb.from('geo_attendance_logs').select('*').order('check_in_time', false);
-            if (error) { tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`; return; }
-            if (!data || data.length === 0) { tbody.innerHTML = '<td><td colspan="6">No attendance records found<\/td><\/tr>'; return; }
+            if (error) { tbody.innerHTML = `<td><td colspan="6">Error: ${error.message}<\/td><\/tr>`; return; }
+            if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No attendance records found<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(a => {
-                const student = allStudents.find(s => s.user_id === a.user_id);
+                const student = window.allStudents.find(s => s.user_id === a.user_id);
                 tbody.innerHTML += `<tr>
                     <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
                     <td>${escapeHtml(student?.student_id)}<\/td>
@@ -807,7 +792,7 @@ window.currentGradingExam = null;
             const { error } = await sb.from('exams').insert({
                 exam_name: $('#examTitle').value, exam_date: $('#examDate').value, exam_type: $('#examType').value,
                 target_program: $('#examProgram').value, block_term: $('#examBlock').value,
-                status: 'Scheduled', created_by: currentUserId
+                status: 'Scheduled', created_by: window.currentUserId
             });
             if (error) { showToast(error.message, 'error'); return; }
             showToast('Exam created!', 'success');
@@ -819,7 +804,7 @@ window.currentGradingExam = null;
             const tbody = $('#examsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
-            const { data, error } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
+            const { data, error } = await sb.from('exams').select('*').eq('created_by', window.currentUserId).order('exam_date', false);
             if (error) { tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No exams created<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
@@ -847,8 +832,8 @@ window.currentGradingExam = null;
         window.openGradeModal = async (examId) => {
             const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
             if (!exam) return;
-            currentGradingExam = exam;
-            const students = allStudents.filter(s => s.block === exam.block_term);
+            window.currentGradingExam = exam;
+            const students = window.allStudents.filter(s => s.block === exam.block_term);
             const maxScore = exam.exam_type === 'CAT_1' || exam.exam_type === 'CAT_2' ? 30 : 100;
             $('#gradeModalTitle').textContent = `Grade: ${exam.exam_name}`;
             $('#gradeModalBody').innerHTML = `
@@ -879,8 +864,8 @@ window.currentGradingExam = null;
                 const status = $(`status-${studentId}`)?.value;
                 if (score) {
                     const { error } = await sb.from('exam_grades').upsert({
-                        exam_id: currentGradingExam.id, student_id: studentId, score: parseFloat(score), status: status,
-                        graded_by: currentUserId, question_id: '00000000-0000-0000-0000-000000000000'
+                        exam_id: window.currentGradingExam.id, student_id: studentId, score: parseFloat(score), status: status,
+                        graded_by: window.currentUserId, question_id: '00000000-0000-0000-0000-000000000000'
                     });
                     if (!error) saved++;
                 }
@@ -901,7 +886,7 @@ window.currentGradingExam = null;
             const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
             const { error } = await sb.from('resources').insert({
                 title: $('#resourceTitle').value, file_path: fileName, file_url: urlData.publicUrl,
-                uploaded_by: currentUserId, uploaded_by_name: currentUserProfile?.full_name
+                uploaded_by: window.currentUserId, uploaded_by_name: window.currentUserProfile?.full_name
             });
             if (error) showToast(error.message, 'error');
             else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
@@ -911,9 +896,9 @@ window.currentGradingExam = null;
             const tbody = $('#resourcesTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="3"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr>';
-            const { data, error } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
+            const { data, error } = await sb.from('resources').select('*').eq('uploaded_by', window.currentUserId).order('created_at', false);
             if (error) { tbody.innerHTML = `<tr><td colspan="3">Error: ${error.message}<\/td><\/tr>`; return; }
-            if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="3">No resources<\/td><\/tr>'; return; }
+            if (!data || data.length === 0) { tbody.innerHTML = '<td><td colspan="3">No resources<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             data.forEach(r => {
                 tbody.innerHTML += `<tr>
@@ -934,7 +919,7 @@ window.currentGradingExam = null;
         
         // Messages
         async function loadMessages() {
-            const program = currentUserProfile?.program || 'KRCHN';
+            const program = window.currentUserProfile?.program || 'KRCHN';
             const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student').eq('program', program);
             if ($('msgRecipient')) {
                 $('msgRecipient').innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${escapeHtml(s.full_name)}</option>`).join('');
@@ -942,7 +927,7 @@ window.currentGradingExam = null;
             const tbody = $('#messagesTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
-            const { data, error } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
+            const { data, error } = await sb.from('notifications').select('*').eq('sender_id', window.currentUserId).order('created_at', false);
             if (error) { tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
@@ -960,7 +945,7 @@ window.currentGradingExam = null;
             e.preventDefault();
             const { error } = await sb.from('notifications').insert({
                 target_user_id: $('#msgRecipient').value, subject: $('#msgSubject').value, message: $('#msgBody').value,
-                sender_id: currentUserId, sender_name: currentUserProfile?.full_name
+                sender_id: window.currentUserId, sender_name: window.currentUserProfile?.full_name
             });
             if (error) { showToast(error.message, 'error'); return; }
             showToast('Message sent!', 'success');
@@ -973,16 +958,16 @@ window.currentGradingExam = null;
             const el = $('#calendarDisplay');
             if (!el) return;
             const [sessions, exams] = await Promise.all([
-                sb.from('scheduled_sessions').select('*').eq('created_by', currentUserId),
-                sb.from('exams').select('*').eq('created_by', currentUserId)
+                sb.from('scheduled_sessions').select('*').eq('created_by', window.currentUserId),
+                sb.from('exams').select('*').eq('created_by', window.currentUserId)
             ]);
             const events = [
                 ...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })),
                 ...(exams.data || []).map(e => ({ title: `${e.exam_type}: ${e.exam_name}`, start: e.exam_date, color: '#e74c3c' }))
             ];
-            if (calendar) calendar.destroy();
-            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }, events });
-            calendar.render();
+            if (window.calendar) window.calendar.destroy();
+            window.calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }, events });
+            window.calendar.render();
         }
         
         // Photo upload
@@ -990,11 +975,11 @@ window.currentGradingExam = null;
         $('#photoInput')?.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
+            const fileName = `avatars/${window.currentUserId}_${Date.now()}.jpg`;
             const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
             if (uploadError) { showToast(uploadError.message, 'error'); return; }
             const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', window.currentUserId);
             showToast('Photo updated!', 'success');
             loadProfile();
         });
@@ -1016,30 +1001,30 @@ window.currentGradingExam = null;
                 return;
             }
             
-            currentUserId = session.user.id;
-            console.log('User ID:', currentUserId);
+            window.currentUserId = session.user.id;
+            console.log('User ID:', window.currentUserId);
             
             const { data: profile, error: profileError } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('*')
-                .eq('user_id', currentUserId)
+                .eq('user_id', window.currentUserId)
                 .maybeSingle();
             
             if (profileError || !profile) {
                 console.warn('Profile not found, using default');
-                currentUserProfile = {
-                    user_id: currentUserId,
+                window.currentUserProfile = {
+                    user_id: window.currentUserId,
                     full_name: session.user.email?.split('@')[0] || 'Lecturer',
                     role: 'lecturer',
                     program: 'KRCHN',
                     email: session.user.email
                 };
             } else {
-                currentUserProfile = profile;
+                window.currentUserProfile = profile;
             }
             
             if ($('welcomeHeader')) {
-                $('welcomeHeader').textContent = `Welcome, ${currentUserProfile.full_name || 'Lecturer'}!`;
+                $('welcomeHeader').textContent = `Welcome, ${window.currentUserProfile.full_name || 'Lecturer'}!`;
             }
             
             await loadCourses();
@@ -1064,6 +1049,8 @@ window.currentGradingExam = null;
             });
             
             console.log('Dashboard ready!');
+            console.log('Students loaded:', window.allStudents.length);
+            console.log('Courses loaded:', window.allCourses.length);
         }
         
         // Event listeners
