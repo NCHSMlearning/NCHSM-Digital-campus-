@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCHSM Lecturer Dashboard</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
@@ -33,7 +33,6 @@
                 <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 <li><a href="#" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
                 <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
-                <li><a href="#" data-tab="nurseiq"><i class="fas fa-brain"></i> NurseIQ</a></li>
             </ul>
             <div class="logout">
                 <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -43,7 +42,7 @@
         <main class="main">
             <header>
                 <h1>Welcome, <span id="lecturerName">Lecturer</span>!</h1>
-                <p class="subtitle">Manage your courses, students, attendance, and NurseIQ questions</p>
+                <p class="subtitle">Manage your courses, students, and attendance</p>
             </header>
 
             <!-- Dashboard Tab -->
@@ -52,36 +51,40 @@
                     <div class="card" onclick="showTab('my-students')">
                         <h3>My Students</h3>
                         <p class="data" id="totalStudents">0</p>
+                        <p class="minor-data">Active students</p>
                     </div>
                     <div class="card" onclick="showTab('my-courses')">
                         <h3>My Courses</h3>
                         <p class="data" id="totalCourses">0</p>
+                        <p class="minor-data">Assigned courses</p>
                     </div>
-                    <div class="card" onclick="showTab('nurseiq')">
-                        <h3><i class="fas fa-brain"></i> NurseIQ Questions</h3>
-                        <p class="data" id="nurseiqTotal">0</p>
+                    <div class="card" onclick="showTab('attendance')">
+                        <h3>Today's Sessions</h3>
+                        <p class="data" id="todaySessions">0</p>
+                        <p class="minor-data">Scheduled today</p>
                     </div>
                     <div class="card" onclick="showTab('cats')">
                         <h3>Pending Grading</h3>
                         <p class="data" id="pendingGrading">0</p>
+                        <p class="minor-data">Exams to grade</p>
                     </div>
                 </div>
                 
-                <div class="attendance-metrics">
-                    <h3>Attendance Overview</h3>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-value" id="todayAttendance">0</div>
-                            <div class="metric-label">Today's Check-ins</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="weeklyAttendance">0</div>
-                            <div class="metric-label">This Week</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="monthlyRate">0%</div>
-                            <div class="metric-label">Monthly Rate</div>
-                        </div>
+                <div class="cards">
+                    <div class="card" onclick="showTab('attendance')">
+                        <h3>Today's Check-ins</h3>
+                        <p class="data" id="todayAttendance">0</p>
+                        <p class="minor-data">Attendance records</p>
+                    </div>
+                    <div class="card" onclick="showTab('attendance')">
+                        <h3>This Week</h3>
+                        <p class="data" id="weeklyAttendance">0</p>
+                        <p class="minor-data">Last 7 days</p>
+                    </div>
+                    <div class="card" onclick="showTab('attendance')">
+                        <h3>Monthly Rate</h3>
+                        <p class="data" id="monthlyRate">0%</p>
+                        <p class="minor-data">Attendance percentage</p>
                     </div>
                 </div>
                 
@@ -102,7 +105,7 @@
                         <input type="file" id="photoInput" accept="image/*" style="display:none">
                     </div>
                 </div>
-                <div class="profile-details-grid">
+                <div class="profile-details">
                     <div class="detail-item"><strong>Employee ID</strong><span id="profileId">-</span></div>
                     <div class="detail-item"><strong>Email</strong><span id="profileEmail">-</span></div>
                     <div class="detail-item"><strong>Department</strong><span id="profileDept">-</span></div>
@@ -119,8 +122,12 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
-                        <tbody id="coursesTableBody"><tr><td colspan="5">Loading courses...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Unit Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="coursesTableBody">
+                            <tr><td colspan="5">Loading courses...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -139,8 +146,12 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="studentsTableBody"><td><td colspan="7">Loading students...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr><td colspan="7">Loading students...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -166,8 +177,12 @@
                 <h3>Scheduled Sessions</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
-                        <tbody id="sessionsTableBody"><tr><td colspan="5">Loading sessions...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            <tr><td colspan="5">Loading sessions...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -194,8 +209,12 @@
                 <h3>Today's Attendance</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
-                        <tbody id="attendanceTableBody"><tr><td colspan="6">Loading attendance...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <tr><td colspan="6">Loading attendance...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -225,8 +244,12 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="examsTableBody"><td><td colspan="6">Loading exams...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="examsTableBody">
+                            <td><td colspan="6">Loading exams...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -249,9 +272,13 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Title</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr></thead>
-                        <tbody id="resourcesTableBody"><tr><td colspan="4">Loading resources...<\/td><\/tr></tbody>
-                    </table>
+                        <thead>
+                            <tr><th>Title</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="resourcesTableBody">
+                            <tr><td colspan="4">Loading resources...<\/td><\/tr>
+                        </tbody>
+                    <table>
                 </div>
             </section>
 
@@ -269,8 +296,12 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
-                        <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...<\/td><\/tr></tbody>
+                        <thead>
+                            <tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="messagesTableBody">
+                            <td><td colspan="4">Loading messages...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -279,108 +310,6 @@
             <section id="calendar" class="tab-content">
                 <h2>Academic Calendar</h2>
                 <div id="calendarDisplay"></div>
-            </section>
-
-            <!-- NURSEIQ TAB - Complete Module -->
-            <section id="nurseiq" class="tab-content">
-                <h2><i class="fas fa-brain"></i> NurseIQ - Nursing Intelligence</h2>
-                <p>Manage nursing questions, track student progress, and monitor performance</p>
-                
-                <!-- NurseIQ Stats Cards -->
-                <div class="cards">
-                    <div class="card" onclick="showNurseIQQuestions()">
-                        <h3><i class="fas fa-database"></i> Total Questions</h3>
-                        <p class="data" id="nurseiqTotalQuestions">0</p>
-                    </div>
-                    <div class="card" onclick="showNurseIQCourses()">
-                        <h3><i class="fas fa-book"></i> Active Courses</h3>
-                        <p class="data" id="nurseiqTotalCourses">0</p>
-                    </div>
-                    <div class="card" onclick="showNurseIQStudents()">
-                        <h3><i class="fas fa-users"></i> Active Students</h3>
-                        <p class="data" id="nurseiqActiveStudents">0</p>
-                    </div>
-                    <div class="card" onclick="showNurseIQPerformance()">
-                        <h3><i class="fas fa-chart-line"></i> Avg Accuracy</h3>
-                        <p class="data" id="nurseiqAvgAccuracy">0%</p>
-                    </div>
-                </div>
-
-                <!-- Add Question Form -->
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-                    <h3><i class="fas fa-plus-circle"></i> Add New NurseIQ Question</h3>
-                    <div class="form-row">
-                        <select id="nurseiqCourse" style="flex: 1; padding: 10px;">
-                            <option value="">-- Select Course --</option>
-                        </select>
-                        <select id="nurseiqDifficulty" style="flex: 1; padding: 10px;">
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                        </select>
-                    </div>
-                    <textarea id="nurseiqQuestion" rows="2" placeholder="Question text" style="width: 100%; padding: 10px; margin-bottom: 10px;"></textarea>
-                    <div class="form-row">
-                        <input type="text" id="nurseiqOptA" placeholder="Option A" style="flex: 1; padding: 10px;">
-                        <input type="text" id="nurseiqOptB" placeholder="Option B" style="flex: 1; padding: 10px;">
-                    </div>
-                    <div class="form-row">
-                        <input type="text" id="nurseiqOptC" placeholder="Option C" style="flex: 1; padding: 10px;">
-                        <input type="text" id="nurseiqOptD" placeholder="Option D" style="flex: 1; padding: 10px;">
-                    </div>
-                    <div class="form-row">
-                        <select id="nurseiqCorrect" style="flex: 1; padding: 10px;">
-                            <option value="A">Correct Answer: A</option>
-                            <option value="B">Correct Answer: B</option>
-                            <option value="C">Correct Answer: C</option>
-                            <option value="D">Correct Answer: D</option>
-                        </select>
-                        <textarea id="nurseiqExplanation" rows="2" placeholder="Explanation (optional)" style="flex: 2; padding: 10px;"></textarea>
-                    </div>
-                    <button onclick="addNurseIQQuestion()" class="btn-action" style="margin-top: 10px;">
-                        <i class="fas fa-save"></i> Save Question
-                    </button>
-                </div>
-
-                <!-- Questions Table -->
-                <div class="toolbar">
-                    <input type="text" id="nurseiqSearch" placeholder="Search questions..." onkeyup="filterNurseIQQuestions()" style="flex: 1;">
-                    <select id="nurseiqFilterCourse" onchange="filterNurseIQQuestions()">
-                        <option value="all">All Courses</option>
-                    </select>
-                    <select id="nurseiqFilterDifficulty" onchange="filterNurseIQQuestions()">
-                        <option value="all">All Difficulties</option>
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                    <button onclick="exportNurseIQQuestions()" class="btn-action export-btn">Export CSV</button>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Course</th>
-                                <th>Question</th>
-                                <th>Options</th>
-                                <th>Correct</th>
-                                <th>Difficulty</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="nurseiqTableBody">
-                            <tr><td colspan="6">Loading questions...<\/td><\/tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Student Progress Section -->
-                <h3 style="margin-top: 30px;"><i class="fas fa-user-graduate"></i> Student Progress</h3>
-                <div class="toolbar">
-                    <input type="text" id="nurseiqStudentSearch" placeholder="Search student..." onkeyup="filterNurseIQStudents()" style="flex: 1;">
-                </div>
-                <div id="nurseiqStudentsList" class="students-progress-list"></div>
             </section>
         </main>
     </div>
@@ -410,731 +339,9 @@
         </div>
     </div>
 
-    <div id="viewNurseIQModal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h3 id="nurseIQModalTitle">Question Details</h3>
-                <span class="close" onclick="closeModal('viewNurseIQModal')">&times;</span>
-            </div>
-            <div class="modal-body" id="nurseIQModalBody"></div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        // ============================================
-        // LECTURER DASHBOARD WITH NURSEIQ - COMPLETE
-        // ============================================
-        
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        window.sb = sb;
-        
-        let currentUserProfile = null;
-        let currentUserId = null;
-        let allCourses = [];
-        let allStudents = [];
-        let allNurseIQQuestions = [];
-        let allUserProgress = [];
-        let calendar = null;
-        
-        // Helper functions
-        function $(id) { return document.getElementById(id); }
-        
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.className = 'toast toast-' + (type || 'success');
-            toast.innerHTML = message;
-            $('toastContainer').appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-        
-        function closeModal(modalId) {
-            const modal = $(modalId);
-            if (modal) modal.style.display = 'none';
-        }
-        
-        function escapeHtml(s) {
-            if (!s) return '';
-            return String(s).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-        }
-        
-        // Tab navigation
-        window.showTab = function(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            const target = $(tabId);
-            if (target) target.classList.add('active');
-            document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
-            const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
-            if (activeLink) activeLink.classList.add('active');
-            loadSectionData(tabId);
-        };
-        
-        async function loadSectionData(tabId) {
-            if (tabId === 'dashboard') { await loadDashboard(); await loadTodaySchedule(); }
-            if (tabId === 'profile') await loadProfile();
-            if (tabId === 'my-courses') await loadCourses();
-            if (tabId === 'my-students') await loadStudents();
-            if (tabId === 'sessions') await loadSessions();
-            if (tabId === 'attendance') await loadAttendance();
-            if (tabId === 'cats') await loadExams();
-            if (tabId === 'resources') await loadResources();
-            if (tabId === 'messages') await loadMessages();
-            if (tabId === 'calendar') await loadCalendar();
-            if (tabId === 'nurseiq') await loadNurseIQData();
-        }
-        
-        // Dashboard functions
-        async function loadDashboard() {
-            if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-            if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-            if ($('nurseiqTotal')) $('nurseiqTotal').textContent = allNurseIQQuestions.length;
-            if ($('nurseiqTotalQuestions')) $('nurseiqTotalQuestions').textContent = allNurseIQQuestions.length;
-            
-            const today = new Date().toISOString().split('T')[0];
-            const { data: todaySessions } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId);
-            if ($('todaySessions')) $('todaySessions').textContent = todaySessions?.length || 0;
-            
-            const { data: attendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-            if ($('todayAttendance')) $('todayAttendance').textContent = attendance?.length || 0;
-            
-            const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-            const { data: weekAttendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-            if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekAttendance?.length || 0;
-        }
-        
-        async function loadTodaySchedule() {
-            const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
-            const container = $('#todayScheduleList');
-            if (!container) return;
-            if (!data?.length) { container.innerHTML = 'No sessions today'; return; }
-            container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
-        }
-        
-        // Profile
-        async function loadProfile() {
-            if (!currentUserProfile) return;
-            if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-            if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
-            if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
-            if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
-            if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
-        }
-        
-        // Courses
-        async function loadCourses() {
-            const program = currentUserProfile?.program || 'KRCHN';
-            const { data } = await sb.from('courses').select('*').eq('target_program', program);
-            allCourses = data || [];
-            const tbody = $('#coursesTableBody');
-            if (!tbody) return;
-            if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            allCourses.forEach(c => {
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(c.unit_code || 'N/A')}<\/td>
-                    <td>${escapeHtml(c.course_name)}<\/td>
-                    <td>${escapeHtml(c.target_program)}<\/td>
-                    <td>${escapeHtml(c.block || 'N/A')}<\/td>
-                    <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(c.course_name)}', 'info')">View</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.filterCourses = function() {
-            const search = $('#courseSearch')?.value.toLowerCase() || '';
-            const rows = document.querySelectorAll('#coursesTableBody tr');
-            rows.forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
-            });
-        };
-        
-        // Students
-        async function loadStudents() {
-            const program = currentUserProfile?.program || 'KRCHN';
-            const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
-            allStudents = data || [];
-            const tbody = $('#studentsTableBody');
-            if (!tbody) return;
-            if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            allStudents.forEach(s => {
-                const status = (s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active';
-                const statusClass = (s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success';
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(s.full_name || 'N/A')}<\/td>
-                    <td>${escapeHtml(s.student_id || 'N/A')}<\/td>
-                    <td>${escapeHtml(s.email || 'N/A')}<\/td>
-                    <td>${escapeHtml(s.program)}<\/td>
-                    <td>${escapeHtml(s.block || 'N/A')}<\/td>
-                    <td><span class="${statusClass}">${status}</span><\/td>
-                    <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.filterStudents = function() {
-            const search = $('#studentSearch')?.value.toLowerCase() || '';
-            const statusFilter = $('#studentStatusFilter')?.value || 'all';
-            const rows = document.querySelectorAll('#studentsTableBody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                const status = row.cells[5]?.textContent?.toLowerCase() || '';
-                const matchesStatus = statusFilter === 'all' || 
-                    (statusFilter === 'active' && !status.includes('risk')) || 
-                    (statusFilter === 'at-risk' && status.includes('risk'));
-                row.style.display = (text.includes(search) && matchesStatus) ? '' : 'none';
-            });
-        };
-        
-        window.viewStudentDetails = async function(studentId) {
-            const student = allStudents.find(s => s.user_id === studentId);
-            if (!student) return;
-            $('#studentDetailTitle').textContent = `${student.full_name} - Student Details`;
-            $('#studentDetailBody').innerHTML = `
-                <p><strong>Email:</strong> ${escapeHtml(student.email)}</p>
-                <p><strong>Program:</strong> ${escapeHtml(student.program)}</p>
-                <p><strong>Block:</strong> ${escapeHtml(student.block)}</p>
-                <p><strong>Intake:</strong> ${escapeHtml(student.intake_year)}</p>
-                <p><strong>Absences:</strong> ${student.cumulative_absences || 0}</p>
-                <button class="btn-action" onclick="showToast('Message feature coming', 'info')">Send Message</button>
-            `;
-            $('#studentDetailModal').style.display = 'flex';
-        };
-        
-        // Sessions
-        $('#addSessionForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await sb.from('scheduled_sessions').insert({
-                session_title: $('#sessionTitle').value,
-                session_date: $('#sessionDate').value,
-                session_time: $('#sessionTime').value,
-                target_program: $('#sessionProgram').value,
-                block_term: $('#sessionBlock').value,
-                lecturer_id: currentUserId
-            });
-            showToast('Session scheduled');
-            e.target.reset();
-            loadSessions();
-        });
-        
-        async function loadSessions() {
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
-            const tbody = $('#sessionsTableBody');
-            if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            data.forEach(s => {
-                const link = window.location.origin + '/attendance?session=' + s.id;
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(s.session_title)}<\/td>
-                    <td>${s.session_date} ${s.session_time}<\/td>
-                    <td>${s.target_program}/${s.block_term}<\/td>
-                    <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied')">Copy Link</button><\/td>
-                    <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.deleteSession = async (id) => {
-            if (confirm('Delete this session?')) {
-                await sb.from('scheduled_sessions').delete().eq('id', id);
-                loadSessions();
-                showToast('Session deleted');
-            }
-        };
-        
-        // Attendance
-        window.markLecturerAttendance = () => {
-            if (!navigator.geolocation) { showToast('Geolocation not supported'); return; }
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                await sb.from('geo_attendance_logs').insert({
-                    user_id: currentUserId,
-                    user_role: 'lecturer',
-                    session_type: 'Check-in',
-                    check_in_time: new Date().toISOString(),
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude
-                });
-                showToast('Checked in!');
-                loadAttendance();
-            }, () => showToast('Location denied'));
-        };
-        
-        $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
-            if (!student) { showToast('Select a student'); return; }
-            await sb.from('geo_attendance_logs').insert({
-                user_id: $('#attStudentId').value,
-                student_name: student.full_name,
-                user_role: 'student',
-                session_type: $('#attSessionType').value,
-                check_in_time: new Date().toISOString(),
-                location_details: $('#attLocation').value,
-                recorded_by_id: currentUserId
-            });
-            showToast('Attendance recorded');
-            loadAttendance();
-        });
-        
-        async function loadAttendance() {
-            const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
-            const tbody = $('#attendanceTableBody');
-            if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6">No attendance today<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            data.forEach(a => {
-                const student = allStudents.find(s => s.user_id === a.user_id);
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
-                    <td>${escapeHtml(student?.student_id)}<\/td>
-                    <td>${a.session_type}<\/td>
-                    <td>${new Date(a.check_in_time).toLocaleTimeString()}<\/td>
-                    <td>${escapeHtml(a.location_details)}<\/td>
-                    <td><button class="btn-danger" onclick="deleteAttendance('${a.id}')">Delete</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.deleteAttendance = async (id) => {
-            if (confirm('Delete this record?')) {
-                await sb.from('geo_attendance_logs').delete().eq('id', id);
-                loadAttendance();
-                showToast('Record deleted');
-            }
-        };
-        
-        // Exams
-        $('#addExamForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await sb.from('exams').insert({
-                exam_name: $('#examTitle').value,
-                exam_date: $('#examDate').value,
-                exam_type: $('#examType').value,
-                target_program: $('#examProgram').value,
-                block_term: $('#examBlock').value,
-                created_by: currentUserId,
-                status: 'Scheduled'
-            });
-            showToast('Exam created');
-            e.target.reset();
-            loadExams();
-        });
-        
-        async function loadExams() {
-            const { data } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
-            const tbody = $('#examsTableBody');
-            if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<td><td colspan="6">No exams created<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            data.forEach(e => {
-                tbody.innerHTML += `<tr>
-                    <td><span class="badge badge-info">${e.exam_type}</span><\/td>
-                    <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
-                    <td>${e.target_program}/${e.block_term}<\/td>
-                    <td>${e.exam_date}<\/td>
-                    <td><span class="badge badge-warning">${e.status}</span><\/td>
-                    <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.deleteExam = async (id) => {
-            if (confirm('Delete this exam?')) {
-                await sb.from('exams').delete().eq('id', id);
-                loadExams();
-                showToast('Exam deleted');
-            }
-        };
-        
-        // Resources
-        $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const file = $('#resourceFile').files[0];
-            if (!file) return;
-            const fileName = Date.now() + '_' + file.name;
-            await sb.storage.from('resources').upload(fileName, file);
-            const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
-            await sb.from('resources').insert({
-                title: $('#resourceTitle').value,
-                file_url: urlData.publicUrl,
-                program_type: $('#resourceProgram').value,
-                block: $('#resourceBlock').value,
-                uploaded_by: currentUserId
-            });
-            showToast('Resource uploaded');
-            loadResources();
-        });
-        
-        async function loadResources() {
-            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
-            const tbody = $('#resourcesTableBody');
-            if (!tbody) return;
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4">No resources<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            data.forEach(r => {
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(r.title)}<\/td>
-                    <td>${r.program_type}/${r.block}<\/td>
-                    <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
-                    <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.deleteResource = async (id) => {
-            if (confirm('Delete this resource?')) {
-                await sb.from('resources').delete().eq('id', id);
-                loadResources();
-                showToast('Resource deleted');
-            }
-        };
-        
-        // Messages
-        async function loadMessages() {
-            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student');
-            const select = $('#msgRecipient');
-            if (select) {
-                select.innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${escapeHtml(s.full_name)}</option>`).join('');
-            }
-            
-            const { data: messages } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
-            const tbody = $('#messagesTableBody');
-            if (!tbody) return;
-            if (!messages?.length) { tbody.innerHTML = '<td><td colspan="4">No messages sent<\/td><\/tr>'; return; }
-            tbody.innerHTML = '';
-            messages.forEach(m => {
-                tbody.innerHTML += `<tr>
-                    <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
-                    <td>${escapeHtml(m.subject)}<\/td>
-                    <td>${students?.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
-                    <td><span class="badge badge-success">Sent</span><\/td>
-                </tr>`;
-            });
-        }
-        
-        $('#sendMessageForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await sb.from('notifications').insert({
-                target_user_id: $('#msgRecipient').value,
-                subject: $('#msgSubject').value,
-                message: $('#msgBody').value,
-                sender_id: currentUserId
-            });
-            showToast('Message sent');
-            e.target.reset();
-            loadMessages();
-        });
-        
-        // Calendar
-        async function loadCalendar() {
-            const el = $('#calendarDisplay');
-            if (!el) return;
-            const { data: sessions } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId);
-            const events = (sessions || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' }));
-            if (calendar) calendar.destroy();
-            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', events });
-            calendar.render();
-        }
-        
-        // ============================================
-        // NURSEIQ MODULE FUNCTIONS
-        // ============================================
-        
-        async function loadNurseIQData() {
-            await loadNurseIQQuestions();
-            await loadNurseIQStats();
-            await loadNurseIQCourses();
-            await loadNurseIQStudentsProgress();
-        }
-        
-        async function loadNurseIQQuestions() {
-            const { data, error } = await sb.from('medical_assessments').select('*, courses(course_name)').order('created_at', false);
-            if (error) { console.error('Error loading questions:', error); return; }
-            allNurseIQQuestions = data || [];
-            renderNurseIQTable();
-        }
-        
-        function renderNurseIQTable() {
-            const search = $('#nurseiqSearch')?.value.toLowerCase() || '';
-            const courseFilter = $('#nurseiqFilterCourse')?.value || 'all';
-            const difficultyFilter = $('#nurseiqFilterDifficulty')?.value || 'all';
-            
-            let filtered = [...allNurseIQQuestions];
-            if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
-            if (courseFilter !== 'all') filtered = filtered.filter(q => q.course_id === courseFilter);
-            if (difficultyFilter !== 'all') filtered = filtered.filter(q => q.difficulty === difficultyFilter);
-            
-            const tbody = $('#nurseiqTableBody');
-            if (!tbody) return;
-            if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No questions found<\/td><\/tr>'; return; }
-            
-            tbody.innerHTML = '';
-            filtered.forEach(q => {
-                const options = `A: ${escapeHtml(q.option_a?.substring(0, 30))}... | B: ${escapeHtml(q.option_b?.substring(0, 30))}...`;
-                const difficultyClass = q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning';
-                tbody.innerHTML += `<tr>
-                    <td>${escapeHtml(q.courses?.course_name || 'N/A')}<\/td>
-                    <td>${escapeHtml(q.question_text?.substring(0, 60))}...<\/td>
-                    <td>${options}<\/td>
-                    <td><span class="badge badge-success">${escapeHtml(q.correct_answer)}<\/span><\/td>
-                    <td><span class="${difficultyClass}">${q.difficulty || 'medium'}<\/span><\/td>
-                    <td><button class="btn-action" onclick="viewNurseIQQuestion('${q.id}')">View</button> <button class="btn-danger" onclick="deleteNurseIQQuestion('${q.id}')">Delete</button><\/td>
-                </tr>`;
-            });
-        }
-        
-        window.filterNurseIQQuestions = function() { renderNurseIQTable(); };
-        
-        window.viewNurseIQQuestion = function(questionId) {
-            const q = allNurseIQQuestions.find(q => q.id === questionId);
-            if (!q) return;
-            $('#nurseIQModalTitle').textContent = 'Question Details';
-            $('#nurseIQModalBody').innerHTML = `
-                <p><strong>Course:</strong> ${escapeHtml(q.courses?.course_name)}</p>
-                <p><strong>Question:</strong> ${escapeHtml(q.question_text)}</p>
-                <p><strong>Options:</strong></p>
-                <ul>
-                    <li>A: ${escapeHtml(q.option_a)}</li>
-                    <li>B: ${escapeHtml(q.option_b)}</li>
-                    <li>C: ${escapeHtml(q.option_c)}</li>
-                    <li>D: ${escapeHtml(q.option_d)}</li>
-                </ul>
-                <p><strong>Correct Answer:</strong> <span class="badge badge-success">${escapeHtml(q.correct_answer)}</span></p>
-                <p><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</p>
-                <p><strong>Difficulty:</strong> <span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${q.difficulty}</span></p>
-            `;
-            $('#viewNurseIQModal').style.display = 'flex';
-        };
-        
-        window.addNurseIQQuestion = async function() {
-            const courseId = $('#nurseiqCourse').value;
-            const questionText = $('#nurseiqQuestion').value;
-            const optA = $('#nurseiqOptA').value;
-            const optB = $('#nurseiqOptB').value;
-            const optC = $('#nurseiqOptC').value;
-            const optD = $('#nurseiqOptD').value;
-            const correctAnswer = $('#nurseiqCorrect').value;
-            const explanation = $('#nurseiqExplanation').value;
-            const difficulty = $('#nurseiqDifficulty').value;
-            
-            if (!courseId || !questionText || !optA || !optB || !optC || !optD) {
-                showToast('Please fill all required fields', 'error');
-                return;
-            }
-            
-            const correctText = { A: optA, B: optB, C: optC, D: optD }[correctAnswer];
-            
-            const { error } = await sb.from('medical_assessments').insert([{
-                course_id: courseId,
-                question_text: questionText,
-                option_a: optA,
-                option_b: optB,
-                option_c: optC,
-                option_d: optD,
-                correct_answer: correctText,
-                explanation: explanation,
-                difficulty: difficulty,
-                question_type: 'multiple_choice',
-                is_active: true,
-                created_at: new Date().toISOString()
-            }]);
-            
-            if (error) { showToast('Error: ' + error.message, 'error'); return; }
-            showToast('Question added successfully!');
-            
-            $('#nurseiqQuestion').value = '';
-            $('#nurseiqOptA').value = '';
-            $('#nurseiqOptB').value = '';
-            $('#nurseiqOptC').value = '';
-            $('#nurseiqOptD').value = '';
-            $('#nurseiqExplanation').value = '';
-            
-            await loadNurseIQQuestions();
-            await loadNurseIQStats();
-        };
-        
-        window.deleteNurseIQQuestion = async function(questionId) {
-            if (!confirm('Delete this question?')) return;
-            const { error } = await sb.from('medical_assessments').delete().eq('id', questionId);
-            if (error) { showToast('Error: ' + error.message, 'error'); return; }
-            showToast('Question deleted');
-            await loadNurseIQQuestions();
-            await loadNurseIQStats();
-        };
-        
-        async function loadNurseIQStats() {
-            const total = allNurseIQQuestions.length;
-            if ($('nurseiqTotalQuestions')) $('nurseiqTotalQuestions').textContent = total;
-            if ($('nurseiqTotal')) $('nurseiqTotal').textContent = total;
-            
-            const uniqueCourses = [...new Set(allNurseIQQuestions.map(q => q.course_id))];
-            if ($('nurseiqTotalCourses')) $('nurseiqTotalCourses').textContent = uniqueCourses.length;
-            
-            const { data: progress } = await sb.from('user_progress').select('user_id, progress_data');
-            allUserProgress = progress || [];
-            const activeStudents = new Set();
-            allUserProgress.forEach(p => {
-                if (p.progress_data && Object.keys(p.progress_data).length > 0) activeStudents.add(p.user_id);
-            });
-            if ($('nurseiqActiveStudents')) $('nurseiqActiveStudents').textContent = activeStudents.size;
-            
-            let totalCorrect = 0, totalAnswered = 0;
-            allUserProgress.forEach(p => {
-                if (p.progress_data && p.progress_data.answers) {
-                    const answers = Object.values(p.progress_data.answers);
-                    totalAnswered += answers.length;
-                    totalCorrect += answers.filter(a => a.correct).length;
-                }
-            });
-            const avgAccuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
-            if ($('nurseiqAvgAccuracy')) $('nurseiqAvgAccuracy').textContent = avgAccuracy + '%';
-        }
-        
-        async function loadNurseIQCourses() {
-            const { data: courses } = await sb.from('courses').select('id, course_name');
-            const select = $('#nurseiqCourse');
-            const filterSelect = $('#nurseiqFilterCourse');
-            if (select) {
-                select.innerHTML = '<option value="">-- Select Course --</option>' + (courses || []).map(c => `<option value="${c.id}">${escapeHtml(c.course_name)}</option>`).join('');
-            }
-            if (filterSelect) {
-                filterSelect.innerHTML = '<option value="all">All Courses</option>' + (courses || []).map(c => `<option value="${c.id}">${escapeHtml(c.course_name)}</option>`).join('');
-            }
-        }
-        
-        async function loadNurseIQStudentsProgress() {
-            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, email, program').eq('role', 'student');
-            const container = $('#nurseiqStudentsList');
-            if (!container) return;
-            if (!students?.length) { container.innerHTML = '<p>No students found</p>'; return; }
-            
-            const studentProgress = [];
-            for (const student of students) {
-                const { data: progress } = await sb.from('user_progress').select('progress_data').eq('user_id', student.user_id).maybeSingle();
-                let answered = 0, correct = 0;
-                if (progress?.progress_data?.answers) {
-                    const answers = Object.values(progress.progress_data.answers);
-                    answered = answers.length;
-                    correct = answers.filter(a => a.correct).length;
-                }
-                studentProgress.push({ ...student, answered, correct, accuracy: answered > 0 ? Math.round((correct / answered) * 100) : 0 });
-            }
-            studentProgress.sort((a, b) => b.accuracy - a.accuracy);
-            
-            container.innerHTML = studentProgress.map(s => `
-                <div class="student-progress-item" onclick="viewStudentNurseIQProgress('${s.user_id}')">
-                    <div class="student-name">${escapeHtml(s.full_name)}</div>
-                    <div class="student-stats">
-                        <span>📊 ${s.accuracy}%</span>
-                        <span>✅ ${s.correct}/${s.answered}</span>
-                        <span>🎓 ${escapeHtml(s.program)}</span>
-                    </div>
-                    <div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div>
-                </div>
-            `).join('');
-        }
-        
-        window.filterNurseIQStudents = function() {
-            const search = $('#nurseiqStudentSearch')?.value.toLowerCase() || '';
-            const items = document.querySelectorAll('.student-progress-item');
-            items.forEach(item => {
-                const name = item.querySelector('.student-name')?.textContent.toLowerCase() || '';
-                item.style.display = name.includes(search) ? '' : 'none';
-            });
-        };
-        
-        window.viewStudentNurseIQProgress = async function(studentId) {
-            const student = allStudents.find(s => s.user_id === studentId);
-            const { data: progress } = await sb.from('user_progress').select('progress_data').eq('user_id', studentId).maybeSingle();
-            const answers = progress?.progress_data?.answers ? Object.values(progress.progress_data.answers) : [];
-            $('#studentDetailTitle').textContent = `${student?.full_name} - NurseIQ Progress`;
-            $('#studentDetailBody').innerHTML = `
-                <p><strong>Email:</strong> ${escapeHtml(student?.email)}</p>
-                <p><strong>Program:</strong> ${escapeHtml(student?.program)}</p>
-                <p><strong>Total Questions Answered:</strong> ${answers.length}</p>
-                <p><strong>Correct Answers:</strong> ${answers.filter(a => a.correct).length}</p>
-                <p><strong>Accuracy:</strong> ${answers.length > 0 ? Math.round((answers.filter(a => a.correct).length / answers.length) * 100) : 0}%</p>
-                <h4>Recent Answers</h4>
-                <div style="max-height: 300px; overflow-y: auto;">
-                    ${answers.slice(-10).reverse().map(a => `
-                        <div style="padding: 8px; border-bottom: 1px solid #e5e7eb;">
-                            <span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span>
-                            ${escapeHtml(a.questionText?.substring(0, 100))}...
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            $('#studentDetailModal').style.display = 'flex';
-        };
-        
-        window.exportNurseIQQuestions = function() {
-            const csv = ['Course,Question,Correct Answer,Difficulty', ...allNurseIQQuestions.map(q => 
-                `"${(q.courses?.course_name || '').replace(/"/g, '""')}","${(q.question_text || '').replace(/"/g, '""')}","${(q.correct_answer || '').replace(/"/g, '""')}","${q.difficulty || ''}"`
-            )].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `nurseiq_questions_${Date.now()}.csv`;
-            a.click();
-            showToast('Exported successfully!');
-        };
-        
-        window.exportCourses = () => showToast('Export feature coming soon');
-        window.exportStudents = () => showToast('Export feature coming soon');
-        
-        // Photo upload
-        $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput').click());
-        $('#photoInput')?.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
-            await sb.storage.from('resources').upload(fileName, file);
-            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
-            showToast('Photo updated');
-            loadProfile();
-        });
-        
-        // Initialize
-        async function init() {
-            const { data: { session } } = await sb.auth.getSession();
-            if (!session) { window.location.href = 'login.html'; return; }
-            currentUserId = session.user.id;
-            const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).maybeSingle();
-            currentUserProfile = profile || { full_name: 'Lecturer', program: 'KRCHN' };
-            $('#lecturerName').textContent = currentUserProfile.full_name || 'Lecturer';
-            await loadCourses();
-            await loadStudents();
-            await loadNurseIQData();
-            await loadDashboard();
-            await loadProfile();
-            
-            document.querySelectorAll('.nav a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const tabId = link.getAttribute('data-tab');
-                    if (tabId) showTab(tabId);
-                });
-            });
-            
-            $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
-        }
-        
-        window.logout = async () => { await sb.auth.signOut(); window.location.href = 'login.html'; };
-        window.openGradeModal = (id) => { showToast('Grade modal coming soon', 'info'); };
-        window.saveGrades = () => { closeModal('gradeModal'); showToast('Grades saved', 'success'); };
-        
-        init();
-    </script>
+    <script type="module" src="lecturer-script.js"></script>
 </body>
 </html>
