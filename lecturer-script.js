@@ -51,17 +51,6 @@ window.showTab = function(tabId) {
     if (targetTab) {
         targetTab.style.display = 'block';
         targetTab.classList.add('active');
-        
-        // Special fix for attendance tab
-        if (tabId === 'attendance') {
-            setTimeout(() => {
-                const attendanceSection = document.getElementById('attendance');
-                if (attendanceSection) {
-                    attendanceSection.style.display = 'block';
-                    attendanceSection.style.visibility = 'visible';
-                }
-            }, 50);
-        }
     }
 
     document.querySelectorAll('.nav a').forEach(link => {
@@ -76,36 +65,16 @@ window.showTab = function(tabId) {
 
 async function loadSectionData(tabId) {
     switch (tabId) {
-        case 'dashboard':
-            loadDashboardData();
-            break;
-        case 'profile':
-            loadProfile();
-            break;
-        case 'my-courses':
-            loadCourses();
-            break;
-        case 'my-students':
-            loadStudents();
-            break;
-        case 'sessions':
-            loadSessions();
-            break;
-        case 'attendance':
-            loadAttendance();
-            break;
-        case 'cats':
-            loadExams();
-            break;
-        case 'resources':
-            loadResources();
-            break;
-        case 'messages':
-            loadMessages();
-            break;
-        case 'calendar':
-            loadCalendar();
-            break;
+        case 'dashboard': loadDashboardData(); break;
+        case 'profile': loadProfile(); break;
+        case 'my-courses': loadCourses(); break;
+        case 'my-students': loadStudents(); break;
+        case 'sessions': loadSessions(); break;
+        case 'attendance': loadAttendance(); break;
+        case 'cats': loadExams(); break;
+        case 'resources': loadResources(); break;
+        case 'messages': loadMessages(); break;
+        case 'calendar': loadCalendar(); break;
     }
 }
 
@@ -113,15 +82,20 @@ async function loadSectionData(tabId) {
 // DASHBOARD
 // =====================================================
 async function loadDashboardData() {
-    if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-    if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
+    const totalStudentsEl = $('#totalStudents');
+    const totalCoursesEl = $('#totalCourses');
+    
+    if (totalStudentsEl) totalStudentsEl.textContent = allStudents.length;
+    if (totalCoursesEl) totalCoursesEl.textContent = allCourses.length;
     
     const today = new Date().toISOString().slice(0, 10);
     const { count: todaySessions } = await sb.from('scheduled_sessions').select('*', { count: 'exact', head: true }).eq('session_date', today).eq('lecturer_id', currentUserId);
-    if ($('todaySessions')) $('todaySessions').textContent = todaySessions || 0;
+    const todaySessionsEl = $('#todaySessions');
+    if (todaySessionsEl) todaySessionsEl.textContent = todaySessions || 0;
 
     const { count: todayAttendance } = await sb.from('geo_attendance_logs').select('*', { count: 'exact', head: true }).gte('check_in_time', today);
-    if ($('todayAttendance')) $('todayAttendance').textContent = todayAttendance || 0;
+    const todayAttendanceEl = $('#todayAttendance');
+    if (todayAttendanceEl) todayAttendanceEl.textContent = todayAttendance || 0;
 }
 
 // =====================================================
@@ -129,21 +103,28 @@ async function loadDashboardData() {
 // =====================================================
 async function loadProfile() {
     if (!currentUserProfile) return;
-    if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-    if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
-    if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
-    if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
-    if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
+    const profileNameEl = $('#profileName');
+    const profileIdEl = $('#profileId');
+    const profileEmailEl = $('#profileEmail');
+    const profileDeptEl = $('#profileDept');
+    const profileProgramEl = $('#profileProgram');
+    
+    if (profileNameEl) profileNameEl.textContent = currentUserProfile.full_name || 'Lecturer';
+    if (profileIdEl) profileIdEl.textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
+    if (profileEmailEl) profileEmailEl.textContent = currentUserProfile.email || 'N/A';
+    if (profileDeptEl) profileDeptEl.textContent = currentUserProfile.department || 'Academic';
+    if (profileProgramEl) profileProgramEl.textContent = currentUserProfile.program || 'KRCHN';
 }
 
 // =====================================================
-// COURSES - FILTERED BY LECTURER'S PROGRAM
+// COURSES - FIXED
 // =====================================================
 async function loadCourses() {
+    console.log('Loading courses...');
     const tbody = $('#coursesTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
+    tbody.innerHTML = '<td><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
 
     const program = currentUserProfile?.program || 'KRCHN';
     const { data: courses, error } = await sb.from('courses').select('*').eq('target_program', program);
@@ -155,7 +136,7 @@ async function loadCourses() {
 
     allCourses = courses || [];
     if (allCourses.length === 0) {
-        tbody.innerHTML = `<td><td colspan="5">No courses found for ${program}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">No courses found for ${program}<\/td><\/tr>`;
         return;
     }
 
@@ -171,6 +152,7 @@ async function loadCourses() {
             <\/tr>
         `;
     });
+    console.log(`✅ Loaded ${allCourses.length} courses`);
 }
 
 window.filterCourses = function() {
@@ -182,9 +164,10 @@ window.filterCourses = function() {
 };
 
 // =====================================================
-// STUDENTS - FILTERED BY LECTURER'S PROGRAM
+// STUDENTS - FIXED
 // =====================================================
 async function loadStudents() {
+    console.log('Loading students...');
     const tbody = $('#studentsTableBody');
     if (!tbody) return;
 
@@ -198,7 +181,7 @@ async function loadStudents() {
         .eq('program', program);
 
     if (error) {
-        tbody.innerHTML = `</tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`;
         return;
     }
 
@@ -224,6 +207,7 @@ async function loadStudents() {
             <\/tr>
         `;
     });
+    console.log(`✅ Loaded ${allStudents.length} students`);
 }
 
 window.filterStudents = function() {
@@ -237,14 +221,18 @@ window.filterStudents = function() {
 window.viewStudentDetails = function(studentId) {
     const student = allStudents.find(s => s.user_id === studentId);
     if (!student) return;
-    $('#studentDetailTitle').textContent = `${student.full_name} - Student Details`;
-    $('#studentDetailBody').innerHTML = `
-        <p><strong>Email:</strong> ${escapeHtml(student.email)}</p>
-        <p><strong>Program:</strong> ${escapeHtml(student.program)}</p>
-        <p><strong>Block:</strong> ${escapeHtml(student.block)}</p>
-        <p><strong>Absences:</strong> ${student.cumulative_absences || 0}</p>
-        <button class="btn-action" onclick="showFeedback('Message feature coming', 'info')">Send Message</button>
-    `;
+    const titleEl = $('#studentDetailTitle');
+    const bodyEl = $('#studentDetailBody');
+    if (titleEl) titleEl.textContent = `${student.full_name} - Student Details`;
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <p><strong>Email:</strong> ${escapeHtml(student.email)}</p>
+            <p><strong>Program:</strong> ${escapeHtml(student.program)}</p>
+            <p><strong>Block:</strong> ${escapeHtml(student.block)}</p>
+            <p><strong>Absences:</strong> ${student.cumulative_absences || 0}</p>
+            <button class="btn-action" onclick="showFeedback('Message feature coming', 'info')">Send Message</button>
+        `;
+    }
     $('#studentDetailModal').style.display = 'flex';
 };
 
@@ -271,7 +259,7 @@ async function loadSessions() {
     const tbody = $('#sessionsTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '</table><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
 
     const { data: sessions, error } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
 
@@ -319,7 +307,6 @@ async function loadAttendance() {
 
     tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
 
-    // FIXED: Get ALL records, not just today
     const { data: records, error } = await sb
         .from('geo_attendance_logs')
         .select('*')
@@ -332,7 +319,7 @@ async function loadAttendance() {
     }
 
     if (!records || records.length === 0) {
-        tbody.innerHTML = '<td><td colspan="6">No attendance records found. Click "Mark My Attendance" to add one.<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No attendance records found. Click "Mark My Attendance" to add one.<\/td><\/tr>';
         return;
     }
 
@@ -434,7 +421,7 @@ async function loadExams() {
     const tbody = $('#examsTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
+    tbody.innerHTML = '<td><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
 
     const { data: exams, error } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
 
@@ -452,7 +439,7 @@ async function loadExams() {
     tbody.innerHTML = '';
     allExams.forEach(e => {
         tbody.innerHTML += `
-            <tr>
+            <td>
                 <td><span class="badge badge-info">${e.exam_type}<\/span><\/td>
                 <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
                 <td>${e.target_program}/${e.block_term}<\/td>
@@ -518,7 +505,7 @@ async function loadResources() {
     tbody.innerHTML = '';
     allResources.forEach(r => {
         tbody.innerHTML += `
-            <tr>
+            <td>
                 <td>${escapeHtml(r.title)}<\/td>
                 <td>${r.program_type}/${r.block}<\/td>
                 <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
@@ -550,7 +537,7 @@ async function loadMessages() {
     const tbody = $('#messagesTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<td><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
 
     const { data: messages, error } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
 
@@ -567,7 +554,7 @@ async function loadMessages() {
     tbody.innerHTML = '';
     messages.forEach(m => {
         tbody.innerHTML += `
-            <tr>
+            <td>
                 <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
                 <td>${escapeHtml(m.subject)}<\/td>
                 <td>${students?.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
@@ -659,7 +646,7 @@ function setupEventListeners() {
 }
 
 // =====================================================
-// INITIALIZATION
+// INITIALIZATION - FIXED
 // =====================================================
 async function initSession() {
     console.log('Initializing Lecturer Dashboard...');
@@ -689,10 +676,17 @@ async function initSession() {
     }
 
     currentUserProfile = profile;
-    $('#lecturerName').textContent = profile.full_name || 'Lecturer';
+    
+    // Set lecturer name safely
+    const lecturerNameSpan = document.getElementById('lecturerName');
+    if (lecturerNameSpan) {
+        lecturerNameSpan.textContent = profile.full_name || 'Lecturer';
+    }
 
+    // Load all data
     await loadCourses();
     await loadStudents();
+    await loadAttendance();
     await loadDashboardData();
     await loadProfile();
     await loadSessions();
@@ -700,11 +694,11 @@ async function initSession() {
     await loadResources();
     await loadMessages();
     await loadCalendar();
-    await loadAttendance();
 
     setupEventListeners();
 
-    console.log('Dashboard ready!');
+    console.log('✅ Dashboard ready!');
+    console.log(`Courses: ${allCourses.length}, Students: ${allStudents.length}`);
 }
 
 // Start the application
