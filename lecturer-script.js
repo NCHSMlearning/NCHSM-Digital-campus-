@@ -1,5 +1,5 @@
 // ============================================
-// LECTURER DASHBOARD SCRIPT - MATCHES SUPER ADMIN PATTERNS
+// LECTURER DASHBOARD SCRIPT - MATCHES SUPER ADMIN PATTERNS 
 // ============================================
 
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
