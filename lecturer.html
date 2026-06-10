@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">  
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -122,12 +122,8 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Unit Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="coursesTableBody">
-                            <tr><td colspan="5">Loading courses...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
+                        <tbody id="coursesTableBody"><tr><td colspan="5">Loading courses...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -146,12 +142,8 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="studentsTableBody">
-                            <tr><td colspan="7">Loading students...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="studentsTableBody"><tr><td colspan="7">Loading students...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -177,13 +169,9 @@
                 <h3>Scheduled Sessions</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="sessionsTableBody">
-                            <tr><td colspan="5">Loading sessions...<\/td><\/tr>
-                        </tbody>
-                    </table>
+                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5">Loading sessions...<\/td><\/tr></tbody>
+                    </tr>
                 </div>
             </section>
 
@@ -209,17 +197,13 @@
                 <h3>Today's Attendance</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="attendanceTableBody">
-                            <tr><td colspan="6">Loading attendance...<\/td><\/tr>
-                        </tbody>
+                        <thead></tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
+                        <tbody id="attendanceTableBody"><tr><td colspan="6">Loading attendance...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Exams/CATs Tab -->
+            <!-- Exams Tab -->
             <section id="cats" class="tab-content">
                 <h2>Exams & CATs</h2>
                 <form id="addExamForm" class="inline-form">
@@ -244,12 +228,8 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="examsTableBody">
-                            <td><td colspan="6">Loading exams...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="examsTableBody"><tr><td colspan="6">Loading exams...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -272,13 +252,9 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Title</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="resourcesTableBody">
-                            <tr><td colspan="4">Loading resources...<\/td><\/tr>
-                        </tbody>
-                    <table>
+                        <thead><tr><th>Title</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr></thead>
+                        <tbody id="resourcesTableBody"><tr><td colspan="4">Loading resources...<\/td><\/tr></tbody>
+                    </table>
                 </div>
             </section>
 
@@ -296,12 +272,8 @@
                 
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr>
-                        </thead>
-                        <tbody id="messagesTableBody">
-                            <td><td colspan="4">Loading messages...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
+                        <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
@@ -338,6 +310,8 @@
             <div class="modal-body" id="studentDetailBody"></div>
         </div>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
