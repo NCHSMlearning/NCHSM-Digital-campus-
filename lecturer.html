@@ -70,24 +70,6 @@
                     </div>
                 </div>
                 
-                <div class="cards">
-                    <div class="card" onclick="showTab('attendance')">
-                        <h3>Today's Check-ins</h3>
-                        <p class="data" id="todayAttendance">0</p>
-                        <p class="minor-data">Attendance records</p>
-                    </div>
-                    <div class="card" onclick="showTab('attendance')">
-                        <h3>This Week</h3>
-                        <p class="data" id="weeklyAttendance">0</p>
-                        <p class="minor-data">Last 7 days</p>
-                    </div>
-                    <div class="card" onclick="showTab('attendance')">
-                        <h3>Monthly Rate</h3>
-                        <p class="data" id="monthlyRate">0%</p>
-                        <p class="minor-data">Attendance percentage</p>
-                    </div>
-                </div>
-                
                 <div class="today-schedule">
                     <h4>Today's Schedule</h4>
                     <div id="todayScheduleList">Loading...</div>
@@ -171,7 +153,7 @@
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
                         <tbody id="sessionsTableBody"><tr><td colspan="5">Loading sessions...<\/td><\/tr></tbody>
-                    </tr>
+                    </table>
                 </div>
             </section>
 
@@ -194,10 +176,10 @@
                     <button type="submit">Mark Present</button>
                 </form>
                 
-                <h3>Today's Attendance</h3>
+                <h3>Attendance Records</h3>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead></tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Date/Time</th><th>Location</th><th>Actions</th></tr></thead>
                         <tbody id="attendanceTableBody"><tr><td colspan="6">Loading attendance...<\/td><\/tr></tbody>
                     </table>
                 </div>
@@ -274,7 +256,7 @@
                     <table class="data-table">
                         <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
                         <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...<\/td><\/tr></tbody>
-                    </table>
+                    <table>
                 </div>
             </section>
 
