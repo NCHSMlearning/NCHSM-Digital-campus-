@@ -1142,9 +1142,105 @@ window.logout = async function() {
 };
 
 // =====================================================
-// INITIALIZATION (MATCHING SUPER ADMIN)
+// SETUP EVENT LISTENERS - FIXES SIDEBAR CLICKS
+// =====================================================
+function setupEventListeners() {
+    console.log('🔧 Setting up event listeners...');
+    
+    // Session form dropdowns
+    const sessionProgram = $('#sessionProgram');
+    if (sessionProgram) {
+        updateProgramDropdown(sessionProgram);
+        sessionProgram.addEventListener('change', () => updateBlockTermOptions('sessionProgram', 'sessionBlock'));
+    }
+
+    // Exam form dropdowns
+    const examProgram = $('#examProgram');
+    if (examProgram) {
+        updateProgramDropdown(examProgram);
+        examProgram.addEventListener('change', () => {
+            updateBlockTermOptions('examProgram', 'examBlock');
+            populateExamCourseSelects();
+        });
+    }
+
+    // Resource form dropdowns
+    const resourceProgram = $('#resourceProgram');
+    if (resourceProgram) {
+        updateProgramDropdown(resourceProgram);
+        resourceProgram.addEventListener('change', () => updateBlockTermOptions('resourceProgram', 'resourceBlock'));
+    }
+
+    // ============================================
+    // CRITICAL: SIDEBAR NAVIGATION CLICK HANDLERS
+    // ============================================
+    const navLinks = document.querySelectorAll('.nav a');
+    console.log(`Found ${navLinks.length} nav links`);
+    
+    navLinks.forEach(link => {
+        // Remove any existing listeners by cloning
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        
+        newLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tabId = newLink.getAttribute('data-tab');
+            console.log('🔘 Tab clicked:', tabId);
+            
+            if (!tabId) return;
+            
+            // Update active class on nav links
+            document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+            newLink.classList.add('active');
+            
+            // Show the tab
+            if (typeof window.showTab === 'function') {
+                window.showTab(tabId);
+            } else {
+                // Fallback - manual tab switching
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                    tab.classList.remove('active');
+                });
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.style.display = 'block';
+                    targetTab.classList.add('active');
+                }
+            }
+        });
+    });
+
+    // Mobile navigation toggle
+    const mobileToggle = $('#mobileNavToggle');
+    if (mobileToggle) {
+        const newToggle = mobileToggle.cloneNode(true);
+        mobileToggle.parentNode.replaceChild(newToggle, mobileToggle);
+        newToggle.addEventListener('click', () => {
+            $('#sidebar')?.classList.toggle('active');
+        });
+    }
+
+    // Close sidebar when clicking nav link on mobile
+    document.querySelectorAll('.nav a').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                $('#sidebar')?.classList.remove('active');
+            }
+        });
+    });
+
+    console.log('✅ Event listeners initialized - sidebar should now work');
+}
+
+// =====================================================
+// INITIALIZATION - FIXED WITH EVENT LISTENERS
 // =====================================================
 async function initSession() {
+    console.log('🚀 Initializing Lecturer Dashboard...');
+    
     const { data: { session }, error: sessionError } = await sb.auth.getSession();
 
     if (sessionError || !session) {
@@ -1154,6 +1250,7 @@ async function initSession() {
     }
 
     currentUserId = session.user.id;
+    console.log('User ID:', currentUserId);
 
     const { data: profile, error: profileError } = await sb
         .from('consolidated_user_profiles_table')
@@ -1175,8 +1272,9 @@ async function initSession() {
 
     currentUserProfile = profile;
     document.querySelector('header h1').innerHTML = `Welcome, ${profile.full_name || 'Lecturer'}!`;
+    console.log('Profile loaded:', profile.full_name);
 
-    // Load initial data
+    // Load all data
     await loadCourses();
     await loadStudents();
     await loadDashboardData();
@@ -1185,11 +1283,13 @@ async function initSession() {
     await loadExams();
     await loadResources();
     await loadMessages();
+    await loadCalendar();
 
-    // Setup event listeners
+    // ========== CRITICAL: Setup event listeners AFTER data loads ==========
     setupEventListeners();
-}
 
+    console.log('✅ Lecturer Dashboard ready! Sidebar clicks should work now.');
+}
 function setupEventListeners() {
     // Session form
     const sessionProgram = $('#sessionProgram');
