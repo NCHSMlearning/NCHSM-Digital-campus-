@@ -1142,7 +1142,7 @@ window.logout = async function() {
 };
 
 // =====================================================
-// SETUP EVENT LISTENERS - FIXES SIDEBAR CLICKS
+// SETUP EVENT LISTENERS - FIXES SIDEBAR CLICKS (KEEP THIS ONE)
 // =====================================================
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
@@ -1289,46 +1289,6 @@ async function initSession() {
     setupEventListeners();
 
     console.log('✅ Lecturer Dashboard ready! Sidebar clicks should work now.');
-}
-function setupEventListeners() {
-    // Session form
-    const sessionProgram = $('#sessionProgram');
-    if (sessionProgram) {
-        updateProgramDropdown(sessionProgram);
-        sessionProgram.addEventListener('change', () => updateBlockTermOptions('sessionProgram', 'sessionBlock'));
-    }
-
-    // Exam form
-    const examProgram = $('#examProgram');
-    if (examProgram) {
-        updateProgramDropdown(examProgram);
-        examProgram.addEventListener('change', () => {
-            updateBlockTermOptions('examProgram', 'examBlock');
-            populateExamCourseSelects();
-        });
-    }
-
-    // Resource form
-    const resourceProgram = $('#resourceProgram');
-    if (resourceProgram) {
-        updateProgramDropdown(resourceProgram);
-        resourceProgram.addEventListener('change', () => updateBlockTermOptions('resourceProgram', 'resourceBlock'));
-    }
-
-    // Mobile navigation
-    const mobileToggle = $('#mobileNavToggle');
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', () => {
-            $('#sidebar')?.classList.toggle('active');
-        });
-    }
-
-    // Close sidebar when clicking nav links (mobile)
-    document.querySelectorAll('.nav a').forEach(link => {
-        link.addEventListener('click', () => {
-            $('#sidebar')?.classList.remove('active');
-        });
-    });
 }
 
 // Initialize modals
