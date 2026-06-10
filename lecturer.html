@@ -553,29 +553,30 @@
         }
         
         // Dashboard
-        async function loadDashboard() {
-            try {
-                if ($('totalStudents')) $('totalStudents').textContent = window.allStudents.length;
-                if ($('totalCourses')) $('totalCourses').textContent = window.allCourses.length;
-                if ($('atRiskCount')) $('atRiskCount').textContent = window.allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-                
-                const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
-                if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
-                
-                const today = new Date().toISOString().split('T')[0];
-                const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-                if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.length || 0;
-                
-                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-                const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-                if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.length || 0;
-                
-                const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-                const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
-                const uniqueStudents = [...new Set((monthData || []).map(l => l.user_id))].length;
-                if ($('monthlyRate')) $('monthlyRate').textContent = window.allStudents.length ? Math.round((uniqueStudents / window.allStudents.length) * 100) + '%' : '0%';
-            } catch(e) { console.error('Dashboard error:', e); }
-        }
+      async function loadDashboard() {
+    try {
+        // Use window. for ALL - consistent with loadCourses() and loadStudents()
+        if ($('totalStudents')) $('totalStudents').textContent = window.allStudents.length;
+        if ($('totalCourses')) $('totalCourses').textContent = window.allCourses.length;
+        if ($('atRiskCount')) $('atRiskCount').textContent = window.allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
+        
+        const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
+        if ($('pendingGrading')) $('pendingGrading').textContent = exams?.length || 0;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+        if ($('todayAttendance')) $('todayAttendance').textContent = todayData?.length || 0;
+        
+        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+        const { data: weekData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
+        if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekData?.length || 0;
+        
+        const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+        const { data: monthData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', monthAgo.toISOString());
+        const uniqueStudents = [...new Set((monthData || []).map(l => l.user_id))].length;
+        if ($('monthlyRate')) $('monthlyRate').textContent = window.allStudents.length ? Math.round((uniqueStudents / window.allStudents.length) * 100) + '%' : '0%';
+    } catch(e) { console.error('Dashboard error:', e); }
+}
         
         async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
