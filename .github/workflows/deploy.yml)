@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
 
 permissions:
   contents: read
@@ -141,76 +142,3 @@ jobs:
               
               res.json({ success: true });
           }
-          ```
-          EOF
-          
-          echo "✅ Created config.js and API placeholder"
-          echo "📁 Files created:"
-          ls -la config.js
-          ls -la api/
-      
-      - name: Test configuration
-        run: |
-          echo "🧪 Testing configuration..."
-          echo "SUPABASE_URL length: ${#secrets.SUPABASE_URL}"
-          echo "SUPABASE_ANON_KEY length: ${#secrets.SUPABASE_ANON_KEY}"
-          echo "GOOGLE_SCRIPT_URL length: ${#secrets.GOOGLE_SCRIPT_URL}"
-          
-          # Check if secrets are set
-          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "❌ SUPABASE_URL secret is not set!"
-          else
-            echo "✅ SUPABASE_URL is set"
-          fi
-          
-          if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-            echo "❌ SUPABASE_ANON_KEY secret is not set!"
-          else
-            echo "✅ SUPABASE_ANON_KEY is set"
-          fi
-          
-          if [ -z "${{ secrets.GOOGLE_SCRIPT_URL }}" ]; then
-            echo "⚠️ GOOGLE_SCRIPT_URL secret is not set (emails will use fallback)"
-          else
-            echo "✅ GOOGLE_SCRIPT_URL is set"
-          fi
-      
-      - name: Create .env.example file
-        run: |
-          # Create example env file for developers
-          cat > .env.example << 'EOF'
-          # Example Environment Variables
-          # Copy to .env.local for development
-          
-          # Supabase Configuration
-          SUPABASE_URL=https://your-project.supabase.co
-          SUPABASE_ANON_KEY=your-anon-key-here
-          
-          # Email Configuration
-          GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/your-script-id/exec
-          
-          # Optional APIs
-          LOCATIONIQ_API_KEY=your-locationiq-key
-          
-          # Development Settings
-          NODE_ENV=development
-          EOF
-          
-          echo "✅ Created .env.example"
-      
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-          retention-days: 1
-  
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
