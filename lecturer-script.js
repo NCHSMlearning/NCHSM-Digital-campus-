@@ -1,107 +1,375 @@
-// ============================================
-// LECTURER DASHBOARD SCRIPT - MATCHES SUPER ADMIN PATTERNS  
-// ============================================ 
+// =====================================================
+// LECTURER DASHBOARD - FOLLOWS SUPER ADMIN PATTERNS
+// =====================================================
 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+// Supabase Configuration
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 
+// Global Variables
 let currentUserProfile = null;
 let currentUserId = null;
 let allCourses = [];
 let allStudents = [];
+let allSessions = [];
+let allExams = [];
+let allResources = [];
 let calendar = null;
 
+// =====================================================
+// HELPER FUNCTIONS (MATCHING SUPER ADMIN)
+// =====================================================
 function $(id) { return document.getElementById(id); }
 
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+function escapeHtml(s, isAttribute = false) {
+    let str = String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (isAttribute) {
+        str = str.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    } else {
+        str = str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    return str;
+}
+
+function showFeedback(message, type = 'success') {
+    const prefix = type === 'success' ? '✅ Success: ' :
+        type === 'error' ? '❌ Error: ' :
+            type === 'warning' ? '⚠️ Warning: ' : 'ℹ️ Info: ';
+    alert(prefix + message);
 }
 
 function closeModal(modalId) {
-    const modal = $(modalId);
-    if (modal) modal.style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
-function escapeHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+async function fetchData(tableName, selectQuery = '*', filters = {}, order = 'created_at', ascending = false) {
+    let query = sb.from(tableName).select(selectQuery);
+
+    for (const key in filters) {
+        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+            query = query.eq(key, filters[key]);
+        }
+    }
+
+    query = query.order(order, { ascending });
+
+    const { data, error } = await query;
+    if (error) {
+        console.error(`Error loading ${tableName}:`, error);
+        return { data: null, error };
+    }
+    return { data, error: null };
 }
 
-// Tab navigation
+// =====================================================
+// PROGRAM MANAGEMENT (MATCHING SUPER ADMIN)
+// =====================================================
+const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+
+const PROGRAM_DISPLAY_NAMES = {
+    'KRCHN': 'KRCHN Nursing',
+    'DPOTT': 'Diploma in Perioperative Theatre Technology',
+    'DCH': 'Diploma in Community Health',
+    'DHRIT': 'Diploma in Health Records and IT',
+    'DSL': 'Diploma in Science Lab',
+    'DSW': 'Diploma in Social Work & Community Development',
+    'DCJS': 'Diploma in Criminal Justice',
+    'DHSS': 'Diploma in Health Support Services',
+    'DICT': 'Diploma in ICT',
+    'DME': 'Diploma in Medical Engineering',
+    'CPOTT': 'Certificate in Perioperative Theatre Technology',
+    'CCH': 'Certificate in Community Health',
+    'CHRIT': 'Certificate in Health Records and IT',
+    'CPC': 'Certificate in Patient Care',
+    'CSL': 'Certificate in Science Lab',
+    'CSW': 'Certificate in Social Work & Community Development',
+    'CCJS': 'Certificate in Criminal Justice',
+    'CAG': 'Certificate in Agriculture',
+    'CHSS': 'Certificate in Health Support Services',
+    'CICT': 'Certificate in ICT',
+    'ACH': 'Artisan in Community Health',
+    'AAG': 'Artisan in Agriculture',
+    'ASW': 'Artisan in Social Work & Community Development',
+    'CCA': 'Certificate in Computer Applications',
+    'PTE': 'TVET/CDACC (PTE)'
+};
+
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    const code = String(programCode).toUpperCase().trim();
+    return TVET_PROGRAMS.includes(code);
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    if (code === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(code)) return 'TVET';
+    return 'KRCHN';
+}
+
+function getProgramDisplayName(programCode) {
+    if (!programCode) return 'Unknown Program';
+    const code = String(programCode).toUpperCase().trim();
+    return PROGRAM_DISPLAY_NAMES[code] || programCode;
+}
+
+function updateProgramDropdown(selectElement) {
+    if (!selectElement) return;
+    const currentValue = selectElement.value;
+
+    selectElement.innerHTML = '';
+
+    const krchnOption = document.createElement('option');
+    krchnOption.value = 'KRCHN';
+    krchnOption.textContent = '🎓 KRCHN Nursing';
+    selectElement.appendChild(krchnOption);
+
+    const diplomaGroup = document.createElement('optgroup');
+    diplomaGroup.label = '🎯 TVET Diploma Programs (6-24 months)';
+    ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        diplomaGroup.appendChild(option);
+    });
+    selectElement.appendChild(diplomaGroup);
+
+    const certificateGroup = document.createElement('optgroup');
+    certificateGroup.label = '📜 TVET Certificate Programs (3-12 months)';
+    ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        certificateGroup.appendChild(option);
+    });
+    selectElement.appendChild(certificateGroup);
+
+    const artisanGroup = document.createElement('optgroup');
+    artisanGroup.label = '🔧 TVET Artisan Programs (2-12 months)';
+    ['ACH', 'AAG', 'ASW'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        artisanGroup.appendChild(option);
+    });
+    selectElement.appendChild(artisanGroup);
+
+    const otherGroup = document.createElement('optgroup');
+    otherGroup.label = '📊 Other TVET Programs';
+    ['CCA', 'PTE'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        otherGroup.appendChild(option);
+    });
+    selectElement.appendChild(otherGroup);
+
+    if (currentValue) {
+        selectElement.value = currentValue;
+    }
+}
+
+function updateBlockTermOptions(programSelectId, blockTermSelectId) {
+    const programSelect = $(programSelectId);
+    const blockTermSelect = $(blockTermSelectId);
+
+    if (!programSelect || !blockTermSelect) {
+        console.warn(`updateBlockTermOptions: Elements not found - ${programSelectId}, ${blockTermSelectId}`);
+        return;
+    }
+
+    const programCode = programSelect.value;
+    const programType = getProgramType(programCode);
+    const currentValue = blockTermSelect.value;
+
+    blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
+
+    if (!programCode) {
+        console.log('No program code selected');
+        return;
+    }
+
+    let options = [];
+
+    if (programType === 'KRCHN') {
+        options = [
+            { value: 'Introductory', text: 'Introductory Block' },
+            { value: 'Block 1', text: 'Block 1' },
+            { value: 'Block 2', text: 'Block 2' },
+            { value: 'Block 3', text: 'Block 3' },
+            { value: 'Block 4', text: 'Block 4' },
+            { value: 'Block 5', text: 'Block 5' },
+            { value: 'Block 6', text: 'Block 6' },
+            { value: 'Final', text: 'Final Block' }
+        ];
+    } else if (programType === 'TVET') {
+        options = [
+            { value: 'Introductory', text: 'Introductory Term' },
+            { value: 'Term1', text: 'Term 1' },
+            { value: 'Term2', text: 'Term 2' },
+            { value: 'Term3', text: 'Term 3' },
+            { value: 'Term4', text: 'Term 4' },
+            { value: 'Term5', text: 'Term 5' },
+            { value: 'Term6', text: 'Term 6' },
+            { value: 'Final', text: 'Final Term' }
+        ];
+    } else {
+        options = [
+            { value: 'Introductory', text: 'Introductory' },
+            { value: 'Block A', text: 'Block A' },
+            { value: 'Block B', text: 'Block B' },
+            { value: 'Block C', text: 'Block C' },
+            { value: 'Block D', text: 'Block D' },
+            { value: 'Final', text: 'Final' }
+        ];
+    }
+
+    options.push({ value: 'General', text: 'General' });
+
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        blockTermSelect.appendChild(option);
+    });
+
+    if (currentValue) {
+        const valueExists = Array.from(blockTermSelect.options).some(opt => opt.value === currentValue);
+        if (valueExists) {
+            blockTermSelect.value = currentValue;
+        }
+    }
+}
+
+// =====================================================
+// TAB NAVIGATION (MATCHING SUPER ADMIN)
+// =====================================================
 window.showTab = function(tabId) {
     console.log('Opening tab:', tabId);
+
     document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
         tab.style.display = 'none';
+        tab.classList.remove('active');
     });
-    const targetTab = $(tabId);
+
+    const targetTab = document.getElementById(tabId);
     if (targetTab) {
-        targetTab.classList.add('active');
         targetTab.style.display = 'block';
+        targetTab.classList.add('active');
     }
+
     document.querySelectorAll('.nav a').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-tab') === tabId) {
             link.classList.add('active');
         }
     });
+
     loadSectionData(tabId);
 };
 
 async function loadSectionData(tabId) {
-    if (tabId === 'dashboard') { await loadDashboard(); await loadTodaySchedule(); }
-    if (tabId === 'profile') await loadProfile();
-    if (tabId === 'my-courses') await loadCourses();
-    if (tabId === 'my-students') await loadStudents();
-    if (tabId === 'sessions') await loadSessions();
-    if (tabId === 'attendance') await loadAttendance();
-    if (tabId === 'cats') await loadExams();
-    if (tabId === 'resources') await loadResources();
-    if (tabId === 'messages') await loadMessages();
-    if (tabId === 'calendar') await loadCalendar();
+    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+
+    switch (tabId) {
+        case 'dashboard':
+            loadDashboardData();
+            break;
+        case 'profile':
+            loadProfile();
+            break;
+        case 'my-courses':
+            loadCourses();
+            updateProgramDropdown($('sessionProgram'));
+            updateProgramDropdown($('examProgram'));
+            updateProgramDropdown($('resourceProgram'));
+            break;
+        case 'my-students':
+            loadStudents();
+            break;
+        case 'sessions':
+            loadSessions();
+            updateProgramDropdown($('sessionProgram'));
+            updateBlockTermOptions('sessionProgram', 'sessionBlock');
+            break;
+        case 'attendance':
+            loadAttendance();
+            populateAttendanceSelects();
+            break;
+        case 'cats':
+            loadExams();
+            updateProgramDropdown($('examProgram'));
+            updateBlockTermOptions('examProgram', 'examBlock');
+            populateExamCourseSelects();
+            break;
+        case 'resources':
+            loadResources();
+            updateProgramDropdown($('resourceProgram'));
+            updateBlockTermOptions('resourceProgram', 'resourceBlock');
+            break;
+        case 'messages':
+            loadMessages();
+            updateProgramDropdown($('msgRecipient'));
+            break;
+        case 'calendar':
+            loadCalendar();
+            break;
+    }
 }
 
-// Dashboard
-async function loadDashboard() {
+// =====================================================
+// DASHBOARD (MATCHING SUPER ADMIN)
+// =====================================================
+async function loadDashboardData() {
     if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
     if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-    
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { data: todaySessionsData } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId);
-    if ($('todaySessions')) $('todaySessions').textContent = todaySessionsData?.length || 0;
-    
-    const { data: attendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
-    if ($('todayAttendance')) $('todayAttendance').textContent = attendance?.length || 0;
-    
-    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-    const { data: weekAttendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
-    if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekAttendance?.length || 0;
-    
+    if ($('pendingGrading')) $('pendingGrading').textContent = allExams.filter(e => e.status === 'Scheduled').length;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { count: todaySessions } = await sb.from('scheduled_sessions').select('*', { count: 'exact', head: true }).eq('session_date', today).eq('lecturer_id', currentUserId);
+    if ($('todaySessions')) $('todaySessions').textContent = todaySessions || 0;
+
+    const { count: todayAttendance } = await sb.from('geo_attendance_logs').select('*', { count: 'exact', head: true }).gte('check_in_time', today);
+    if ($('todayAttendance')) $('todayAttendance').textContent = todayAttendance || 0;
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString();
+    const { count: weekAttendance } = await sb.from('geo_attendance_logs').select('*', { count: 'exact', head: true }).gte('check_in_time', weekAgoStr);
+    if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekAttendance || 0;
+
     if ($('monthlyRate')) $('monthlyRate').textContent = allStudents.length ? '85%' : '0%';
+
+    loadTodaySchedule();
 }
 
 async function loadTodaySchedule() {
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: sessions } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
     const container = $('#todayScheduleList');
     if (!container) return;
-    if (!data?.length) { container.innerHTML = 'No sessions today'; return; }
-    container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
+    if (!sessions || sessions.length === 0) {
+        container.innerHTML = 'No sessions today';
+        return;
+    }
+    container.innerHTML = sessions.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
 }
 
-// Profile
+// =====================================================
+// PROFILE (MATCHING SUPER ADMIN)
+// =====================================================
 async function loadProfile() {
     if (!currentUserProfile) return;
     if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
-    if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
+    if ($('profileId')) $('profileId').textContent = currentUserProfile.employee_id || currentUserProfile.user_id?.substring(0, 8) || 'N/A';
     if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
     if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
     if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
@@ -110,42 +378,44 @@ async function loadProfile() {
     }
 }
 
-// Courses - FILTER by lecturer's program
+// =====================================================
+// COURSES (FILTERED BY LECTURER'S PROGRAM)
+// =====================================================
 async function loadCourses() {
-    const program = currentUserProfile?.program || 'KRCHN';
-    console.log('Loading courses for program:', program);
-    
-    const tbody = $('#coursesTableBody');
+    const tbody = $('coursesTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('courses').select('*').eq('target_program', program);
-    
+
+    tbody.innerHTML = '<tr><td colspan="5">Loading courses...<\/td><\/tr>';
+
+    const lecturerProgram = currentUserProfile?.program || 'KRCHN';
+    const { data: courses, error } = await fetchData('courses', '*', { target_program: lecturerProgram }, 'course_name', true);
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">Error loading courses: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    allCourses = data || [];
-    if (allCourses.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5">No courses found for ${program}<\/td><\/tr>`;
+
+    if (!courses || courses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5">No courses found for ${lecturerProgram}<\/td><\/tr>`;
         return;
     }
-    
+
+    allCourses = courses;
     tbody.innerHTML = '';
-    allCourses.forEach(c => {
-        tbody.innerHTML += `<tr>
-            <td><strong>${escapeHtml(c.unit_code || 'N/A')}</strong><\/td>
-            <td>${escapeHtml(c.course_name)}<\/td>
-            <td>${escapeHtml(c.target_program)}<\/td>
-            <td>${escapeHtml(c.block || 'N/A')}<\/td>
-            <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(c.course_name)}', 'info')">View</button><\/td>
-        </tr>`;
+
+    courses.forEach(c => {
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${escapeHtml(c.unit_code || 'N/A')}</strong><\/td>
+                <td>${escapeHtml(c.course_name)}<\/td>
+                <td>${escapeHtml(c.target_program)}<\/td>
+                <td>${escapeHtml(c.block || 'N/A')}<\/td>
+                <td><button class="btn-action" onclick="showFeedback('Course: ${escapeHtml(c.course_name)}', 'info')">View</button><\/td>
+            <\/tr>
+        `;
     });
-    
-    if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
-    console.log(`Loaded ${allCourses.length} courses for ${program}`);
+
+    if ($('totalCourses')) $('totalCourses').textContent = courses.length;
 }
 
 window.filterCourses = function() {
@@ -156,49 +426,53 @@ window.filterCourses = function() {
     });
 };
 
-// Students - FILTER by lecturer's program
+// =====================================================
+// STUDENTS (FILTERED BY LECTURER'S PROGRAM)
+// =====================================================
 async function loadStudents() {
-    const program = currentUserProfile?.program || 'KRCHN';
-    console.log('Loading students for program:', program);
-    
-    const tbody = $('#studentsTableBody');
+    const tbody = $('studentsTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('consolidated_user_profiles_table')
+
+    tbody.innerHTML = '<tr><td colspan="7">Loading students...<\/td><\/tr>';
+
+    const lecturerProgram = currentUserProfile?.program || 'KRCHN';
+    const { data: students, error } = await sb
+        .from('consolidated_user_profiles_table')
         .select('*')
         .eq('role', 'student')
-        .eq('program', program);
-    
+        .eq('program', lecturerProgram)
+        .order('full_name', { ascending: true });
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="7">Error loading students: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    allStudents = data || [];
-    if (allStudents.length === 0) {
-        tbody.innerHTML = `</table><td colspan="7">No students found for ${program}<\/td><\/tr>`;
+
+    if (!students || students.length === 0) {
+        tbody.innerHTML = `<td><td colspan="7">No students found for ${lecturerProgram}<\/td><\/tr>`;
         return;
     }
-    
+
+    allStudents = students;
     tbody.innerHTML = '';
-    allStudents.forEach(s => {
+
+    students.forEach(s => {
         const status = (s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active';
         const statusClass = (s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success';
-        tbody.innerHTML += `<tr>
-            <td>${escapeHtml(s.full_name || 'N/A')}<\/td>
-            <td><strong>${escapeHtml(s.student_id || 'N/A')}<\/strong><\/td>
-            <td>${escapeHtml(s.email || 'N/A')}<\/td>
-            <td>${escapeHtml(s.program)}<\/td>
-            <td>${escapeHtml(s.block || 'N/A')}<\/td>
-            <td><span class="${statusClass}">${status}<\/span><\/td>
-            <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View<\/button><\/td>
-        </tr>`;
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(s.full_name || 'N/A')}<\/td>
+                <td><strong>${escapeHtml(s.student_id || 'N/A')}<\/strong><\/td>
+                <td>${escapeHtml(s.email || 'N/A')}<\/td>
+                <td>${escapeHtml(s.program)}<\/td>
+                <td>${escapeHtml(s.block || 'N/A')}<\/td>
+                <td><span class="${statusClass}">${status}<\/span><\/td>
+                <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View</button><\/td>
+            <\/tr>
+        `;
     });
-    
-    if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
-    console.log(`Loaded ${allStudents.length} students for ${program}`);
+
+    if ($('totalStudents')) $('totalStudents').textContent = students.length;
 }
 
 window.filterStudents = function() {
@@ -208,8 +482,8 @@ window.filterStudents = function() {
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
         const status = row.cells[5]?.textContent?.toLowerCase() || '';
-        const matchesStatus = statusFilter === 'all' || 
-            (statusFilter === 'active' && !status.includes('risk')) || 
+        const matchesStatus = statusFilter === 'all' ||
+            (statusFilter === 'active' && !status.includes('risk')) ||
             (statusFilter === 'at-risk' && status.includes('risk'));
         row.style.display = (text.includes(search) && matchesStatus) ? '' : 'none';
     });
@@ -225,388 +499,759 @@ window.viewStudentDetails = async function(studentId) {
         <p><strong>Block:</strong> ${escapeHtml(student.block)}</p>
         <p><strong>Intake:</strong> ${escapeHtml(student.intake_year)}</p>
         <p><strong>Absences:</strong> ${student.cumulative_absences || 0}</p>
-        <button class="btn-action" onclick="showToast('Message feature coming', 'info')">Send Message</button>
+        <button class="btn-action" onclick="showFeedback('Send message to ${escapeHtml(student.full_name)}', 'info')">Send Message</button>
     `;
     $('#studentDetailModal').style.display = 'flex';
 };
 
-// Sessions
+// =====================================================
+// SESSIONS (MATCHING SUPER ADMIN)
+// =====================================================
+async function loadSessions() {
+    const tbody = $('#sessionsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="5">Loading sessions...<\/td><\/tr>';
+
+    const { data: sessions, error } = await fetchData('scheduled_sessions', '*', { lecturer_id: currentUserId }, 'session_date', false);
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Error loading sessions: ${error.message}<\/td><\/tr>`;
+        return;
+    }
+
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = '<td><td colspan="5">No sessions scheduled<\/td><\/tr>';
+        return;
+    }
+
+    allSessions = sessions;
+    tbody.innerHTML = '';
+
+    sessions.forEach(s => {
+        const link = `${window.location.origin}/attendance?session=${s.id}`;
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(s.session_title)}<\/td>
+                <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}<\/td>
+                <td>${escapeHtml(s.target_program)}/${escapeHtml(s.block_term)}<\/td>
+                <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showFeedback('Link copied!', 'success')">Copy Link</button><\/td>
+                <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button><\/td>
+            <\/tr>
+        `;
+    });
+}
+
+window.deleteSession = async function(sessionId) {
+    if (!confirm('Delete this session?')) return;
+    const { error } = await sb.from('scheduled_sessions').delete().eq('id', sessionId);
+    if (error) {
+        showFeedback(`Failed to delete session: ${error.message}`, 'error');
+    } else {
+        showFeedback('Session deleted successfully!', 'success');
+        loadSessions();
+        loadDashboardData();
+    }
+};
+
 $('#addSessionForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('scheduled_sessions').insert({
+    const submitter = e.submitter;
+    const originalText = submitter?.textContent;
+    if (submitter) {
+        submitter.disabled = true;
+        submitter.textContent = 'Processing...';
+    }
+
+    const sessionData = {
         session_title: $('#sessionTitle').value,
         session_date: $('#sessionDate').value,
         session_time: $('#sessionTime').value,
         target_program: $('#sessionProgram').value,
         block_term: $('#sessionBlock').value,
         lecturer_id: currentUserId
-    });
-    if (error) { showToast(error.message, 'error'); return; }
-    showToast('Session scheduled!', 'success');
-    e.target.reset();
-    await loadSessions();
+    };
+
+    const { error } = await sb.from('scheduled_sessions').insert([sessionData]);
+
+    if (error) {
+        showFeedback(`Failed to schedule session: ${error.message}`, 'error');
+    } else {
+        showFeedback('Session scheduled successfully!', 'success');
+        e.target.reset();
+        loadSessions();
+        loadDashboardData();
+    }
+
+    if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = originalText;
+    }
 });
 
-async function loadSessions() {
-    const tbody = $('#sessionsTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`;
-        return;
-    }
-    
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>';
-        return;
-    }
-    
-    tbody.innerHTML = '';
-    data.forEach(s => {
-        const link = `${window.location.origin}/attendance?session=${s.id}`;
-        tbody.innerHTML += `<tr>
-            <td>${escapeHtml(s.session_title)}<\/td>
-            <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}<\/td>
-            <td>${s.target_program}/${s.block_term}<\/td>
-            <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied!', 'success')">Copy Link<\/button><\/td>
-            <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete<\/button><\/td>
-        </table>`;
+// =====================================================
+// ATTENDANCE (MATCHING SUPER ADMIN)
+// =====================================================
+async function populateAttendanceSelects() {
+    const lecturerProgram = currentUserProfile?.program || 'KRCHN';
+    const { data: students } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('user_id, full_name, student_id')
+        .eq('role', 'student')
+        .eq('program', lecturerProgram)
+        .order('full_name', true);
+    populateSelect($('attStudentId'), students, 'user_id', 'full_name', 'Select Student');
+}
+
+function populateSelect(selectElement, data, valueKey, textKey, defaultText) {
+    if (!selectElement) return;
+    selectElement.innerHTML = `<option value="">-- ${defaultText} --</option>`;
+    data?.forEach(item => {
+        const text = item[textKey] || item[valueKey];
+        selectElement.innerHTML += `<option value="${item[valueKey]}">${escapeHtml(text)}</option>`;
     });
 }
 
-window.deleteSession = async (id) => {
-    if (confirm('Delete this session?')) {
-        await sb.from('scheduled_sessions').delete().eq('id', id);
-        await loadSessions();
-        showToast('Session deleted', 'success');
+$('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitter = e.submitter;
+    const originalText = submitter?.textContent;
+    if (submitter) {
+        submitter.disabled = true;
+        submitter.textContent = 'Processing...';
     }
-};
 
-// Attendance
-window.markLecturerAttendance = () => {
-    if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-        const { error } = await sb.from('geo_attendance_logs').insert({
+    const studentId = $('#attStudentId').value;
+    const sessionType = $('#attSessionType').value;
+    const date = $('#attDate').value;
+    const location = $('#attLocation').value;
+
+    if (!studentId) {
+        showFeedback('Please select a student', 'error');
+        if (submitter) {
+            submitter.disabled = false;
+            submitter.textContent = originalText;
+        }
+        return;
+    }
+
+    const checkInTime = date ? new Date(date).toISOString() : new Date().toISOString();
+
+    const attendanceData = {
+        user_id: studentId,
+        session_type: sessionType,
+        check_in_time: checkInTime,
+        location_details: location || 'Manual Entry',
+        recorded_by_id: currentUserId,
+        recorded_by_name: currentUserProfile?.full_name,
+        program: currentUserProfile?.program,
+        is_manual_entry: true
+    };
+
+    const { error } = await sb.from('geo_attendance_logs').insert([attendanceData]);
+
+    if (error) {
+        showFeedback(`Failed to record attendance: ${error.message}`, 'error');
+    } else {
+        showFeedback('Attendance recorded successfully!', 'success');
+        e.target.reset();
+        loadAttendance();
+        loadDashboardData();
+    }
+
+    if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = originalText;
+    }
+});
+
+window.markLecturerAttendance = function() {
+    if (!navigator.geolocation) {
+        showFeedback('Geolocation is not supported by this browser.', 'error');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const checkInData = {
             user_id: currentUserId,
-            user_role: 'lecturer',
-            session_type: 'Check-in',
+            session_type: 'Lecturer Check-in',
             check_in_time: new Date().toISOString(),
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude
-        });
-        if (error) showToast(error.message, 'error');
-        else { showToast('Checked in!', 'success'); await loadAttendance(); }
-    }, () => showToast('Location denied', 'error'));
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            location_name: 'Lecturer Check-in',
+            program: currentUserProfile?.program,
+            recorded_by_id: currentUserId
+        };
+
+        const { error } = await sb.from('geo_attendance_logs').insert([checkInData]);
+        if (error) {
+            showFeedback(`Check-in failed: ${error.message}`, 'error');
+        } else {
+            showFeedback('Check-in recorded successfully!', 'success');
+            loadAttendance();
+            loadDashboardData();
+        }
+    }, () => {
+        showFeedback('Unable to get your location. Please enable location services.', 'error');
+    });
 };
 
 async function loadAttendance() {
     const tbody = $('#attendanceTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
-    
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
-    
+
+    tbody.innerHTML = '</table><td colspan="6">Loading attendance...<\/td><\/tr>';
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: records, error } = await sb
+        .from('geo_attendance_logs')
+        .select('*')
+        .gte('check_in_time', today)
+        .order('check_in_time', false);
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="6">Error loading attendance: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No attendance today<\/td><\/tr>';
+
+    if (!records || records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No attendance records today<\/td><\/tr>';
         return;
     }
-    
+
     tbody.innerHTML = '';
-    data.forEach(a => {
-        const student = allStudents.find(s => s.user_id === a.user_id);
-        tbody.innerHTML += `<tr>
-            <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
-            <td>${escapeHtml(student?.student_id)}<\/td>
-            <td>${a.session_type || 'Class'}<\/td>
-            <td>${new Date(a.check_in_time).toLocaleTimeString()}<\/td>
-            <td>${escapeHtml(a.location_details || a.location_name)}<\/td>
-            <td><button class="btn-danger" onclick="deleteAttendance('${a.id}')">Delete<\/button><\/td>
-        </tr>`;
+    records.forEach(r => {
+        const student = allStudents.find(s => s.user_id === r.user_id);
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(r.student_name || student?.full_name || 'N/A')}<\/td>
+                <td>${escapeHtml(student?.student_id || 'N/A')}<\/td>
+                <td>${escapeHtml(r.session_type || 'N/A')}<\/td>
+                <td>${new Date(r.check_in_time).toLocaleTimeString()}<\/td>
+                <td>${escapeHtml(r.location_details || r.location_name || 'N/A')}<\/td>
+                <td><button class="btn-danger" onclick="deleteAttendanceRecord('${r.id}')">Delete</button><\/td>
+            <\/tr>
+        `;
     });
 }
 
-window.deleteAttendance = async (id) => {
-    if (confirm('Delete this record?')) {
-        await sb.from('geo_attendance_logs').delete().eq('id', id);
-        await loadAttendance();
-        showToast('Record deleted', 'success');
+window.deleteAttendanceRecord = async function(recordId) {
+    if (!confirm('Delete this attendance record?')) return;
+    const { error } = await sb.from('geo_attendance_logs').delete().eq('id', recordId);
+    if (error) {
+        showFeedback(`Failed to delete record: ${error.message}`, 'error');
+    } else {
+        showFeedback('Record deleted successfully!', 'success');
+        loadAttendance();
+        loadDashboardData();
     }
 };
 
-// Exams
+// =====================================================
+// EXAMS (MATCHING SUPER ADMIN)
+// =====================================================
+async function populateExamCourseSelects() {
+    const program = $('#examProgram')?.value;
+    const courseSelect = $('#examCourse');
+
+    if (!courseSelect) return;
+
+    courseSelect.innerHTML = '<option value="">-- Select Course (Optional) --</option>';
+
+    if (!program) return;
+
+    const { data: courses } = await fetchData('courses', 'id, course_name', { target_program: program }, 'course_name', true);
+    if (courses && courses.length > 0) {
+        courses.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.id;
+            option.textContent = c.course_name;
+            courseSelect.appendChild(option);
+        });
+    }
+}
+
 $('#addExamForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('exams').insert({
+    const submitter = e.submitter;
+    const originalText = submitter?.textContent;
+    if (submitter) {
+        submitter.disabled = true;
+        submitter.textContent = 'Processing...';
+    }
+
+    const examData = {
         exam_name: $('#examTitle').value,
         exam_date: $('#examDate').value,
         exam_type: $('#examType').value,
         target_program: $('#examProgram').value,
         block_term: $('#examBlock').value,
-        created_by: currentUserId,
-        status: 'Scheduled'
-    });
-    if (error) { showToast(error.message, 'error'); return; }
-    showToast('Exam created!', 'success');
-    e.target.reset();
-    await loadExams();
+        course_id: $('#examCourse').value || null,
+        duration_minutes: 120,
+        status: 'Scheduled',
+        created_by: currentUserId
+    };
+
+    const { error } = await sb.from('exams').insert([examData]);
+
+    if (error) {
+        showFeedback(`Failed to create exam: ${error.message}`, 'error');
+    } else {
+        showFeedback('Exam created successfully!', 'success');
+        e.target.reset();
+        loadExams();
+        loadDashboardData();
+    }
+
+    if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = originalText;
+    }
 });
 
 async function loadExams() {
     const tbody = $('#examsTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
-    
+
+    tbody.innerHTML = '<tr><td colspan="6">Loading exams...<\/td><\/tr>';
+
+    const { data: exams, error } = await fetchData('exams', '*, course:course_id(course_name)', { created_by: currentUserId }, 'exam_date', false);
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="6">Error loading exams: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    if (!data || data.length === 0) {
+
+    if (!exams || exams.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">No exams created<\/td><\/tr>';
         return;
     }
-    
+
+    allExams = exams;
     tbody.innerHTML = '';
-    data.forEach(e => {
-        tbody.innerHTML += `<tr>
-            <td><span class="badge badge-info">${e.exam_type}</span><\/td>
-            <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
-            <td>${e.target_program}/${e.block_term}<\/td>
-            <td>${new Date(e.exam_date).toLocaleDateString()}<\/td>
-            <td><span class="badge badge-warning">${e.status}<\/span><\/td>
-            <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
-        </tr>`;
+
+    exams.forEach(e => {
+        const courseName = e.course?.course_name || 'N/A';
+        tbody.innerHTML += `
+            <tr>
+                <td><span class="badge badge-info">${escapeHtml(e.exam_type)}<\/span><\/td>
+                <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
+                <td>${escapeHtml(courseName)}<\/td>
+                <td>${escapeHtml(e.target_program)}/${escapeHtml(e.block_term)}<\/td>
+                <td>${new Date(e.exam_date).toLocaleDateString()}<\/td>
+                <td><span class="badge badge-warning">${escapeHtml(e.status)}<\/span><\/td>
+                <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
+            <\/tr>
+        `;
     });
 }
 
-window.deleteExam = async (id) => {
-    if (confirm('Delete this exam?')) {
-        await sb.from('exams').delete().eq('id', id);
-        await loadExams();
-        showToast('Exam deleted', 'success');
+window.deleteExam = async function(examId) {
+    if (!confirm('Delete this exam?')) return;
+    const { error } = await sb.from('exams').delete().eq('id', examId);
+    if (error) {
+        showFeedback(`Failed to delete exam: ${error.message}`, 'error');
+    } else {
+        showFeedback('Exam deleted successfully!', 'success');
+        loadExams();
+        loadDashboardData();
     }
 };
 
-// Grade Modal
-window.openGradeModal = (id) => {
-    showToast('Grade modal coming soon', 'info');
+window.openGradeModal = function(examId) {
+    showFeedback('Grade modal coming soon', 'info');
 };
 
-window.saveGrades = () => {
+window.saveGrades = function() {
     closeModal('gradeModal');
-    showToast('Grades saved', 'success');
+    showFeedback('Grades saved', 'success');
 };
 
-// Resources
+// =====================================================
+// RESOURCES (MATCHING SUPER ADMIN)
+// =====================================================
 $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const file = $('#resourceFile').files[0];
-    if (!file) { showToast('Select a file', 'error'); return; }
+    const submitter = e.submitter;
+    const originalText = submitter?.textContent;
+    if (submitter) {
+        submitter.disabled = true;
+        submitter.textContent = 'Processing...';
+    }
+
+    const fileInput = $('#resourceFile');
+    if (!fileInput.files.length) {
+        showFeedback('Please select a file', 'error');
+        if (submitter) {
+            submitter.disabled = false;
+            submitter.textContent = originalText;
+        }
+        return;
+    }
+
+    const file = fileInput.files[0];
     const fileName = `${Date.now()}_${file.name}`;
-    const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-    if (uploadError) { showToast(uploadError.message, 'error'); return; }
-    const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
-    const { error } = await sb.from('resources').insert({
+    const filePath = `lecturer_resources/${currentUserId}/${fileName}`;
+
+    const { error: uploadError } = await sb.storage.from('resources').upload(filePath, file);
+    if (uploadError) {
+        showFeedback(`Upload failed: ${uploadError.message}`, 'error');
+        if (submitter) {
+            submitter.disabled = false;
+            submitter.textContent = originalText;
+        }
+        return;
+    }
+
+    const { data: urlData } = sb.storage.from('resources').getPublicUrl(filePath);
+
+    const resourceData = {
         title: $('#resourceTitle').value,
+        file_path: filePath,
         file_url: urlData.publicUrl,
         program_type: $('#resourceProgram').value,
         block: $('#resourceBlock').value,
-        uploaded_by: currentUserId
-    });
-    if (error) showToast(error.message, 'error');
-    else { showToast('Resource uploaded!', 'success'); e.target.reset(); await loadResources(); }
+        uploaded_by: currentUserId,
+        uploaded_by_name: currentUserProfile?.full_name,
+        created_at: new Date().toISOString()
+    };
+
+    const { error: dbError } = await sb.from('resources').insert([resourceData]);
+
+    if (dbError) {
+        showFeedback(`Failed to save resource: ${dbError.message}`, 'error');
+    } else {
+        showFeedback('Resource uploaded successfully!', 'success');
+        e.target.reset();
+        loadResources();
+    }
+
+    if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = originalText;
+    }
 });
 
 async function loadResources() {
     const tbody = $('#resourcesTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
-    
+
+    tbody.innerHTML = '<tr><td colspan="4">Loading resources...<\/td><\/tr>';
+
+    const { data: resources, error } = await fetchData('resources', '*', { uploaded_by: currentUserId }, 'created_at', false);
+
     if (error) {
-        tbody.innerHTML = `<td><td colspan="4">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="4">Error loading resources: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">No resources uploaded<\/td><\/tr>';
+
+    if (!resources || resources.length === 0) {
+        tbody.innerHTML = '<td><td colspan="4">No resources uploaded<\/td><\/tr>';
         return;
     }
-    
+
+    allResources = resources;
     tbody.innerHTML = '';
-    data.forEach(r => {
-        tbody.innerHTML += `<tr>
-            <td>${escapeHtml(r.title)}<\/td>
-            <td>${r.program_type}/${r.block}<\/td>
-            <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
-            <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
-        </tr>`;
+
+    resources.forEach(r => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(r.title)}<\/td>
+                <td>${escapeHtml(r.program_type)}/${escapeHtml(r.block)}<\/td>
+                <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
+                <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
+            <\/tr>
+        `;
     });
 }
 
-window.deleteResource = async (id) => {
-    if (confirm('Delete this resource?')) {
-        await sb.from('resources').delete().eq('id', id);
-        await loadResources();
-        showToast('Resource deleted', 'success');
+window.deleteResource = async function(resourceId) {
+    if (!confirm('Delete this resource?')) return;
+    const { error } = await sb.from('resources').delete().eq('id', resourceId);
+    if (error) {
+        showFeedback(`Failed to delete resource: ${error.message}`, 'error');
+    } else {
+        showFeedback('Resource deleted successfully!', 'success');
+        loadResources();
     }
 };
 
-// Messages
+// =====================================================
+// MESSAGES (MATCHING SUPER ADMIN)
+// =====================================================
 async function loadMessages() {
-    const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student');
-    const select = $('#msgRecipient');
-    if (select) {
-        select.innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${escapeHtml(s.full_name)}</option>`).join('');
+    const lecturerProgram = currentUserProfile?.program || 'KRCHN';
+    const { data: students } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('user_id, full_name')
+        .eq('role', 'student')
+        .eq('program', lecturerProgram)
+        .order('full_name', true);
+
+    const recipientSelect = $('#msgRecipient');
+    if (recipientSelect) {
+        recipientSelect.innerHTML = '<option value="">-- Select Student --</option>';
+        students?.forEach(s => {
+            recipientSelect.innerHTML += `<option value="${s.user_id}">${escapeHtml(s.full_name)}</option>`;
+        });
     }
-    
+
     const tbody = $('#messagesTableBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
-    
-    const { data, error } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
-    
+
+    tbody.innerHTML = '<tr><td colspan="4">Loading messages...<\/td><\/tr>';
+
+    const { data: messages, error } = await fetchData('notifications', '*', { sender_id: currentUserId }, 'created_at', false);
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<td><td colspan="4">Error loading messages: ${error.message}<\/td><\/tr>`;
         return;
     }
-    
-    if (!data || data.length === 0) {
+
+    if (!messages || messages.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>';
         return;
     }
-    
+
     tbody.innerHTML = '';
-    data.forEach(m => {
-        tbody.innerHTML += `<tr>
-            <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
-            <td>${escapeHtml(m.subject)}<\/td>
-            <td>${students?.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
-            <td><span class="badge badge-success">Sent<\/span><\/td>
-        </tr>`;
+    messages.forEach(m => {
+        const recipient = students?.find(s => s.user_id === m.target_user_id)?.full_name || 'All';
+        tbody.innerHTML += `
+            <tr>
+                <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
+                <td>${escapeHtml(m.subject)}<\/td>
+                <td>${escapeHtml(recipient)}<\/td>
+                <td><span class="badge badge-success">Sent<\/span><\/td>
+            <\/tr>
+        `;
     });
 }
 
 $('#sendMessageForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('notifications').insert({
+    const submitter = e.submitter;
+    const originalText = submitter?.textContent;
+    if (submitter) {
+        submitter.disabled = true;
+        submitter.textContent = 'Processing...';
+    }
+
+    const messageData = {
         target_user_id: $('#msgRecipient').value,
         subject: $('#msgSubject').value,
         message: $('#msgBody').value,
-        sender_id: currentUserId
-    });
-    if (error) { showToast(error.message, 'error'); return; }
-    showToast('Message sent!', 'success');
-    e.target.reset();
-    await loadMessages();
+        sender_id: currentUserId,
+        sender_name: currentUserProfile?.full_name,
+        target_program: currentUserProfile?.program
+    };
+
+    const { error } = await sb.from('notifications').insert([messageData]);
+
+    if (error) {
+        showFeedback(`Failed to send message: ${error.message}`, 'error');
+    } else {
+        showFeedback('Message sent successfully!', 'success');
+        e.target.reset();
+        loadMessages();
+    }
+
+    if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = originalText;
+    }
 });
 
-// Calendar
+// =====================================================
+// CALENDAR (MATCHING SUPER ADMIN)
+// =====================================================
 async function loadCalendar() {
-    const el = $('#calendarDisplay');
-    if (!el) return;
-    
-    const { data: sessions } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId);
-    const events = (sessions || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' }));
-    
+    const calendarEl = $('#calendarDisplay');
+    if (!calendarEl) return;
+
+    const { data: sessions } = await fetchData('scheduled_sessions', 'id, session_title, session_date', { lecturer_id: currentUserId }, 'session_date', true);
+
+    const events = (sessions || []).map(s => ({
+        id: s.id,
+        title: s.session_title,
+        start: s.session_date,
+        color: '#4C1D95'
+    }));
+
     if (calendar) calendar.destroy();
-    calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', events });
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+        },
+        events: events,
+        eventClick: function(info) {
+            showFeedback(`Session: ${info.event.title}`, 'info');
+        }
+    });
     calendar.render();
 }
 
-// Photo upload
+// =====================================================
+// PHOTO UPLOAD
+// =====================================================
 $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput').click());
 $('#photoInput')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
     const { error: uploadError } = await sb.storage.from('resources').upload(fileName, file);
-    if (uploadError) { showToast(uploadError.message, 'error'); return; }
-    const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-    await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
-    showToast('Photo updated!', 'success');
-    await loadProfile();
+    if (uploadError) {
+        showFeedback(`Upload failed: ${uploadError.message}`, 'error');
+        return;
+    }
+
+    const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
+    const { error: updateError } = await sb
+        .from('consolidated_user_profiles_table')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('user_id', currentUserId);
+
+    if (updateError) {
+        showFeedback(`Failed to update profile: ${updateError.message}`, 'error');
+    } else {
+        showFeedback('Photo updated successfully!', 'success');
+        loadProfile();
+    }
 });
 
-// Export functions
-window.exportCourses = () => showToast('Export feature coming soon', 'info');
-window.exportStudents = () => showToast('Export feature coming soon', 'info');
+// =====================================================
+// EXPORT FUNCTIONS
+// =====================================================
+window.exportCourses = function() {
+    showFeedback('Export feature coming soon', 'info');
+};
 
-// Logout
-window.logout = async () => {
+window.exportStudents = function() {
+    showFeedback('Export feature coming soon', 'info');
+};
+
+// =====================================================
+// LOGOUT (MATCHING SUPER ADMIN)
+// =====================================================
+window.logout = async function() {
     await sb.auth.signOut();
     window.location.href = 'login.html';
 };
 
-// Initialize
-async function init() {
-    console.log('Initializing Lecturer Dashboard...');
-    
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-        window.location.href = 'login.html';
+// =====================================================
+// INITIALIZATION (MATCHING SUPER ADMIN)
+// =====================================================
+async function initSession() {
+    const { data: { session }, error: sessionError } = await sb.auth.getSession();
+
+    if (sessionError || !session) {
+        console.warn("Session check failed, redirecting to login.");
+        window.location.href = "login.html";
         return;
     }
-    
+
     currentUserId = session.user.id;
-    
-    const { data: profile } = await sb
+
+    const { data: profile, error: profileError } = await sb
         .from('consolidated_user_profiles_table')
         .select('*')
         .eq('user_id', currentUserId)
         .maybeSingle();
-    
-    if (!profile) {
-        currentUserProfile = {
-            user_id: currentUserId,
-            full_name: session.user.email?.split('@')[0] || 'Lecturer',
-            role: 'lecturer',
-            program: 'KRCHN',
-            email: session.user.email
-        };
-    } else {
-        currentUserProfile = profile;
+
+    if (profileError || !profile) {
+        console.error("Profile not found or fetch error:", profileError?.message);
+        window.location.href = "login.html";
+        return;
     }
-    
-    $('#lecturerName').textContent = currentUserProfile.full_name || 'Lecturer';
-    
+
+    if (profile.role !== 'lecturer') {
+        console.warn(`User ${session.user.email} is not a Lecturer. Redirecting.`);
+        window.location.href = "login.html";
+        return;
+    }
+
+    currentUserProfile = profile;
+    document.querySelector('header h1').innerHTML = `Welcome, ${profile.full_name || 'Lecturer'}!`;
+
+    // Load initial data
     await loadCourses();
     await loadStudents();
-    await loadDashboard();
-    await loadTodaySchedule();
+    await loadDashboardData();
     await loadProfile();
-    
+    await loadSessions();
+    await loadExams();
+    await loadResources();
+    await loadMessages();
+
+    // Setup event listeners
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // Session form
+    const sessionProgram = $('#sessionProgram');
+    if (sessionProgram) {
+        updateProgramDropdown(sessionProgram);
+        sessionProgram.addEventListener('change', () => updateBlockTermOptions('sessionProgram', 'sessionBlock'));
+    }
+
+    // Exam form
+    const examProgram = $('#examProgram');
+    if (examProgram) {
+        updateProgramDropdown(examProgram);
+        examProgram.addEventListener('change', () => {
+            updateBlockTermOptions('examProgram', 'examBlock');
+            populateExamCourseSelects();
+        });
+    }
+
+    // Resource form
+    const resourceProgram = $('#resourceProgram');
+    if (resourceProgram) {
+        updateProgramDropdown(resourceProgram);
+        resourceProgram.addEventListener('change', () => updateBlockTermOptions('resourceProgram', 'resourceBlock'));
+    }
+
+    // Mobile navigation
+    const mobileToggle = $('#mobileNavToggle');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', () => {
+            $('#sidebar')?.classList.toggle('active');
+        });
+    }
+
+    // Close sidebar when clicking nav links (mobile)
     document.querySelectorAll('.nav a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const tabId = link.getAttribute('data-tab');
-            if (tabId) showTab(tabId);
+        link.addEventListener('click', () => {
+            $('#sidebar')?.classList.remove('active');
         });
     });
-    
-    $('#mobileNavToggle')?.addEventListener('click', () => {
-        $('#sidebar')?.classList.toggle('active');
+}
+
+// Initialize modals
+function initializeModals() {
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
     });
-    
-    console.log('Dashboard ready!');
+
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    });
 }
 
 // Start the application
-init();
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing Lecturer Dashboard...');
+    initializeModals();
+    initSession();
+    console.log('✅ Dashboard initialization complete');
+});
