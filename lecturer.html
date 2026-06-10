@@ -594,7 +594,7 @@
         
         async function loadTodaySchedule() {
             const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('created_by', currentUserId).order('session_time');
             const container = $('#todayScheduleList');
             if (!container) return;
             if (!data?.length) { container.innerHTML = '<p>No sessions scheduled for today</p>'; return; }
@@ -710,7 +710,7 @@
             const tbody = $('#sessionsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<td><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
-            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
+            const { data, error } = await sb.from('scheduled_sessions').select('*').eq('created_by', currentUserId).order('session_date', false);
             if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
             if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
@@ -973,7 +973,7 @@
             const el = $('#calendarDisplay');
             if (!el) return;
             const [sessions, exams] = await Promise.all([
-                sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
+                sb.from('scheduled_sessions').select('*').eq('created_by', currentUserId),
                 sb.from('exams').select('*').eq('created_by', currentUserId)
             ]);
             const events = [
