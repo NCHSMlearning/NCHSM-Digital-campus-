@@ -433,18 +433,18 @@
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.sb = sb;
         
-        // Global variables
-        let currentUserProfile = null;
-        let currentUserId = null;
-        let allCourses = [];
-        let allStudents = [];
-        let allSessions = [];
-        let allExams = [];
-        let allResources = [];
-        let calendar = null;
-        let attendanceMap = null;
-        let currentQRCode = null;
-        let currentGradingExam = null;
+       // ✅ CORRECT - Truly global
+window.currentUserProfile = null;
+window.currentUserId = null;
+window.allCourses = [];
+window.allStudents = [];
+window.allSessions = [];
+window.allExams = [];
+window.allResources = [];
+window.calendar = null;
+window.attendanceMap = null;
+window.currentQRCode = null;
+window.currentGradingExam = null;
         
         // TVET Program Codes
         const TVET_PROGRAMS = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
@@ -623,7 +623,7 @@
             tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
             const { data, error } = await sb.from('courses').select('*');
             if (error) { tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}<\/td><\/tr>`; return; }
-            allCourses = data || [];
+            window.window.allStudents = data || [];
             if (allCourses.length === 0) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
             tbody.innerHTML = '';
             allCourses.forEach(c => {
