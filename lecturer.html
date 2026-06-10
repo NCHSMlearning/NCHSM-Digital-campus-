@@ -2,1000 +2,362 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>NCHSM Lecturer Dashboard - Complete System</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCHSM Lecturer Dashboard</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
-    <!-- External CSS -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Mobile Menu Toggle -->
-        <div class="mobile-toggle" id="mobileToggle">
-            <i class="fas fa-bars"></i>
+    <div class="container">
+        <div class="mobile-nav-toggle" id="mobileNavToggle">
+            <span></span><span></span><span></span>
         </div>
 
-        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
                 <h2>LECTURER</h2>
-                <p>Teaching Dashboard</p>
             </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">MAIN</div>
-                    <a href="#" class="nav-link active" data-tab="dashboard">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                    <a href="#" class="nav-link" data-tab="profile">
-                        <i class="fas fa-user-circle"></i> My Profile
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">ACADEMIC</div>
-                    <a href="#" class="nav-link" data-tab="my-courses">
-                        <i class="fas fa-book-open"></i> My Courses
-                    </a>
-                    <a href="#" class="nav-link" data-tab="my-students">
-                        <i class="fas fa-users"></i> My Students
-                    </a>
-                    <a href="#" class="nav-link" data-tab="sessions">
-                        <i class="fas fa-calendar-alt"></i> Sessions
-                    </a>
-                    <a href="#" class="nav-link" data-tab="attendance">
-                        <i class="fas fa-fingerprint"></i> Attendance
-                    </a>
-                    <a href="#" class="nav-link" data-tab="cats">
-                        <i class="fas fa-file-alt"></i> Exams & CATs
-                    </a>
-                    <a href="#" class="nav-link" data-tab="resources">
-                        <i class="fas fa-folder-open"></i> Resources
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">COMMUNICATION</div>
-                    <a href="#" class="nav-link" data-tab="messages">
-                        <i class="fas fa-envelope"></i> Messages
-                    </a>
-                    <a href="#" class="nav-link" data-tab="announcements">
-                        <i class="fas fa-bullhorn"></i> Announcements
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">TOOLS</div>
-                    <a href="#" class="nav-link" data-tab="calendar">
-                        <i class="fas fa-calendar"></i> Calendar
-                    </a>
-                    <a href="#" class="nav-link" data-tab="analytics">
-                        <i class="fas fa-chart-line"></i> Analytics
-                    </a>
-                    <a href="#" class="nav-link" data-tab="nurseiq">
-                        <i class="fas fa-brain"></i> NurseIQ
-                    </a>
-                    <a href="#" class="nav-link" data-tab="settings">
-                        <i class="fas fa-cog"></i> Settings
-                    </a>
-                </div>
-            </nav>
-            
-            <div class="logout-section">
-                <button class="logout-btn" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
+            <ul class="nav" id="mainNav">
+                <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#" data-tab="profile"><i class="fas fa-user"></i> My Profile</a></li>
+                <li><a href="#" data-tab="my-courses"><i class="fas fa-book"></i> My Courses</a></li>
+                <li><a href="#" data-tab="my-students"><i class="fas fa-users"></i> My Students</a></li>
+                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Sessions</a></li>
+                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> Exams/CATs</a></li>
+                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+                <li><a href="#" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
+                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
+                <li><a href="#" data-tab="nurseiq"><i class="fas fa-brain"></i> NurseIQ</a></li>
+            </ul>
+            <div class="logout">
+                <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Bar -->
-            <div class="top-bar">
-                <div class="welcome-area">
-                    <h1 id="welcomeTitle">Welcome, Lecturer!</h1>
-                    <p id="welcomeSubtitle">Manage your teaching activities</p>
-                </div>
-                <div class="top-bar-actions">
-                    <button class="icon-btn" id="notificationBtn">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge" id="notificationBadge">0</span>
-                    </button>
-                    <button class="icon-btn" id="helpBtn">
-                        <i class="fas fa-question-circle"></i>
-                    </button>
-                    <div class="user-menu">
-                        <div class="user-avatar" id="userAvatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <span id="userName">Loading...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Toast Container -->
-            <div id="toastContainer" class="toast-container"></div>
+        <main class="main">
+            <header>
+                <h1>Welcome, <span id="lecturerName">Lecturer</span>!</h1>
+                <p class="subtitle">Manage your courses, students, attendance, and NurseIQ questions</p>
+            </header>
 
             <!-- Dashboard Tab -->
-            <section id="dashboard-tab" class="tab-content active">
-                <div class="page-header">
-                    <h2><i class="fas fa-tachometer-alt"></i> Dashboard Overview</h2>
-                    <p>Welcome back! Here's your teaching summary</p>
+            <section id="dashboard" class="tab-content active">
+                <div class="cards">
+                    <div class="card" onclick="showTab('my-students')">
+                        <h3>My Students</h3>
+                        <p class="data" id="totalStudents">0</p>
+                    </div>
+                    <div class="card" onclick="showTab('my-courses')">
+                        <h3>My Courses</h3>
+                        <p class="data" id="totalCourses">0</p>
+                    </div>
+                    <div class="card" onclick="showTab('nurseiq')">
+                        <h3><i class="fas fa-brain"></i> NurseIQ Questions</h3>
+                        <p class="data" id="nurseiqTotal">0</p>
+                    </div>
+                    <div class="card" onclick="showTab('cats')">
+                        <h3>Pending Grading</h3>
+                        <p class="data" id="pendingGrading">0</p>
+                    </div>
                 </div>
                 
-                <!-- Stats Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card" onclick="showTab('my-students')">
-                        <div class="stat-icon"><i class="fas fa-users"></i></div>
-                        <div class="stat-info">
-                            <h3>My Students</h3>
-                            <p class="stat-number" id="statStudents">0</p>
+                <div class="attendance-metrics">
+                    <h3>Attendance Overview</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="todayAttendance">0</div>
+                            <div class="metric-label">Today's Check-ins</div>
                         </div>
-                    </div>
-                    <div class="stat-card" onclick="showTab('my-courses')">
-                        <div class="stat-icon"><i class="fas fa-book"></i></div>
-                        <div class="stat-info">
-                            <h3>My Courses</h3>
-                            <p class="stat-number" id="statCourses">0</p>
+                        <div class="metric-card">
+                            <div class="metric-value" id="weeklyAttendance">0</div>
+                            <div class="metric-label">This Week</div>
                         </div>
-                    </div>
-                    <div class="stat-card" onclick="showTab('attendance')">
-                        <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                        <div class="stat-info">
-                            <h3>Today's Sessions</h3>
-                            <p class="stat-number" id="statTodaySessions">0</p>
-                        </div>
-                    </div>
-                    <div class="stat-card" onclick="showTab('cats')">
-                        <div class="stat-icon"><i class="fas fa-file-signature"></i></div>
-                        <div class="stat-info">
-                            <h3>Pending Grading</h3>
-                            <p class="stat-number" id="statPendingGrading">0</p>
+                        <div class="metric-card">
+                            <div class="metric-value" id="monthlyRate">0%</div>
+                            <div class="metric-label">Monthly Rate</div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Charts Row -->
-                <div class="charts-row">
-                    <div class="chart-card">
-                        <h3><i class="fas fa-chart-line"></i> Attendance Trend</h3>
-                        <canvas id="attendanceChart" height="200"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3><i class="fas fa-chart-pie"></i> Student Performance</h3>
-                        <canvas id="performanceChart" height="200"></canvas>
-                    </div>
-                </div>
-
-                <!-- Today's Schedule -->
-                <div class="schedule-card">
-                    <h3><i class="fas fa-calendar-day"></i> Today's Schedule</h3>
-                    <div id="todayScheduleList" class="schedule-list">
-                        <div class="loading-spinner"></div>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div class="activity-card">
-                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
-                    <div id="recentActivityList" class="activity-list"></div>
+                
+                <div class="today-schedule">
+                    <h4>Today's Schedule</h4>
+                    <div id="todayScheduleList">Loading...</div>
                 </div>
             </section>
 
             <!-- Profile Tab -->
-            <section id="profile-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-user-circle"></i> My Profile</h2>
-                    <p>View and manage your personal information</p>
-                </div>
-                
-                <div class="profile-container">
-                    <div class="profile-sidebar">
-                        <div class="profile-avatar-large" id="profileAvatarLarge">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <button class="btn-secondary" id="uploadPhotoBtn">
-                            <i class="fas fa-camera"></i> Change Photo
-                        </button>
+            <section id="profile" class="tab-content">
+                <h2>My Profile</h2>
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profileAvatar"><i class="fas fa-user"></i></div>
+                    <div class="profile-info">
+                        <h3 id="profileName">Loading...</h3>
+                        <button class="btn-action" id="uploadPhotoBtn">Upload Photo</button>
                         <input type="file" id="photoInput" accept="image/*" style="display:none">
                     </div>
-                    <div class="profile-details">
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label>Full Name</label>
-                                <p id="profileFullName">-</p>
-                            </div>
-                            <div class="info-group">
-                                <label>Employee ID</label>
-                                <p id="profileEmployeeId">-</p>
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label>Email Address</label>
-                                <p id="profileEmail">-</p>
-                            </div>
-                            <div class="info-group">
-                                <label>Phone Number</label>
-                                <p id="profilePhone">-</p>
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label>Department</label>
-                                <p id="profileDepartment">-</p>
-                            </div>
-                            <div class="info-group">
-                                <label>Program</label>
-                                <p id="profileProgram">-</p>
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label>Block/Term</label>
-                                <p id="profileBlock">-</p>
-                            </div>
-                            <div class="info-group">
-                                <label>Join Date</label>
-                                <p id="profileJoinDate">-</p>
-                            </div>
-                        </div>
-                        <div class="profile-actions">
-                            <button class="btn-primary" id="editProfileBtn">
-                                <i class="fas fa-edit"></i> Edit Profile
-                            </button>
-                            <button class="btn-secondary" id="changePasswordBtn">
-                                <i class="fas fa-key"></i> Change Password
-                            </button>
-                        </div>
-                    </div>
+                </div>
+                <div class="profile-details-grid">
+                    <div class="detail-item"><strong>Employee ID</strong><span id="profileId">-</span></div>
+                    <div class="detail-item"><strong>Email</strong><span id="profileEmail">-</span></div>
+                    <div class="detail-item"><strong>Department</strong><span id="profileDept">-</span></div>
+                    <div class="detail-item"><strong>Program</strong><span id="profileProgram">-</span></div>
                 </div>
             </section>
 
             <!-- My Courses Tab -->
-            <section id="my-courses-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-book-open"></i> My Courses</h2>
-                    <p>Manage your teaching courses</p>
-                </div>
-                
+            <section id="my-courses" class="tab-content">
+                <h2>My Courses</h2>
                 <div class="toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="filterCourses()">
-                    </div>
-                    <select id="courseProgramFilter" class="filter-select" onchange="filterCourses()">
-                        <option value="all">All Programs</option>
-                        <option value="KRCHN">KRCHN Nursing</option>
-                        <option value="TVET">TVET Programs</option>
-                    </select>
-                    <button class="btn-secondary" onclick="exportCoursesToCSV()">
-                        <i class="fas fa-download"></i> Export
-                    </button>
+                    <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="filterCourses()">
+                    <button onclick="exportCourses()" class="btn-action export-btn">Export CSV</button>
                 </div>
-                
-                <div class="courses-grid" id="coursesGrid">
-                    <div class="loading-spinner"></div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
+                        <tbody id="coursesTableBody"><tr><td colspan="5">Loading courses...<\/td><\/tr></tbody>
+                    </table>
                 </div>
             </section>
 
             <!-- My Students Tab -->
-            <section id="my-students-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-users"></i> My Students</h2>
-                    <p>View and manage your students</p>
-                </div>
-                
+            <section id="my-students" class="tab-content">
+                <h2>My Students</h2>
                 <div class="toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="studentSearch" placeholder="Search by name, reg no, or email..." onkeyup="filterStudents()">
-                    </div>
-                    <select id="studentProgramFilter" class="filter-select" onchange="filterStudents()">
-                        <option value="all">All Programs</option>
-                        <option value="KRCHN">KRCHN Nursing</option>
-                        <option value="TVET">TVET Programs</option>
-                    </select>
-                    <select id="studentStatusFilter" class="filter-select" onchange="filterStudents()">
+                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
+                    <select id="studentStatusFilter" onchange="filterStudents()">
                         <option value="all">All Status</option>
                         <option value="active">Active</option>
                         <option value="at-risk">At Risk</option>
                     </select>
-                    <button class="btn-success" onclick="sendBulkMessage()">
-                        <i class="fas fa-envelope"></i> Bulk Message
-                    </button>
-                    <button class="btn-secondary" onclick="exportStudentsToCSV()">
-                        <i class="fas fa-download"></i> Export
-                    </button>
+                    <button onclick="exportStudents()" class="btn-action export-btn">Export CSV</button>
                 </div>
-                
-                <div class="table-container">
+                <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Reg No.</th>
-                                <th>Email</th>
-                                <th>Program</th>
-                                <th>Intake</th>
-                                <th>Block</th>
-                                <th>Attendance</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentsTableBody">
-                            <tr><td colspan="9"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="studentsTableBody"><td><td colspan="7">Loading students...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- Sessions Tab -->
-            <section id="sessions-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
-                    <p>Schedule and manage your teaching sessions</p>
-                </div>
+            <section id="sessions" class="tab-content">
+                <h2>Manage Sessions</h2>
+                <form id="addSessionForm" class="inline-form">
+                    <input type="text" id="sessionTitle" placeholder="Session Title" required>
+                    <input type="date" id="sessionDate" required>
+                    <input type="time" id="sessionTime" required>
+                    <select id="sessionProgram" required>
+                        <option value="">-- Select Program --</option>
+                        <option value="KRCHN">KRCHN Nursing</option>
+                        <option value="TVET">TVET Programs</option>
+                    </select>
+                    <select id="sessionBlock" required>
+                        <option value="">-- Select Block/Term --</option>
+                    </select>
+                    <button type="submit">Schedule Session</button>
+                </form>
                 
-                <div class="form-card">
-                    <h3><i class="fas fa-plus-circle"></i> Schedule New Session</h3>
-                    <form id="addSessionForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Session Title *</label>
-                                <input type="text" id="sessionTitle" required placeholder="e.g., Introduction to Nursing">
-                            </div>
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="sessionDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Time *</label>
-                                <input type="time" id="sessionTime" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Duration (minutes)</label>
-                                <input type="number" id="sessionDuration" value="120">
-                            </div>
-                            <div class="form-group">
-                                <label>Venue/Room</label>
-                                <input type="text" id="sessionVenue" placeholder="Room number or online link">
-                            </div>
-                            <div class="form-group">
-                                <label>Session Type</label>
-                                <select id="sessionType">
-                                    <option value="Lecture">📚 Lecture</option>
-                                    <option value="Practical">🔬 Practical</option>
-                                    <option value="Clinical">🏥 Clinical</option>
-                                    <option value="Online">💻 Online</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program *</label>
-                                <select id="sessionProgram" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block/Term *</label>
-                                <select id="sessionBlock" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="sessionCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <textarea id="sessionDescription" rows="2" placeholder="Session details..."></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-calendar-plus"></i> Schedule Session
-                        </button>
-                    </form>
-                </div>
-
-                <h3><i class="fas fa-list"></i> Upcoming Sessions</h3>
-                <div class="table-container">
+                <h3>Scheduled Sessions</h3>
+                <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Date & Time</th>
-                                <th>Duration</th>
-                                <th>Venue</th>
-                                <th>Type</th>
-                                <th>Program/Block</th>
-                                <th>Attendance Link</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionsTableBody">
-                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Title</th><th>Date/Time</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
+                        <tbody id="sessionsTableBody"><tr><td colspan="5">Loading sessions...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- Attendance Tab -->
-            <section id="attendance-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-fingerprint"></i> Attendance Management</h2>
-                    <p>Track and manage student attendance</p>
-                </div>
+            <section id="attendance" class="tab-content">
+                <h2>Attendance Management</h2>
+                <button onclick="markLecturerAttendance()" class="btn-action">Mark My Attendance</button>
                 
-                <div class="action-buttons">
-                    <button id="lecturerCheckinBtn" class="btn-primary">
-                        <i class="fas fa-location-dot"></i> Mark My Attendance
-                    </button>
-                    <button id="generateQRBtn" class="btn-success">
-                        <i class="fas fa-qrcode"></i> Generate QR Code
-                    </button>
-                    <button id="bulkAttendanceBtn" class="btn-secondary">
-                        <i class="fas fa-upload"></i> Bulk Upload
-                    </button>
-                </div>
-
-                <div class="form-card">
-                    <h3><i class="fas fa-user-check"></i> Manual Attendance Entry</h3>
-                    <form id="manualAttendanceForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Student *</label>
-                                <select id="attStudentId" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Session Type *</label>
-                                <select id="attSessionType" required>
-                                    <option value="">Select</option>
-                                    <option value="Lecture">Lecture</option>
-                                    <option value="Practical">Practical</option>
-                                    <option value="Clinical">Clinical</option>
-                                    <option value="Exam">Exam</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="attCourseId"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Location</label>
-                                <input type="text" id="attLocation" placeholder="Venue/Room">
-                            </div>
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="attDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Time</label>
-                                <input type="time" id="attTime">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Notes (optional)</label>
-                            <textarea id="attNotes" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save"></i> Mark Present
-                        </button>
-                    </form>
-                </div>
-
-                <h3><i class="fas fa-calendar-day"></i> Today's Attendance 
-                    <span id="todayAttendanceCount" class="badge badge-info">0</span>
-                </h3>
-                <div class="table-container">
+                <h3>Manual Attendance Entry</h3>
+                <form id="manualAttendanceForm" class="inline-form">
+                    <select id="attStudentId" required><option value="">-- Select Student --</option></select>
+                    <select id="attSessionType" required>
+                        <option value="">-- Type --</option>
+                        <option value="Lecture">Lecture</option>
+                        <option value="Clinical">Clinical</option>
+                        <option value="Exam">Exam</option>
+                    </select>
+                    <input type="date" id="attDate" required>
+                    <input type="text" id="attLocation" placeholder="Location">
+                    <button type="submit">Mark Present</button>
+                </form>
+                
+                <h3>Today's Attendance</h3>
+                <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Reg No.</th>
-                                <th>Session Type</th>
-                                <th>Course</th>
-                                <th>Time</th>
-                                <th>Location</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendanceTableBody">
-                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Student</th><th>Reg No.</th><th>Type</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
+                        <tbody id="attendanceTableBody"><tr><td colspan="6">Loading attendance...<\/td><\/tr></tbody>
                     </table>
                 </div>
-
-                <h3><i class="fas fa-chart-bar"></i> Attendance Summary by Course</h3>
-                <div id="attendanceSummary" class="attendance-summary"></div>
             </section>
 
             <!-- Exams/CATs Tab -->
-            <section id="cats-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-file-alt"></i> Exams & CATs</h2>
-                    <p>Create and manage assessments</p>
-                </div>
-                
-                <div class="form-card">
-                    <h3><i class="fas fa-plus-circle"></i> Create New Assessment</h3>
-                    <form id="addExamForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Title *</label>
-                                <input type="text" id="examTitle" required placeholder="e.g., CAT 1 - Anatomy">
-                            </div>
-                            <div class="form-group">
-                                <label>Date *</label>
-                                <input type="date" id="examDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Type *</label>
-                                <select id="examType" required>
-                                    <option value="">Select</option>
-                                    <option value="CAT_1">CAT 1 (30 marks)</option>
-                                    <option value="CAT_2">CAT 2 (30 marks)</option>
-                                    <option value="EXAM">Final Exam (100 marks)</option>
-                                    <option value="QUIZ">Quiz (20 marks)</option>
-                                    <option value="ASSIGNMENT">Assignment (40 marks)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program *</label>
-                                <select id="examProgram" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block/Term *</label>
-                                <select id="examBlock" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="examCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Duration (minutes)</label>
-                                <input type="number" id="examDuration" value="120">
-                            </div>
-                            <div class="form-group">
-                                <label>Venue/Room</label>
-                                <input type="text" id="examVenue">
-                            </div>
-                            <div class="form-group">
-                                <label>Online Link</label>
-                                <input type="url" id="examLink" placeholder="https://...">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Instructions</label>
-                            <textarea id="examInstructions" rows="2" placeholder="Exam instructions for students..."></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-plus-circle"></i> Create Assessment
-                        </button>
-                    </form>
-                </div>
-
-                <div class="toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="examSearch" placeholder="Search exams..." onkeyup="filterExams()">
-                    </div>
-                    <select id="examStatusFilter" class="filter-select" onchange="filterExams()">
-                        <option value="all">All Status</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Completed">Completed</option>
+            <section id="cats" class="tab-content">
+                <h2>Exams & CATs</h2>
+                <form id="addExamForm" class="inline-form">
+                    <input type="text" id="examTitle" placeholder="Exam Title" required>
+                    <input type="date" id="examDate" required>
+                    <select id="examType" required>
+                        <option value="">-- Type --</option>
+                        <option value="CAT_1">CAT 1</option>
+                        <option value="CAT_2">CAT 2</option>
+                        <option value="EXAM">Final Exam</option>
                     </select>
-                </div>
-
-                <div class="table-container">
+                    <select id="examProgram" required>
+                        <option value="">-- Program --</option>
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <select id="examBlock" required>
+                        <option value="">-- Block/Term --</option>
+                    </select>
+                    <button type="submit">Create Exam</button>
+                </form>
+                
+                <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Title</th>
-                                <th>Course</th>
-                                <th>Program/Block</th>
-                                <th>Date</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th>Submissions</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="examsTableBody">
-                            <tr><td colspan="9"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>
-                        </tbody>
+                        <thead><tr><th>Type</th><th>Title</th><th>Program/Block</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="examsTableBody"><td><td colspan="6">Loading exams...<\/td><\/tr></tbody>
                     </table>
                 </div>
             </section>
 
             <!-- Resources Tab -->
-            <section id="resources-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-folder-open"></i> Learning Resources</h2>
-                    <p>Upload and manage learning materials</p>
-                </div>
-                
-                <div class="form-card">
-                    <h3><i class="fas fa-upload"></i> Upload Resource</h3>
-                    <form id="uploadResourceForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Title *</label>
-                                <input type="text" id="resourceTitle" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Category *</label>
-                                <select id="resourceCategory" required>
-                                    <option value="">Select Category</option>
-                                    <option value="Lecture Notes">📝 Lecture Notes</option>
-                                    <option value="Past Paper">📄 Past Paper</option>
-                                    <option value="Syllabus">📋 Syllabus</option>
-                                    <option value="Reading Material">📖 Reading Material</option>
-                                    <option value="Video">🎥 Video</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program</label>
-                                <select id="resourceProgram"></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Block</label>
-                                <select id="resourceBlock"></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Course</label>
-                                <select id="resourceCourse"></select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>File *</label>
-                                <input type="file" id="resourceFile" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4">
-                            </div>
-                            <div class="form-group">
-                                <label>Thumbnail (optional)</label>
-                                <input type="file" id="resourceThumb" accept="image/*">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea id="resourceDescription" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-upload"></i> Upload Resource
-                        </button>
-                    </form>
-                </div>
-
-                <div class="toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="resourceSearch" placeholder="Search resources..." onkeyup="filterResources()">
-                    </div>
-                    <select id="resourceCategoryFilter" class="filter-select" onchange="filterResources()">
-                        <option value="all">All Categories</option>
-                        <option value="Lecture Notes">Lecture Notes</option>
-                        <option value="Past Paper">Past Paper</option>
-                        <option value="Syllabus">Syllabus</option>
+            <section id="resources" class="tab-content">
+                <h2>Learning Resources</h2>
+                <form id="uploadResourceForm" class="inline-form">
+                    <input type="text" id="resourceTitle" placeholder="Title" required>
+                    <select id="resourceProgram">
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
                     </select>
-                </div>
-
-                <div class="resources-grid" id="resourcesGrid">
-                    <div class="loading-spinner"></div>
+                    <select id="resourceBlock">
+                        <option value="">-- Block --</option>
+                    </select>
+                    <input type="file" id="resourceFile" required>
+                    <button type="submit">Upload</button>
+                </form>
+                
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Title</th><th>Program/Block</th><th>Uploaded</th><th>Actions</th></tr></thead>
+                        <tbody id="resourcesTableBody"><tr><td colspan="4">Loading resources...<\/td><\/tr></tbody>
+                    </table>
                 </div>
             </section>
 
             <!-- Messages Tab -->
-            <section id="messages-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-envelope"></i> Messages</h2>
-                    <p>Communicate with students</p>
-                </div>
+            <section id="messages" class="tab-content">
+                <h2>Messages</h2>
+                <form id="sendMessageForm" class="inline-form">
+                    <select id="msgRecipient" required>
+                        <option value="">-- Select Student --</option>
+                    </select>
+                    <input type="text" id="msgSubject" placeholder="Subject" required>
+                    <textarea id="msgBody" placeholder="Message" rows="3" required></textarea>
+                    <button type="submit">Send Message</button>
+                </form>
                 
-                <div class="messages-layout">
-                    <div class="messages-sidebar">
-                        <button class="btn-primary" id="newMessageBtn" style="width:100%">
-                            <i class="fas fa-plus"></i> New Message
-                        </button>
-                        <div class="message-folders">
-                            <div class="folder active" data-folder="inbox">
-                                <i class="fas fa-inbox"></i> Inbox
-                                <span class="badge" id="inboxCount">0</span>
-                            </div>
-                            <div class="folder" data-folder="sent">
-                                <i class="fas fa-paper-plane"></i> Sent
-                            </div>
-                            <div class="folder" data-folder="drafts">
-                                <i class="fas fa-save"></i> Drafts
-                            </div>
-                        </div>
-                    </div>
-                    <div class="messages-content">
-                        <div id="messageList" class="message-list"></div>
-                        <div id="messageView" class="message-view" style="display:none;"></div>
-                        <div id="messageCompose" class="message-compose" style="display:none;">
-                            <form id="sendMessageForm">
-                                <div class="form-group">
-                                    <label>To *</label>
-                                    <select id="msgRecipient" required>
-                                        <option value="">Select Recipient</option>
-                                        <option value="all_students">📢 All Students</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Subject *</label>
-                                    <input type="text" id="msgSubject" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Message *</label>
-                                    <textarea id="msgBody" rows="6" required></textarea>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Priority</label>
-                                        <select id="msgPriority">
-                                            <option value="normal">Normal</option>
-                                            <option value="important">Important</option>
-                                            <option value="urgent">Urgent</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Attachment</label>
-                                        <input type="file" id="msgAttachment">
-                                    </div>
-                                </div>
-                                <div class="form-actions">
-                                    <button type="submit" class="btn-primary">
-                                        <i class="fas fa-paper-plane"></i> Send
-                                    </button>
-                                    <button type="button" class="btn-secondary" onclick="cancelCompose()">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Subject</th><th>Recipient</th><th>Status</th></tr></thead>
+                        <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...<\/td><\/tr></tbody>
+                    </table>
                 </div>
-            </section>
-
-            <!-- Announcements Tab -->
-            <section id="announcements-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-bullhorn"></i> Announcements</h2>
-                    <p>Post important announcements for students</p>
-                </div>
-                
-                <div class="form-card">
-                    <h3><i class="fas fa-plus-circle"></i> Create Announcement</h3>
-                    <form id="addAnnouncementForm">
-                        <div class="form-group">
-                            <label>Title *</label>
-                            <input type="text" id="announcementTitle" required placeholder="Announcement title">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Program (Optional)</label>
-                                <select id="announcementProgram">
-                                    <option value="all">All Programs</option>
-                                    <option value="KRCHN">KRCHN Nursing</option>
-                                    <option value="TVET">TVET Programs</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Target Block (Optional)</label>
-                                <select id="announcementBlock">
-                                    <option value="all">All Blocks</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Message *</label>
-                            <textarea id="announcementMessage" rows="5" required placeholder="Announcement content..."></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Priority</label>
-                                <select id="announcementPriority">
-                                    <option value="normal">Normal</option>
-                                    <option value="important">Important</option>
-                                    <option value="urgent">Urgent</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Expiry Date (Optional)</label>
-                                <input type="date" id="announcementExpiry">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-bullhorn"></i> Post Announcement
-                        </button>
-                    </form>
-                </div>
-
-                <h3><i class="fas fa-history"></i> Recent Announcements</h3>
-                <div id="announcementsList" class="announcements-list"></div>
             </section>
 
             <!-- Calendar Tab -->
-            <section id="calendar-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
-                    <p>View all scheduled events and deadlines</p>
-                </div>
-                
-                <div class="calendar-toolbar">
-                    <button class="btn-secondary" onclick="exportCalendar()">
-                        <i class="fas fa-download"></i> Export Calendar
-                    </button>
-                    <button class="btn-secondary" onclick="refreshCalendar()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-                <div id="calendarDisplay" class="calendar-container"></div>
+            <section id="calendar" class="tab-content">
+                <h2>Academic Calendar</h2>
+                <div id="calendarDisplay"></div>
             </section>
 
-            <!-- Analytics Tab -->
-            <section id="analytics-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-chart-line"></i> Analytics Dashboard</h2>
-                    <p>View performance metrics and insights</p>
-                </div>
+            <!-- NURSEIQ TAB - Complete Module -->
+            <section id="nurseiq" class="tab-content">
+                <h2><i class="fas fa-brain"></i> NurseIQ - Nursing Intelligence</h2>
+                <p>Manage nursing questions, track student progress, and monitor performance</p>
                 
+                <!-- NurseIQ Stats Cards -->
+                <div class="cards">
+                    <div class="card" onclick="showNurseIQQuestions()">
+                        <h3><i class="fas fa-database"></i> Total Questions</h3>
+                        <p class="data" id="nurseiqTotalQuestions">0</p>
+                    </div>
+                    <div class="card" onclick="showNurseIQCourses()">
+                        <h3><i class="fas fa-book"></i> Active Courses</h3>
+                        <p class="data" id="nurseiqTotalCourses">0</p>
+                    </div>
+                    <div class="card" onclick="showNurseIQStudents()">
+                        <h3><i class="fas fa-users"></i> Active Students</h3>
+                        <p class="data" id="nurseiqActiveStudents">0</p>
+                    </div>
+                    <div class="card" onclick="showNurseIQPerformance()">
+                        <h3><i class="fas fa-chart-line"></i> Avg Accuracy</h3>
+                        <p class="data" id="nurseiqAvgAccuracy">0%</p>
+                    </div>
+                </div>
+
+                <!-- Add Question Form -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                    <h3><i class="fas fa-plus-circle"></i> Add New NurseIQ Question</h3>
+                    <div class="form-row">
+                        <select id="nurseiqCourse" style="flex: 1; padding: 10px;">
+                            <option value="">-- Select Course --</option>
+                        </select>
+                        <select id="nurseiqDifficulty" style="flex: 1; padding: 10px;">
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                    <textarea id="nurseiqQuestion" rows="2" placeholder="Question text" style="width: 100%; padding: 10px; margin-bottom: 10px;"></textarea>
+                    <div class="form-row">
+                        <input type="text" id="nurseiqOptA" placeholder="Option A" style="flex: 1; padding: 10px;">
+                        <input type="text" id="nurseiqOptB" placeholder="Option B" style="flex: 1; padding: 10px;">
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="nurseiqOptC" placeholder="Option C" style="flex: 1; padding: 10px;">
+                        <input type="text" id="nurseiqOptD" placeholder="Option D" style="flex: 1; padding: 10px;">
+                    </div>
+                    <div class="form-row">
+                        <select id="nurseiqCorrect" style="flex: 1; padding: 10px;">
+                            <option value="A">Correct Answer: A</option>
+                            <option value="B">Correct Answer: B</option>
+                            <option value="C">Correct Answer: C</option>
+                            <option value="D">Correct Answer: D</option>
+                        </select>
+                        <textarea id="nurseiqExplanation" rows="2" placeholder="Explanation (optional)" style="flex: 2; padding: 10px;"></textarea>
+                    </div>
+                    <button onclick="addNurseIQQuestion()" class="btn-action" style="margin-top: 10px;">
+                        <i class="fas fa-save"></i> Save Question
+                    </button>
+                </div>
+
+                <!-- Questions Table -->
                 <div class="toolbar">
-                    <select id="analyticsCourse" class="filter-select">
+                    <input type="text" id="nurseiqSearch" placeholder="Search questions..." onkeyup="filterNurseIQQuestions()" style="flex: 1;">
+                    <select id="nurseiqFilterCourse" onchange="filterNurseIQQuestions()">
                         <option value="all">All Courses</option>
                     </select>
-                    <select id="analyticsPeriod" class="filter-select">
-                        <option value="week">Last 7 Days</option>
-                        <option value="month">This Month</option>
-                        <option value="semester">This Semester</option>
+                    <select id="nurseiqFilterDifficulty" onchange="filterNurseIQQuestions()">
+                        <option value="all">All Difficulties</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
                     </select>
-                    <button class="btn-primary" onclick="refreshAnalytics()">
-                        <i class="fas fa-chart-line"></i> Refresh
-                    </button>
+                    <button onclick="exportNurseIQQuestions()" class="btn-action export-btn">Export CSV</button>
                 </div>
 
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <h3><i class="fas fa-chart-line"></i> Attendance Trends</h3>
-                        <canvas id="attendanceTrendChart" height="250"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3><i class="fas fa-chart-pie"></i> Performance Distribution</h3>
-                        <canvas id="performanceDistChart" height="250"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3><i class="fas fa-trophy"></i> Top Performers</h3>
-                        <div id="topPerformersList" class="ranked-list"></div>
-                    </div>
-                    <div class="analytics-card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> At-Risk Students</h3>
-                        <div id="atRiskAnalyticsList" class="ranked-list"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- NurseIQ Tab -->
-            <section id="nurseiq-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-brain"></i> NurseIQ - Nursing Intelligence</h2>
-                    <p>Question bank and student assessment</p>
-                </div>
-                
-                <div class="nurseiq-stats">
-                    <div class="stat-box">
-                        <div class="stat-number" id="nurseiqTotal">0</div>
-                        <div class="stat-label">Total Questions</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="nurseiqCourses">0</div>
-                        <div class="stat-label">Courses</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="nurseiqActive">0</div>
-                        <div class="stat-label">Active Students</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="nurseiqAccuracy">0%</div>
-                        <div class="stat-label">Avg Accuracy</div>
-                    </div>
-                </div>
-
-                <div class="form-card">
-                    <h3><i class="fas fa-plus-circle"></i> Add New Question</h3>
-                    <form id="addNurseIQQuestionForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Course *</label>
-                                <select id="nurseiqCourse" required></select>
-                            </div>
-                            <div class="form-group">
-                                <label>Difficulty *</label>
-                                <select id="nurseiqDifficulty" required>
-                                    <option value="easy">Easy</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="hard">Hard</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Question *</label>
-                            <textarea id="nurseiqQuestion" rows="2" required placeholder="Enter the question text..."></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Option A *</label>
-                                <input type="text" id="nurseiqOptA" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Option B *</label>
-                                <input type="text" id="nurseiqOptB" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Option C *</label>
-                                <input type="text" id="nurseiqOptC" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Option D *</label>
-                                <input type="text" id="nurseiqOptD" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Correct Answer *</label>
-                                <select id="nurseiqCorrect" required>
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="D">D</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Explanation</label>
-                                <textarea id="nurseiqExplanation" rows="2" placeholder="Explanation for the correct answer..."></textarea>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save"></i> Save Question
-                        </button>
-                    </form>
-                </div>
-
-                <div class="toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="nurseiqSearch" placeholder="Search questions..." onkeyup="filterNurseIQQuestions()">
-                    </div>
-                    <button class="btn-success" onclick="exportNurseIQQuestions()">
-                        <i class="fas fa-download"></i> Export Questions
-                    </button>
-                    <button class="btn-secondary" onclick="openNurseIQFullPortal()">
-                        <i class="fas fa-external-link-alt"></i> Open Full Portal
-                    </button>
-                </div>
-
-                <div class="table-container">
+                <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -1008,98 +370,32 @@
                             </tr>
                         </thead>
                         <tbody id="nurseiqTableBody">
-                            <tr><td colspan="6"><div class="loading-spinner"></div> Loading questions...<\/td><\/tr>
+                            <tr><td colspan="6">Loading questions...<\/td><\/tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
 
-            <!-- Settings Tab -->
-            <section id="settings-tab" class="tab-content">
-                <div class="page-header">
-                    <h2><i class="fas fa-cog"></i> Settings</h2>
-                    <p>Configure your preferences</p>
+                <!-- Student Progress Section -->
+                <h3 style="margin-top: 30px;"><i class="fas fa-user-graduate"></i> Student Progress</h3>
+                <div class="toolbar">
+                    <input type="text" id="nurseiqStudentSearch" placeholder="Search student..." onkeyup="filterNurseIQStudents()" style="flex: 1;">
                 </div>
-                
-                <div class="settings-section">
-                    <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
-                    <div class="settings-option">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="settingEmailNotifications">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span>Email Notifications</span>
-                    </div>
-                    <div class="settings-option">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="settingBrowserNotifications">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span>Browser Notifications</span>
-                    </div>
-                    <div class="settings-option">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="settingAttendanceReminders">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span>Attendance Reminders</span>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3><i class="fas fa-palette"></i> Display Preferences</h3>
-                    <div class="settings-option">
-                        <label>Theme</label>
-                        <select id="settingTheme">
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
-                            <option value="system">System Default</option>
-                        </select>
-                    </div>
-                    <div class="settings-option">
-                        <label>Date Format</label>
-                        <select id="settingDateFormat">
-                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3><i class="fas fa-database"></i> Data Management</h3>
-                    <button class="btn-secondary" onclick="exportAllData()">
-                        <i class="fas fa-download"></i> Export My Data
-                    </button>
-                    <button class="btn-danger" onclick="clearCache()">
-                        <i class="fas fa-trash"></i> Clear Cache
-                    </button>
-                </div>
-
-                <div class="settings-section">
-                    <h3><i class="fas fa-shield-alt"></i> Security</h3>
-                    <button class="btn-secondary" id="settingsChangePassword">
-                        <i class="fas fa-key"></i> Change Password
-                    </button>
-                    <button class="btn-secondary" id="settingsEnable2FA">
-                        <i class="fas fa-shield-alt"></i> Enable Two-Factor Authentication
-                    </button>
-                </div>
+                <div id="nurseiqStudentsList" class="students-progress-list"></div>
             </section>
         </main>
     </div>
 
     <!-- Modals -->
     <div id="gradeModal" class="modal">
-        <div class="modal-content modal-large">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3 id="gradeModalTitle">Grade Students</h3>
-                <button class="modal-close" onclick="closeModal('gradeModal')">&times;</button>
+                <span class="close" onclick="closeModal('gradeModal')">&times;</span>
             </div>
             <div class="modal-body" id="gradeModalBody"></div>
-            <div class="modal-footer">
-                <button class="btn-primary" onclick="saveAllGrades()">Save All Grades</button>
-                <button class="btn-secondary" onclick="closeModal('gradeModal')">Cancel</button>
+            <div class="modal-actions">
+                <button onclick="saveGrades()" class="btn-action">Save Grades</button>
+                <button onclick="closeModal('gradeModal')">Cancel</button>
             </div>
         </div>
     </div>
@@ -1108,34 +404,737 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="studentDetailTitle">Student Details</h3>
-                <button class="modal-close" onclick="closeModal('studentDetailModal')">&times;</button>
+                <span class="close" onclick="closeModal('studentDetailModal')">&times;</span>
             </div>
             <div class="modal-body" id="studentDetailBody"></div>
         </div>
     </div>
 
-    <div id="qrModal" class="modal">
-        <div class="modal-content">
+    <div id="viewNurseIQModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
-                <h3>Attendance QR Code</h3>
-                <button class="modal-close" onclick="closeModal('qrModal')">&times;</button>
+                <h3 id="nurseIQModalTitle">Question Details</h3>
+                <span class="close" onclick="closeModal('viewNurseIQModal')">&times;</span>
             </div>
-            <div class="modal-body" style="text-align:center">
-                <div id="qrCodeContainer"></div>
-                <p style="margin-top:15px">Scan this QR code to mark attendance</p>
-                <button class="btn-primary" onclick="downloadQR()">
-                    <i class="fas fa-download"></i> Download QR
-                </button>
-            </div>
+            <div class="modal-body" id="nurseIQModalBody"></div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="script.js"></script>
+    
+    <script>
+        // ============================================
+        // LECTURER DASHBOARD WITH NURSEIQ - COMPLETE
+        // ============================================
+        
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sb;
+        
+        let currentUserProfile = null;
+        let currentUserId = null;
+        let allCourses = [];
+        let allStudents = [];
+        let allNurseIQQuestions = [];
+        let allUserProgress = [];
+        let calendar = null;
+        
+        // Helper functions
+        function $(id) { return document.getElementById(id); }
+        
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + (type || 'success');
+            toast.innerHTML = message;
+            $('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function closeModal(modalId) {
+            const modal = $(modalId);
+            if (modal) modal.style.display = 'none';
+        }
+        
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+        }
+        
+        // Tab navigation
+        window.showTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const target = $(tabId);
+            if (target) target.classList.add('active');
+            document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
+            if (activeLink) activeLink.classList.add('active');
+            loadSectionData(tabId);
+        };
+        
+        async function loadSectionData(tabId) {
+            if (tabId === 'dashboard') { await loadDashboard(); await loadTodaySchedule(); }
+            if (tabId === 'profile') await loadProfile();
+            if (tabId === 'my-courses') await loadCourses();
+            if (tabId === 'my-students') await loadStudents();
+            if (tabId === 'sessions') await loadSessions();
+            if (tabId === 'attendance') await loadAttendance();
+            if (tabId === 'cats') await loadExams();
+            if (tabId === 'resources') await loadResources();
+            if (tabId === 'messages') await loadMessages();
+            if (tabId === 'calendar') await loadCalendar();
+            if (tabId === 'nurseiq') await loadNurseIQData();
+        }
+        
+        // Dashboard functions
+        async function loadDashboard() {
+            if ($('totalStudents')) $('totalStudents').textContent = allStudents.length;
+            if ($('totalCourses')) $('totalCourses').textContent = allCourses.length;
+            if ($('nurseiqTotal')) $('nurseiqTotal').textContent = allNurseIQQuestions.length;
+            if ($('nurseiqTotalQuestions')) $('nurseiqTotalQuestions').textContent = allNurseIQQuestions.length;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const { data: todaySessions } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId);
+            if ($('todaySessions')) $('todaySessions').textContent = todaySessions?.length || 0;
+            
+            const { data: attendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
+            if ($('todayAttendance')) $('todayAttendance').textContent = attendance?.length || 0;
+            
+            const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+            const { data: weekAttendance } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', weekAgo.toISOString());
+            if ($('weeklyAttendance')) $('weeklyAttendance').textContent = weekAttendance?.length || 0;
+        }
+        
+        async function loadTodaySchedule() {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('session_date', today).eq('lecturer_id', currentUserId).order('session_time');
+            const container = $('#todayScheduleList');
+            if (!container) return;
+            if (!data?.length) { container.innerHTML = 'No sessions today'; return; }
+            container.innerHTML = data.map(s => `<div class="schedule-item"><span class="schedule-time">${s.session_time || 'TBA'}</span><span>${escapeHtml(s.session_title)}</span></div>`).join('');
+        }
+        
+        // Profile
+        async function loadProfile() {
+            if (!currentUserProfile) return;
+            if ($('profileName')) $('profileName').textContent = currentUserProfile.full_name || 'Lecturer';
+            if ($('profileId')) $('profileId').textContent = currentUserProfile.user_id?.substring(0, 8) || 'N/A';
+            if ($('profileEmail')) $('profileEmail').textContent = currentUserProfile.email || 'N/A';
+            if ($('profileDept')) $('profileDept').textContent = currentUserProfile.department || 'Academic';
+            if ($('profileProgram')) $('profileProgram').textContent = currentUserProfile.program || 'KRCHN';
+        }
+        
+        // Courses
+        async function loadCourses() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data } = await sb.from('courses').select('*').eq('target_program', program);
+            allCourses = data || [];
+            const tbody = $('#coursesTableBody');
+            if (!tbody) return;
+            if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            allCourses.forEach(c => {
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(c.unit_code || 'N/A')}<\/td>
+                    <td>${escapeHtml(c.course_name)}<\/td>
+                    <td>${escapeHtml(c.target_program)}<\/td>
+                    <td>${escapeHtml(c.block || 'N/A')}<\/td>
+                    <td><button class="btn-action" onclick="showToast('Course: ${escapeHtml(c.course_name)}', 'info')">View</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.filterCourses = function() {
+            const search = $('#courseSearch')?.value.toLowerCase() || '';
+            const rows = document.querySelectorAll('#coursesTableBody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        };
+        
+        // Students
+        async function loadStudents() {
+            const program = currentUserProfile?.program || 'KRCHN';
+            const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
+            allStudents = data || [];
+            const tbody = $('#studentsTableBody');
+            if (!tbody) return;
+            if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="7">No students found<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            allStudents.forEach(s => {
+                const status = (s.cumulative_absences || 0) > 5 ? 'At Risk' : 'Active';
+                const statusClass = (s.cumulative_absences || 0) > 5 ? 'badge-danger' : 'badge-success';
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(s.full_name || 'N/A')}<\/td>
+                    <td>${escapeHtml(s.student_id || 'N/A')}<\/td>
+                    <td>${escapeHtml(s.email || 'N/A')}<\/td>
+                    <td>${escapeHtml(s.program)}<\/td>
+                    <td>${escapeHtml(s.block || 'N/A')}<\/td>
+                    <td><span class="${statusClass}">${status}</span><\/td>
+                    <td><button class="btn-action" onclick="viewStudentDetails('${s.user_id}')">View</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.filterStudents = function() {
+            const search = $('#studentSearch')?.value.toLowerCase() || '';
+            const statusFilter = $('#studentStatusFilter')?.value || 'all';
+            const rows = document.querySelectorAll('#studentsTableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const status = row.cells[5]?.textContent?.toLowerCase() || '';
+                const matchesStatus = statusFilter === 'all' || 
+                    (statusFilter === 'active' && !status.includes('risk')) || 
+                    (statusFilter === 'at-risk' && status.includes('risk'));
+                row.style.display = (text.includes(search) && matchesStatus) ? '' : 'none';
+            });
+        };
+        
+        window.viewStudentDetails = async function(studentId) {
+            const student = allStudents.find(s => s.user_id === studentId);
+            if (!student) return;
+            $('#studentDetailTitle').textContent = `${student.full_name} - Student Details`;
+            $('#studentDetailBody').innerHTML = `
+                <p><strong>Email:</strong> ${escapeHtml(student.email)}</p>
+                <p><strong>Program:</strong> ${escapeHtml(student.program)}</p>
+                <p><strong>Block:</strong> ${escapeHtml(student.block)}</p>
+                <p><strong>Intake:</strong> ${escapeHtml(student.intake_year)}</p>
+                <p><strong>Absences:</strong> ${student.cumulative_absences || 0}</p>
+                <button class="btn-action" onclick="showToast('Message feature coming', 'info')">Send Message</button>
+            `;
+            $('#studentDetailModal').style.display = 'flex';
+        };
+        
+        // Sessions
+        $('#addSessionForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('scheduled_sessions').insert({
+                session_title: $('#sessionTitle').value,
+                session_date: $('#sessionDate').value,
+                session_time: $('#sessionTime').value,
+                target_program: $('#sessionProgram').value,
+                block_term: $('#sessionBlock').value,
+                lecturer_id: currentUserId
+            });
+            showToast('Session scheduled');
+            e.target.reset();
+            loadSessions();
+        });
+        
+        async function loadSessions() {
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
+            const tbody = $('#sessionsTableBody');
+            if (!tbody) return;
+            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No sessions scheduled<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(s => {
+                const link = window.location.origin + '/attendance?session=' + s.id;
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(s.session_title)}<\/td>
+                    <td>${s.session_date} ${s.session_time}<\/td>
+                    <td>${s.target_program}/${s.block_term}<\/td>
+                    <td><button class="btn-action" onclick="navigator.clipboard.writeText('${link}'); showToast('Link copied')">Copy Link</button><\/td>
+                    <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.deleteSession = async (id) => {
+            if (confirm('Delete this session?')) {
+                await sb.from('scheduled_sessions').delete().eq('id', id);
+                loadSessions();
+                showToast('Session deleted');
+            }
+        };
+        
+        // Attendance
+        window.markLecturerAttendance = () => {
+            if (!navigator.geolocation) { showToast('Geolocation not supported'); return; }
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                await sb.from('geo_attendance_logs').insert({
+                    user_id: currentUserId,
+                    user_role: 'lecturer',
+                    session_type: 'Check-in',
+                    check_in_time: new Date().toISOString(),
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude
+                });
+                showToast('Checked in!');
+                loadAttendance();
+            }, () => showToast('Location denied'));
+        };
+        
+        $('#manualAttendanceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const student = allStudents.find(s => s.user_id === $('#attStudentId').value);
+            if (!student) { showToast('Select a student'); return; }
+            await sb.from('geo_attendance_logs').insert({
+                user_id: $('#attStudentId').value,
+                student_name: student.full_name,
+                user_role: 'student',
+                session_type: $('#attSessionType').value,
+                check_in_time: new Date().toISOString(),
+                location_details: $('#attLocation').value,
+                recorded_by_id: currentUserId
+            });
+            showToast('Attendance recorded');
+            loadAttendance();
+        });
+        
+        async function loadAttendance() {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
+            const tbody = $('#attendanceTableBody');
+            if (!tbody) return;
+            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6">No attendance today<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(a => {
+                const student = allStudents.find(s => s.user_id === a.user_id);
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(a.student_name || student?.full_name)}<\/td>
+                    <td>${escapeHtml(student?.student_id)}<\/td>
+                    <td>${a.session_type}<\/td>
+                    <td>${new Date(a.check_in_time).toLocaleTimeString()}<\/td>
+                    <td>${escapeHtml(a.location_details)}<\/td>
+                    <td><button class="btn-danger" onclick="deleteAttendance('${a.id}')">Delete</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.deleteAttendance = async (id) => {
+            if (confirm('Delete this record?')) {
+                await sb.from('geo_attendance_logs').delete().eq('id', id);
+                loadAttendance();
+                showToast('Record deleted');
+            }
+        };
+        
+        // Exams
+        $('#addExamForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('exams').insert({
+                exam_name: $('#examTitle').value,
+                exam_date: $('#examDate').value,
+                exam_type: $('#examType').value,
+                target_program: $('#examProgram').value,
+                block_term: $('#examBlock').value,
+                created_by: currentUserId,
+                status: 'Scheduled'
+            });
+            showToast('Exam created');
+            e.target.reset();
+            loadExams();
+        });
+        
+        async function loadExams() {
+            const { data } = await sb.from('exams').select('*').eq('created_by', currentUserId).order('exam_date', false);
+            const tbody = $('#examsTableBody');
+            if (!tbody) return;
+            if (!data?.length) { tbody.innerHTML = '<td><td colspan="6">No exams created<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(e => {
+                tbody.innerHTML += `<tr>
+                    <td><span class="badge badge-info">${e.exam_type}</span><\/td>
+                    <td><strong>${escapeHtml(e.exam_name)}<\/strong><\/td>
+                    <td>${e.target_program}/${e.block_term}<\/td>
+                    <td>${e.exam_date}<\/td>
+                    <td><span class="badge badge-warning">${e.status}</span><\/td>
+                    <td><button class="btn-action" onclick="openGradeModal('${e.id}')">Grade</button> <button class="btn-danger" onclick="deleteExam('${e.id}')">Delete</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.deleteExam = async (id) => {
+            if (confirm('Delete this exam?')) {
+                await sb.from('exams').delete().eq('id', id);
+                loadExams();
+                showToast('Exam deleted');
+            }
+        };
+        
+        // Resources
+        $('#uploadResourceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = $('#resourceFile').files[0];
+            if (!file) return;
+            const fileName = Date.now() + '_' + file.name;
+            await sb.storage.from('resources').upload(fileName, file);
+            const { data: urlData } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('resources').insert({
+                title: $('#resourceTitle').value,
+                file_url: urlData.publicUrl,
+                program_type: $('#resourceProgram').value,
+                block: $('#resourceBlock').value,
+                uploaded_by: currentUserId
+            });
+            showToast('Resource uploaded');
+            loadResources();
+        });
+        
+        async function loadResources() {
+            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
+            const tbody = $('#resourcesTableBody');
+            if (!tbody) return;
+            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4">No resources<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(r.title)}<\/td>
+                    <td>${r.program_type}/${r.block}<\/td>
+                    <td>${new Date(r.created_at).toLocaleDateString()}<\/td>
+                    <td><a href="${r.file_url}" target="_blank" class="btn-action">Download</a> <button class="btn-danger" onclick="deleteResource('${r.id}')">Delete</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.deleteResource = async (id) => {
+            if (confirm('Delete this resource?')) {
+                await sb.from('resources').delete().eq('id', id);
+                loadResources();
+                showToast('Resource deleted');
+            }
+        };
+        
+        // Messages
+        async function loadMessages() {
+            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').eq('role', 'student');
+            const select = $('#msgRecipient');
+            if (select) {
+                select.innerHTML = '<option value="">Select Student</option>' + (students || []).map(s => `<option value="${s.user_id}">${escapeHtml(s.full_name)}</option>`).join('');
+            }
+            
+            const { data: messages } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
+            const tbody = $('#messagesTableBody');
+            if (!tbody) return;
+            if (!messages?.length) { tbody.innerHTML = '<td><td colspan="4">No messages sent<\/td><\/tr>'; return; }
+            tbody.innerHTML = '';
+            messages.forEach(m => {
+                tbody.innerHTML += `<tr>
+                    <td>${new Date(m.created_at).toLocaleDateString()}<\/td>
+                    <td>${escapeHtml(m.subject)}<\/td>
+                    <td>${students?.find(s => s.user_id === m.target_user_id)?.full_name || 'All'}<\/td>
+                    <td><span class="badge badge-success">Sent</span><\/td>
+                </tr>`;
+            });
+        }
+        
+        $('#sendMessageForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sb.from('notifications').insert({
+                target_user_id: $('#msgRecipient').value,
+                subject: $('#msgSubject').value,
+                message: $('#msgBody').value,
+                sender_id: currentUserId
+            });
+            showToast('Message sent');
+            e.target.reset();
+            loadMessages();
+        });
+        
+        // Calendar
+        async function loadCalendar() {
+            const el = $('#calendarDisplay');
+            if (!el) return;
+            const { data: sessions } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId);
+            const events = (sessions || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' }));
+            if (calendar) calendar.destroy();
+            calendar = new FullCalendar.Calendar(el, { initialView: 'dayGridMonth', events });
+            calendar.render();
+        }
+        
+        // ============================================
+        // NURSEIQ MODULE FUNCTIONS
+        // ============================================
+        
+        async function loadNurseIQData() {
+            await loadNurseIQQuestions();
+            await loadNurseIQStats();
+            await loadNurseIQCourses();
+            await loadNurseIQStudentsProgress();
+        }
+        
+        async function loadNurseIQQuestions() {
+            const { data, error } = await sb.from('medical_assessments').select('*, courses(course_name)').order('created_at', false);
+            if (error) { console.error('Error loading questions:', error); return; }
+            allNurseIQQuestions = data || [];
+            renderNurseIQTable();
+        }
+        
+        function renderNurseIQTable() {
+            const search = $('#nurseiqSearch')?.value.toLowerCase() || '';
+            const courseFilter = $('#nurseiqFilterCourse')?.value || 'all';
+            const difficultyFilter = $('#nurseiqFilterDifficulty')?.value || 'all';
+            
+            let filtered = [...allNurseIQQuestions];
+            if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
+            if (courseFilter !== 'all') filtered = filtered.filter(q => q.course_id === courseFilter);
+            if (difficultyFilter !== 'all') filtered = filtered.filter(q => q.difficulty === difficultyFilter);
+            
+            const tbody = $('#nurseiqTableBody');
+            if (!tbody) return;
+            if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No questions found<\/td><\/tr>'; return; }
+            
+            tbody.innerHTML = '';
+            filtered.forEach(q => {
+                const options = `A: ${escapeHtml(q.option_a?.substring(0, 30))}... | B: ${escapeHtml(q.option_b?.substring(0, 30))}...`;
+                const difficultyClass = q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning';
+                tbody.innerHTML += `<tr>
+                    <td>${escapeHtml(q.courses?.course_name || 'N/A')}<\/td>
+                    <td>${escapeHtml(q.question_text?.substring(0, 60))}...<\/td>
+                    <td>${options}<\/td>
+                    <td><span class="badge badge-success">${escapeHtml(q.correct_answer)}<\/span><\/td>
+                    <td><span class="${difficultyClass}">${q.difficulty || 'medium'}<\/span><\/td>
+                    <td><button class="btn-action" onclick="viewNurseIQQuestion('${q.id}')">View</button> <button class="btn-danger" onclick="deleteNurseIQQuestion('${q.id}')">Delete</button><\/td>
+                </tr>`;
+            });
+        }
+        
+        window.filterNurseIQQuestions = function() { renderNurseIQTable(); };
+        
+        window.viewNurseIQQuestion = function(questionId) {
+            const q = allNurseIQQuestions.find(q => q.id === questionId);
+            if (!q) return;
+            $('#nurseIQModalTitle').textContent = 'Question Details';
+            $('#nurseIQModalBody').innerHTML = `
+                <p><strong>Course:</strong> ${escapeHtml(q.courses?.course_name)}</p>
+                <p><strong>Question:</strong> ${escapeHtml(q.question_text)}</p>
+                <p><strong>Options:</strong></p>
+                <ul>
+                    <li>A: ${escapeHtml(q.option_a)}</li>
+                    <li>B: ${escapeHtml(q.option_b)}</li>
+                    <li>C: ${escapeHtml(q.option_c)}</li>
+                    <li>D: ${escapeHtml(q.option_d)}</li>
+                </ul>
+                <p><strong>Correct Answer:</strong> <span class="badge badge-success">${escapeHtml(q.correct_answer)}</span></p>
+                <p><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</p>
+                <p><strong>Difficulty:</strong> <span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${q.difficulty}</span></p>
+            `;
+            $('#viewNurseIQModal').style.display = 'flex';
+        };
+        
+        window.addNurseIQQuestion = async function() {
+            const courseId = $('#nurseiqCourse').value;
+            const questionText = $('#nurseiqQuestion').value;
+            const optA = $('#nurseiqOptA').value;
+            const optB = $('#nurseiqOptB').value;
+            const optC = $('#nurseiqOptC').value;
+            const optD = $('#nurseiqOptD').value;
+            const correctAnswer = $('#nurseiqCorrect').value;
+            const explanation = $('#nurseiqExplanation').value;
+            const difficulty = $('#nurseiqDifficulty').value;
+            
+            if (!courseId || !questionText || !optA || !optB || !optC || !optD) {
+                showToast('Please fill all required fields', 'error');
+                return;
+            }
+            
+            const correctText = { A: optA, B: optB, C: optC, D: optD }[correctAnswer];
+            
+            const { error } = await sb.from('medical_assessments').insert([{
+                course_id: courseId,
+                question_text: questionText,
+                option_a: optA,
+                option_b: optB,
+                option_c: optC,
+                option_d: optD,
+                correct_answer: correctText,
+                explanation: explanation,
+                difficulty: difficulty,
+                question_type: 'multiple_choice',
+                is_active: true,
+                created_at: new Date().toISOString()
+            }]);
+            
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast('Question added successfully!');
+            
+            $('#nurseiqQuestion').value = '';
+            $('#nurseiqOptA').value = '';
+            $('#nurseiqOptB').value = '';
+            $('#nurseiqOptC').value = '';
+            $('#nurseiqOptD').value = '';
+            $('#nurseiqExplanation').value = '';
+            
+            await loadNurseIQQuestions();
+            await loadNurseIQStats();
+        };
+        
+        window.deleteNurseIQQuestion = async function(questionId) {
+            if (!confirm('Delete this question?')) return;
+            const { error } = await sb.from('medical_assessments').delete().eq('id', questionId);
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast('Question deleted');
+            await loadNurseIQQuestions();
+            await loadNurseIQStats();
+        };
+        
+        async function loadNurseIQStats() {
+            const total = allNurseIQQuestions.length;
+            if ($('nurseiqTotalQuestions')) $('nurseiqTotalQuestions').textContent = total;
+            if ($('nurseiqTotal')) $('nurseiqTotal').textContent = total;
+            
+            const uniqueCourses = [...new Set(allNurseIQQuestions.map(q => q.course_id))];
+            if ($('nurseiqTotalCourses')) $('nurseiqTotalCourses').textContent = uniqueCourses.length;
+            
+            const { data: progress } = await sb.from('user_progress').select('user_id, progress_data');
+            allUserProgress = progress || [];
+            const activeStudents = new Set();
+            allUserProgress.forEach(p => {
+                if (p.progress_data && Object.keys(p.progress_data).length > 0) activeStudents.add(p.user_id);
+            });
+            if ($('nurseiqActiveStudents')) $('nurseiqActiveStudents').textContent = activeStudents.size;
+            
+            let totalCorrect = 0, totalAnswered = 0;
+            allUserProgress.forEach(p => {
+                if (p.progress_data && p.progress_data.answers) {
+                    const answers = Object.values(p.progress_data.answers);
+                    totalAnswered += answers.length;
+                    totalCorrect += answers.filter(a => a.correct).length;
+                }
+            });
+            const avgAccuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+            if ($('nurseiqAvgAccuracy')) $('nurseiqAvgAccuracy').textContent = avgAccuracy + '%';
+        }
+        
+        async function loadNurseIQCourses() {
+            const { data: courses } = await sb.from('courses').select('id, course_name');
+            const select = $('#nurseiqCourse');
+            const filterSelect = $('#nurseiqFilterCourse');
+            if (select) {
+                select.innerHTML = '<option value="">-- Select Course --</option>' + (courses || []).map(c => `<option value="${c.id}">${escapeHtml(c.course_name)}</option>`).join('');
+            }
+            if (filterSelect) {
+                filterSelect.innerHTML = '<option value="all">All Courses</option>' + (courses || []).map(c => `<option value="${c.id}">${escapeHtml(c.course_name)}</option>`).join('');
+            }
+        }
+        
+        async function loadNurseIQStudentsProgress() {
+            const { data: students } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, email, program').eq('role', 'student');
+            const container = $('#nurseiqStudentsList');
+            if (!container) return;
+            if (!students?.length) { container.innerHTML = '<p>No students found</p>'; return; }
+            
+            const studentProgress = [];
+            for (const student of students) {
+                const { data: progress } = await sb.from('user_progress').select('progress_data').eq('user_id', student.user_id).maybeSingle();
+                let answered = 0, correct = 0;
+                if (progress?.progress_data?.answers) {
+                    const answers = Object.values(progress.progress_data.answers);
+                    answered = answers.length;
+                    correct = answers.filter(a => a.correct).length;
+                }
+                studentProgress.push({ ...student, answered, correct, accuracy: answered > 0 ? Math.round((correct / answered) * 100) : 0 });
+            }
+            studentProgress.sort((a, b) => b.accuracy - a.accuracy);
+            
+            container.innerHTML = studentProgress.map(s => `
+                <div class="student-progress-item" onclick="viewStudentNurseIQProgress('${s.user_id}')">
+                    <div class="student-name">${escapeHtml(s.full_name)}</div>
+                    <div class="student-stats">
+                        <span>📊 ${s.accuracy}%</span>
+                        <span>✅ ${s.correct}/${s.answered}</span>
+                        <span>🎓 ${escapeHtml(s.program)}</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div>
+                </div>
+            `).join('');
+        }
+        
+        window.filterNurseIQStudents = function() {
+            const search = $('#nurseiqStudentSearch')?.value.toLowerCase() || '';
+            const items = document.querySelectorAll('.student-progress-item');
+            items.forEach(item => {
+                const name = item.querySelector('.student-name')?.textContent.toLowerCase() || '';
+                item.style.display = name.includes(search) ? '' : 'none';
+            });
+        };
+        
+        window.viewStudentNurseIQProgress = async function(studentId) {
+            const student = allStudents.find(s => s.user_id === studentId);
+            const { data: progress } = await sb.from('user_progress').select('progress_data').eq('user_id', studentId).maybeSingle();
+            const answers = progress?.progress_data?.answers ? Object.values(progress.progress_data.answers) : [];
+            $('#studentDetailTitle').textContent = `${student?.full_name} - NurseIQ Progress`;
+            $('#studentDetailBody').innerHTML = `
+                <p><strong>Email:</strong> ${escapeHtml(student?.email)}</p>
+                <p><strong>Program:</strong> ${escapeHtml(student?.program)}</p>
+                <p><strong>Total Questions Answered:</strong> ${answers.length}</p>
+                <p><strong>Correct Answers:</strong> ${answers.filter(a => a.correct).length}</p>
+                <p><strong>Accuracy:</strong> ${answers.length > 0 ? Math.round((answers.filter(a => a.correct).length / answers.length) * 100) : 0}%</p>
+                <h4>Recent Answers</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    ${answers.slice(-10).reverse().map(a => `
+                        <div style="padding: 8px; border-bottom: 1px solid #e5e7eb;">
+                            <span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span>
+                            ${escapeHtml(a.questionText?.substring(0, 100))}...
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            $('#studentDetailModal').style.display = 'flex';
+        };
+        
+        window.exportNurseIQQuestions = function() {
+            const csv = ['Course,Question,Correct Answer,Difficulty', ...allNurseIQQuestions.map(q => 
+                `"${(q.courses?.course_name || '').replace(/"/g, '""')}","${(q.question_text || '').replace(/"/g, '""')}","${(q.correct_answer || '').replace(/"/g, '""')}","${q.difficulty || ''}"`
+            )].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `nurseiq_questions_${Date.now()}.csv`;
+            a.click();
+            showToast('Exported successfully!');
+        };
+        
+        window.exportCourses = () => showToast('Export feature coming soon');
+        window.exportStudents = () => showToast('Export feature coming soon');
+        
+        // Photo upload
+        $('#uploadPhotoBtn')?.addEventListener('click', () => $('#photoInput').click());
+        $('#photoInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
+            await sb.storage.from('resources').upload(fileName, file);
+            const { data } = sb.storage.from('resources').getPublicUrl(fileName);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
+            showToast('Photo updated');
+            loadProfile();
+        });
+        
+        // Initialize
+        async function init() {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = 'login.html'; return; }
+            currentUserId = session.user.id;
+            const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).maybeSingle();
+            currentUserProfile = profile || { full_name: 'Lecturer', program: 'KRCHN' };
+            $('#lecturerName').textContent = currentUserProfile.full_name || 'Lecturer';
+            await loadCourses();
+            await loadStudents();
+            await loadNurseIQData();
+            await loadDashboard();
+            await loadProfile();
+            
+            document.querySelectorAll('.nav a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const tabId = link.getAttribute('data-tab');
+                    if (tabId) showTab(tabId);
+                });
+            });
+            
+            $('#mobileNavToggle')?.addEventListener('click', () => $('#sidebar')?.classList.toggle('active'));
+        }
+        
+        window.logout = async () => { await sb.auth.signOut(); window.location.href = 'login.html'; };
+        window.openGradeModal = (id) => { showToast('Grade modal coming soon', 'info'); };
+        window.saveGrades = () => { closeModal('gradeModal'); showToast('Grades saved', 'success'); };
+        
+        init();
+    </script>
 </body>
 </html>
