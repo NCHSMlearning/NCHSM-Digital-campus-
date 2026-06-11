@@ -1038,17 +1038,15 @@ window.exportUnitsData = function() {
     hideLoading(); 
   }
   
-  // ======================= FULL REPORTS =======================
-// ======================= ENHANCED FULL REPORTS =======================
+ // ======================= FULL REPORTS WITH PDF GENERATION =======================
 async function showFullReports() {
   showLoading('Loading reports dashboard...');
   
   const students = await apiCall('/api/students', {});
   const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
   const config = await getConfig();
-  const settings = await apiCall('/api/mark-entry/settings', {});
   
-  // Collect performance data for reports
+  // Collect performance data
   let allStudentPerformance = {};
   let subjectPerformance = {};
   let clinicalPerformance = [];
@@ -1068,9 +1066,6 @@ async function showFullReports() {
               subjects: [],
               totalScore: 0,
               subjectCount: 0,
-              cat1Avg: 0,
-              cat2Avg: 0,
-              examAvg: 0,
               cat1Scores: [],
               cat2Scores: [],
               examScores: []
@@ -1084,16 +1079,10 @@ async function showFullReports() {
           
           if (subject.assessmentType === 'full') {
             finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-            if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
-            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
           } else if (subject.assessmentType === 'single_cat') {
             finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
           } else {
             finalScore = Math.round(Math.min(exam,100) * 10) / 10;
-            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
           }
           
           if (finalScore > 0) {
@@ -1111,18 +1100,601 @@ async function showFullReports() {
     }
   }
   
-  // Calculate averages for each student
+  // Calculate averages
   for (let adm in allStudentPerformance) {
     let student = allStudentPerformance[adm];
     student.overallAvg = student.subjectCount > 0 ? (student.totalScore / student.subjectCount).toFixed(2) : 0;
-    student.cat1Avg = student.cat1Scores.length > 0 ? (student.cat1Scores.reduce((a,b) => a+b, 0) / student.cat1Scores.length).toFixed(2) : 0;
-    student.cat2Avg = student.cat2Scores.length > 0 ? (student.cat2Scores.reduce((a,b) => a+b, 0) / student.cat2Scores.length).toFixed(2) : 0;
-    student.examAvg = student.examScores.length > 0 ? (student.examScores.reduce((a,b) => a+b, 0) / student.examScores.length).toFixed(2) : 0;
     student.status = student.overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
   }
   
+  // Calculate subject means
+  let subjectMeans = [];
+  for (let [name, data] of Object.entries(subjectPerformance)) {
+    const meanScore = data.scores.length > 0 ? (data.scores.reduce((a,b) => a+b, 0) / data.scores.length).toFixed(2) : 0;
+    const passCount = data.scores.filter(s => s >= 60).length;
+    subjectMeans.push({
+      name: name,
+      block: data.block,
+      meanScore: meanScore,
+      passRate: data.scores.length > 0 ? ((passCount / data.scores.length) * 100).toFixed(1) : 0,
+      studentCount: data.scores.length
+    });
+  }
+  subjectMeans.sort((a, b) => b.meanScore - a.meanScore);
+  
   // Get clinical data
-  try
+  try {
+    const nckMarks = await apiCall(`/api/marks/BLOCK_0/XY FORMS`, {});
+    if (nckMarks && nckMarks.length) {
+      for (let mark of nckMarks) {
+        if (mark.scores && mark.scores.length) {
+          const validScores = mark.scores.filter(s => s > 0);
+          const avg = validScores.length > 0 ? validScores.reduce((a,b) => a+b, 0) / validScores.length : 0;
+          clinicalPerformance.push({ name: mark.name, admission: mark.admission, average: avg });
+        }
+      }
+      clinicalPerformance.sort((a, b) => b.average - a.average);
+    }
+  } catch(e) { console.log('NCK data not available'); }
+  
+  const studentList = Object.values(allStudentPerformance);
+  const passCount = studentList.filter(s => s.overallAvg >= 60).length;
+  const overallClassAvg = studentList.length > 0 ? (studentList.reduce((a,b) => a + parseFloat(b.overallAvg), 0) / studentList.length).toFixed(1) : 0;
+  
+  // Store data globally for PDF generation
+  window.reportData = {
+    students: studentList,
+    subjectMeans: subjectMeans,
+    clinicalPerformance: clinicalPerformance,
+    overallClassAvg: overallClassAvg,
+    passCount: passCount,
+    totalStudents: studentList.length,
+    currentYear: currentYear,
+    studentMap: allStudentPerformance,
+    blocks: blocks
+  };
+  
+  // Report selection HTML
+  const reportHtml = `
+    <style>
+      .report-container { max-width: 1200px; margin: 0 auto; }
+      .report-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+      .report-card { background: white; border-radius: var(--radius); padding: 24px; cursor: pointer; transition: all 0.3s ease; border: 2px solid #e2e8f0; text-align: center; }
+      .report-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-xl); border-color: var(--primary); }
+      .report-card i { font-size: 48px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 16px; }
+      .report-card h3 { font-size: 18px; margin-bottom: 8px; }
+      .report-card p { font-size: 13px; color: var(--gray); }
+      .preview-area { background: #f8fafc; border-radius: var(--radius); padding: 20px; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+      .pdf-toolbar { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 20px; flex-wrap: wrap; }
+    </style>
+    
+    <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+    
+    <div class="header" style="margin-top: 16px;">
+      <h3><i class="fas fa-file-pdf"></i> PDF Reports Generator</h3>
+      <p>Generate professional PDF documents for academic records | March ${currentYear} Class</p>
+    </div>
+    
+    <div class="report-container">
+      <div class="report-options">
+        <div class="report-card" onclick="generatePDFReport('student_transcript')">
+          <i class="fas fa-user-graduate"></i>
+          <h3>Student Transcripts</h3>
+          <p>Individual student performance reports with all subjects</p>
+        </div>
+        <div class="report-card" onclick="generatePDFReport('class_performance')">
+          <i class="fas fa-chart-line"></i>
+          <h3>Class Performance Report</h3>
+          <p>Overall class statistics, pass rates, and grade distribution</p>
+        </div>
+        <div class="report-card" onclick="generatePDFReport('subject_analysis')">
+          <i class="fas fa-book-open"></i>
+          <h3>Subject Analysis Report</h3>
+          <p>Mean scores, pass rates, and performance by subject</p>
+        </div>
+        <div class="report-card" onclick="generatePDFReport('clinical_report')">
+          <i class="fas fa-hospital-user"></i>
+          <h3>Clinical Performance Report</h3>
+          <p>NCK clinical evaluation scores and rankings</p>
+        </div>
+        <div class="report-card" onclick="generatePDFReport('honor_roll')">
+          <i class="fas fa-trophy"></i>
+          <h3>Honor Roll Report</h3>
+          <p>Top performing students and academic excellence awards</p>
+        </div>
+        <div class="report-card" onclick="generatePDFReport('intervention_list')">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Intervention List</h3>
+          <p>Students requiring academic support and remedial classes</p>
+        </div>
+      </div>
+      
+      <div class="pdf-toolbar">
+        <select id="studentSelectForReport" style="display: none; padding: 10px 20px; border-radius: 40px;">
+          <option value="">Select Student</option>
+          ${studentList.map(s => `<option value="${s.admission}">${s.name} (${s.admission})</option>`).join('')}
+        </select>
+        <button class="save-btn" id="generatePdfBtn" style="display: none;" onclick="generateSelectedStudentPDF()"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+      </div>
+      
+      <div class="preview-area" id="reportPreview">
+        <div style="text-align: center; padding: 40px;">
+          <i class="fas fa-file-pdf" style="font-size: 64px; color: #ef4444; margin-bottom: 16px; display: block;"></i>
+          <h4>Click on any report card above</h4>
+          <p style="color: var(--gray);">Generate professional PDF reports with charts, tables, and formatted data</p>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  updateContentArea(reportHtml);
+  hideLoading();
+}
+
+// ======================= PDF GENERATION FUNCTIONS =======================
+
+function generatePDFReport(reportType) {
+  const data = window.reportData;
+  
+  if (reportType === 'student_transcript') {
+    document.getElementById('studentSelectForReport').style.display = 'inline-block';
+    document.getElementById('generatePdfBtn').style.display = 'inline-block';
+    
+    const preview = document.getElementById('reportPreview');
+    preview.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <i class="fas fa-user-graduate" style="font-size: 48px; color: var(--primary); margin-bottom: 16px;"></i>
+        <h4>Student Transcript Report</h4>
+        <p>Select a student from the dropdown above to generate their individual transcript PDF</p>
+        <hr style="margin: 20px 0;">
+        <div style="background: white; padding: 20px; border-radius: 12px; text-align: left;">
+          <h5>📋 Sample Preview:</h5>
+          <p><strong>Student Name:</strong> [Selected Student]</p>
+          <p><strong>Admission:</strong> [Admission Number]</p>
+          <p><strong>Academic Year:</strong> March ${data.currentYear}</p>
+          <p><strong>Subjects Completed:</strong> [Number]</p>
+          <p><strong>Overall Average:</strong> [Score]%</p>
+          <p><strong>Status:</strong> [PASS/FAIL]</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  document.getElementById('studentSelectForReport').style.display = 'none';
+  document.getElementById('generatePdfBtn').style.display = 'none';
+  
+  generateAndDownloadPDF(reportType, data);
+}
+
+function generateSelectedStudentPDF() {
+  const select = document.getElementById('studentSelectForReport');
+  const admission = select.value;
+  if (!admission) {
+    showNotification('Please select a student', true);
+    return;
+  }
+  
+  const student = window.reportData.studentMap[admission];
+  if (!student) {
+    showNotification('Student data not found', true);
+    return;
+  }
+  
+  generateStudentTranscriptPDF(student, window.reportData);
+}
+
+async function generateAndDownloadPDF(reportType, data) {
+  showLoading('Generating PDF report...');
+  
+  if (typeof html2pdf === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    await new Promise((resolve) => {
+      script.onload = resolve;
+      document.head.appendChild(script);
+    });
+  }
+  
+  let content = '';
+  let filename = '';
+  
+  switch(reportType) {
+    case 'class_performance':
+      content = generateClassPerformanceHTML(data);
+      filename = `class_performance_report_${data.currentYear}.pdf`;
+      break;
+    case 'subject_analysis':
+      content = generateSubjectAnalysisHTML(data);
+      filename = `subject_analysis_report_${data.currentYear}.pdf`;
+      break;
+    case 'clinical_report':
+      content = generateClinicalReportHTML(data);
+      filename = `clinical_performance_report_${data.currentYear}.pdf`;
+      break;
+    case 'honor_roll':
+      content = generateHonorRollHTML(data);
+      filename = `honor_roll_${data.currentYear}.pdf`;
+      break;
+    case 'intervention_list':
+      content = generateInterventionListHTML(data);
+      filename = `intervention_list_${data.currentYear}.pdf`;
+      break;
+    default:
+      content = generateClassPerformanceHTML(data);
+      filename = `report_${data.currentYear}.pdf`;
+  }
+  
+  const element = document.createElement('div');
+  element.innerHTML = content;
+  document.body.appendChild(element);
+  
+  const opt = {
+    margin: [0.5, 0.5, 0.5, 0.5],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, letterRendering: true, useCORS: true },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+  
+  html2pdf().set(opt).from(element).save().then(() => {
+    document.body.removeChild(element);
+    hideLoading();
+    showNotification('PDF report generated successfully!', false);
+  }).catch(err => {
+    document.body.removeChild(element);
+    hideLoading();
+    showNotification('Error generating PDF: ' + err.message, true);
+  });
+}
+
+function generateStudentTranscriptPDF(student, data) {
+  if (typeof html2pdf === 'undefined') {
+    showNotification('PDF library loading, please try again', true);
+    return;
+  }
+  
+  const sortedSubjects = [...student.subjects].sort((a, b) => b.score - a.score);
+  const subjectsHtml = sortedSubjects.map((subj, idx) => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${idx + 1}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${subj.name}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">${subj.block.replace('_', ' ')}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; ${subj.score >= 60 ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+        <span style="background: ${subj.score >= 60 ? '#d1fae5' : '#fee2e2'}; color: ${subj.score >= 60 ? '#065f46' : '#991b1b'}; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+          ${subj.score >= 60 ? 'PASS' : 'FAIL'}
+        </span>
+      </td>
+    </table>
+  `).join('');
+  
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Student Transcript - ${student.name}</title>
+      <style>
+        body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: white; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6366f1; padding-bottom: 20px; }
+        .logo { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .institution { font-size: 14px; color: #64748b; margin-top: 5px; }
+        .title { font-size: 20px; font-weight: 700; margin: 20px 0 10px; }
+        .student-info { background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; }
+        .info-item { margin: 5px 0; }
+        .info-label { font-weight: 600; color: #475569; }
+        .info-value { color: #1e293b; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px; text-align: left; font-weight: 600; }
+        td { padding: 10px; }
+        .summary { display: flex; justify-content: space-between; margin-top: 25px; gap: 15px; }
+        .summary-card { flex: 1; background: #f1f5f9; padding: 15px; border-radius: 12px; text-align: center; }
+        .summary-label { font-size: 12px; color: #64748b; }
+        .summary-value { font-size: 28px; font-weight: 800; color: #6366f1; }
+        .status-badge { display: inline-block; padding: 6px 20px; border-radius: 40px; font-weight: 700; font-size: 16px; }
+        .status-pass { background: #d1fae5; color: #065f46; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="logo">🏥 NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="institution">School of Nursing | Accredited by NCK</div>
+      </div>
+      
+      <div class="title">ACADEMIC TRANSCRIPT</div>
+      
+      <div class="student-info">
+        <div class="info-item"><span class="info-label">Student Name:</span> <span class="info-value">${student.name}</span></div>
+        <div class="info-item"><span class="info-label">Admission Number:</span> <span class="info-value">${student.admission}</span></div>
+        <div class="info-item"><span class="info-label">Academic Year:</span> <span class="info-value">March ${data.currentYear}</span></div>
+        <div class="info-item"><span class="info-label">Report Date:</span> <span class="info-value">${new Date().toLocaleDateString()}</span></div>
+      </div>
+      
+      <table>
+        <thead>
+          <tr><th>#</th><th>Subject/Unit</th><th>Block</th><th>Score</th><th>Status</th></tr>
+        </thead>
+        <tbody>${subjectsHtml}</tbody>
+      </table>
+      
+      <div class="summary">
+        <div class="summary-card">
+          <div class="summary-label">Subjects Completed</div>
+          <div class="summary-value">${student.subjectCount}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Overall Average</div>
+          <div class="summary-value">${student.overallAvg}%</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Final Status</div>
+          <div class="status-badge ${student.overallAvg >= 60 ? 'status-pass' : 'status-fail'}">
+            ${student.overallAvg >= 60 ? '✓ PASS' : '✗ FAIL'}
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <p>This is a computer-generated transcript. No signature is required.</p>
+        <p>Nakuru College of Health Sciences - Nursing Department</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const element = document.createElement('div');
+  element.innerHTML = content;
+  document.body.appendChild(element);
+  
+  const opt = {
+    margin: [0.5, 0.5, 0.5, 0.5],
+    filename: `transcript_${student.admission}_${data.currentYear}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, letterRendering: true },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+  
+  html2pdf().set(opt).from(element).save().then(() => {
+    document.body.removeChild(element);
+    showNotification(`Transcript for ${student.name} generated!`, false);
+  }).catch(err => {
+    document.body.removeChild(element);
+    showNotification('Error generating transcript', true);
+  });
+}
+
+function generateClassPerformanceHTML(data) {
+  const gradeDist = {
+    'A (80-100%)': data.students.filter(s => s.overallAvg >= 80).length,
+    'B (70-79%)': data.students.filter(s => s.overallAvg >= 70 && s.overallAvg < 80).length,
+    'C (60-69%)': data.students.filter(s => s.overallAvg >= 60 && s.overallAvg < 70).length,
+    'D (50-59%)': data.students.filter(s => s.overallAvg >= 50 && s.overallAvg < 60).length,
+    'F (<50%)': data.students.filter(s => s.overallAvg < 50 && s.overallAvg > 0).length
+  };
+  
+  const top5 = [...data.students].sort((a, b) => b.overallAvg - a.overallAvg).slice(0, 5);
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Class Performance Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6366f1; padding-bottom: 15px; }
+      .title { font-size: 22px; font-weight: bold; color: #1e293b; }
+      .subtitle { color: #64748b; margin-top: 5px; }
+      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+      th { background: #667eea; color: white; }
+      .stat-card { display: inline-block; width: 30%; margin: 10px; padding: 15px; background: #f8fafc; border-radius: 10px; text-align: center; }
+      .stat-value { font-size: 32px; font-weight: bold; color: #6366f1; }
+    </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="subtitle">Class Performance Report - March ${data.currentYear}</div>
+        <div class="subtitle">Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      
+      <div style="text-align: center;">
+        <div class="stat-card"><div class="stat-value">${data.totalStudents}</div><div>Total Students</div></div>
+        <div class="stat-card"><div class="stat-value">${data.passCount}</div><div>Passing Students</div></div>
+        <div class="stat-card"><div class="stat-value">${data.overallClassAvg}%</div><div>Class Average</div></div>
+      </div>
+      
+      <h3>📊 Grade Distribution</h3>
+      <table>
+        <tr><th>Grade</th><th>Range</th><th>Number of Students</th><th>Percentage</th></tr>
+        ${Object.entries(gradeDist).map(([grade, count]) => `<tr><td>${grade}</td><td>${grade.split(' ')[1]}</td><td>${count}</td><td>${data.totalStudents > 0 ? ((count/data.totalStudents)*100).toFixed(1) : 0}%</td></tr>`).join('')}
+      </table>
+      
+      <h3>🏆 Top 5 Performers</h3>
+      <table>
+        <tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Overall Average</th><th>Status</th></tr>
+        ${top5.map((s, i) => `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.admission}</td><td>${s.overallAvg}%</td><td>${s.overallAvg >= 60 ? 'PASS' : 'FAIL'}</td></tr>`).join('')}
+      </table>
+      
+      <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p>Nakuru College of Health Sciences - Nursing Department | Official Academic Report</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateSubjectAnalysisHTML(data) {
+  const top10 = data.subjectMeans.slice(0, 10);
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Subject Analysis Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6366f1; padding-bottom: 15px; }
+      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+      th { background: #667eea; color: white; }
+      .mean-high { color: #10b981; font-weight: bold; }
+      .mean-low { color: #ef4444; font-weight: bold; }
+    </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="subtitle">Subject Performance Analysis - March ${data.currentYear}</div>
+      </div>
+      
+      <h3>📚 All Subjects Performance Summary</h3>
+      <table>
+        <tr><th>#</th><th>Subject Name</th><th>Block</th><th>Mean Score</th><th>Pass Rate</th><th>Students</th></tr>
+        ${data.subjectMeans.map((subj, idx) => `<tr><td>${idx+1}</td><td><strong>${subj.name}</strong></td><td>${subj.block.replace('_', ' ')}</td><td class="${subj.meanScore >= 70 ? 'mean-high' : (subj.meanScore >= 60 ? '' : 'mean-low')}">${subj.meanScore}%</td><td>${subj.passRate}%</td><td>${subj.studentCount}</td></tr>`).join('')}
+      </table>
+      
+      <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p>Nakuru College of Health Sciences - Academic Office</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateClinicalReportHTML(data) {
+  const top10 = data.clinicalPerformance.slice(0, 10);
+  const clinicalAvg = data.clinicalPerformance.length > 0 ? (data.clinicalPerformance.reduce((a,b) => a + b.average, 0) / data.clinicalPerformance.length).toFixed(2) : 0;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Clinical Performance Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #10b981; padding-bottom: 15px; }
+      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+      th { background: #10b981; color: white; }
+    </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="subtitle">NCK Clinical Evaluation Report - March ${data.currentYear}</div>
+      </div>
+      
+      <div style="text-align: center; margin: 20px 0;">
+        <div style="display: inline-block; width: 200px; padding: 15px; background: #f8fafc; border-radius: 10px; margin: 0 10px;">
+          <div style="font-size: 32px; font-weight: bold; color: #10b981;">${data.clinicalPerformance.length}</div>
+          <div>Students Assessed</div>
+        </div>
+        <div style="display: inline-block; width: 200px; padding: 15px; background: #f8fafc; border-radius: 10px; margin: 0 10px;">
+          <div style="font-size: 32px; font-weight: bold; color: #10b981;">${clinicalAvg}%</div>
+          <div>Clinical Average</div>
+        </div>
+      </div>
+      
+      <h3>🏥 Top 10 Clinical Performers</h3>
+      <table>
+        <tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Clinical Score</th><th>Status</th></tr>
+        ${top10.map((s, i) => `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.admission || 'N/A'}</td><td style="color: #10b981; font-weight: bold;">${s.average.toFixed(2)}%</td><td>${s.average >= 60 ? 'COMPETENT' : 'NEEDS IMPROVEMENT'}</td></tr>`).join('')}
+      </table>
+      
+      <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p>NCK Accredited Clinical Evaluation | Nursing Council of Kenya Standards</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateHonorRollHTML(data) {
+  const honorRoll = [...data.students].filter(s => s.overallAvg >= 80).sort((a, b) => b.overallAvg - a.overallAvg);
+  const meritRoll = [...data.students].filter(s => s.overallAvg >= 70 && s.overallAvg < 80).sort((a, b) => b.overallAvg - a.overallAvg);
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Honor Roll Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f59e0b; padding-bottom: 15px; }
+      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+      th { background: #f59e0b; color: white; }
+      .gold { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+    </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">🏆 ACADEMIC HONOR ROLL</div>
+        <div class="subtitle">Nakuru College of Health Sciences - March ${data.currentYear}</div>
+      </div>
+      
+      <h3>🎖️ PRESIDENT'S HONOR ROLL (Average ≥ 80%)</h3>
+      <table>
+        <tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Overall Average</th><th>Award</th></tr>
+        ${honorRoll.map((s, i) => `<tr class="${i === 0 ? 'gold' : ''}"><td>${i+1}</td><td>${s.name}</td><td>${s.admission}</td><td>${s.overallAvg}%</td><td>🏅 Distinction</td></tr>`).join('')}
+        ${honorRoll.length === 0 ? '<tr><td colspan="5" style="text-align: center;">No students in Honor Roll yet</td></tr>' : ''}
+      </table>
+      
+      <h3>🌟 MERIT ROLL (Average 70-79%)</h3>
+      <table>
+        <tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Overall Average</th><th>Award</th></tr>
+        ${meritRoll.map((s, i) => `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.admission}</td><td>${s.overallAvg}%</td><td>⭐ Merit</td></tr>`).join('')}
+        ${meritRoll.length === 0 ? '<tr><td colspan="5" style="text-align: center;">No students in Merit Roll yet</td></tr>' : ''}
+      </table>
+      
+      <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p>Congratulations to all awardees! | Issued by Academic Registry</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateInterventionListHTML(data) {
+  const atRisk = [...data.students].filter(s => s.overallAvg < 60 && s.overallAvg > 0).sort((a, b) => a.overallAvg - b.overallAvg);
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Academic Intervention List</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ef4444; padding-bottom: 15px; }
+      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+      th { background: #ef4444; color: white; }
+      .critical { background: #fee2e2; }
+    </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">⚠️ ACADEMIC INTERVENTION LIST</div>
+        <div class="subtitle">Students Requiring Academic Support - March ${data.currentYear}</div>
+      </div>
+      
+      <div style="background: #fef3c7; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <strong>📌 Recommendation:</strong> The following students have scored below the passing mark (60%) and require immediate academic intervention including remedial classes, tutorial sessions, and additional academic support.
+      </div>
+      
+      <h3>📋 Students Needing Intervention (${atRisk.length})</h3>
+      <table>
+        <tr><th>#</th><th>Student Name</th><th>Admission</th><th>Current Average</th><th>Subjects Attempted</th><th>Recommended Action</th></tr>
+        ${atRisk.map((s, i) => `<tr class="${s.overallAvg < 50 ? 'critical' : ''}"><td>${i+1}</td><td>${s.name}</td><td>${s.admission}</td><td style="color: #ef4444; font-weight: bold;">${s.overallAvg}%</span></td><td>${s.subjectCount}</td><td>📚 Remedial Classes + Tutorials<\/td>`).join('')}
+        ${atRisk.length === 0 ? '<tr><td colspan="6" style="text-align: center;">No students requiring intervention at this time<\/td>' : ''}
+      </table>
+      
+      <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p>Academic Support Office | For implementation by Class Representatives and Lecturers</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
   
   // ======================= NCK MARKS - XY FORMS =======================
   async function showNCKMarks() { 
