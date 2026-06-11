@@ -435,6 +435,9 @@
     <i class="fas fa-ticket-alt"></i> Support Tickets 
     <span id="ticketsUnreadBadge" style="display: none;"></span>
 </a></li>
+                <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals 
+    <span id="pendingApprovalsBadge" style="background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px; display: none;">0</span>
+</a></li>
                 <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
                 <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
                 <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
@@ -2222,6 +2225,129 @@
                     <tbody id="backup-history-table"><tr><td colspan="4">Loading backup history...<\/td><\/tr><\/tbody>
                 </table>
             </section>
+                        <!-- ============ ADMIN APPROVALS SECTION - SUPER ADMIN ONLY ============ -->
+<section id="admin-approvals" class="tab-content">
+    <h2><i class="fas fa-check-double"></i> Pending Admin Actions</h2>
+    <p>Review and approve/reject actions requested by administrators. <strong>Nothing changes until you approve.</strong></p>
+    
+    <!-- Stats Cards -->
+    <div class="cards">
+        <div class="card">
+            <h3>⏳ Pending Approvals</h3>
+            <p class="data" id="pendingActionsCount">0</p>
+            <p class="minor-data">Awaiting your review</p>
+        </div>
+        <div class="card">
+            <h3>✅ Approved Today</h3>
+            <p class="data" id="approvedTodayCount">0</p>
+            <p class="minor-data">Actions approved</p>
+        </div>
+        <div class="card">
+            <h3>❌ Rejected</h3>
+            <p class="data" id="rejectedCount">0</p>
+            <p class="minor-data">This month</p>
+        </div>
+        <div class="card">
+            <h3>👥 Active Admins</h3>
+            <p class="data" id="activeAdminsCount">0</p>
+            <p class="minor-data">Who can request actions</p>
+        </div>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <select id="approvalTypeFilter" onchange="loadAdminActions()">
+            <option value="all">All Action Types</option>
+            <option value="create_user">➕ Create User</option>
+            <option value="delete_user">❌ Delete User</option>
+            <option value="edit_user">✏️ Edit User</option>
+            <option value="create_course">📚 Create Course</option>
+            <option value="delete_course">🗑️ Delete Course</option>
+            <option value="edit_course">✏️ Edit Course</option>
+            <option value="create_unit">📖 Create Unit</option>
+            <option value="delete_unit">🗑️ Delete Unit</option>
+            <option value="edit_unit">✏️ Edit Unit</option>
+            <option value="schedule_session">📅 Schedule Session</option>
+            <option value="delete_session">❌ Delete Session</option>
+            <option value="upload_resource">📎 Upload Resource</option>
+            <option value="delete_resource">🗑️ Delete Resource</option>
+            <option value="mass_promotion">🔼 Mass Promotion</option>
+        </select>
+        
+        <select id="approvalStatusFilter" onchange="loadAdminActions()">
+            <option value="pending">⏳ Pending</option>
+            <option value="approved">✅ Approved</option>
+            <option value="rejected">❌ Rejected</option>
+            <option value="all">All</option>
+        </select>
+        
+        <button onclick="loadAdminActions()" class="btn-action">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+    
+    <!-- Actions Table -->
+    <div class="table-responsive">
+        <table class="data-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                    <th>Target</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="admin-actions-body">
+                <tr><td colspan="8"><div class="loading-spinner"></div> Loading pending actions...<\/td><\/tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Action Detail Modal -->
+    <div id="actionDetailModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Action Details</h3>
+                <span class="close" onclick="closeModal('actionDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="actionDetailBody">
+                <div class="loading-spinner"></div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="approveCurrentAction()" style="background: #059669; color: white; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button onclick="rejectCurrentAction()" style="background: #dc2626; color: white; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+                <button onclick="closeModal('actionDetailModal')" style="background: #6b7280; color: white; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Approval History Log -->
+    <h3 style="margin-top: 30px;">📋 Approval History Log</h3>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                    <th>Decision</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody id="approval-log-body">
+                <tr><td colspan="5">Loading approval history...<\/td><\/tr>
+            </tbody>
+        </table>
+    </div>
+</section>
         </main>
     </div>
 
