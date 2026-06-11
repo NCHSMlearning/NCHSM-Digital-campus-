@@ -1039,7 +1039,90 @@ window.exportUnitsData = function() {
   }
   
   // ======================= FULL REPORTS =======================
-  async function showFullReports() { const students=await apiCall('/api/students',{}); exportToCSV(students,'students_report'); }
+// ======================= ENHANCED FULL REPORTS =======================
+async function showFullReports() {
+  showLoading('Loading reports dashboard...');
+  
+  const students = await apiCall('/api/students', {});
+  const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+  const config = await getConfig();
+  const settings = await apiCall('/api/mark-entry/settings', {});
+  
+  // Collect performance data for reports
+  let allStudentPerformance = {};
+  let subjectPerformance = {};
+  let clinicalPerformance = [];
+  
+  for (let block of blocks) {
+    const subjects = config[block] || [];
+    for (let subject of subjects) {
+      const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+      if (marks && marks.length) {
+        for (let mark of marks) {
+          const admission = mark.admission;
+          if (!allStudentPerformance[admission]) {
+            allStudentPerformance[admission] = {
+              name: mark.name,
+              admission: admission,
+              block: mark.block || block,
+              subjects: [],
+              totalScore: 0,
+              subjectCount: 0,
+              cat1Avg: 0,
+              cat2Avg: 0,
+              examAvg: 0,
+              cat1Scores: [],
+              cat2Scores: [],
+              examScores: []
+            };
+          }
+          
+          let finalScore = 0;
+          let cat1 = parseFloat(mark.cat1) || 0;
+          let cat2 = parseFloat(mark.cat2) || 0;
+          let exam = parseFloat(mark.exam) || 0;
+          
+          if (subject.assessmentType === 'full') {
+            finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+            if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
+            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+          } else if (subject.assessmentType === 'single_cat') {
+            finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+          } else {
+            finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+          }
+          
+          if (finalScore > 0) {
+            allStudentPerformance[admission].subjects.push({ name: subject.name, score: finalScore, block: block });
+            allStudentPerformance[admission].totalScore += finalScore;
+            allStudentPerformance[admission].subjectCount++;
+            
+            if (!subjectPerformance[subject.name]) {
+              subjectPerformance[subject.name] = { scores: [], block: block, assessmentType: subject.assessmentType };
+            }
+            subjectPerformance[subject.name].scores.push(finalScore);
+          }
+        }
+      }
+    }
+  }
+  
+  // Calculate averages for each student
+  for (let adm in allStudentPerformance) {
+    let student = allStudentPerformance[adm];
+    student.overallAvg = student.subjectCount > 0 ? (student.totalScore / student.subjectCount).toFixed(2) : 0;
+    student.cat1Avg = student.cat1Scores.length > 0 ? (student.cat1Scores.reduce((a,b) => a+b, 0) / student.cat1Scores.length).toFixed(2) : 0;
+    student.cat2Avg = student.cat2Scores.length > 0 ? (student.cat2Scores.reduce((a,b) => a+b, 0) / student.cat2Scores.length).toFixed(2) : 0;
+    student.examAvg = student.examScores.length > 0 ? (student.examScores.reduce((a,b) => a+b, 0) / student.examScores.length).toFixed(2) : 0;
+    student.status = student.overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
+  }
+  
+  // Get clinical data
+  try
   
   // ======================= NCK MARKS - XY FORMS =======================
   async function showNCKMarks() { 
