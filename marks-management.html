@@ -272,23 +272,24 @@
             <i class="fas fa-graduation-cap"></i>
             <span>Nakuru Health</span>
           </div>
-          <div class="nav-menu">
-            <div class="nav-item" data-nav="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
-            <div class="nav-item" data-nav="marks"><i class="fas fa-pen-alt"></i><span>${isAdmin ? 'Internal Marks' : 'My Subjects'}</span></div>
-            <div class="nav-item" data-nav="nck"><i class="fas fa-file-medical"></i><span>NCK Scores</span></div>
-            ${isAdmin ? `
-            <div class="nav-item" data-nav="students"><i class="fas fa-user-graduate"></i><span>Students</span></div>
-            <div class="nav-item" data-nav="lecturers"><i class="fas fa-chalkboard-user"></i><span>Lecturers</span></div>
-            <div class="nav-item" data-nav="units"><i class="fas fa-book-open"></i><span>Units</span></div>
-            <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
-            <div class="nav-item" data-nav="entryControl"><i class="fas fa-lock"></i><span>Entry Control</span></div>
-            <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></div>
-            ` : `
-            <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
-            <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>My Analytics</span></div>
-            `}
-            <div class="nav-item logout-side" data-nav="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
-          </div>
+         <div class="nav-menu">
+  <div class="nav-item" data-nav="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+  <div class="nav-item" data-nav="marks"><i class="fas fa-pen-alt"></i><span>${isAdmin ? 'Internal Marks' : 'My Subjects'}</span></div>
+  <div class="nav-item" data-nav="nck"><i class="fas fa-file-medical"></i><span>NCK Scores</span></div>
+  ${isAdmin ? `
+  <div class="nav-item" data-nav="students"><i class="fas fa-user-graduate"></i><span>Students</span></div>
+  <div class="nav-item" data-nav="lecturers"><i class="fas fa-chalkboard-user"></i><span>Lecturers</span></div>
+  <div class="nav-item" data-nav="units"><i class="fas fa-book-open"></i><span>Units</span></div>
+  <div class="nav-item" data-nav="examResults"><i class="fas fa-chart-bar"></i><span>Exam Results</span></div>
+  <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
+  <div class="nav-item" data-nav="entryControl"><i class="fas fa-lock"></i><span>Entry Control</span></div>
+  <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></div>
+  ` : `
+  <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
+  <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>My Analytics</span></div>
+  `}
+  <div class="nav-item logout-side" data-nav="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+</div>
           <div class="user-section">
             <div class="user-avatar">${(currentUser?.name?.charAt(0) || 'U').toUpperCase()}</div>
             <div class="user-details">
@@ -312,26 +313,26 @@
     `;
     document.getElementById('app').innerHTML = sidebarHtml;
     
-    // Attach sidebar navigation events
-    document.querySelectorAll('.nav-item').forEach(el => {
-      el.addEventListener('click', (e) => {
-        const navId = el.dataset.nav;
-        if(navId === 'logout') logout();
-        else if(navId === 'dashboard') showMain();
-        else if(navId === 'marks') isAdmin ? showAdminMarks() : showLecturerSubjects();
-        else if(navId === 'nck') showNCKMarks();
-        else if(navId === 'students') showStudents();
-        else if(navId === 'lecturers') showLecturers();
-        else if(navId === 'units') showUnits();
-        else if(navId === 'reports') showFullReports();
-        else if(navId === 'entryControl') showEntryControlPanel();
-        else if(navId === 'analytics') showComprehensiveAnalytics();
-        if(window.innerWidth <= 768) {
-          document.getElementById('mainSidebar')?.classList.remove('mobile-open');
-        }
-      });
-    });
-    
+ // Attach sidebar navigation events
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', (e) => {
+    const navId = el.dataset.nav;
+    if(navId === 'logout') logout();
+    else if(navId === 'dashboard') showMain();
+    else if(navId === 'marks') isAdmin ? showAdminMarks() : showLecturerSubjects();
+    else if(navId === 'nck') showNCKMarks();
+    else if(navId === 'students') showStudents();
+    else if(navId === 'lecturers') showLecturers();
+    else if(navId === 'units') showUnits();
+    else if(navId === 'examResults') showExamResultsReport();  // ADD THIS LINE
+    else if(navId === 'reports') showFullReports();
+    else if(navId === 'entryControl') showEntryControlPanel();
+    else if(navId === 'analytics') showComprehensiveAnalytics();
+    if(window.innerWidth <= 768) {
+      document.getElementById('mainSidebar')?.classList.remove('mobile-open');
+    }
+  });
+});
     // Mobile menu toggle
     document.getElementById('menuToggleBtn')?.addEventListener('click', () => {
       document.getElementById('mainSidebar')?.classList.toggle('mobile-open');
@@ -412,7 +413,645 @@
       }
     }
   }
+  // ======================= OFFICIAL EXAM RESULTS REPORT GENERATOR =======================
+
+async function showExamResultsReport() {
+  showLoading('Loading Exam Results Generator...');
   
+  const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+  const config = await getConfig();
+  
+  // Get all subjects by block
+  let subjectsByBlock = {};
+  for (let block of blocks) {
+    subjectsByBlock[block] = config[block] || [];
+  }
+  
+  // Get assessment types for display
+  const assessmentTypes = {
+    'full': 'CAT1 + CAT2 + Exam (30+30+70)',
+    'single_cat': 'CAT + Exam (30+70)',
+    'exam_only': 'Exam Only (100)'
+  };
+  
+  const html = `
+    <style>
+      .report-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+      .option-card { background: white; border-radius: var(--radius); padding: 24px; cursor: pointer; transition: all 0.3s; border: 2px solid #e2e8f0; text-align: center; }
+      .option-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: var(--shadow-lg); }
+      .option-icon { font-size: 48px; margin-bottom: 16px; }
+      .config-panel { background: #f8fafc; padding: 24px; border-radius: 16px; margin: 20px 0; display: none; }
+      .config-panel.active { display: block; }
+      .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; overflow-x: auto; display: block; }
+      .results-table th, .results-table td { padding: 12px; border: 1px solid #e2e8f0; text-align: left; }
+      .results-table th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+      .rank-1 { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+      .rank-2 { background: linear-gradient(135deg, #f3f4f6, #e5e7eb); }
+      .rank-3 { background: linear-gradient(135deg, #fed7aa, #fdba74); }
+      .stat-box { display: inline-block; padding: 8px 16px; background: #f1f5f9; border-radius: 12px; margin: 5px; }
+    </style>
+    
+    <button class="back-btn" onclick="showFullReports()"><i class="fas fa-arrow-left"></i> Back to Reports</button>
+    
+    <div class="header" style="margin-top: 16px;">
+      <h3><i class="fas fa-chart-bar"></i> Official Exam Results Report</h3>
+      <p>Generate professional exam reports with statistics, rankings, and analysis | March ${currentYear} Class</p>
+    </div>
+    
+    <div class="report-options">
+      <div class="option-card" onclick="showExamReportConfig('subject')">
+        <div class="option-icon">📊</div>
+        <h4>Subject Exam Report</h4>
+        <p>Detailed results for a specific subject/exam</p>
+        <small>Includes: individual scores, class average, pass rate, rankings</small>
+      </div>
+      <div class="option-card" onclick="showExamReportConfig('block')">
+        <div class="option-icon">📚</div>
+        <h4>Block Performance Report</h4>
+        <p>All subjects in a block with mean scores</p>
+        <small>Compare performance across subjects in the same block</small>
+      </div>
+      <div class="option-card" onclick="showExamReportConfig('class')">
+        <div class="option-icon">🏆</div>
+        <h4>Class Ranking Report</h4>
+        <p>Overall student rankings with grades</p>
+        <small>Complete class performance with percentiles</small>
+      </div>
+      <div class="option-card" onclick="showExamReportConfig('clinical')">
+        <div class="option-icon">🏥</div>
+        <h4>Clinical Assessment Report</h4>
+        <p>NCK Clinical evaluation results</p>
+        <small>Clinical areas performance analysis</small>
+      </div>
+    </div>
+    
+    <!-- Subject Exam Configuration Panel -->
+    <div id="subjectConfig" class="config-panel">
+      <h4><i class="fas fa-book"></i> Subject Exam Report Configuration</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+        <div>
+          <label>Select Block</label>
+          <select id="reportBlockSelect" style="width: 100%;">
+            <option value="">-- Select Block --</option>
+            ${blocks.map(b => `<option value="${b}">${b.replace('_', ' ')}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>Select Subject</label>
+          <select id="reportSubjectSelect" style="width: 100%;" disabled>
+            <option value="">Select Block First</option>
+          </select>
+        </div>
+        <div>
+          <label>Report Type</label>
+          <select id="reportTypeSelect" style="width: 100%;">
+            <option value="full">Full Report (With Details)</option>
+            <option value="summary">Summary Report</option>
+            <option value="rankings">Rankings Only</option>
+          </select>
+        </div>
+      </div>
+      <button class="save-btn" onclick="generateSubjectExamReport()"><i class="fas fa-file-pdf"></i> Generate Subject Report</button>
+      <button class="export-btn" onclick="previewSubjectReport()" style="margin-left: 10px;"><i class="fas fa-eye"></i> Preview</button>
+    </div>
+    
+    <!-- Block Performance Configuration Panel -->
+    <div id="blockConfig" class="config-panel">
+      <h4><i class="fas fa-layer-group"></i> Block Performance Report Configuration</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+        <div>
+          <label>Select Block</label>
+          <select id="blockReportBlockSelect" style="width: 100%;">
+            <option value="">-- Select Block --</option>
+            ${blocks.map(b => `<option value="${b}">${b.replace('_', ' ')}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="save-btn" onclick="generateBlockPerformanceReport()"><i class="fas fa-file-pdf"></i> Generate Block Report</button>
+    </div>
+    
+    <!-- Class Ranking Configuration Panel -->
+    <div id="classConfig" class="config-panel">
+      <h4><i class="fas fa-ranking-star"></i> Class Ranking Report Configuration</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+        <div>
+          <label>Include Details</label>
+          <select id="classReportDetailSelect" style="width: 100%;">
+            <option value="full">Full Details (All Subjects)</option>
+            <option value="summary">Summary Only</option>
+            <option value="top50">Top 50 Students Only</option>
+          </select>
+        </div>
+      </div>
+      <button class="save-btn" onclick="generateClassRankingReport()"><i class="fas fa-file-pdf"></i> Generate Class Ranking Report</button>
+    </div>
+    
+    <!-- Clinical Assessment Configuration Panel -->
+    <div id="clinicalConfig" class="config-panel">
+      <h4><i class="fas fa-stethoscope"></i> Clinical Assessment Report Configuration</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+        <div>
+          <label>Assessment Type</label>
+          <select id="clinicalTypeSelect" style="width: 100%;">
+            <option value="XY FORMS">XY FORMS (Clinical Areas)</option>
+            <option value="ASSESSMENT AND CASE">Assessment & Case Studies</option>
+          </select>
+        </div>
+      </div>
+      <button class="save-btn" onclick="generateClinicalReport()"><i class="fas fa-file-pdf"></i> Generate Clinical Report</button>
+    </div>
+    
+    <!-- Preview Area -->
+    <div id="reportPreviewArea" class="card" style="display: none;">
+      <div class="card-title"><i class="fas fa-eye"></i> Report Preview</div>
+      <div id="previewContent"></div>
+    </div>
+  `;
+  
+  updateContentArea(html);
+  
+  // Populate subjects when block changes
+  document.getElementById('reportBlockSelect').onchange = function() {
+    const block = this.value;
+    const subjectSelect = document.getElementById('reportSubjectSelect');
+    if (block && subjectsByBlock[block] && subjectsByBlock[block].length) {
+      subjectSelect.disabled = false;
+      subjectSelect.innerHTML = '<option value="">Select Subject</option>' + 
+        subjectsByBlock[block].map(s => `<option value="${s.name}" data-type="${s.assessmentType}">${s.name} (${assessmentTypes[s.assessmentType] || s.assessmentType})</option>`).join('');
+    } else {
+      subjectSelect.disabled = true;
+      subjectSelect.innerHTML = '<option value="">Select Block First</option>';
+    }
+  };
+  
+  hideLoading();
+}
+
+// Show configuration panel
+window.showExamReportConfig = function(type) {
+  // Hide all panels
+  document.querySelectorAll('.config-panel').forEach(panel => {
+    panel.classList.remove('active');
+  });
+  // Show selected panel
+  document.getElementById(`${type}Config`).classList.add('active');
+  // Hide preview area
+  document.getElementById('reportPreviewArea').style.display = 'none';
+};
+
+// Generate Subject Exam Report
+window.generateSubjectExamReport = async function() {
+  const block = document.getElementById('reportBlockSelect').value;
+  const subject = document.getElementById('reportSubjectSelect').value;
+  const reportType = document.getElementById('reportTypeSelect').value;
+  
+  if (!block || !subject) {
+    showNotification('Please select Block and Subject', true);
+    return;
+  }
+  
+  showLoading('Generating Subject Exam Report...');
+  
+  const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+  const config = await getConfig();
+  const subjectConfig = (config[block] || []).find(s => s.name === subject);
+  const assessmentType = subjectConfig?.assessmentType || 'full';
+  
+  if (!marks || !marks.length) {
+    showNotification('No marks found for this subject', true);
+    hideLoading();
+    return;
+  }
+  
+  // Calculate scores for each student
+  let studentScores = [];
+  let totalScoreSum = 0;
+  
+  for (let mark of marks) {
+    let cat1 = parseFloat(mark.cat1) || 0;
+    let cat2 = parseFloat(mark.cat2) || 0;
+    let exam = parseFloat(mark.exam) || 0;
+    let finalScore = 0;
+    
+    if (assessmentType === 'full') {
+      finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    } else if (assessmentType === 'single_cat') {
+      finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    } else {
+      finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+    }
+    
+    if (finalScore > 0) {
+      studentScores.push({
+        name: mark.name,
+        admission: mark.admission,
+        score: finalScore,
+        cat1: cat1,
+        cat2: cat2,
+        exam: exam,
+        gradedBy: mark.gradedBy || 'N/A'
+      });
+      totalScoreSum += finalScore;
+    }
+  }
+  
+  // Sort by score (highest first)
+  studentScores.sort((a, b) => b.score - a.score);
+  
+  const averageScore = studentScores.length > 0 ? (totalScoreSum / studentScores.length).toFixed(2) : 0;
+  const passCount = studentScores.filter(s => s.score >= 60).length;
+  const failCount = studentScores.filter(s => s.score < 60).length;
+  const passRate = studentScores.length > 0 ? ((passCount / studentScores.length) * 100).toFixed(1) : 0;
+  const highestScore = studentScores[0]?.score || 0;
+  const lowestScore = studentScores[studentScores.length - 1]?.score || 0;
+  
+  // Generate HTML for PDF
+  let resultsHtml = '';
+  if (reportType === 'full' || reportType === 'summary') {
+    const displayStudents = reportType === 'full' ? studentScores : studentScores.slice(0, 30);
+    resultsHtml = displayStudents.map((s, idx) => `
+      <tr>
+        <td style="padding: 8px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 8px;">${s.name}</td>
+        <td style="padding: 8px;">${s.admission}</td>
+        ${assessmentType !== 'exam_only' ? `<td style="padding: 8px; text-align: center;">${s.cat1}</td>` : ''}
+        ${assessmentType === 'full' ? `<td style="padding: 8px; text-align: center;">${s.cat2}</td>` : ''}
+        <td style="padding: 8px; text-align: center;">${s.exam}</td>
+        <td style="padding: 8px; text-align: center; font-weight: bold; ${s.score >= 60 ? 'color: #10b981;' : 'color: #ef4444;'}">${s.score}%</td>
+        <td style="padding: 8px; text-align: center;">
+          <span style="background: ${s.score >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 4px 8px; border-radius: 20px;">
+            ${s.score >= 60 ? 'PASS' : 'FAIL'}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+  }
+  
+  // Rankings for top students
+  const topStudents = studentScores.slice(0, 10);
+  const rankingsHtml = topStudents.map((s, idx) => `
+    <tr class="${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">
+      <td style="padding: 8px; text-align: center; font-weight: bold;">${idx + 1}</td>
+      <td style="padding: 8px;">${s.name}</td>
+      <td style="padding: 8px;">${s.admission}</td>
+      <td style="padding: 8px; text-align: center; font-weight: bold; color: #6366f1;">${s.score}%</td>
+    </tr>
+  `).join('');
+  
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Exam Report - ${subject}</title>
+      <style>
+        body { font-family: 'Inter', Arial, sans-serif; margin: 40px; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6366f1; padding-bottom: 20px; }
+        .institution { font-size: 24px; font-weight: 800; color: #1e293b; }
+        .title { font-size: 20px; font-weight: 700; margin: 10px 0; color: #6366f1; }
+        .stats-grid { display: flex; justify-content: space-between; margin: 20px 0; flex-wrap: wrap; gap: 15px; }
+        .stat-card { background: #f8fafc; padding: 15px; border-radius: 12px; text-align: center; flex: 1; min-width: 120px; }
+        .stat-value { font-size: 28px; font-weight: 800; color: #6366f1; }
+        .stat-label { font-size: 12px; color: #64748b; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+        .rank-1 { background: #fef3c7; }
+        .rank-2 { background: #f3f4f6; }
+        .rank-3 { background: #fed7aa; }
+        @media print {
+          body { margin: 20px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="title">OFFICIAL EXAMINATION RESULTS REPORT</div>
+        <div>${subject} | ${block.replace('_', ' ')} | March ${currentYear} Class</div>
+        <div>Assessment Type: ${assessmentType === 'full' ? 'CAT1 + CAT2 + Exam' : (assessmentType === 'single_cat' ? 'CAT + Exam' : 'Exam Only')}</div>
+        <div>Date Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${studentScores.length}</div><div class="stat-label">Students Assessed</div></div>
+        <div class="stat-card"><div class="stat-value">${averageScore}%</div><div class="stat-label">Class Average</div></div>
+        <div class="stat-card"><div class="stat-value">${passRate}%</div><div class="stat-label">Pass Rate</div></div>
+        <div class="stat-card"><div class="stat-value">${passCount}</div><div class="stat-label">Passed</div></div>
+        <div class="stat-card"><div class="stat-value">${failCount}</div><div class="stat-label">Failed</div></div>
+        <div class="stat-card"><div class="stat-value">${highestScore}%</div><div class="stat-label">Highest Score</div></div>
+      </div>
+      
+      <h3>🏆 Top 10 Performers</h3>
+      <table>
+        <thead><tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Score</th></tr></thead>
+        <tbody>${rankingsHtml}</tbody>
+      </table>
+      
+      ${reportType !== 'rankings' ? `
+        <h3>📊 Detailed Results</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Student Name</th><th>Admission</th>
+              ${assessmentType !== 'exam_only' ? '<th>CAT1</th>' : ''}
+              ${assessmentType === 'full' ? '<th>CAT2</th>' : ''}
+              <th>Exam</th><th>Total</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${resultsHtml}</tbody>
+        </table>
+      ` : ''}
+      
+      <div class="footer">
+        <p>This is an official examination results report. For verification, contact the Academic Registry.</p>
+        <p>Nakuru College of Health Sciences - Nursing Department | NCK Accredited</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Generate PDF
+  if (typeof html2pdf === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      generatePDFFromContent(content, `${subject}_EXAM_REPORT_${currentYear}.pdf`);
+    };
+    document.head.appendChild(script);
+  } else {
+    generatePDFFromContent(content, `${subject}_EXAM_REPORT_${currentYear}.pdf`);
+  }
+  
+  hideLoading();
+};
+
+// Generate Class Ranking Report
+window.generateClassRankingReport = async function() {
+  showLoading('Generating Class Ranking Report...');
+  
+  const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+  const config = await getConfig();
+  let allStudentPerformance = {};
+  
+  for (let block of blocks) {
+    const subjects = config[block] || [];
+    for (let subject of subjects) {
+      const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+      if (marks && marks.length) {
+        for (let mark of marks) {
+          const admission = mark.admission;
+          if (!allStudentPerformance[admission]) {
+            allStudentPerformance[admission] = {
+              name: mark.name,
+              admission: admission,
+              subjects: [],
+              totalScore: 0,
+              subjectCount: 0
+            };
+          }
+          
+          let finalScore = 0;
+          let cat1 = parseFloat(mark.cat1) || 0;
+          let cat2 = parseFloat(mark.cat2) || 0;
+          let exam = parseFloat(mark.exam) || 0;
+          
+          if (subject.assessmentType === 'full') {
+            finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+          } else if (subject.assessmentType === 'single_cat') {
+            finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+          } else {
+            finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+          }
+          
+          if (finalScore > 0) {
+            allStudentPerformance[admission].subjects.push({ name: subject.name, score: finalScore });
+            allStudentPerformance[admission].totalScore += finalScore;
+            allStudentPerformance[admission].subjectCount++;
+          }
+        }
+      }
+    }
+  }
+  
+  // Calculate overall averages
+  let studentList = [];
+  for (let adm in allStudentPerformance) {
+    let student = allStudentPerformance[adm];
+    student.overallAvg = student.subjectCount > 0 ? (student.totalScore / student.subjectCount).toFixed(2) : 0;
+    studentList.push(student);
+  }
+  
+  studentList = studentList.filter(s => s.subjectCount > 0).sort((a, b) => b.overallAvg - a.overallAvg);
+  
+  const totalStudents = studentList.length;
+  const classAverage = studentList.length > 0 ? (studentList.reduce((a,b) => a + parseFloat(b.overallAvg), 0) / studentList.length).toFixed(2) : 0;
+  const passCount = studentList.filter(s => s.overallAvg >= 60).length;
+  
+  let rankingsHtml = studentList.map((s, idx) => {
+    const percentile = ((totalStudents - idx) / totalStudents * 100).toFixed(1);
+    let grade = 'F';
+    if (s.overallAvg >= 80) grade = 'A';
+    else if (s.overallAvg >= 70) grade = 'B';
+    else if (s.overallAvg >= 60) grade = 'C';
+    else if (s.overallAvg >= 50) grade = 'D';
+    
+    return `
+      <tr class="${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">
+        <td style="padding: 10px; text-align: center; font-weight: bold;">${idx + 1}</td>
+        <td style="padding: 10px;">${s.name}</td>
+        <td style="padding: 10px;">${s.admission}</td>
+        <td style="padding: 10px; text-align: center;">${s.subjectCount}</td>
+        <td style="padding: 10px; text-align: center; font-weight: bold; color: ${s.overallAvg >= 60 ? '#10b981' : '#ef4444'};">${s.overallAvg}%</td>
+        <td style="padding: 10px; text-align: center;"><strong>${grade}</strong></td>
+        <td style="padding: 10px; text-align: center;">${percentile}%</td>
+        <td style="padding: 10px; text-align: center;">
+          <span style="background: ${s.overallAvg >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 4px 12px; border-radius: 20px;">
+            ${s.overallAvg >= 60 ? 'PASS' : 'FAIL'}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Class Ranking Report - March ${currentYear}</title>
+      <style>
+        body { font-family: 'Inter', Arial, sans-serif; margin: 40px; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6366f1; padding-bottom: 20px; }
+        .institution { font-size: 24px; font-weight: 800; }
+        .title { font-size: 20px; font-weight: 700; margin: 10px 0; color: #6366f1; }
+        .stats-grid { display: flex; justify-content: center; gap: 30px; margin: 20px 0; }
+        .stat-card { background: #f8fafc; padding: 15px 30px; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 32px; font-weight: 800; color: #6366f1; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; }
+        .rank-1 { background: #fef3c7; }
+        .rank-2 { background: #f3f4f6; }
+        .rank-3 { background: #fed7aa; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="title">CLASS RANKING REPORT</div>
+        <div>March ${currentYear} Class | Nursing Programme</div>
+        <div>Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${totalStudents}</div><div>Total Students</div></div>
+        <div class="stat-card"><div class="stat-value">${classAverage}%</div><div>Class Average</div></div>
+        <div class="stat-card"><div class="stat-value">${passCount}</div><div>Passing Students</div></div>
+        <div class="stat-card"><div class="stat-value">${((passCount/totalStudents)*100).toFixed(1)}%</div><div>Pass Rate</div></div>
+      </div>
+      
+      <h3>🏆 Complete Student Rankings</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th><th>Student Name</th><th>Admission</th><th>Subjects</th><th>Average</th><th>Grade</th><th>Percentile</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>${rankingsHtml}</tbody>
+      </table>
+      
+      <div class="footer">
+        <p>Official Class Ranking Report - Nakuru College of Health Sciences</p>
+        <p>NCK Accredited Nursing Programme</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  if (typeof html2pdf === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      generatePDFFromContent(content, `CLASS_RANKING_${currentYear}.pdf`);
+    };
+    document.head.appendChild(script);
+  } else {
+    generatePDFFromContent(content, `CLASS_RANKING_${currentYear}.pdf`);
+  }
+  
+  hideLoading();
+};
+
+// Preview Subject Report
+window.previewSubjectReport = async function() {
+  const block = document.getElementById('reportBlockSelect').value;
+  const subject = document.getElementById('reportSubjectSelect').value;
+  
+  if (!block || !subject) {
+    showNotification('Please select Block and Subject', true);
+    return;
+  }
+  
+  showLoading('Loading preview...');
+  
+  const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+  const config = await getConfig();
+  const subjectConfig = (config[block] || []).find(s => s.name === subject);
+  const assessmentType = subjectConfig?.assessmentType || 'full';
+  
+  if (!marks || !marks.length) {
+    document.getElementById('previewContent').innerHTML = '<p style="text-align: center; color: #ef4444;">No marks found for this subject</p>';
+    document.getElementById('reportPreviewArea').style.display = 'block';
+    hideLoading();
+    return;
+  }
+  
+  let studentScores = [];
+  for (let mark of marks) {
+    let cat1 = parseFloat(mark.cat1) || 0;
+    let cat2 = parseFloat(mark.cat2) || 0;
+    let exam = parseFloat(mark.exam) || 0;
+    let finalScore = 0;
+    
+    if (assessmentType === 'full') {
+      finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    } else if (assessmentType === 'single_cat') {
+      finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    } else {
+      finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+    }
+    
+    if (finalScore > 0) {
+      studentScores.push({ name: mark.name, admission: mark.admission, score: finalScore });
+    }
+  }
+  
+  studentScores.sort((a, b) => b.score - a.score);
+  const averageScore = studentScores.length > 0 ? (studentScores.reduce((a,b) => a + b.score, 0) / studentScores.length).toFixed(2) : 0;
+  const passCount = studentScores.filter(s => s.score >= 60).length;
+  
+  const previewHtml = `
+    <div style="overflow-x: auto;">
+      <h4>${subject} - Quick Preview</h4>
+      <div style="display: flex; gap: 20px; margin: 15px 0;">
+        <div class="stat-box"><strong>Students:</strong> ${studentScores.length}</div>
+        <div class="stat-box"><strong>Average:</strong> ${averageScore}%</div>
+        <div class="stat-box"><strong>Pass Rate:</strong> ${((passCount/studentScores.length)*100).toFixed(1)}%</div>
+      </div>
+      <table class="results-table">
+        <thead><tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Score</th><th>Status</th></tr></thead>
+        <tbody>
+          ${studentScores.slice(0, 10).map((s, idx) => `
+            <tr><td>${idx+1}</td><td>${s.name}</td><td>${s.admission}</td><td style="font-weight: bold; ${s.score >= 60 ? 'color: #10b981' : 'color: #ef4444'}">${s.score}%</td><td>${s.score >= 60 ? 'PASS' : 'FAIL'}</td></tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${studentScores.length > 10 ? '<p style="margin-top: 10px;"><em>Showing top 10 of ' + studentScores.length + ' students. Generate PDF for full report.</em></p>' : ''}
+    </div>
+  `;
+  
+  document.getElementById('previewContent').innerHTML = previewHtml;
+  document.getElementById('reportPreviewArea').style.display = 'block';
+  hideLoading();
+};
+
+// Helper function to generate PDF from content
+function generatePDFFromContent(content, filename) {
+  const element = document.createElement('div');
+  element.innerHTML = content;
+  element.style.position = 'absolute';
+  element.style.left = '-9999px';
+  element.style.top = '-9999px';
+  document.body.appendChild(element);
+  
+  const opt = {
+    margin: [0.5, 0.5, 0.5, 0.5],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, letterRendering: true },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+  
+  html2pdf().set(opt).from(element).save().then(() => {
+    document.body.removeChild(element);
+    showNotification('Report generated successfully!', false);
+  }).catch(err => {
+    document.body.removeChild(element);
+    showNotification('Error generating report: ' + err.message, true);
+  });
+}
+
+// Placeholder functions for other report types (can be expanded similarly)
+window.generateBlockPerformanceReport = function() {
+  showNotification('Block Performance Report - Coming Soon!', false);
+};
+
+window.generateClinicalReport = function() {
+  showNotification('Clinical Assessment Report - Coming Soon!', false);
+};
   // ======================= ENTRY CONTROL PANEL =======================
   async function showEntryControlPanel() {
     showLoading('Loading entry control panel...');
