@@ -1312,7 +1312,6 @@ window.generateClinicalReport = async function() {
   const clinicalAvg = studentPerformance.length > 0 ? (totalScoreSum / studentPerformance.length).toFixed(2) : 0;
   const passCount = studentPerformance.filter(s => s.average >= 60).length;
   const failCount = studentPerformance.filter(s => s.average < 60 && s.average > 0).length;
-  const pendingCount = studentPerformance.filter(s => s.average == 0).length;
   const passRate = studentPerformance.length > 0 ? ((passCount / studentPerformance.length) * 100).toFixed(1) : 0;
   
   const topPerformers = studentPerformance.slice(0, 10);
@@ -1320,7 +1319,7 @@ window.generateClinicalReport = async function() {
   let rankingsHtml = topPerformers.map((s, idx) => `
     <tr class="${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">
       <td style="padding: 10px; text-align: center; font-weight: bold;">${idx + 1}</td>
-      <td style="padding: 10px;">${s.name}</td>
+      <td style="padding: 10px;">${escapeHtml(s.name)}</td>
       <td style="padding: 10px;">${s.admission || 'N/A'}</td>
       <td style="padding: 10px; text-align: center; font-weight: bold; color: #10b981;">${s.average}%</td>
       <td style="padding: 10px; text-align: center;">
@@ -1330,15 +1329,6 @@ window.generateClinicalReport = async function() {
       </td>
     </tr>
   `).join('');
-  
-  // Get assessment column names
-  let assessmentNames = [
-    'ANC WARD', 'IMMUNIZATION ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
-    'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
-    'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
-  ];
-  const savedNames = localStorage.getItem(`assessmentColumnNames_${currentYear}`);
-  if (savedNames) assessmentNames = JSON.parse(savedNames);
   
   const content = `
     <!DOCTYPE html>
@@ -1406,9 +1396,17 @@ window.generateClinicalReport = async function() {
   
   hideLoading();
 };
-window.generateClinicalReport = function() {
-  showNotification('Clinical Assessment Report - Coming Soon!', false);
-};
+
+// Make sure escapeHtml function exists
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
   // ======================= ENTRY CONTROL PANEL =======================
   async function showEntryControlPanel() {
     showLoading('Loading entry control panel...');
