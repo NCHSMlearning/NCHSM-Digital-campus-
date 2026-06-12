@@ -4632,39 +4632,6 @@ function generateInterventionListHTML(data) {
     if(result.success){ configCache = null; showUnits(); } 
   }
   
-  function showEditUnitModal(block, name, curType) { 
-    const modal = `<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
-      <div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div>
-      <div class="field"><label>Assessment Type</label><select id="editUnitType">
-        <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
-        <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
-        <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
-      </select></div>
-      <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%">Save Changes</button>
-    </div></div></div>`; 
-    document.body.insertAdjacentHTML('beforeend', modal); 
-  }
-  
-  async function updateUnit(block, oldName) { 
-    const newName = document.getElementById('editUnitName').value.trim().toUpperCase(); 
-    const newType = document.getElementById('editUnitType').value; 
-    if(!newName){ showNotification('Enter subject name', true); return; } 
-    showLoading('Updating unit...'); 
-    const result = await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) }); 
-    hideLoading(); closeModal(); 
-    showNotification(result.success ? 'Unit updated successfully!' : (result.message || 'Error updating unit'), !result.success); 
-    if(result.success){ configCache = null; showUnits(); } 
-  }
-  
-  async function deleteUnit(block, name) { 
-    if(confirm(`Delete unit "${name}"? This will delete ALL marks for this subject!`)){ 
-      showLoading('Deleting unit...'); 
-      const result = await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }); 
-      hideLoading(); 
-      showNotification(result.success ? 'Unit deleted successfully!' : (result.message || 'Error deleting unit'), !result.success); 
-      if(result.success){ configCache = null; showUnits(); } 
-    } 
-  }
   // ======================= EDIT UNIT MODAL =======================
 function showEditUnitModal(block, name, curType) {
   // Escape special characters to prevent HTML issues
