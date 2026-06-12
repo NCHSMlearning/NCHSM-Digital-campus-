@@ -1349,123 +1349,325 @@ async function generateAndDownloadPDF(reportType, data) {
 }
 
 function generateStudentTranscriptPDF(student, data) {
-  if (typeof html2pdf === 'undefined') {
-    showNotification('PDF library loading, please try again', true);
+  showLoading('Creating professional transcript...');
+  
+  if (!student || !data) {
+    hideLoading();
+    showNotification('Missing student data', true);
     return;
   }
   
-  const sortedSubjects = [...student.subjects].sort((a, b) => b.score - a.score);
-  const subjectsHtml = sortedSubjects.map((subj, idx) => `
-    <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${idx + 1}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${subj.name}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">${subj.block.replace('_', ' ')}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; ${subj.score >= 60 ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</td>
-      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">
-        <span style="background: ${subj.score >= 60 ? '#d1fae5' : '#fee2e2'}; color: ${subj.score >= 60 ? '#065f46' : '#991b1b'}; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">
-          ${subj.score >= 60 ? 'PASS' : 'FAIL'}
-        </span>
-      </td>
-    </table>
-  `).join('');
+  // Sort subjects by score (highest first)
+  const sortedSubjects = student.subjects && student.subjects.length ? 
+    [...student.subjects].sort((a, b) => b.score - a.score) : [];
   
+  // Calculate statistics
+  const overallAvg = student.overallAvg || 0;
+  const subjectCount = student.subjectCount || 0;
+  const status = overallAvg >= 60 ? 'PASS' : (subjectCount > 0 ? 'FAIL' : 'PENDING');
+  
+  // Grade letter based on average
+  let gradeLetter = 'F';
+  if (overallAvg >= 80) gradeLetter = 'A';
+  else if (overallAvg >= 70) gradeLetter = 'B';
+  else if (overallAvg >= 60) gradeLetter = 'C';
+  else if (overallAvg >= 50) gradeLetter = 'D';
+  
+  // Build subjects table HTML
+  let subjectsHtml = '';
+  if (sortedSubjects.length > 0) {
+    subjectsHtml = sortedSubjects.map((subj, idx) => {
+      const isPass = subj.score >= 60;
+      const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 10px 8px; text-align: center;">${idx + 1}</td>
+          <td style="padding: 10px 8px;"><strong>${safeName}</strong></td>
+          <td style="padding: 10px 8px; text-align: center;">${subj.block ? subj.block.replace('_', ' ') : 'N/A'}</td>
+          <td style="padding: 10px 8px; text-align: center;">
+            <span style="font-weight: 700; ${isPass ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</span>
+          </td>
+          <td style="padding: 10px 8px; text-align: center;">
+            <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+              ${isPass ? '✓ PASS' : '✗ FAIL'}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } else {
+    subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 40px;">📚 No subjects completed yet</td></tr>';
+  }
+  
+  // Calculate performance metrics
+  const passedSubjects = sortedSubjects.filter(s => s.score >= 60).length;
+  const passRate = sortedSubjects.length > 0 ? ((passedSubjects / sortedSubjects.length) * 100).toFixed(1) : 0;
+  
+  const safeStudentName = (student.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const safeAdmission = (student.admission || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  
+  // Generate the PDF HTML
   const content = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Student Transcript - ${student.name}</title>
+      <title>Academic Transcript - ${safeStudentName}</title>
       <style>
-        body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: white; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6366f1; padding-bottom: 20px; }
-        .logo { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .institution { font-size: 14px; color: #64748b; margin-top: 5px; }
-        .title { font-size: 20px; font-weight: 700; margin: 20px 0 10px; }
-        .student-info { background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; }
-        .info-item { margin: 5px 0; }
-        .info-label { font-weight: 600; color: #475569; }
-        .info-value { color: #1e293b; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px; text-align: left; font-weight: 600; }
-        td { padding: 10px; }
-        .summary { display: flex; justify-content: space-between; margin-top: 25px; gap: 15px; }
-        .summary-card { flex: 1; background: #f1f5f9; padding: 15px; border-radius: 12px; text-align: center; }
-        .summary-label { font-size: 12px; color: #64748b; }
-        .summary-value { font-size: 28px; font-weight: 800; color: #6366f1; }
-        .status-badge { display: inline-block; padding: 6px 20px; border-radius: 40px; font-weight: 700; font-size: 16px; }
-        .status-pass { background: #d1fae5; color: #065f46; }
-        .status-fail { background: #fee2e2; color: #991b1b; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+          background: white;
+          padding: 40px;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        .transcript-container {
+          max-width: 1100px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          overflow: hidden;
+        }
+        .header {
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          color: white;
+          padding: 40px;
+          text-align: center;
+          position: relative;
+        }
+        .header::before {
+          content: '🎓';
+          position: absolute;
+          bottom: -20px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 40px;
+          background: white;
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .logo-icon { font-size: 48px; margin-bottom: 10px; }
+        .institution-name { font-size: 28px; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; }
+        .institution-tagline { font-size: 12px; opacity: 0.8; margin-top: 5px; }
+        .accreditation {
+          background: rgba(255,255,255,0.1);
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 10px;
+          margin-top: 10px;
+        }
+        .title-section {
+          text-align: center;
+          padding: 30px;
+          background: #f8fafc;
+          border-bottom: 2px solid #e2e8f0;
+        }
+        .transcript-title {
+          font-size: 24px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          letter-spacing: 2px;
+        }
+        .transcript-subtitle {
+          font-size: 12px;
+          color: #64748b;
+          margin-top: 5px;
+        }
+        .student-info-card {
+          background: white;
+          margin: 30px;
+          padding: 25px;
+          border-radius: 16px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+          border-left: 5px solid #6366f1;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+        }
+        .info-field { display: flex; align-items: baseline; flex-wrap: wrap; }
+        .info-label { font-weight: 700; color: #475569; min-width: 120px; font-size: 13px; }
+        .info-value { color: #1e293b; font-weight: 600; }
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 15px;
+          margin: 30px;
+        }
+        .stat-card {
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          padding: 15px;
+          border-radius: 12px;
+          text-align: center;
+          border: 1px solid #e2e8f0;
+        }
+        .stat-value {
+          font-size: 28px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        .stat-label { font-size: 11px; color: #64748b; margin-top: 5px; }
+        .results-table { margin: 0 30px 30px 30px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 14px 12px; font-weight: 600; font-size: 13px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        tr:last-child td { border-bottom: none; }
+        .result-banner {
+          margin: 30px;
+          padding: 25px;
+          border-radius: 16px;
+          text-align: center;
+          background: ${status === 'PASS' ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)'};
+        }
+        .result-status {
+          font-size: 28px;
+          font-weight: 800;
+          color: ${status === 'PASS' ? '#065f46' : '#991b1b'};
+        }
+        .result-message {
+          font-size: 13px;
+          margin-top: 10px;
+          color: ${status === 'PASS' ? '#065f46' : '#991b1b'};
+        }
+        .footer {
+          background: #f8fafc;
+          padding: 20px 30px;
+          text-align: center;
+          border-top: 1px solid #e2e8f0;
+          font-size: 10px;
+          color: #94a3b8;
+        }
+        .signature-line {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px dashed #cbd5e1;
+        }
+        @media print {
+          body { padding: 0; margin: 0; }
+          .transcript-container { box-shadow: none; border-radius: 0; }
+        }
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="logo">🏥 NAKURU COLLEGE OF HEALTH SCIENCES</div>
-        <div class="institution">School of Nursing | Accredited by NCK</div>
-      </div>
-      
-      <div class="title">ACADEMIC TRANSCRIPT</div>
-      
-      <div class="student-info">
-        <div class="info-item"><span class="info-label">Student Name:</span> <span class="info-value">${student.name}</span></div>
-        <div class="info-item"><span class="info-label">Admission Number:</span> <span class="info-value">${student.admission}</span></div>
-        <div class="info-item"><span class="info-label">Academic Year:</span> <span class="info-value">March ${data.currentYear}</span></div>
-        <div class="info-item"><span class="info-label">Report Date:</span> <span class="info-value">${new Date().toLocaleDateString()}</span></div>
-      </div>
-      
-      <table>
-        <thead>
-          <tr><th>#</th><th>Subject/Unit</th><th>Block</th><th>Score</th><th>Status</th></tr>
-        </thead>
-        <tbody>${subjectsHtml}</tbody>
-      </table>
-      
-      <div class="summary">
-        <div class="summary-card">
-          <div class="summary-label">Subjects Completed</div>
-          <div class="summary-value">${student.subjectCount}</div>
+      <div class="transcript-container">
+        <div class="header">
+          <div class="logo-icon">🏥</div>
+          <div class="institution-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+          <div class="institution-tagline">Excellence in Nursing Education & Clinical Practice</div>
+          <div class="accreditation">⭐ FULLY ACCREDITED BY THE NURSING COUNCIL OF KENYA (NCK) ⭐</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Overall Average</div>
-          <div class="summary-value">${student.overallAvg}%</div>
+        
+        <div class="title-section">
+          <div class="transcript-title">OFFICIAL ACADEMIC TRANSCRIPT</div>
+          <div class="transcript-subtitle">This document certifies the academic record of the student named below</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Final Status</div>
-          <div class="status-badge ${student.overallAvg >= 60 ? 'status-pass' : 'status-fail'}">
-            ${student.overallAvg >= 60 ? '✓ PASS' : '✗ FAIL'}
+        
+        <div class="student-info-card">
+          <div class="info-grid">
+            <div class="info-field"><span class="info-label">Student Name:</span><span class="info-value">${safeStudentName}</span></div>
+            <div class="info-field"><span class="info-label">Admission Number:</span><span class="info-value">${safeAdmission}</span></div>
+            <div class="info-field"><span class="info-label">Programme:</span><span class="info-value">Bachelor of Science in Nursing (BScN)</span></div>
+            <div class="info-field"><span class="info-label">Academic Year:</span><span class="info-value">March ${data.currentYear || currentYear}</span></div>
+            <div class="info-field"><span class="info-label">Pass Mark:</span><span class="info-value">60% (NCK Standard)</span></div>
+            <div class="info-field"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
           </div>
         </div>
-      </div>
-      
-      <div class="footer">
-        <p>This is a computer-generated transcript. No signature is required.</p>
-        <p>Nakuru College of Health Sciences - Nursing Department</p>
+        
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">${subjectCount}</div><div class="stat-label">Subjects Completed</div></div>
+          <div class="stat-card"><div class="stat-value">${passedSubjects}</div><div class="stat-label">Subjects Passed</div></div>
+          <div class="stat-card"><div class="stat-value">${passRate}%</div><div class="stat-label">Pass Rate</div></div>
+          <div class="stat-card"><div class="stat-value">${gradeLetter}</div><div class="stat-label">Grade Letter</div></div>
+        </div>
+        
+        <div class="results-table">
+          <h3 style="margin-bottom: 15px; color: #1e293b;">📚 Academic Performance by Subject</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Subject / Course Unit</th>
+                <th style="width: 100px;">Block</th>
+                <th style="width: 80px;">Score</th>
+                <th style="width: 90px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>${subjectsHtml}</tbody>
+          </table>
+        </div>
+        
+        <div class="result-banner">
+          <div class="result-status">${status === 'PASS' ? '✅ ACADEMIC PROGRESS: SATISFACTORY' : (status === 'FAIL' ? '⚠️ ACADEMIC PROGRESS: NEEDS IMPROVEMENT' : '⏳ PROGRESS: INCOMPLETE')}</div>
+          <div class="result-message">
+            ${status === 'PASS' ? 
+              'The student has met the minimum passing requirements and is in good academic standing.' : 
+              (status === 'FAIL' ? 
+                'The student is advised to seek academic support and remedial classes.' : 
+                'Awaiting completion of pending assessments.')}
+          </div>
+          <div style="margin-top: 15px; font-size: 13px;">
+            <strong>Overall Weighted Average: ${overallAvg}%</strong> | 
+            CGPA: ${(overallAvg / 20).toFixed(2)} / 5.00
+          </div>
+        </div>
+        
+        <div class="footer">
+          <div class="signature-line">
+            <div>_________________________<br>Registrar, Academic Affairs</div>
+            <div>_________________________<br>Dean, School of Nursing</div>
+            <div>_________________________<br>NCK Accredited Officer</div>
+          </div>
+          <p style="margin-top: 20px;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
+          <p>© ${new Date().getFullYear()} Nakuru College of Health Sciences - All Rights Reserved</p>
+        </div>
       </div>
     </body>
     </html>
   `;
   
+  // Generate PDF
   const element = document.createElement('div');
   element.innerHTML = content;
+  element.style.position = 'absolute';
+  element.style.left = '-9999px';
+  element.style.top = '-9999px';
   document.body.appendChild(element);
   
   const opt = {
-    margin: [0.5, 0.5, 0.5, 0.5],
-    filename: `transcript_${student.admission}_${data.currentYear}.pdf`,
+    margin: [0.3, 0.3, 0.3, 0.3],
+    filename: `TRANSCRIPT_${student.admission}_${data.currentYear || currentYear}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, letterRendering: true },
+    html2canvas: { scale: 2, letterRendering: true, useCORS: true },
     jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
   };
   
   html2pdf().set(opt).from(element).save().then(() => {
     document.body.removeChild(element);
-    showNotification(`Transcript for ${student.name} generated!`, false);
+    hideLoading();
+    showNotification(`🎓 Transcript for ${student.name} generated successfully!`, false);
   }).catch(err => {
     document.body.removeChild(element);
-    showNotification('Error generating transcript', true);
+    hideLoading();
+    showNotification('Error: ' + err.message, true);
   });
 }
-
 function generateClassPerformanceHTML(data) {
   const gradeDist = {
     'A (80-100%)': data.students.filter(s => s.overallAvg >= 80).length,
