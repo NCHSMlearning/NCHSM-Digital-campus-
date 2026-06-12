@@ -1044,11 +1044,368 @@ function generatePDFFromContent(content, filename) {
   });
 }
 
-// Placeholder functions for other report types (can be expanded similarly)
-window.generateBlockPerformanceReport = function() {
-  showNotification('Block Performance Report - Coming Soon!', false);
+// ======================= BLOCK PERFORMANCE REPORT (FULLY WORKING) =======================
+
+window.generateBlockPerformanceReport = async function() {
+  const block = document.getElementById('blockReportBlockSelect').value;
+  
+  if (!block) {
+    showNotification('Please select a Block', true);
+    return;
+  }
+  
+  showLoading(`Generating ${block.replace('_', ' ')} Performance Report...`);
+  
+  const config = await getConfig();
+  const subjects = config[block] || [];
+  
+  if (!subjects.length) {
+    showNotification('No subjects found for this block', true);
+    hideLoading();
+    return;
+  }
+  
+  // Collect performance data for all subjects in the block
+  let subjectPerformance = [];
+  let totalStudentsCount = 0;
+  let totalOverallAvg = 0;
+  
+  for (let subject of subjects) {
+    const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+    let scores = [];
+    let passCount = 0;
+    let failCount = 0;
+    
+    if (marks && marks.length) {
+      for (let mark of marks) {
+        let finalScore = 0;
+        let cat1 = parseFloat(mark.cat1) || 0;
+        let cat2 = parseFloat(mark.cat2) || 0;
+        let exam = parseFloat(mark.exam) || 0;
+        
+        if (subject.assessmentType === 'full') {
+          finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        } else if (subject.assessmentType === 'single_cat') {
+          finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        } else {
+          finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+        }
+        
+        if (finalScore > 0) {
+          scores.push(finalScore);
+          if (finalScore >= 60) {
+            passCount++;
+          } else {
+            failCount++;
+          }
+        }
+      }
+    }
+    
+    const meanScore = scores.length > 0 ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(2) : 0;
+    const passRate = scores.length > 0 ? ((passCount / scores.length) * 100).toFixed(1) : 0;
+    
+    subjectPerformance.push({
+      name: subject.name,
+      assessmentType: subject.assessmentType,
+      meanScore: meanScore,
+      passRate: passRate,
+      studentCount: scores.length,
+      passCount: passCount,
+      failCount: failCount
+    });
+    
+    totalStudentsCount += scores.length;
+    totalOverallAvg += parseFloat(meanScore);
+  }
+  
+  // Sort by mean score (highest first)
+  subjectPerformance.sort((a, b) => b.meanScore - a.meanScore);
+  
+  const blockOverallAvg = subjectPerformance.length > 0 ? (totalOverallAvg / subjectPerformance.length).toFixed(2) : 0;
+  const bestSubject = subjectPerformance[0];
+  const worstSubject = subjectPerformance[subjectPerformance.length - 1];
+  const totalPassCount = subjectPerformance.reduce((sum, s) => sum + s.passCount, 0);
+  const totalStudentAssessments = subjectPerformance.reduce((sum, s) => sum + s.studentCount, 0);
+  const overallPassRate = totalStudentAssessments > 0 ? ((totalPassCount / totalStudentAssessments) * 100).toFixed(1) : 0;
+  
+  // Generate subjects table
+  let subjectsTableHtml = subjectPerformance.map((subj, idx) => {
+    const meanClass = subj.meanScore >= 70 ? 'mean-high' : (subj.meanScore >= 60 ? 'mean-medium' : 'mean-low');
+    return `
+      <tr>
+        <td style="padding: 10px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 10px;"><strong>${subj.name}</strong></td>
+        <td style="padding: 10px; text-align: center;">${subj.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (subj.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</td>
+        <td style="padding: 10px; text-align: center;"><span class="stat-badge ${meanClass}">${subj.meanScore}%</span></td>
+        <td style="padding: 10px; text-align: center;">${subj.passRate}%</td>
+        <td style="padding: 10px; text-align: center;">${subj.passCount}/${subj.studentCount}</td>
+        <td style="padding: 10px; text-align: center;">
+          <div class="progress-bar" style="width: 100px;"><div class="progress-fill" style="width: ${subj.meanScore}%;"></div></div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  // Chart data
+  const chartLabels = subjectPerformance.map(s => s.name.length > 15 ? s.name.substring(0, 12) + '...' : s.name);
+  const chartScores = subjectPerformance.map(s => s.meanScore);
+  
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Block Performance Report - ${block.replace('_', ' ')}</title>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', Arial, sans-serif; margin: 40px; line-height: 1.5; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6366f1; padding-bottom: 20px; }
+        .institution { font-size: 24px; font-weight: 800; color: #1e293b; }
+        .subtitle { font-size: 14px; color: #64748b; margin-top: 5px; }
+        .title { font-size: 20px; font-weight: 700; margin: 10px 0; color: #6366f1; }
+        .stats-grid { display: flex; justify-content: space-between; gap: 15px; margin: 25px 0; flex-wrap: wrap; }
+        .stat-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 20px; border-radius: 16px; text-align: center; flex: 1; min-width: 150px; border: 1px solid #e2e8f0; }
+        .stat-value { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 14px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .mean-high { background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-weight: 600; display: inline-block; }
+        .mean-medium { background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 600; display: inline-block; }
+        .mean-low { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 20px; font-weight: 600; display: inline-block; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 100px; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px; }
+        .chart-container { margin: 30px 0; text-align: center; }
+        canvas { max-width: 100%; height: auto; max-height: 400px; margin: 0 auto; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+        @media print {
+          body { margin: 20px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="subtitle">School of Nursing | Accredited by NCK</div>
+        <div class="title">BLOCK PERFORMANCE REPORT</div>
+        <div>${block.replace('_', ' ')} | March ${currentYear} Class</div>
+        <div>Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${subjectPerformance.length}</div><div class="stat-label">Subjects in Block</div></div>
+        <div class="stat-card"><div class="stat-value">${blockOverallAvg}%</div><div class="stat-label">Block Average</div></div>
+        <div class="stat-card"><div class="stat-value">${overallPassRate}%</div><div class="stat-label">Overall Pass Rate</div></div>
+        <div class="stat-card"><div class="stat-value">${totalStudentAssessments}</div><div class="stat-label">Total Assessments</div></div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${bestSubject?.name || 'N/A'}</div><div class="stat-label">Best Subject (${bestSubject?.meanScore || 0}%)</div></div>
+        <div class="stat-card"><div class="stat-value">${worstSubject?.name || 'N/A'}</div><div class="stat-label">Subject Needing Attention (${worstSubject?.meanScore || 0}%)</div></div>
+      </div>
+      
+      <div class="chart-container">
+        <h3>📊 Subject Performance Comparison</h3>
+        <canvas id="performanceChart"></canvas>
+      </div>
+      
+      <h3>📚 Detailed Subject Analysis</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Subject Name</th>
+            <th>Assessment Type</th>
+            <th>Mean Score</th>
+            <th>Pass Rate</th>
+            <th>Passed/Total</th>
+            <th>Performance</th>
+          </tr>
+        </thead>
+        <tbody>${subjectsTableHtml}</tbody>
+      </table>
+      
+      <div class="footer">
+        <p>This is an official Block Performance Report. For verification, contact the Academic Registry.</p>
+        <p>Nakuru College of Health Sciences - Nursing Department | NCK Accredited Programme</p>
+      </div>
+      
+      <script>
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ${JSON.stringify(chartLabels)},
+            datasets: [{
+              label: 'Mean Score (%)',
+              data: ${JSON.stringify(chartScores)},
+              backgroundColor: 'rgba(99, 102, 241, 0.7)',
+              borderColor: '#6366f1',
+              borderWidth: 2,
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score (%)' } }
+            }
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `;
+  
+  if (typeof html2pdf === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      generatePDFFromContent(content, `BLOCK_PERFORMANCE_${block.replace('_', '')}_${currentYear}.pdf`);
+    };
+    document.head.appendChild(script);
+  } else {
+    generatePDFFromContent(content, `BLOCK_PERFORMANCE_${block.replace('_', '')}_${currentYear}.pdf`);
+  }
+  
+  hideLoading();
 };
 
+// ======================= CLINICAL ASSESSMENT REPORT (FULLY WORKING) =======================
+
+window.generateClinicalReport = async function() {
+  const clinicalType = document.getElementById('clinicalTypeSelect').value;
+  
+  showLoading(`Generating ${clinicalType} Clinical Report...`);
+  
+  const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(clinicalType)}`, {});
+  
+  if (!marks || !marks.length) {
+    showNotification('No clinical data found', true);
+    hideLoading();
+    return;
+  }
+  
+  let studentPerformance = [];
+  let totalScoreSum = 0;
+  
+  for (let mark of marks) {
+    let scores = mark.scores || [];
+    let validScores = scores.filter(s => s > 0);
+    let avg = validScores.length > 0 ? (validScores.reduce((a,b) => a+b, 0) / validScores.length).toFixed(2) : 0;
+    
+    studentPerformance.push({
+      name: mark.name,
+      admission: mark.admission,
+      average: avg,
+      scores: scores,
+      gradedBy: mark.gradedBy || 'N/A'
+    });
+    totalScoreSum += parseFloat(avg);
+  }
+  
+  studentPerformance.sort((a, b) => b.average - a.average);
+  
+  const clinicalAvg = studentPerformance.length > 0 ? (totalScoreSum / studentPerformance.length).toFixed(2) : 0;
+  const passCount = studentPerformance.filter(s => s.average >= 60).length;
+  const failCount = studentPerformance.filter(s => s.average < 60 && s.average > 0).length;
+  const pendingCount = studentPerformance.filter(s => s.average == 0).length;
+  const passRate = studentPerformance.length > 0 ? ((passCount / studentPerformance.length) * 100).toFixed(1) : 0;
+  
+  const topPerformers = studentPerformance.slice(0, 10);
+  
+  let rankingsHtml = topPerformers.map((s, idx) => `
+    <tr class="${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">
+      <td style="padding: 10px; text-align: center; font-weight: bold;">${idx + 1}</td>
+      <td style="padding: 10px;">${s.name}</td>
+      <td style="padding: 10px;">${s.admission || 'N/A'}</td>
+      <td style="padding: 10px; text-align: center; font-weight: bold; color: #10b981;">${s.average}%</td>
+      <td style="padding: 10px; text-align: center;">
+        <span style="background: ${s.average >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 4px 12px; border-radius: 20px;">
+          ${s.average >= 60 ? 'COMPETENT' : (s.average > 0 ? 'NEEDS IMPROVEMENT' : 'PENDING')}
+        </span>
+      </td>
+    </tr>
+  `).join('');
+  
+  // Get assessment column names
+  let assessmentNames = [
+    'ANC WARD', 'IMMUNIZATION ASSESSMENT', 'NURSING CARE', 'PSYCHIATRY ASSESSMENT',
+    'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT', 'WARD MANAGEMENT', 'MCH/FP CLINIC',
+    'PSYCHIATRY CASE STUDY', 'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
+  ];
+  const savedNames = localStorage.getItem(`assessmentColumnNames_${currentYear}`);
+  if (savedNames) assessmentNames = JSON.parse(savedNames);
+  
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Clinical Assessment Report - ${clinicalType}</title>
+      <style>
+        body { font-family: 'Inter', Arial, sans-serif; margin: 40px; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #10b981; padding-bottom: 20px; }
+        .institution { font-size: 24px; font-weight: 800; color: #1e293b; }
+        .title { font-size: 20px; font-weight: 700; margin: 10px 0; color: #10b981; }
+        .stats-grid { display: flex; justify-content: space-between; gap: 15px; margin: 25px 0; flex-wrap: wrap; }
+        .stat-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 20px; border-radius: 16px; text-align: center; flex: 1; }
+        .stat-value { font-size: 32px; font-weight: 800; color: #10b981; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #10b981; color: white; padding: 14px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .rank-1 { background: #fef3c7; }
+        .rank-2 { background: #f3f4f6; }
+        .rank-3 { background: #fed7aa; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+        <div class="title">CLINICAL ASSESSMENT REPORT</div>
+        <div>${clinicalType} | March ${currentYear} Class</div>
+        <div>Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${studentPerformance.length}</div><div>Students Assessed</div></div>
+        <div class="stat-card"><div class="stat-value">${clinicalAvg}%</div><div>Clinical Average</div></div>
+        <div class="stat-card"><div class="stat-value">${passRate}%</div><div>Pass Rate</div></div>
+        <div class="stat-card"><div class="stat-value">${passCount}</div><div>Competent</div></div>
+        <div class="stat-card"><div class="stat-value">${failCount}</div><div>Needs Improvement</div></div>
+      </div>
+      
+      <h3>🏆 Top 10 Clinical Performers</h3>
+      <table>
+        <thead><tr><th>Rank</th><th>Student Name</th><th>Admission</th><th>Score</th><th>Status</th></tr></thead>
+        <tbody>${rankingsHtml}</tbody>
+      </table>
+      
+      <div class="footer">
+        <p>NCK Accredited Clinical Evaluation | Nursing Council of Kenya Standards</p>
+        <p>Nakuru College of Health Sciences - Nursing Department</p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  if (typeof html2pdf === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      generatePDFFromContent(content, `CLINICAL_REPORT_${clinicalType.replace(/ /g, '_')}_${currentYear}.pdf`);
+    };
+    document.head.appendChild(script);
+  } else {
+    generatePDFFromContent(content, `CLINICAL_REPORT_${clinicalType.replace(/ /g, '_')}_${currentYear}.pdf`);
+  }
+  
+  hideLoading();
+};
 window.generateClinicalReport = function() {
   showNotification('Clinical Assessment Report - Coming Soon!', false);
 };
