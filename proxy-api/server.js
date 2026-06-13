@@ -960,6 +960,281 @@ app.get('/api/stats', async (req, res) => {
     res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
   }
 });
+// ======================= SCORE PUBLISHING ENDPOINTS =======================
+// Store published scores in memory (will be persisted to a sheet in production)
+let publishedScores = new Map(); // key: `${examType}_${examId}_${studentId}`
 
+// Load published scores from a dedicated sheet
+async function loadPublishedScores(spreadsheetId) {
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: 'PUBLISHED_SCORES!A:E',
+        }).catch(() => null);
+        
+        if (response && response.data.values) {
+            const data = response.data.values;
+            publishedScores.clear();
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (row && row[0] && row[3] === 'PUBLISHED') {
+                    const key = `${row[0]}_${row[1]}_${row[2]}`;
+                    publishedScores.set(key, {
+                        publishedAt: row[4],
+                        publishedBy: row[3]
+                    });
+                }
+            }
+            console.log(`📚 Loaded ${publishedScores.size} published scores from sheet`);
+        }
+    } catch (error) {
+        console.log('No PUBLISHED_SCORES sheet found, creating...');
+        // Create the sheet if it doesn't exist
+        try {
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId: spreadsheetId,
+                requestBody: {
+                    requests: [{ addSheet: { properties: { title: 'PUBLISHED_SCORES' } } }]
+                }
+            });
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: spreadsheetId,
+                range: 'PUBLISHED_SCORES!A1:E1',
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: [['EXAM_TYPE', 'EXAM_ID', 'STUDENT_ID', 'STATUS', 'PUBLISHED_AT']]
+                }
+            });
+        } catch (e) { console.log('Sheet creation error:', e.message); }
+    }
+}
+
+// Save a published score to the sheet
+async function savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, status, publishedBy) {
+    try {
+        // Check if entry exists
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: 'PUBLISHED_SCORES!A:E',
+        });
+        const data = response.data.values || [];
+        let foundRow = -1;
+        
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === examType && data[i][1] === examId && data[i][2] === studentId) {
+                foundRow = i + 1;
+                break;
+            }
+        }
+        
+        const now = new Date().toISOString();
+        
+        if (foundRow !== -1) {
+            // Update existing
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: spreadsheetId,
+                range: `PUBLISHED_SCORES!D${foundRow}:E${foundRow}`,
+                valueInputOption: 'RAW',
+                requestBody: { values: [[status, now]] }
+            });
+        } else {
+            // Add new
+            const nextRow = data.length + 1;
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: spreadsheetId,
+                range: `PUBLISHED_SCORES!A${nextRow}:E${nextRow}`,
+                valueInputOption: 'RAW',
+                requestBody: { values: [[examType, examId, studentId, status, now]] }
+            });
+        }
+    } catch (error) {
+        console.error('Error saving published score:', error);
+    }
+}
+
+// Get all published scores for a student (for student portal)
+app.get('/api/student-published-scores/:admission', async (req, res) => {
+    try {
+        const { admission } = req.params;
+        const published = [];
+        
+        for (const [key, value] of publishedScores.entries()) {
+            if (key.endsWith(`_${admission}`)) {
+                const [examType, examId] = key.split('_');
+                published.push({
+                    examType,
+                    examId,
+                    studentId: admission,
+                    publishedAt: value.publishedAt,
+                    publishedBy: value.publishedBy
+                });
+            }
+        }
+        
+        res.json({ success: true, published });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Check if a specific score is published
+app.get('/api/score-published/:examType/:examId/:studentId', async (req, res) => {
+    try {
+        const { examType, examId, studentId } = req.params;
+        const key = `${examType}_${examId}_${studentId}`;
+        const isPublished = publishedScores.has(key);
+        
+        res.json({ 
+            success: true, 
+            isPublished,
+            publishedAt: isPublished ? publishedScores.get(key).publishedAt : null
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Publish a score (Admin only)
+app.post('/api/publish-score', async (req, res) => {
+    try {
+        const { examType, examId, studentId, studentName, examName, publishedBy } = req.body;
+        const spreadsheetId = req.spreadsheetId;
+        const key = `${examType}_${examId}_${studentId}`;
+        
+        publishedScores.set(key, {
+            publishedAt: new Date().toISOString(),
+            publishedBy: publishedBy
+        });
+        
+        await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'PUBLISHED', publishedBy);
+        
+        // Log the action
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: publishedBy,
+            action: 'publish',
+            target: examName,
+            details: `Published ${studentName}'s score for ${examName}`
+        });
+        
+        res.json({ success: true, message: `Published ${studentName}'s score` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Unpublish a score (Admin only)
+app.post('/api/unpublish-score', async (req, res) => {
+    try {
+        const { examType, examId, studentId, studentName, examName, publishedBy } = req.body;
+        const spreadsheetId = req.spreadsheetId;
+        const key = `${examType}_${examId}_${studentId}`;
+        
+        publishedScores.delete(key);
+        await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'HIDDEN', publishedBy);
+        
+        // Log the action
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: publishedBy,
+            action: 'unpublish',
+            target: examName,
+            details: `Unpublished ${studentName}'s score for ${examName}`
+        });
+        
+        res.json({ success: true, message: `Unpublished ${studentName}'s score` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Bulk publish scores
+app.post('/api/bulk-publish', async (req, res) => {
+    try {
+        const { examType, examId, examName, studentIds, publishedBy } = req.body;
+        const spreadsheetId = req.spreadsheetId;
+        let count = 0;
+        
+        for (const studentId of studentIds) {
+            const key = `${examType}_${examId}_${studentId}`;
+            if (!publishedScores.has(key)) {
+                publishedScores.set(key, {
+                    publishedAt: new Date().toISOString(),
+                    publishedBy: publishedBy
+                });
+                await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'PUBLISHED', publishedBy);
+                count++;
+            }
+        }
+        
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: publishedBy,
+            action: 'bulk_publish',
+            target: examName,
+            details: `Bulk published ${count} scores for ${examName}`
+        });
+        
+        res.json({ success: true, message: `Published ${count} scores for ${examName}` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Bulk unpublish scores
+app.post('/api/bulk-unpublish', async (req, res) => {
+    try {
+        const { examType, examId, examName, studentIds, publishedBy } = req.body;
+        const spreadsheetId = req.spreadsheetId;
+        let count = 0;
+        
+        for (const studentId of studentIds) {
+            const key = `${examType}_${examId}_${studentId}`;
+            if (publishedScores.has(key)) {
+                publishedScores.delete(key);
+                await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'HIDDEN', publishedBy);
+                count++;
+            }
+        }
+        
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: publishedBy,
+            action: 'bulk_unpublish',
+            target: examName,
+            details: `Bulk unpublished ${count} scores for ${examName}`
+        });
+        
+        res.json({ success: true, message: `Unpublished ${count} scores for ${examName}` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get publication logs
+app.get('/api/publish-logs', (req, res) => {
+    const publishLogs = markEntryLogs.filter(log => 
+        log.action === 'publish' || 
+        log.action === 'unpublish' || 
+        log.action === 'bulk_publish' || 
+        log.action === 'bulk_unpublish'
+    );
+    res.json(publishLogs.slice(0, 100));
+});
+
+// Initialize published scores on server start
+async function initPublishedScores() {
+    // Try to load from default spreadsheet
+    for (const year of ['2024', '2025', '2026']) {
+        const spreadsheetId = SPREADSHEETS[year]?.internal;
+        if (spreadsheetId) {
+            await loadPublishedScores(spreadsheetId);
+            break;
+        }
+    }
+}
+
+// Call initialization
+initPublishedScores();
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
