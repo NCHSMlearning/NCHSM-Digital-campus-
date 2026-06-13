@@ -2955,9 +2955,8 @@ async function loadAttendance() {
     todayBody.innerHTML = todayHtml||'<tr><td colspan="7">No check-in records for today.</td></tr>';
     pastBody.innerHTML = pastHtml||'<tr><td colspan="6">No past attendance history found.</td></tr>';
 }
-
 /*******************************************************
- * 13. EXAMS/CATS MANAGEMENT - COMPLETE WORKING VERSION
+ * 13. EXAMS/CATS MANAGEMENT - CLEAN VERSION (NO DUPLICATES)
  *******************************************************/
 
 // ========== HELPER FUNCTIONS ==========
@@ -3162,7 +3161,6 @@ async function handleAddExam(e) {
     const intake = document.getElementById('exam_intake')?.value;
     const block_term = document.getElementById('exam_block_term')?.value;
     
-    // New marks configuration fields
     const marks_out_of = parseInt(document.getElementById('exam_out_of')?.value) || 100;
     const pass_mark = parseInt(document.getElementById('exam_pass_mark')?.value) || 50;
     const min_fee_balance = parseInt(document.getElementById('exam_min_fee')?.value) || 0;
@@ -3647,7 +3645,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </tr>`;
+                </td>`;
             }).join('');
             break;
             
@@ -3664,7 +3662,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </tr>`;
+                </td>`;
             }).join('');
             break;
             
@@ -3681,7 +3679,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </tr>`;
+                </td>`;
             }).join('');
             break;
             
@@ -3821,7 +3819,8 @@ async function saveGrades(examId, examType = 'EXAM') {
                 student_id: studentId,
                 result_status: statusSelect.value || 'Scheduled',
                 graded_by: validGraderId,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                question_id: '00000000-0000-0000-0000-000000000000'
             };
             
             let hasData = false;
