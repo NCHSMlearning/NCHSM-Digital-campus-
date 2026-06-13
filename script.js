@@ -2957,13 +2957,76 @@ async function loadAttendance() {
 }
 
 /*******************************************************
- * 13. ENHANCED EXAMS/CATS MANAGEMENT - WITH MARKS CONFIG
+ * 13. EXAMS/CATS MANAGEMENT - COMPLETE WORKING VERSION
  *******************************************************/
 
-// ========== NEW: Enhanced Exam Creation with Marks Config ==========
+// ========== HELPER FUNCTIONS ==========
+function getExamTypeLabel(examType) {
+    const labels = {
+        'CAT_1': 'CAT 1 Assessment',
+        'CAT_2': 'CAT 2 Assessment', 
+        'CAT': 'Continuous Assessment Test',
+        'EXAM': 'Final Examination',
+        'ASSIGNMENT': 'Assignment',
+        'END_TERM': 'End of Term Exam',
+        'SUPPLEMENTARY': 'Supplementary Exam'
+    };
+    return labels[examType] || 'Assessment';
+}
+
+function escapeHtml(str, forAttribute = false) {
+    if (!str) return '';
+    if (forAttribute) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function showFeedback(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+        const iconMap = { 'success': 'success', 'error': 'error', 'warning': 'warning', 'info': 'info' };
+        Swal.fire({
+            title: type.charAt(0).toUpperCase() + type.slice(1),
+            text: message,
+            icon: iconMap[type] || 'info',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
+    } else if (typeof toastr !== 'undefined') {
+        const toastrMethod = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+        toastr[toastrMethod](message);
+    } else {
+        alert(message);
+    }
+}
+
+function setButtonLoading(button, isLoading, originalText) {
+    if (!button) return;
+    if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = '<span class="loading-spinner" style="width: 16px; height: 16px; display: inline-block;"></span> Processing...';
+    } else {
+        button.disabled = false;
+        button.innerHTML = originalText || 'Submit';
+    }
+}
+
+// ========== POPULATE COURSE SELECTS ==========
 async function populateExamCourseSelects(courses = null) {
-    const courseSelect = $('exam_course_id');
-    const selectedProgram = $('exam_program').value;
+    const courseSelect = document.getElementById('exam_course_id');
+    const selectedProgram = document.getElementById('exam_program')?.value;
 
     if (!courseSelect) return;
 
@@ -3013,7 +3076,69 @@ async function populateExamCourseSelects(courses = null) {
     }
 }
 
-// ENHANCED: Handle Add Exam with marks configuration
+// ========== LOAD AVAILABLE CLASSES ==========
+async function loadAvailableClassesForExam() {
+    const container = document.getElementById('exam_class_selector');
+    if (!container) return;
+    
+    try {
+        const { data: classes, error } = await sb
+            .from('classes')
+            .select('class_name, id')
+            .order('class_name');
+        
+        if (error) throw error;
+        
+        if (classes && classes.length > 0) {
+            container.innerHTML = classes.map(cls => `
+                <label style="display: flex; align-items: center; gap: 8px; padding: 5px;">
+                    <input type="checkbox" class="exam-class-checkbox" value="${cls.id}">
+                    <span>${escapeHtml(cls.class_name)}</span>
+                </label>
+            `).join('');
+        } else {
+            container.innerHTML = '<p>No classes available. Please create classes first.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading classes:', error);
+        container.innerHTML = '<p>Error loading classes. Please refresh.</p>';
+    }
+}
+
+// ========== LOAD COURSES FOR EXAM DROPDOWN ==========
+async function loadCoursesForExamDropdown() {
+    try {
+        const { data: courses, error } = await sb
+            .from('courses')
+            .select('id, course_name, unit_code')
+            .order('course_name');
+        
+        if (error) throw error;
+        
+        const select = document.getElementById('exam_course_id');
+        if (select && courses) {
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// ========== GET SELECTED CLASSES ==========
+function getSelectedClassesForExam() {
+    const selected = [];
+    document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb => {
+        selected.push(cb.value);
+    });
+    return selected;
+}
+
+// ========== CREATE EXAM ==========
 async function handleAddExam(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -3025,24 +3150,24 @@ async function handleAddExam(e) {
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const exam_type = $('exam_type')?.value;
-    const exam_link = $('exam_link')?.value.trim() || null;
-    const exam_duration_minutes = parseInt($('exam_duration_minutes')?.value);
-    const exam_start_time = $('exam_start_time')?.value;
-    const selected_program = $('exam_program')?.value;
-    const course_id = $('exam_course_id')?.value || null;
-    const exam_title = $('exam_title')?.value.trim();
-    const exam_date = $('exam_date')?.value;
-    const exam_status = $('exam_status')?.value;
-    const intake = $('exam_intake')?.value;
-    const block_term = $('exam_block_term')?.value;
+    const exam_type = document.getElementById('exam_type')?.value;
+    const exam_link = document.getElementById('exam_link')?.value.trim() || null;
+    const exam_duration_minutes = parseInt(document.getElementById('exam_duration_minutes')?.value);
+    const exam_start_time = document.getElementById('exam_start_time')?.value;
+    const selected_program = document.getElementById('exam_program')?.value;
+    const course_id = document.getElementById('exam_course_id')?.value || null;
+    const exam_title = document.getElementById('exam_title')?.value.trim();
+    const exam_date = document.getElementById('exam_date')?.value;
+    const exam_status = document.getElementById('exam_status')?.value;
+    const intake = document.getElementById('exam_intake')?.value;
+    const block_term = document.getElementById('exam_block_term')?.value;
     
-    // NEW: Marks configuration fields
-    const marks_out_of = parseInt($('exam_out_of')?.value) || 100;
-    const pass_mark = parseInt($('exam_pass_mark')?.value) || 50;
-    const min_fee_balance = parseInt($('exam_min_fee')?.value) || 0;
-    const marks_deadline = $('exam_marks_deadline')?.value || null;
-    const exam_basis = $('exam_basis')?.value || 'ordinary';
+    // New marks configuration fields
+    const marks_out_of = parseInt(document.getElementById('exam_out_of')?.value) || 100;
+    const pass_mark = parseInt(document.getElementById('exam_pass_mark')?.value) || 50;
+    const min_fee_balance = parseInt(document.getElementById('exam_min_fee')?.value) || 0;
+    const marks_deadline = document.getElementById('exam_marks_deadline')?.value || null;
+    const exam_basis = document.getElementById('exam_basis')?.value || 'ordinary';
 
     if (!selected_program || !exam_title || !exam_date || !intake || !block_term || !exam_type || isNaN(exam_duration_minutes)) {
         showFeedback('Required fields: Program, Title, Date, Intake, Block/Term, Type, and Duration.', 'error');
@@ -3050,7 +3175,6 @@ async function handleAddExam(e) {
         return;
     }
 
-    // Get selected classes for this exam
     const selectedClasses = getSelectedClassesForExam();
 
     try {
@@ -3082,7 +3206,6 @@ async function handleAddExam(e) {
             intake_year: intake,
             block_term,
             status: exam_status,
-            // NEW fields
             marks_out_of: marks_out_of,
             pass_mark: pass_mark,
             min_fee_balance: min_fee_balance,
@@ -3100,9 +3223,11 @@ async function handleAddExam(e) {
 
         await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, data?.[0]?.id, 'SUCCESS');
         showFeedback(`✅ Assessment added successfully! Marks out of: ${marks_out_of}, Pass mark: ${pass_mark}%`, 'success');
-        e.target.reset();
+        
+        if (e.target) e.target.reset();
         loadExams();
-        renderFullCalendar();
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        
     } catch (error) {
         await logAudit('EXAM_ADD', `Failed to add ${exam_type}: ${exam_title}. ${error.message}`, null, 'FAILURE');
         showFeedback(`Failed to add assessment: ${error.message}`, 'error');
@@ -3111,61 +3236,63 @@ async function handleAddExam(e) {
     }
 }
 
-// NEW: Get selected classes from checkboxes
-function getSelectedClassesForExam() {
-    const selected = [];
-    document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb => {
-        selected.push(cb.value);
-    });
-    return selected;
-}
-
-// NEW: Load available classes for exam creation
-async function loadAvailableClassesForExam() {
-    const container = document.getElementById('exam_class_selector');
-    if (!container) return;
-    
+// ========== CALCULATE EXAM PROGRESS ==========
+async function calculateExamProgress(examId) {
     try {
-        const { data: classes, error } = await sb
-            .from('classes')
-            .select('class_name, id')
-            .order('class_name');
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('program_type, intake_year, block_term')
+            .eq('id', examId)
+            .single();
         
-        if (error) throw error;
-        
-        if (classes && classes.length > 0) {
-            container.innerHTML = classes.map(cls => `
-                <label style="display: flex; align-items: center; gap: 8px; padding: 5px;">
-                    <input type="checkbox" class="exam-class-checkbox" value="${cls.id}">
-                    <span>${escapeHtml(cls.class_name)}</span>
-                </label>
-            `).join('');
-        } else {
-            container.innerHTML = '<p>No classes available. Please create classes first.</p>';
+        if (examError || !exam) {
+            return { totalCount: 0, markedCount: 0, percentage: 0 };
         }
+        
+        const { data: students, error: studentError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('program', exam.program_type)
+            .eq('intake_year', exam.intake_year)
+            .eq('block', exam.block_term);
+        
+        const totalCount = students?.length || 0;
+        
+        const { data: grades, error: gradeError } = await sb
+            .from('exam_grades')
+            .select('student_id')
+            .eq('exam_id', examId);
+        
+        const markedCount = grades?.length || 0;
+        const percentage = totalCount > 0 ? Math.round((markedCount / totalCount) * 100) : 0;
+        
+        return { totalCount, markedCount, percentage };
     } catch (error) {
-        console.error('Error loading classes:', error);
-        container.innerHTML = '<p>Error loading classes. Please refresh.</p>';
+        console.error('Error calculating progress:', error);
+        return { totalCount: 0, markedCount: 0, percentage: 0 };
     }
 }
 
-// ENHANCED: Load exams with progress tracking
+// ========== LOAD EXAMS ==========
 async function loadExams() {
-    const tbody = $('exams-table');
+    const tbody = document.getElementById('exams-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="10">Loading exams/CATs...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">Loading exams/CATs...</td></tr>';
 
-    const { data: exams, error } = await fetchData(
-        'exams',
-        '*, course:course_id(course_name)',
-        {},
-        'exam_date',
-        false
-    );
+    const { data: exams, error } = await sb
+        .from('exams')
+        .select('*, course:course_id(course_name)')
+        .order('exam_date', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="10">Error loading exams: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if (!exams || exams.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11">No exams found. Create your first exam!<\/td><\/tr>';
+        populateStudentExams([]);
         return;
     }
 
@@ -3176,22 +3303,19 @@ async function loadExams() {
         const courseName = e.course?.course_name || 'N/A';
         const type = e.exam_type || 'N/A';
         
-        // Calculate progress for this exam
         const progress = await calculateExamProgress(e.id);
         const progressPercent = progress.percentage;
         const marksOutOf = e.marks_out_of || 100;
         const passMark = e.pass_mark || 50;
         
-        // Get status badge with color
         const statusBadge = getExamStatusBadge(e.status);
         
-        // Progress bar HTML
         const progressBar = `
             <div style="width: 100px;">
                 <div style="background: #e5e7eb; border-radius: 10px; overflow: hidden;">
                     <div style="width: ${progressPercent}%; background: ${progressPercent >= 100 ? '#059669' : '#4C1D95'}; height: 6px;"></div>
                 </div>
-                <small>${progress.markedCount}/${progress.totalCount} students</small>
+                <small>${progress.markedCount}/${progress.totalCount}</small>
             </div>
         `;
 
@@ -3218,54 +3342,12 @@ async function loadExams() {
                 <td>${progressBar}</td>
                 <td>${statusBadge}</td>
                 <td>${actionsHtml}</td>
-                         `;
+             `;
     }
 
-    filterTable('exam-search', 'exams-table', [3, 2, 0]);
     populateStudentExams(exams);
 }
 
-// NEW: Calculate exam progress (how many students have been graded)
-async function calculateExamProgress(examId) {
-    try {
-        // Get exam details first
-        const { data: exam, error: examError } = await sb
-            .from('exams')
-            .select('program_type, intake_year, block_term')
-            .eq('id', examId)
-            .single();
-        
-        if (examError || !exam) {
-            return { totalCount: 0, markedCount: 0, percentage: 0 };
-        }
-        
-        // Get total students for this exam's criteria
-        const { data: students, error: studentError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id')
-            .eq('program', exam.program_type)
-            .eq('intake_year', exam.intake_year)
-            .eq('block', exam.block_term);
-        
-        const totalCount = students?.length || 0;
-        
-        // Get graded students
-        const { data: grades, error: gradeError } = await sb
-            .from('exam_grades')
-            .select('student_id')
-            .eq('exam_id', examId);
-        
-        const markedCount = grades?.length || 0;
-        const percentage = totalCount > 0 ? Math.round((markedCount / totalCount) * 100) : 0;
-        
-        return { totalCount, markedCount, percentage };
-    } catch (error) {
-        console.error('Error calculating progress:', error);
-        return { totalCount: 0, markedCount: 0, percentage: 0 };
-    }
-}
-
-// NEW: Get exam status badge HTML
 function getExamStatusBadge(status) {
     const statusMap = {
         'Upcoming': '<span class="badge badge-info">📅 Upcoming</span>',
@@ -3275,7 +3357,65 @@ function getExamStatusBadge(status) {
     return statusMap[status] || `<span class="badge">${status}</span>`;
 }
 
-// ENHANCED: Open edit modal with marks config fields
+// ========== POPULATE STUDENT EXAMS ==========
+async function populateStudentExams(exams) {
+    const studentExamsContainer = document.getElementById('student-exams');
+    if (!studentExamsContainer) return;
+
+    if (!exams || exams.length === 0) {
+        studentExamsContainer.innerHTML = '<p>No assessments available at the moment.</p>';
+        return;
+    }
+
+    let html = '<div class="student-exams-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">';
+    
+    exams.forEach(exam => {
+        const courseName = exam.course?.course_name || 'General Assessment';
+        const dateTime = new Date(exam.exam_date).toLocaleDateString() + (exam.exam_start_time ? ` at ${exam.exam_start_time}` : '');
+        const statusClass = exam.status === 'Upcoming' ? 'upcoming' : 
+                           exam.status === 'InProgress' ? 'in-progress' : 'completed';
+        
+        const marksOutOf = exam.marks_out_of || 100;
+        const passMark = exam.pass_mark || 50;
+
+        html += `
+            <div class="exam-card ${statusClass}" style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid ${statusClass === 'upcoming' ? '#f59e0b' : statusClass === 'in-progress' ? '#3b82f6' : '#10b981'};">
+                <h4 style="margin: 0 0 10px 0; color: #4C1D95;">${escapeHtml(exam.exam_name)}</h4>
+                <p><strong>Type:</strong> ${escapeHtml(exam.exam_type)}</p>
+                <p><strong>Course:</strong> ${escapeHtml(courseName)}</p>
+                <p><strong>Date:</strong> ${dateTime}</p>
+                <p><strong>Duration:</strong> ${exam.duration_minutes} minutes</p>
+                <p><strong>Marks Out Of:</strong> ${marksOutOf}</p>
+                <p><strong>Pass Mark:</strong> ${passMark}%</p>
+                <p><strong>Status:</strong> <span class="status-${statusClass}">${escapeHtml(exam.status)}</span></p>
+                ${exam.online_link ? `<a href="${escapeHtml(exam.online_link)}" target="_blank" class="btn-action" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">Take Exam</a>` : ''}
+            </div>`;
+    });
+
+    html += '</div>';
+    studentExamsContainer.innerHTML = html;
+}
+
+// ========== DELETE EXAM ==========
+async function deleteExam(examId, examName) {
+    if (!confirm(`Delete exam: ${examName}? This action cannot be undone.`)) return;
+    
+    try {
+        const { error } = await sb.from('exams').delete().eq('id', examId);
+        
+        if (error) throw error;
+        
+        showFeedback(`✅ Exam "${examName}" deleted successfully!`, 'success');
+        await loadExams();
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        
+    } catch (error) {
+        console.error('Error deleting exam:', error);
+        showFeedback(`Failed to delete exam: ${error.message}`, 'error');
+    }
+}
+
+// ========== OPEN EDIT EXAM MODAL ==========
 async function openEditExamModal(examId) {
     try {
         console.log('📝 Opening edit modal for exam ID:', examId);
@@ -3297,7 +3437,6 @@ async function openEditExamModal(examId) {
             return;
         }
 
-        // Set basic fields
         const examIdInput = document.getElementById('edit_exam_id');
         const titleInput = document.getElementById('edit_exam_title');
         const dateInput = document.getElementById('edit_exam_date');
@@ -3305,8 +3444,8 @@ async function openEditExamModal(examId) {
         const startTimeInput = document.getElementById('edit_exam_start_time');
         const durationInput = document.getElementById('edit_exam_duration');
         const linkInput = document.getElementById('edit_exam_link');
+        const typeInput = document.getElementById('edit_exam_type');
         
-        // NEW: Marks config fields
         const outOfInput = document.getElementById('edit_exam_out_of');
         const passMarkInput = document.getElementById('edit_exam_pass_mark');
         const minFeeInput = document.getElementById('edit_exam_min_fee');
@@ -3320,48 +3459,15 @@ async function openEditExamModal(examId) {
         if (durationInput) durationInput.value = exam.duration_minutes || 60;
         if (linkInput) linkInput.value = exam.online_link || '';
         if (statusInput) statusInput.value = exam.status || 'Upcoming';
+        if (typeInput) typeInput.value = exam.exam_type || 'CAT';
         
-        // Set marks config values
         if (outOfInput) outOfInput.value = exam.marks_out_of || 100;
         if (passMarkInput) passMarkInput.value = exam.pass_mark || 50;
         if (minFeeInput) minFeeInput.value = exam.min_fee_balance || 0;
         if (deadlineInput) deadlineInput.value = exam.marks_entry_deadline || '';
         if (basisInput) basisInput.value = exam.exam_basis || 'ordinary';
 
-        // Add marks config fields to modal if not present
-        const form = document.getElementById('edit-exam-form');
-        if (form && !outOfInput) {
-            form.insertAdjacentHTML('afterbegin', `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">
-                    <div class="form-group">
-                        <label>Marks Out Of</label>
-                        <input type="number" id="edit_exam_out_of" class="form-input" value="${exam.marks_out_of || 100}">
-                    </div>
-                    <div class="form-group">
-                        <label>Pass Mark (%)</label>
-                        <input type="number" id="edit_exam_pass_mark" class="form-input" value="${exam.pass_mark || 50}">
-                    </div>
-                    <div class="form-group">
-                        <label>Min Fee Balance (%)</label>
-                        <input type="number" id="edit_exam_min_fee" class="form-input" value="${exam.min_fee_balance || 0}">
-                    </div>
-                    <div class="form-group">
-                        <label>Marks Entry Deadline</label>
-                        <input type="date" id="edit_exam_deadline" class="form-input" value="${exam.marks_entry_deadline || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>Exam Basis</label>
-                        <select id="edit_exam_basis" class="form-input">
-                            <option value="ordinary" ${exam.exam_basis === 'ordinary' ? 'selected' : ''}>Ordinary (Standalone)</option>
-                            <option value="consolidated" ${exam.exam_basis === 'consolidated' ? 'selected' : ''}>Consolidated (Combined)</option>
-                        </select>
-                    </div>
-                </div>
-            `);
-        }
-
         modal.style.display = 'block';
-        console.log('✅ Exam edit modal opened with marks config');
 
     } catch (err) {
         console.error('❌ Error in openEditExamModal:', err);
@@ -3369,7 +3475,7 @@ async function openEditExamModal(examId) {
     }
 }
 
-// ENHANCED: Save edited exam with marks config
+// ========== SAVE EDITED EXAM ==========
 async function saveEditedExam(e) {
     e.preventDefault();
     console.log('💾 Saving edited exam...');
@@ -3383,7 +3489,6 @@ async function saveEditedExam(e) {
     const typeInput = document.getElementById('edit_exam_type');
     const linkInput = document.getElementById('edit_exam_link');
     
-    // NEW: Marks config fields
     const outOfInput = document.getElementById('edit_exam_out_of');
     const passMarkInput = document.getElementById('edit_exam_pass_mark');
     const minFeeInput = document.getElementById('edit_exam_min_fee');
@@ -3457,107 +3562,571 @@ async function saveEditedExam(e) {
     }
 }
 
-// NEW: Get exam analytics
-async function getExamAnalytics(examId) {
+// ========== OPEN GRADE MODAL ==========
+async function openGradeModal(examId, examName = '') {
     try {
+        console.log('🎯 Opening grade modal for exam:', examId);
+        
+        const currentUser = await getCurrentUser();
+        if (!currentUser || !currentUser.user_id) {
+            showFeedback('Error: You must be logged in to grade exams.', 'error');
+            return;
+        }
+
+        showFeedback('Loading exam data...', 'info');
+
         const { data: exam, error: examError } = await sb
             .from('exams')
             .select('*')
             .eq('id', examId)
             .single();
-        
-        if (examError) throw examError;
-        
-        const { data: grades, error: gradeError } = await sb
+
+        if (examError || !exam) {
+            showFeedback('Error loading exam details.', 'error');
+            return;
+        }
+
+        let examType = exam.exam_type || 'EXAM';
+        if (!exam.exam_type && exam.exam_name) {
+            const name = exam.exam_name.toLowerCase();
+            if (name.includes('cat 1')) examType = 'CAT_1';
+            else if (name.includes('cat 2')) examType = 'CAT_2';
+            else if (name.includes('cat')) examType = 'CAT';
+        }
+
+        const { data: students, error: studentError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, email')
+            .eq('block', exam.block_term)
+            .eq('intake_year', exam.intake_year)
+            .eq('program', exam.program_type)
+            .order('full_name');
+
+        if (studentError || !students || students.length === 0) {
+            showFeedback('No students found for this exam criteria.', 'warning');
+            return;
+        }
+
+        const { data: existingGrades } = await sb
             .from('exam_grades')
             .select('*')
             .eq('exam_id', examId);
+
+        const modalHtml = buildGradeModalHTML(exam, students, existingGrades, currentUser, examType);
+        showGradeModal(modalHtml);
+
+        if (examType === 'EXAM') students.forEach(s => updateGradeTotal(s.user_id));
         
-        if (gradeError) throw gradeError;
+        showFeedback(`${getExamTypeLabel(examType)} grading modal loaded`, 'success');
         
-        if (!grades || grades.length === 0) {
-            return null;
+    } catch (error) {
+        console.error('Error opening grade modal:', error);
+        showFeedback('Failed to load grading interface: ' + error.message, 'error');
+    }
+}
+
+function buildGradeModalHTML(exam, students, existingGrades, currentUser, examType) {
+    const examTypeLabel = getExamTypeLabel(examType);
+    const marksOutOf = exam.marks_out_of || 100;
+    const passMark = exam.pass_mark || 50;
+    
+    let tableHeaders = '';
+    let tableRows = '';
+    
+    switch(examType) {
+        case 'CAT_1':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 1 Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${grade.cat_1_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        case 'CAT_2':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 2 Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        case 'CAT':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat-${s.user_id}" value="${grade.cat_1_score ?? grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        default:
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 1 (max 30)</th><th>CAT 2 (max 30)</th><th>Final Exam (max ${marksOutOf})</th><th>Total (scaled 100)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${grade.cat_1_score ?? ''}" placeholder="0-30" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="${marksOutOf}" step="0.5" id="final-${s.user_id}" value="${grade.exam_score ?? ''}" placeholder="0-${marksOutOf}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="100" step="0.1" id="total-${s.user_id}" value="" placeholder="Auto" readonly class="total-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+    }
+    
+    return `
+    <div class="modal-content" style="width:95%; max-width:1000px;">
+        <div class="modal-header">
+            <h3>${examTypeLabel}: ${escapeHtml(exam.exam_name)}</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="exam-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>Exam Details:</strong> ${escapeHtml(exam.course_name || 'General Assessment')} | ${escapeHtml(exam.program_type)} | Block ${escapeHtml(exam.block_term)} | ${escapeHtml(exam.intake_year)}
+                <br><strong>Marks Out Of:</strong> ${marksOutOf} | <strong>Pass Mark:</strong> ${passMark}%
+                <br><small>Grading as: ${escapeHtml(currentUser.full_name || currentUser.email)} | Type: ${examTypeLabel}</small>
+            </div>
+            <input type="text" id="gradeSearch" placeholder="Search by name, email or ID" class="search-input" oninput="filterGradeStudents()">
+            <div class="table-container">
+                <table class="data-table grade-table">
+                    <thead><tr>${tableHeaders}</tr></thead>
+                    <tbody id="gradeTableBody">${tableRows}</tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-action" onclick="saveGrades('${exam.id}', '${examType}')">Save ${examTypeLabel} Grades</button>
+                <button class="btn btn-delete" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function showGradeModal(modalHtml) {
+    const existingModal = document.getElementById('gradeModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'gradeModal';
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = modalHtml;
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    const searchInput = document.getElementById('gradeSearch');
+    if (searchInput) setTimeout(() => searchInput.focus(), 100);
+}
+
+function updateGradeTotal(studentId) {
+    const cat1Input = document.querySelector(`#cat1-${studentId}`);
+    const cat2Input = document.querySelector(`#cat2-${studentId}`);
+    const finalInput = document.querySelector(`#final-${studentId}`);
+    const totalInput = document.querySelector(`#total-${studentId}`);
+    
+    if (!cat1Input || !cat2Input || !finalInput || !totalInput) return;
+
+    let cat1 = Math.min(parseFloat(cat1Input.value) || 0, 30);
+    let cat2 = Math.min(parseFloat(cat2Input.value) || 0, 30);
+    let finalExam = Math.min(parseFloat(finalInput.value) || 0, 100);
+
+    const rawTotal = cat1 + cat2 + finalExam;
+    const scaledTotal = (rawTotal / 160) * 100;
+    
+    totalInput.value = scaledTotal.toFixed(2);
+    
+    totalInput.classList.remove('high-score', 'medium-score', 'low-score');
+    if (scaledTotal >= 70) totalInput.classList.add('high-score');
+    else if (scaledTotal >= 50) totalInput.classList.add('medium-score');
+    else totalInput.classList.add('low-score');
+}
+
+function filterGradeStudents() {
+    const searchTerm = document.getElementById('gradeSearch')?.value?.toLowerCase() || '';
+    const rows = document.querySelectorAll('#gradeTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const email = row.getAttribute('data-email') || '';
+        const id = row.getAttribute('data-id') || '';
+        
+        if (name.includes(searchTerm) || email.includes(searchTerm) || id.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
         }
+    });
+}
+
+// ========== SAVE GRADES ==========
+async function saveGrades(examId, examType = 'EXAM') {
+    try {
+        const rows = document.querySelectorAll('#gradeTableBody tr');
         
-        let totalScore = 0;
-        let highest = 0;
-        let lowest = 100;
-        let passed = 0;
+        const currentUser = await getCurrentUser();
+        if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
+            showFeedback('Error: Cannot identify grader.', 'error');
+            return;
+        }
+
+        const validGraderId = currentUser.user_id || currentUser.id;
         
-        grades.forEach(grade => {
-            let score = grade.total_score;
-            if (!score && grade.cat_1_score && grade.cat_2_score && grade.exam_score) {
-                score = ((grade.cat_1_score + grade.cat_2_score + grade.exam_score) / 160) * 100;
-            } else if (grade.cat_1_score) {
-                score = (grade.cat_1_score / 30) * 100;
-            } else if (grade.cat_2_score) {
-                score = (grade.cat_2_score / 30) * 100;
-            } else if (grade.exam_score) {
-                score = grade.exam_score;
+        const studentIds = [];
+        const gradeDataMap = new Map();
+        
+        for (const row of rows) {
+            if (row.style.display === 'none') continue;
+            const studentId = row.getAttribute('data-id');
+            if (!studentId) continue;
+            
+            const statusSelect = row.querySelector(`#status-${studentId}`);
+            if (!statusSelect) continue;
+            
+            studentIds.push(studentId);
+            
+            let gradeData = {
+                exam_id: parseInt(examId),
+                student_id: studentId,
+                result_status: statusSelect.value || 'Scheduled',
+                graded_by: validGraderId,
+                updated_at: new Date().toISOString()
+            };
+            
+            let hasData = false;
+            
+            switch(examType) {
+                case 'CAT_1':
+                    const cat1Input = row.querySelector(`#cat1-${studentId}`);
+                    if (cat1Input && cat1Input.value.trim()) {
+                        gradeData.cat_1_score = Math.min(parseFloat(cat1Input.value) || 0, 30);
+                        hasData = true;
+                    }
+                    break;
+                case 'CAT_2':
+                    const cat2Input = row.querySelector(`#cat2-${studentId}`);
+                    if (cat2Input && cat2Input.value.trim()) {
+                        gradeData.cat_2_score = Math.min(parseFloat(cat2Input.value) || 0, 30);
+                        hasData = true;
+                    }
+                    break;
+                case 'CAT':
+                    const catInput = row.querySelector(`#cat-${studentId}`);
+                    if (catInput && catInput.value.trim()) {
+                        gradeData.cat_1_score = Math.min(parseFloat(catInput.value) || 0, 30);
+                        hasData = true;
+                    }
+                    break;
+                default:
+                    const cat1Final = row.querySelector(`#cat1-${studentId}`);
+                    const cat2Final = row.querySelector(`#cat2-${studentId}`);
+                    const finalExam = row.querySelector(`#final-${studentId}`);
+                    
+                    if (cat1Final?.value.trim() || cat2Final?.value.trim() || finalExam?.value.trim()) {
+                        gradeData.cat_1_score = Math.min(parseFloat(cat1Final?.value) || 0, 30);
+                        gradeData.cat_2_score = Math.min(parseFloat(cat2Final?.value) || 0, 30);
+                        gradeData.exam_score = Math.min(parseFloat(finalExam?.value) || 0, 100);
+                        const scaledTotal = ((gradeData.cat_1_score + gradeData.cat_2_score + gradeData.exam_score) / 160) * 100;
+                        gradeData.total_score = parseFloat(scaledTotal.toFixed(2));
+                        hasData = true;
+                    }
             }
             
-            if (score) {
-                totalScore += score;
-                highest = Math.max(highest, score);
-                lowest = Math.min(lowest, score);
-                if (score >= (exam.pass_mark || 50)) passed++;
+            if (hasData) {
+                gradeDataMap.set(studentId, gradeData);
             }
-        });
+        }
         
-        return {
-            average: (totalScore / grades.length).toFixed(1),
-            highest: highest.toFixed(1),
-            lowest: lowest.toFixed(1),
-            passRate: ((passed / grades.length) * 100).toFixed(1),
-            totalStudents: grades.length
-        };
+        if (gradeDataMap.size === 0) {
+            showFeedback('No grade data entered to save.', 'warning');
+            return;
+        }
+        
+        const { data: existingGrades, error: fetchError } = await sb
+            .from('exam_grades')
+            .select('id, student_id')
+            .eq('exam_id', parseInt(examId))
+            .in('student_id', studentIds);
+        
+        if (fetchError) throw fetchError;
+        
+        const existingMap = new Map();
+        if (existingGrades) {
+            existingGrades.forEach(g => existingMap.set(g.student_id, g.id));
+        }
+        
+        const saveBtn = document.querySelector('#gradeModal .btn-action');
+        const originalText = saveBtn?.textContent;
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<div class="loading-spinner" style="width:20px;height:20px;"></div> Saving...';
+        }
+        
+        let savedCount = 0;
+        let errorCount = 0;
+        
+        for (const [studentId, gradeData] of gradeDataMap) {
+            const existingId = existingMap.get(studentId);
+            
+            let result;
+            if (existingId) {
+                result = await sb
+                    .from('exam_grades')
+                    .update(gradeData)
+                    .eq('id', existingId);
+            } else {
+                result = await sb
+                    .from('exam_grades')
+                    .insert(gradeData);
+            }
+            
+            if (result.error) {
+                console.error(`Error saving grade for ${studentId}:`, result.error);
+                errorCount++;
+            } else {
+                savedCount++;
+            }
+        }
+        
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText || 'Save Grades';
+        }
+        
+        if (errorCount === 0) {
+            showFeedback(`✅ Successfully saved ${savedCount} student grade(s)!`, 'success');
+            setTimeout(() => closeModal(), 1500);
+        } else {
+            showFeedback(`⚠️ Saved ${savedCount} records, ${errorCount} had errors`, 'warning');
+        }
+        
     } catch (error) {
-        console.error('Error getting analytics:', error);
+        console.error('Error saving grades:', error);
+        showFeedback(`Failed to save grades: ${error.message}`, 'error');
+        
+        const saveBtn = document.querySelector('#gradeModal .btn-action');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Grades';
+        }
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('gradeModal');
+    if (modal) modal.remove();
+    const examModal = document.getElementById('examEditModal');
+    if (examModal) examModal.style.display = 'none';
+}
+
+// ========== GET CURRENT USER ==========
+async function getCurrentUser() {
+    try {
+        if (typeof currentUserProfile !== 'undefined' && currentUserProfile) {
+            if (currentUserProfile.user_id) return currentUserProfile;
+            else if (currentUserProfile.id) return { ...currentUserProfile, user_id: currentUserProfile.id };
+        }
+        
+        if (window.currentUserProfile && window.currentUserProfile.user_id) return window.currentUserProfile;
+        
+        const storedUser = sessionStorage.getItem('currentUserProfile') || sessionStorage.getItem('currentUser');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                if (user && (user.user_id || user.id)) {
+                    if (!user.user_id && user.id) user.user_id = user.id;
+                    return user;
+                }
+            } catch (e) {}
+        }
+        
+        const { data: { user: authUser }, error: authError } = await sb.auth.getUser();
+        if (!authError && authUser) {
+            const { data: profile } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authUser.id)
+                .single();
+                
+            if (profile) {
+                window.currentUserProfile = profile;
+                sessionStorage.setItem('currentUserProfile', JSON.stringify(profile));
+                return profile;
+            }
+            
+            const basicUser = { user_id: authUser.id, id: authUser.id, email: authUser.email };
+            window.currentUserProfile = basicUser;
+            return basicUser;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error in getCurrentUser:', error);
         return null;
     }
 }
 
-// NEW: Display analytics in UI
-async function displayExamAnalytics() {
-    const examId = document.getElementById('analytics_exam_select')?.value;
-    if (!examId) return;
+// ========== SHOW EXAM TAB ==========
+function showExamTab(tabName) {
+    const tabs = document.querySelectorAll('.exam-tab, .exam-tab-content');
+    tabs.forEach(tab => {
+        if (tab.style) tab.style.display = 'none';
+    });
     
-    const analytics = await getExamAnalytics(examId);
-    const container = document.getElementById('analytics_container');
+    const btns = document.querySelectorAll('.exam-tab-btn');
+    btns.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = '#e5e7eb';
+        btn.style.color = '#374151';
+    });
     
-    if (!analytics) {
-        container.innerHTML = '<p>No grade data available for this exam yet.</p>';
+    if (tabName === 'list') {
+        const listTab = document.getElementById('examListTab');
+        if (listTab) listTab.style.display = 'block';
+        const listBtn = document.getElementById('examListTabBtn');
+        if (listBtn) {
+            listBtn.classList.add('active');
+            listBtn.style.background = '#4C1D95';
+            listBtn.style.color = 'white';
+        }
+        loadExams();
+        
+    } else if (tabName === 'create') {
+        const createTab = document.getElementById('examCreateTab');
+        if (createTab) createTab.style.display = 'block';
+        const createBtn = document.getElementById('examCreateTabBtn');
+        if (createBtn) {
+            createBtn.classList.add('active');
+            createBtn.style.background = '#4C1D95';
+            createBtn.style.color = 'white';
+        }
+        loadAvailableClassesForExam();
+        loadCoursesForExamDropdown();
+        
+    } else if (tabName === 'marks') {
+        const marksTab = document.getElementById('examMarksTab');
+        if (marksTab) marksTab.style.display = 'block';
+        const marksBtn = document.getElementById('examMarksTabBtn');
+        if (marksBtn) {
+            marksBtn.classList.add('active');
+            marksBtn.style.background = '#4C1D95';
+            marksBtn.style.color = 'white';
+        }
+        
+    } else if (tabName === 'analytics') {
+        const analyticsTab = document.getElementById('examAnalyticsTab');
+        if (analyticsTab) analyticsTab.style.display = 'block';
+        const analyticsBtn = document.getElementById('examAnalyticsTabBtn');
+        if (analyticsBtn) {
+            analyticsBtn.classList.add('active');
+            analyticsBtn.style.background = '#4C1D95';
+            analyticsBtn.style.color = 'white';
+        }
+    }
+}
+
+// ========== FILTER EXAMS TABLE ==========
+function filterExamsTable() {
+    const searchTerm = document.getElementById('exam-search')?.value?.toLowerCase() || '';
+    const programFilter = document.getElementById('exam_filter_program')?.value || '';
+    const statusFilter = document.getElementById('exam_filter_status')?.value || '';
+    
+    const rows = document.querySelectorAll('#exams-table tbody tr');
+    rows.forEach(row => {
+        const title = row.cells[3]?.textContent?.toLowerCase() || '';
+        const program = row.cells[1]?.textContent || '';
+        const status = row.cells[9]?.textContent || '';
+        
+        let show = true;
+        if (searchTerm && !title.includes(searchTerm)) show = false;
+        if (programFilter && program !== programFilter) show = false;
+        if (statusFilter && !status.includes(statusFilter)) show = false;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// ========== EXPORT EXAMS TO CSV ==========
+function exportExamsToCSV() {
+    const rows = document.querySelectorAll('#exams-table tbody tr');
+    if (!rows.length) {
+        showFeedback('No exams to export', 'warning');
         return;
     }
     
-    container.innerHTML = `
-        <div class="cards" style="margin-bottom: 20px;">
-            <div class="card">
-                <h3>📊 Average Score</h3>
-                <p class="data">${analytics.average}%</p>
-            </div>
-            <div class="card">
-                <h3>✅ Pass Rate</h3>
-                <p class="data">${analytics.passRate}%</p>
-            </div>
-            <div class="card">
-                <h3>🏆 Highest Score</h3>
-                <p class="data">${analytics.highest}%</p>
-            </div>
-            <div class="card">
-                <h3>📉 Lowest Score</h3>
-                <p class="data">${analytics.lowest}%</p>
-            </div>
-        </div>
-        <div class="progress-bar" style="margin-top: 15px;">
-            <div class="progress-fill" style="width: ${analytics.passRate}%; background: ${analytics.passRate >= 70 ? '#059669' : analytics.passRate >= 50 ? '#f59e0b' : '#dc2626'}; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white;">
-                Pass Rate: ${analytics.passRate}%
-            </div>
-        </div>
-    `;
+    let csv = 'Type,Program,Course,Title,Out Of,Pass Mark,Date,Duration,Status\n';
+    rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        const cols = row.querySelectorAll('td');
+        if (cols.length >= 10) {
+            csv += `${cols[0]?.textContent || ''},${cols[1]?.textContent || ''},${cols[2]?.textContent || ''},${cols[3]?.textContent || ''},${cols[4]?.textContent || ''},${cols[5]?.textContent || ''},${cols[6]?.textContent || ''},${cols[7]?.textContent || ''},${cols[9]?.textContent || ''}\n`;
+        }
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `exams_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showFeedback('Exams exported successfully!', 'success');
 }
 
-// Export all functions
+// ========== INITIALIZE EXAM EDIT MODAL LISTENERS ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const closeBtn = document.querySelector('#examEditModal .close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.getElementById('examEditModal').style.display = 'none';
+        });
+    }
+
+    const editForm = document.getElementById('edit-exam-form');
+    if (editForm) {
+        editForm.addEventListener('submit', saveEditedExam);
+    }
+
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('examEditModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+
+// ========== EXPORT ALL FUNCTIONS ==========
 window.populateExamCourseSelects = populateExamCourseSelects;
 window.handleAddExam = handleAddExam;
 window.loadExams = loadExams;
@@ -3571,8 +4140,12 @@ window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
 window.getSelectedClassesForExam = getSelectedClassesForExam;
 window.loadAvailableClassesForExam = loadAvailableClassesForExam;
-window.getExamAnalytics = getExamAnalytics;
-window.displayExamAnalytics = displayExamAnalytics;
+window.showExamTab = showExamTab;
+window.filterExamsTable = filterExamsTable;
+window.exportExamsToCSV = exportExamsToCSV;
+window.populateStudentExams = populateStudentExams;
+window.closeModal = closeModal;
+window.getCurrentUser = getCurrentUser;
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
