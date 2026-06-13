@@ -3007,32 +3007,49 @@ async function populateExamCourseSelects(courses = null) {
 }
 
 // ========== LOAD AVAILABLE CLASSES ==========
+// Skip class loading if your classes table has issues
 async function loadAvailableClassesForExam() {
     const container = document.getElementById('exam_class_selector');
     if (!container) return;
     
-    try {
-        const { data: classes, error } = await sb
-            .from('classes')
-            .select('class_name, id')
-            .order('class_name');
-        
-        if (error) throw error;
-        
-        if (classes && classes.length > 0) {
-            container.innerHTML = classes.map(cls => `
-                <label style="display: flex; align-items: center; gap: 8px; padding: 5px;">
-                    <input type="checkbox" class="exam-class-checkbox" value="${cls.id}">
-                    <span>${escapeHtml(cls.class_name)}</span>
+    // Since classes table may not exist, provide manual entry option
+    container.innerHTML = `
+        <p style="color: #6b7280; margin-bottom: 10px;">Enter block names for this exam:</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+            ${['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].map(block => `
+                <label style="display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" class="exam-class-checkbox" value="${block}">
+                    <span>${block}</span>
                 </label>
-            `).join('');
-        } else {
-            container.innerHTML = '<p>No classes available. Please create classes first.</p>';
-        }
-    } catch (error) {
-        console.error('Error loading classes:', error);
-        container.innerHTML = '<p>Error loading classes. Please refresh.</p>';
-    }
+            `).join('')}
+        </div>
+        <input type="text" id="customBlocksInput" placeholder="Or add custom blocks (comma separated)" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ddd; margin-top: 5px;">
+        <button onclick="addCustomBlocks()" class="btn-sm" style="margin-top: 5px;">Add Custom Blocks</button>
+    `;
+}
+
+function addCustomBlocks() {
+    const input = document.getElementById('customBlocksInput');
+    if (!input || !input.value.trim()) return;
+    
+    const blocks = input.value.split(',').map(b => b.trim()).filter(b => b);
+    const container = document.getElementById('exam_class_selector');
+    const checkboxesDiv = container.querySelector('div:first-child') || container;
+    
+    blocks.forEach(block => {
+        const label = document.createElement('label');
+        label.style.display = 'flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '6px';
+        label.style.marginBottom = '5px';
+        label.innerHTML = `
+            <input type="checkbox" class="exam-class-checkbox" value="${escapeHtml(block)}">
+            <span>${escapeHtml(block)}</span>
+        `;
+        checkboxesDiv.appendChild(label);
+    });
+    
+    input.value = '';
 }
 
 // ========== LOAD COURSES FOR EXAM DROPDOWN ==========
@@ -3089,7 +3106,7 @@ async function handleAddExam(e) {
     const exam_title = document.getElementById('exam_title')?.value.trim();
     const exam_date = document.getElementById('exam_date')?.value;
     const exam_status = document.getElementById('exam_status')?.value;
-    const intake = document.getElementById('exam_intake')?.value;
+    const intake = parseInt(document.getElementById('exam_intake')?.value);
     const block_term = document.getElementById('exam_block_term')?.value;
     
     const marks_out_of = parseInt(document.getElementById('exam_out_of')?.value) || 100;
@@ -3107,33 +3124,19 @@ async function handleAddExam(e) {
     const selectedClasses = getSelectedClassesForExam();
 
     try {
-        if (course_id) {
-            const { data: course, error: courseError } = await sb
-                .from('courses')
-                .select('target_program')
-                .eq('id', course_id)
-                .single();
-                
-            if (!courseError && course && course.target_program !== selected_program) {
-                if (!confirm(`Warning: Course is for ${course.target_program}, but you selected ${selected_program}. Continue?`)) {
-                    setButtonLoading(submitButton, false, originalText);
-                    return;
-                }
-            }
-        }
-
+        // Map to your actual column names
         const examData = {
-            exam_name: exam_title,
-            course_id: course_id,
-            exam_date,
-            exam_start_time,
-            exam_type,
-            online_link: exam_link, 
+            title: exam_title,           // Your column is 'title', not 'exam_name'
+            exam_type: exam_type,
+            exam_date: exam_date,
+            exam_start_time: exam_start_time,
             duration_minutes: exam_duration_minutes,
             target_program: selected_program,
             program_type: selected_program,
             intake_year: intake,
-            block_term,
+            block: block_term,           // Your column is 'block', not 'block_term'
+            course_id: course_id,
+            online_link: exam_link,
             status: exam_status,
             marks_out_of: marks_out_of,
             pass_mark: pass_mark,
@@ -3141,23 +3144,25 @@ async function handleAddExam(e) {
             marks_entry_deadline: marks_deadline,
             exam_basis: exam_basis,
             assigned_classes: selectedClasses,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
 
-        console.log('📤 Creating enhanced exam with data:', examData);
+        console.log('📤 Creating exam with data:', examData);
 
         const { error, data } = await sb.from('exams').insert(examData).select('id');
 
         if (error) throw error;
 
         await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, data?.[0]?.id, 'SUCCESS');
-        showFeedback(`✅ Assessment added successfully! Marks out of: ${marks_out_of}, Pass mark: ${pass_mark}%`, 'success');
+        showFeedback(`✅ Assessment added successfully!`, 'success');
         
         if (e.target) e.target.reset();
         loadExams();
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
         
     } catch (error) {
+        console.error('Error adding exam:', error);
         await logAudit('EXAM_ADD', `Failed to add ${exam_type}: ${exam_title}. ${error.message}`, null, 'FAILURE');
         showFeedback(`Failed to add assessment: ${error.message}`, 'error');
     } finally {
@@ -3170,7 +3175,7 @@ async function calculateExamProgress(examId) {
     try {
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('program_type, intake_year, block_term')
+            .select('program_type, intake_year, block')
             .eq('id', examId)
             .single();
         
@@ -3183,7 +3188,7 @@ async function calculateExamProgress(examId) {
             .select('user_id')
             .eq('program', exam.program_type)
             .eq('intake_year', exam.intake_year)
-            .eq('block', exam.block_term);
+            .eq('block', exam.block);
         
         const totalCount = students?.length || 0;
         
@@ -3209,13 +3214,14 @@ async function loadExams() {
     
     tbody.innerHTML = '<tr><td colspan="11">Loading exams/CATs...</td></tr>';
 
+    // Use your actual column names
     const { data: exams, error } = await sb
         .from('exams')
         .select('*, course:course_id(course_name)')
         .order('exam_date', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<td><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
         return;
     }
 
@@ -3234,7 +3240,7 @@ async function loadExams() {
         
         const progress = await calculateExamProgress(e.id);
         const progressPercent = progress.percentage;
-        const marksOutOf = e.marks_out_of || 100;
+        const marksOutOf = e.marks_out_of || e.total_marks || 100;
         const passMark = e.pass_mark || 50;
         
         const statusBadge = getExamStatusBadge(e.status);
@@ -3250,20 +3256,21 @@ async function loadExams() {
 
         let actionsHtml = `
             <button class="btn-action" onclick="openEditExamModal('${e.id}')">Edit</button>
-            <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.exam_name, true)}')">Grade</button>
-            <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.exam_name, true)}')">Delete</button>
+            <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.title, true)}')">Grade</button>
+            <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.title, true)}')">Delete</button>
         `;
         
-        if (e.online_link) {
-            actionsHtml += `<a href="${escapeHtml(e.online_link)}" target="_blank" class="btn btn-map" style="margin-left: 5px;">Link</a>`;
+        if (e.online_link || e.exam_link) {
+            const link = e.online_link || e.exam_link;
+            actionsHtml += `<a href="${escapeHtml(link)}" target="_blank" class="btn btn-map" style="margin-left: 5px;">Link</a>`;
         }
 
         tbody.innerHTML += `
             <tr>
                 <td>${escapeHtml(type)}</td>
-                <td>${escapeHtml(e.target_program || 'N/A')}</td>
+                <td>${escapeHtml(e.target_program || e.program_type || 'N/A')}</td>
                 <td>${escapeHtml(courseName)}</td>
-                <td>${escapeHtml(e.exam_name)}</td>
+                <td>${escapeHtml(e.title)}</td>
                 <td>${marksOutOf}</td>
                 <td>${passMark}%</td>
                 <td>${dateTime}</td>
@@ -3304,12 +3311,12 @@ async function populateStudentExams(exams) {
         const statusClass = exam.status === 'Upcoming' ? 'upcoming' : 
                            exam.status === 'InProgress' ? 'in-progress' : 'completed';
         
-        const marksOutOf = exam.marks_out_of || 100;
+        const marksOutOf = exam.marks_out_of || exam.total_marks || 100;
         const passMark = exam.pass_mark || 50;
 
         html += `
             <div class="exam-card ${statusClass}" style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid ${statusClass === 'upcoming' ? '#f59e0b' : statusClass === 'in-progress' ? '#3b82f6' : '#10b981'};">
-                <h4 style="margin: 0 0 10px 0; color: #4C1D95;">${escapeHtml(exam.exam_name)}</h4>
+                <h4 style="margin: 0 0 10px 0; color: #4C1D95;">${escapeHtml(exam.title)}</h4>
                 <p><strong>Type:</strong> ${escapeHtml(exam.exam_type)}</p>
                 <p><strong>Course:</strong> ${escapeHtml(courseName)}</p>
                 <p><strong>Date:</strong> ${dateTime}</p>
@@ -3317,7 +3324,7 @@ async function populateStudentExams(exams) {
                 <p><strong>Marks Out Of:</strong> ${marksOutOf}</p>
                 <p><strong>Pass Mark:</strong> ${passMark}%</p>
                 <p><strong>Status:</strong> <span class="status-${statusClass}">${escapeHtml(exam.status)}</span></p>
-                ${exam.online_link ? `<a href="${escapeHtml(exam.online_link)}" target="_blank" class="btn-action" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">Take Exam</a>` : ''}
+                ${(exam.online_link || exam.exam_link) ? `<a href="${escapeHtml(exam.online_link || exam.exam_link)}" target="_blank" class="btn-action" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">Take Exam</a>` : ''}
             </div>`;
     });
 
@@ -3366,6 +3373,7 @@ async function openEditExamModal(examId) {
             return;
         }
 
+        // Set form fields with your column names
         const examIdInput = document.getElementById('edit_exam_id');
         const titleInput = document.getElementById('edit_exam_title');
         const dateInput = document.getElementById('edit_exam_date');
@@ -3382,15 +3390,15 @@ async function openEditExamModal(examId) {
         const basisInput = document.getElementById('edit_exam_basis');
 
         if (examIdInput) examIdInput.value = exam.id;
-        if (titleInput) titleInput.value = exam.exam_name || '';
+        if (titleInput) titleInput.value = exam.title || '';
         if (dateInput) dateInput.value = exam.exam_date || '';
         if (startTimeInput) startTimeInput.value = exam.exam_start_time || '09:00';
         if (durationInput) durationInput.value = exam.duration_minutes || 60;
-        if (linkInput) linkInput.value = exam.online_link || '';
+        if (linkInput) linkInput.value = exam.online_link || exam.exam_link || '';
         if (statusInput) statusInput.value = exam.status || 'Upcoming';
         if (typeInput) typeInput.value = exam.exam_type || 'CAT';
         
-        if (outOfInput) outOfInput.value = exam.marks_out_of || 100;
+        if (outOfInput) outOfInput.value = exam.marks_out_of || exam.total_marks || 100;
         if (passMarkInput) passMarkInput.value = exam.pass_mark || 50;
         if (minFeeInput) minFeeInput.value = exam.min_fee_balance || 0;
         if (deadlineInput) deadlineInput.value = exam.marks_entry_deadline || '';
@@ -3451,7 +3459,7 @@ async function saveEditedExam(e) {
 
     try {
         const updateData = {
-            exam_name: title,
+            title: title,
             exam_type: type,
             exam_date: date,
             exam_start_time: startTime,
@@ -3516,8 +3524,8 @@ async function openGradeModal(examId, examName = '') {
         }
 
         let examType = exam.exam_type || 'EXAM';
-        if (!exam.exam_type && exam.exam_name) {
-            const name = exam.exam_name.toLowerCase();
+        if (!exam.exam_type && exam.title) {
+            const name = exam.title.toLowerCase();
             if (name.includes('cat 1')) examType = 'CAT_1';
             else if (name.includes('cat 2')) examType = 'CAT_2';
             else if (name.includes('cat')) examType = 'CAT';
@@ -3526,7 +3534,7 @@ async function openGradeModal(examId, examName = '') {
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, email')
-            .eq('block', exam.block_term)
+            .eq('block', exam.block)
             .eq('intake_year', exam.intake_year)
             .eq('program', exam.program_type)
             .order('full_name');
@@ -3556,7 +3564,7 @@ async function openGradeModal(examId, examName = '') {
 
 function buildGradeModalHTML(exam, students, existingGrades, currentUser, examType) {
     const examTypeLabel = getExamTypeLabel(examType);
-    const marksOutOf = exam.marks_out_of || 100;
+    const marksOutOf = exam.marks_out_of || exam.total_marks || 100;
     const passMark = exam.pass_mark || 50;
     
     let tableHeaders = '';
@@ -3576,7 +3584,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                 </tr>`;
+                </tr>`;
             }).join('');
             break;
             
@@ -3593,7 +3601,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                 </tr>`;
+                </tr>`;
             }).join('');
             break;
             
@@ -3610,7 +3618,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                 </tr>`;
+                </tr>`;
             }).join('');
             break;
             
@@ -3630,19 +3638,19 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                 </tr>`;
+                </tr>`;
             }).join('');
     }
     
     return `
     <div class="modal-content" style="width:95%; max-width:1000px;">
         <div class="modal-header">
-            <h3>${examTypeLabel}: ${escapeHtml(exam.exam_name)}</h3>
+            <h3>${examTypeLabel}: ${escapeHtml(exam.title)}</h3>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
         <div class="modal-body">
             <div class="exam-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <strong>Exam Details:</strong> ${escapeHtml(exam.course_name || 'General Assessment')} | ${escapeHtml(exam.program_type)} | Block ${escapeHtml(exam.block_term)} | ${escapeHtml(exam.intake_year)}
+                <strong>Exam Details:</strong> ${escapeHtml(exam.course_name || 'General Assessment')} | ${escapeHtml(exam.program_type)} | Block ${escapeHtml(exam.block)} | ${escapeHtml(exam.intake_year)}
                 <br><strong>Marks Out Of:</strong> ${marksOutOf} | <strong>Pass Mark:</strong> ${passMark}%
                 <br><small>Grading as: ${escapeHtml(currentUser.full_name || currentUser.email)} | Type: ${examTypeLabel}</small>
             </div>
@@ -3651,7 +3659,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                 <table class="data-table grade-table">
                     <thead><tr>${tableHeaders}</thead>
                     <tbody id="gradeTableBody">${tableRows}</tbody>
-                 </table>
+                </table>
             </div>
             <div class="modal-actions">
                 <button class="btn-action" onclick="saveGrades('${exam.id}', '${examType}')">Save ${examTypeLabel} Grades</button>
