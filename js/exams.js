@@ -348,7 +348,8 @@
             
             try {
                 // Call the Nursing School System API
-                const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${admission}`, {
+               const encodedAdmission = encodeURIComponent(admission);
+const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
                     headers: { 
                         'Content-Type': 'application/json',
                         'X-Year': this.intakeYear || '2026'
@@ -425,7 +426,30 @@
                 console.error('Failed to fetch NCK marks:', error);
             }
         }
+        async loadNCKClinicalScore() {
+    const admission = this.userProfile?.admission || window.db?.currentUserProfile?.admission;
+    if (!admission) return;
+    
+    try {
+        const encodedAdmission = encodeURIComponent(admission);
+        const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/nck-student/${encodedAdmission}`);
+        const data = await response.json();
         
+        if (data.scores && data.scores.length > 0) {
+            const validScores = data.scores.filter(s => s > 0);
+            const avgScore = validScores.length > 0 
+                ? (validScores.reduce((a,b) => a+b, 0) / validScores.length).toFixed(1)
+                : 0;
+            
+            // Dispatch event for dashboard to pick up
+            document.dispatchEvent(new CustomEvent('nckScoreUpdate', {
+                detail: { score: avgScore, count: validScores.length }
+            }));
+        }
+    } catch (error) {
+        console.error('Failed to load NCK clinical score:', error);
+    }
+}
         // ==================== MAIN LOAD EXAMS FUNCTION ====================
         async loadExams() {
             console.log('📥 Loading exams with consolidated view...');
@@ -503,6 +527,7 @@
                 
                 // ===== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM =====
                 await this.loadNCKMarksFromSystem();
+                await this.loadNCKClinicalScore();
                 
                 this.applyDataFilter();
                 
