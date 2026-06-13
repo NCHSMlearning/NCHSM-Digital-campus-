@@ -334,100 +334,113 @@
         }
         
         // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
-        async loadNCKMarksFromSystem() {
-            console.log('🔄 Loading NCK marks from Nursing School System...');
-            
-            // Get admission number from user profile
-            const admission = this.userProfile?.admission || window.db?.currentUserProfile?.admission;
-            if (!admission) {
-                console.log('⚠️ No admission number found for NCK marks');
-                return;
+     // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
+async loadNCKMarksFromSystem() {
+    console.log('🔄 Loading NCK marks from Nursing School System...');
+    
+    // FIX: Try multiple possible field names for admission number
+    const admission = this.userProfile?.student_id   // ← Primary field
+        || this.userProfile?.admission
+        || window.db?.currentUserProfile?.student_id  // ← Check db profile
+        || window.db?.currentUserProfile?.admission
+        || this.userProfile?.nck_admission;
+    
+    if (!admission) {
+        console.log('⚠️ No admission number found. Available fields:', Object.keys(this.userProfile || {}));
+        return;
+    }
+    
+    console.log('📚 Fetching published marks for admission:', admission);
+    
+    try {
+        // Call the Nursing School System API
+        const encodedAdmission = encodeURIComponent(admission);
+        const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Year': this.intakeYear || '2026'
             }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log(`✅ Found ${data.marks?.length || 0} published marks from NCK system`);
             
-            console.log('📚 Fetching published marks for admission:', admission);
-            
-            try {
-                // Call the Nursing School System API
-               const encodedAdmission = encodeURIComponent(admission);
-const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Year': this.intakeYear || '2026'
+            if (data.marks && data.marks.length > 0) {
+                // Convert NCK marks to exam format
+                const nckExams = data.marks.map((mark, index) => {
+                    const finalScore = parseFloat(mark.final) || 0;
+                    
+                    let gradeClass = 'fail';
+                    let gradeText = 'Fail';
+                    if (finalScore >= 85) {
+                        gradeClass = 'distinction';
+                        gradeText = 'Distinction';
+                    } else if (finalScore >= 75) {
+                        gradeClass = 'credit';
+                        gradeText = 'Credit';
+                    } else if (finalScore >= 60) {
+                        gradeClass = 'pass';
+                        gradeText = 'Pass';
+                    } else if (finalScore > 0) {
+                        gradeClass = 'fail';
+                        gradeText = 'Fail';
                     }
+                    
+                    return {
+                        id: `nck_${mark.block}_${mark.subject}_${index}`,
+                        exam_name: mark.subject,
+                        exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
+                        isCatExam: mark.assessmentType !== 'exam_only',
+                        isCompleted: true,
+                        isReleased: true,
+                        hasGrade: finalScore > 0,
+                        totalPercentage: finalScore,
+                        gradeText: gradeText,
+                        gradeClass: gradeClass,
+                        cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
+                        cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
+                        finalDisplay: mark.exam ? `${mark.exam}` : '--',
+                        course: mark.subject,
+                        block_term: mark.block?.replace('_', ' ') || 'N/A',
+                        formattedGradedDate: new Date().toLocaleDateString(),
+                        formattedExamDateTime: new Date().toLocaleDateString(),
+                        isFromNCK: true,
+                        programBadgeClass: 'badge-nck',
+                        programIcon: 'fa-stethoscope',
+                        programDisplay: 'NCK System',
+                        examLink: null,
+                        canTakeExam: false,
+                        actionState: 'completed',
+                        buttonText: 'View Results'
+                    };
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`✅ Found ${data.marks?.length || 0} published marks from NCK system`);
-                    
-                    if (data.marks && data.marks.length > 0) {
-                        // Convert NCK marks to exam format
-                        const nckExams = data.marks.map((mark, index) => {
-                            const finalScore = parseFloat(mark.final) || 0;
-                            
-                            let gradeClass = 'fail';
-                            let gradeText = 'Fail';
-                            if (finalScore >= 85) {
-                                gradeClass = 'distinction';
-                                gradeText = 'Distinction';
-                            } else if (finalScore >= 75) {
-                                gradeClass = 'credit';
-                                gradeText = 'Credit';
-                            } else if (finalScore >= 60) {
-                                gradeClass = 'pass';
-                                gradeText = 'Pass';
-                            } else if (finalScore > 0) {
-                                gradeClass = 'fail';
-                                gradeText = 'Fail';
-                            }
-                            
-                            return {
-                                id: `nck_${mark.block}_${mark.subject}_${index}`,
-                                exam_name: mark.subject,
-                                exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
-                                isCatExam: mark.assessmentType !== 'exam_only',
-                                isCompleted: true,
-                                isReleased: true,
-                                hasGrade: finalScore > 0,
-                                totalPercentage: finalScore,
-                                gradeText: gradeText,
-                                gradeClass: gradeClass,
-                                cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
-                                cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
-                                finalDisplay: mark.exam ? `${mark.exam}` : '--',
-                                course: mark.subject,
-                                block_term: mark.block?.replace('_', ' ') || 'N/A',
-                                formattedGradedDate: new Date().toLocaleDateString(),
-                                formattedExamDateTime: new Date().toLocaleDateString(),
-                                isFromNCK: true,
-                                programBadgeClass: 'badge-nck',
-                                programIcon: 'fa-stethoscope',
-                                programDisplay: 'NCK System',
-                                examLink: null,
-                                canTakeExam: false,
-                                actionState: 'completed',
-                                buttonText: 'View Results'
-                            };
-                        });
-                        
-                        // Add to completed exams (avoid duplicates)
-                        const existingIds = new Set(this.completedExams.map(e => e.id));
-                        const newExams = nckExams.filter(exam => !existingIds.has(exam.id));
-                        
-                        if (newExams.length > 0) {
-                            this.completedExams = [...this.completedExams, ...newExams];
-                            console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
-                        }
-                    }
-                } else {
-                    console.log('No published marks found for this student');
+                // Add to completed exams (avoid duplicates)
+                const existingIds = new Set(this.completedExams.map(e => e.id));
+                const newExams = nckExams.filter(exam => !existingIds.has(exam.id));
+                
+                if (newExams.length > 0) {
+                    this.completedExams = [...this.completedExams, ...newExams];
+                    console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
+                    // IMPORTANT: Refresh the display immediately
+                    this.displayCompletedTable();
+                    this.updateCounts();
                 }
-            } catch (error) {
-                console.error('Failed to fetch NCK marks:', error);
             }
+        } else {
+            console.log('No published marks found for this student');
         }
-        async loadNCKClinicalScore() {
-    const admission = this.userProfile?.admission || window.db?.currentUserProfile?.admission;
+    } catch (error) {
+        console.error('Failed to fetch NCK marks:', error);
+    }
+}
+      async loadNCKClinicalScore() {
+    // FIX: Use student_id instead of admission
+    const admission = this.userProfile?.student_id 
+        || this.userProfile?.admission 
+        || window.db?.currentUserProfile?.student_id;
+    
     if (!admission) return;
     
     try {
