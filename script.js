@@ -66,26 +66,6 @@ let attendanceMap = null;
 let currentResourceType = 'all';      // ← ADD THIS
 let allResourcesData = [];             // ← ADD THIS
 
-// =====================================================
-// HELPER: Get Exam Type Display Label
-// =====================================================
-function getExamTypeLabel(examType) {
-    const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'END_TERM': 'End of Term',
-        'FINAL': 'Final Exam',
-        'SUPPLEMENTARY': 'Supplementary',
-        'SPECIAL': 'Special Exam',
-        'EXAM': 'Final Exam',
-        'ASSIGNMENT': 'Assignment'
-    };
-    return labels[examType] || examType;
-}
-
-// Make it global
-window.getExamTypeLabel = getExamTypeLabel;
 
 // TVET Program Codes
 const TVET_PROGRAMS = [
