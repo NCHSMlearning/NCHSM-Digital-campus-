@@ -4067,7 +4067,6 @@ window.showExamTab = showExamTab;
 window.filterExamsTable = filterExamsTable;
 window.exportExamsToCSV = exportExamsToCSV;
 window.populateStudentExams = populateStudentExams;
-window.closeModal = closeModal;
 window.getCurrentUser = getCurrentUser;
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
