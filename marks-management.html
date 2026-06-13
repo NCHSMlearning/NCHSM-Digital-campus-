@@ -4026,7 +4026,7 @@ async function showScorePublishPanel() {
     hideLoading();
 }
 
-// Show individual student scores for an exam
+// ======================= FIXED: Show individual student scores for an exam =======================
 function showExamStudentsPanel(examId, examName, examType, marks) {
     const panel = document.getElementById('studentsDetailPanel');
     const examNameSpan = document.getElementById('selectedExamName');
@@ -4036,6 +4036,11 @@ function showExamStudentsPanel(examId, examName, examType, marks) {
     
     examNameSpan.innerHTML = examName;
     
+    // Get assessment type from the exam
+    let assessmentType = 'full'; // default
+    if (examName.includes('CAT+Exam')) assessmentType = 'single_cat';
+    else if (examName.includes('Exam Only')) assessmentType = 'exam_only';
+    
     const studentsHtml = `
         <table style="width: 100%;">
             <thead>
@@ -4043,7 +4048,10 @@ function showExamStudentsPanel(examId, examName, examType, marks) {
                     <th>#</th>
                     <th>Student Name</th>
                     <th>Admission</th>
-                    <th>Score</th>
+                    <th>CAT 1<br><small>(0-30)</small></th>
+                    <th>CAT 2<br><small>(0-30)</small></th>
+                    <th>Exam<br><small>(${assessmentType === 'exam_only' ? '0-100' : '0-70'})</small></th>
+                    <th>Final<br><small>Score</small></th>
                     <th>Status</th>
                     <th>Publication</th>
                     <th>Action</th>
@@ -4054,55 +4062,101 @@ function showExamStudentsPanel(examId, examName, examType, marks) {
                     const studentId = mark.admission || mark.name;
                     const isPublished = isScorePublished(examId, studentId, examType);
                     
-                    // Calculate score based on exam type
-                    let score = '--';
-                    let scoreValue = 0;
+                    // ===== FIXED: Calculate scores correctly based on assessment type =====
+                    let cat1 = parseFloat(mark.cat1) || 0;
+                    let cat2 = parseFloat(mark.cat2) || 0;
+                    let examScore = parseFloat(mark.exam) || 0;
                     
-                    if (examType === 'nck') {
-                        const scores = mark.scores || [];
-                        const validScores = scores.filter(s => s > 0);
+                    // Also check if scores are in 'scores' array (for NCK)
+                    let nckAvg = 0;
+                    if (mark.scores && mark.scores.length > 0) {
+                        const validScores = mark.scores.filter(s => s > 0);
                         if (validScores.length > 0) {
-                            scoreValue = validScores.reduce((a,b) => a+b, 0) / validScores.length;
-                            score = `${scoreValue.toFixed(1)}%`;
-                        }
-                    } else {
-                        const cat1 = parseFloat(mark.cat1) || 0;
-                        const cat2 = parseFloat(mark.cat2) || 0;
-                        const exam = parseFloat(mark.exam) || 0;
-                        
-                        if (cat1 > 0 || cat2 > 0 || exam > 0) {
-                            if (window.currentAdminAssessmentType === 'full') {
-                                scoreValue = ((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70));
-                            } else if (window.currentAdminAssessmentType === 'single_cat') {
-                                scoreValue = (Math.min(cat1,30) + Math.min(exam,70));
-                            } else {
-                                scoreValue = Math.min(exam,100);
-                            }
-                            score = `${scoreValue.toFixed(1)}%`;
+                            nckAvg = validScores.reduce((a,b) => a+b, 0) / validScores.length;
                         }
                     }
                     
-                    const statusBadge = scoreValue >= 60 ? 'badge-pass' : (scoreValue > 0 ? 'badge-fail' : 'badge-pending');
-                    const statusText = scoreValue >= 60 ? 'PASS' : (scoreValue > 0 ? 'FAIL' : 'PENDING');
+                    // Calculate final score based on assessment type
+                    let finalScore = 0;
+                    let displayCat1 = '--';
+                    let displayCat2 = '--';
+                    let displayExam = '--';
+                    let displayFinal = '--';
+                    
+                    if (examType === 'nck') {
+                        // NCK scores use averages
+                        finalScore = nckAvg;
+                        displayFinal = finalScore > 0 ? `${finalScore.toFixed(1)}%` : '--';
+                        displayExam = mark.scores ? `${mark.scores.filter(s => s > 0).length} assessments` : '--';
+                    } else {
+                        // Internal marks - calculate based on assessment type
+                        if (assessmentType === 'full') {
+                            // Full: CAT1(30%) + CAT2(30%) + Exam(70%) but each capped
+                            const cappedCat1 = Math.min(cat1, 30);
+                            const cappedCat2 = Math.min(cat2, 30);
+                            const cappedExam = Math.min(examScore, 70);
+                            
+                            // Formula: ((CAT1+CAT2)/60 * 30) + Exam
+                            finalScore = ((cappedCat1 + cappedCat2) / 60 * 30) + cappedExam;
+                            finalScore = Math.round(finalScore * 10) / 10;
+                            
+                            displayCat1 = cat1 > 0 ? `${cat1}` : '--';
+                            displayCat2 = cat2 > 0 ? `${cat2}` : '--';
+                            displayExam = examScore > 0 ? `${examScore}` : '--';
+                            
+                        } else if (assessmentType === 'single_cat') {
+                            // Single CAT: CAT(30%) + Exam(70%)
+                            const cappedCat1 = Math.min(cat1, 30);
+                            const cappedExam = Math.min(examScore, 70);
+                            
+                            finalScore = cappedCat1 + cappedExam;
+                            finalScore = Math.round(finalScore * 10) / 10;
+                            
+                            displayCat1 = cat1 > 0 ? `${cat1}` : '--';
+                            displayCat2 = '--';
+                            displayExam = examScore > 0 ? `${examScore}` : '--';
+                            
+                        } else {
+                            // Exam only: Exam(100%)
+                            finalScore = Math.min(examScore, 100);
+                            finalScore = Math.round(finalScore * 10) / 10;
+                            
+                            displayCat1 = '--';
+                            displayCat2 = '--';
+                            displayExam = examScore > 0 ? `${examScore}` : '--';
+                        }
+                        
+                        displayFinal = finalScore > 0 ? `${finalScore}%` : '--';
+                    }
+                    
+                    const statusText = finalScore >= 60 ? 'PASS' : (finalScore > 0 ? 'FAIL' : 'PENDING');
+                    const statusClass = finalScore >= 60 ? 'badge-pass' : (finalScore > 0 ? 'badge-fail' : 'badge-pending');
                     
                     return `
-                        <tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
                             <td style="padding: 8px;">${idx + 1}</td>
-                            <td style="padding: 8px;"><strong>${mark.name}</strong></td>
+                            <td style="padding: 8px;"><strong>${mark.name || 'Unknown'}</strong></td>
                             <td style="padding: 8px;">${mark.admission || 'N/A'}</td>
-                            <td style="padding: 8px;"><span class="badge ${statusBadge}">${score}</span></td>
-                            <td style="padding: 8px;">${statusText}</td>
-                            <td style="padding: 8px;">
+                            <td style="padding: 8px; text-align: center;">${displayCat1}</td>
+                            <td style="padding: 8px; text-align: center;">${displayCat2}</td>
+                            <td style="padding: 8px; text-align: center;">${displayExam}</td>
+                            <td style="padding: 8px; text-align: center;">
+                                <span class="badge ${statusClass}" style="font-size: 14px; font-weight: bold;">${displayFinal}</span>
+                            </td>
+                            <td style="padding: 8px; text-align: center;">
+                                <span class="badge ${statusClass}">${statusText}</span>
+                            </td>
+                            <td style="padding: 8px; text-align: center;">
                                 ${isPublished ? 
                                     '<span class="badge badge-pass"><i class="fas fa-eye"></i> Published</span>' : 
                                     '<span class="badge badge-fail"><i class="fas fa-eye-slash"></i> Hidden</span>'}
                             </td>
-                            <td style="padding: 8px;">
+                            <td style="padding: 8px; text-align: center;">
                                 ${isPublished ? 
-                                    `<button class="btn-warning" onclick="unpublishScore('${examId}', '${studentId}', '${examType}', '${mark.name.replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
+                                    `<button class="btn-warning" onclick="unpublishScore('${examId}', '${studentId}', '${examType}', '${(mark.name || '').replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
                                         <i class="fas fa-eye-slash"></i> Hide
                                     </button>` :
-                                    `<button class="save-btn" onclick="publishScore('${examId}', '${studentId}', '${examType}', '${mark.name.replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
+                                    `<button class="save-btn" onclick="publishScore('${examId}', '${studentId}', '${examType}', '${(mark.name || '').replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
                                         <i class="fas fa-eye"></i> Publish
                                     </button>`
                                 }
