@@ -1005,7 +1005,109 @@
             this.loadExams();
         }
     }
+    // Add this method to your ExamsModule class in exams.js
+
+async loadNCKMarksFromSystem() {
+    console.log('🔄 Loading NCK marks from system...');
     
+    if (!window.nckIntegration || !window.nckIntegration.isConnected) {
+        console.log('⏳ NCK integration not ready yet');
+        return;
+    }
+    
+    const admission = window.db?.currentUserProfile?.admission;
+    if (!admission) {
+        console.log('⚠️ No admission number found');
+        return;
+    }
+    
+    const marks = await window.nckIntegration.getStudentMarks(admission);
+    
+    if (!marks || marks.length === 0) {
+        console.log('📭 No NCK marks found for student');
+        return;
+    }
+    
+    console.log(`📚 Processing ${marks.length} NCK marks...`);
+    
+    // Process marks to look like exams for display
+    const nckExams = marks.map((mark, index) => {
+        const finalScore = window.nckIntegration.calculateFinalScore(mark);
+        
+        // Determine grade class
+        let gradeClass = 'fail';
+        let gradeText = 'Fail';
+        if (finalScore >= 85) {
+            gradeClass = 'distinction';
+            gradeText = 'Distinction';
+        } else if (finalScore >= 75) {
+            gradeClass = 'credit';
+            gradeText = 'Credit';
+        } else if (finalScore >= 60) {
+            gradeClass = 'pass';
+            gradeText = 'Pass';
+        } else if (finalScore > 0) {
+            gradeClass = 'fail';
+            gradeText = 'Fail';
+        } else {
+            gradeClass = 'pending';
+            gradeText = 'Pending';
+        }
+        
+        // Format date
+        let formattedDate = '--';
+        if (mark.gradedDate) {
+            formattedDate = new Date(mark.gradedDate).toLocaleDateString();
+        } else if (mark.examDate) {
+            formattedDate = new Date(mark.examDate).toLocaleDateString();
+        }
+        
+        return {
+            id: `nck_${mark.id || index}_${Date.now()}`,
+            exam_name: mark.subject || mark.name || 'Internal Assessment',
+            exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
+            isCatExam: mark.assessmentType !== 'exam_only',
+            isCompleted: true,
+            isReleased: true,
+            hasGrade: finalScore > 0,
+            totalPercentage: finalScore > 0 ? finalScore : null,
+            gradeText: gradeText,
+            gradeClass: gradeClass,
+            cat1Display: mark.cat1 ? `${mark.cat1}%` : '--',
+            cat2Display: mark.cat2 ? `${mark.cat2}%` : '--',
+            finalDisplay: mark.exam ? `${mark.exam}%` : '--',
+            course: mark.subject || mark.name || 'Nursing',
+            block_term: mark.block || 'N/A',
+            formattedGradedDate: formattedDate,
+            formattedExamDateTime: formattedDate,
+            isFromNCK: true,
+            programBadgeClass: 'badge-nck',
+            programIcon: 'fa-stethoscope',
+            programDisplay: 'NCK System',
+            examLink: null,
+            canTakeExam: false,
+            actionState: 'completed',
+            actionMessage: 'Completed',
+            buttonText: 'View',
+            hasValidLink: false
+        };
+    });
+    
+    // Filter out any duplicates (by exam_name and course)
+    const existingNames = new Set(this.completedExams.map(e => `${e.exam_name}_${e.course}`));
+    const newExams = nckExams.filter(exam => !existingNames.has(`${exam.exam_name}_${exam.course}`));
+    
+    if (newExams.length > 0) {
+        this.completedExams = [...this.completedExams, ...newExams];
+        console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
+        
+        // Refresh the display
+        this.displayCompletedTable();
+        this.updateCounts();
+    } else {
+        console.log('No new NCK marks to add');
+    }
+}
     function initializeExamsModule() {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
