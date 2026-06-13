@@ -3671,7 +3671,505 @@ function generateInterventionListHTML(data) {
       if(result.success){ configCache = null; showUnits(); } 
     } 
   }
-  
+  // ======================= SCORE PUBLISHING CONTROL (NEW) =======================
+// Admin can publish/unpublish scores for students to see
+
+// Store published status in localStorage (will be synced to API in production)
+let publishedScores = new Set();
+
+// Load published status from storage
+function loadPublishedStatus() {
+    const saved = localStorage.getItem('nck_published_scores');
+    if (saved) {
+        publishedScores = new Set(JSON.parse(saved));
+    }
+}
+
+// Save published status
+function savePublishedStatus() {
+    localStorage.setItem('nck_published_scores', JSON.stringify([...publishedScores]));
+}
+
+// Check if a score is published
+function isScorePublished(examId, studentId, examType) {
+    const key = `${examType}_${examId}_${studentId}`;
+    return publishedScores.has(key);
+}
+
+// Publish a single score
+async function publishScore(examId, studentId, examType, studentName, examName) {
+    const key = `${examType}_${examId}_${studentId}`;
+    publishedScores.add(key);
+    savePublishedStatus();
+    
+    // Log the action
+    await apiCall('/api/publish-log', {
+        method: 'POST',
+        body: JSON.stringify({
+            action: 'publish',
+            examId,
+            studentId,
+            examType,
+            studentName,
+            examName,
+            publishedBy: currentUser?.name,
+            timestamp: new Date().toISOString()
+        })
+    });
+    
+    showNotification(`✅ Published ${studentName} - ${examName}`, false);
+}
+
+// Unpublish a score
+async function unpublishScore(examId, studentId, examType, studentName, examName) {
+    const key = `${examType}_${examId}_${studentId}`;
+    publishedScores.delete(key);
+    savePublishedStatus();
+    
+    await apiCall('/api/publish-log', {
+        method: 'POST',
+        body: JSON.stringify({
+            action: 'unpublish',
+            examId,
+            studentId,
+            examType,
+            studentName,
+            examName,
+            publishedBy: currentUser?.name,
+            timestamp: new Date().toISOString()
+        })
+    });
+    
+    showNotification(`🔒 Unpublished ${studentName} - ${examName}`, false);
+}
+
+// Bulk publish - publish all scores for an exam
+async function bulkPublishExam(examId, examName, examType, studentIds) {
+    if (!confirm(`Publish ALL scores for "${examName}"? This will make all ${studentIds.length} results visible to students.`)) {
+        return;
+    }
+    
+    showLoading(`Publishing ${studentIds.length} scores...`);
+    let count = 0;
+    
+    for (const studentId of studentIds) {
+        const key = `${examType}_${examId}_${studentId}`;
+        if (!publishedScores.has(key)) {
+            publishedScores.add(key);
+            count++;
+        }
+    }
+    
+    savePublishedStatus();
+    hideLoading();
+    showNotification(`✅ Published ${count} scores for ${examName}`, false);
+    showScorePublishPanel(); // Refresh the panel
+}
+
+// Bulk unpublish - unpublish all scores for an exam
+async function bulkUnpublishExam(examId, examName, examType, studentIds) {
+    if (!confirm(`UNPUBLISH ALL scores for "${examName}"? This will hide all ${studentIds.length} results from students.`)) {
+        return;
+    }
+    
+    showLoading(`Unpublishing ${studentIds.length} scores...`);
+    let count = 0;
+    
+    for (const studentId of studentIds) {
+        const key = `${examType}_${examId}_${studentId}`;
+        if (publishedScores.has(key)) {
+            publishedScores.delete(key);
+            count++;
+        }
+    }
+    
+    savePublishedStatus();
+    hideLoading();
+    showNotification(`🔒 Unpublished ${count} scores for ${examName}`, false);
+    showScorePublishPanel(); // Refresh the panel
+}
+
+// Main Score Publishing Panel (Admin only)
+async function showScorePublishPanel() {
+    if (currentUser?.role !== 'admin') {
+        showNotification('Only administrators can access this panel', true);
+        return;
+    }
+    
+    showLoading('Loading Score Publishing Panel...');
+    loadPublishedStatus();
+    
+    // Fetch all exams with marks
+    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    const config = await getConfig();
+    let allExamsWithMarks = [];
+    
+    for (const block of blocks) {
+        const subjects = config[block] || [];
+        for (const subject of subjects) {
+            const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+            if (marks && marks.length > 0) {
+                // Check if any student has scores
+                const hasScores = marks.some(m => {
+                    const cat1 = parseFloat(m.cat1) || 0;
+                    const cat2 = parseFloat(m.cat2) || 0;
+                    const exam = parseFloat(m.exam) || 0;
+                    return cat1 > 0 || cat2 > 0 || exam > 0;
+                });
+                
+                if (hasScores) {
+                    allExamsWithMarks.push({
+                        block,
+                        subjectName: subject.name,
+                        assessmentType: subject.assessmentType,
+                        marks: marks,
+                        studentCount: marks.length
+                    });
+                }
+            }
+        }
+    }
+    
+    // Also get NCK XY Forms
+    const nckMarks = await apiCall(`/api/marks/BLOCK_0/XY FORMS`, {});
+    if (nckMarks && nckMarks.length > 0) {
+        allExamsWithMarks.push({
+            block: 'NCK',
+            subjectName: 'XY FORMS (Clinical Evaluation)',
+            assessmentType: 'nck',
+            marks: nckMarks,
+            studentCount: nckMarks.length,
+            isNCK: true
+        });
+    }
+    
+    // Get NCK Assessment marks
+    const assessmentMarks = await apiCall(`/api/marks/BLOCK_0/ASSESSMENT AND CASE`, {});
+    if (assessmentMarks && assessmentMarks.length > 0) {
+        allExamsWithMarks.push({
+            block: 'NCK',
+            subjectName: 'ASSESSMENT AND CASE (Written)',
+            assessmentType: 'nck',
+            marks: assessmentMarks,
+            studentCount: assessmentMarks.length,
+            isNCK: true
+        });
+    }
+    
+    // Calculate publish statistics
+    let totalPublished = 0;
+    let totalScores = 0;
+    
+    for (const exam of allExamsWithMarks) {
+        for (const mark of exam.marks) {
+            totalScores++;
+            const examType = exam.isNCK ? 'nck' : 'internal';
+            const examId = `${exam.block}_${exam.subjectName}`;
+            const studentId = mark.admission || mark.name;
+            if (isScorePublished(examId, studentId, examType)) {
+                totalPublished++;
+            }
+        }
+    }
+    
+    const publishRate = totalScores > 0 ? ((totalPublished / totalScores) * 100).toFixed(1) : 0;
+    
+    const html = `
+        <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+        
+        <div class="header">
+            <h3><i class="fas fa-eye-slash"></i> Score Publishing Control Panel</h3>
+            <p>Control which exam results students can see - Publish only when ready</p>
+        </div>
+        
+        <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="stat-number">${totalScores}</div>
+                <div class="stat-label">Total Scores Entered</div>
+            </div>
+            <div class="stat-card" style="background: #d1fae5;">
+                <div class="stat-number" style="color: #065f46;">${totalPublished}</div>
+                <div class="stat-label">Published to Students</div>
+            </div>
+            <div class="stat-card" style="background: #fee2e2;">
+                <div class="stat-number" style="color: #991b1b;">${totalScores - totalPublished}</div>
+                <div class="stat-label">Hidden from Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${publishRate}%</div>
+                <div class="stat-label">Publication Rate</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-chart-line"></i> 
+                Exam Scores - Manage Publication
+                <span style="margin-left: auto;">
+                    <button class="save-btn" onclick="showScorePublishPanel()" style="background: #6366f1;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </span>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Exam / Assessment</th>
+                            <th>Block</th>
+                            <th>Students</th>
+                            <th>Published</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${allExamsWithMarks.map(exam => {
+                            const examId = `${exam.block}_${exam.subjectName}`;
+                            const examType = exam.isNCK ? 'nck' : 'internal';
+                            
+                            let publishedCount = 0;
+                            const studentIds = [];
+                            
+                            for (const mark of exam.marks) {
+                                const studentId = mark.admission || mark.name;
+                                studentIds.push(studentId);
+                                if (isScorePublished(examId, studentId, examType)) {
+                                    publishedCount++;
+                                }
+                            }
+                            
+                            const isFullyPublished = publishedCount === exam.marks.length;
+                            const isPartiallyPublished = publishedCount > 0 && publishedCount < exam.marks.length;
+                            
+                            let statusBadge = '';
+                            if (isFullyPublished) {
+                                statusBadge = '<span class="badge badge-pass"><i class="fas fa-eye"></i> Fully Published</span>';
+                            } else if (isPartiallyPublished) {
+                                statusBadge = '<span class="badge badge-warning"><i class="fas fa-eye-half"></i> Partially Published</span>';
+                            } else {
+                                statusBadge = '<span class="badge badge-fail"><i class="fas fa-eye-slash"></i> Not Published</span>';
+                            }
+                            
+                            return `
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 12px;">
+                                        <strong>${exam.subjectName}</strong>
+                                        <br><small style="color: #64748b;">${exam.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (exam.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</small>
+                                    </td>
+                                    <td style="padding: 12px;">${exam.block.replace('_', ' ')}</td>
+                                    <td style="padding: 12px; text-align: center;">${exam.studentCount}</td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <strong>${publishedCount}</strong> / ${exam.marks.length}
+                                        <div class="progress-bar" style="margin-top: 5px; width: 80px;">
+                                            <div class="progress-fill" style="width: ${(publishedCount/exam.marks.length)*100}%; background: #10b981;"></div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px;">${statusBadge}</td>
+                                    <td style="padding: 12px;">
+                                        <button class="save-btn" onclick="showExamStudentsPanel('${examId}', '${exam.subjectName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(exam.marks).replace(/"/g, '&quot;')})" style="padding: 6px 12px; font-size: 11px; margin-right: 5px;">
+                                            <i class="fas fa-users"></i> Manage Students
+                                        </button>
+                                        <button class="${isFullyPublished ? 'btn-warning' : 'btn-success'}" onclick="bulkPublishExam('${examId}', '${exam.subjectName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(studentIds)})" style="padding: 6px 12px; font-size: 11px; margin-right: 5px;">
+                                            <i class="fas ${isFullyPublished ? 'fa-eye-slash' : 'fa-eye'}"></i> ${isFullyPublished ? 'Unpublish All' : 'Publish All'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card" id="studentsDetailPanel" style="display: none;">
+            <div class="card-title">
+                <i class="fas fa-user-graduate"></i> 
+                Student Scores - <span id="selectedExamName">Loading...</span>
+                <button class="back-btn" onclick="document.getElementById('studentsDetailPanel').style.display='none'" style="margin-left: auto;">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div id="studentsDetailContent"></div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title"><i class="fas fa-history"></i> Publication Logs</div>
+            <div id="publishLogs" style="max-height: 300px; overflow-y: auto;">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    `;
+    
+    updateContentArea(html);
+    
+    // Load publication logs
+    const logs = await apiCall('/api/publish-logs', {});
+    const logsContainer = document.getElementById('publishLogs');
+    if (logsContainer) {
+        if (logs && logs.length > 0) {
+            logsContainer.innerHTML = logs.slice(0, 50).map(log => `
+                <div class="log-entry">
+                    <i class="fas fa-${log.action === 'publish' ? 'eye' : 'eye-slash'}" style="color: ${log.action === 'publish' ? '#10b981' : '#ef4444'};"></i>
+                    <strong>${log.publishedBy || 'System'}</strong> 
+                    ${log.action === 'publish' ? 'published' : 'unpublished'} 
+                    <strong>${log.studentName}</strong> - ${log.examName}
+                    <br><small>${new Date(log.timestamp).toLocaleString()}</small>
+                </div>
+            `).join('');
+        } else {
+            logsContainer.innerHTML = '<p style="text-align: center; padding: 20px;">No publication logs yet</p>';
+        }
+    }
+    
+    hideLoading();
+}
+
+// Show individual student scores for an exam
+function showExamStudentsPanel(examId, examName, examType, marks) {
+    const panel = document.getElementById('studentsDetailPanel');
+    const examNameSpan = document.getElementById('selectedExamName');
+    const contentDiv = document.getElementById('studentsDetailContent');
+    
+    if (!panel || !contentDiv) return;
+    
+    examNameSpan.innerHTML = examName;
+    
+    const studentsHtml = `
+        <table style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Admission</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Publication</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${marks.map((mark, idx) => {
+                    const studentId = mark.admission || mark.name;
+                    const isPublished = isScorePublished(examId, studentId, examType);
+                    
+                    // Calculate score based on exam type
+                    let score = '--';
+                    let scoreValue = 0;
+                    
+                    if (examType === 'nck') {
+                        const scores = mark.scores || [];
+                        const validScores = scores.filter(s => s > 0);
+                        if (validScores.length > 0) {
+                            scoreValue = validScores.reduce((a,b) => a+b, 0) / validScores.length;
+                            score = `${scoreValue.toFixed(1)}%`;
+                        }
+                    } else {
+                        const cat1 = parseFloat(mark.cat1) || 0;
+                        const cat2 = parseFloat(mark.cat2) || 0;
+                        const exam = parseFloat(mark.exam) || 0;
+                        
+                        if (cat1 > 0 || cat2 > 0 || exam > 0) {
+                            if (window.currentAdminAssessmentType === 'full') {
+                                scoreValue = ((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70));
+                            } else if (window.currentAdminAssessmentType === 'single_cat') {
+                                scoreValue = (Math.min(cat1,30) + Math.min(exam,70));
+                            } else {
+                                scoreValue = Math.min(exam,100);
+                            }
+                            score = `${scoreValue.toFixed(1)}%`;
+                        }
+                    }
+                    
+                    const statusBadge = scoreValue >= 60 ? 'badge-pass' : (scoreValue > 0 ? 'badge-fail' : 'badge-pending');
+                    const statusText = scoreValue >= 60 ? 'PASS' : (scoreValue > 0 ? 'FAIL' : 'PENDING');
+                    
+                    return `
+                        <tr>
+                            <td style="padding: 8px;">${idx + 1}</td>
+                            <td style="padding: 8px;"><strong>${mark.name}</strong></td>
+                            <td style="padding: 8px;">${mark.admission || 'N/A'}</td>
+                            <td style="padding: 8px;"><span class="badge ${statusBadge}">${score}</span></td>
+                            <td style="padding: 8px;">${statusText}</td>
+                            <td style="padding: 8px;">
+                                ${isPublished ? 
+                                    '<span class="badge badge-pass"><i class="fas fa-eye"></i> Published</span>' : 
+                                    '<span class="badge badge-fail"><i class="fas fa-eye-slash"></i> Hidden</span>'}
+                            </td>
+                            <td style="padding: 8px;">
+                                ${isPublished ? 
+                                    `<button class="btn-warning" onclick="unpublishScore('${examId}', '${studentId}', '${examType}', '${mark.name.replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
+                                        <i class="fas fa-eye-slash"></i> Hide
+                                    </button>` :
+                                    `<button class="save-btn" onclick="publishScore('${examId}', '${studentId}', '${examType}', '${mark.name.replace(/'/g, "\\'")}', '${examName.replace(/'/g, "\\'")}'); showExamStudentsPanel('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks).replace(/"/g, '&quot;')})" style="padding: 4px 10px; font-size: 11px;">
+                                        <i class="fas fa-eye"></i> Publish
+                                    </button>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        <div style="margin-top: 15px; text-align: center;">
+            <button class="save-btn" onclick="bulkPublishExam('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks.map(m => m.admission || m.name))})">
+                <i class="fas fa-eye"></i> Publish All Students
+            </button>
+            <button class="btn-warning" onclick="bulkUnpublishExam('${examId}', '${examName.replace(/'/g, "\\'")}', '${examType}', ${JSON.stringify(marks.map(m => m.admission || m.name))})" style="margin-left: 10px;">
+                <i class="fas fa-eye-slash"></i> Hide All Students
+            </button>
+        </div>
+    `;
+    
+    contentDiv.innerHTML = studentsHtml;
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Add navigation to Score Publishing Panel in sidebar (for admin only)
+// Add this to the existing nav items when user is admin
+function addScorePublishNavItem() {
+    if (currentUser?.role !== 'admin') return;
+    
+    const navMenu = document.querySelector('.nav-menu');
+    if (navMenu && !document.querySelector('[data-nav="scorePublish"]')) {
+        const publishNav = document.createElement('div');
+        publishNav.className = 'nav-item';
+        publishNav.setAttribute('data-nav', 'scorePublish');
+        publishNav.innerHTML = '<i class="fas fa-eye-slash"></i><span>Score Publishing</span>';
+        
+        // Insert before logout
+        const logoutNav = navMenu.querySelector('.logout-side');
+        if (logoutNav) {
+            navMenu.insertBefore(publishNav, logoutNav);
+        } else {
+            navMenu.appendChild(publishNav);
+        }
+        
+        publishNav.addEventListener('click', () => {
+            showScorePublishPanel();
+            if (window.innerWidth <= 768) {
+                document.getElementById('mainSidebar')?.classList.remove('mobile-open');
+            }
+        });
+    }
+}
+
+// Override the renderWithSidebar function to include Score Publishing nav
+// Add this call after user login
+function initScorePublishForAdmin() {
+    if (currentUser?.role === 'admin') {
+        setTimeout(addScorePublishNavItem, 500);
+    }
+}
+
+// Call this after successful login
+const originalShowMain = showMain;
+window.showMain = async function() {
+    await originalShowMain();
+    initScorePublishForAdmin();
+};
   // ======================= INITIALIZATION =======================
   let sy = localStorage.getItem('selectedYear'); 
   if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
