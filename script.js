@@ -2953,55 +2953,6 @@ function getExamTypeLabel(examType) {
     return labels[examType] || 'Assessment';
 }
 
-function escapeHtml(str, forAttribute = false) {
-    if (!str) return '';
-    if (forAttribute) {
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
-function showFeedback(message, type = 'info') {
-    if (typeof Swal !== 'undefined') {
-        const iconMap = { 'success': 'success', 'error': 'error', 'warning': 'warning', 'info': 'info' };
-        Swal.fire({
-            title: type.charAt(0).toUpperCase() + type.slice(1),
-            text: message,
-            icon: iconMap[type] || 'info',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
-        });
-    } else if (typeof toastr !== 'undefined') {
-        const toastrMethod = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
-        toastr[toastrMethod](message);
-    } else {
-        alert(message);
-    }
-}
-
-function setButtonLoading(button, isLoading, originalText) {
-    if (!button) return;
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<span class="loading-spinner" style="width: 16px; height: 16px; display: inline-block;"></span> Processing...';
-    } else {
-        button.disabled = false;
-        button.innerHTML = originalText || 'Submit';
-    }
-}
-
 // ========== POPULATE COURSE SELECTS ==========
 async function populateExamCourseSelects(courses = null) {
     const courseSelect = document.getElementById('exam_course_id');
@@ -3264,7 +3215,7 @@ async function loadExams() {
         .order('exam_date', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<td><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
         return;
     }
 
@@ -3625,7 +3576,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </td>`;
+                 </tr>`;
             }).join('');
             break;
             
@@ -3642,7 +3593,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </td>`;
+                 </tr>`;
             }).join('');
             break;
             
@@ -3659,7 +3610,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </td>`;
+                 </tr>`;
             }).join('');
             break;
             
@@ -3679,7 +3630,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                         <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
                         <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
                     </select></td>
-                </tr>`;
+                 </tr>`;
             }).join('');
     }
     
@@ -3698,9 +3649,9 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
             <input type="text" id="gradeSearch" placeholder="Search by name, email or ID" class="search-input" oninput="filterGradeStudents()">
             <div class="table-container">
                 <table class="data-table grade-table">
-                    <thead><tr>${tableHeaders}</tr></thead>
+                    <thead><tr>${tableHeaders}</thead>
                     <tbody id="gradeTableBody">${tableRows}</tbody>
-                </table>
+                 </table>
             </div>
             <div class="modal-actions">
                 <button class="btn-action" onclick="saveGrades('${exam.id}', '${examType}')">Save ${examTypeLabel} Grades</button>
