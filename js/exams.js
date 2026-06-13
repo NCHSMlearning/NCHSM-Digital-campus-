@@ -1,9 +1,10 @@
 // exams.js - COMPLETE FIXED VERSION
 // Displays released results (including FAIL with 0 marks) in Completed section
+// Also fetches published scores from Nursing School System
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - FIXED VERSION with Released Results Display');
+    console.log('✅ exams.js - FIXED VERSION with NCK Integration');
     
     class ExamsModule {
         constructor() {
@@ -332,6 +333,100 @@
             this.updateCounts();
         }
         
+        // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
+        async loadNCKMarksFromSystem() {
+            console.log('🔄 Loading NCK marks from Nursing School System...');
+            
+            // Get admission number from user profile
+            const admission = this.userProfile?.admission || window.db?.currentUserProfile?.admission;
+            if (!admission) {
+                console.log('⚠️ No admission number found for NCK marks');
+                return;
+            }
+            
+            console.log('📚 Fetching published marks for admission:', admission);
+            
+            try {
+                // Call the Nursing School System API
+                const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${admission}`, {
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Year': this.intakeYear || '2026'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`✅ Found ${data.marks?.length || 0} published marks from NCK system`);
+                    
+                    if (data.marks && data.marks.length > 0) {
+                        // Convert NCK marks to exam format
+                        const nckExams = data.marks.map((mark, index) => {
+                            const finalScore = parseFloat(mark.final) || 0;
+                            
+                            let gradeClass = 'fail';
+                            let gradeText = 'Fail';
+                            if (finalScore >= 85) {
+                                gradeClass = 'distinction';
+                                gradeText = 'Distinction';
+                            } else if (finalScore >= 75) {
+                                gradeClass = 'credit';
+                                gradeText = 'Credit';
+                            } else if (finalScore >= 60) {
+                                gradeClass = 'pass';
+                                gradeText = 'Pass';
+                            } else if (finalScore > 0) {
+                                gradeClass = 'fail';
+                                gradeText = 'Fail';
+                            }
+                            
+                            return {
+                                id: `nck_${mark.block}_${mark.subject}_${index}`,
+                                exam_name: mark.subject,
+                                exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
+                                isCatExam: mark.assessmentType !== 'exam_only',
+                                isCompleted: true,
+                                isReleased: true,
+                                hasGrade: finalScore > 0,
+                                totalPercentage: finalScore,
+                                gradeText: gradeText,
+                                gradeClass: gradeClass,
+                                cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
+                                cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
+                                finalDisplay: mark.exam ? `${mark.exam}` : '--',
+                                course: mark.subject,
+                                block_term: mark.block?.replace('_', ' ') || 'N/A',
+                                formattedGradedDate: new Date().toLocaleDateString(),
+                                formattedExamDateTime: new Date().toLocaleDateString(),
+                                isFromNCK: true,
+                                programBadgeClass: 'badge-nck',
+                                programIcon: 'fa-stethoscope',
+                                programDisplay: 'NCK System',
+                                examLink: null,
+                                canTakeExam: false,
+                                actionState: 'completed',
+                                buttonText: 'View Results'
+                            };
+                        });
+                        
+                        // Add to completed exams (avoid duplicates)
+                        const existingIds = new Set(this.completedExams.map(e => e.id));
+                        const newExams = nckExams.filter(exam => !existingIds.has(exam.id));
+                        
+                        if (newExams.length > 0) {
+                            this.completedExams = [...this.completedExams, ...newExams];
+                            console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
+                        }
+                    }
+                } else {
+                    console.log('No published marks found for this student');
+                }
+            } catch (error) {
+                console.error('Failed to fetch NCK marks:', error);
+            }
+        }
+        
+        // ==================== MAIN LOAD EXAMS FUNCTION ====================
         async loadExams() {
             console.log('📥 Loading exams with consolidated view...');
             this.showLoading();
@@ -377,7 +472,7 @@
                 let { data: exams, error: examsError } = await query;
                 if (examsError) throw examsError;
                 
-                console.log(`📊 Found ${exams?.length || 0} exams`);
+                console.log(`📊 Found ${exams?.length || 0} exams from local DB`);
                 
                 let grades = [];
                 if (this.userId) {
@@ -405,10 +500,15 @@
                 }
                 
                 this.processExamsData(exams || [], grades);
+                
+                // ===== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM =====
+                await this.loadNCKMarksFromSystem();
+                
                 this.applyDataFilter();
                 
                 console.log('✅ Exams loaded successfully');
                 this.dispatchDashboardEvent();
+                this.hideLoading();
                 
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
@@ -557,7 +657,7 @@
                 const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
                                     (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
                 
-                // ========== CRITICAL FIX: Determine final state correctly ==========
+                // Determine final state
                 let finalStatus = examStatus;
                 let finalCanStart = false;
                 let finalMessage = statusMessage;
@@ -570,13 +670,12 @@
                 // RELEASED RESULTS (PASS or FAIL) - GO TO COMPLETED SECTION
                 if (hasTaken && isReleased) {
                     displayPercentage = totalPercentage !== null ? totalPercentage : 0;
-                    isCompleted = true;  // ✅ KEY: Released results are ALWAYS completed
+                    isCompleted = true;
                     finalStatus = 'completed';
                     finalCanStart = false;
                     finalMessage = '✅ Completed';
                     buttonText = 'View Results';
                     
-                    // Set grade text based on percentage
                     if (totalPercentage !== null && totalPercentage >= 85) {
                         gradeText = 'Distinction';
                         gradeClass = 'distinction';
@@ -790,7 +889,7 @@
                         <td class="text-center">${exam.finalDisplay}</td>
                         <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
                         <td class="text-center action-cell">${actionHtml}</td>
-                    </table>
+                    </tr>
                 `;
             }).join('');
             
@@ -800,7 +899,6 @@
         displayCompletedTable() {
             if (!this.completedTable) return;
             
-            // Include ALL completed exams (including released FAIL results)
             const completedReleased = this.completedExams.filter(exam => 
                 exam.isCompleted || exam.actionState === 'expired' || exam.actionState === 'pending_release'
             );
@@ -836,7 +934,6 @@
                 let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
                 let actionHtml = '';
                 
-                // Show View Results button for released exams
                 if (exam.isReleased && exam.hasGrade) {
                     actionHtml = `<button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
                                     <i class="fas fa-chart-line"></i> View Results
@@ -979,6 +1076,13 @@
             if (this.completedTable) this.completedTable.innerHTML = errorHTML;
         }
         
+        hideLoading() {
+            // Remove loading indicator
+            if (this.currentTable && this.currentTable.innerHTML.includes('loading')) {
+                // Loading will be replaced by actual content
+            }
+        }
+        
         escapeHtml(str) {
             if (!str) return '';
             const div = document.createElement('div');
@@ -1005,109 +1109,8 @@
             this.loadExams();
         }
     }
-    // Add this method to your ExamsModule class in exams.js
-
-async loadNCKMarksFromSystem() {
-    console.log('🔄 Loading NCK marks from system...');
     
-    if (!window.nckIntegration || !window.nckIntegration.isConnected) {
-        console.log('⏳ NCK integration not ready yet');
-        return;
-    }
-    
-    const admission = window.db?.currentUserProfile?.admission;
-    if (!admission) {
-        console.log('⚠️ No admission number found');
-        return;
-    }
-    
-    const marks = await window.nckIntegration.getStudentMarks(admission);
-    
-    if (!marks || marks.length === 0) {
-        console.log('📭 No NCK marks found for student');
-        return;
-    }
-    
-    console.log(`📚 Processing ${marks.length} NCK marks...`);
-    
-    // Process marks to look like exams for display
-    const nckExams = marks.map((mark, index) => {
-        const finalScore = window.nckIntegration.calculateFinalScore(mark);
-        
-        // Determine grade class
-        let gradeClass = 'fail';
-        let gradeText = 'Fail';
-        if (finalScore >= 85) {
-            gradeClass = 'distinction';
-            gradeText = 'Distinction';
-        } else if (finalScore >= 75) {
-            gradeClass = 'credit';
-            gradeText = 'Credit';
-        } else if (finalScore >= 60) {
-            gradeClass = 'pass';
-            gradeText = 'Pass';
-        } else if (finalScore > 0) {
-            gradeClass = 'fail';
-            gradeText = 'Fail';
-        } else {
-            gradeClass = 'pending';
-            gradeText = 'Pending';
-        }
-        
-        // Format date
-        let formattedDate = '--';
-        if (mark.gradedDate) {
-            formattedDate = new Date(mark.gradedDate).toLocaleDateString();
-        } else if (mark.examDate) {
-            formattedDate = new Date(mark.examDate).toLocaleDateString();
-        }
-        
-        return {
-            id: `nck_${mark.id || index}_${Date.now()}`,
-            exam_name: mark.subject || mark.name || 'Internal Assessment',
-            exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
-            isCatExam: mark.assessmentType !== 'exam_only',
-            isCompleted: true,
-            isReleased: true,
-            hasGrade: finalScore > 0,
-            totalPercentage: finalScore > 0 ? finalScore : null,
-            gradeText: gradeText,
-            gradeClass: gradeClass,
-            cat1Display: mark.cat1 ? `${mark.cat1}%` : '--',
-            cat2Display: mark.cat2 ? `${mark.cat2}%` : '--',
-            finalDisplay: mark.exam ? `${mark.exam}%` : '--',
-            course: mark.subject || mark.name || 'Nursing',
-            block_term: mark.block || 'N/A',
-            formattedGradedDate: formattedDate,
-            formattedExamDateTime: formattedDate,
-            isFromNCK: true,
-            programBadgeClass: 'badge-nck',
-            programIcon: 'fa-stethoscope',
-            programDisplay: 'NCK System',
-            examLink: null,
-            canTakeExam: false,
-            actionState: 'completed',
-            actionMessage: 'Completed',
-            buttonText: 'View',
-            hasValidLink: false
-        };
-    });
-    
-    // Filter out any duplicates (by exam_name and course)
-    const existingNames = new Set(this.completedExams.map(e => `${e.exam_name}_${e.course}`));
-    const newExams = nckExams.filter(exam => !existingNames.has(`${exam.exam_name}_${exam.course}`));
-    
-    if (newExams.length > 0) {
-        this.completedExams = [...this.completedExams, ...newExams];
-        console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
-        
-        // Refresh the display
-        this.displayCompletedTable();
-        this.updateCounts();
-    } else {
-        console.log('No new NCK marks to add');
-    }
-}
+    // Initialize the module
     function initializeExamsModule() {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
@@ -1122,5 +1125,5 @@ async loadNCKMarksFromSystem() {
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready - Released results (including FAIL with 0%) now appear in Completed section!');
+    console.log('✅ Exams module ready - Released results now appear in Completed section!');
 })();
