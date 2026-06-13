@@ -3873,13 +3873,6 @@ async function saveGrades(examId, examType = 'EXAM') {
     }
 }
 
-function closeModal() {
-    const modal = document.getElementById('gradeModal');
-    if (modal) modal.remove();
-    const examModal = document.getElementById('examEditModal');
-    if (examModal) examModal.style.display = 'none';
-}
-
 // ========== GET CURRENT USER ==========
 async function getCurrentUser() {
     try {
