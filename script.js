@@ -3183,11 +3183,15 @@ async function calculateExamProgress(examId) {
             return { totalCount: 0, markedCount: 0, percentage: 0 };
         }
         
+        // Convert intake_year to string for comparison
+        const intakeYearStr = String(exam.intake_year);
+        
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id')
+            .eq('role', 'student')
             .eq('program', exam.program_type)
-            .eq('intake_year', exam.intake_year)
+            .eq('intake_year', intakeYearStr)
             .eq('block', exam.block);
         
         const totalCount = students?.length || 0;
@@ -3510,8 +3514,6 @@ async function openGradeModal(examId, examName = '') {
             return;
         }
 
-        showFeedback('Loading exam data...', 'info');
-
         const { data: exam, error: examError } = await sb
             .from('exams')
             .select('*')
@@ -3523,24 +3525,46 @@ async function openGradeModal(examId, examName = '') {
             return;
         }
 
-        let examType = exam.exam_type || 'EXAM';
-        if (!exam.exam_type && exam.title) {
-            const name = exam.title.toLowerCase();
-            if (name.includes('cat 1')) examType = 'CAT_1';
-            else if (name.includes('cat 2')) examType = 'CAT_2';
-            else if (name.includes('cat')) examType = 'CAT';
-        }
+        console.log('📋 Exam criteria:', {
+            program: exam.program_type || exam.target_program,
+            intake_year: exam.intake_year,
+            block: exam.block || exam.block_term
+        });
 
-        const { data: students, error: studentError } = await sb
+        const programField = exam.program_type || exam.target_program;
+        const blockField = exam.block || exam.block_term;
+        
+        // Build query - FIX: Convert intake_year to string for comparison
+        let query = sb
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, email')
-            .eq('block', exam.block)
-            .eq('intake_year', exam.intake_year)
-            .eq('program', exam.program_type)
-            .order('full_name');
+            .select('user_id, full_name, email, program, intake_year, block')
+            .eq('role', 'student');
+        
+        if (programField) {
+            query = query.eq('program', programField);
+        }
+        if (exam.intake_year) {
+            // Convert exam intake_year to string to match student data
+            const intakeYearStr = String(exam.intake_year);
+            query = query.eq('intake_year', intakeYearStr);
+        }
+        if (blockField) {
+            query = query.eq('block', blockField);
+        }
+        
+        const { data: students, error: studentError } = await query;
+
+        console.log(`Found ${students?.length || 0} students matching criteria`);
 
         if (studentError || !students || students.length === 0) {
-            showFeedback('No students found for this exam criteria.', 'warning');
+            // Show helpful message with suggestions
+            const suggestions = [];
+            if (exam.intake_year) suggestions.push(`• Intake Year: ${exam.intake_year} (as string)`);
+            if (programField) suggestions.push(`• Program: ${programField}`);
+            if (blockField) suggestions.push(`• Block: ${blockField}`);
+            
+            const helpMessage = `No students found for this exam criteria.\n\nExam Requirements:\n${suggestions.join('\n')}\n\nPlease check your student data.`;
+            showFeedback(helpMessage, 'warning');
             return;
         }
 
@@ -3549,12 +3573,13 @@ async function openGradeModal(examId, examName = '') {
             .select('*')
             .eq('exam_id', examId);
 
+        let examType = exam.exam_type || 'EXAM';
         const modalHtml = buildGradeModalHTML(exam, students, existingGrades, currentUser, examType);
         showGradeModal(modalHtml);
 
         if (examType === 'EXAM') students.forEach(s => updateGradeTotal(s.user_id));
         
-        showFeedback(`${getExamTypeLabel(examType)} grading modal loaded`, 'success');
+        showFeedback(`${getExamTypeLabel(examType)} grading modal loaded for ${students.length} students`, 'success');
         
     } catch (error) {
         console.error('Error opening grade modal:', error);
