@@ -1236,5 +1236,174 @@ async function initPublishedScores() {
 
 // Call initialization
 initPublishedScores();
+
+// ========== STUDENT PORTAL ENDPOINTS (MISSING - ADD THESE!) ==========
+
+// 1. Student gets their published internal marks
+app.get('/api/student/marks/:admission', async (req, res) => {
+    try {
+        const { admission } = req.params;
+        const year = req.headers['x-year'] || '2026';
+        const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+        
+        console.log(`📚 Student ${admission} requesting published marks`);
+        
+        // Get all subjects from CONFIG
+        const configResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: 'CONFIG!A:D',
+        });
+        const configData = configResponse.data.values || [];
+        
+        const allMarks = [];
+        
+        // Loop through all blocks and subjects
+        for (let i = 1; i < configData.length; i++) {
+            const row = configData[i];
+            if (row && row[0] && row[2] === 'YES') {
+                const block = row[0];
+                const subject = row[1];
+                const assessmentType = row[3] || 'full';
+                
+                let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+                const sheetName = `${block}_${cleanSubject}`;
+                
+                try {
+                    const marksResponse = await sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: `${sheetName}!A:I`,
+                    });
+                    
+                    const marksData = marksResponse.data.values || [];
+                    
+                    for (let j = 1; j < marksData.length; j++) {
+                        const markRow = marksData[j];
+                        if (markRow && markRow[0] === admission) {
+                            // Check if this score is PUBLISHED
+                            const examId = `${block}_${subject}`;
+                            const key = `internal_${examId}_${admission}`;
+                            const isPublished = publishedScores.has(key);
+                            
+                            if (isPublished) {
+                                // Calculate final score
+                                let cat1 = parseFloat(markRow[2]) || 0;
+                                let cat2 = parseFloat(markRow[3]) || 0;
+                                let examScore = parseFloat(markRow[4]) || 0;
+                                let finalScore = 0;
+                                
+                                if (assessmentType === 'full') {
+                                    finalScore = ((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30) + Math.min(examScore,70);
+                                } else if (assessmentType === 'single_cat') {
+                                    finalScore = Math.min(cat1,30) + Math.min(examScore,70);
+                                } else {
+                                    finalScore = Math.min(examScore,100);
+                                }
+                                finalScore = Math.round(finalScore * 10) / 10;
+                                
+                                allMarks.push({
+                                    block: block,
+                                    subject: subject,
+                                    assessmentType: assessmentType,
+                                    cat1: markRow[2] || '',
+                                    cat2: markRow[3] || '',
+                                    exam: markRow[4] || '',
+                                    final: finalScore,
+                                    grade: markRow[6] || '',
+                                    gradedBy: markRow[7] || ''
+                                });
+                            }
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    // Sheet doesn't exist, skip
+                }
+            }
+        }
+        
+        console.log(`✅ Found ${allMarks.length} published marks for ${admission}`);
+        res.json({ success: true, marks: allMarks });
+        
+    } catch (error) {
+        console.error('Error in /api/student/marks:', error);
+        res.status(500).json({ success: false, error: error.message, marks: [] });
+    }
+});
+
+// 2. Student gets their NCK clinical scores
+app.get('/api/nck-student/:admission', async (req, res) => {
+    try {
+        const { admission } = req.params;
+        const year = req.headers['x-year'] || '2026';
+        const spreadsheetId = SPREADSHEETS[year]?.nck || SPREADSHEETS['2026'].nck;
+        
+        console.log(`🏥 Student ${admission} requesting NCK scores`);
+        
+        // Get XY FORMS data
+        const xyResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: 'XY FORMS!A:Z',
+        });
+        
+        const xyData = xyResponse.data.values || [];
+        let studentScores = [];
+        
+        for (let i = 1; i < xyData.length; i++) {
+            const row = xyData[i];
+            if (row && (row[1] === admission || row[0] === admission)) {
+                // Get scores from columns C-X (indices 2-23)
+                for (let j = 2; j <= 23 && j < row.length; j++) {
+                    const score = parseFloat(row[j]);
+                    studentScores.push(isNaN(score) ? 0 : score);
+                }
+                while (studentScores.length < 22) studentScores.push(0);
+                break;
+            }
+        }
+        
+        res.json({ success: true, admission, scores: studentScores });
+        
+    } catch (error) {
+        console.error('Error in /api/nck-student:', error);
+        res.status(500).json({ success: false, error: error.message, scores: [] });
+    }
+});
+
+// 3. Check if student exists
+app.get('/api/student/:admission', async (req, res) => {
+    try {
+        const { admission } = req.params;
+        const year = req.headers['x-year'] || '2026';
+        const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+        
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: spreadsheetId,
+            range: 'STUDENTS!A:D',
+        });
+        
+        const data = response.data.values || [];
+        let student = null;
+        
+        for (let i = 1; i < data.length; i++) {
+            if (data[i] && data[i][0] === admission) {
+                student = {
+                    admission: data[i][0],
+                    name: data[i][1],
+                    block: data[i][2],
+                    status: data[i][3]
+                };
+                break;
+            }
+        }
+        
+        if (student) {
+            res.json({ success: true, student });
+        } else {
+            res.json({ success: false, message: 'Student not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
