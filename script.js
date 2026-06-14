@@ -9980,6 +9980,817 @@ window.requestAdminAction = requestAdminAction;
 window.initAdminApprovals = initAdminApprovals;
 
 console.log('✅ Super Admin Approval System loaded');
+
+
+
+// ============================================
+// NURSING SCHOOL SYSTEM - COMPLETE MODULE
+// ============================================
+
+// Global variables for Nursing System
+let currentInternalMarksData = [];
+let currentNCKMarksData = [];
+let nursingSystemChart = null;
+let currentNCKStudentIndex = 0;
+let currentNCKStudentsList = [];
+
+// ============================================
+// INITIALIZATION & LOAD FUNCTIONS
+// ============================================
+
+async function loadNursingSystemData() {
+    console.log('🏥 Loading Nursing School System...');
+    await loadNursingStats();
+    await loadNursingSubjects();
+    await loadNCKMarks();
+    await loadNursingAnalytics();
+}
+
+async function loadNursingStats() {
+    try {
+        const { data: students, error: sError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id', { count: 'exact' })
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (!sError) {
+            document.getElementById('ns_total_students').textContent = students?.length || 0;
+        }
+        
+        const { data: internalMarks, error: iError } = await sb
+            .from('student_marks')
+            .select('id', { count: 'exact' });
+        
+        if (!iError) {
+            document.getElementById('ns_total_internal').textContent = internalMarks?.length || 0;
+        }
+        
+        const { data: nckMarks, error: nError } = await sb
+            .from('nck_marks')
+            .select('id', { count: 'exact' });
+        
+        if (!nError) {
+            document.getElementById('ns_total_nck').textContent = nckMarks?.length || 0;
+        }
+        
+        // Calculate average score
+        const { data: allScores } = await sb
+            .from('student_marks')
+            .select('final_score');
+        
+        let totalScore = 0;
+        let count = 0;
+        allScores?.forEach(s => {
+            if (s.final_score > 0) {
+                totalScore += s.final_score;
+                count++;
+            }
+        });
+        
+        const avgScore = count > 0 ? (totalScore / count).toFixed(1) : 0;
+        document.getElementById('ns_class_avg').textContent = `${avgScore}%`;
+        
+    } catch (err) {
+        console.error('Error loading stats:', err);
+    }
+}
+
+async function loadNursingSubjects() {
+    try {
+        const { data: units } = await sb
+            .from('units_catalog')
+            .select('block, unit_name, assessment_type')
+            .eq('status', 'active');
+        
+        const blockSelect = document.getElementById('ns_block_select');
+        const subjectSelect = document.getElementById('ns_subject_select');
+        
+        if (!blockSelect || !subjectSelect) return;
+        
+        // Group subjects by block
+        const subjectsByBlock = {};
+        units?.forEach(u => {
+            if (!subjectsByBlock[u.block]) subjectsByBlock[u.block] = [];
+            subjectsByBlock[u.block].push({
+                name: u.unit_name,
+                type: u.assessment_type || 'full'
+            });
+        });
+        
+        // Store for later use
+        window.nursingSubjectsByBlock = subjectsByBlock;
+        
+    } catch (err) {
+        console.error('Error loading subjects:', err);
+    }
+}
+
+// ============================================
+// INTERNAL MARKS FUNCTIONS
+// ============================================
+
+async function loadInternalMarks() {
+    const block = document.getElementById('ns_block_select').value;
+    const subject = document.getElementById('ns_subject_select').value;
+    
+    if (!block || !subject) {
+        document.getElementById('ns_internal_marks_container').innerHTML = 
+            '<div class="text-center" style="padding: 40px;">Select a block and subject to load marks</div>';
+        return;
+    }
+    
+    // Update assessment type dropdown
+    const subjects = window.nursingSubjectsByBlock?.[block] || [];
+    const foundSubject = subjects.find(s => s.name === subject);
+    if (foundSubject) {
+        document.getElementById('ns_assessment_type').value = foundSubject.type;
+    }
+    
+    const container = document.getElementById('ns_internal_marks_container');
+    container.innerHTML = '<div class="text-center" style="padding: 40px;"><div class="loading-spinner"></div><p>Loading marks...</p></div>';
+    
+    try {
+        // Get students in this block
+        const { data: students } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name')
+            .eq('role', 'student')
+            .eq('block', block)
+            .eq('status', 'approved');
+        
+        if (!students || students.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 40px;">No students found in this block</div>';
+            return;
+        }
+        
+        // Get existing marks
+        const { data: existingMarks } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', subject);
+        
+        const marksMap = {};
+        existingMarks?.forEach(m => { marksMap[m.admission_number] = m; });
+        
+        let html = `<div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead style="background-color: #343a40 !important">
+                    <tr>
+                        <th style="color: white; width: 5%;">#</th>
+                        <th style="color: white; width: 15%;">Admission</th>
+                        <th style="color: white; width: 25%;">Student Name</th>
+                        <th style="color: white; width: 10%;">CAT1 (0-30)</th>
+                        <th style="color: white; width: 10%;">CAT2 (0-30)</th>
+                        <th style="color: white; width: 10%;">Exam (0-70)</th>
+                        <th style="color: white; width: 10%;">Total</th>
+                        <th style="color: white; width: 8%;">Grade</th>
+                        <th style="color: white; width: 7%;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        for (let i = 0; i < students.length; i++) {
+            const student = students[i];
+            const mark = marksMap[student.student_id] || {};
+            const cat1 = mark.cat1_score !== undefined && mark.cat1_score !== null ? mark.cat1_score : '';
+            const cat2 = mark.cat2_score !== undefined && mark.cat2_score !== null ? mark.cat2_score : '';
+            const exam = mark.exam_score !== undefined && mark.exam_score !== null ? mark.exam_score : '';
+            
+            let total = 0;
+            let grade = '-';
+            let status = 'PENDING';
+            let statusClass = 'text-warning';
+            
+            if (cat1 !== '' || cat2 !== '' || exam !== '') {
+                const ncat1 = Math.min(parseFloat(cat1) || 0, 30);
+                const ncat2 = Math.min(parseFloat(cat2) || 0, 30);
+                const nexam = Math.min(parseFloat(exam) || 0, 70);
+                total = ((ncat1 + ncat2) / 60 * 30) + nexam;
+                total = Math.round(total * 10) / 10;
+                grade = calculateNursingGrade(total);
+                status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
+                statusClass = status === 'PASS' ? 'text-success' : (status === 'FAIL' ? 'text-danger' : 'text-warning');
+            }
+            
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td>${escapeHtml(student.student_id)}</td>
+                <td><strong>${escapeHtml(student.full_name)}</strong></td>
+                <td><input type="number" class="form-control internal-cat1" data-student="${student.student_id}" value="${cat1}" min="0" max="30" step="0.5" style="width: 80px;" onchange="updateInternalTotal('${student.student_id}')"></td>
+                <td><input type="number" class="form-control internal-cat2" data-student="${student.student_id}" value="${cat2}" min="0" max="30" step="0.5" style="width: 80px;" onchange="updateInternalTotal('${student.student_id}')"></td>
+                <td><input type="number" class="form-control internal-exam" data-student="${student.student_id}" value="${exam}" min="0" max="70" step="0.5" style="width: 80px;" onchange="updateInternalTotal('${student.student_id}')"></td>
+                <td id="total_${student.student_id}" class="${statusClass}"><strong>${total || '-'}</strong></td>
+                <td id="grade_${student.student_id}">${grade}</td>
+                <td id="status_${student.student_id}" class="${statusClass}">${status}</td>
+            </tr>`;
+        }
+        
+        html += `</tbody>
+            </table>
+            </div>
+            <div class="text-center" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="saveAllInternalMarks()"><i class="fa fa-save"></i> Save All Marks</button>
+                <button class="btn btn-info" onclick="fillDownInternalMarks()" style="margin-left: 10px;"><i class="fa fa-arrow-down"></i> Fill Down Values</button>
+            </div>`;
+        
+        container.innerHTML = html;
+        currentInternalMarksData = students;
+        
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+}
+
+window.updateInternalTotal = function(studentId) {
+    const cat1Input = document.querySelector(`.internal-cat1[data-student="${studentId}"]`);
+    const cat2Input = document.querySelector(`.internal-cat2[data-student="${studentId}"]`);
+    const examInput = document.querySelector(`.internal-exam[data-student="${studentId}"]`);
+    
+    if (!cat1Input || !cat2Input || !examInput) return;
+    
+    const cat1 = Math.min(parseFloat(cat1Input.value) || 0, 30);
+    const cat2 = Math.min(parseFloat(cat2Input.value) || 0, 30);
+    const exam = Math.min(parseFloat(examInput.value) || 0, 70);
+    
+    const total = ((cat1 + cat2) / 60 * 30) + exam;
+    const finalTotal = Math.round(total * 10) / 10;
+    const grade = calculateNursingGrade(finalTotal);
+    const status = finalTotal >= 60 ? 'PASS' : (finalTotal > 0 ? 'FAIL' : 'PENDING');
+    const statusClass = status === 'PASS' ? 'text-success' : (status === 'FAIL' ? 'text-danger' : 'text-warning');
+    
+    const totalSpan = document.getElementById(`total_${studentId}`);
+    const gradeSpan = document.getElementById(`grade_${studentId}`);
+    const statusSpan = document.getElementById(`status_${studentId}`);
+    
+    if (totalSpan) {
+        totalSpan.innerHTML = `<strong>${finalTotal || '-'}</strong>`;
+        totalSpan.className = statusClass;
+    }
+    if (gradeSpan) gradeSpan.innerHTML = grade;
+    if (statusSpan) {
+        statusSpan.innerHTML = status;
+        statusSpan.className = statusClass;
+    }
+};
+
+window.fillDownInternalMarks = function() {
+    const cat1Inputs = document.querySelectorAll('.internal-cat1');
+    const cat2Inputs = document.querySelectorAll('.internal-cat2');
+    const examInputs = document.querySelectorAll('.internal-exam');
+    
+    if (cat1Inputs.length === 0) return;
+    
+    const firstCat1 = cat1Inputs[0].value;
+    const firstCat2 = cat2Inputs[0].value;
+    const firstExam = examInputs[0].value;
+    
+    for (let i = 1; i < cat1Inputs.length; i++) {
+        cat1Inputs[i].value = firstCat1;
+        cat2Inputs[i].value = firstCat2;
+        examInputs[i].value = firstExam;
+        const studentId = cat1Inputs[i].getAttribute('data-student');
+        updateInternalTotal(studentId);
+    }
+    showNotification('Values filled down!', false);
+};
+
+window.saveAllInternalMarks = async function() {
+    const block = document.getElementById('ns_block_select').value;
+    const subject = document.getElementById('ns_subject_select').value;
+    
+    if (!block || !subject) {
+        showNotification('Please select block and subject', true);
+        return;
+    }
+    
+    const assessmentType = document.getElementById('ns_assessment_type').value;
+    const cat1Inputs = document.querySelectorAll('.internal-cat1');
+    
+    if (cat1Inputs.length === 0) {
+        showNotification('No data to save', true);
+        return;
+    }
+    
+    showLoading('Saving marks...');
+    let savedCount = 0;
+    
+    for (const input of cat1Inputs) {
+        const studentId = input.getAttribute('data-student');
+        const cat1 = parseFloat(document.querySelector(`.internal-cat1[data-student="${studentId}"]`).value) || 0;
+        const cat2 = parseFloat(document.querySelector(`.internal-cat2[data-student="${studentId}"]`).value) || 0;
+        const exam = parseFloat(document.querySelector(`.internal-exam[data-student="${studentId}"]`).value) || 0;
+        
+        const ncat1 = Math.min(cat1, 30);
+        const ncat2 = Math.min(cat2, 30);
+        const nexam = Math.min(exam, 70);
+        const finalScore = ((ncat1 + ncat2) / 60 * 30) + nexam;
+        const finalTotal = Math.round(finalScore * 10) / 10;
+        const grade = calculateNursingGrade(finalTotal);
+        
+        const { error } = await sb
+            .from('student_marks')
+            .upsert({
+                admission_number: studentId,
+                block: block,
+                subject_name: subject,
+                assessment_type: assessmentType,
+                cat1_score: cat1,
+                cat2_score: cat2,
+                exam_score: exam,
+                final_score: finalTotal,
+                grade: grade,
+                academic_year: '2026',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'admission_number,subject_name,block' });
+        
+        if (!error) savedCount++;
+    }
+    
+    hideLoading();
+    showNotification(`Saved ${savedCount} marks!`, false);
+    await loadNursingStats();
+};
+
+// ============================================
+// NCK MARKS FUNCTIONS
+// ============================================
+
+async function loadNCKMarks() {
+    const sheetName = document.getElementById('ns_nck_sheet').value;
+    const block = document.getElementById('ns_nck_block').value;
+    
+    const container = document.getElementById('ns_nck_marks_container');
+    container.innerHTML = '<div class="text-center" style="padding: 40px;"><div class="loading-spinner"></div><p>Loading NCK marks...</p></div>';
+    
+    try {
+        // Get students in this block
+        const { data: students } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name')
+            .eq('role', 'student')
+            .eq('block', block)
+            .eq('status', 'approved');
+        
+        if (!students || students.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 40px;">No students found in this block</div>';
+            return;
+        }
+        
+        currentNCKStudentsList = students;
+        
+        // Get existing NCK marks
+        const { data: existingMarks } = await sb
+            .from('nck_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', sheetName);
+        
+        const marksMap = {};
+        existingMarks?.forEach(m => { marksMap[m.admission_number] = m; });
+        
+        let html = `<div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead style="background-color: #343a40 !important">
+                    <tr>
+                        <th style="color: white; width: 5%;">#</th>
+                        <th style="color: white; width: 25%;">Student Name</th>
+                        <th style="color: white; width: 15%;">Admission</th>
+                        <th style="color: white; width: 15%;">Score (%)</th>
+                        <th style="color: white; width: 10%;">Grade</th>
+                        <th style="color: white; width: 10%;">Status</th>
+                        <th style="color: white; width: 15%;">Graded By</th>
+                        <th style="color: white; width: 10%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        for (let i = 0; i < students.length; i++) {
+            const student = students[i];
+            const mark = marksMap[student.student_id] || {};
+            const score = mark.final_score !== undefined && mark.final_score !== null ? mark.final_score : '';
+            const grade = score !== '' ? calculateNursingGrade(parseFloat(score)) : '-';
+            const status = score !== '' ? (parseFloat(score) >= 60 ? 'PASS' : (parseFloat(score) > 0 ? 'FAIL' : 'PENDING')) : 'PENDING';
+            const statusClass = status === 'PASS' ? 'text-success' : (status === 'FAIL' ? 'text-danger' : 'text-warning');
+            const gradedBy = mark.graded_by || '';
+            
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td><strong>${escapeHtml(student.full_name)}</strong></td>
+                <td>${escapeHtml(student.student_id)}</td>
+                <td><input type="number" id="nck_score_${i}" class="form-control" value="${score}" min="0" max="100" step="0.5" style="width: 100px;" onchange="updateNCKTotal(${i})"></td>
+                <td id="nck_grade_${i}" class="${statusClass}">${grade}</td>
+                <td id="nck_status_${i}" class="${statusClass}">${status}</td>
+                <td><input type="text" id="nck_graded_${i}" class="form-control" value="${escapeHtml(gradedBy)}" placeholder="Lecturer name" style="width: 150px;"></td>
+                <td><button class="btn btn-sm btn-success" onclick="saveSingleNCK(${i})"><i class="fa fa-save"></i> Save</button></td>
+            </tr>`;
+        }
+        
+        html += `</tbody>
+            </table>
+            </div>
+            <div class="text-center" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="saveAllNCKMarks()"><i class="fa fa-save"></i> Save All NCK Marks</button>
+                <button class="btn btn-info" onclick="fillDownNCKValues()" style="margin-left: 10px;"><i class="fa fa-arrow-down"></i> Fill Down Values</button>
+            </div>`;
+        
+        container.innerHTML = html;
+        
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+}
+
+window.updateNCKTotal = function(idx) {
+    const scoreInput = document.getElementById(`nck_score_${idx}`);
+    if (!scoreInput) return;
+    
+    const score = parseFloat(scoreInput.value) || 0;
+    const grade = calculateNursingGrade(score);
+    const status = score >= 60 ? 'PASS' : (score > 0 ? 'FAIL' : 'PENDING');
+    const statusClass = status === 'PASS' ? 'text-success' : (status === 'FAIL' ? 'text-danger' : 'text-warning');
+    
+    const gradeSpan = document.getElementById(`nck_grade_${idx}`);
+    const statusSpan = document.getElementById(`nck_status_${idx}`);
+    
+    if (gradeSpan) {
+        gradeSpan.innerHTML = grade;
+        gradeSpan.className = statusClass;
+    }
+    if (statusSpan) {
+        statusSpan.innerHTML = status;
+        statusSpan.className = statusClass;
+    }
+};
+
+window.fillDownNCKValues = function() {
+    const scoreInputs = document.querySelectorAll('[id^="nck_score_"]');
+    if (scoreInputs.length === 0) return;
+    
+    const firstScore = scoreInputs[0].value;
+    for (let i = 1; i < scoreInputs.length; i++) {
+        scoreInputs[i].value = firstScore;
+        updateNCKTotal(i);
+    }
+    showNotification('Values filled down!', false);
+};
+
+window.saveSingleNCK = async function(idx) {
+    const sheetName = document.getElementById('ns_nck_sheet').value;
+    const block = document.getElementById('ns_nck_block').value;
+    const student = currentNCKStudentsList[idx];
+    
+    if (!student) {
+        showNotification('Student not found', true);
+        return;
+    }
+    
+    const score = parseFloat(document.getElementById(`nck_score_${idx}`).value) || 0;
+    const gradedBy = document.getElementById(`nck_graded_${idx}`).value;
+    const grade = calculateNursingGrade(score);
+    const status = score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending');
+    
+    showLoading(`Saving NCK marks for ${student.full_name}...`);
+    
+    const { error } = await sb
+        .from('nck_marks')
+        .upsert({
+            admission_number: student.student_id,
+            student_name: student.full_name,
+            block: block,
+            subject_name: sheetName,
+            final_score: score,
+            grade: grade,
+            status: status,
+            graded_by: gradedBy || 'Admin',
+            academic_year: '2026',
+            published: true,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'admission_number,subject_name,block' });
+    
+    hideLoading();
+    
+    if (error) {
+        showNotification(`Error: ${error.message}`, true);
+    } else {
+        showNotification(`Saved NCK marks for ${student.full_name}!`, false);
+        updateNCKTotal(idx);
+    }
+};
+
+window.saveAllNCKMarks = async function() {
+    const sheetName = document.getElementById('ns_nck_sheet').value;
+    const block = document.getElementById('ns_nck_block').value;
+    const scoreInputs = document.querySelectorAll('[id^="nck_score_"]');
+    
+    if (scoreInputs.length === 0) {
+        showNotification('No data to save', true);
+        return;
+    }
+    
+    showLoading('Saving all NCK marks...');
+    let savedCount = 0;
+    
+    for (let i = 0; i < scoreInputs.length; i++) {
+        const student = currentNCKStudentsList[i];
+        if (!student) continue;
+        
+        const score = parseFloat(document.getElementById(`nck_score_${i}`).value) || 0;
+        const gradedBy = document.getElementById(`nck_graded_${i}`).value;
+        const grade = calculateNursingGrade(score);
+        const status = score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending');
+        
+        const { error } = await sb
+            .from('nck_marks')
+            .upsert({
+                admission_number: student.student_id,
+                student_name: student.full_name,
+                block: block,
+                subject_name: sheetName,
+                final_score: score,
+                grade: grade,
+                status: status,
+                graded_by: gradedBy || 'Admin',
+                academic_year: '2026',
+                published: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'admission_number,subject_name,block' });
+        
+        if (!error) savedCount++;
+    }
+    
+    hideLoading();
+    showNotification(`Saved ${savedCount} NCK records!`, false);
+    await loadNursingStats();
+};
+
+// ============================================
+// ANALYTICS FUNCTIONS
+// ============================================
+
+async function loadNursingAnalytics() {
+    try {
+        const { data: grades } = await sb.from('student_marks').select('final_score');
+        const { data: nckMarks } = await sb.from('nck_marks').select('final_score');
+        
+        let totalScore = 0;
+        let scoredCount = 0;
+        let passedCount = 0;
+        
+        const allScores = [...(grades || []), ...(nckMarks || [])];
+        for (const item of allScores) {
+            const score = item.final_score || 0;
+            if (score > 0) {
+                totalScore += score;
+                scoredCount++;
+                if (score >= 60) passedCount++;
+            }
+        }
+        
+        const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : 0;
+        const passRate = scoredCount > 0 ? ((passedCount / scoredCount) * 100).toFixed(1) : 0;
+        const totalExams = allScores.length;
+        
+        document.getElementById('ns_avg_score').textContent = `${avgScore}%`;
+        document.getElementById('ns_pass_rate').textContent = `${passRate}%`;
+        document.getElementById('ns_total_exams').textContent = totalExams;
+        
+        // Get top student
+        const { data: topStudent } = await sb
+            .from('student_marks')
+            .select('admission_number, student_name, final_score')
+            .order('final_score', { ascending: false })
+            .limit(1);
+        
+        if (topStudent && topStudent[0]) {
+            document.getElementById('ns_top_student').textContent = topStudent[0].student_name?.substring(0, 20) || '-';
+        }
+        
+        // Update chart
+        if (nursingSystemChart) nursingSystemChart.destroy();
+        const ctx = document.getElementById('ns_performance_chart')?.getContext('2d');
+        if (ctx) {
+            nursingSystemChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [`Pass (${passedCount})`, `Fail (${scoredCount - passedCount})`, `Pending (${totalExams - scoredCount})`],
+                    datasets: [{
+                        data: [passedCount, scoredCount - passedCount, totalExams - scoredCount],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+        
+    } catch (err) {
+        console.error('Error loading analytics:', err);
+    }
+}
+
+// ============================================
+// EXPORT FUNCTIONS
+// ============================================
+
+async function exportInternalMarksToCSV() {
+    const { data: marks } = await sb.from('student_marks').select('*');
+    if (!marks || marks.length === 0) {
+        showNotification('No data to export', true);
+        return;
+    }
+    
+    const headers = ['Admission', 'Student Name', 'Block', 'Subject', 'CAT1', 'CAT2', 'Exam', 'Final Score', 'Grade', 'Academic Year'];
+    const rows = marks.map(m => [
+        m.admission_number || '',
+        m.student_name || '',
+        m.block || '',
+        m.subject_name || '',
+        m.cat1_score || '',
+        m.cat2_score || '',
+        m.exam_score || '',
+        m.final_score || '',
+        m.grade || '',
+        m.academic_year || ''
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `internal_marks_${new Date().toISOString().split('T')[0]}.csv`);
+    showNotification('Export complete!', false);
+}
+
+async function exportNCKMarksToCSV() {
+    const { data: marks } = await sb.from('nck_marks').select('*');
+    if (!marks || marks.length === 0) {
+        showNotification('No data to export', true);
+        return;
+    }
+    
+    const headers = ['Admission', 'Student Name', 'Block', 'Subject', 'Final Score', 'Grade', 'Status', 'Graded By', 'Academic Year'];
+    const rows = marks.map(m => [
+        m.admission_number || '',
+        m.student_name || '',
+        m.block || '',
+        m.subject_name || '',
+        m.final_score || '',
+        m.grade || '',
+        m.status || '',
+        m.graded_by || '',
+        m.academic_year || ''
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `nck_marks_${new Date().toISOString().split('T')[0]}.csv`);
+    showNotification('Export complete!', false);
+}
+
+async function exportStudentSummaryToCSV() {
+    const { data: students } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('student_id, full_name, program, intake_year, block')
+        .eq('role', 'student')
+        .eq('status', 'approved');
+    
+    if (!students || students.length === 0) {
+        showNotification('No students found', true);
+        return;
+    }
+    
+    const { data: internalMarks } = await sb.from('student_marks').select('*');
+    const { data: nckMarks } = await sb.from('nck_marks').select('*');
+    
+    const headers = ['Admission', 'Student Name', 'Program', 'Intake', 'Block', 'Internal Marks Count', 'Internal Avg', 'NCK Count', 'NCK Avg', 'Overall Avg', 'Status'];
+    const rows = [];
+    
+    for (const student of students) {
+        const studentInternal = internalMarks?.filter(m => m.admission_number === student.student_id) || [];
+        const studentNCK = nckMarks?.filter(m => m.admission_number === student.student_id) || [];
+        
+        let internalTotal = 0;
+        studentInternal.forEach(m => { if (m.final_score) internalTotal += m.final_score; });
+        const internalAvg = studentInternal.length ? (internalTotal / studentInternal.length).toFixed(1) : 0;
+        
+        let nckTotal = 0;
+        studentNCK.forEach(m => { if (m.final_score) nckTotal += m.final_score; });
+        const nckAvg = studentNCK.length ? (nckTotal / studentNCK.length).toFixed(1) : 0;
+        
+        const overallAvg = (parseFloat(internalAvg) + parseFloat(nckAvg)) / 2;
+        const status = overallAvg >= 60 ? 'PASS' : (overallAvg > 0 ? 'FAIL' : 'PENDING');
+        
+        rows.push([
+            student.student_id || '',
+            student.full_name || '',
+            student.program || '',
+            student.intake_year || '',
+            student.block || '',
+            studentInternal.length,
+            internalAvg,
+            studentNCK.length,
+            nckAvg,
+            overallAvg.toFixed(1),
+            status
+        ]);
+    }
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `student_summary_${new Date().toISOString().split('T')[0]}.csv`);
+    showNotification('Export complete!', false);
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function calculateNursingGrade(score) {
+    if (score >= 80) return 'A';
+    if (score >= 75) return 'A-';
+    if (score >= 70) return 'B+';
+    if (score >= 65) return 'B';
+    if (score >= 60) return 'B-';
+    if (score >= 55) return 'C+';
+    if (score >= 50) return 'C';
+    if (score >= 45) return 'C-';
+    if (score >= 40) return 'D+';
+    if (score >= 35) return 'D';
+    return 'E';
+}
+
+// ============================================
+// TAB ACTIVATION HANDLER
+// ============================================
+
+// Add to your existing loadSectionData function
+const originalLoadSectionData = window.loadSectionData;
+window.loadSectionData = function(tabId) {
+    if (typeof originalLoadSectionData === 'function') {
+        originalLoadSectionData(tabId);
+    }
+    if (tabId === 'nursing-system') {
+        setTimeout(() => loadNursingSystemData(), 300);
+    }
+};
+
+// Initialize subject dropdown when block changes
+document.getElementById('ns_block_select')?.addEventListener('change', function() {
+    const block = this.value;
+    const subjectSelect = document.getElementById('ns_subject_select');
+    
+    if (!subjectSelect) return;
+    
+    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+    
+    if (block && window.nursingSubjectsByBlock && window.nursingSubjectsByBlock[block]) {
+        window.nursingSubjectsByBlock[block].forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.name;
+            option.textContent = subject.name;
+            subjectSelect.appendChild(option);
+        });
+    }
+});
+
+// Also trigger load when subject changes
+document.getElementById('ns_subject_select')?.addEventListener('change', function() {
+    if (this.value) {
+        loadInternalMarks();
+    }
+});
+
+// NCK block change triggers reload
+document.getElementById('ns_nck_block')?.addEventListener('change', function() {
+    loadNCKMarks();
+});
+
+document.getElementById('ns_nck_sheet')?.addEventListener('change', function() {
+    loadNCKMarks();
+});
+
+console.log('✅ Nursing School System module loaded');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
