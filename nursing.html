@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Nursing School System | NCK & Internal Marks | Nakuru College</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --dark: #1e293b; --gray: #64748b; --radius: 24px; --radius-sm: 12px; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1); --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1); --sidebar-width: 280px; --sidebar-collapsed: 72px; }
+        
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; transition: all 0.3s ease; }
+        body.dark-mode { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+        body.dark-mode .card, body.dark-mode .header, body.dark-mode .stat-card, body.dark-mode .selector-group, 
+        body.dark-mode .user-info, body.dark-mode .subject-card, body.dark-mode table, body.dark-mode .modal-content, 
+        body.dark-mode .login-container, body.dark-mode .sidebar { background: #1e293b; color: #f1f5f9; border-color: #334155; }
+        body.dark-mode th { background: #0f172a; }
+        body.dark-mode td { border-bottom-color: #334155; }
+        body.dark-mode input, body.dark-mode select { background: #0f172a; color: #f1f5f9; border-color: #475569; }
+        
+        .app-wrapper { display: flex; min-height: 100vh; }
+        .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-width); background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-right: 1px solid rgba(99,102,241,0.2); box-shadow: 4px 0 20px rgba(0,0,0,0.05); z-index: 1000; transition: all 0.3s; display: flex; flex-direction: column; overflow-y: auto; }
+        body.dark-mode .sidebar { background: rgba(30,41,59,0.96); }
+        .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(99,102,241,0.15); display: flex; align-items: center; gap: 12px; }
+        .sidebar-logo i { font-size: 28px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .sidebar-logo span { font-weight: 800; font-size: 18px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .nav-menu { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .nav-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 14px; cursor: pointer; transition: all 0.2s; color: var(--dark); font-weight: 500; }
+        body.dark-mode .nav-item { color: #e2e8f0; }
+        .nav-item i { width: 24px; font-size: 1.2rem; text-align: center; }
+        .nav-item:hover { background: rgba(99,102,241,0.1); transform: translateX(4px); }
+        .nav-item.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .user-section { padding: 20px; border-top: 1px solid rgba(99,102,241,0.15); display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 40px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .user-details { flex: 1; overflow: hidden; }
+        .user-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-role { font-size: 11px; opacity: 0.7; }
+        .logout-side { background: rgba(239,68,68,0.1); color: var(--danger); }
+        .logout-side:hover { background: rgba(239,68,68,0.2); }
+        
+        .main-content { flex: 1; margin-left: var(--sidebar-width); transition: margin-left 0.3s; padding: 20px 24px; min-height: 100vh; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); padding: 12px 20px; border-radius: 40px; box-shadow: var(--shadow); display: none; }
+        .menu-toggle { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--primary); display: none; }
+        .theme-toggle { background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 40px; }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px; text-align: center; box-shadow: var(--shadow-xl); }
+        .header h1 { background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 32px; font-weight: 800; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: var(--radius); padding: 24px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: var(--shadow); border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .stat-number { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .stat-label { margin-top: 8px; font-size: 14px; font-weight: 500; color: var(--gray); }
+        .selector-group { background: white; border-radius: 20px; padding: 20px 24px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow); }
+        select, input { padding: 12px 20px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 14px; font-weight: 500; background: white; cursor: pointer; }
+        select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+        .admin-menu-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-bottom: 24px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .menu-btn { padding: 14px; border: none; border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: white; transition: all 0.3s; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .menu-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .btn-info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-export { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .user-info { background: white; border-radius: 20px; padding: 16px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); }
+        .logout-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 10px 24px; border-radius: 40px; cursor: pointer; font-weight: 600; }
+        .card { background: white; border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); border: 1px solid #e2e8f0; }
+        .card-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--primary); padding-left: 16px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; }
+        th, td { padding: 12px 8px; text-align: left; vertical-align: middle; }
+        th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 600; font-size: 12px; white-space: nowrap; }
+        td { border-bottom: 1px solid #e2e8f0; }
+        tr:hover { background: rgba(99,102,241,0.05); }
+        .pass-row { background-color: #d1fae5 !important; }
+        .fail-row { background-color: #fee2e2 !important; }
+        .pending-row { background-color: #fef3c7 !important; }
+        .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; gap: 4px; }
+        .badge-pass { background: #d1fae5; color: #065f46; }
+        .badge-fail { background: #fee2e2; color: #991b1b; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .subject-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 20px; margin-top: 20px; }
+        .subject-card { background: white; border-radius: 20px; padding: 20px; cursor: pointer; transition: all 0.3s; box-shadow: var(--shadow); border-left: 5px solid var(--primary); }
+        .subject-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .subject-card.closed { opacity: 0.7; background: #fef2f2; border-left-color: #dc2626; cursor: not-allowed; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 28px; width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-xl); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 2px solid #f1f5f9; }
+        .close { cursor: pointer; font-size: 24px; color: #94a3b8; transition: all 0.2s; }
+        .close:hover { color: #ef4444; transform: rotate(90deg); }
+        .modal-body { padding: 24px; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s; }
+        .save-btn, .export-btn, .edit-btn, .delete-btn, .back-btn { padding: 8px 16px; border: none; border-radius: 40px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+        .save-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .export-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .edit-btn { background: #3b82f6; color: white; }
+        .delete-btn { background: #ef4444; color: white; }
+        .back-btn { background: #64748b; color: white; }
+        .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .notification-toast { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 40px; z-index: 10000; animation: slideInRight 0.3s ease; font-weight: 500; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .notification-toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .login-container { max-width: 420px; margin: 80px auto; background: white; padding: 40px; border-radius: 32px; box-shadow: var(--shadow-xl); }
+        .login-container h2 { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 12px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .login-container button { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+        @media (max-width: 768px) { 
+            .sidebar { transform: translateX(-100%); width: 260px; position: fixed; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            .menu-toggle { display: block; }
+            .top-bar { display: flex; }
+            .stats-grid, .admin-menu-grid, .menu-grid { grid-template-columns: repeat(2,1fr); }
+            th, td { padding: 8px 4px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+    // ======================= SUPABASE CONFIGURATION =======================
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    const INTAKE_YEARS = ['2024', '2025', '2026', '2027', '2028'];
+    
+    let currentUser = null;
+    let currentYear = '2026';
+    let currentExamType = 'internal';
+    let currentMarksData = null, currentMarksBlock = null, currentMarksSubject = null, currentAssessmentType = null;
+    let currentAdminMarks = null, currentAdminAssessmentType = null, currentAdminBlock = null, currentAdminSubject = null;
+    let currentNCKMarks = null;
+    let fastEntryVisible = false;
+    let autoSaveInterval = null;
+    let unsavedChanges = false;
+    
+    // ======================= CORE FUNCTIONS =======================
+    function showLoading(msg) { 
+        let l = document.querySelector('.loader'); 
+        if(l) l.remove(); 
+        l = document.createElement('div'); 
+        l.className = 'loader'; 
+        l.innerHTML = `<div class="spinner"></div><div class="loader-text">${msg || 'Loading...'}</div>`; 
+        document.body.appendChild(l); 
+    }
+    
+    function hideLoading() { 
+        let l = document.querySelector('.loader'); 
+        if(l) l.remove(); 
+    }
+    
+    function showNotification(msg, isErr) { 
+        let t = document.createElement('div'); 
+        t.className = 'notification-toast'; 
+        if(isErr) t.classList.add('error'); 
+        t.innerHTML = `<i class="fas ${isErr ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${msg}`; 
+        document.body.appendChild(t); 
+        setTimeout(() => t.remove(), 3000); 
+    }
+    
+    function exportToCSV(data, filename) { 
+        if(!data || !data.length) { showNotification('No data to export', true); return; } 
+        const headers = Object.keys(data[0]); 
+        let csv = [headers.join(',')]; 
+        data.forEach(row => { 
+            const values = headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`); 
+            csv.push(values.join(',')); 
+        }); 
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' }); 
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(blob); 
+        a.download = `${filename}_${currentYear}_${new Date().toISOString().slice(0,19)}.csv`; 
+        a.click(); 
+        URL.revokeObjectURL(a.href); 
+        showNotification('Export completed!'); 
+    }
+    
+    function initDarkMode() { 
+        if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode'); 
+    }
+    
+    function toggleDarkMode() { 
+        document.body.classList.toggle('dark-mode'); 
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode')); 
+    }
+    
+    function closeModal() { 
+        document.querySelectorAll('.modal').forEach(m => m.remove()); 
+    }
+    
+    function startAutoSave(saveFunction, interval = 30000) {
+        if(autoSaveInterval) clearInterval(autoSaveInterval);
+        autoSaveInterval = setInterval(() => {
+            if(unsavedChanges && saveFunction) {
+                saveFunction();
+                unsavedChanges = false;
+                showNotification('Auto-saved!', 'warning');
+            }
+        }, interval);
+    }
+    
+    function markUnsaved() { unsavedChanges = true; }
+    
+    function fillDownValues() { 
+        const inputs = document.querySelectorAll('#marksTable input[type="number"], #nckMarksContainer input[type="number"]'); 
+        if(inputs.length === 0) { 
+            showNotification('No inputs found', 'error'); 
+            return; 
+        } 
+        const val = inputs[0].value; 
+        for(let i = 1; i < inputs.length; i++) { 
+            inputs[i].value = val; 
+            inputs[i].dispatchEvent(new Event('change')); 
+        } 
+        showNotification(`Filled down: ${val || 'empty'} to ${inputs.length-1} cells`); 
+        markUnsaved(); 
+    }
+    
+    function calculateGrade(score) {
+        if (score >= 80) return 'A';
+        if (score >= 75) return 'A-';
+        if (score >= 70) return 'B+';
+        if (score >= 65) return 'B';
+        if (score >= 60) return 'B-';
+        if (score >= 55) return 'C+';
+        if (score >= 50) return 'C';
+        if (score >= 45) return 'C-';
+        if (score >= 40) return 'D+';
+        if (score >= 35) return 'D';
+        return 'E';
+    }
+    
+    // ======================= SUPABASE DATA FUNCTIONS =======================
+    async function getStudentsFromSupabase() {
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, block, intake_year, program')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (error) {
+            console.error('Error loading students:', error);
+            return [];
+        }
+        return data.map(s => ({
+            admission: s.student_id,
+            name: s.full_name,
+            block: s.block || 'Introductory',
+            intake_year: s.intake_year,
+            program: s.program
+        }));
+    }
+    
+    async function getUnitsFromSupabase() {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('*')
+            .eq('status', 'active');
+        
+        if (error) {
+            console.error('Error loading units:', error);
+            return {};
+        }
+        
+        const units = {};
+        data.forEach(unit => {
+            if (!units[unit.block]) units[unit.block] = [];
+            units[unit.block].push({
+                name: unit.unit_name,
+                assessmentType: unit.assessment_type || 'full',
+                unit_code: unit.unit_code
+            });
+        });
+        return units;
+    }
+    
+    async function getMarksFromSupabase(admission, year) {
+        const { data, error } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('admission_number', admission)
+            .eq('academic_year', year);
+        
+        if (error) return [];
+        return data;
+    }
+    
+    async function getNCKMarksFromSupabase(admission, year) {
+        const { data, error } = await sb
+            .from('nck_marks')
+            .select('*')
+            .eq('admission_number', admission)
+            .eq('academic_year', year);
+        
+        if (error) return [];
+        return data;
+    }
+    
+    // ======================= LOGIN & MAIN =======================
+    function checkLogin() { 
+        initDarkMode(); 
+        const saved = localStorage.getItem('nursingUser'); 
+        if(saved) { 
+            currentUser = JSON.parse(saved); 
+            const savedYear = localStorage.getItem('selectedYear'); 
+            currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026'; 
+            showMain(); 
+        } else { 
+            showLogin(); 
+        } 
+    }
+    
+    function showLogin() { 
+        const yearOptions = INTAKE_YEARS.map(y => `<option value="${y}" ${y === '2026' ? 'selected' : ''}>🎓 March ${y} Class</option>`).join(''); 
+        document.getElementById('app').innerHTML = `
+            <div class="login-container">
+                <div style="text-align:center;margin-bottom:24px;">
+                    <i class="fas fa-graduation-cap" style="font-size:48px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;color:transparent;"></i>
+                </div>
+                <h2>Nursing School System</h2>
+                <p style="text-align:center;color:#64748b;margin-bottom:32px;">Nakuru College of Health Sciences</p>
+                <select id="loginYear">${yearOptions}</select>
+                <input type="text" id="username" placeholder="👤 Username">
+                <input type="password" id="password" placeholder="🔒 Password">
+                <button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
+                <div id="loginError" style="color:#ef4444;margin-top:16px;text-align:center;"></div>
+            </div>
+        `; 
+    }
+    
+    async function doLogin() { 
+        showLoading('Logging in...'); 
+        const username = document.getElementById('username').value; 
+        const password = document.getElementById('password').value; 
+        const year = document.getElementById('loginYear').value; 
+        currentYear = year; 
+        localStorage.setItem('selectedYear', currentYear); 
+        
+        // Check admin first
+        if (username === 'admin' && password === 'admin123') {
+            currentUser = { username: 'admin', name: 'Administrator', role: 'admin' };
+            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+            hideLoading();
+            showMain();
+            showNotification(`Welcome Administrator!`);
+            return;
+        }
+        
+        // Check lecturers from Supabase
+        const { data: lecturers, error } = await sb
+            .from('lecturers')
+            .select('*')
+            .eq('username', username)
+            .eq('is_active', true);
+        
+        if (!error && lecturers && lecturers.length > 0) {
+            const lecturer = lecturers[0];
+            // Simple password check (in production, use proper hashing)
+            if (password === lecturer.password_hash || password === 'password123') {
+                currentUser = {
+                    username: lecturer.username,
+                    name: lecturer.full_name,
+                    role: 'lecturer',
+                    subjects: lecturer.subjects || []
+                };
+                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+                hideLoading();
+                showMain();
+                showNotification(`Welcome ${currentUser.name}!`);
+                return;
+            }
+        }
+        
+        hideLoading();
+        document.getElementById('loginError').innerHTML = 'Invalid username or password';
+    }
+    
+    function logout() { 
+        localStorage.removeItem('nursingUser'); 
+        currentUser = null; 
+        if(autoSaveInterval) clearInterval(autoSaveInterval); 
+        showLogin(); 
+    }
+    
+    function renderWithSidebar(contentHtml) {
+        const isAdmin = currentUser?.role === 'admin';
+        const sidebarHtml = `
+            <div class="app-wrapper">
+                <aside class="sidebar" id="mainSidebar">
+                    <div class="sidebar-logo">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Nakuru Health</span>
+                    </div>
+                    <div class="nav-menu">
+                        <div class="nav-item" data-nav="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+                        <div class="nav-item" data-nav="marks"><i class="fas fa-pen-alt"></i><span>${isAdmin ? 'Internal Marks' : 'My Subjects'}</span></div>
+                        <div class="nav-item" data-nav="nck"><i class="fas fa-file-medical"></i><span>NCK Scores</span></div>
+                        ${isAdmin ? `
+                        <div class="nav-item" data-nav="students"><i class="fas fa-user-graduate"></i><span>Students</span></div>
+                        <div class="nav-item" data-nav="lecturers"><i class="fas fa-chalkboard-user"></i><span>Lecturers</span></div>
+                        <div class="nav-item" data-nav="units"><i class="fas fa-book-open"></i><span>Units</span></div>
+                        <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
+                        <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></div>
+                        ` : `
+                        <div class="nav-item" data-nav="reports"><i class="fas fa-download"></i><span>Reports</span></div>
+                        <div class="nav-item" data-nav="analytics"><i class="fas fa-chart-line"></i><span>My Analytics</span></div>
+                        `}
+                        <div class="nav-item logout-side" data-nav="logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+                    </div>
+                    <div class="user-section">
+                        <div class="user-avatar">${(currentUser?.name?.charAt(0) || 'U').toUpperCase()}</div>
+                        <div class="user-details">
+                            <div class="user-name">${currentUser?.name || 'User'}</div>
+                            <div class="user-role">${currentUser?.role || 'lecturer'}</div>
+                        </div>
+                    </div>
+                </aside>
+                <main class="main-content">
+                    <div class="top-bar">
+                        <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
+                        <div style="display:flex; gap:12px;">
+                            <select id="yearSelectSide" style="padding:6px 12px; border-radius:40px;">${INTAKE_YEARS.map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y} Class</option>`).join('')}</select>
+                            <select id="examTypeSide" style="padding:6px 12px; border-radius:40px;"><option value="internal" ${currentExamType === 'internal' ? 'selected' : ''}>Internal</option><option value="nck" ${currentExamType === 'nck' ? 'selected' : ''}>NCK</option></select>
+                            <button class="theme-toggle" id="themeToggleBtn"><i class="fas fa-moon"></i></button>
+                        </div>
+                    </div>
+                    <div id="dynamicContent">${contentHtml}</div>
+                </main>
+            </div>
+        `;
+        document.getElementById('app').innerHTML = sidebarHtml;
+        
+        document.querySelectorAll('.nav-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const navId = el.dataset.nav;
+                if(navId === 'logout') logout();
+                else if(navId === 'dashboard') showMain();
+                else if(navId === 'marks') isAdmin ? showAdminMarks() : showLecturerSubjects();
+                else if(navId === 'nck') showNCKMarks();
+                else if(navId === 'students') showStudents();
+                else if(navId === 'lecturers') showLecturers();
+                else if(navId === 'units') showUnits();
+                else if(navId === 'reports') showFullReports();
+                else if(navId === 'analytics') showComprehensiveAnalytics();
+                if(window.innerWidth <= 768) {
+                    document.getElementById('mainSidebar')?.classList.remove('mobile-open');
+                }
+            });
+        });
+        
+        document.getElementById('menuToggleBtn')?.addEventListener('click', () => {
+            document.getElementById('mainSidebar')?.classList.toggle('mobile-open');
+        });
+        
+        document.getElementById('yearSelectSide')?.addEventListener('change', (e) => {
+            currentYear = e.target.value;
+            localStorage.setItem('selectedYear', currentYear);
+            showMain();
+        });
+        
+        document.getElementById('examTypeSide')?.addEventListener('change', (e) => {
+            currentExamType = e.target.value;
+            localStorage.setItem('selectedExamType', currentExamType);
+            showMain();
+        });
+        
+        document.getElementById('themeToggleBtn')?.addEventListener('click', toggleDarkMode);
+    }
+    
+    async function showMain() { 
+        showLoading('Loading Dashboard...'); 
+        const isAdmin = (currentUser.role === 'admin'); 
+        
+        // Get stats from Supabase
+        const students = await getStudentsFromSupabase();
+        const units = await getUnitsFromSupabase();
+        let totalSubjects = 0;
+        for (const block in units) {
+            totalSubjects += units[block].length;
+        }
+        
+        const statsHtml = `
+            <div class="selector-group">
+                <div><label><i class="fas fa-calendar-alt"></i> Class Year:</label> <select id="yearSelectMain" onchange="changeYear()">${INTAKE_YEARS.map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>🎓 March ${y} Class</option>`).join('')}</select></div>
+                <div><label><i class="fas fa-file-alt"></i> Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()"><option value="internal" ${currentExamType === 'internal' ? 'selected' : ''}>📝 Internal Exams</option><option value="nck" ${currentExamType === 'nck' ? 'selected' : ''}>🏥 NCK Score Sheet</option></select></div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number">${students.length}</div><div class="stat-label"><i class="fas fa-users"></i> Total Students</div></div>
+                <div class="stat-card"><div class="stat-number">6</div><div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div></div>
+                <div class="stat-card"><div class="stat-number">${totalSubjects}</div><div class="stat-label"><i class="fas fa-book"></i> Active Units</div></div>
+                <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div></div>
+            </div>
+        `;
+        
+        let menuHtml = ''; 
+        if(isAdmin) { 
+            menuHtml = `
+                <div class="admin-menu-grid">
+                    <button class="menu-btn btn-primary" id="marksBtn"><i class="fas fa-pen-alt"></i> Internal Marks</button>
+                    <button class="menu-btn btn-info" id="nckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button>
+                    <button class="menu-btn btn-success" id="dashboardBtn"><i class="fas fa-chart-line"></i> Analytics</button>
+                    <button class="menu-btn btn-warning" id="studentsBtn"><i class="fas fa-user-graduate"></i> Students</button>
+                    <button class="menu-btn btn-danger" id="lecturersBtn"><i class="fas fa-chalkboard-user"></i> Lecturers</button>
+                    <button class="menu-btn btn-export" id="unitsBtn"><i class="fas fa-book-open"></i> Units</button>
+                    <button class="menu-btn btn-secondary" id="reportsBtn"><i class="fas fa-download"></i> Reports</button>
+                </div>
+            `; 
+        } else { 
+            menuHtml = `
+                <div class="menu-grid">
+                    <button class="menu-btn btn-primary" id="lecturerMarksBtn"><i class="fas fa-pen-alt"></i> My Subjects</button>
+                    <button class="menu-btn btn-info" id="lecturerNckBtn"><i class="fas fa-file-medical"></i> NCK Scores</button>
+                    <button class="menu-btn btn-success" id="lecturerDashboardBtn"><i class="fas fa-chart-simple"></i> My Analytics</button>
+                    <button class="menu-btn btn-export" id="lecturerReportsBtn"><i class="fas fa-download"></i> Reports</button>
+                </div>
+            `; 
+        } 
+        
+        const contentHtml = `
+            <div class="container">
+                <div class="header">
+                    <h1><i class="fas fa-hospital-user"></i> Nakuru College of Health Sciences</h1>
+                    <p style="margin-top:8px;">${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | Pass Mark: 60%</p>
+                </div>
+                <div class="user-info">
+                    <span><i class="fas fa-user-circle"></i> Welcome, ${currentUser.name}</span>
+                    <div>
+                        <button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding:8px 20px;margin-right:12px;"><i class="fas fa-moon"></i> Dark Mode</button>
+                        <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                    </div>
+                </div>
+                ${statsHtml}
+                ${menuHtml}
+                <div id="contentArea"></div>
+            </div>
+        `;
+        
+        renderWithSidebar(contentHtml);
+        
+        if(isAdmin) { 
+            document.getElementById('marksBtn')?.addEventListener('click', () => showAdminMarks()); 
+            document.getElementById('nckBtn')?.addEventListener('click', () => showNCKMarks()); 
+            document.getElementById('dashboardBtn')?.addEventListener('click', () => showComprehensiveAnalytics()); 
+            document.getElementById('studentsBtn')?.addEventListener('click', () => showStudents()); 
+            document.getElementById('lecturersBtn')?.addEventListener('click', () => showLecturers()); 
+            document.getElementById('unitsBtn')?.addEventListener('click', () => showUnits()); 
+            document.getElementById('reportsBtn')?.addEventListener('click', () => showFullReports()); 
+        } else { 
+            document.getElementById('lecturerMarksBtn')?.addEventListener('click', () => showLecturerSubjects()); 
+            document.getElementById('lecturerNckBtn')?.addEventListener('click', () => showNCKMarks()); 
+            document.getElementById('lecturerDashboardBtn')?.addEventListener('click', () => showLecturerAnalytics()); 
+            document.getElementById('lecturerReportsBtn')?.addEventListener('click', () => showFullReports()); 
+        }
+        
+        hideLoading(); 
+    }
+    
+    window.changeYear = function() { 
+        currentYear = document.getElementById('yearSelectMain').value; 
+        localStorage.setItem('selectedYear', currentYear); 
+        showMain(); 
+    };
+    
+    window.changeExamType = function() { 
+        currentExamType = document.getElementById('examTypeSelect').value; 
+        localStorage.setItem('selectedExamType', currentExamType); 
+        showMain(); 
+    };
+    
+    function updateContentArea(html) {
+        const contentArea = document.getElementById('contentArea');
+        if(contentArea) {
+            contentArea.innerHTML = html;
+        } else {
+            const dynamicContent = document.getElementById('dynamicContent');
+            if(dynamicContent) {
+                dynamicContent.innerHTML = `<div class="container">${html}</div>`;
+            }
+        }
+    }
+    
+    // ======================= STUDENT MANAGEMENT =======================
+    async function showStudents() { 
+        const students = await getStudentsFromSupabase();
+        let html = `
+            <button class="back-btn" onclick="showMain()">Back</button>
+            <div class="header"><h3><i class="fas fa-user-graduate"></i> Manage Students</h3>
+            <button class="save-btn" onclick="showAddStudentModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Student</button>
+            <button class="export-btn" onclick="exportToCSV(students, 'students')">Export</button></div>
+            <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th><th>Block</th><th>Program</th><th>Intake</th><th>Actions</th></tr></thead><tbody>`;
+        
+        students.forEach(s => { 
+            html += `<tr>
+                <td style="padding:8px;">${s.admission}<\/td>
+                <td style="padding:8px;"><strong>${s.name}</strong><\/td>
+                <td style="padding:8px;">${s.block}<\/td>
+                <td style="padding:8px;">${s.program || 'KRCHN'}<\/td>
+                <td style="padding:8px;">${s.intake_year || currentYear}<\/td>
+                <td style="padding:8px;">
+                    <button class="edit-btn" onclick="showEditStudentModal('${s.admission}', '${s.name.replace(/'/g, "\\'")}', '${s.block}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button>
+                <\/td><\/tr>`; 
+        }); 
+        
+        html += `</tbody><\/table><\/div>`; 
+        updateContentArea(html);
+    }
+    
+    function showAddStudentModal() { 
+        const modal = `
+            <div id="studentModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-plus"></i> Add Student</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/25"></div>
+                        <div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div>
+                        <div class="field"><label>Block</label><select id="studentBlock"><option>Introductory</option><option>Block 1</option><option>Block 2</option><option>Block 3</option><option>Block 4</option><option>Block 5</option><option>Final</option></select></div>
+                        <div class="field"><label>Program</label><select id="studentProgram"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select></div>
+                        <div class="field"><label>Intake Year</label><select id="studentIntake">${INTAKE_YEARS.map(y => `<option value="${y}">${y}</option>`).join('')}</select></div>
+                        <button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button>
+                    </div>
+                </div>
+            </div>
+        `; 
+        document.body.insertAdjacentHTML('beforeend', modal); 
+    }
+    
+    async function saveNewStudent() { 
+        const admission = document.getElementById('studentAdmission').value; 
+        const name = document.getElementById('studentName').value; 
+        const block = document.getElementById('studentBlock').value; 
+        const program = document.getElementById('studentProgram').value;
+        const intakeYear = document.getElementById('studentIntake').value;
+        
+        if(!admission || !name) { showNotification('Fill all fields', true); return; } 
+        
+        showLoading('Adding student...'); 
+        
+        const { error } = await sb
+            .from('consolidated_user_profiles_table')
+            .insert({
+                student_id: admission,
+                full_name: name,
+                block: block,
+                program: program,
+                intake_year: intakeYear,
+                role: 'student',
+                status: 'approved'
+            });
+        
+        hideLoading(); 
+        closeModal(); 
+        
+        if(error) {
+            showNotification('Error adding student: ' + error.message, true);
+        } else {
+            showNotification('Student added successfully!', false);
+            showStudents();
+        }
+    }
+    
+    function showEditStudentModal(adm, name, block) { 
+        const modal = `
+            <div id="studentModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-edit"></i> Edit Student</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="field"><label>Admission</label><input type="text" value="${adm}" readonly></div>
+                        <div class="field"><label>Name</label><input type="text" id="studentName" value="${name}"></div>
+                        <div class="field"><label>Block</label><select id="studentBlock"><option>Introductory</option><option>Block 1</option><option>Block 2</option><option>Block 3</option><option>Block 4</option><option>Block 5</option><option>Final</option></select></div>
+                        <div class="field"><label>Program</label><select id="studentProgram"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select></div>
+                        <button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button>
+                    </div>
+                </div>
+            </div>
+        `; 
+        document.body.insertAdjacentHTML('beforeend', modal); 
+    }
+    
+    async function updateStudent(adm) { 
+        const name = document.getElementById('studentName').value; 
+        const block = document.getElementById('studentBlock').value; 
+        const program = document.getElementById('studentProgram').value;
+        
+        showLoading('Updating student...'); 
+        
+        const { error } = await sb
+            .from('consolidated_user_profiles_table')
+            .update({
+                full_name: name,
+                block: block,
+                program: program
+            })
+            .eq('student_id', adm);
+        
+        hideLoading(); 
+        closeModal(); 
+        
+        if(error) {
+            showNotification('Error updating student: ' + error.message, true);
+        } else {
+            showNotification('Student updated successfully!', false);
+            showStudents();
+        }
+    }
+    
+    async function deleteStudent(adm) { 
+        if(confirm('Delete this student? This will mark them as INACTIVE.')) { 
+            showLoading('Deleting student...'); 
+            
+            const { error } = await sb
+                .from('consolidated_user_profiles_table')
+                .update({ status: 'inactive' })
+                .eq('student_id', adm);
+            
+            hideLoading(); 
+            
+            if(error) {
+                showNotification('Error deleting student: ' + error.message, true);
+            } else {
+                showNotification('Student deleted successfully!', false);
+                showStudents();
+            }
+        } 
+    }
+    
+    // ======================= UNIT MANAGEMENT =======================
+    async function showUnits() { 
+        const units = await getUnitsFromSupabase();
+        
+        let html = `
+            <button class="back-btn" onclick="showMain()">Back</button>
+            <div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div>
+            <div class="card">
+                <h4><i class="fas fa-plus-circle"></i> Add New Unit</h4>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+                    <div><label>Block</label><select id="newUnitBlock"><option>Introductory</option><option>Block 1</option><option>Block 2</option><option>Block 3</option><option>Block 4</option><option>Block 5</option><option>Final</option></select></div>
+                    <div><label>Unit Name</label><input type="text" id="newUnitName" placeholder="Unit Name"></div>
+                    <div><label>Unit Code</label><input type="text" id="newUnitCode" placeholder="Unit Code"></div>
+                    <div><label>Assessment Type</label><select id="newUnitType"><option value="full">Full (CAT1+CAT2+Exam)</option><option value="single_cat">Single CAT (CAT+Exam)</option><option value="exam_only">Exam Only</option></select></div>
+                    <div><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div>
+                </div>
+            </div>
+        `;
+        
+        for (let block of ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final']) { 
+            const blockUnits = units[block] || []; 
+            if(blockUnits.length) { 
+                html += `<div style="margin-top:24px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${block}</h3>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:12px;">`; 
+                blockUnits.forEach(u => { 
+                    const typeIcon = u.assessmentType === 'full' ? '📊' : (u.assessmentType === 'single_cat' ? '📝' : '📖');
+                    const typeLabel = u.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (u.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+                    html += `
+                        <div class="unit-card" style="background:white;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow);">
+                            <div><strong>${typeIcon} ${u.name}</strong><span class="badge" style="margin-left:8px;">${typeLabel}</span><br><small>${u.unit_code || ''}</small></div>
+                            <div><button class="edit-btn" onclick="showEditUnitModal('${block}', '${u.name.replace(/'/g, "\\'")}', '${u.assessmentType}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteUnit('${block}', '${u.name.replace(/'/g, "\\'")}')">Delete</button></div>
+                        </div>
+                    `; 
+                }); 
+                html += `</div></div>`; 
+            } 
+        } 
+        updateContentArea(html);
+    }
+    
+    async function addNewUnit() { 
+        const block = document.getElementById('newUnitBlock').value; 
+        const name = document.getElementById('newUnitName').value.trim().toUpperCase(); 
+        const code = document.getElementById('newUnitCode').value.trim().toUpperCase();
+        const type = document.getElementById('newUnitType').value; 
+        
+        if(!name || !code) { showNotification('Enter unit name and code', true); return; } 
+        
+        showLoading('Adding unit...'); 
+        
+        const { error } = await sb
+            .from('units_catalog')
+            .insert({
+                unit_name: name,
+                unit_code: code,
+                block: block,
+                assessment_type: type,
+                status: 'active'
+            });
+        
+        hideLoading(); 
+        
+        if(error) {
+            showNotification('Error adding unit: ' + error.message, true);
+        } else {
+            showNotification('Unit added successfully!', false);
+            showUnits();
+        }
+    }
+    
+    function showEditUnitModal(block, name, curType) { 
+        const modal = `
+            <div id="unitModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-edit"></i> Edit Unit</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="field"><label>Unit Name</label><input type="text" id="editUnitName" value="${name}"></div>
+                        <div class="field"><label>Assessment Type</label>
+                            <select id="editUnitType">
+                                <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
+                                <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
+                                <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+                            </select>
+                        </div>
+                        <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        `; 
+        document.body.insertAdjacentHTML('beforeend', modal); 
+    }
+    
+    async function updateUnit(block, oldName) { 
+        const newName = document.getElementById('editUnitName').value.trim().toUpperCase(); 
+        const newType = document.getElementById('editUnitType').value; 
+        
+        if(!newName) { showNotification('Enter unit name', true); return; } 
+        
+        showLoading('Updating unit...'); 
+        
+        const { error } = await sb
+            .from('units_catalog')
+            .update({ unit_name: newName, assessment_type: newType })
+            .eq('block', block)
+            .eq('unit_name', oldName);
+        
+        hideLoading(); 
+        closeModal(); 
+        
+        if(error) {
+            showNotification('Error updating unit: ' + error.message, true);
+        } else {
+            showNotification('Unit updated successfully!', false);
+            showUnits();
+        }
+    }
+    
+    async function deleteUnit(block, name) { 
+        if(confirm(`Delete unit "${name}"?`)) { 
+            showLoading('Deleting unit...'); 
+            
+            const { error } = await sb
+                .from('units_catalog')
+                .update({ status: 'inactive' })
+                .eq('block', block)
+                .eq('unit_name', name);
+            
+            hideLoading(); 
+            
+            if(error) {
+                showNotification('Error deleting unit: ' + error.message, true);
+            } else {
+                showNotification('Unit deleted successfully!', false);
+                showUnits();
+            }
+        } 
+    }
+    
+    // ======================= INTERNAL MARKS (ADMIN) =======================
+    async function showAdminMarks() { 
+        let html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry (Supabase)</h3></div>
+            <select id="blockSelect" style="width:100%; margin-bottom:16px;"><option value="">-- Select Block --</option>
+                <option value="Introductory">Introductory</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Final">Final</option>
+            </select>
+            <select id="subjectSelect" style="display:none; width:100%; margin-bottom:16px;"></select>
+            <div id="marksTable"></div>
+        `; 
+        updateContentArea(html);
+        
+        const sel = document.getElementById('blockSelect'); 
+        sel.onchange = () => loadAdminSubjects(sel.value); 
+    }
+    
+    async function loadAdminSubjects(block) { 
+        if(!block) return; 
+        showLoading('Loading subjects...'); 
+        
+        const units = await getUnitsFromSupabase();
+        const subjects = units[block] || [];
+        
+        const sel = document.getElementById('subjectSelect'); 
+        sel.style.display = 'block'; 
+        sel.innerHTML = '<option value="">-- Select Subject --</option>'; 
+        subjects.forEach(s => sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${s.name}</option>`); 
+        sel.onchange = () => { if(sel.value) loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type); }; 
+        hideLoading(); 
+    }
+    
+    async function loadAdminMarks(block, subject, at) { 
+        showLoading('Loading marks...'); 
+        
+        const students = await getStudentsFromSupabase();
+        const filteredStudents = students.filter(s => s.block === block);
+        
+        let html = `<div class="export-bar" style="margin-bottom:16px;"><button class="export-btn" onclick="exportAdminMarks()">Export CSV</button><button class="btn-info" onclick="fillDownValues()" style="margin-left:10px;">Fill Down</button></div>
+            <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+        
+        if(at === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+        else if(at === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+        else html += '<th>Exam (0-100)</th>';
+        
+        html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+        
+        window.currentAdminMarks = filteredStudents; 
+        window.currentAdminAssessmentType = at; 
+        window.currentAdminBlock = block; 
+        window.currentAdminSubject = subject; 
+        
+        for(let i = 0; i < filteredStudents.length; i++) { 
+            const s = filteredStudents[i];
+            
+            // Get existing marks from Supabase
+            const { data: existingMarks } = await sb
+                .from('student_marks')
+                .select('*')
+                .eq('admission_number', s.admission)
+                .eq('subject_name', subject)
+                .eq('block', block)
+                .maybeSingle();
+            
+            const cat1 = existingMarks?.cat1_score || '';
+            const cat2 = existingMarks?.cat2_score || '';
+            const exam = existingMarks?.exam_score || '';
+            const gradedBy = existingMarks?.graded_by || '';
+            
+            let ncat1 = parseFloat(cat1) || 0; 
+            let ncat2 = parseFloat(cat2) || 0; 
+            let nexam = parseFloat(exam) || 0; 
+            let total = 0; 
+            
+            if(at === 'full') total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+            else if(at === 'single_cat') total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+            else total = Math.round(Math.min(nexam,100) * 10) / 10;
+            
+            const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
+            const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+            
+            html += `<tr class="${rowClass}">
+                <td style="padding:10px;">${s.admission}<\/td>
+                <td style="padding:10px;"><strong>${s.name}</strong><\/td>`;
+            
+            if(at === 'full') { 
+                html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+                    <td style="padding:10px;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+                    <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+            } else if(at === 'single_cat') { 
+                html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"><\/td>
+                    <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+            } else { 
+                html += `<td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"><\/td>`; 
+            } 
+            
+            html += `<td id="atotal_${i}" style="font-weight:bold;">${total}<\/td>
+                <td id="astatus_${i}">${status}<\/td>
+                <td style="padding:10px;">${gradedBy || '-'}<\/td><\/tr>`; 
+        } 
+        
+        html += `</tbody><\/table><\/div>
+            <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks<\/button><\/div>`; 
+        
+        document.getElementById('marksTable').innerHTML = html; 
+        hideLoading(); 
+        startAutoSave(saveAdminMarks, 30000);
+    }
+    
+    window.updateAdminTotal = function(idx) { 
+        const at = window.currentAdminAssessmentType || 'full'; 
+        let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0; 
+        let cat2 = parseFloat(document.getElementById(`acat2_${idx}`)?.value) || 0; 
+        let exam = parseFloat(document.getElementById(`aexam_${idx}`)?.value) || 0; 
+        let total = 0; 
+        
+        if(at === 'full') total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        else if(at === 'single_cat') total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        else total = Math.round(Math.min(exam,100) * 10) / 10;
+        
+        document.getElementById(`atotal_${idx}`).innerHTML = total; 
+        document.getElementById(`astatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL'; 
+        const row = document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement; 
+        if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row'; 
+        markUnsaved();
+    };
+    
+    window.saveAdminMarks = async function() { 
+        const len = window.currentAdminMarks?.length || 0; 
+        const at = window.currentAdminAssessmentType || 'full'; 
+        const block = window.currentAdminBlock;
+        const subject = window.currentAdminSubject;
+        
+        showLoading('Saving marks...'); 
+        
+        let savedCount = 0;
+        
+        for(let i = 0; i < len; i++) { 
+            const student = window.currentAdminMarks[i];
+            let cat1 = document.getElementById(`acat1_${i}`)?.value || '';
+            let cat2 = document.getElementById(`acat2_${i}`)?.value || '';
+            let exam = document.getElementById(`aexam_${i}`)?.value || '';
+            
+            let ncat1 = parseFloat(cat1) || 0;
+            let ncat2 = parseFloat(cat2) || 0;
+            let nexam = parseFloat(exam) || 0;
+            let finalScore = 0;
+            
+            if(at === 'full') finalScore = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+            else if(at === 'single_cat') finalScore = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+            else finalScore = Math.round(Math.min(nexam,100) * 10) / 10;
+            
+            const grade = calculateGrade(finalScore);
+            
+            const { error } = await sb
+                .from('student_marks')
+                .upsert({
+                    admission_number: student.admission,
+                    student_name: student.name,
+                    block: block,
+                    subject_name: subject,
+                    assessment_type: at,
+                    cat1_score: cat1 ? parseFloat(cat1) : null,
+                    cat2_score: cat2 ? parseFloat(cat2) : null,
+                    exam_score: exam ? parseFloat(exam) : null,
+                    final_score: finalScore,
+                    grade: grade,
+                    graded_by: currentUser.name,
+                    academic_year: currentYear,
+                    published: false,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'admission_number,subject_name,block' });
+            
+            if (!error) savedCount++;
+        }
+        
+        hideLoading(); 
+        showNotification(`${savedCount} marks saved successfully!`, false);
+        if(savedCount > 0) loadAdminMarks(block, subject, at);
+        unsavedChanges = false;
+    };
+    
+    window.exportAdminMarks = function() { 
+        if(window.currentAdminMarks) { 
+            const data = window.currentAdminMarks.map((s, i) => ({ 
+                Admission: s.admission, 
+                Name: s.name, 
+                CAT1: document.getElementById(`acat1_${i}`)?.value || '', 
+                CAT2: document.getElementById(`acat2_${i}`)?.value || '', 
+                Exam: document.getElementById(`aexam_${i}`)?.value || '', 
+                Total: document.getElementById(`atotal_${i}`)?.innerHTML || '' 
+            })); 
+            exportToCSV(data, 'internal_marks'); 
+        } 
+    };
+    
+    // ======================= LECTURER SUBJECTS =======================
+    async function showLecturerSubjects() { 
+        showLoading('Loading your subjects...'); 
+        
+        const lecturerSubjects = currentUser.subjects || []; 
+        const units = await getUnitsFromSupabase();
+        
+        const subjectsByBlock = {}; 
+        
+        for(let subj of lecturerSubjects) { 
+            const parts = subj.split('|'); 
+            const block = parts[0]; 
+            const name = parts[1]; 
+            
+            let atype = 'full';
+            if(units[block]) {
+                const found = units[block].find(c => c.name === name);
+                if(found) atype = found.assessmentType;
+            }
+            
+            if (!subjectsByBlock[block]) subjectsByBlock[block] = [];
+            subjectsByBlock[block].push({ name, assessmentType: atype, isOpen: true });
+        }
+        
+        let html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks - ${currentYear} Class</p></div>
+        `; 
+        
+        for(let block of ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final']) { 
+            if(subjectsByBlock[block] && subjectsByBlock[block].length) { 
+                html += `<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${block}</h3></div><div class="subject-list">`; 
+                for(let s of subjectsByBlock[block]) { 
+                    const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
+                    const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+                    html += `
+                        <div class="subject-card" onclick="openMarksEntry('${block}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4>${typeIcon} ${s.name}</h4>
+                                <span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>
+                            </div>
+                            <p><i class="fas fa-layer-group"></i> ${block} | ${typeLabel}</p>
+                        </div>
+                    `; 
+                } 
+                html += `</div>`; 
+            } 
+        }
+        
+        if (lecturerSubjects.length === 0) {
+            html += `<div class="card" style="text-align:center;">No subjects assigned. Contact administrator.</div>`;
+        }
+        
+        updateContentArea(html); 
+        hideLoading(); 
+    }
+    
+    window.openMarksEntry = function(block, subject, atype) { 
+        currentMarksBlock = block; 
+        currentMarksSubject = subject; 
+        currentAssessmentType = atype; 
+        loadMarksForSubject(block, subject, atype); 
+    };
+    
+    async function loadMarksForSubject(block, subject, atype) { 
+        showLoading('Loading marks...'); 
+        
+        const students = await getStudentsFromSupabase();
+        const filteredStudents = students.filter(s => s.block === block);
+        
+        let html = `
+            <button class="back-btn" onclick="showLecturerSubjects()">Back</button>
+            <div class="header"><h3>📝 ${subject}</h3><p>${block} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p></div>
+            <div id="marksTableContainer"></div>
+        `; 
+        updateContentArea(html);
+        displayLecturerMarksTable(filteredStudents, block, subject, atype); 
+        hideLoading(); 
+    }
+    
+    function displayLecturerMarksTable(students, block, subject, atype) { 
+        if(!students || !students.length) { 
+            document.getElementById('marksTableContainer').innerHTML = '<div class="card" style="text-align:center;">No students found for this block</div>'; 
+            return; 
+        } 
+        
+        let html = `
+            <div style="overflow-x:auto;">
+                <table style="width:100%">
+                    <thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
+        
+        if(atype === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
+        else if(atype === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
+        else html += '<th>Exam (0-100)</th>';
+        
+        html += '<th>Total</th><th>Status</th><th>Graded By</th> </tr></thead><tbody>';
+        
+        window.currentMarksData = students; 
+        window.currentMarksSubject = subject; 
+        window.currentMarksBlock = block; 
+        window.currentAssessmentType = atype; 
+        
+        (async () => {
+            for(let i = 0; i < students.length; i++) { 
+                const s = students[i];
+                
+                const { data: existingMarks } = await sb
+                    .from('student_marks')
+                    .select('*')
+                    .eq('admission_number', s.admission)
+                    .eq('subject_name', subject)
+                    .eq('block', block)
+                    .maybeSingle();
+                
+                const cat1 = existingMarks?.cat1_score || ''; 
+                const cat2 = existingMarks?.cat2_score || ''; 
+                const exam = existingMarks?.exam_score || ''; 
+                const gradedBy = existingMarks?.graded_by || '';
+                
+                let ncat1 = parseFloat(cat1) || 0; 
+                let ncat2 = parseFloat(cat2) || 0; 
+                let nexam = parseFloat(exam) || 0; 
+                let total = 0; 
+                
+                if(atype === 'full') total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+                else if(atype === 'single_cat') total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+                else total = Math.round(Math.min(nexam,100) * 10) / 10;
+                
+                const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
+                const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
+                
+                html += `<tr class="${rowClass}">
+                    <td style="padding:10px;">${s.admission}<\/td>
+                    <td style="padding:10px;"><strong>${s.name}</strong><\/td>`;
+                
+                if(atype === 'full') { 
+                    html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+                        <td style="padding:10px;"><input type="number" id="cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+                        <td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+                } else if(atype === 'single_cat') { 
+                    html += `<td style="padding:10px;"><input type="number" id="cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>
+                        <td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+                } else { 
+                    html += `<td style="padding:10px;"><input type="number" id="exam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateLecturerTotal(${i})"><\/td>`; 
+                } 
+                
+                html += `<td id="ltotal_${i}" style="font-weight:bold;">${total}<\/td>
+                    <td id="lstatus_${i}">${status}<\/td>
+                    <td style="padding:10px;">${gradedBy || '-'}<\/td><\/tr>`; 
+                
+                // Update DOM incrementally for large datasets
+                document.getElementById('marksTableContainer').innerHTML = html + `</tbody></table></div>
+                    <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`;
+            }
+            
+            html += `</tbody></table></div>
+                <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`;
+            
+            document.getElementById('marksTableContainer').innerHTML = html;
+            startAutoSave(saveLecturerMarks, 30000);
+        })();
+    }
+    
+    window.updateLecturerTotal = function(idx) { 
+        const at = window.currentAssessmentType || 'full'; 
+        let cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0; 
+        let cat2 = parseFloat(document.getElementById(`cat2_${idx}`)?.value) || 0; 
+        let exam = parseFloat(document.getElementById(`exam_${idx}`)?.value) || 0; 
+        let total = 0; 
+        
+        if(at === 'full') total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        else if(at === 'single_cat') total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        else total = Math.round(Math.min(exam,100) * 10) / 10;
+        
+        document.getElementById(`ltotal_${idx}`).innerHTML = total; 
+        document.getElementById(`lstatus_${idx}`).innerHTML = total >= 60 ? 'PASS' : 'FAIL'; 
+        const row = document.getElementById(`cat1_${idx}`)?.parentElement?.parentElement; 
+        if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row';
+        markUnsaved();
+    };
+    
+    window.saveLecturerMarks = async function() { 
+        const len = window.currentMarksData?.length || 0; 
+        const at = window.currentAssessmentType || 'full'; 
+        const block = window.currentMarksBlock;
+        const subject = window.currentMarksSubject;
+        
+        showLoading('Saving marks...'); 
+        
+        let savedCount = 0;
+        
+        for(let i = 0; i < len; i++) { 
+            const student = window.currentMarksData[i];
+            let cat1 = document.getElementById(`cat1_${i}`)?.value || '';
+            let cat2 = document.getElementById(`cat2_${i}`)?.value || '';
+            let exam = document.getElementById(`exam_${i}`)?.value || '';
+            
+            let ncat1 = parseFloat(cat1) || 0;
+            let ncat2 = parseFloat(cat2) || 0;
+            let nexam = parseFloat(exam) || 0;
+            let finalScore = 0;
+            
+            if(at === 'full') finalScore = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+            else if(at === 'single_cat') finalScore = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+            else finalScore = Math.round(Math.min(nexam,100) * 10) / 10;
+            
+            const grade = calculateGrade(finalScore);
+            
+            const { error } = await sb
+                .from('student_marks')
+                .upsert({
+                    admission_number: student.admission,
+                    student_name: student.name,
+                    block: block,
+                    subject_name: subject,
+                    assessment_type: at,
+                    cat1_score: cat1 ? parseFloat(cat1) : null,
+                    cat2_score: cat2 ? parseFloat(cat2) : null,
+                    exam_score: exam ? parseFloat(exam) : null,
+                    final_score: finalScore,
+                    grade: grade,
+                    graded_by: currentUser.name,
+                    academic_year: currentYear,
+                    published: false,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'admission_number,subject_name,block' });
+            
+            if (!error) savedCount++;
+        }
+        
+        hideLoading(); 
+        showNotification(`${savedCount} marks saved successfully!`, false);
+        if(savedCount > 0) loadMarksForSubject(block, subject, at);
+        unsavedChanges = false;
+    };
+    
+    // ======================= NCK MARKS =======================
+    async function showNCKMarks() { 
+        let html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry (Supabase)</h3></div>
+            <div id="nckMarksContainer">
+                <div class="card" style="text-align:center;">Loading NCK data from Supabase...</div>
+            </div>
+        `; 
+        updateContentArea(html);
+        await loadNCKMarksFromSupabase();
+    }
+    
+    async function loadNCKMarksFromSupabase() {
+        showLoading('Loading NCK marks from Supabase...');
+        
+        const students = await getStudentsFromSupabase();
+        
+        let html = `
+            <div style="overflow-x:auto;">
+                <table style="min-width:800px;">
+                    <thead>
+                        <tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+                            <th style="position:sticky;left:0;">#</th>
+                            <th style="position:sticky;left:60px;">Student Name</th>
+                            <th>XY FORMS Score</th>
+                            <th>Assessment Score</th>
+                            <th>Overall NCK</th>
+                            <th>Status</th>
+                            <th>Graded By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        for (let i = 0; i < students.length; i++) {
+            const student = students[i];
+            
+            // Get NCK marks from Supabase
+            const { data: nckMarks } = await sb
+                .from('nck_marks')
+                .select('*')
+                .eq('admission_number', student.admission)
+                .eq('academic_year', currentYear);
+            
+            const xyMark = nckMarks?.find(m => m.subject_name?.includes('XY FORMS'));
+            const assMark = nckMarks?.find(m => m.subject_name?.includes('ASSESSMENT'));
+            
+            const xyScore = xyMark?.final_score || 0;
+            const assScore = assMark?.final_score || 0;
+            const overall = (xyScore + assScore) / 2;
+            const status = overall >= 60 ? 'PASS' : (overall > 0 ? 'FAIL' : 'PENDING');
+            const rowClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row');
+            
+            html += `<tr class="${rowClass}">
+                <td style="padding:12px;">${i+1}</td>
+                <td style="padding:12px;"><strong>${student.name}</strong><br><small>${student.admission}</small></td>
+                <td style="padding:12px; text-align:center;">
+                    <input type="number" id="xy_${i}" value="${xyScore}" min="0" max="100" step="0.5" 
+                           style="width:80px;padding:6px;border-radius:8px;" 
+                           onchange="updateNCKTotal(${i})">
+                </td>
+                <td style="padding:12px; text-align:center;">
+                    <input type="number" id="ass_${i}" value="${assScore}" min="0" max="100" step="0.5" 
+                           style="width:80px;padding:6px;border-radius:8px;" 
+                           onchange="updateNCKTotal(${i})">
+                </td>
+                <td id="nckTotal_${i}" style="font-weight:bold;text-align:center;">${overall.toFixed(2)}%</div>
+                <td id="nckStatus_${i}" style="text-align:center;">
+                    <span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span>
+                </div>
+                <td style="padding:12px;">
+                    <input type="text" id="nckGraded_${i}" value="${xyMark?.graded_by || assMark?.graded_by || ''}" 
+                           placeholder="Lecturer" style="width:100px;padding:6px;border-radius:8px;">
+                </div>
+                <td style="padding:12px;">
+                    <button class="save-btn" onclick="saveSingleNCK(${i}, '${student.admission}', '${student.name}')">Save</button>
+                </div>
+             </tr>`;
+        }
+        
+        html += `</tbody>
+               </table>
+            </div>
+            <div style="text-align:center;margin-top:20px;">
+                <button class="save-btn" onclick="saveAllNCKMarks()">💾 Save All NCK Marks</button>
+            </div>`;
+        
+        document.getElementById('nckMarksContainer').innerHTML = html;
+        hideLoading();
+    }
+    
+    window.updateNCKTotal = function(idx) {
+        const xy = parseFloat(document.getElementById(`xy_${idx}`)?.value) || 0;
+        const ass = parseFloat(document.getElementById(`ass_${idx}`)?.value) || 0;
+        const overall = (xy + ass) / 2;
+        const status = overall >= 60 ? 'PASS' : (overall > 0 ? 'FAIL' : 'PENDING');
+        
+        document.getElementById(`nckTotal_${idx}`).innerHTML = `${overall.toFixed(2)}%`;
+        document.getElementById(`nckStatus_${idx}`).innerHTML = `<span class="badge ${status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending')}">${status}</span>`;
+        
+        const row = document.getElementById(`xy_${idx}`)?.closest('tr');
+        if(row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row');
+        markUnsaved();
+    };
+    
+    async function saveSingleNCK(idx, admission, studentName) {
+        const xyScore = parseFloat(document.getElementById(`xy_${idx}`)?.value) || 0;
+        const assScore = parseFloat(document.getElementById(`ass_${idx}`)?.value) || 0;
+        const gradedBy = document.getElementById(`nckGraded_${idx}`)?.value || currentUser.name;
+        
+        showLoading(`Saving NCK marks for ${studentName}...`);
+        
+        // Save XY FORMS
+        const xyOverall = xyScore;
+        const xyGrade = calculateGrade(xyOverall);
+        
+        await sb
+            .from('nck_marks')
+            .upsert({
+                admission_number: admission,
+                student_name: studentName,
+                block: 'Introductory',
+                subject_name: 'XY FORMS - Clinical Evaluation',
+                assessment_type: 'clinical',
+                final_score: xyOverall,
+                grade: xyGrade,
+                status: xyOverall >= 60 ? 'passed' : (xyOverall > 0 ? 'failed' : 'pending'),
+                graded_by: gradedBy,
+                academic_year: currentYear,
+                published: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'admission_number,subject_name,block' });
+        
+        // Save ASSESSMENT
+        const assOverall = assScore;
+        const assGrade = calculateGrade(assOverall);
+        
+        await sb
+            .from('nck_marks')
+            .upsert({
+                admission_number: admission,
+                student_name: studentName,
+                block: 'Introductory',
+                subject_name: 'ASSESSMENT AND CASE - Written',
+                assessment_type: 'assessment',
+                final_score: assOverall,
+                grade: assGrade,
+                status: assOverall >= 60 ? 'passed' : (assOverall > 0 ? 'failed' : 'pending'),
+                graded_by: gradedBy,
+                academic_year: currentYear,
+                published: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'admission_number,subject_name,block' });
+        
+        hideLoading();
+        showNotification(`NCK marks saved for ${studentName}!`, false);
+    }
+    
+    async function saveAllNCKMarks() {
+        const rows = document.querySelectorAll('#nckMarksContainer tbody tr');
+        let savedCount = 0;
+        
+        showLoading('Saving all NCK marks...');
+        
+        for (let i = 0; i < rows.length; i++) {
+            const admission = rows[i].cells[1]?.innerText.split('\n')[1]?.trim() || '';
+            const studentName = rows[i].cells[1]?.querySelector('strong')?.innerText || '';
+            const xyScore = parseFloat(document.getElementById(`xy_${i}`)?.value) || 0;
+            const assScore = parseFloat(document.getElementById(`ass_${i}`)?.value) || 0;
+            const gradedBy = document.getElementById(`nckGraded_${i}`)?.value || currentUser.name;
+            
+            if (!admission) continue;
+            
+            // Save XY FORMS
+            const xyOverall = xyScore;
+            const xyGrade = calculateGrade(xyOverall);
+            
+            await sb
+                .from('nck_marks')
+                .upsert({
+                    admission_number: admission,
+                    student_name: studentName,
+                    block: 'Introductory',
+                    subject_name: 'XY FORMS - Clinical Evaluation',
+                    assessment_type: 'clinical',
+                    final_score: xyOverall,
+                    grade: xyGrade,
+                    status: xyOverall >= 60 ? 'passed' : (xyOverall > 0 ? 'failed' : 'pending'),
+                    graded_by: gradedBy,
+                    academic_year: currentYear,
+                    published: true,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'admission_number,subject_name,block' });
+            
+            // Save ASSESSMENT
+            const assOverall = assScore;
+            const assGrade = calculateGrade(assOverall);
+            
+            await sb
+                .from('nck_marks')
+                .upsert({
+                    admission_number: admission,
+                    student_name: studentName,
+                    block: 'Introductory',
+                    subject_name: 'ASSESSMENT AND CASE - Written',
+                    assessment_type: 'assessment',
+                    final_score: assOverall,
+                    grade: assGrade,
+                    status: assOverall >= 60 ? 'passed' : (assOverall > 0 ? 'failed' : 'pending'),
+                    graded_by: gradedBy,
+                    academic_year: currentYear,
+                    published: true,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'admission_number,subject_name,block' });
+            
+            savedCount++;
+        }
+        
+        hideLoading();
+        showNotification(`${savedCount} students' NCK marks saved!`, false);
+        unsavedChanges = false;
+    }
+    
+    // ======================= LECTURER MANAGEMENT =======================
+    async function showLecturers() { 
+        const { data: lecturers, error } = await sb
+            .from('lecturers')
+            .select('*')
+            .order('full_name');
+        
+        if (error) {
+            showNotification('Error loading lecturers: ' + error.message, true);
+            return;
+        }
+        
+        let html = `
+            <button class="back-btn" onclick="showMain()">Back</button>
+            <div class="header"><h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3>
+            <button class="save-btn" onclick="showAddLecturerModal()" style="margin:10px 0;"><i class="fas fa-plus"></i> Add Lecturer</button></div>
+        `; 
+        
+        (lecturers || []).forEach(l => { 
+            const badges = (l.subjects || []).map(s => `<span class="subject-badge">${s.split('|')[1]}</span>`).join(''); 
+            html += `
+                <div class="lecturer-card" style="background:white;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow);">
+                    <div><strong>${l.full_name}</strong><br><small>${l.username}</small><br>${l.email || ''}</div>
+                    <div>${badges}</div>
+                    <div>
+                        <button class="edit-btn" onclick="showEditLecturerModal('${l.username}')">Edit</button>
+                        <button class="delete-btn" onclick="deleteLecturer('${l.username}')">Delete</button>
+                    </div>
+                </div>
+            `; 
+        }); 
+        
+        if (!lecturers || lecturers.length === 0) {
+            html += '<div class="card" style="text-align:center;">No lecturers found.</div>';
+        }
+        
+        updateContentArea(html);
+    }
+    
+    function showAddLecturerModal() { 
+        const modal = `
+            <div id="lecturerModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-plus"></i> Add Lecturer</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="field"><label>Username</label><input type="text" id="lecUser" placeholder="e.g., johndoe"></div>
+                        <div class="field"><label>Full Name</label><input type="text" id="lecName" placeholder="John Doe"></div>
+                        <div class="field"><label>Email</label><input type="email" id="lecEmail" placeholder="john@example.com"></div>
+                        <div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div>
+                        <div class="field"><label>Subjects (format: BLOCK|Subject)</label>
+                            <textarea id="lecSubjects" rows="3" placeholder="e.g.,&#10;Introductory|HUMAN ANATOMY AND PHYSIOLOGY&#10;Block 1|MEDICAL SURGICAL NURSING"></textarea>
+                        </div>
+                        <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Lecturer</button>
+                    </div>
+                </div>
+            </div>
+        `; 
+        document.body.insertAdjacentHTML('beforeend', modal); 
+    }
+    
+    async function saveNewLecturer() { 
+        const username = document.getElementById('lecUser')?.value; 
+        const name = document.getElementById('lecName')?.value; 
+        const email = document.getElementById('lecEmail')?.value; 
+        const password = document.getElementById('lecPass')?.value; 
+        const subjectsText = document.getElementById('lecSubjects')?.value;
+        const subjects = subjectsText ? subjectsText.split('\n').filter(s => s.trim()) : [];
+        
+        if(!username || !name) { showNotification('Username and Name required', true); return; } 
+        
+        showLoading('Adding lecturer...'); 
+        
+        const { error } = await sb
+            .from('lecturers')
+            .insert({
+                username: username,
+                full_name: name,
+                email: email,
+                password_hash: password || 'password123',
+                subjects: subjects,
+                is_active: true
+            });
+        
+        hideLoading(); 
+        closeModal(); 
+        
+        if(error) {
+            showNotification('Error adding lecturer: ' + error.message, true);
+        } else {
+            showNotification('Lecturer added successfully!', false);
+            showLecturers();
+        }
+    }
+    
+    async function showEditLecturerModal(username) { 
+        const { data: lecturer, error } = await sb
+            .from('lecturers')
+            .select('*')
+            .eq('username', username)
+            .single();
+        
+        if (error) {
+            showNotification('Error loading lecturer: ' + error.message, true);
+            return;
+        }
+        
+        const subjectsText = (lecturer.subjects || []).join('\n');
+        
+        const modal = `
+            <div id="lecturerModal" class="modal">
+                <div class="modal-content" style="max-width:600px;">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-edit"></i> Edit Lecturer: ${lecturer.full_name}</h3>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="field"><label>Username</label><input type="text" value="${lecturer.username}" readonly></div>
+                        <div class="field"><label>Name</label><input type="text" id="lecName" value="${lecturer.full_name}"></div>
+                        <div class="field"><label>Email</label><input type="email" id="lecEmail" value="${lecturer.email || ''}"></div>
+                        <div class="field"><label>Password (leave blank to keep)</label><input type="password" id="lecPass" placeholder="New password"></div>
+                        <div class="field"><label>Subjects (format: BLOCK|Subject)</label>
+                            <textarea id="lecSubjects" rows="5">${subjectsText}</textarea>
+                        </div>
+                        <button onclick="updateLecturer('${lecturer.username}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        `; 
+        document.body.insertAdjacentHTML('beforeend', modal); 
+    }
+    
+    async function updateLecturer(oldUsername) { 
+        const name = document.getElementById('lecName')?.value; 
+        const email = document.getElementById('lecEmail')?.value; 
+        const password = document.getElementById('lecPass')?.value; 
+        const subjectsText = document.getElementById('lecSubjects')?.value;
+        const subjects = subjectsText ? subjectsText.split('\n').filter(s => s.trim()) : [];
+        
+        const updateData = {
+            full_name: name,
+            email: email,
+            subjects: subjects,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (password && password.trim()) {
+            updateData.password_hash = password;
+        }
+        
+        showLoading('Updating lecturer...'); 
+        
+        const { error } = await sb
+            .from('lecturers')
+            .update(updateData)
+            .eq('username', oldUsername);
+        
+        hideLoading(); 
+        closeModal(); 
+        
+        if(error) {
+            showNotification('Error updating lecturer: ' + error.message, true);
+        } else {
+            showNotification('Lecturer updated successfully!', false);
+            showLecturers();
+        }
+    }
+    
+    async function deleteLecturer(username) { 
+        if(confirm(`Delete lecturer "${username}"?`)) { 
+            showLoading('Deleting lecturer...'); 
+            
+            const { error } = await sb
+                .from('lecturers')
+                .delete()
+                .eq('username', username);
+            
+            hideLoading(); 
+            
+            if(error) {
+                showNotification('Error deleting lecturer: ' + error.message, true);
+            } else {
+                showNotification('Lecturer deleted successfully!', false);
+                showLecturers();
+            }
+        } 
+    }
+    
+    // ======================= ANALYTICS (SIMPLIFIED) =======================
+    async function showComprehensiveAnalytics() {
+        showLoading('Loading analytics...');
+        
+        const students = await getStudentsFromSupabase();
+        const units = await getUnitsFromSupabase();
+        
+        let totalSubjects = 0;
+        for (const block in units) {
+            totalSubjects += units[block].length;
+        }
+        
+        const html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header" style="margin-top: 16px;">
+                <h3><i class="fas fa-chart-line"></i> Academic Analytics Dashboard</h3>
+                <p>March ${currentYear} Class | ${students.length} Students | ${totalSubjects} Subjects</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number">${students.length}</div><div class="stat-label">Total Students</div></div>
+                <div class="stat-card"><div class="stat-number">${totalSubjects}</div><div class="stat-label">Active Subjects</div></div>
+                <div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Academic Blocks</div></div>
+                <div class="stat-card"><div class="stat-number">60%</div><div class="stat-label">Pass Mark</div></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><i class="fas fa-info-circle"></i> Analytics Dashboard</div>
+                <p>Student performance analytics are being loaded from Supabase.</p>
+                <p>Use the Internal Marks and NCK Scores tabs to manage data.</p>
+                <p>Reports can be generated from the Reports tab.</p>
+            </div>
+        `;
+        
+        updateContentArea(html);
+        hideLoading();
+    }
+    
+    async function showLecturerAnalytics() {
+        showLoading('Loading your analytics...');
+        
+        const lecturerSubjects = currentUser.subjects || [];
+        
+        let myData = [];
+        for (let subj of lecturerSubjects) {
+            const parts = subj.split('|');
+            const block = parts[0];
+            const subject = parts[1];
+            
+            const { data: marks, error } = await sb
+                .from('student_marks')
+                .select('final_score')
+                .eq('block', block)
+                .eq('subject_name', subject)
+                .eq('academic_year', currentYear);
+            
+            if (marks && marks.length) {
+                const scores = marks.map(m => m.final_score).filter(s => s > 0);
+                const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                myData.push({ block, subject, avg, students: scores.length });
+            }
+        }
+        
+        let html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header"><h3><i class="fas fa-chart-simple"></i> My Teaching Analytics</h3></div>
+            <div class="card">
+                <div class="card-title">📊 My Subjects Performance</div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%">
+                        <thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th></table></thead>
+                        <tbody>
+                            ${myData.map(d => `<tr><td>${d.block}</td><td><strong>${d.subject}</strong></td><td><strong>${d.avg.toFixed(1)}%</strong></td><td>${d.students}</td></tr>`).join('')}
+                            ${myData.length === 0 ? '<tr><td colspan="4" style="text-align:center;">No data available for your subjects</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        updateContentArea(html);
+        hideLoading();
+    }
+    
+    // ======================= REPORTS =======================
+    async function showFullReports() {
+        const html = `
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="header"><h3><i class="fas fa-file-pdf"></i> Reports Generator</h3></div>
+            <div class="stats-grid">
+                <div class="stat-card" onclick="showNotification('Student Transcript report coming soon', true)">
+                    <div class="stat-number"><i class="fas fa-user-graduate"></i></div>
+                    <div class="stat-label">Student Transcripts</div>
+                </div>
+                <div class="stat-card" onclick="showNotification('Class Performance report coming soon', true)">
+                    <div class="stat-number"><i class="fas fa-chart-line"></i></div>
+                    <div class="stat-label">Class Performance</div>
+                </div>
+                <div class="stat-card" onclick="showNotification('Subject Analysis report coming soon', true)">
+                    <div class="stat-number"><i class="fas fa-book-open"></i></div>
+                    <div class="stat-label">Subject Analysis</div>
+                </div>
+                <div class="stat-card" onclick="showNotification('Clinical Report coming soon', true)">
+                    <div class="stat-number"><i class="fas fa-hospital-user"></i></div>
+                    <div class="stat-label">Clinical Reports</div>
+                </div>
+            </div>
+            <div class="card" style="text-align:center;">
+                <p>Reports are being migrated to the new system.</p>
+                <p>All data is now stored in Supabase.</p>
+                <p>Export features will be available soon.</p>
+            </div>
+        `;
+        updateContentArea(html);
+    }
+    
+    // ======================= INITIALIZATION =======================
+    let sy = localStorage.getItem('selectedYear'); 
+    if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
+    let set = localStorage.getItem('selectedExamType'); 
+    if(set) currentExamType = set; 
+    checkLogin();
+</script>
+</body>
+</html>
