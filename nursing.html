@@ -125,13 +125,35 @@
 <div id="app"></div>
 
 <script>
-    // ======================= SUPABASE CONFIGURATION =======================
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Wait for Supabase library to load
+    let sb = null;
+    
+    // Function to initialize after Supabase is ready
+    async function initSupabase() {
+        // Check if createClient is available
+        if (typeof createClient === 'undefined') {
+            console.log('Waiting for Supabase library...');
+            setTimeout(initSupabase, 200);
+            return;
+        }
+        
+        console.log('✅ Supabase library loaded, initializing...');
+        
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Start the app
+        startApp();
+    }
+    
+    // Start initialization
+    initSupabase();
+    
+    // ======================= THE REST OF YOUR APP CODE GOES HERE =======================
+    // (All the functions from the previous script, but remove the duplicate createClient call)
     
     const INTAKE_YEARS = ['2024', '2025', '2026', '2027', '2028'];
-    
     let currentUser = null;
     let currentYear = '2026';
     let currentExamType = 'internal';
@@ -240,6 +262,7 @@
     
     // ======================= SUPABASE DATA FUNCTIONS =======================
     async function getStudentsFromSupabase() {
+        if (!sb) return [];
         const { data, error } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
@@ -260,6 +283,7 @@
     }
     
     async function getUnitsFromSupabase() {
+        if (!sb) return {};
         const { data, error } = await sb
             .from('units_catalog')
             .select('*')
@@ -280,28 +304,6 @@
             });
         });
         return units;
-    }
-    
-    async function getMarksFromSupabase(admission, year) {
-        const { data, error } = await sb
-            .from('student_marks')
-            .select('*')
-            .eq('admission_number', admission)
-            .eq('academic_year', year);
-        
-        if (error) return [];
-        return data;
-    }
-    
-    async function getNCKMarksFromSupabase(admission, year) {
-        const { data, error } = await sb
-            .from('nck_marks')
-            .select('*')
-            .eq('admission_number', admission)
-            .eq('academic_year', year);
-        
-        if (error) return [];
-        return data;
     }
     
     // ======================= LOGIN & MAIN =======================
@@ -355,27 +357,28 @@
         }
         
         // Check lecturers from Supabase
-        const { data: lecturers, error } = await sb
-            .from('lecturers')
-            .select('*')
-            .eq('username', username)
-            .eq('is_active', true);
-        
-        if (!error && lecturers && lecturers.length > 0) {
-            const lecturer = lecturers[0];
-            // Simple password check (in production, use proper hashing)
-            if (password === lecturer.password_hash || password === 'password123') {
-                currentUser = {
-                    username: lecturer.username,
-                    name: lecturer.full_name,
-                    role: 'lecturer',
-                    subjects: lecturer.subjects || []
-                };
-                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-                hideLoading();
-                showMain();
-                showNotification(`Welcome ${currentUser.name}!`);
-                return;
+        if (sb) {
+            const { data: lecturers, error } = await sb
+                .from('lecturers')
+                .select('*')
+                .eq('username', username)
+                .eq('is_active', true);
+            
+            if (!error && lecturers && lecturers.length > 0) {
+                const lecturer = lecturers[0];
+                if (password === lecturer.password_hash || password === 'password123') {
+                    currentUser = {
+                        username: lecturer.username,
+                        name: lecturer.full_name,
+                        role: 'lecturer',
+                        subjects: lecturer.subjects || []
+                    };
+                    localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+                    hideLoading();
+                    showMain();
+                    showNotification(`Welcome ${currentUser.name}!`);
+                    return;
+                }
             }
         }
         
@@ -479,7 +482,6 @@
         showLoading('Loading Dashboard...'); 
         const isAdmin = (currentUser.role === 'admin'); 
         
-        // Get stats from Supabase
         const students = await getStudentsFromSupabase();
         const units = await getUnitsFromSupabase();
         let totalSubjects = 0;
@@ -587,7 +589,7 @@
         }
     }
     
-    // ======================= STUDENT MANAGEMENT =======================
+    // ======================= STUDENT MANAGEMENT (SIMPLIFIED) =======================
     async function showStudents() { 
         const students = await getStudentsFromSupabase();
         let html = `
@@ -604,10 +606,7 @@
                 <td style="padding:8px;">${s.block}<\/td>
                 <td style="padding:8px;">${s.program || 'KRCHN'}<\/td>
                 <td style="padding:8px;">${s.intake_year || currentYear}<\/td>
-                <td style="padding:8px;">
-                    <button class="edit-btn" onclick="showEditStudentModal('${s.admission}', '${s.name.replace(/'/g, "\\'")}', '${s.block}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button>
-                <\/td><\/tr>`; 
+                <td style="padding:8px;"><button class="edit-btn" onclick="showEditStudentModal('${s.admission}', '${s.name.replace(/'/g, "\\'")}', '${s.block}')">Edit</button><button class="delete-btn" onclick="deleteStudent('${s.admission}')">Delete</button><\/td><\/tr>`; 
         }); 
         
         html += `</tbody><\/table><\/div>`; 
@@ -880,11 +879,11 @@
         } 
     }
     
-    // ======================= INTERNAL MARKS (ADMIN) =======================
+    // ======================= INTERNAL MARKS (ADMIN) - SIMPLIFIED =======================
     async function showAdminMarks() { 
         let html = `
             <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
-            <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry (Supabase)</h3></div>
+            <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3></div>
             <select id="blockSelect" style="width:100%; margin-bottom:16px;"><option value="">-- Select Block --</option>
                 <option value="Introductory">Introductory</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option>
                 <option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Final">Final</option>
@@ -936,7 +935,6 @@
         for(let i = 0; i < filteredStudents.length; i++) { 
             const s = filteredStudents[i];
             
-            // Get existing marks from Supabase
             const { data: existingMarks } = await sb
                 .from('student_marks')
                 .select('*')
@@ -1227,12 +1225,11 @@
                     <td id="lstatus_${i}">${status}<\/td>
                     <td style="padding:10px;">${gradedBy || '-'}<\/td><\/tr>`; 
                 
-                // Update DOM incrementally for large datasets
                 document.getElementById('marksTableContainer').innerHTML = html + `</tbody></table></div>
                     <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`;
             }
             
-            html += `</tbody></table></div>
+            html += `</tbody></tr></div>
                 <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveLecturerMarks()">💾 Save Marks</button></div>`;
             
             document.getElementById('marksTableContainer').innerHTML = html;
@@ -1317,7 +1314,7 @@
     async function showNCKMarks() { 
         let html = `
             <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
-            <div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry (Supabase)</h3></div>
+            <div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3></div>
             <div id="nckMarksContainer">
                 <div class="card" style="text-align:center;">Loading NCK data from Supabase...</div>
             </div>
@@ -1352,7 +1349,6 @@
         for (let i = 0; i < students.length; i++) {
             const student = students[i];
             
-            // Get NCK marks from Supabase
             const { data: nckMarks } = await sb
                 .from('nck_marks')
                 .select('*')
@@ -1427,7 +1423,6 @@
         
         showLoading(`Saving NCK marks for ${studentName}...`);
         
-        // Save XY FORMS
         const xyOverall = xyScore;
         const xyGrade = calculateGrade(xyOverall);
         
@@ -1448,7 +1443,6 @@
                 updated_at: new Date().toISOString()
             }, { onConflict: 'admission_number,subject_name,block' });
         
-        // Save ASSESSMENT
         const assOverall = assScore;
         const assGrade = calculateGrade(assOverall);
         
@@ -1488,7 +1482,6 @@
             
             if (!admission) continue;
             
-            // Save XY FORMS
             const xyOverall = xyScore;
             const xyGrade = calculateGrade(xyOverall);
             
@@ -1509,7 +1502,6 @@
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'admission_number,subject_name,block' });
             
-            // Save ASSESSMENT
             const assOverall = assScore;
             const assGrade = calculateGrade(assOverall);
             
@@ -1557,7 +1549,7 @@
         `; 
         
         (lecturers || []).forEach(l => { 
-            const badges = (l.subjects || []).map(s => `<span class="subject-badge">${s.split('|')[1]}</span>`).join(''); 
+            const badges = (l.subjects || []).map(s => `<span class="subject-badge" style="background:var(--primary);color:white;padding:4px 10px;border-radius:20px;font-size:11px;margin:2px;display:inline-block;">${s.split('|')[1]}</span>`).join(''); 
             html += `
                 <div class="lecturer-card" style="background:white;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow);">
                     <div><strong>${l.full_name}</strong><br><small>${l.username}</small><br>${l.email || ''}</div>
@@ -1796,7 +1788,7 @@
                 <div class="card-title">📊 My Subjects Performance</div>
                 <div style="overflow-x:auto;">
                     <table style="width:100%">
-                        <thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th></table></thead>
+                        <thead><tr style="background:#667eea;color:white"><th>Block</th><th>Subject</th><th>Average Score</th><th>Students</th><tr></thead>
                         <tbody>
                             ${myData.map(d => `<tr><td>${d.block}</td><td><strong>${d.subject}</strong></td><td><strong>${d.avg.toFixed(1)}%</strong></td><td>${d.students}</td></tr>`).join('')}
                             ${myData.length === 0 ? '<tr><td colspan="4" style="text-align:center;">No data available for your subjects</td></tr>' : ''}
@@ -1842,12 +1834,14 @@
         updateContentArea(html);
     }
     
-    // ======================= INITIALIZATION =======================
-    let sy = localStorage.getItem('selectedYear'); 
-    if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
-    let set = localStorage.getItem('selectedExamType'); 
-    if(set) currentExamType = set; 
-    checkLogin();
+    // Start the app
+    function startApp() {
+        let sy = localStorage.getItem('selectedYear'); 
+        if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
+        let set = localStorage.getItem('selectedExamType'); 
+        if(set) currentExamType = set; 
+        checkLogin();
+    }
 </script>
 </body>
 </html>
