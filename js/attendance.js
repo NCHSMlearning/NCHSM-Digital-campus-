@@ -211,57 +211,71 @@
     // ============================================
     
     async function populateTargetOptions(sessionType) {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
+    const targetSelect = document.getElementById('attendance-target');
+    if (!targetSelect) return;
+    
+    targetSelect.innerHTML = '<option value="">Loading...</option>';
+    targetSelect.disabled = true;
+    
+    let options = [];
+    
+    if (sessionType === 'class') {
+        if (approvedUnits.length === 0) await loadApprovedUnits();
         
-        targetSelect.innerHTML = '<option value="">Loading...</option>';
-        targetSelect.disabled = true;
-        
-        let options = [];
-        
-        if (sessionType === 'class') {
-            if (approvedUnits.length === 0) await loadApprovedUnits();
+        options = approvedUnits.map(unit => ({
+            id: `unit_${unit.id}`,
+            name: `${unit.unit_code} - ${unit.unit_name}`,
+            type: 'class',
+            latitude: CAMPUS_COORDINATES.latitude,
+            longitude: CAMPUS_COORDINATES.longitude,
+            radius: 50
+        }));
+    } 
+    else if (sessionType === 'clinical') {
+        const supabase = window.db?.supabase;
+        if (supabase) {
+            const student = await getCurrentStudentProfile();
+            const program = student?.program || 'KRCHN';
+            const intakeYear = student?.intake_year || '2026';
             
-            options = approvedUnits.map(unit => ({
-                id: `unit_${unit.id}`,
-                name: `${unit.unit_code} - ${unit.unit_name}`,
-                type: 'class',
-                latitude: CAMPUS_COORDINATES.latitude,
-                longitude: CAMPUS_COORDINATES.longitude,
-                radius: 50
-            }));
-        } 
-        else if (sessionType === 'clinical') {
-            if (clinicalLocations.length === 0) await loadClinicalLocations();
+            const { data, error } = await supabase
+                .from('clinical_names')
+                .select('id, clinical_area_name, latitude, longitude')
+                .eq('program', program)
+                .eq('intake_year', intakeYear)
+                .order('clinical_area_name');
             
-            options = clinicalLocations.map(loc => ({
-                id: `clinical_${loc.id}`,
-                name: loc.clinical_area_name,
-                type: 'clinical',
-                latitude: parseFloat(loc.latitude),
-                longitude: parseFloat(loc.longitude),
-                radius: 100
-            }));
+            if (!error && data) {
+                options = data.map(loc => ({
+                    id: `clinical_${loc.id}`,
+                    name: loc.clinical_area_name,
+                    type: 'clinical',
+                    latitude: parseFloat(loc.latitude),
+                    longitude: parseFloat(loc.longitude),
+                    radius: 100
+                }));
+            }
         }
-        
-        if (options.length === 0) {
-            targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType} options available</option>`;
-            targetSelect.disabled = false;
-            return;
-        }
-        
-        targetSelect.innerHTML = '<option value="">📚 Select target...</option>';
-        
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
-            option.textContent = opt.name;
-            targetSelect.appendChild(option);
-        });
-        
-        targetSelect.disabled = false;
-        console.log(`✅ Loaded ${options.length} ${sessionType} options`);
     }
+    
+    if (options.length === 0) {
+        targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType === 'class' ? 'courses' : 'clinical locations'} available</option>`;
+        targetSelect.disabled = false;
+        return;
+    }
+    
+    targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
+    
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
+        option.textContent = opt.name;
+        targetSelect.appendChild(option);
+    });
+    
+    targetSelect.disabled = false;
+    console.log(`✅ Loaded ${options.length} ${sessionType} options`);
+}
     
     // ============================================
     // GPS LOCATION WITH ADDRESS
