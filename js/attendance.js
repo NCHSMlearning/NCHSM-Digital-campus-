@@ -277,67 +277,61 @@ function getRealLocation() {
     // POPULATE DROPDOWN
     // ============================================
     
-    async function populateTargetOptions(sessionType) {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect || sessionType !== 'class') return;
-        
+ async function populateTargetOptions(sessionType) {
+    const targetSelect = document.getElementById('attendance-target');
+    if (!targetSelect) return;
+    
+    targetSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    let options = [];
+    
+    if (sessionType === 'class') {
         if (approvedUnits.length === 0) await loadApprovedUnits();
         
-        if (approvedUnits.length === 0) {
-            targetSelect.innerHTML = '<option value="">⚠️ No approved units</option>';
-            targetSelect.disabled = false;
-            return;
-        }
+        options = approvedUnits.map(unit => ({
+            id: `unit_${unit.id}`,
+            name: `${unit.unit_code} - ${unit.unit_name}`,
+            type: 'class',
+            latitude: CAMPUS_COORDINATES.latitude,
+            longitude: CAMPUS_COORDINATES.longitude,
+            radius: 50
+        }));
         
+    } else if (sessionType === 'clinical') {
+        const { data: clinicalData } = await supabase
+            .from('clinical_names')
+            .select('id, clinical_area_name, latitude, longitude')
+            .eq('program', 'KRCHN')
+            .eq('intake_year', '2026');
+        
+        options = (clinicalData || []).map(loc => ({
+            id: `clinical_${loc.id}`,
+            name: loc.clinical_area_name,
+            type: 'clinical',
+            latitude: parseFloat(loc.latitude),
+            longitude: parseFloat(loc.longitude),
+            radius: 100
+        }));
+    }
+    
+    if (options.length === 0) {
+        targetSelect.innerHTML = '<option value="">⚠️ No options available</option>';
         targetSelect.disabled = false;
-        const currentValue = targetSelect.value;
-        
-        targetSelect.innerHTML = '<option value="">📚 Select course...</option>';
-        approvedUnits.forEach(unit => {
-            const opt = document.createElement('option');
-            opt.value = `unit_${unit.id}|${unit.unit_code} - ${unit.unit_name}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|50`;
-            opt.textContent = `${unit.unit_code} - ${unit.unit_name}`;
-            targetSelect.appendChild(opt);
-        });
-        
-        if (currentValue && currentValue !== '') {
-            targetSelect.value = currentValue;
-        }
+        return;
     }
     
-    function updateDistanceDisplay() {
-        const distanceDiv = document.getElementById('distance-status');
-        if (!distanceDiv || !currentLocation || !selectedTarget) return;
-        
-        const distance = calculateDistance(
-            currentLocation.latitude, currentLocation.longitude,
-            selectedTarget.latitude, selectedTarget.longitude
-        );
-        
-        let status, color, bg;
-        if (distance <= 50) {
-            status = '✅ PRESENT (Auto-Verified)';
-            color = '#10b981';
-            bg = '#d1fae5';
-        } else if (distance <= 200) {
-            status = '⚠️ PENDING (Review Required)';
-            color = '#f59e0b';
-            bg = '#fed7aa';
-        } else {
-            status = '❌ ABSENT (Too Far)';
-            color = '#ef4444';
-            bg = '#fee2e2';
-        }
-        
-        distanceDiv.innerHTML = `
-            <div style="background: ${bg}; border-left: 4px solid ${color}; padding: 15px; border-radius: 8px;">
-                <strong style="color: ${color};">${status}</strong><br>
-                Distance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}
-            </div>
-        `;
-        distanceDiv.style.display = 'block';
-    }
+    targetSelect.innerHTML = '<option value="">📚 Select target...</option>';
     
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
+        option.textContent = opt.name;
+        targetSelect.appendChild(option);
+    });
+    
+    targetSelect.disabled = false;
+    console.log(`✅ Loaded ${options.length} ${sessionType} options`);
+}
     // ============================================
     // CHECK-IN FUNCTION
     // ============================================
