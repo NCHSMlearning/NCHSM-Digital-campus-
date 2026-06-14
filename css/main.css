@@ -5647,3 +5647,85 @@ p {
         display: none;
     }
 }
+/* ==================== SIDEBAR DROPDOWN STYLES ==================== */
+
+/* Dropdown container in sidebar */
+.nav-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+/* Dropdown toggle link */
+.nav-dropdown > a {
+    cursor: pointer;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+/* Chevron icon rotation */
+.nav-dropdown > a i.fa-chevron-down {
+    transition: transform 0.3s ease;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.nav-dropdown.open > a i.fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+/* Dropdown submenu - shows when open */
+.nav-dropdown .dropdown-menu {
+    display: none;
+    list-style: none;
+    background: rgba(11, 42, 74, 0.95);
+    border-radius: 12px;
+    padding: 8px 0;
+    margin: 5px 0 8px 20px;
+    position: relative;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    border-left: 2px solid var(--color-gold);
+}
+
+/* Show submenu when parent has open class */
+.nav-dropdown.open .dropdown-menu {
+    display: block;
+    animation: dropdownFadeIn 0.3s ease;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Submenu items */
+.nav-dropdown .dropdown-menu li {
+    margin: 0;
+    width: 100%;
+}
+
+.nav-dropdown .dropdown-menu li a {
+    padding: 10px 20px 10px 45px !important;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: none !important;
+}
+
+.nav-dropdown .dropdown-menu li a i {
+    width: 20px;
+    font-size: 0.9rem;
+}
+
+.nav-dropdown .dropdown-menu li a:hover {
+    background: rgba(42, 92, 154, 0.4);
+    padding-left: 50px !important;
+}
