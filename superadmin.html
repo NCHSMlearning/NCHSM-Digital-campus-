@@ -424,54 +424,82 @@
                 <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
                 <h2>Super Admin</h2>
             </div>
-        <ul class="nav" id="mainNav">
-    <!-- CORE MANAGEMENT -->
+       <ul class="nav" id="mainNav">
+    <!-- DASHBOARD -->
     <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-    <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
-    <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
     
-    <!-- ACADEMIC -->
-    <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-    <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-    <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-    <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+    <!-- USER MANAGEMENT DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+            <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+            <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
+            <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
+        </ul>
+    </li>
     
-    <!-- TIMETABLING & ATTENDANCE -->
-    <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-    <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-    <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+    <!-- ACADEMIC MANAGEMENT DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+            <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+            <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+        </ul>
+    </li>
     
-    <!-- STAFF & COMMUNICATION -->
-    <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
-    <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-    <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+    <!-- SCHEDULING & ATTENDANCE DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
+            <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+            <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+        </ul>
+    </li>
+    
+    <!-- STAFF & COMMUNICATION DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
+            <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
+            <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
+        </ul>
+    </li>
     
     <!-- FINANCIAL -->
     <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
     
-    <!-- SYSTEM & ADMIN -->
-    <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
-    <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+    <!-- SYSTEM TOOLS DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
+            <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
+            <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
+            <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
+            <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
+            <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
+            <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
+            <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+        </ul>
+    </li>
     
-    <!-- MONITORING & ANALYTICS -->
-    <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
-    <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-    <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
-    
-    <!-- SYSTEM TOOLS -->
-    <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
-    <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
-    <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
-    <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
-    <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
-    
-    <!-- SECURITY -->
-    <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
-    <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
-    <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
-    <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-    <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+    <!-- SECURITY DROPDOWN -->
+    <li class="nav-dropdown">
+        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down" style="float: right;"></i></a>
+        <ul class="dropdown-menu">
+            <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
+            <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
+            <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
+            <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
+            <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+        </ul>
+    </li>
     
     <!-- MAINTENANCE -->
     <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
@@ -2814,11 +2842,84 @@
             };
         }
         
-        // DO NOT redeclare terminateAllSessions - it's already in script.js!
-        // DO NOT redeclare loadActiveSessions - it's already in script.js!
-        // DO NOT redeclare refreshSessions - it's already in script.js!
-        // DO NOT redeclare exportSessionsToCSV - it's already in script.js!
+        <script>
+    // Dropdown toggle functionality
+    (function() {
+        // Function to initialize dropdowns
+        function initDropdowns() {
+            const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
+            
+            dropdownToggles.forEach(toggle => {
+                // Remove any existing event listeners to prevent duplicates
+                toggle.removeEventListener('click', handleDropdownClick);
+                toggle.addEventListener('click', handleDropdownClick);
+            });
+        }
         
+        function handleDropdownClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const parentLi = this.closest('.nav-dropdown');
+            
+            // Close all other dropdowns first
+            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                if (dropdown !== parentLi) {
+                    dropdown.classList.remove('open');
+                }
+            });
+            
+            // Toggle current dropdown
+            parentLi.classList.toggle('open');
+        }
+        
+        // Close dropdowns when clicking elsewhere
+        function closeDropdownsOnClickOutside(e) {
+            if (!e.target.closest('.nav-dropdown')) {
+                document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                    dropdown.classList.remove('open');
+                });
+            }
+        }
+        
+        // Close dropdowns when clicking on a menu item (optional - keeps nav cleaner)
+        function closeDropdownsOnNavClick(e) {
+            const link = e.target.closest('.dropdown-menu a');
+            if (link) {
+                // Small delay to allow the tab to open
+                setTimeout(() => {
+                    document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                        dropdown.classList.remove('open');
+                    });
+                }, 200);
+            }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                initDropdowns();
+                document.addEventListener('click', closeDropdownsOnClickOutside);
+                document.addEventListener('click', closeDropdownsOnNavClick);
+            });
+        } else {
+            initDropdowns();
+            document.addEventListener('click', closeDropdownsOnClickOutside);
+            document.addEventListener('click', closeDropdownsOnNavClick);
+        }
+        
+        // Also watch for dynamically added content (if needed)
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length) {
+                        initDropdowns();
+                    }
+                });
+            });
+            observer.observe(document.querySelector('.nav'), { childList: true, subtree: true });
+        }
+    })();
+</script>
         // Mobile navigation (safe to run - doesn't conflict with anything)
         document.addEventListener('DOMContentLoaded', function() {
             const mobileToggle = document.getElementById('mobileNavToggle');
