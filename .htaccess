@@ -1,177 +1,118 @@
-# .htaccess for NCHSM Digital Campus - Single Page Application
-# Place this file in your root directory
+# ============================================================
+# NCHSM DIGITAL CAMPUS - ENHANCED PROTECTION (FINAL)
+# ============================================================
 
 RewriteEngine On
 
 # ------------------------------------------------------------------
-# SECURITY & REDIRECTS
+# FORCE HTTPS - UNCOMMENT WHEN SSL IS READY
 # ------------------------------------------------------------------
-
-# Force HTTPS (remove if not using SSL)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
-# Remove trailing slashes
+# ------------------------------------------------------------------
+# REMOVE TRAILING SLASHES
+# ------------------------------------------------------------------
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)/$ /$1 [L,R=301]
 
 # ------------------------------------------------------------------
-# SPECIFIC ROUTE: /home -> student.html (dashboard)
+# PROTECT SENSITIVE FILES
+# ------------------------------------------------------------------
+<FilesMatch "\.(env|config\.json|\.map|sql|log|ini|sh|bak|sqlite|db)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(md|markdown|txt)$">
+    Require all denied
+</FilesMatch>
+
+# ------------------------------------------------------------------
+# CUSTOM ROUTES
 # ------------------------------------------------------------------
 RewriteRule ^home$ /student.html [L,QSA]
-
-# ------------------------------------------------------------------
-# ROUTE: /student (clean URL without .html)
-# ------------------------------------------------------------------
+RewriteRule ^dashboard$ /student.html [L,QSA]
 RewriteRule ^student$ /student.html [L,QSA]
+RewriteRule ^admin$ /admin.html [L,QSA]
+RewriteRule ^superadmin$ /superadmin.html [L,QSA]
 
 # ------------------------------------------------------------------
-# ROUTE: /student/* (all subpaths go to student.html)
+# API ROUTES - Prevent SPA redirection
 # ------------------------------------------------------------------
-RewriteRule ^student/(.*)$ /student.html [L,QSA]
+RewriteRule ^api/ - [L]
+RewriteRule ^api/(.*)$ - [L]
 
 # ------------------------------------------------------------------
-# REMOVE HASH FROM URL - Redirect any URL with # to clean URL
+# ASSETS & STATIC FILES
 # ------------------------------------------------------------------
-RewriteCond %{REQUEST_URI} ^/student
-RewriteCond %{QUERY_STRING} !^$
-RewriteRule ^(.*)$ /student? [R=301,L]
+RewriteRule ^(css|js|images|fonts|assets|vendor)/ - [L]
 
 # ------------------------------------------------------------------
-# SPA ROUTING - MOST IMPORTANT PART
+# EXISTING FILES - Serve directly
 # ------------------------------------------------------------------
-
-# Serve existing files and directories directly
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Redirect all other requests to student.html for SPA routing
+# ------------------------------------------------------------------
+# SPA ROUTING
+# ------------------------------------------------------------------
 RewriteRule ^(.*)$ student.html [L,QSA]
-
-# ------------------------------------------------------------------
-# PERFORMANCE & CACHING
-# ------------------------------------------------------------------
-
-<IfModule mod_expires.c>
-    ExpiresActive On
-    
-    # Images
-    ExpiresByType image/jpg "access plus 1 year"
-    ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType image/gif "access plus 1 year"
-    ExpiresByType image/png "access plus 1 year"
-    ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType image/webp "access plus 1 year"
-    ExpiresByType image/x-icon "access plus 1 year"
-    
-    # CSS, JavaScript
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType application/x-javascript "access plus 1 month"
-    
-    # Fonts
-    ExpiresByType font/woff2 "access plus 1 year"
-    ExpiresByType font/woff "access plus 1 year"
-    ExpiresByType font/ttf "access plus 1 year"
-    ExpiresByType font/eot "access plus 1 year"
-    ExpiresByType font/otf "access plus 1 year"
-    
-    # Data
-    ExpiresByType application/json "access plus 0 seconds"
-    ExpiresByType application/xml "access plus 0 seconds"
-    ExpiresByType text/xml "access plus 0 seconds"
-    
-    # HTML (no cache for HTML files)
-    ExpiresByType text/html "access plus 0 seconds"
-</IfModule>
 
 # ------------------------------------------------------------------
 # SECURITY HEADERS
 # ------------------------------------------------------------------
-
 <IfModule mod_headers.c>
-    # Protect against XSS attacks
     Header set X-XSS-Protection "1; mode=block"
-    
-    # Prevent MIME type sniffing
     Header set X-Content-Type-Options "nosniff"
-    
-    # Prevent clickjacking
-    Header set X-Frame-Options "SAMEORIGIN"
-    
-    # Referrer policy
+    Header set X-Frame-Options "DENY"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://raw.githubusercontent.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self';"
     
-    # Permissions policy
-    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    <FilesMatch "\.(ico|jpg|jpeg|png|gif|js|css|woff|woff2|ttf|svg)$">
+        Header set Cache-Control "max-age=2592000, public, immutable"
+    </FilesMatch>
     
-    # Cache static assets
-    <FilesMatch "\.(jpg|jpeg|png|gif|ico|css|js|woff|woff2|ttf|svg)$">
-        Header set Cache-Control "public, max-age=31536000"
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
     </FilesMatch>
 </IfModule>
 
 # ------------------------------------------------------------------
 # COMPRESSION
 # ------------------------------------------------------------------
-
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/rss+xml
-    AddOutputFilterByType DEFLATE application/vnd.ms-fontobject
-    AddOutputFilterByType DEFLATE application/x-font
-    AddOutputFilterByType DEFLATE application/x-font-opentype
-    AddOutputFilterByType DEFLATE application/x-font-otf
-    AddOutputFilterByType DEFLATE application/x-font-truetype
-    AddOutputFilterByType DEFLATE application/x-font-ttf
-    AddOutputFilterByType DEFLATE application/x-javascript
-    AddOutputFilterByType DEFLATE application/xhtml+xml
-    AddOutputFilterByType DEFLATE application/xml
-    AddOutputFilterByType DEFLATE font/opentype
-    AddOutputFilterByType DEFLATE font/otf
-    AddOutputFilterByType DEFLATE font/ttf
-    AddOutputFilterByType DEFLATE image/svg+xml
-    AddOutputFilterByType DEFLATE image/x-icon
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/javascript
-    AddOutputFilterByType DEFLATE text/plain
-    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml
 </IfModule>
-
-# ------------------------------------------------------------------
-# ERROR PAGES (Optional)
-# ------------------------------------------------------------------
-
-# ErrorDocument 404 /student
-
-# ------------------------------------------------------------------
-# BLOCK ACCESS TO SENSITIVE FILES
-# ------------------------------------------------------------------
-
-<FilesMatch "^\.">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-<FilesMatch "\.(env|json|config|js|map|sql|log)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-<Files "*.md">
-    Order allow,deny
-    Deny from all
-</Files>
-
-<Files "README*">
-    Order allow,deny
-    Deny from all
-</Files>
 
 # ------------------------------------------------------------------
 # PREVENT DIRECTORY LISTING
 # ------------------------------------------------------------------
-
 Options -Indexes
+Options +FollowSymLinks
+
+# ------------------------------------------------------------------
+# DEFAULT CHARACTER SET
+# ------------------------------------------------------------------
+AddDefaultCharset UTF-8
+
+# ------------------------------------------------------------------
+# ERROR DOCUMENTS
+# ------------------------------------------------------------------
+ErrorDocument 404 /student.html
+ErrorDocument 403 /error/403.html
+
+# ------------------------------------------------------------------
+# PHP SETTINGS (if using PHP)
+# ------------------------------------------------------------------
+<IfModule mod_php.c>
+    php_flag display_errors off
+    php_flag log_errors on
+    php_value max_execution_time 60
+    php_value upload_max_filesize 20M
+</IfModule>
