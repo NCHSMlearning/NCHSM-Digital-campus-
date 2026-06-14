@@ -641,23 +641,36 @@
             createGradeChart();
             
             console.log(`✅ Academic Reports loaded: ${currentData.grades.length} released exams`);
-            
-            if (currentData.grades.length > 0) {
-                const toast = document.getElementById('toast');
-                if (toast) {
-                    toast.innerHTML = `<i class="fas fa-check-circle"></i> Loaded ${currentData.grades.length} released exam results`;
-                    toast.style.display = 'flex';
-                    toast.style.background = '#10b981';
-                    setTimeout(() => { toast.style.display = 'none'; }, 3000);
-                }
-            }
-        } catch (error) {
-            console.error('❌ Error:', error);
-            if (elements.gradesTableBody) {
-                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error loading grades. Please refresh.</td></tr>';
-            }
-        }
+           if (currentData.grades.length > 0) {
+    let toast = document.getElementById('toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(76, 29, 149, 0.9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        `;
+        document.body.appendChild(toast);
     }
+    
+    toast.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 4px;"></i> ${currentData.grades.length} results`;
+    toast.style.opacity = '1';
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+    }, 1500);
+}
     
     function init() {
         console.log('🔧 Initializing Academic Reports Module...');
