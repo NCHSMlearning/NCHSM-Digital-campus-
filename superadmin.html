@@ -2789,68 +2789,64 @@
             </form>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
-    <script type="module" src="script.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
+<script type="module" src="script.js"></script>
 
-    <!-- GLOBAL FUNCTIONS FIX - ONLY ADD MISSING FUNCTIONS (NO DUPLICATES) -->
-    <script>
-        // Only add showTab if script.js didn't already (safety fallback)
-        if (typeof window.showTab === 'undefined') {
-            window.showTab = function(tabId) {
-                console.log('Opening tab:', tabId);
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.classList.remove('active');
-                    tab.style.display = 'none';
-                });
-                const targetTab = document.getElementById(tabId);
-                if (targetTab) {
-                    targetTab.classList.add('active');
-                    targetTab.style.display = 'block';
+<!-- GLOBAL FUNCTIONS - NO DUPLICATES -->
+<script>
+    // ========== SHOW TAB FUNCTION ==========
+    if (typeof window.showTab === 'undefined') {
+        window.showTab = function(tabId) {
+            console.log('Opening tab:', tabId);
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+                tab.style.display = 'none';
+            });
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) {
+                targetTab.classList.add('active');
+                targetTab.style.display = 'block';
+            }
+            document.querySelectorAll('.nav a').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-tab') === tabId) {
+                    link.classList.add('active');
                 }
-                document.querySelectorAll('.nav a').forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('data-tab') === tabId) {
-                        link.classList.add('active');
-                    }
-                });
-                if (typeof loadSectionData === 'function') loadSectionData(tabId);
-            };
-        }
-        
-        // Only add logout if not already defined
-        if (typeof window.logout === 'undefined') {
-            window.logout = function() {
-                window.location.href = 'login.html';
-            };
-        }
-        
-        // Only add closeModal if not already defined
-        if (typeof window.closeModal === 'undefined') {
-            window.closeModal = function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) modal.style.display = 'none';
-            };
-        }
-        
-        // Only add closeGradeModal if not already defined
-        if (typeof window.closeGradeModal === 'undefined') {
-            window.closeGradeModal = function() {
-                const modal = document.getElementById('gradeModal');
-                if (modal) modal.style.display = 'none';
-            };
-        }
-        
-        <script>
-    // Dropdown toggle functionality
+            });
+            if (typeof loadSectionData === 'function') loadSectionData(tabId);
+        };
+    }
+    
+    // ========== LOGOUT FUNCTION ==========
+    if (typeof window.logout === 'undefined') {
+        window.logout = function() {
+            window.location.href = 'login.html';
+        };
+    }
+    
+    // ========== CLOSE MODAL FUNCTION ==========
+    if (typeof window.closeModal === 'undefined') {
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+        };
+    }
+    
+    // ========== CLOSE GRADE MODAL ==========
+    if (typeof window.closeGradeModal === 'undefined') {
+        window.closeGradeModal = function() {
+            const modal = document.getElementById('gradeModal');
+            if (modal) modal.style.display = 'none';
+        };
+    }
+
+    // ========== DROPDOWN TOGGLE FOR SIDEBAR NAVIGATION ==========
     (function() {
-        // Function to initialize dropdowns
         function initDropdowns() {
             const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
-            
             dropdownToggles.forEach(toggle => {
-                // Remove any existing event listeners to prevent duplicates
                 toggle.removeEventListener('click', handleDropdownClick);
                 toggle.addEventListener('click', handleDropdownClick);
             });
@@ -2861,7 +2857,7 @@
             e.stopPropagation();
             const parentLi = this.closest('.nav-dropdown');
             
-            // Close all other dropdowns first
+            // Close all other dropdowns
             document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
                 if (dropdown !== parentLi) {
                     dropdown.classList.remove('open');
@@ -2872,7 +2868,6 @@
             parentLi.classList.toggle('open');
         }
         
-        // Close dropdowns when clicking elsewhere
         function closeDropdownsOnClickOutside(e) {
             if (!e.target.closest('.nav-dropdown')) {
                 document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
@@ -2881,61 +2876,34 @@
             }
         }
         
-        // Close dropdowns when clicking on a menu item (optional - keeps nav cleaner)
-        function closeDropdownsOnNavClick(e) {
-            const link = e.target.closest('.dropdown-menu a');
-            if (link) {
-                // Small delay to allow the tab to open
-                setTimeout(() => {
-                    document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                        dropdown.classList.remove('open');
-                    });
-                }, 200);
-            }
-        }
-        
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
                 initDropdowns();
                 document.addEventListener('click', closeDropdownsOnClickOutside);
-                document.addEventListener('click', closeDropdownsOnNavClick);
             });
         } else {
             initDropdowns();
             document.addEventListener('click', closeDropdownsOnClickOutside);
-            document.addEventListener('click', closeDropdownsOnNavClick);
-        }
-        
-        // Also watch for dynamically added content (if needed)
-        if (typeof MutationObserver !== 'undefined') {
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes.length) {
-                        initDropdowns();
-                    }
-                });
-            });
-            observer.observe(document.querySelector('.nav'), { childList: true, subtree: true });
         }
     })();
-</script>
-        // Mobile navigation (safe to run - doesn't conflict with anything)
-        document.addEventListener('DOMContentLoaded', function() {
-            const mobileToggle = document.getElementById('mobileNavToggle');
-            if (mobileToggle) {
-                mobileToggle.addEventListener('click', function() {
-                    document.getElementById('sidebar')?.classList.toggle('active');
-                });
-            }
-            document.querySelectorAll('.nav a').forEach(link => {
-                link.addEventListener('click', function() {
-                    document.getElementById('sidebar')?.classList.remove('active');
-                });
+
+    // ========== MOBILE NAVIGATION ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileToggle = document.getElementById('mobileNavToggle');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                document.getElementById('sidebar')?.classList.toggle('active');
+            });
+        }
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', function() {
+                document.getElementById('sidebar')?.classList.remove('active');
             });
         });
-        
-        console.log('✅ Global fallback functions registered (no duplicates)');
-    </script>
+    });
+    
+    console.log('✅ All scripts loaded successfully');
+</script>
 </body>
 </html>
