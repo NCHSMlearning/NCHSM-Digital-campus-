@@ -513,6 +513,7 @@
             <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
             <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
             <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+           <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School System</a></li>
             <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
         </ul>
     </li>
@@ -936,8 +937,232 @@
                 </div>
             </section>
 
-          
-             <!-- SUPPORT TICKETS MANAGEMENT SECTION -->
+          <!-- ============================================ -->
+<!-- NURSING SCHOOL SYSTEM - COMPLETE MODULE -->
+<!-- ============================================ -->
+<section id="nursing-system" class="tab-content">
+    <div class="panel_s">
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h3 class="text-success no-margin"><i class="fas fa-hospital-user"></i> Nursing School Management System</h3>
+                    <p class="text-default">Complete NCK & Internal Marks Management - Clinical Evaluation (XY FORMS) & Written Assessments</p>
+                </div>
+                <div class="col-md-4 pull-right">
+                    <button onclick="loadNursingSystemData()" class="btn btn-info pull-right" style="margin-left: 10px;">
+                        <i class="fa fa-sync-alt"></i> Refresh Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="panel_s">
+                <div class="panel-body text-center">
+                    <h3 class="no-margin"><span id="ns_total_students" class="text-info" style="font-size: 32px;">0</span></h3>
+                    <p class="text-default"><i class="fa fa-users"></i> Total Students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel_s">
+                <div class="panel-body text-center">
+                    <h3 class="no-margin"><span id="ns_total_internal" class="text-success" style="font-size: 32px;">0</span></h3>
+                    <p class="text-default"><i class="fa fa-file-alt"></i> Internal Marks</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel_s">
+                <div class="panel-body text-center">
+                    <h3 class="no-margin"><span id="ns_total_nck" class="text-warning" style="font-size: 32px;">0</span></h3>
+                    <p class="text-default"><i class="fa fa-stethoscope"></i> NCK Records</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel_s">
+                <div class="panel-body text-center">
+                    <h3 class="no-margin"><span id="ns_class_avg" class="text-danger" style="font-size: 32px;">0%</span></h3>
+                    <p class="text-default"><i class="fa fa-chart-line"></i> Class Average</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="panel_s">
+        <div class="panel-body">
+            <ul class="nav nav-tabs" id="nursingSystemTabs">
+                <li class="active"><a href="#ns_internal" data-toggle="tab"><i class="fa fa-pen-alt"></i> Internal Marks</a></li>
+                <li><a href="#ns_nck" data-toggle="tab"><i class="fa fa-file-medical"></i> NCK Scores</a></li>
+                <li><a href="#ns_analytics" data-toggle="tab"><i class="fa fa-chart-line"></i> Analytics</a></li>
+                <li><a href="#ns_reports" data-toggle="tab"><i class="fa fa-download"></i> Reports</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab 1: Internal Marks -->
+    <div id="ns_internal" class="tab-pane active">
+        <div class="panel_s">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label>Select Block</label>
+                        <select id="ns_block_select" class="form-control" onchange="loadInternalMarks()">
+                            <option value="">-- Select Block --</option>
+                            <option value="Introductory">Introductory Block</option>
+                            <option value="Block 1">Block 1</option>
+                            <option value="Block 2">Block 2</option>
+                            <option value="Block 3">Block 3</option>
+                            <option value="Block 4">Block 4</option>
+                            <option value="Block 5">Block 5</option>
+                            <option value="Final">Final Block</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Select Subject</label>
+                        <select id="ns_subject_select" class="form-control" onchange="loadInternalMarks()">
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Assessment Type</label>
+                        <select id="ns_assessment_type" class="form-control" disabled>
+                            <option value="full">Full (CAT1+CAT2+Exam)</option>
+                            <option value="single_cat">Single CAT (CAT+Exam)</option>
+                            <option value="exam_only">Exam Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-success btn-block" onclick="saveAllInternalMarks()">
+                            <i class="fa fa-save"></i> Save All Marks
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <div id="ns_internal_marks_container" style="overflow-x: auto;">
+                    <div class="text-center" style="padding: 40px;">
+                        <div class="loading-spinner"></div>
+                        <p>Select a block and subject to load marks...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: NCK Scores -->
+    <div id="ns_nck" class="tab-pane">
+        <div class="panel_s">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label>Select Sheet</label>
+                        <select id="ns_nck_sheet" class="form-control" onchange="loadNCKMarks()">
+                            <option value="XY FORMS">📊 XY FORMS - Clinical Evaluation</option>
+                            <option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Select Block</label>
+                        <select id="ns_nck_block" class="form-control" onchange="loadNCKMarks()">
+                            <option value="Introductory">Introductory Block</option>
+                            <option value="Block 1">Block 1</option>
+                            <option value="Block 2">Block 2</option>
+                            <option value="Block 3">Block 3</option>
+                            <option value="Block 4">Block 4</option>
+                            <option value="Block 5">Block 5</option>
+                            <option value="Final">Final Block</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-info btn-block" onclick="fillDownNCKValues()">
+                            <i class="fa fa-arrow-down"></i> Fill Down Values
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-success btn-block" onclick="saveAllNCKMarks()">
+                            <i class="fa fa-save"></i> Save All NCK Marks
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <div id="ns_nck_marks_container" style="overflow-x: auto;">
+                    <div class="text-center" style="padding: 40px;">
+                        <div class="loading-spinner"></div>
+                        <p>Loading NCK marks...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Analytics -->
+    <div id="ns_analytics" class="tab-pane">
+        <div class="panel_s">
+            <div class="panel-body">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="ns_avg_score">0%</div>
+                        <div class="stat-label">Average Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="ns_pass_rate">0%</div>
+                        <div class="stat-label">Pass Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="ns_total_exams">0</div>
+                        <div class="stat-label">Total Exams</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="ns_top_student">-</div>
+                        <div class="stat-label">Top Performer</div>
+                    </div>
+                </div>
+                <div id="ns_analytics_charts">
+                    <canvas id="ns_performance_chart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Reports -->
+    <div id="ns_reports" class="tab-pane">
+        <div class="panel_s">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center" onclick="exportInternalMarksToCSV()" style="cursor: pointer;">
+                            <i class="fa fa-download" style="font-size: 48px; color: #4C1D95;"></i>
+                            <h4>Export Internal Marks</h4>
+                            <p>Download all internal marks as CSV</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" onclick="exportNCKMarksToCSV()" style="cursor: pointer;">
+                            <i class="fa fa-download" style="font-size: 48px; color: #4C1D95;"></i>
+                            <h4>Export NCK Marks</h4>
+                            <p>Download all NCK clinical scores as CSV</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" onclick="exportStudentSummaryToCSV()" style="cursor: pointer;">
+                            <i class="fa fa-download" style="font-size: 48px; color: #4C1D95;"></i>
+                            <h4>Export Student Summary</h4>
+                            <p>Download student performance summary</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 <!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
 <section id="support-tickets" class="tab-content">
     <h2><i class="fas fa-ticket-alt"></i> Support Tickets Management</h2>
