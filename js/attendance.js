@@ -577,31 +577,32 @@
         
         fixDropdown();
         
-        const sessionType = document.getElementById('session-type');
-        if (sessionType) {
-            sessionType.addEventListener('change', async () => {
-                const targetGroup = document.getElementById('target-control-group');
-                const targetLabel = document.getElementById('target-text');
-                
-                if (sessionType.value === 'class') {
-                    if (targetGroup) targetGroup.style.display = 'flex';
-                    if (targetLabel) targetLabel.textContent = 'Select Course:';
-                    await populateTargetOptions('class');
-                } else if (sessionType.value === 'clinical') {
-                    if (targetGroup) targetGroup.style.display = 'flex';
-                    if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
-                    await populateTargetOptions('clinical');
-                } else {
-                    if (targetGroup) targetGroup.style.display = 'none';
-                }
-            });
-            
-            if (sessionType.value === 'class') {
-                await populateTargetOptions('class');
-            } else if (sessionType.value === 'clinical') {
-                await populateTargetOptions('clinical');
-            }
+       const sessionType = document.getElementById('session-type');
+if (sessionType) {
+    sessionType.addEventListener('change', async () => {
+        const targetGroup = document.getElementById('target-control-group');
+        const targetLabel = document.getElementById('target-text');
+        
+        if (sessionType.value === 'class') {
+            if (targetGroup) targetGroup.style.display = 'flex';
+            if (targetLabel) targetLabel.textContent = 'Select Course:';
+            await populateTargetOptions('class');
+        } else if (sessionType.value === 'clinical') {
+            if (targetGroup) targetGroup.style.display = 'flex';
+            if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
+            await populateTargetOptions('clinical');
+        } else {
+            if (targetGroup) targetGroup.style.display = 'none';
         }
+    });
+    
+    // Trigger initial load based on current selection
+    if (sessionType.value === 'class') {
+        await populateTargetOptions('class');
+    } else if (sessionType.value === 'clinical') {
+        await populateTargetOptions('clinical');
+    }
+}
         
         const checkBtn = document.getElementById('check-in-button');
         if (checkBtn) {
