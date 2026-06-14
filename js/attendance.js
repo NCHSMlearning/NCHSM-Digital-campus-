@@ -235,48 +235,44 @@
     // LOCATION DETECTION
     // ============================================
     
-    function getRealLocation() {
-        console.log('📍 Getting REAL GPS location...');
-        
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
-                return;
-            }
-            
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            };
-            
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const acc = position.coords.accuracy;
-                    
-                    console.log(`✅ REAL GPS: ${lat}, ${lon} (±${acc}m)`);
-                    
-                    const distance = calculateDistance(lat, lon, CAMPUS_COORDINATES.latitude, CAMPUS_COORDINATES.longitude);
-                    console.log(`📏 Distance to campus: ${distance.toFixed(0)}m`);
-                    
-                    resolve({
-                        latitude: lat,
-                        longitude: lon,
-                        accuracy: acc,
-                        distance: distance
-                    });
-                },
-                (error) => {
-                    console.error('GPS Error:', error.message);
-                    reject(error);
-                },
-                options
-            );
-        });
-    }
+  // CLEAN GPS - No warnings, just real location
+function getRealLocation() {
+    console.log('📍 Capturing GPS location...');
     
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+        }
+        
+        const options = {
+            enableHighAccuracy: true,  // Force GPS
+            timeout: 10000,
+            maximumAge: 0              // Fresh location only
+        };
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const acc = position.coords.accuracy;
+                
+                console.log(`📍 Raw GPS: ${lat}, ${lon} (±${acc}m)`);
+                
+                resolve({
+                    latitude: lat,
+                    longitude: lon,
+                    accuracy: acc
+                });
+            },
+            (error) => {
+                console.error('GPS Error:', error.message);
+                reject(error);
+            },
+            options
+        );
+    });
+}
     // ============================================
     // POPULATE DROPDOWN
     // ============================================
