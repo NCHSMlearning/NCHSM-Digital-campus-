@@ -1052,19 +1052,17 @@
         </main>
     </div>
 <!-- Nurse IQ Section -->
+<!-- Replace Nurse IQ section -->
 <section id="nurse-iq-content" class="tab-content">
-    <div style="padding: 20px; background: white; border-radius: 8px; margin-bottom: 20px;">
-        <h2><i class="fas fa-stethoscope"></i> Nurse IQ Assessment</h2>
-        <p>Clinical knowledge assessment and competency evaluation system.</p>
-    </div>
-    <div id="nurse-iq-iframe-container" style="width: 100%; height: 85vh; border-radius: 8px; overflow: hidden; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <iframe id="nurse-iq-iframe" 
-                src="nurse_iq.html" 
-                style="width: 100%; height: 100%; border: none;"
-                title="Nurse IQ Assessment">
-        </iframe>
+    <div class="panel_s">
+        <div class="panel-body text-center" style="padding: 60px;">
+            <i class="fas fa-stethoscope" style="font-size: 64px; color: #4C1D95; margin-bottom: 20px;"></i>
+            <h3>Nurse IQ Assessment</h3>
+            <p>Clinical knowledge assessment module coming soon.</p>
+        </div>
     </div>
 </section>
+
 
 <!-- Marks System Section (NCK & Internal Marks) -->
 <section id="marks-system-content" class="tab-content">
@@ -1479,7 +1477,7 @@
             }
         }
 
-      function loadSectionData(tabId) { 
+     function loadSectionData(tabId) { 
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
     if (!currentUserProfile) return;
     
@@ -1500,8 +1498,33 @@
         case 'calendar': $('calendar-view').innerHTML = '<p>Academic Calendar placeholder loaded.</p>'; break;
         case 'reports': loadReports(); break;
         case 'settings': loadSettings(); break;
-        case 'nurse-iq': break; // Nurse IQ - handled by iframe
-        case 'marks-management': break; // Marks Management - handled by iframe
+        case 'nurse-iq': 
+            // Handle Nurse IQ
+            const nurseIQContent = document.getElementById('nurse-iq-content');
+            if (nurseIQContent) {
+                nurseIQContent.innerHTML = `
+                    <div class="panel_s">
+                        <div class="panel-body text-center" style="padding: 60px;">
+                            <i class="fas fa-stethoscope" style="font-size: 64px; color: #4C1D95; margin-bottom: 20px;"></i>
+                            <h3>Nurse IQ Assessment</h3>
+                            <p>Clinical knowledge assessment module.</p>
+                        </div>
+                    </div>
+                `;
+            }
+            break;
+        case 'marks-management': 
+            // Handle Marks Management - load the internal marks tab
+            console.log('Loading Marks Management...');
+            setTimeout(() => {
+                // Populate block dropdown
+                const blockSelect = document.getElementById('lec_block_select');
+                if (blockSelect && blockSelect.value) {
+                    loadLecturerSubjects();
+                    loadLecturerInternalMarks();
+                }
+            }, 100);
+            break;
     }
     
     // Hide all tab contents
