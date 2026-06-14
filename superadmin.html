@@ -424,44 +424,58 @@
                 <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
                 <h2>Super Admin</h2>
             </div>
-            <ul class="nav" id="mainNav">
-                <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-                <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
-                <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
-                <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-                <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-                <li><a href="#" data-tab="support-tickets">
-    <i class="fas fa-ticket-alt"></i> Support Tickets 
-    <span id="ticketsUnreadBadge" style="display: none;"></span>
-</a></li>
-                <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals 
-    <span id="pendingApprovalsBadge" style="background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px; display: none;">0</span>
-</a></li>
-                <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
-                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-                <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-                <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
-                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
-                <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
-                <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
-                <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-                <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
-                <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
-                <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
-                <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
-                <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
-                <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
-                <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
-                <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
-                <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
-                <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-                <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
-                <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
-            </ul>
+        <ul class="nav" id="mainNav">
+    <!-- CORE MANAGEMENT -->
+    <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+    <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+    <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
+    
+    <!-- ACADEMIC -->
+    <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+    <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+    <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+    <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+    
+    <!-- TIMETABLING & ATTENDANCE -->
+    <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
+    <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+    <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+    
+    <!-- STAFF & COMMUNICATION -->
+    <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
+    <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
+    <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+    
+    <!-- FINANCIAL -->
+    <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
+    
+    <!-- SYSTEM & ADMIN -->
+    <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
+    <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+    
+    <!-- MONITORING & ANALYTICS -->
+    <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
+    <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
+    <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
+    
+    <!-- SYSTEM TOOLS -->
+    <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
+    <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
+    <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
+    <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
+    <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
+    
+    <!-- SECURITY -->
+    <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
+    <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
+    <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
+    <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
+    <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+    
+    <!-- MAINTENANCE -->
+    <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
+</ul>
             <div class="logout">
                 <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
