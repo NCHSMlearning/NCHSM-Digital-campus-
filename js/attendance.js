@@ -1,4 +1,4 @@
-// COMPLETE ATTENDANCE SYSTEM - WITH FREE ADDRESS LOOKUP
+// COMPLETE ATTENDANCE SYSTEM - WITH FORCED FRESH GPS
 (function() {
     'use strict';
     
@@ -39,19 +39,25 @@
         const supabase = window.db?.supabase;
         const studentId = getCurrentStudentId();
         
-        if (!supabase || !studentId) return null;
+        if (!supabase || !studentId) {
+            return { program: 'KRCHN', intake_year: '2026' };
+        }
         
+        // Use consolidated_user_profiles_table
         const { data, error } = await supabase
-            .from('student_profiles')
+            .from('consolidated_user_profiles_table')
             .select('program, intake_year, full_name')
             .eq('user_id', studentId)
-            .single();
+            .maybeSingle();
         
-        if (!error && data) {
+        if (!error && data && data.program) {
             currentStudent = data;
             console.log(`👨‍🎓 Student: ${data.program} ${data.intake_year}`);
+            return currentStudent;
         }
-        return currentStudent;
+        
+        // Fallback
+        return { program: 'KRCHN', intake_year: '2026' };
     }
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -64,15 +70,13 @@
     }
     
     // ============================================
-    // FREE ADDRESS LOOKUP (No API Key Needed!)
+    // FREE ADDRESS LOOKUP
     // ============================================
     
     async function getAddressFromCoordinates(lat, lon) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
-                headers: {
-                    'User-Agent': 'NCHSM-Attendance-System/1.0'
-                }
+                headers: { 'User-Agent': 'NCHSM-Attendance-System/1.0' }
             });
             const data = await response.json();
             
@@ -81,22 +85,122 @@
                 const suburb = data.address?.suburb || data.address?.neighbourhood || '';
                 const city = data.address?.city || data.address?.town || data.address?.county || '';
                 
-                if (road && city) {
-                    return `${road}, ${city}`;
-                } else if (city) {
-                    return city;
-                }
+                if (road && city) return `${road}, ${city}`;
+                if (city) return city;
                 return data.display_name.split(',')[0];
             }
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         } catch(e) {
-            console.log('Address lookup failed:', e);
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }
     }
     
     // ============================================
-    // FIX DROPDOWN - MOVED BEFORE init()
+    // FORCED FRESH GPS - NO CACHE
+    // ============================================
+    
+    function getRealLocation() {
+        console.log('📍 FORCING FRESH GPS - Clearing cache...');
+        
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocation not supported'));
+                return;
+            }
+            
+            const options = {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 30000
+            };
+            
+            // Clear any active watchers
+            if (navigator.geolocation.clearWatch && window.locationWatchId) {
+                navigator.geolocation.clearWatch(window.locationWatchId);
+                window.locationWatchId = null;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const timestamp = position.coords.timestamp;
+                    const age = Date.now() - timestamp;
+                    
+                    console.log(`📍 GPS received, age: ${age}ms`);
+                    
+                    // If data is cached, retry
+                    if (age > 2000) {
+                        console.warn('⚠️ Received cached GPS! Retrying...');
+                        getRealLocation().then(resolve).catch(reject);
+                        return;
+                    }
+                    
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+                    
+                    console.log(`✅ FRESH GPS: ${lat}, ${lon} (±${acc}m)`);
+                    
+                    const address = await getAddressFromCoordinates(lat, lon);
+                    console.log(`🏠 Address: ${address}`);
+                    
+                    // Check for cached campus coordinates
+                    const campusLat = -0.2714611;
+                    const campusLon = 36.0519956;
+                    const isCachedCampus = Math.abs(lat - campusLat) < 0.001 && Math.abs(lon - campusLon) < 0.001;
+                    
+                    if (isCachedCampus && acc > 100) {
+                        console.warn('⚠️ Got cached campus coordinates! Please go outside and enable GPS.');
+                    }
+                    
+                    resolve({ 
+                        latitude: lat, 
+                        longitude: lon, 
+                        accuracy: acc,
+                        address: address
+                    });
+                },
+                (error) => {
+                    console.error('GPS Error:', error.message);
+                    reject(error);
+                },
+                options
+            );
+        });
+    }
+    
+    // ============================================
+    // UPDATE LOCATION DISPLAY
+    // ============================================
+    
+    async function updateLocationDisplay(location) {
+        const latEl = document.getElementById('latitude');
+        const lonEl = document.getElementById('longitude');
+        const accEl = document.getElementById('accuracy-value');
+        
+        if (latEl) latEl.textContent = location.latitude.toFixed(6);
+        if (lonEl) lonEl.textContent = location.longitude.toFixed(6);
+        if (accEl) accEl.textContent = location.accuracy.toFixed(1);
+        
+        let addressDisplay = document.getElementById('location-address');
+        if (!addressDisplay) {
+            const locationInfo = document.getElementById('location-info');
+            if (locationInfo) {
+                const addressDiv = document.createElement('div');
+                addressDiv.id = 'location-address';
+                addressDiv.className = 'location-address';
+                addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #666;';
+                locationInfo.appendChild(addressDiv);
+                addressDisplay = addressDiv;
+            }
+        }
+        
+        if (addressDisplay && location.address) {
+            addressDisplay.innerHTML = `📍 <strong>Location:</strong> ${location.address}`;
+        }
+    }
+    
+    // ============================================
+    // FIX DROPDOWN
     // ============================================
     
     function fixDropdown() {
@@ -123,9 +227,7 @@
                     console.log('✅ Target selected:', window.selectedTarget.name);
                     
                     const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) {
-                        checkBtn.disabled = false;
-                    }
+                    if (checkBtn) checkBtn.disabled = false;
                 }
             } else {
                 window.selectedTarget = null;
@@ -172,7 +274,7 @@
     }
     
     // ============================================
-    // LOAD CLINICAL LOCATIONS FOR STUDENT'S CLASS
+    // LOAD CLINICAL LOCATIONS
     // ============================================
     
     async function loadClinicalLocations() {
@@ -181,62 +283,10 @@
             if (!supabase) return [];
             
             const student = await getCurrentStudentProfile();
-            if (!student) {
-                console.log('No student profile found');
-                return [];
-            }
-            
-            const { data, error } = await supabase
-                .from('clinical_names')
-                .select('id, clinical_area_name, latitude, longitude')
-                .eq('program', student.program)
-                .eq('intake_year', student.intake_year)
-                .order('clinical_area_name');
-            
-            if (error) {
-                console.error('Error loading clinical locations:', error);
-                return [];
-            }
-            
-            console.log(`🏥 Loaded ${data?.length || 0} clinical locations for ${student.program} ${student.intake_year}`);
-            return data || [];
-        } catch(e) {
-            console.error('Error:', e);
-            return [];
-        }
-    }
-    
-    // ============================================
-    // POPULATE DROPDOWN (CLASSROOM OR CLINICAL)
-    // ============================================
-    
-    async function populateTargetOptions(sessionType) {
-    const targetSelect = document.getElementById('attendance-target');
-    if (!targetSelect) return;
-    
-    targetSelect.innerHTML = '<option value="">Loading...</option>';
-    targetSelect.disabled = true;
-    
-    let options = [];
-    
-    if (sessionType === 'class') {
-        if (approvedUnits.length === 0) await loadApprovedUnits();
-        
-        options = approvedUnits.map(unit => ({
-            id: `unit_${unit.id}`,
-            name: `${unit.unit_code} - ${unit.unit_name}`,
-            type: 'class',
-            latitude: CAMPUS_COORDINATES.latitude,
-            longitude: CAMPUS_COORDINATES.longitude,
-            radius: 50
-        }));
-    } 
-    else if (sessionType === 'clinical') {
-        const supabase = window.db?.supabase;
-        if (supabase) {
-            const student = await getCurrentStudentProfile();
             const program = student?.program || 'KRCHN';
             const intakeYear = student?.intake_year || '2026';
+            
+            console.log(`Loading clinical locations for: ${program} ${intakeYear}`);
             
             const { data, error } = await supabase
                 .from('clinical_names')
@@ -245,102 +295,73 @@
                 .eq('intake_year', intakeYear)
                 .order('clinical_area_name');
             
-            if (!error && data) {
-                options = data.map(loc => ({
-                    id: `clinical_${loc.id}`,
-                    name: loc.clinical_area_name,
-                    type: 'clinical',
-                    latitude: parseFloat(loc.latitude),
-                    longitude: parseFloat(loc.longitude),
-                    radius: 100
-                }));
-            }
-        }
-    }
-    
-    if (options.length === 0) {
-        targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType === 'class' ? 'courses' : 'clinical locations'} available</option>`;
-        targetSelect.disabled = false;
-        return;
-    }
-    
-    targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
-    
-    options.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
-        option.textContent = opt.name;
-        targetSelect.appendChild(option);
-    });
-    
-    targetSelect.disabled = false;
-    console.log(`✅ Loaded ${options.length} ${sessionType} options`);
-}
-    
-    // ============================================
-    // GPS LOCATION WITH ADDRESS
-    // ============================================
-    
-    function getRealLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
-                return;
+            if (error) {
+                console.error('Error loading clinical locations:', error);
+                return [];
             }
             
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const acc = position.coords.accuracy;
-                    
-                    const address = await getAddressFromCoordinates(lat, lon);
-                    
-                    console.log(`📍 GPS: ${lat}, ${lon} (±${acc}m)`);
-                    console.log(`🏠 Address: ${address}`);
-                    
-                    resolve({ 
-                        latitude: lat, 
-                        longitude: lon, 
-                        accuracy: acc,
-                        address: address 
-                    });
-                },
-                (error) => reject(error),
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        });
+            console.log(`🏥 Loaded ${data?.length || 0} clinical locations`);
+            return data || [];
+        } catch(e) {
+            console.error('Error:', e);
+            return [];
+        }
     }
     
     // ============================================
-    // UPDATE LOCATION DISPLAY WITH ADDRESS
+    // POPULATE DROPDOWN
     // ============================================
     
-    async function updateLocationDisplay(location) {
-        const latEl = document.getElementById('latitude');
-        const lonEl = document.getElementById('longitude');
-        const accEl = document.getElementById('accuracy-value');
+    async function populateTargetOptions(sessionType) {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect) return;
         
-        if (latEl) latEl.textContent = location.latitude.toFixed(6);
-        if (lonEl) lonEl.textContent = location.longitude.toFixed(6);
-        if (accEl) accEl.textContent = location.accuracy.toFixed(1);
+        targetSelect.innerHTML = '<option value="">Loading...</option>';
+        targetSelect.disabled = true;
         
-        let addressDisplay = document.getElementById('location-address');
-        if (!addressDisplay) {
-            const locationInfo = document.getElementById('location-info');
-            if (locationInfo) {
-                const addressDiv = document.createElement('div');
-                addressDiv.id = 'location-address';
-                addressDiv.className = 'location-address';
-                addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #666;';
-                locationInfo.appendChild(addressDiv);
-                addressDisplay = addressDiv;
-            }
+        let options = [];
+        
+        if (sessionType === 'class') {
+            if (approvedUnits.length === 0) await loadApprovedUnits();
+            
+            options = approvedUnits.map(unit => ({
+                id: `unit_${unit.id}`,
+                name: `${unit.unit_code} - ${unit.unit_name}`,
+                type: 'class',
+                latitude: CAMPUS_COORDINATES.latitude,
+                longitude: CAMPUS_COORDINATES.longitude,
+                radius: 50
+            }));
+        } 
+        else if (sessionType === 'clinical') {
+            const clinics = await loadClinicalLocations();
+            options = clinics.map(loc => ({
+                id: `clinical_${loc.id}`,
+                name: loc.clinical_area_name,
+                type: 'clinical',
+                latitude: parseFloat(loc.latitude),
+                longitude: parseFloat(loc.longitude),
+                radius: 100
+            }));
         }
         
-        if (addressDisplay && location.address) {
-            addressDisplay.innerHTML = `📍 <strong>Location:</strong> ${location.address}`;
+        if (options.length === 0) {
+            targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType === 'class' ? 'courses' : 'clinical locations'} available</option>`;
+            targetSelect.disabled = false;
+            return;
         }
+        
+        targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
+        
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
+            option.textContent = opt.name;
+            targetSelect.appendChild(option);
+        });
+        
+        targetSelect.disabled = false;
+        console.log(`✅ Loaded ${options.length} ${sessionType} options`);
     }
     
     // ============================================
@@ -386,16 +407,36 @@
             );
             
             const radius = selectedTarget.radius || 50;
-            let status = distance <= radius ? 'Present' : (distance <= radius * 2 ? 'Pending' : 'Absent');
+            const accuracy = location.accuracy;
+            
+            let status = 'Absent';
+            let verificationNote = '';
+            
+            // Accuracy-based verification
+            if (accuracy > radius) {
+                status = 'Pending';
+                verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m). Cannot verify exact location.`;
+            } else if (distance <= radius) {
+                status = 'Present';
+                verificationNote = `✅ Verified within ${radius}m (GPS accuracy ±${accuracy.toFixed(0)}m)`;
+            } else if (distance <= radius * 2) {
+                status = 'Pending';
+                verificationNote = `⚠️ Within ${radius * 2}m, needs review`;
+            } else {
+                status = 'Absent';
+                verificationNote = `❌ Too far (${distance.toFixed(0)}m) from target`;
+            }
             
             const confirmed = confirm(
                 `📍 CHECK-IN CONFIRMATION\n\n` +
                 `Target: ${selectedTarget.name}\n` +
                 `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
                 `Your Location: ${location.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}\n` +
+                `GPS Accuracy: ±${accuracy.toFixed(0)}m\n` +
                 `Distance: ${distance.toFixed(0)}m\n` +
                 `Verification Radius: ${radius}m\n` +
                 `Status: ${status}\n\n` +
+                `${verificationNote}\n\n` +
                 `Proceed?`
             );
             
@@ -451,7 +492,7 @@
     }
     
     // ============================================
-    // LOAD HISTORY (with address display)
+    // LOAD HISTORY
     // ============================================
     
     async function loadHistory() {
@@ -561,6 +602,41 @@
     }
     
     // ============================================
+    // FORCE GPS BUTTON
+    // ============================================
+    
+    function addForceGPSButton() {
+        const container = document.querySelector('.check-in-controls');
+        if (container && !document.getElementById('force-gps-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'force-gps-btn';
+            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
+            btn.style.cssText = `
+                background: #f59e0b;
+                color: white;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 8px;
+                margin: 10px 0;
+                cursor: pointer;
+                font-size: 14px;
+                width: 100%;
+            `;
+            btn.onclick = async () => {
+                console.log('🔄 Force refreshing GPS...');
+                try {
+                    const location = await getRealLocation();
+                    alert(`📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m\n\nIf accuracy > 100m, please go outside and enable GPS.`);
+                    await updateLocationDisplay(location);
+                } catch(e) {
+                    alert('GPS failed: ' + e.message);
+                }
+            };
+            container.insertBefore(btn, container.firstChild);
+        }
+    }
+    
+    // ============================================
     // INITIALIZATION
     // ============================================
     
@@ -576,33 +652,33 @@
         startTimeUpdates();
         
         fixDropdown();
+        addForceGPSButton();
         
-       const sessionType = document.getElementById('session-type');
-if (sessionType) {
-    sessionType.addEventListener('change', async () => {
-        const targetGroup = document.getElementById('target-control-group');
-        const targetLabel = document.getElementById('target-text');
-        
-        if (sessionType.value === 'class') {
-            if (targetGroup) targetGroup.style.display = 'flex';
-            if (targetLabel) targetLabel.textContent = 'Select Course:';
-            await populateTargetOptions('class');
-        } else if (sessionType.value === 'clinical') {
-            if (targetGroup) targetGroup.style.display = 'flex';
-            if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
-            await populateTargetOptions('clinical');
-        } else {
-            if (targetGroup) targetGroup.style.display = 'none';
+        const sessionType = document.getElementById('session-type');
+        if (sessionType) {
+            sessionType.addEventListener('change', async () => {
+                const targetGroup = document.getElementById('target-control-group');
+                const targetLabel = document.getElementById('target-text');
+                
+                if (sessionType.value === 'class') {
+                    if (targetGroup) targetGroup.style.display = 'flex';
+                    if (targetLabel) targetLabel.textContent = 'Select Course:';
+                    await populateTargetOptions('class');
+                } else if (sessionType.value === 'clinical') {
+                    if (targetGroup) targetGroup.style.display = 'flex';
+                    if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
+                    await populateTargetOptions('clinical');
+                } else {
+                    if (targetGroup) targetGroup.style.display = 'none';
+                }
+            });
+            
+            if (sessionType.value === 'class') {
+                await populateTargetOptions('class');
+            } else if (sessionType.value === 'clinical') {
+                await populateTargetOptions('clinical');
+            }
         }
-    });
-    
-    // Trigger initial load based on current selection
-    if (sessionType.value === 'class') {
-        await populateTargetOptions('class');
-    } else if (sessionType.value === 'clinical') {
-        await populateTargetOptions('clinical');
-    }
-}
         
         const checkBtn = document.getElementById('check-in-button');
         if (checkBtn) {
@@ -611,7 +687,7 @@ if (sessionType) {
         
         await loadHistory();
         console.log('✅ Attendance system ready!');
-        console.log('📍 Location address lookup enabled (free, no API key needed)');
+        console.log('📍 Use the "Get REAL GPS" button for fresh location');
     }
     
     // Start
