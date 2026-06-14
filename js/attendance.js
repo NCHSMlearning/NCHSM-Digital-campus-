@@ -1,62 +1,12 @@
-// COMPLETE FIXED ATTENDANCE SYSTEM
+// COMPLETE ATTENDANCE SYSTEM - WORKS FOR ALL CLASSES & BOTH SESSION TYPES
 (function() {
     'use strict';
     
-    console.log('✅ COMPLETELY FIXED ATTENDANCE SYSTEM');
-    
-    // ============================================
-    // PERMANENT FIX FOR DROPDOWN AND SELECTED TARGET
-    // ============================================
-    
-    window.selectedTarget = null;
-    
-    function fixDropdown() {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        
-        targetSelect.disabled = false;
-        
-        const newSelect = targetSelect.cloneNode(true);
-        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
-        
-        newSelect.addEventListener('change', function() {
-            if (this.value && this.value !== '') {
-                const parts = this.value.split('|');
-                if (parts.length >= 6) {
-                    window.selectedTarget = {
-                        id: parts[0],
-                        name: parts[1],
-                        latitude: parseFloat(parts[3]),
-                        longitude: parseFloat(parts[4]),
-                        radius: parseFloat(parts[5])
-                    };
-                    console.log('✅ Course selected:', window.selectedTarget.name);
-                    
-                    const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) {
-                        checkBtn.disabled = false;
-                        checkBtn.style.opacity = '1';
-                        checkBtn.style.cursor = 'pointer';
-                    }
-                }
-            } else {
-                window.selectedTarget = null;
-                const checkBtn = document.getElementById('check-in-button');
-                if (checkBtn) {
-                    checkBtn.disabled = true;
-                }
-            }
-        });
-        
-        console.log('✅ Dropdown fixed permanently');
-    }
+    console.log('✅ ATTENDANCE SYSTEM LOADING...');
     
     // ============================================
     // CONFIGURATION
     // ============================================
-    
-    const VERIFIED_DISTANCE = 50;
-    const PENDING_DISTANCE = 200;
     
     const CAMPUS_COORDINATES = {
         latitude: -0.2714611,
@@ -64,14 +14,13 @@
     };
     
     let approvedUnits = [];
+    let clinicalLocations = [];
     let currentLocation = null;
     let selectedTarget = null;
-    let locationWatchId = null;
-    let attendanceUserId = null;
-    let attendanceUserProfile = null;
+    let currentStudent = null;
     
     // ============================================
-    // GET STUDENT ID
+    // HELPER FUNCTIONS
     // ============================================
     
     function getCurrentStudentId() {
@@ -81,12 +30,29 @@
             const profile = localStorage.getItem('userProfile');
             if (profile) return JSON.parse(profile).user_id;
         } catch(e) {}
-        return '7f7a8296-fa13-4660-b8a6-d092351ebdf6';
+        return null;
     }
     
-    // ============================================
-    // DISTANCE CALCULATION
-    // ============================================
+    async function getCurrentStudentProfile() {
+        if (currentStudent) return currentStudent;
+        
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (!supabase || !studentId) return null;
+        
+        const { data, error } = await supabase
+            .from('student_profiles')
+            .select('program, intake_year, full_name')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (!error && data) {
+            currentStudent = data;
+            console.log(`👨‍🎓 Student: ${data.program} ${data.intake_year}`);
+        }
+        return currentStudent;
+    }
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
@@ -98,7 +64,7 @@
     }
     
     // ============================================
-    // LOAD APPROVED UNITS
+    // LOAD CLASSROOM UNITS
     // ============================================
     
     async function loadApprovedUnits() {
@@ -123,7 +89,7 @@
                 block: u.block
             }));
             
-            console.log(`✅ Loaded ${approvedUnits.length} units`);
+            console.log(`📚 Loaded ${approvedUnits.length} classroom units`);
             return approvedUnits;
         } catch(e) {
             console.error('Error loading units:', e);
@@ -132,206 +98,122 @@
     }
     
     // ============================================
-    // CREATE STATS DISPLAY
+    // LOAD CLINICAL LOCATIONS FOR STUDENT'S CLASS
     // ============================================
     
-    function createStatsDisplayIfNeeded() {
-        if (document.getElementById('stats-present-count')) {
-            return;
-        }
-        
-        const headings = document.querySelectorAll('h1, h2, h3, .page-title, .card-title');
-        let heading = null;
-        for (let h of headings) {
-            if (h.textContent && h.textContent.includes('Daily Attendance')) {
-                heading = h;
-                break;
-            }
-        }
-        
-        if (heading && heading.parentElement) {
-            const statsContainer = document.createElement('div');
-            statsContainer.id = 'attendance-stats-container';
-            statsContainer.style.cssText = `
-                display: flex;
-                gap: 20px;
-                margin: 20px 0;
-                padding: 15px 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 12px;
-                color: white;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            `;
-            
-            statsContainer.innerHTML = `
-                <div style="flex: 1; text-align: center;">
-                    <div style="font-size: 12px; opacity: 0.8;">📅 PRESENT TODAY</div>
-                    <div id="stats-present-count" style="font-size: 36px; font-weight: bold; color: #4ade80;">0</div>
-                </div>
-                <div style="flex: 1; text-align: center;">
-                    <div style="font-size: 12px; opacity: 0.8;">⏰ CURRENT TIME</div>
-                    <div id="stats-current-time" style="font-size: 24px; font-weight: bold; font-family: monospace;">--:--:--</div>
-                </div>
-            `;
-            
-            heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
-            console.log('✅ Stats display created');
-        }
-    }
-    
-    async function updateStatsData() {
-        const presentEl = document.getElementById('stats-present-count');
-        if (presentEl) {
+    async function loadClinicalLocations() {
+        try {
             const supabase = window.db?.supabase;
-            const studentId = getCurrentStudentId();
+            if (!supabase) return [];
             
-            if (supabase && studentId) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                
-                const { data, error } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('id', { count: 'exact' })
-                    .eq('student_id', studentId)
-                    .eq('attendance_status', 'Present')
-                    .gte('check_in_time', today.toISOString())
-                    .lt('check_in_time', tomorrow.toISOString());
-                
-                if (!error && data) {
-                    presentEl.textContent = data.length;
-                    console.log(`Present today: ${data.length}`);
-                }
+            const student = await getCurrentStudentProfile();
+            if (!student) {
+                console.log('No student profile found');
+                return [];
             }
+            
+            const { data, error } = await supabase
+                .from('clinical_names')
+                .select('id, clinical_area_name, latitude, longitude')
+                .eq('program', student.program)
+                .eq('intake_year', student.intake_year)
+                .order('clinical_area_name');
+            
+            if (error) {
+                console.error('Error loading clinical locations:', error);
+                return [];
+            }
+            
+            console.log(`🏥 Loaded ${data?.length || 0} clinical locations for ${student.program} ${student.intake_year}`);
+            return data || [];
+        } catch(e) {
+            console.error('Error:', e);
+            return [];
+        }
+    }
+    
+    // ============================================
+    // POPULATE DROPDOWN (CLASSROOM OR CLINICAL)
+    // ============================================
+    
+    async function populateTargetOptions(sessionType) {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect) return;
+        
+        targetSelect.innerHTML = '<option value="">Loading...</option>';
+        targetSelect.disabled = true;
+        
+        let options = [];
+        
+        if (sessionType === 'class') {
+            if (approvedUnits.length === 0) await loadApprovedUnits();
+            
+            options = approvedUnits.map(unit => ({
+                id: `unit_${unit.id}`,
+                name: `${unit.unit_code} - ${unit.unit_name}`,
+                type: 'class',
+                latitude: CAMPUS_COORDINATES.latitude,
+                longitude: CAMPUS_COORDINATES.longitude,
+                radius: 50
+            }));
+        } 
+        else if (sessionType === 'clinical') {
+            if (clinicalLocations.length === 0) await loadClinicalLocations();
+            
+            options = clinicalLocations.map(loc => ({
+                id: `clinical_${loc.id}`,
+                name: loc.clinical_area_name,
+                type: 'clinical',
+                latitude: parseFloat(loc.latitude),
+                longitude: parseFloat(loc.longitude),
+                radius: 100
+            }));
         }
         
-        const timeEl = document.getElementById('stats-current-time');
-        if (timeEl) {
-            const now = new Date();
-            timeEl.textContent = now.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        }
-    }
-    
-    function startStatsTimeUpdates() {
-        setInterval(() => {
-            const timeEl = document.getElementById('stats-current-time');
-            if (timeEl) {
-                const now = new Date();
-                timeEl.textContent = now.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-            }
-        }, 1000);
-    }
-    
-    // ============================================
-    // LOCATION DETECTION
-    // ============================================
-    
-  // CLEAN GPS - No warnings, just real location
-function getRealLocation() {
-    console.log('📍 Capturing GPS location...');
-    
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
+        if (options.length === 0) {
+            targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType} options available</option>`;
+            targetSelect.disabled = false;
             return;
         }
         
-        const options = {
-            enableHighAccuracy: true,  // Force GPS
-            timeout: 10000,
-            maximumAge: 0              // Fresh location only
-        };
+        targetSelect.innerHTML = '<option value="">📚 Select target...</option>';
         
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const acc = position.coords.accuracy;
-                
-                console.log(`📍 Raw GPS: ${lat}, ${lon} (±${acc}m)`);
-                
-                resolve({
-                    latitude: lat,
-                    longitude: lon,
-                    accuracy: acc
-                });
-            },
-            (error) => {
-                console.error('GPS Error:', error.message);
-                reject(error);
-            },
-            options
-        );
-    });
-}
-    // ============================================
-    // POPULATE DROPDOWN
-    // ============================================
-    
- async function populateTargetOptions(sessionType) {
-    const targetSelect = document.getElementById('attendance-target');
-    if (!targetSelect) return;
-    
-    targetSelect.innerHTML = '<option value="">Loading...</option>';
-    
-    let options = [];
-    
-    if (sessionType === 'class') {
-        if (approvedUnits.length === 0) await loadApprovedUnits();
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
+            option.textContent = opt.name;
+            targetSelect.appendChild(option);
+        });
         
-        options = approvedUnits.map(unit => ({
-            id: `unit_${unit.id}`,
-            name: `${unit.unit_code} - ${unit.unit_name}`,
-            type: 'class',
-            latitude: CAMPUS_COORDINATES.latitude,
-            longitude: CAMPUS_COORDINATES.longitude,
-            radius: 50
-        }));
-        
-    } else if (sessionType === 'clinical') {
-        const { data: clinicalData } = await supabase
-            .from('clinical_names')
-            .select('id, clinical_area_name, latitude, longitude')
-            .eq('program', 'KRCHN')
-            .eq('intake_year', '2026');
-        
-        options = (clinicalData || []).map(loc => ({
-            id: `clinical_${loc.id}`,
-            name: loc.clinical_area_name,
-            type: 'clinical',
-            latitude: parseFloat(loc.latitude),
-            longitude: parseFloat(loc.longitude),
-            radius: 100
-        }));
-    }
-    
-    if (options.length === 0) {
-        targetSelect.innerHTML = '<option value="">⚠️ No options available</option>';
         targetSelect.disabled = false;
-        return;
+        console.log(`✅ Loaded ${options.length} ${sessionType} options`);
     }
     
-    targetSelect.innerHTML = '<option value="">📚 Select target...</option>';
+    // ============================================
+    // GPS LOCATION
+    // ============================================
     
-    options.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
-        option.textContent = opt.name;
-        targetSelect.appendChild(option);
-    });
+    function getRealLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocation not supported'));
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+                    console.log(`📍 GPS: ${lat}, ${lon} (±${acc}m)`);
+                    resolve({ latitude: lat, longitude: lon, accuracy: acc });
+                },
+                (error) => reject(error),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        });
+    }
     
-    targetSelect.disabled = false;
-    console.log(`✅ Loaded ${options.length} ${sessionType} options`);
-}
     // ============================================
     // CHECK-IN FUNCTION
     // ============================================
@@ -339,6 +221,7 @@ function getRealLocation() {
     async function doCheckIn() {
         const btn = document.getElementById('check-in-button');
         const targetSelect = document.getElementById('attendance-target');
+        const sessionTypeSelect = document.getElementById('session-type');
         
         if (!selectedTarget && targetSelect?.value) {
             const parts = targetSelect.value.split('|');
@@ -346,14 +229,16 @@ function getRealLocation() {
                 selectedTarget = {
                     id: parts[0],
                     name: parts[1],
+                    type: parts[2],
                     latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4])
+                    longitude: parseFloat(parts[4]),
+                    radius: parseFloat(parts[5])
                 };
             }
         }
         
         if (!selectedTarget) {
-            alert('Please select a course');
+            alert('Please select a target');
             return;
         }
         
@@ -373,16 +258,16 @@ function getRealLocation() {
                 selectedTarget.latitude, selectedTarget.longitude
             );
             
-            let status = distance <= 50 ? 'Present' : (distance <= 200 ? 'Pending' : 'Absent');
+            const radius = selectedTarget.radius || 50;
+            let status = distance <= radius ? 'Present' : (distance <= radius * 2 ? 'Pending' : 'Absent');
             
             const confirmed = confirm(
                 `📍 CHECK-IN CONFIRMATION\n\n` +
-                `Course: ${selectedTarget.name}\n` +
-                `Your GPS: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n` +
-                `Accuracy: ±${location.accuracy.toFixed(0)}m\n` +
-                `Distance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}\n` +
-                `Status: ${status}\n\n` +
-                `Proceed?`
+                `Target: ${selectedTarget.name}\n` +
+                `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
+                `Distance: ${distance.toFixed(0)}m\n` +
+                `Verification Radius: ${radius}m\n` +
+                `Status: ${status}\n\nProceed?`
             );
             
             if (!confirmed) {
@@ -395,11 +280,12 @@ function getRealLocation() {
             
             const supabase = window.db?.supabase;
             const studentId = getCurrentStudentId();
+            const sessionType = sessionTypeSelect?.value || 'class';
             
-            const { error } = await supabase.from('geo_attendance_logs').insert([{
+            const record = {
                 student_id: studentId,
                 check_in_time: new Date().toISOString(),
-                session_type: 'class',
+                session_type: sessionType,
                 target_id: selectedTarget.id,
                 target_name: selectedTarget.name,
                 latitude: location.latitude,
@@ -409,26 +295,25 @@ function getRealLocation() {
                 is_verified: status === 'Present',
                 attendance_status: status,
                 target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude,
-                unit_code: selectedTarget.name.split(' - ')[0]
-            }]);
+                target_longitude: selectedTarget.longitude
+            };
             
+            if (sessionType === 'class') {
+                record.unit_code = selectedTarget.name.split(' - ')[0];
+            } else {
+                record.clinical_area = selectedTarget.name;
+            }
+            
+            const { error } = await supabase.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
             
-            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}`);
-            
+            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m`);
             await updateStatsData();
-            
-            if (typeof loadHistory === 'function') {
-                await loadHistory();
-                console.log('✅ History refreshed');
-            } else {
-                window.location.href = window.location.href;
-            }
+            await loadHistory();
             
         } catch(error) {
             console.error('Check-in error:', error);
-            alert('GPS failed. Please ensure location is enabled and try again.');
+            alert('Check-in failed: ' + error.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = '📍 Check In Now';
@@ -447,7 +332,7 @@ function getRealLocation() {
         const studentId = getCurrentStudentId();
         
         if (!supabase || !studentId) {
-            table.innerHTML = '<tr><td colspan="5">Unable to load history...</td></tr>';
+            table.innerHTML = '<tr><td colspan="6">Unable to load history...</td></tr>';
             return;
         }
         
@@ -459,18 +344,22 @@ function getRealLocation() {
             .limit(20);
         
         if (error || !data || data.length === 0) {
-            table.innerHTML = '<tr><td colspan="5">No history records found</td></tr>';
+            table.innerHTML = '<tr><td colspan="6">No history records found</td></tr>';
             return;
         }
         
         table.innerHTML = data.map(log => {
-            const d = log.distance_meters || 0;
-            const dist = d >= 1000 ? (d/1000).toFixed(2) + ' km' : d.toFixed(0) + ' m';
+            const dist = log.distance_meters >= 1000 ? 
+                (log.distance_meters/1000).toFixed(2) + ' km' : 
+                log.distance_meters.toFixed(0) + ' m';
             const time = new Date(log.check_in_time).toLocaleString();
+            const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
+                               (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
             return `<tr>
                 <td>${time}</td>
+                <td>${log.session_type === 'class' ? '📚 Class' : '🏥 Clinical'}</td>
                 <td>${log.target_name || 'Unknown'}</td>
-                <td style="color: ${log.attendance_status === 'Present' ? '#10b981' : (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444')}">${log.attendance_status || 'Unknown'}</td>
+                <td style="color: ${statusColor}">${log.attendance_status || 'Unknown'}</td>
                 <td>${dist}</td>
                 <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
             </tr>`;
@@ -478,73 +367,127 @@ function getRealLocation() {
     }
     
     // ============================================
+    // STATS DISPLAY
+    // ============================================
+    
+    function createStatsDisplayIfNeeded() {
+        if (document.getElementById('stats-present-count')) return;
+        
+        const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => 
+            h.textContent.includes('Daily Attendance'));
+        
+        if (heading && heading.parentElement) {
+            const statsContainer = document.createElement('div');
+            statsContainer.id = 'attendance-stats-container';
+            statsContainer.style.cssText = `
+                display: flex; gap: 20px; margin: 20px 0; padding: 15px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            `;
+            statsContainer.innerHTML = `
+                <div style="flex:1; text-align:center;">
+                    <div style="font-size:12px; opacity:0.8;">📅 PRESENT TODAY</div>
+                    <div id="stats-present-count" style="font-size:36px; font-weight:bold; color:#4ade80;">0</div>
+                </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="font-size:12px; opacity:0.8;">⏰ CURRENT TIME</div>
+                    <div id="stats-current-time" style="font-size:24px; font-weight:bold; font-family:monospace;">--:--:--</div>
+                </div>
+            `;
+            heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
+        }
+    }
+    
+    async function updateStatsData() {
+        const presentEl = document.getElementById('stats-present-count');
+        if (presentEl) {
+            const supabase = window.db?.supabase;
+            const studentId = getCurrentStudentId();
+            if (supabase && studentId) {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const { data } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id', { count: 'exact' })
+                    .eq('student_id', studentId)
+                    .eq('attendance_status', 'Present')
+                    .gte('check_in_time', today.toISOString());
+                presentEl.textContent = data?.length || 0;
+            }
+        }
+        const timeEl = document.getElementById('stats-current-time');
+        if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+    }
+    
+    function startTimeUpdates() {
+        updateStatsData();
+        setInterval(() => {
+            const timeEl = document.getElementById('stats-current-time');
+            if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+        }, 1000);
+    }
+    
+    // ============================================
     // INITIALIZATION
     // ============================================
     
     async function init() {
-        console.log('🚀 Initializing...');
+        console.log('🚀 Initializing attendance system...');
         
-        attendanceUserProfile = window.db?.currentUserProfile;
-        attendanceUserId = getCurrentStudentId();
-        
+        await getCurrentStudentProfile();
         await loadApprovedUnits();
+        await loadClinicalLocations();
         
         createStatsDisplayIfNeeded();
         await updateStatsData();
-        startStatsTimeUpdates();
+        startTimeUpdates();
         
         fixDropdown();
         
         const sessionType = document.getElementById('session-type');
         if (sessionType) {
-            sessionType.addEventListener('change', () => {
+            sessionType.addEventListener('change', async () => {
+                const targetGroup = document.getElementById('target-control-group');
+                const targetLabel = document.getElementById('target-text');
+                
                 if (sessionType.value === 'class') {
-                    const targetGroup = document.getElementById('target-control-group');
-                    if (targetGroup) {
-                        targetGroup.style.display = 'flex';
-                    }
-                    populateTargetOptions('class');
+                    if (targetGroup) targetGroup.style.display = 'flex';
+                    if (targetLabel) targetLabel.textContent = 'Select Course:';
+                    await populateTargetOptions('class');
+                } else if (sessionType.value === 'clinical') {
+                    if (targetGroup) targetGroup.style.display = 'flex';
+                    if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
+                    await populateTargetOptions('clinical');
+                } else {
+                    if (targetGroup) targetGroup.style.display = 'none';
                 }
             });
             
+            // Load initial options based on selected session type
             if (sessionType.value === 'class') {
-                populateTargetOptions('class');
+                await populateTargetOptions('class');
+            } else if (sessionType.value === 'clinical') {
+                await populateTargetOptions('clinical');
             }
         }
         
         const checkBtn = document.getElementById('check-in-button');
         if (checkBtn) {
-            checkBtn.onclick = (e) => {
-                e.preventDefault();
-                doCheckIn();
-            };
+            checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
         }
         
         await loadHistory();
-        
-        console.log('✅ Ready! Select a course and click "Check In Now"');
+        console.log('✅ Attendance system ready!');
     }
     
-    // Run fix when DOM is ready
+    // Start
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            fixDropdown();
-            init();
-        });
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        fixDropdown();
         init();
     }
-    
-    window.setManualLocation = function(lat, lon) {
-        currentLocation = { latitude: lat, longitude: lon, accuracy: 50 };
-        document.getElementById('latitude').textContent = lat.toFixed(6);
-        document.getElementById('longitude').textContent = lon.toFixed(6);
-        alert(`Location set to ${lat}, ${lon}`);
-    };
     
     window.refreshStats = updateStatsData;
     window.refreshHistory = loadHistory;
     
-    console.log('✅ Attendance system fully loaded and ready!');
 })();
