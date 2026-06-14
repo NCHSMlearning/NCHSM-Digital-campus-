@@ -1,65 +1,62 @@
-// COMPLETE FIX - Replace your entire enhanced-attendance.js with this
+// COMPLETE FIXED ATTENDANCE SYSTEM
 (function() {
     'use strict';
     
     console.log('✅ COMPLETELY FIXED ATTENDANCE SYSTEM');
+    
     // ============================================
-// PERMANENT FIX FOR DROPDOWN AND SELECTED TARGET
-// ============================================
-
-// Ensure window.selectedTarget is defined
-window.selectedTarget = null;
-
-// Fix the dropdown initialization
-function fixDropdown() {
-    const targetSelect = document.getElementById('attendance-target');
-    if (!targetSelect) return;
+    // PERMANENT FIX FOR DROPDOWN AND SELECTED TARGET
+    // ============================================
     
-    // Remove disabled attribute
-    targetSelect.disabled = false;
+    // Ensure window.selectedTarget is defined
+    window.selectedTarget = null;
     
-    // Remove all existing event listeners by cloning
-    const newSelect = targetSelect.cloneNode(true);
-    targetSelect.parentNode.replaceChild(newSelect, targetSelect);
-    
-    // Add proper change event listener
-    newSelect.addEventListener('change', function() {
-        if (this.value && this.value !== '') {
-            const parts = this.value.split('|');
-            if (parts.length >= 6) {
-                window.selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])
-                };
-                console.log('✅ Course selected:', window.selectedTarget.name);
-                
-                // Enable check-in button
+    // Fix the dropdown initialization
+    function fixDropdown() {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect) return;
+        
+        // Remove disabled attribute
+        targetSelect.disabled = false;
+        
+        // Remove all existing event listeners by cloning
+        const newSelect = targetSelect.cloneNode(true);
+        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
+        
+        // Add proper change event listener
+        newSelect.addEventListener('change', function() {
+            if (this.value && this.value !== '') {
+                const parts = this.value.split('|');
+                if (parts.length >= 6) {
+                    window.selectedTarget = {
+                        id: parts[0],
+                        name: parts[1],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseFloat(parts[5])
+                    };
+                    console.log('✅ Course selected:', window.selectedTarget.name);
+                    
+                    // Enable check-in button
+                    const checkBtn = document.getElementById('check-in-button');
+                    if (checkBtn) {
+                        checkBtn.disabled = false;
+                        checkBtn.style.opacity = '1';
+                        checkBtn.style.cursor = 'pointer';
+                    }
+                }
+            } else {
+                window.selectedTarget = null;
                 const checkBtn = document.getElementById('check-in-button');
                 if (checkBtn) {
-                    checkBtn.disabled = false;
+                    checkBtn.disabled = true;
                 }
             }
-        } else {
-            window.selectedTarget = null;
-            const checkBtn = document.getElementById('check-in-button');
-            if (checkBtn) {
-                checkBtn.disabled = true;
-            }
-        }
-    });
+        });
+        
+        console.log('✅ Dropdown fixed permanently');
+    }
     
-    console.log('✅ Dropdown fixed permanently');
-}
-
-// Run fix when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fixDropdown);
-} else {
-    fixDropdown();
-}
     // ============================================
     // CONFIGURATION
     // ============================================
@@ -141,6 +138,88 @@ if (document.readyState === 'loading') {
     }
     
     // ============================================
+    // UPDATE DASHBOARD STATS (Present Today & Current Time)
+    // ============================================
+    
+    async function updatePresentTodayCount() {
+        const presentCountElement = document.getElementById('present-today-count') || 
+                                   document.querySelector('.present-today') ||
+                                   document.querySelector('[data-present-count]') ||
+                                   document.querySelector('.present-count');
+        
+        if (!presentCountElement) {
+            console.log('Present count element not found - using fallback');
+            return;
+        }
+        
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (!supabase || !studentId) {
+            presentCountElement.textContent = '0';
+            return;
+        }
+        
+        try {
+            // Get today's date range
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('id', { count: 'exact' })
+                .eq('student_id', studentId)
+                .eq('attendance_status', 'Present')
+                .gte('check_in_time', today.toISOString())
+                .lt('check_in_time', tomorrow.toISOString());
+            
+            if (!error && data) {
+                const count = data.length;
+                presentCountElement.textContent = count;
+                console.log(`✅ Present today: ${count}`);
+            } else {
+                presentCountElement.textContent = '0';
+            }
+        } catch (err) {
+            console.error('Error counting present today:', err);
+            presentCountElement.textContent = '0';
+        }
+    }
+    
+    function updateCurrentTime() {
+        const timeElement = document.getElementById('current-time-display') || 
+                           document.querySelector('.current-time') ||
+                           document.querySelector('[data-current-time]') ||
+                           document.querySelector('.live-time');
+        
+        if (timeElement) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            timeElement.textContent = timeString;
+        }
+    }
+    
+    // Start time updates every second
+    let timeInterval = null;
+    
+    function startTimeUpdates() {
+        if (timeInterval) clearInterval(timeInterval);
+        updateCurrentTime(); // Update immediately
+        timeInterval = setInterval(updateCurrentTime, 1000);
+    }
+    
+    async function updateAllStats() {
+        await updatePresentTodayCount();
+        updateCurrentTime();
+    }
+    
+    // ============================================
     // FIXED LOCATION DETECTION - NO CACHING!
     // ============================================
     
@@ -153,11 +232,10 @@ if (document.readyState === 'loading') {
                 return;
             }
             
-            // CRITICAL: Use maximumAge: 0 to force fresh location
             const options = {
                 enableHighAccuracy: true,
                 timeout: 10000,
-                maximumAge: 0  // THIS IS KEY - forces fresh GPS, no cache
+                maximumAge: 0
             };
             
             navigator.geolocation.getCurrentPosition(
@@ -168,7 +246,6 @@ if (document.readyState === 'loading') {
                     
                     console.log(`✅ REAL GPS: ${lat}, ${lon} (±${acc}m)`);
                     
-                    // Calculate distance to campus
                     const distance = calculateDistance(lat, lon, CAMPUS_COORDINATES.latitude, CAMPUS_COORDINATES.longitude);
                     console.log(`📏 Distance to campus: ${distance.toFixed(0)}m`);
                     
@@ -192,37 +269,33 @@ if (document.readyState === 'loading') {
     // POPULATE DROPDOWN
     // ============================================
     
-   async function populateTargetOptions(sessionType) {
-    const targetSelect = document.getElementById('attendance-target');
-    if (!targetSelect || sessionType !== 'class') return;
-    
-    if (approvedUnits.length === 0) await loadApprovedUnits();
-    
-    if (approvedUnits.length === 0) {
-        targetSelect.innerHTML = '<option value="">⚠️ No approved units</option>';
+    async function populateTargetOptions(sessionType) {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect || sessionType !== 'class') return;
+        
+        if (approvedUnits.length === 0) await loadApprovedUnits();
+        
+        if (approvedUnits.length === 0) {
+            targetSelect.innerHTML = '<option value="">⚠️ No approved units</option>';
+            targetSelect.disabled = false;
+            return;
+        }
+        
         targetSelect.disabled = false;
-        return;
+        const currentValue = targetSelect.value;
+        
+        targetSelect.innerHTML = '<option value="">📚 Select course...</option>';
+        approvedUnits.forEach(unit => {
+            const opt = document.createElement('option');
+            opt.value = `unit_${unit.id}|${unit.unit_code} - ${unit.unit_name}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|50`;
+            opt.textContent = `${unit.unit_code} - ${unit.unit_name}`;
+            targetSelect.appendChild(opt);
+        });
+        
+        if (currentValue && currentValue !== '') {
+            targetSelect.value = currentValue;
+        }
     }
-    
-    // Enable dropdown
-    targetSelect.disabled = false;
-    
-    // Save current selection if any
-    const currentValue = targetSelect.value;
-    
-    targetSelect.innerHTML = '<option value="">📚 Select course...</option>';
-    approvedUnits.forEach(unit => {
-        const opt = document.createElement('option');
-        opt.value = `unit_${unit.id}|${unit.unit_code} - ${unit.unit_name}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|50`;
-        opt.textContent = `${unit.unit_code} - ${unit.unit_name}`;
-        targetSelect.appendChild(opt);
-    });
-    
-    // Restore selection if possible
-    if (currentValue && currentValue !== '') {
-        targetSelect.value = currentValue;
-    }
-}
     
     function updateDistanceDisplay() {
         const distanceDiv = document.getElementById('distance-status');
@@ -282,7 +355,6 @@ if (document.readyState === 'loading') {
             return;
         }
         
-        // Get REAL location every time (no caching!)
         btn.disabled = true;
         btn.innerHTML = '📍 Getting GPS...';
         
@@ -290,7 +362,6 @@ if (document.readyState === 'loading') {
             const location = await getRealLocation();
             currentLocation = location;
             
-            // Update display
             document.getElementById('latitude').textContent = location.latitude.toFixed(6);
             document.getElementById('longitude').textContent = location.longitude.toFixed(6);
             document.getElementById('accuracy-value').textContent = location.accuracy.toFixed(1);
@@ -307,7 +378,7 @@ if (document.readyState === 'loading') {
                 `Course: ${selectedTarget.name}\n` +
                 `Your GPS: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n` +
                 `Accuracy: ±${location.accuracy.toFixed(0)}m\n` +
-                `Distance to campus: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}\n` +
+                `Distance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}\n` +
                 `Status: ${status}\n\n` +
                 `Proceed?`
             );
@@ -341,16 +412,19 @@ if (document.readyState === 'loading') {
             }]);
             
             if (error) throw error;
-         alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}`);
             
-// Safe reload - refresh history instead of full page reload
-if (typeof loadHistory === 'function') {
-    await loadHistory();
-    console.log('✅ History refreshed');
-} else {
-    // Fallback to page reload if history function not available
-    window.location.reload();
-}
+            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m'}`);
+            
+            // Update present count after successful check-in
+            await updatePresentTodayCount();
+            
+            // Safe reload - refresh history instead of full page reload
+            if (typeof loadHistory === 'function') {
+                await loadHistory();
+                console.log('✅ History refreshed');
+            } else {
+                window.location.href = window.location.href;
+            }
             
         } catch(error) {
             console.error('Check-in error:', error);
@@ -361,99 +435,10 @@ if (typeof loadHistory === 'function') {
         }
     }
     
- // ============================================
-// INITIALIZATION
-// ============================================
-
-async function init() {
-    console.log('🚀 Initializing...');
-    
-    attendanceUserProfile = window.db?.currentUserProfile;
-    attendanceUserId = getCurrentStudentId();
-    
-    await loadApprovedUnits();
-    
     // ============================================
-    // FIX: ENABLE AND SETUP DROPDOWN
+    // LOAD HISTORY
     // ============================================
-    const targetSelect = document.getElementById('attendance-target');
-    if (targetSelect) {
-        // Enable the dropdown
-        targetSelect.disabled = false;
-        
-        // Remove existing event listeners by cloning
-        const newSelect = targetSelect.cloneNode(true);
-        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
-        
-        // Add proper change event listener
-        newSelect.addEventListener('change', function() {
-            if (this.value && this.value !== '') {
-                const parts = this.value.split('|');
-                if (parts.length >= 6) {
-                    window.selectedTarget = {
-                        id: parts[0],
-                        name: parts[1],
-                        latitude: parseFloat(parts[3]),
-                        longitude: parseFloat(parts[4]),
-                        radius: parseFloat(parts[5])
-                    };
-                    console.log('✅ Course selected:', window.selectedTarget.name);
-                    
-                    // Enable check-in button
-                    const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) {
-                        checkBtn.disabled = false;
-                        checkBtn.style.opacity = '1';
-                        checkBtn.style.cursor = 'pointer';
-                    }
-                    
-                    // Update distance display if function exists
-                    if (typeof updateDistanceDisplay === 'function') {
-                        updateDistanceDisplay();
-                    }
-                }
-            } else {
-                window.selectedTarget = null;
-                const checkBtn = document.getElementById('check-in-button');
-                if (checkBtn) {
-                    checkBtn.disabled = true;
-                }
-            }
-        });
-        
-        console.log('✅ Dropdown enabled and fixed');
-    }
     
-    const sessionType = document.getElementById('session-type');
-    if (sessionType) {
-        sessionType.addEventListener('change', () => {
-            if (sessionType.value === 'class') {
-                const targetGroup = document.getElementById('target-control-group');
-                if (targetGroup) {
-                    targetGroup.style.display = 'flex';
-                }
-                populateTargetOptions('class');
-            }
-        });
-    }
-    
-    const checkBtn = document.getElementById('check-in-button');
-    if (checkBtn) {
-        // Enable button if course is already selected
-        if (window.selectedTarget) {
-            checkBtn.disabled = false;
-        }
-        checkBtn.onclick = (e) => {
-            e.preventDefault();
-            doCheckIn();
-        };
-    }
-    
-    // Load history
-    await loadHistory();
-    
-    console.log('✅ Ready! Select a course and click "Check In Now"');
-}
     async function loadHistory() {
         const table = document.getElementById('geo-attendance-history');
         if (!table) return;
@@ -461,33 +446,101 @@ async function init() {
         const supabase = window.db?.supabase;
         const studentId = getCurrentStudentId();
         
-        const { data } = await supabase
+        if (!supabase || !studentId) {
+            table.innerHTML = '<tr><td colspan="5">Unable to load history...</td></tr>';
+            return;
+        }
+        
+        const { data, error } = await supabase
             .from('geo_attendance_logs')
             .select('*')
             .eq('student_id', studentId)
             .order('check_in_time', { ascending: false })
             .limit(20);
         
-        if (!data || data.length === 0) {
-            table.innerHTML = '<tr><td colspan="5">No history</td></tr>';
+        if (error || !data || data.length === 0) {
+            table.innerHTML = '<tr><td colspan="5">No history records found</td></tr>';
             return;
         }
         
         table.innerHTML = data.map(log => {
-            const d = log.distance_meters;
+            const d = log.distance_meters || 0;
             const dist = d >= 1000 ? (d/1000).toFixed(2) + ' km' : d.toFixed(0) + ' m';
             const time = new Date(log.check_in_time).toLocaleString();
-            return `<tr><td>${time}</td><td>${log.target_name}</td><td>${log.attendance_status}</td><td>${dist}</td></tr>`;
+            return `<tr><td>${time}</td>
+                     <td>${log.target_name || 'Unknown'}</td>
+                     <td style="color: ${log.attendance_status === 'Present' ? '#10b981' : (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444')}">${log.attendance_status || 'Unknown'}</td>
+                     <td>${dist}</td>
+                     <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
+                </tr>`;
         }).join('');
     }
     
-    // Start
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    
+    async function init() {
+        console.log('🚀 Initializing...');
+        
+        attendanceUserProfile = window.db?.currentUserProfile;
+        attendanceUserId = getCurrentStudentId();
+        
+        await loadApprovedUnits();
+        
+        // Update stats
+        await updateAllStats();
+        startTimeUpdates();
+        
+        // Fix dropdown
+        fixDropdown();
+        
+        // Setup session type
+        const sessionType = document.getElementById('session-type');
+        if (sessionType) {
+            sessionType.addEventListener('change', () => {
+                if (sessionType.value === 'class') {
+                    const targetGroup = document.getElementById('target-control-group');
+                    if (targetGroup) {
+                        targetGroup.style.display = 'flex';
+                    }
+                    populateTargetOptions('class');
+                }
+            });
+            
+            // Trigger initial load if class is selected
+            if (sessionType.value === 'class') {
+                populateTargetOptions('class');
+            }
+        }
+        
+        // Setup check-in button
+        const checkBtn = document.getElementById('check-in-button');
+        if (checkBtn) {
+            checkBtn.onclick = (e) => {
+                e.preventDefault();
+                doCheckIn();
+            };
+        }
+        
+        // Load history
+        await loadHistory();
+        
+        console.log('✅ Ready! Select a course and click "Check In Now"');
+    }
+    
+    // Run fix when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            fixDropdown();
+            init();
+        });
     } else {
+        fixDropdown();
         init();
     }
     
+    // Expose useful functions globally
     window.setManualLocation = function(lat, lon) {
         currentLocation = { latitude: lat, longitude: lon, accuracy: 50 };
         document.getElementById('latitude').textContent = lat.toFixed(6);
@@ -495,4 +548,8 @@ async function init() {
         alert(`Location set to ${lat}, ${lon}`);
     };
     
+    window.refreshStats = updateAllStats;
+    window.refreshHistory = loadHistory;
+    
+    console.log('✅ Attendance system fully loaded and ready!');
 })();
