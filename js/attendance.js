@@ -3,7 +3,63 @@
     'use strict';
     
     console.log('✅ COMPLETELY FIXED ATTENDANCE SYSTEM');
+    // ============================================
+// PERMANENT FIX FOR DROPDOWN AND SELECTED TARGET
+// ============================================
+
+// Ensure window.selectedTarget is defined
+window.selectedTarget = null;
+
+// Fix the dropdown initialization
+function fixDropdown() {
+    const targetSelect = document.getElementById('attendance-target');
+    if (!targetSelect) return;
     
+    // Remove disabled attribute
+    targetSelect.disabled = false;
+    
+    // Remove all existing event listeners by cloning
+    const newSelect = targetSelect.cloneNode(true);
+    targetSelect.parentNode.replaceChild(newSelect, targetSelect);
+    
+    // Add proper change event listener
+    newSelect.addEventListener('change', function() {
+        if (this.value && this.value !== '') {
+            const parts = this.value.split('|');
+            if (parts.length >= 6) {
+                window.selectedTarget = {
+                    id: parts[0],
+                    name: parts[1],
+                    latitude: parseFloat(parts[3]),
+                    longitude: parseFloat(parts[4]),
+                    radius: parseFloat(parts[5])
+                };
+                console.log('✅ Course selected:', window.selectedTarget.name);
+                
+                // Enable check-in button
+                const checkBtn = document.getElementById('check-in-button');
+                if (checkBtn) {
+                    checkBtn.disabled = false;
+                }
+            }
+        } else {
+            window.selectedTarget = null;
+            const checkBtn = document.getElementById('check-in-button');
+            if (checkBtn) {
+                checkBtn.disabled = true;
+            }
+        }
+    });
+    
+    console.log('✅ Dropdown fixed permanently');
+}
+
+// Run fix when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixDropdown);
+} else {
+    fixDropdown();
+}
     // ============================================
     // CONFIGURATION
     // ============================================
