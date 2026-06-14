@@ -1,4 +1,4 @@
-// COMPLETE ATTENDANCE SYSTEM - WITH FORCED FRESH GPS
+// COMPLETE ATTENDANCE SYSTEM - WITH DEVICE FINGERPRINTING
 (function() {
     'use strict';
     
@@ -18,6 +18,7 @@
     let currentLocation = null;
     let selectedTarget = null;
     let currentStudent = null;
+    let deviceTableExists = null;
     
     // ============================================
     // HELPER FUNCTIONS
@@ -43,7 +44,6 @@
             return { program: 'KRCHN', intake_year: '2026' };
         }
         
-        // Use consolidated_user_profiles_table
         const { data, error } = await supabase
             .from('consolidated_user_profiles_table')
             .select('program, intake_year, full_name')
@@ -56,7 +56,6 @@
             return currentStudent;
         }
         
-        // Fallback
         return { program: 'KRCHN', intake_year: '2026' };
     }
     
@@ -67,6 +66,114 @@
         const dLon = toRad(lon2 - lon1);
         const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    // ============================================
+    // DEVICE FINGERPRINTING
+    // ============================================
+    
+    async function getDeviceFingerprint() {
+        const fingerprint = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenResolution: `${screen.width}x${screen.height}`,
+            screenColorDepth: screen.colorDepth,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+            deviceMemory: navigator.deviceMemory || 'unknown',
+            touchSupport: 'ontouchstart' in window,
+            localStorage: !!window.localStorage
+        };
+        
+        const fingerprintString = JSON.stringify(fingerprint);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(fingerprintString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        return { hash: hashHex, details: fingerprint };
+    }
+    
+    async function checkDeviceTableExists() {
+        if (deviceTableExists !== null) return deviceTableExists;
+        
+        const supabase = window.db?.supabase;
+        if (!supabase) return false;
+        
+        try {
+            const { error } = await supabase
+                .from('device_registrations')
+                .select('count', { count: 'exact', head: true })
+                .limit(1);
+            
+            deviceTableExists = !error;
+            if (!deviceTableExists) {
+                console.log('⚠️ device_registrations table not found. Device fingerprinting disabled.');
+            } else {
+                console.log('✅ device_registrations table found');
+            }
+            return deviceTableExists;
+        } catch(e) {
+            deviceTableExists = false;
+            return false;
+        }
+    }
+    
+    async function verifyAndRegisterDevice() {
+        const tableExists = await checkDeviceTableExists();
+        if (!tableExists) {
+            console.log('Device fingerprinting skipped - table not found');
+            return true;
+        }
+        
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        if (!supabase || !studentId) return true;
+        
+        try {
+            const deviceFingerprint = await getDeviceFingerprint();
+            
+            const { data: existing } = await supabase
+                .from('device_registrations')
+                .select('student_id, student_name')
+                .eq('device_hash', deviceFingerprint.hash)
+                .maybeSingle();
+            
+            if (existing && existing.student_id !== studentId) {
+                alert(`⚠️ DEVICE ALREADY REGISTERED\n\nThis device is registered to: ${existing.student_name || 'another student'}\n\nEach student must use their OWN device for attendance.`);
+                const checkBtn = document.getElementById('check-in-button');
+                if (checkBtn) {
+                    checkBtn.disabled = true;
+                    checkBtn.style.opacity = '0.5';
+                }
+                return false;
+            }
+            
+            const { data: student } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('full_name')
+                .eq('user_id', studentId)
+                .maybeSingle();
+            
+            await supabase
+                .from('device_registrations')
+                .upsert({
+                    device_hash: deviceFingerprint.hash,
+                    student_id: studentId,
+                    student_name: student?.full_name || 'Unknown',
+                    device_name: `${navigator.platform} - ${deviceFingerprint.details.touchSupport ? 'Mobile' : 'Desktop'}`,
+                    device_details: deviceFingerprint.details,
+                    last_used: new Date().toISOString()
+                }, { onConflict: 'device_hash' });
+            
+            console.log('✅ Device verified and registered');
+            return true;
+        } catch(e) {
+            console.error('Device verification error:', e);
+            return true;
+        }
     }
     
     // ============================================
@@ -96,11 +203,11 @@
     }
     
     // ============================================
-    // FORCED FRESH GPS - NO CACHE
+    // FORCED FRESH GPS
     // ============================================
     
     function getRealLocation() {
-        console.log('📍 FORCING FRESH GPS - Clearing cache...');
+        console.log('📍 FORCING FRESH GPS...');
         
         return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
@@ -114,7 +221,6 @@
                 timeout: 30000
             };
             
-            // Clear any active watchers
             if (navigator.geolocation.clearWatch && window.locationWatchId) {
                 navigator.geolocation.clearWatch(window.locationWatchId);
                 window.locationWatchId = null;
@@ -125,11 +231,8 @@
                     const timestamp = position.coords.timestamp;
                     const age = Date.now() - timestamp;
                     
-                    console.log(`📍 GPS received, age: ${age}ms`);
-                    
-                    // If data is cached, retry
                     if (age > 2000) {
-                        console.warn('⚠️ Received cached GPS! Retrying...');
+                        console.warn('⚠️ Cached GPS! Retrying...');
                         getRealLocation().then(resolve).catch(reject);
                         return;
                     }
@@ -138,25 +241,16 @@
                     const lon = position.coords.longitude;
                     const acc = position.coords.accuracy;
                     
-                    console.log(`✅ FRESH GPS: ${lat}, ${lon} (±${acc}m)`);
+                    console.log(`✅ GPS: ${lat}, ${lon} (±${acc}m)`);
                     
                     const address = await getAddressFromCoordinates(lat, lon);
                     console.log(`🏠 Address: ${address}`);
-                    
-                    // Check for cached campus coordinates
-                    const campusLat = -0.2714611;
-                    const campusLon = 36.0519956;
-                    const isCachedCampus = Math.abs(lat - campusLat) < 0.001 && Math.abs(lon - campusLon) < 0.001;
-                    
-                    if (isCachedCampus && acc > 100) {
-                        console.warn('⚠️ Got cached campus coordinates! Please go outside and enable GPS.');
-                    }
                     
                     resolve({ 
                         latitude: lat, 
                         longitude: lon, 
                         accuracy: acc,
-                        address: address
+                        address: address 
                     });
                 },
                 (error) => {
@@ -373,6 +467,10 @@
         const targetSelect = document.getElementById('attendance-target');
         const sessionTypeSelect = document.getElementById('session-type');
         
+        // DEVICE CHECK FIRST
+        const deviceAllowed = await verifyAndRegisterDevice();
+        if (!deviceAllowed) return;
+        
         if (!selectedTarget && targetSelect?.value) {
             const parts = targetSelect.value.split('|');
             if (parts.length >= 6) {
@@ -412,19 +510,18 @@
             let status = 'Absent';
             let verificationNote = '';
             
-            // Accuracy-based verification
             if (accuracy > radius) {
                 status = 'Pending';
-                verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m). Cannot verify exact location.`;
+                verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
             } else if (distance <= radius) {
                 status = 'Present';
-                verificationNote = `✅ Verified within ${radius}m (GPS accuracy ±${accuracy.toFixed(0)}m)`;
+                verificationNote = `✅ Verified within ${radius}m`;
             } else if (distance <= radius * 2) {
                 status = 'Pending';
                 verificationNote = `⚠️ Within ${radius * 2}m, needs review`;
             } else {
                 status = 'Absent';
-                verificationNote = `❌ Too far (${distance.toFixed(0)}m) from target`;
+                verificationNote = `❌ Too far (${distance.toFixed(0)}m)`;
             }
             
             const confirmed = confirm(
@@ -478,7 +575,7 @@
             const { error } = await supabase.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
             
-            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m\nLocation: ${location.address || 'Coordinates saved'}`);
+            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m`);
             await updateStatsData();
             await loadHistory();
             
@@ -626,7 +723,7 @@
                 console.log('🔄 Force refreshing GPS...');
                 try {
                     const location = await getRealLocation();
-                    alert(`📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m\n\nIf accuracy > 100m, please go outside and enable GPS.`);
+                    alert(`📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m`);
                     await updateLocationDisplay(location);
                 } catch(e) {
                     alert('GPS failed: ' + e.message);
@@ -653,6 +750,9 @@
         
         fixDropdown();
         addForceGPSButton();
+        
+        // Check device table exists (just logs, doesn't block)
+        await checkDeviceTableExists();
         
         const sessionType = document.getElementById('session-type');
         if (sessionType) {
@@ -687,7 +787,6 @@
         
         await loadHistory();
         console.log('✅ Attendance system ready!');
-        console.log('📍 Use the "Get REAL GPS" button for fresh location');
     }
     
     // Start
