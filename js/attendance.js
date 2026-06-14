@@ -1,4 +1,4 @@
-// COMPLETE ATTENDANCE SYSTEM - WORKS FOR ALL CLASSES & BOTH SESSION TYPES
+// COMPLETE ATTENDANCE SYSTEM - WITH FREE ADDRESS LOOKUP
 (function() {
     'use strict';
     
@@ -61,6 +61,80 @@
         const dLon = toRad(lon2 - lon1);
         const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    // ============================================
+    // FREE ADDRESS LOOKUP (No API Key Needed!)
+    // ============================================
+    
+    async function getAddressFromCoordinates(lat, lon) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+                headers: {
+                    'User-Agent': 'NCHSM-Attendance-System/1.0'
+                }
+            });
+            const data = await response.json();
+            
+            if (data && data.display_name) {
+                const road = data.address?.road || '';
+                const suburb = data.address?.suburb || data.address?.neighbourhood || '';
+                const city = data.address?.city || data.address?.town || data.address?.county || '';
+                
+                if (road && city) {
+                    return `${road}, ${city}`;
+                } else if (city) {
+                    return city;
+                }
+                return data.display_name.split(',')[0];
+            }
+            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        } catch(e) {
+            console.log('Address lookup failed:', e);
+            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        }
+    }
+    
+    // ============================================
+    // FIX DROPDOWN - MOVED BEFORE init()
+    // ============================================
+    
+    function fixDropdown() {
+        const targetSelect = document.getElementById('attendance-target');
+        if (!targetSelect) return;
+        
+        targetSelect.disabled = false;
+        
+        const newSelect = targetSelect.cloneNode(true);
+        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
+        
+        newSelect.addEventListener('change', function() {
+            if (this.value && this.value !== '') {
+                const parts = this.value.split('|');
+                if (parts.length >= 6) {
+                    window.selectedTarget = {
+                        id: parts[0],
+                        name: parts[1],
+                        type: parts[2],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseFloat(parts[5])
+                    };
+                    console.log('✅ Target selected:', window.selectedTarget.name);
+                    
+                    const checkBtn = document.getElementById('check-in-button');
+                    if (checkBtn) {
+                        checkBtn.disabled = false;
+                    }
+                }
+            } else {
+                window.selectedTarget = null;
+                const checkBtn = document.getElementById('check-in-button');
+                if (checkBtn) checkBtn.disabled = true;
+            }
+        });
+        
+        console.log('✅ Dropdown fixed');
     }
     
     // ============================================
@@ -190,7 +264,7 @@
     }
     
     // ============================================
-    // GPS LOCATION
+    // GPS LOCATION WITH ADDRESS
     // ============================================
     
     function getRealLocation() {
@@ -201,17 +275,58 @@
             }
             
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     const acc = position.coords.accuracy;
+                    
+                    const address = await getAddressFromCoordinates(lat, lon);
+                    
                     console.log(`📍 GPS: ${lat}, ${lon} (±${acc}m)`);
-                    resolve({ latitude: lat, longitude: lon, accuracy: acc });
+                    console.log(`🏠 Address: ${address}`);
+                    
+                    resolve({ 
+                        latitude: lat, 
+                        longitude: lon, 
+                        accuracy: acc,
+                        address: address 
+                    });
                 },
                 (error) => reject(error),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         });
+    }
+    
+    // ============================================
+    // UPDATE LOCATION DISPLAY WITH ADDRESS
+    // ============================================
+    
+    async function updateLocationDisplay(location) {
+        const latEl = document.getElementById('latitude');
+        const lonEl = document.getElementById('longitude');
+        const accEl = document.getElementById('accuracy-value');
+        
+        if (latEl) latEl.textContent = location.latitude.toFixed(6);
+        if (lonEl) lonEl.textContent = location.longitude.toFixed(6);
+        if (accEl) accEl.textContent = location.accuracy.toFixed(1);
+        
+        let addressDisplay = document.getElementById('location-address');
+        if (!addressDisplay) {
+            const locationInfo = document.getElementById('location-info');
+            if (locationInfo) {
+                const addressDiv = document.createElement('div');
+                addressDiv.id = 'location-address';
+                addressDiv.className = 'location-address';
+                addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #666;';
+                locationInfo.appendChild(addressDiv);
+                addressDisplay = addressDiv;
+            }
+        }
+        
+        if (addressDisplay && location.address) {
+            addressDisplay.innerHTML = `📍 <strong>Location:</strong> ${location.address}`;
+        }
     }
     
     // ============================================
@@ -249,9 +364,7 @@
             const location = await getRealLocation();
             currentLocation = location;
             
-            document.getElementById('latitude').textContent = location.latitude.toFixed(6);
-            document.getElementById('longitude').textContent = location.longitude.toFixed(6);
-            document.getElementById('accuracy-value').textContent = location.accuracy.toFixed(1);
+            await updateLocationDisplay(location);
             
             const distance = calculateDistance(
                 location.latitude, location.longitude,
@@ -265,9 +378,11 @@
                 `📍 CHECK-IN CONFIRMATION\n\n` +
                 `Target: ${selectedTarget.name}\n` +
                 `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
+                `Your Location: ${location.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}\n` +
                 `Distance: ${distance.toFixed(0)}m\n` +
                 `Verification Radius: ${radius}m\n` +
-                `Status: ${status}\n\nProceed?`
+                `Status: ${status}\n\n` +
+                `Proceed?`
             );
             
             if (!confirmed) {
@@ -295,7 +410,8 @@
                 is_verified: status === 'Present',
                 attendance_status: status,
                 target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude
+                target_longitude: selectedTarget.longitude,
+                location_address: location.address || null
             };
             
             if (sessionType === 'class') {
@@ -307,7 +423,7 @@
             const { error } = await supabase.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
             
-            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m`);
+            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m\nLocation: ${location.address || 'Coordinates saved'}`);
             await updateStatsData();
             await loadHistory();
             
@@ -321,7 +437,7 @@
     }
     
     // ============================================
-    // LOAD HISTORY
+    // LOAD HISTORY (with address display)
     // ============================================
     
     async function loadHistory() {
@@ -332,7 +448,7 @@
         const studentId = getCurrentStudentId();
         
         if (!supabase || !studentId) {
-            table.innerHTML = '<tr><td colspan="6">Unable to load history...</td></tr>';
+            table.innerHTML = '<tr><td colspan="7">Unable to load history...</td></tr>';
             return;
         }
         
@@ -344,7 +460,7 @@
             .limit(20);
         
         if (error || !data || data.length === 0) {
-            table.innerHTML = '<tr><td colspan="6">No history records found</td></tr>';
+            table.innerHTML = '<tr><td colspan="7">No history records found</td></tr>';
             return;
         }
         
@@ -355,6 +471,8 @@
             const time = new Date(log.check_in_time).toLocaleString();
             const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
                                (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
+            const locationDisplay = log.location_address || `${log.latitude?.toFixed(4) || '--'}, ${log.longitude?.toFixed(4) || '--'}`;
+            
             return `<tr>
                 <td>${time}</td>
                 <td>${log.session_type === 'class' ? '📚 Class' : '🏥 Clinical'}</td>
@@ -362,6 +480,7 @@
                 <td style="color: ${statusColor}">${log.attendance_status || 'Unknown'}</td>
                 <td>${dist}</td>
                 <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
+                <td style="font-size: 11px; max-width: 150px; overflow: hidden;">${locationDisplay}</td>
             </tr>`;
         }).join('');
     }
@@ -374,7 +493,7 @@
         if (document.getElementById('stats-present-count')) return;
         
         const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => 
-            h.textContent.includes('Daily Attendance'));
+            h.textContent && h.textContent.includes('Daily Attendance'));
         
         if (heading && heading.parentElement) {
             const statsContainer = document.createElement('div');
@@ -463,7 +582,6 @@
                 }
             });
             
-            // Load initial options based on selected session type
             if (sessionType.value === 'class') {
                 await populateTargetOptions('class');
             } else if (sessionType.value === 'clinical') {
@@ -478,6 +596,7 @@
         
         await loadHistory();
         console.log('✅ Attendance system ready!');
+        console.log('📍 Location address lookup enabled (free, no API key needed)');
     }
     
     // Start
