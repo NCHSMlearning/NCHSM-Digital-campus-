@@ -136,7 +136,114 @@
             return [];
         }
     }
+
+
+    // ============================================
+// CREATE STATS DISPLAY (Present Today & Current Time)
+// ============================================
+
+function createStatsDisplay() {
+    // Check if stats already exist
+    if (document.getElementById('attendance-stats-container')) {
+        return;
+    }
     
+    // Find the Daily Attendance Check-in heading
+    const headings = document.querySelectorAll('h1, h2, h3, .page-title');
+    let heading = null;
+    for (let h of headings) {
+        if (h.textContent && h.textContent.includes('Daily Attendance')) {
+            heading = h;
+            break;
+        }
+    }
+    
+    if (heading && heading.parentElement) {
+        // Create stats container
+        const statsContainer = document.createElement('div');
+        statsContainer.id = 'attendance-stats-container';
+        statsContainer.style.cssText = `
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        `;
+        
+        statsContainer.innerHTML = `
+            <div style="flex: 1; text-align: center;">
+                <div style="font-size: 12px; opacity: 0.8;">📅 PRESENT TODAY</div>
+                <div id="stats-present-count" style="font-size: 36px; font-weight: bold; color: #4ade80;">0</div>
+            </div>
+            <div style="flex: 1; text-align: center;">
+                <div style="font-size: 12px; opacity: 0.8;">⏰ CURRENT TIME</div>
+                <div id="stats-current-time" style="font-size: 24px; font-weight: bold; font-family: monospace;">--:--:--</div>
+            </div>
+        `;
+        
+        // Insert after heading
+        heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
+        console.log('✅ Stats display created');
+    }
+}
+
+async function updateStatsDisplay() {
+    // Update present count
+    const presentEl = document.getElementById('stats-present-count');
+    if (presentEl) {
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (supabase && studentId) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('id', { count: 'exact' })
+                .eq('student_id', studentId)
+                .eq('attendance_status', 'Present')
+                .gte('check_in_time', today.toISOString())
+                .lt('check_in_time', tomorrow.toISOString());
+            
+            if (!error && data) {
+                presentEl.textContent = data.length;
+                console.log(`Present today: ${data.length}`);
+            }
+        }
+    }
+    
+    // Update time
+    const timeEl = document.getElementById('stats-current-time');
+    if (timeEl) {
+        const now = new Date();
+        timeEl.textContent = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+}
+
+function startStatsTimeUpdates() {
+    updateStatsDisplay();
+    setInterval(() => {
+        const timeEl = document.getElementById('stats-current-time');
+        if (timeEl) {
+            const now = new Date();
+            timeEl.textContent = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+    }, 1000);
+}
     // ============================================
     // UPDATE DASHBOARD STATS (Present Today & Current Time)
     // ============================================
@@ -476,80 +583,58 @@
         }).join('');
     }
     
-    // ============================================
-    // INITIALIZATION
-    // ============================================
+  // ============================================
+// INITIALIZATION (UPDATED)
+// ============================================
+
+async function init() {
+    console.log('🚀 Initializing...');
     
-    async function init() {
-        console.log('🚀 Initializing...');
-        
-        attendanceUserProfile = window.db?.currentUserProfile;
-        attendanceUserId = getCurrentStudentId();
-        
-        await loadApprovedUnits();
-        
-        // Update stats
-        await updateAllStats();
-        startTimeUpdates();
-        
-        // Fix dropdown
-        fixDropdown();
-        
-        // Setup session type
-        const sessionType = document.getElementById('session-type');
-        if (sessionType) {
-            sessionType.addEventListener('change', () => {
-                if (sessionType.value === 'class') {
-                    const targetGroup = document.getElementById('target-control-group');
-                    if (targetGroup) {
-                        targetGroup.style.display = 'flex';
-                    }
-                    populateTargetOptions('class');
-                }
-            });
-            
-            // Trigger initial load if class is selected
+    attendanceUserProfile = window.db?.currentUserProfile;
+    attendanceUserId = getCurrentStudentId();
+    
+    await loadApprovedUnits();
+    
+    // ============================================
+    // CREATE AND UPDATE STATS DISPLAY
+    // ============================================
+    createStatsDisplayIfNeeded();
+    await updateStatsData();
+    startStatsTimeUpdates();
+    
+    // Fix dropdown
+    fixDropdown();
+    
+    // Setup session type
+    const sessionType = document.getElementById('session-type');
+    if (sessionType) {
+        sessionType.addEventListener('change', () => {
             if (sessionType.value === 'class') {
+                const targetGroup = document.getElementById('target-control-group');
+                if (targetGroup) {
+                    targetGroup.style.display = 'flex';
+                }
                 populateTargetOptions('class');
             }
-        }
-        
-        // Setup check-in button
-        const checkBtn = document.getElementById('check-in-button');
-        if (checkBtn) {
-            checkBtn.onclick = (e) => {
-                e.preventDefault();
-                doCheckIn();
-            };
-        }
-        
-        // Load history
-        await loadHistory();
-        
-        console.log('✅ Ready! Select a course and click "Check In Now"');
-    }
-    
-    // Run fix when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            fixDropdown();
-            init();
         });
-    } else {
-        fixDropdown();
-        init();
+        
+        // Trigger initial load if class is selected
+        if (sessionType.value === 'class') {
+            populateTargetOptions('class');
+        }
     }
     
-    // Expose useful functions globally
-    window.setManualLocation = function(lat, lon) {
-        currentLocation = { latitude: lat, longitude: lon, accuracy: 50 };
-        document.getElementById('latitude').textContent = lat.toFixed(6);
-        document.getElementById('longitude').textContent = lon.toFixed(6);
-        alert(`Location set to ${lat}, ${lon}`);
-    };
+    // Setup check-in button
+    const checkBtn = document.getElementById('check-in-button');
+    if (checkBtn) {
+        checkBtn.onclick = (e) => {
+            e.preventDefault();
+            doCheckIn();
+        };
+    }
     
-    window.refreshStats = updateAllStats;
-    window.refreshHistory = loadHistory;
+    // Load history
+    await loadHistory();
     
-    console.log('✅ Attendance system fully loaded and ready!');
-})();
+    console.log('✅ Ready! Select a course and click "Check In Now"');
+}
