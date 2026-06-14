@@ -622,54 +622,63 @@
         });
     }
     
-    async function refreshAll() {
-        console.log('🚀 Loading Academic Reports...');
+   async function refreshAll() {
+    console.log('🚀 Loading Academic Reports...');
+    
+    try {
+        if (elements.gradesTableBody) {
+            elements.gradesTableBody.innerHTML = '<td><td colspan="9" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading released exam results...<\/td><\/tr>';
+        }
         
-        try {
-            if (elements.gradesTableBody) {
-                elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading released exam results...</td></tr>';
+        loadStudentInfo();
+        populateFilterDropdown();
+        await loadGrades();
+        
+        displayGradesTable();
+        updateGpaSummary();
+        loadTranscript();
+        loadCourseProgress();
+        createGradeChart();
+        
+        console.log(`✅ Academic Reports loaded: ${currentData.grades.length} released exams`);
+        
+        if (currentData.grades.length > 0) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 10px;
+                    left: 10px;
+                    background: rgba(76, 29, 149, 0.9);
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    z-index: 9999;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    pointer-events: none;
+                    backdrop-filter: blur(4px);
+                `;
+                document.body.appendChild(toast);
             }
             
-            loadStudentInfo();
-            populateFilterDropdown();
-            await loadGrades();
+            toast.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 4px;"></i> ${currentData.grades.length} results`;
+            toast.style.opacity = '1';
             
-            displayGradesTable();
-            updateGpaSummary();
-            loadTranscript();
-            loadCourseProgress();
-            createGradeChart();
-            
-            console.log(`✅ Academic Reports loaded: ${currentData.grades.length} released exams`);
-           if (currentData.grades.length > 0) {
-    let toast = document.getElementById('toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast';
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(76, 29, 149, 0.9);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            backdrop-filter: blur(4px);
-        `;
-        document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 1500);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading academic reports:', error);
+        if (elements.gradesTableBody) {
+            elements.gradesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error loading grades. Please refresh.<\/td><\/tr>';
+        }
     }
-    
-    toast.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 4px;"></i> ${currentData.grades.length} results`;
-    toast.style.opacity = '1';
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-    }, 1500);
 }
     
     function init() {
