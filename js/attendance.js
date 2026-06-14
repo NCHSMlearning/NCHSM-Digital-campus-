@@ -201,66 +201,110 @@
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }
     }
+  // ============================================
+// FORCED FRESH GPS WITH RETRY FOR BETTER ACCURACY
+// ============================================
+
+function getRealLocation() {
+    console.log('📍 FORCING FRESH GPS (will retry for better accuracy)...');
     
-    // ============================================
-    // FORCED FRESH GPS
-    // ============================================
-    
-    function getRealLocation() {
-        console.log('📍 FORCING FRESH GPS...');
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+        }
         
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
-                return;
-            }
-            
-            const options = {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 30000
-            };
-            
-            if (navigator.geolocation.clearWatch && window.locationWatchId) {
-                navigator.geolocation.clearWatch(window.locationWatchId);
-                window.locationWatchId = null;
-            }
-            
+        const options = {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 15000
+        };
+        
+        // Clear any existing watchers
+        if (navigator.geolocation.clearWatch && window.locationWatchId) {
+            navigator.geolocation.clearWatch(window.locationWatchId);
+            window.locationWatchId = null;
+        }
+        
+        let attempts = 0;
+        const maxAttempts = 5;
+        let bestLocation = null;
+        
+        function tryGetLocation() {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const timestamp = position.coords.timestamp;
                     const age = Date.now() - timestamp;
+                    const accuracy = position.coords.accuracy;
+                    attempts++;
                     
-                    if (age > 2000) {
+                    console.log(`📍 Attempt ${attempts}: Accuracy ±${accuracy}m, Age: ${age}ms`);
+                    
+                    // Check for cached data
+                    if (age > 3000) {
                         console.warn('⚠️ Cached GPS! Retrying...');
-                        getRealLocation().then(resolve).catch(reject);
+                        if (attempts < maxAttempts) {
+                            setTimeout(tryGetLocation, 1000);
+                        } else {
+                            // Use it anyway if max attempts reached
+                            console.log('📌 Using cached location (max attempts reached)');
+                        }
                         return;
                     }
                     
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const acc = position.coords.accuracy;
+                    // Keep best accuracy location
+                    if (!bestLocation || accuracy < bestLocation.accuracy) {
+                        bestLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: accuracy
+                        };
+                    }
                     
-                    console.log(`✅ GPS: ${lat}, ${lon} (±${acc}m)`);
-                    
-                    const address = await getAddressFromCoordinates(lat, lon);
-                    console.log(`🏠 Address: ${address}`);
-                    
-                    resolve({ 
-                        latitude: lat, 
-                        longitude: lon, 
-                        accuracy: acc,
-                        address: address 
-                    });
+                    // Check if accuracy is good enough
+                    if (accuracy <= 50) {
+                        // EXCELLENT - accept immediately
+                        console.log('✅ EXCELLENT GPS!');
+                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                        resolve({ ...bestLocation, address });
+                    } 
+                    else if (accuracy <= 100 && attempts >= 2) {
+                        // GOOD - accept after at least 2 attempts
+                        console.log('✅ GOOD GPS (within 100m)');
+                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                        resolve({ ...bestLocation, address });
+                    }
+                    else if (attempts < maxAttempts) {
+                        // POOR - try again for better
+                        console.log(`🔄 Accuracy ${accuracy}m too low, retrying (${attempts}/${maxAttempts})...`);
+                        setTimeout(tryGetLocation, 2000);
+                    }
+                    else {
+                        // MAX attempts reached - use best we have
+                        console.warn(`⚠️ Using best available accuracy: ${bestLocation.accuracy}m after ${maxAttempts} attempts`);
+                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                        resolve({ ...bestLocation, address });
+                    }
                 },
                 (error) => {
-                    console.error('GPS Error:', error.message);
-                    reject(error);
+                    attempts++;
+                    console.error(`GPS Error attempt ${attempts}:`, error.message);
+                    
+                    if (attempts < maxAttempts) {
+                        console.log(`🔄 Retrying GPS (${attempts}/${maxAttempts})...`);
+                        setTimeout(tryGetLocation, 2000);
+                    } else {
+                        reject(error);
+                    }
                 },
                 options
             );
-        });
-    }
+        }
+        
+        // Start the process
+        tryGetLocation();
+    });
+}
     
     // ============================================
     // UPDATE LOCATION DISPLAY
