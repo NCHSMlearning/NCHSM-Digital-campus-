@@ -258,15 +258,21 @@
                 }
             });
             
-            document.getElementById('refresh-assessments')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.loadExams();
-            });
+            const refreshBtn = document.getElementById('refresh-assessments');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.loadExams();
+                });
+            }
             
-            document.getElementById('view-transcript')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showProfessionalTranscript();
-            });
+            const transcriptBtn = document.getElementById('view-transcript');
+            if (transcriptBtn) {
+                transcriptBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showProfessionalTranscript();
+                });
+            }
         }
         
         applyFilter(filterType) {
@@ -334,135 +340,122 @@
         }
         
         // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
-     // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
-async loadNCKMarksFromSystem() {
-    console.log('🔄 Loading NCK marks from Nursing School System...');
-    
-    // FIX: Try multiple possible field names for admission number
-    const admission = this.userProfile?.student_id   // ← Primary field
-        || this.userProfile?.admission
-        || window.db?.currentUserProfile?.student_id  // ← Check db profile
-        || window.db?.currentUserProfile?.admission
-        || this.userProfile?.nck_admission;
-    
-    if (!admission) {
-        console.log('⚠️ No admission number found. Available fields:', Object.keys(this.userProfile || {}));
-        return;
-    }
-    
-    console.log('📚 Fetching published marks for admission:', admission);
-    
-    try {
-        // Call the Nursing School System API
-        const encodedAdmission = encodeURIComponent(admission);
-        const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-Year': this.intakeYear || '2026'
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`✅ Found ${data.marks?.length || 0} published marks from NCK system`);
+        async loadNCKMarksFromSystem() {
+            console.log('🔄 Loading NCK marks from Nursing School System...');
             
-            if (data.marks && data.marks.length > 0) {
-                // Convert NCK marks to exam format
-                const nckExams = data.marks.map((mark, index) => {
-                    const finalScore = parseFloat(mark.final) || 0;
-                    
-                    let gradeClass = 'fail';
-                    let gradeText = 'Fail';
-                    if (finalScore >= 85) {
-                        gradeClass = 'distinction';
-                        gradeText = 'Distinction';
-                    } else if (finalScore >= 75) {
-                        gradeClass = 'credit';
-                        gradeText = 'Credit';
-                    } else if (finalScore >= 60) {
-                        gradeClass = 'pass';
-                        gradeText = 'Pass';
-                    } else if (finalScore > 0) {
-                        gradeClass = 'fail';
-                        gradeText = 'Fail';
+            const admission = this.userProfile?.student_id || this.userProfile?.admission || window.db?.currentUserProfile?.student_id;
+            
+            if (!admission) {
+                console.log('⚠️ No admission number found');
+                return;
+            }
+            
+            console.log('📚 Fetching published marks for admission:', admission);
+            
+            try {
+                const encodedAdmission = encodeURIComponent(admission);
+                const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Year': this.intakeYear || '2026'
                     }
-                    
-                    return {
-                        id: `nck_${mark.block}_${mark.subject}_${index}`,
-                        exam_name: mark.subject,
-                        exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
-                        isCatExam: mark.assessmentType !== 'exam_only',
-                        isCompleted: true,
-                        isReleased: true,
-                        hasGrade: finalScore > 0,
-                        totalPercentage: finalScore,
-                        gradeText: gradeText,
-                        gradeClass: gradeClass,
-                        cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
-                        cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
-                        finalDisplay: mark.exam ? `${mark.exam}` : '--',
-                        course: mark.subject,
-                        block_term: mark.block?.replace('_', ' ') || 'N/A',
-                        formattedGradedDate: new Date().toLocaleDateString(),
-                        formattedExamDateTime: new Date().toLocaleDateString(),
-                        isFromNCK: true,
-                        programBadgeClass: 'badge-nck',
-                        programIcon: 'fa-stethoscope',
-                        programDisplay: 'NCK System',
-                        examLink: null,
-                        canTakeExam: false,
-                        actionState: 'completed',
-                        buttonText: 'View Results'
-                    };
                 });
                 
-                // Add to completed exams (avoid duplicates)
-                const existingIds = new Set(this.completedExams.map(e => e.id));
-                const newExams = nckExams.filter(exam => !existingIds.has(exam.id));
-                
-                if (newExams.length > 0) {
-                    this.completedExams = [...this.completedExams, ...newExams];
-                    console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
-                    // IMPORTANT: Refresh the display immediately
-                    this.displayCompletedTable();
-                    this.updateCounts();
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`✅ Found ${data.marks?.length || 0} published marks from NCK system`);
+                    
+                    if (data.marks && data.marks.length > 0) {
+                        const nckExams = data.marks.map((mark, index) => {
+                            const finalScore = parseFloat(mark.final) || 0;
+                            
+                            let gradeClass = 'fail';
+                            let gradeText = 'Fail';
+                            if (finalScore >= 85) {
+                                gradeClass = 'distinction';
+                                gradeText = 'Distinction';
+                            } else if (finalScore >= 75) {
+                                gradeClass = 'credit';
+                                gradeText = 'Credit';
+                            } else if (finalScore >= 60) {
+                                gradeClass = 'pass';
+                                gradeText = 'Pass';
+                            } else if (finalScore > 0) {
+                                gradeClass = 'fail';
+                                gradeText = 'Fail';
+                            }
+                            
+                            return {
+                                id: `nck_${mark.block}_${mark.subject}_${index}`,
+                                exam_name: mark.subject,
+                                exam_type: mark.assessmentType === 'full' ? 'CAT' : (mark.assessmentType === 'single_cat' ? 'CAT' : 'EXAM'),
+                                isCatExam: mark.assessmentType !== 'exam_only',
+                                isCompleted: true,
+                                isReleased: true,
+                                hasGrade: finalScore > 0,
+                                totalPercentage: finalScore,
+                                gradeText: gradeText,
+                                gradeClass: gradeClass,
+                                cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
+                                cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
+                                finalDisplay: mark.exam ? `${mark.exam}` : '--',
+                                course: mark.subject,
+                                block_term: mark.block?.replace('_', ' ') || 'N/A',
+                                formattedGradedDate: new Date().toLocaleDateString(),
+                                formattedExamDateTime: new Date().toLocaleDateString(),
+                                isFromNCK: true,
+                                programBadgeClass: 'badge-nck',
+                                programIcon: 'fa-stethoscope',
+                                programDisplay: 'NCK System',
+                                examLink: null,
+                                canTakeExam: false,
+                                actionState: 'completed',
+                                buttonText: 'View Results'
+                            };
+                        });
+                        
+                        const existingIds = new Set(this.completedExams.map(e => e.id));
+                        const newExams = nckExams.filter(exam => !existingIds.has(exam.id));
+                        
+                        if (newExams.length > 0) {
+                            this.completedExams = [...this.completedExams, ...newExams];
+                            console.log(`✅ Added ${newExams.length} NCK marks to completed section`);
+                            this.displayCompletedTable();
+                            this.updateCounts();
+                        }
+                    }
+                } else {
+                    console.log('No published marks found for this student');
                 }
+            } catch (error) {
+                console.error('Failed to fetch NCK marks:', error);
             }
-        } else {
-            console.log('No published marks found for this student');
         }
-    } catch (error) {
-        console.error('Failed to fetch NCK marks:', error);
-    }
-}
-      async loadNCKClinicalScore() {
-    // FIX: Use student_id instead of admission
-    const admission = this.userProfile?.student_id 
-        || this.userProfile?.admission 
-        || window.db?.currentUserProfile?.student_id;
-    
-    if (!admission) return;
-    
-    try {
-        const encodedAdmission = encodeURIComponent(admission);
-        const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/nck-student/${encodedAdmission}`);
-        const data = await response.json();
         
-        if (data.scores && data.scores.length > 0) {
-            const validScores = data.scores.filter(s => s > 0);
-            const avgScore = validScores.length > 0 
-                ? (validScores.reduce((a,b) => a+b, 0) / validScores.length).toFixed(1)
-                : 0;
+        async loadNCKClinicalScore() {
+            const admission = this.userProfile?.student_id || this.userProfile?.admission || window.db?.currentUserProfile?.student_id;
+            if (!admission) return;
             
-            // Dispatch event for dashboard to pick up
-            document.dispatchEvent(new CustomEvent('nckScoreUpdate', {
-                detail: { score: avgScore, count: validScores.length }
-            }));
+            try {
+                const encodedAdmission = encodeURIComponent(admission);
+                const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/nck-student/${encodedAdmission}`);
+                const data = await response.json();
+                
+                if (data.scores && data.scores.length > 0) {
+                    const validScores = data.scores.filter(s => s > 0);
+                    const avgScore = validScores.length > 0 
+                        ? (validScores.reduce((a,b) => a+b, 0) / validScores.length).toFixed(1)
+                        : 0;
+                    
+                    document.dispatchEvent(new CustomEvent('nckScoreUpdate', {
+                        detail: { score: avgScore, count: validScores.length }
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to load NCK clinical score:', error);
+            }
         }
-    } catch (error) {
-        console.error('Failed to load NCK clinical score:', error);
-    }
-}
+        
         // ==================== MAIN LOAD EXAMS FUNCTION ====================
         async loadExams() {
             console.log('📥 Loading exams with consolidated view...');
@@ -527,18 +520,18 @@ async loadNCKMarksFromSystem() {
                 
                 // Load released results
                 this.releasedResults.clear();
-                const { data: released } = await supabase
+                const { data: released, error: releasedError } = await supabase
                     .from('released_exam_results')
                     .select('result_id');
                 
-                if (released && released.length > 0) {
+                if (!releasedError && released && released.length > 0) {
                     this.releasedResults = new Set(released.map(r => String(r.result_id)));
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
                 
                 this.processExamsData(exams || [], grades);
                 
-                // ===== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM =====
+                // Load NCK marks from Nursing School System
                 await this.loadNCKMarksFromSystem();
                 await this.loadNCKClinicalScore();
                 
@@ -579,6 +572,7 @@ async loadNCKMarksFromSystem() {
                         duration_minutes: exam.duration_minutes || 40,
                         exam_link: exam.exam_link || exam.online_link,
                         course: exam.course_name || exam.course || 'General',
+                        marks_out_of: exam.marks_out_of || 100,
                         course_levels: new Set(),
                         blocks: new Set(),
                         programs: new Set(),
@@ -781,14 +775,15 @@ async loadNCKMarksFromSystem() {
                 let cat1Display = '--';
                 let cat2Display = '--';
                 let finalDisplay = '--';
+                const marksOutOf = group.marks_out_of || 100;
                 
                 if (isCatExam) {
-                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}%`;
-                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}%`;
+                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
                 } else {
-                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}%`;
-                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}%`;
-                    if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}%`;
+                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                    if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
                 }
                 
                 // For released results, show the total percentage in CAT columns
@@ -804,8 +799,8 @@ async loadNCKMarksFromSystem() {
                     id: group.id,
                     exam_name: group.exam_name,
                     exam_type: group.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
-                    isCatExam,
-                    isFinalExam,
+                    isCatExam: isCatExam,
+                    isFinalExam: isFinalExam,
                     isCompleted: isCompleted,
                     isReleased: isReleased,
                     hasGrade: hasTaken,
@@ -820,6 +815,7 @@ async loadNCKMarksFromSystem() {
                     actionMessage: finalMessage,
                     buttonText: buttonText,
                     examLink: group.exam_link,
+                    marks_out_of: marksOutOf,
                     examStartDateTime: examStartDateTime,
                     examEndDateTime: examEndDateTime,
                     timeRemainingMs: timeRemainingMs,
@@ -1049,188 +1045,224 @@ async loadNCKMarksFromSystem() {
                 this.completedEmpty.style.display = this.completedExams.length === 0 ? 'block' : 'none';
             }
         }
+        
         async viewExamResults(examId) {
-    try {
-        const supabase = window.db?.supabase;
-        if (!supabase) return;
-        
-        const { data: grade, error } = await supabase
-            .from('exam_grades')
-            .select('*')
-            .eq('student_id', this.userId)
-            .eq('exam_id', examId)
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .single();
-        
-        if (error) throw error;
-        
-        const exam = this.allExams.find(e => e.id === examId);
-        const percentage = grade.total_score ? parseFloat(grade.total_score) : 0;
-        
-        let gradeText = '';
-        let gradeColor = '';
-        let gradeBg = '';
-        if (percentage >= 85) {
-            gradeText = 'DISTINCTION';
-            gradeColor = '#065F46';
-            gradeBg = '#D1FAE5';
-        } else if (percentage >= 75) {
-            gradeText = 'CREDIT';
-            gradeColor = '#1E40AF';
-            gradeBg = '#DBEAFE';
-        } else if (percentage >= 60) {
-            gradeText = 'PASS';
-            gradeColor = '#92400E';
-            gradeBg = '#FEF3C7';
-        } else {
-            gradeText = 'FAIL';
-            gradeColor = '#991B1B';
-            gradeBg = '#FEE2E2';
+            try {
+                const supabase = window.db?.supabase;
+                if (!supabase) return;
+                
+                const { data: grade, error } = await supabase
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('student_id', this.userId)
+                    .eq('exam_id', examId)
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .single();
+                
+                if (error) throw error;
+                
+                const exam = this.allExams.find(e => e.id === examId);
+                const percentage = grade.total_score ? parseFloat(grade.total_score) : 0;
+                const marksOutOf = exam?.marks_out_of || 100;
+                const scoreDisplay = grade.marks || grade.cat_1_score || grade.cat_2_score || grade.exam_score || 0;
+                
+                let gradeText = '';
+                let gradeColor = '';
+                let gradeBg = '';
+                if (percentage >= 85) {
+                    gradeText = 'DISTINCTION';
+                    gradeColor = '#065F46';
+                    gradeBg = '#D1FAE5';
+                } else if (percentage >= 75) {
+                    gradeText = 'CREDIT';
+                    gradeColor = '#1E40AF';
+                    gradeBg = '#DBEAFE';
+                } else if (percentage >= 60) {
+                    gradeText = 'PASS';
+                    gradeColor = '#92400E';
+                    gradeBg = '#FEF3C7';
+                } else {
+                    gradeText = 'FAIL';
+                    gradeColor = '#991B1B';
+                    gradeBg = '#FEE2E2';
+                }
+                
+                // Small custom modal
+                const modalHtml = `
+                    <div id="resultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; border-radius: 16px; max-width: 320px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                            <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
+                                <div style="font-size: 32px;">📊</div>
+                                <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Exam Results</h3>
+                            </div>
+                            <div style="padding: 16px;">
+                                <div style="margin-bottom: 12px;">
+                                    <div style="font-size: 11px; color: #6B7280; text-transform: uppercase;">Exam</div>
+                                    <div style="font-weight: 600; font-size: 14px;">${this.escapeHtml(exam?.exam_name || 'N/A')}</div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                                    <span style="font-size: 12px; color: #6B7280;">Score:</span>
+                                    <span style="font-weight: 500;">${scoreDisplay} / ${marksOutOf} marks</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                                    <span style="font-size: 12px; color: #6B7280;">Percentage:</span>
+                                    <span style="font-weight: 600;">${percentage}%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                                    <span style="font-size: 12px; color: #6B7280;">Grade:</span>
+                                    <span style="font-weight: 700; background: ${gradeBg}; color: ${gradeColor}; padding: 4px 10px; border-radius: 20px;">${gradeText}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="font-size: 11px; color: #6B7280;">Released:</span>
+                                    <span style="font-size: 11px;">${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</span>
+                                </div>
+                            </div>
+                            <button onclick="document.getElementById('resultModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('resultModal');
+                if (existingModal) existingModal.remove();
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                document.getElementById('resultModal').addEventListener('click', function(e) {
+                    if (e.target === this) this.remove();
+                });
+                
+            } catch (error) {
+                console.error('Error loading exam results:', error);
+                const errorModal = `
+                    <div id="errorModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
+                            <div style="font-size: 36px;">⚠️</div>
+                            <p style="margin: 10px 0; font-size: 13px;">Unable to load exam results.</p>
+                            <button onclick="document.getElementById('errorModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">OK</button>
+                        </div>
+                    </div>
+                `;
+                const existingError = document.getElementById('errorModal');
+                if (existingError) existingError.remove();
+                document.body.insertAdjacentHTML('beforeend', errorModal);
+            }
         }
         
-        const marksOutOf = exam?.marks_out_of || grade?.marks_out_of || 100;
-        const scoreDisplay = grade.marks || grade.cat_1_score || grade.cat_2_score || grade.exam_score || 0;
-        
-        // Small custom modal
-        const modalHtml = `
-            <div id="resultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; border-radius: 16px; max-width: 320px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);">
-                    <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
-                        <div style="font-size: 32px;">📊</div>
-                        <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Exam Results</h3>
-                    </div>
-                    <div style="padding: 16px;">
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Exam</div>
-                            <div style="font-weight: 600; font-size: 14px; color: #1F2937;">${this.escapeHtml(exam?.exam_name || 'N/A')}</div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
-                            <span style="font-size: 12px; color: #6B7280;">Score:</span>
-                            <span style="font-weight: 500; font-size: 13px;">${scoreDisplay} / ${marksOutOf} marks</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
-                            <span style="font-size: 12px; color: #6B7280;">Percentage:</span>
-                            <span style="font-weight: 600; font-size: 15px;">${percentage}%</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
-                            <span style="font-size: 12px; color: #6B7280;">Grade:</span>
-                            <span style="font-weight: 700; font-size: 13px; background: ${gradeBg}; color: ${gradeColor}; padding: 4px 10px; border-radius: 20px;">${gradeText}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="font-size: 11px; color: #6B7280;">Released:</span>
-                            <span style="font-size: 11px; color: #4B5563;">${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</span>
+        showProfessionalTranscript() {
+            const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
+            if (completedReleased.length === 0) {
+                const noResultsModal = `
+                    <div id="noResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
+                            <div style="font-size: 36px;">📋</div>
+                            <p style="margin: 10px 0; font-size: 13px;">No released results available for transcript yet.</p>
+                            <button onclick="document.getElementById('noResultsModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">OK</button>
                         </div>
                     </div>
-                    <button onclick="document.getElementById('resultModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s;">
-                        Close
-                    </button>
+                `;
+                const existing = document.getElementById('noResultsModal');
+                if (existing) existing.remove();
+                document.body.insertAdjacentHTML('beforeend', noResultsModal);
+                return;
+            }
+            
+            const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
+            const distinctionCount = completedReleased.filter(e => e.totalPercentage >= 85).length;
+            const creditCount = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+            const passCount = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+            
+            const transcriptModal = `
+                <div id="transcriptModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 16px; max-width: 340px; width: 90%; overflow: hidden;">
+                        <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
+                            <div style="font-size: 28px;">📜</div>
+                            <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Academic Transcript</h3>
+                        </div>
+                        <div style="padding: 16px;">
+                            <div style="text-align: center; margin-bottom: 16px;">
+                                <div style="font-size: 28px; font-weight: 700; color: #4C1D95;">${avg.toFixed(1)}%</div>
+                                <div style="font-size: 11px; color: #6B7280;">Overall Average</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-around; margin-bottom: 16px;">
+                                <div style="text-align: center;">
+                                    <div style="font-weight: 700; font-size: 18px; color: #065F46;">${distinctionCount}</div>
+                                    <div style="font-size: 10px; color: #6B7280;">Distinction</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-weight: 700; font-size: 18px; color: #1E40AF;">${creditCount}</div>
+                                    <div style="font-size: 10px; color: #6B7280;">Credit</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-weight: 700; font-size: 18px; color: #92400E;">${passCount}</div>
+                                    <div style="font-size: 10px; color: #6B7280;">Pass</div>
+                                </div>
+                            </div>
+                            <div style="background: #F9FAFB; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
+                                <span style="font-size: 11px; color: #6B7280;">Completed Exams: ${completedReleased.length}</span>
+                            </div>
+                            <p style="font-size: 10px; color: #9CA3AF; text-align: center; margin: 0;">Contact registrar for official transcript</p>
+                        </div>
+                        <button onclick="document.getElementById('transcriptModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+            
+            const existing = document.getElementById('transcriptModal');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', transcriptModal);
+            document.getElementById('transcriptModal').addEventListener('click', function(e) {
+                if (e.target === this) this.remove();
+            });
+        }
         
-        // Remove existing modal if any
-        const existingModal = document.getElementById('resultModal');
-        if (existingModal) existingModal.remove();
+        showLoading() {
+            const loadingHTML = `<tr class="loading"><td colspan="8"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
+            if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
+            if (this.completedTable) this.completedTable.innerHTML = loadingHTML;
+        }
         
-        // Add new modal
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        showError(message) {
+            const errorHTML = `<tr class="error"><td colspan="8"><div class="error-content"><i class="fas fa-exclamation-circle"></i><p>${message}</p><button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button></div><\/td><\/tr>`;
+            if (this.currentTable) this.currentTable.innerHTML = errorHTML;
+            if (this.completedTable) this.completedTable.innerHTML = errorHTML;
+        }
         
-        // Close when clicking outside
-        document.getElementById('resultModal').addEventListener('click', function(e) {
-            if (e.target === this) this.remove();
-        });
+        hideLoading() {
+            // Remove loading indicator
+            if (this.currentTable && this.currentTable.innerHTML.includes('loading')) {
+                // Loading will be replaced by actual content
+            }
+        }
         
-    } catch (error) {
-        console.error('Error loading exam results:', error);
-        // Small error popup
-        const errorModal = `
-            <div id="errorModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
-                    <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
-                    <p style="margin: 0 0 12px 0; font-size: 13px; color: #4B5563;">Unable to load exam results.</p>
-                    <button onclick="document.getElementById('errorModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px;">OK</button>
-                </div>
-            </div>
-        `;
-        const existingError = document.getElementById('errorModal');
-        if (existingError) existingError.remove();
-        document.body.insertAdjacentHTML('beforeend', errorModal);
+        escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        dispatchDashboardEvent() {
+            const event = new CustomEvent('examsModuleReady', {
+                detail: { count: this.allExams.length, timestamp: new Date().toISOString() }
+            });
+            document.dispatchEvent(event);
+            
+            window.examsData = {
+                allExams: this.allExams,
+                loaded: true,
+                isTVETStudent: this.isTVETStudent,
+                programCode: this.programCode,
+                programName: this.programName
+            };
+        }
+        
+        refresh() {
+            this.loadExams();
+        }
     }
-}
-
-showProfessionalTranscript() {
-    const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
-    if (completedReleased.length === 0) {
-        // Small popup instead of alert
-        const noResultsModal = `
-            <div id="noResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
-                    <div style="font-size: 36px;">📋</div>
-                    <p style="margin: 10px 0; font-size: 13px; color: #4B5563;">No released results available for transcript yet.</p>
-                    <button onclick="document.getElementById('noResultsModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">OK</button>
-                </div>
-            </div>
-        `;
-        const existing = document.getElementById('noResultsModal');
-        if (existing) existing.remove();
-        document.body.insertAdjacentHTML('beforeend', noResultsModal);
-        return;
-    }
     
-    const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
-    let gradeSummary = '';
-    const distinctionCount = completedReleased.filter(e => e.totalPercentage >= 85).length;
-    const creditCount = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
-    const passCount = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
-    
-    // Transcript modal
-    const transcriptModal = `
-        <div id="transcriptModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; border-radius: 16px; max-width: 340px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-                <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
-                    <div style="font-size: 28px;">📜</div>
-                    <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Academic Transcript</h3>
-                </div>
-                <div style="padding: 16px;">
-                    <div style="text-align: center; margin-bottom: 16px;">
-                        <div style="font-size: 28px; font-weight: 700; color: #4C1D95;">${avg.toFixed(1)}%</div>
-                        <div style="font-size: 11px; color: #6B7280;">Overall Average</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-around; margin-bottom: 16px;">
-                        <div style="text-align: center;">
-                            <div style="font-weight: 700; font-size: 18px; color: #065F46;">${distinctionCount}</div>
-                            <div style="font-size: 10px; color: #6B7280;">Distinction</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: 700; font-size: 18px; color: #1E40AF;">${creditCount}</div>
-                            <div style="font-size: 10px; color: #6B7280;">Credit</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: 700; font-size: 18px; color: #92400E;">${passCount}</div>
-                            <div style="font-size: 10px; color: #6B7280;">Pass</div>
-                        </div>
-                    </div>
-                    <div style="background: #F9FAFB; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: #6B7280; text-align: center;">Completed Exams: ${completedReleased.length}</div>
-                    </div>
-                    <p style="font-size: 10px; color: #9CA3AF; text-align: center; margin: 0;">Contact registrar for official transcript</p>
-                </div>
-                <button onclick="document.getElementById('transcriptModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">
-                    Close
-                </button>
-            </div>
-        </div>
-    `;
-    
-    const existing = document.getElementById('transcriptModal');
-    if (existing) existing.remove();
-    document.body.insertAdjacentHTML('beforeend', transcriptModal);
-    
-    // Close when clicking outside
-    document.getElementById('transcriptModal').addEventListener('click', function(e) {
-        if (e.target === this) this.remove();
-    });
-}
     // Initialize the module
     function initializeExamsModule() {
         if (document.readyState === 'loading') {
