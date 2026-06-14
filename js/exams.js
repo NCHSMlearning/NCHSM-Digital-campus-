@@ -1049,105 +1049,188 @@ async loadNCKMarksFromSystem() {
                 this.completedEmpty.style.display = this.completedExams.length === 0 ? 'block' : 'none';
             }
         }
-        
         async viewExamResults(examId) {
-            try {
-                const supabase = window.db?.supabase;
-                if (!supabase) return;
-                
-                const { data: grade, error } = await supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', this.userId)
-                    .eq('exam_id', examId)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                    .single();
-                
-                if (error) throw error;
-                
-                const exam = this.allExams.find(e => e.id === examId);
-                const percentage = grade.total_score ? parseFloat(grade.total_score) : 0;
-                
-                let gradeText = '';
-                if (percentage >= 85) {
-                    gradeText = 'DISTINCTION';
-                } else if (percentage >= 75) {
-                    gradeText = 'CREDIT';
-                } else if (percentage >= 60) {
-                    gradeText = 'PASS';
-                } else {
-                    gradeText = 'FAIL';
-                }
-                
-                alert(`📊 EXAM RESULTS\n\n` +
-                      `Exam: ${exam?.exam_name}\n` +
-                      `Score: ${grade.marks || 0} marks\n` +
-                      `Percentage: ${percentage}%\n` +
-                      `Grade: ${gradeText}\n` +
-                      `Released: ${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}`);
-                
-            } catch (error) {
-                console.error('Error loading exam results:', error);
-                alert('Unable to load exam results. Please try again.');
-            }
+    try {
+        const supabase = window.db?.supabase;
+        if (!supabase) return;
+        
+        const { data: grade, error } = await supabase
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', this.userId)
+            .eq('exam_id', examId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (error) throw error;
+        
+        const exam = this.allExams.find(e => e.id === examId);
+        const percentage = grade.total_score ? parseFloat(grade.total_score) : 0;
+        
+        let gradeText = '';
+        let gradeColor = '';
+        let gradeBg = '';
+        if (percentage >= 85) {
+            gradeText = 'DISTINCTION';
+            gradeColor = '#065F46';
+            gradeBg = '#D1FAE5';
+        } else if (percentage >= 75) {
+            gradeText = 'CREDIT';
+            gradeColor = '#1E40AF';
+            gradeBg = '#DBEAFE';
+        } else if (percentage >= 60) {
+            gradeText = 'PASS';
+            gradeColor = '#92400E';
+            gradeBg = '#FEF3C7';
+        } else {
+            gradeText = 'FAIL';
+            gradeColor = '#991B1B';
+            gradeBg = '#FEE2E2';
         }
         
-        showProfessionalTranscript() {
-            const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
-            if (completedReleased.length === 0) {
-                alert('No released results available for transcript yet.');
-                return;
-            }
-            const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
-            alert(`📊 Transcript\n\nCompleted Exams: ${completedReleased.length}\nAverage Score: ${avg.toFixed(1)}%\n\nContact registrar for official transcript.`);
-        }
+        const marksOutOf = exam?.marks_out_of || grade?.marks_out_of || 100;
+        const scoreDisplay = grade.marks || grade.cat_1_score || grade.cat_2_score || grade.exam_score || 0;
         
-        showLoading() {
-            const loadingHTML = `<tr class="loading"><td colspan="8"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
-            if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
-            if (this.completedTable) this.completedTable.innerHTML = loadingHTML;
-        }
+        // Small custom modal
+        const modalHtml = `
+            <div id="resultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 16px; max-width: 320px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);">
+                    <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
+                        <div style="font-size: 32px;">📊</div>
+                        <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Exam Results</h3>
+                    </div>
+                    <div style="padding: 16px;">
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Exam</div>
+                            <div style="font-weight: 600; font-size: 14px; color: #1F2937;">${this.escapeHtml(exam?.exam_name || 'N/A')}</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                            <span style="font-size: 12px; color: #6B7280;">Score:</span>
+                            <span style="font-weight: 500; font-size: 13px;">${scoreDisplay} / ${marksOutOf} marks</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                            <span style="font-size: 12px; color: #6B7280;">Percentage:</span>
+                            <span style="font-weight: 600; font-size: 15px;">${percentage}%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
+                            <span style="font-size: 12px; color: #6B7280;">Grade:</span>
+                            <span style="font-weight: 700; font-size: 13px; background: ${gradeBg}; color: ${gradeColor}; padding: 4px 10px; border-radius: 20px;">${gradeText}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-size: 11px; color: #6B7280;">Released:</span>
+                            <span style="font-size: 11px; color: #4B5563;">${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('resultModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
         
-        showError(message) {
-            const errorHTML = `<tr class="error"><td colspan="8"><div class="error-content"><i class="fas fa-exclamation-circle"></i><p>${message}</p><button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button></div></td></tr>`;
-            if (this.currentTable) this.currentTable.innerHTML = errorHTML;
-            if (this.completedTable) this.completedTable.innerHTML = errorHTML;
-        }
+        // Remove existing modal if any
+        const existingModal = document.getElementById('resultModal');
+        if (existingModal) existingModal.remove();
         
-        hideLoading() {
-            // Remove loading indicator
-            if (this.currentTable && this.currentTable.innerHTML.includes('loading')) {
-                // Loading will be replaced by actual content
-            }
-        }
+        // Add new modal
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
         
-        escapeHtml(str) {
-            if (!str) return '';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
+        // Close when clicking outside
+        document.getElementById('resultModal').addEventListener('click', function(e) {
+            if (e.target === this) this.remove();
+        });
         
-        dispatchDashboardEvent() {
-            const event = new CustomEvent('examsModuleReady', {
-                detail: { count: this.allExams.length, timestamp: new Date().toISOString() }
-            });
-            document.dispatchEvent(event);
-            
-            window.examsData = {
-                allExams: this.allExams,
-                loaded: true,
-                isTVETStudent: this.isTVETStudent,
-                programCode: this.programCode,
-                programName: this.programName
-            };
-        }
-        
-        refresh() {
-            this.loadExams();
-        }
+    } catch (error) {
+        console.error('Error loading exam results:', error);
+        // Small error popup
+        const errorModal = `
+            <div id="errorModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
+                    <p style="margin: 0 0 12px 0; font-size: 13px; color: #4B5563;">Unable to load exam results.</p>
+                    <button onclick="document.getElementById('errorModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px;">OK</button>
+                </div>
+            </div>
+        `;
+        const existingError = document.getElementById('errorModal');
+        if (existingError) existingError.remove();
+        document.body.insertAdjacentHTML('beforeend', errorModal);
+    }
+}
+
+showProfessionalTranscript() {
+    const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
+    if (completedReleased.length === 0) {
+        // Small popup instead of alert
+        const noResultsModal = `
+            <div id="noResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
+                    <div style="font-size: 36px;">📋</div>
+                    <p style="margin: 10px 0; font-size: 13px; color: #4B5563;">No released results available for transcript yet.</p>
+                    <button onclick="document.getElementById('noResultsModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">OK</button>
+                </div>
+            </div>
+        `;
+        const existing = document.getElementById('noResultsModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', noResultsModal);
+        return;
     }
     
+    const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
+    let gradeSummary = '';
+    const distinctionCount = completedReleased.filter(e => e.totalPercentage >= 85).length;
+    const creditCount = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+    const passCount = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+    
+    // Transcript modal
+    const transcriptModal = `
+        <div id="transcriptModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 16px; max-width: 340px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #4C1D95, #6D28D9); padding: 16px; text-align: center;">
+                    <div style="font-size: 28px;">📜</div>
+                    <h3 style="margin: 4px 0 0 0; font-size: 16px; color: white; font-weight: 600;">Academic Transcript</h3>
+                </div>
+                <div style="padding: 16px;">
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <div style="font-size: 28px; font-weight: 700; color: #4C1D95;">${avg.toFixed(1)}%</div>
+                        <div style="font-size: 11px; color: #6B7280;">Overall Average</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-bottom: 16px;">
+                        <div style="text-align: center;">
+                            <div style="font-weight: 700; font-size: 18px; color: #065F46;">${distinctionCount}</div>
+                            <div style="font-size: 10px; color: #6B7280;">Distinction</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: 700; font-size: 18px; color: #1E40AF;">${creditCount}</div>
+                            <div style="font-size: 10px; color: #6B7280;">Credit</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: 700; font-size: 18px; color: #92400E;">${passCount}</div>
+                            <div style="font-size: 10px; color: #6B7280;">Pass</div>
+                        </div>
+                    </div>
+                    <div style="background: #F9FAFB; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: #6B7280; text-align: center;">Completed Exams: ${completedReleased.length}</div>
+                    </div>
+                    <p style="font-size: 10px; color: #9CA3AF; text-align: center; margin: 0;">Contact registrar for official transcript</p>
+                </div>
+                <button onclick="document.getElementById('transcriptModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('transcriptModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', transcriptModal);
+    
+    // Close when clicking outside
+    document.getElementById('transcriptModal').addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+    });
+}
     // Initialize the module
     function initializeExamsModule() {
         if (document.readyState === 'loading') {
