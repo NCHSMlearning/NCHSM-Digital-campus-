@@ -10739,7 +10739,180 @@ function calculateNursingGrade(score) {
     if (score >= 35) return 'D';
     return 'E';
 }
+// ============================================
+// COMPLETE NURSING SCHOOL SYSTEM MODULE
+// With Publish/Unpublish Functionality
+// ============================================
 
+// ========== PUBLISH FUNCTIONS ==========
+
+// Toggle publish status for internal mark
+window.togglePublishInternalMark = async function(studentId, subjectName, currentStatus) {
+    const block = document.getElementById('ns_block_select').value;
+    
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'HIDE' : 'PUBLISH'} this student's marks?`)) return;
+    
+    showLoading(`${currentStatus ? 'Unpublishing' : 'Publishing'}...`);
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({ 
+                published: !currentStatus,
+                published_at: !currentStatus ? new Date().toISOString() : null,
+                published_by: currentUser?.username || 'Admin'
+            })
+            .eq('admission_number', studentId)
+            .eq('block', block)
+            .eq('subject_name', subjectName);
+        
+        if (error) throw error;
+        
+        showNotification(`Marks ${!currentStatus ? 'published' : 'hidden'}!`, false);
+        await loadInternalMarks();
+        
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, true);
+    } finally {
+        hideLoading();
+    }
+};
+
+// Bulk publish all internal marks for current subject
+window.bulkPublishInternalMarks = async function() {
+    const block = document.getElementById('ns_block_select').value;
+    const subject = document.getElementById('ns_subject_select').value;
+    const studentCount = document.querySelectorAll('.internal-cat1').length;
+    
+    if (!confirm(`Publish ALL marks for "${subject}" (${studentCount} students)?`)) return;
+    
+    showLoading(`Publishing ${studentCount} records...`);
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({ 
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: currentUser?.username || 'Admin'
+            })
+            .eq('block', block)
+            .eq('subject_name', subject);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ Published ${studentCount} records!`, false);
+        await loadInternalMarks();
+        
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, true);
+    } finally {
+        hideLoading();
+    }
+};
+
+// Bulk unpublish all internal marks
+window.bulkUnpublishInternalMarks = async function() {
+    const block = document.getElementById('ns_block_select').value;
+    const subject = document.getElementById('ns_subject_select').value;
+    const studentCount = document.querySelectorAll('.internal-cat1').length;
+    
+    if (!confirm(`HIDE ALL marks for "${subject}" (${studentCount} students)?`)) return;
+    
+    showLoading(`Hiding ${studentCount} records...`);
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({ 
+                published: false,
+                published_at: null,
+                published_by: currentUser?.username || 'Admin'
+            })
+            .eq('block', block)
+            .eq('subject_name', subject);
+        
+        if (error) throw error;
+        
+        showNotification(`🔒 Hidden ${studentCount} records!`, false);
+        await loadInternalMarks();
+        
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, true);
+    } finally {
+        hideLoading();
+    }
+};
+
+// Toggle publish for NCK mark
+window.togglePublishNCKMark = async function(idx) {
+    const student = currentNCKStudentsList[idx];
+    const sheetName = document.getElementById('ns_nck_sheet').value;
+    const block = document.getElementById('ns_nck_block').value;
+    
+    const publishSpan = document.getElementById(`nck_publish_status_${idx}`);
+    const currentStatus = publishSpan?.innerText.includes('Published');
+    
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'HIDE' : 'PUBLISH'} NCK marks for ${student?.full_name}?`)) return;
+    
+    showLoading(`${currentStatus ? 'Hiding' : 'Publishing'}...`);
+    
+    try {
+        const { error } = await sb
+            .from('nck_marks')
+            .update({ 
+                published: !currentStatus,
+                published_at: !currentStatus ? new Date().toISOString() : null,
+                published_by: currentUser?.username || 'Admin'
+            })
+            .eq('admission_number', student.student_id)
+            .eq('block', block)
+            .eq('subject_name', sheetName);
+        
+        if (error) throw error;
+        
+        showNotification(`NCK marks ${!currentStatus ? 'published' : 'hidden'}!`, false);
+        await loadNCKMarks();
+        
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, true);
+    } finally {
+        hideLoading();
+    }
+};
+
+// Bulk publish all NCK marks
+window.bulkPublishAllNCKMarks = async function() {
+    const sheetName = document.getElementById('ns_nck_sheet').value;
+    const block = document.getElementById('ns_nck_block').value;
+    const studentCount = currentNCKStudentsList?.length || 0;
+    
+    if (!confirm(`PUBLISH ALL NCK marks for "${sheetName}" (${studentCount} students)?`)) return;
+    
+    showLoading(`Publishing ${studentCount} records...`);
+    
+    try {
+        const { error } = await sb
+            .from('nck_marks')
+            .update({ 
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: currentUser?.username || 'Admin'
+            })
+            .eq('block', block)
+            .eq('subject_name', sheetName);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ Published ${studentCount} NCK records!`, false);
+        await loadNCKMarks();
+        
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, true);
+    } finally {
+        hideLoading();
+    }
+};
 // ============================================
 // TAB ACTIVATION HANDLER
 // ============================================
