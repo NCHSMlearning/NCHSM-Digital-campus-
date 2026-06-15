@@ -350,7 +350,28 @@ async function loadExams(showLoading = true) {
             .select('*')
             .not('online_link', 'is', null);
         
-        const filteredExams = filterExamsByStudent(exams || []);
+        // FIXED: Filter using both block and block_term
+        const filteredExams = (exams || []).filter(exam => {
+            if (!exam.online_link && !exam.exam_link) return false;
+            
+            let programMatch = true;
+            if (exam.program_type && exam.program_type !== 'General') {
+                programMatch = exam.program_type === studentProfile?.program;
+            }
+            
+            let blockMatch = true;
+            if (studentProfile?.block) {
+                const examBlock = exam.block_term || exam.block;
+                blockMatch = examBlock === studentProfile.block;
+            }
+            
+            let intakeMatch = true;
+            if (exam.intake_year && exam.intake_year !== 'General') {
+                intakeMatch = exam.intake_year == studentProfile?.intake_year;
+            }
+            
+            return programMatch && blockMatch && intakeMatch;
+        });
         
         // Fetch grades
         const { data: grades } = await sb
@@ -380,11 +401,15 @@ async function loadExams(showLoading = true) {
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
             
+            // FIXED: Handle null exam_name
+            const examDisplayName = exam.exam_name || exam.title || 'Exam';
+            const safeExamName = examDisplayName.replace(/'/g, "\\'");
+            
             let statusBadge, actionButton;
             
             if (!hasGrade) {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
+                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
             } else if (isReleased && hasFinalStatus) {
                 statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
@@ -393,7 +418,7 @@ async function loadExams(showLoading = true) {
                 actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
             } else if (grade?.result_status === 'Scheduled') {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
+                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
             } else {
                 statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
                 actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
@@ -412,7 +437,7 @@ async function loadExams(showLoading = true) {
             container.innerHTML += `
                 <div class="exam-card">
                     <div class="exam-header">
-                        <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                        <div class="exam-title">${examDisplayName} ${statusBadge}</div>
                     </div>
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
@@ -434,7 +459,6 @@ async function loadExams(showLoading = true) {
     }
     isLoading = false;
 }
-
 async function viewResult(examId) {
     const { data: grade } = await sb
         .from('exam_grades')
