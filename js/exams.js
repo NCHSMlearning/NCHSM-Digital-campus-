@@ -562,7 +562,8 @@
                 if (!examGroups.has(groupKey)) {
                     examGroups.set(groupKey, {
                         id: exam.id,
-                        exam_name: exam.exam_name || exam.title || 'Untitled Exam',
+                       exam_name: exam.exam_name || exam.title || 'Untitled Exam',
+title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                         exam_type: exam.exam_type,
                         intake_year: exam.intake_year,
                         program_type: exam.program_type,
@@ -898,7 +899,7 @@
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
-                            <strong>${this.escapeHtml(exam.exam_name)}</strong>
+                            <strong>${this.escapeHtml(exam.exam_name || exam.title || 'Assessment')}</strong>
                             <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
@@ -952,7 +953,7 @@
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
-                            <strong>${this.escapeHtml(exam.exam_name)}</strong>
+                          <strong>${this.escapeHtml(exam.exam_name || exam.title || 'Assessment')}</strong>
                             <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
@@ -1098,7 +1099,7 @@
                             <div style="padding: 16px;">
                                 <div style="margin-bottom: 12px;">
                                     <div style="font-size: 11px; color: #6B7280; text-transform: uppercase;">Exam</div>
-                                    <div style="font-weight: 600; font-size: 14px;">${this.escapeHtml(exam?.exam_name || 'N/A')}</div>
+                                    <div style="font-size: 14px;">${this.escapeHtml(exam?.exam_name || exam?.title || 'N/A')}</div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #F3F4F6;">
                                     <span style="font-size: 12px; color: #6B7280;">Score:</span>
