@@ -481,9 +481,8 @@
                 });
                 
                 let query = supabase
-                    .from('exams_with_courses')
-                    .select('*')
-                    .order('exam_date', { ascending: true });
+    .from('exams')
+    .select('*, course:course_id(course_name)')
                 
                 query = query.eq('intake_year', this.intakeYear);
                 
@@ -496,7 +495,7 @@
                 if (this.isTVETStudent && this.userTerm) {
                     query = query.eq('block_term', this.userTerm);
                 } else if (!this.isTVETStudent && this.userBlock) {
-                    query = query.eq('block_term', this.userBlock);
+                    query = query.eq('block', this.userBlock);
                 }
                 
                 let { data: exams, error: examsError } = await query;
