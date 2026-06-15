@@ -282,36 +282,38 @@ class DashboardModule {
         }
     }
     
-    async updateExamsMetric() {
-        let upcomingText = 'No upcoming exams';
+   async updateExamsMetric() {
+    let upcomingText = 'No upcoming exams';
+    
+    try {
+        if (!this.userProfile) return;
         
-        try {
-            if (!this.userProfile) return;
-            
-            const today = new Date().toISOString().split('T')[0];
-            
-            const { data: exams, error } = await this.sb
-                .from('exams_with_courses')
-                .select('exam_name, exam_date')
-                .eq('program_type', this.userProfile.program)
-                .gte('exam_date', today)
-                .order('exam_date', { ascending: true })
-                .limit(1);
-            
-            if (error) throw error;
-            
-            if (exams && exams.length > 0) {
-                const examDate = new Date(exams[0].exam_date).toLocaleDateString();
-                upcomingText = `${exams[0].exam_name} - ${examDate}`;
-            }
-            
-        } catch (error) {
-            console.error('Exams error:', error);
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data: exams, error } = await this.sb
+            .from('exams')
+            .select('title, exam_name, exam_date')
+            .eq('program_type', this.userProfile.program)
+            .eq('block', this.userProfile.block)
+            .gte('exam_date', today)
+            .order('exam_date', { ascending: true })
+            .limit(1);
+        
+        if (error) throw error;
+        
+        if (exams && exams.length > 0) {
+            const examDate = new Date(exams[0].exam_date).toLocaleDateString();
+            const examTitle = exams[0].exam_name || exams[0].title;
+            upcomingText = `${examTitle} - ${examDate}`;
         }
         
-        this.metrics.exams = upcomingText;
-        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
+    } catch (error) {
+        console.error('Exams error:', error);
     }
+    
+    this.metrics.exams = upcomingText;
+    if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
+}
     
     async loadAnnouncement() {
         if (!this.userProfile || !this.sb) return;
