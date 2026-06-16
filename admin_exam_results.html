@@ -856,50 +856,66 @@
     };
     
     window.confirmReleaseResults = async function() { 
-        const ids = Array.from(selectedStudentIds); 
-        if (ids.length === 0) {
-            alert('Please select at least one student to release results.');
-            return; 
+    const ids = Array.from(selectedStudentIds); 
+    if (ids.length === 0) {
+        alert('Please select at least one student to release results.');
+        return; 
+    }
+    
+    const examId = document.getElementById('releaseExamFilter').value; 
+    if (!examId) return; 
+    
+    if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return; 
+    
+    try {
+        const releaseRecords = []; 
+        const gradeIdsToUpdate = [];
+        
+        for (const gid of ids) { 
+            const r = currentReleaseResults.find(rr => String(rr.id) === String(gid)); 
+            if (r) {
+                releaseRecords.push({
+                    result_id: r.id, 
+                    student_id: r.student_id, 
+                    exam_id: parseInt(examId), 
+                    released_at: new Date().toISOString(), 
+                    released_by: 'admin'
+                });
+                gradeIdsToUpdate.push(r.id);
+            }
+        } 
+        
+        if (releaseRecords.length === 0) {
+            alert('No valid records to release');
+            return;
         }
         
-        const examId = document.getElementById('releaseExamFilter').value; 
-        if (!examId) return; 
-        
-        if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return; 
-        
-        try {
-            const releaseRecords = []; 
-            for (const gid of ids) { 
-                const r = currentReleaseResults.find(rr => String(rr.id) === String(gid)); 
-                if (r) {
-                    releaseRecords.push({
-                        result_id: r.id, 
-                        student_id: r.student_id, 
-                        exam_id: parseInt(examId), 
-                        released_at: new Date().toISOString(), 
-                        released_by: 'admin'
-                    }); 
-                }
-            } 
-            
-            if (releaseRecords.length === 0) {
-                alert('No valid records to release');
-                return;
-            }
-            
-            const { error } = await sb.from('released_exam_results').insert(releaseRecords); 
-            if (error) { 
-                alert('Error: ' + error.message); 
-            } else { 
-                alert(`✅ Released ${releaseRecords.length} result(s)!`); 
-                closeReleaseModal(); 
-                loadStudentsWithResults(); 
-                loadAllExams(); 
-            }
-        } catch (err) {
-            alert('Error: ' + err.message);
+        // 1. Insert release records
+        const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords); 
+        if (releaseError) { 
+            alert('Error: ' + releaseError.message); 
+            return;
         }
-    };
+        
+        // 2. UPDATE the grade status to PASS (FIX)
+        for (const gradeId of gradeIdsToUpdate) {
+            await sb.from('exam_grades')
+                .update({ 
+                    result_status: 'PASS',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', gradeId);
+        }
+        
+        alert(`✅ Released ${releaseRecords.length} result(s)!`); 
+        closeReleaseModal(); 
+        loadStudentsWithResults(); 
+        loadAllExams(); 
+        
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+};
     
   async function updateStats() {
     const totalStudents = allStudents.length;
