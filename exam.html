@@ -254,6 +254,7 @@ function setupFullscreenMonitoring() {
 }
 
 // ========== GRADE CALCULATION - SAVES TO DATABASE ==========
+// ========== GRADE CALCULATION - SAVES TO DATABASE (NO AUTO-RELEASE) ==========
 async function calculateAndSaveGrade() {
     console.log('📊 Calculating and saving grade...');
     
@@ -297,39 +298,18 @@ async function calculateAndSaveGrade() {
         await sb.from('exam_grades').insert(answerRecords);
     }
     
-    // Save summary record
+    // Save summary record with PENDING_REVIEW status
     await sb.from('exam_grades').insert({
         student_id: studentId,
         exam_id: EXAM_ID,
         question_id: '00000000-0000-0000-0000-000000000000',
         marks: totalEarned,
         total_score: percentage,
-        result_status: resultStatus,
+        result_status: 'PENDING_REVIEW',  // ← FIXED: Always PENDING_REVIEW
         graded_at: new Date().toISOString()
     });
     
-    // Auto-release if exam is published
-    const { data: exam } = await sb.from('exams').select('status').eq('id', EXAM_ID).single();
-    if (exam?.status === 'published') {
-        const { data: summary } = await sb
-            .from('exam_grades')
-            .select('id')
-            .eq('student_id', studentId)
-            .eq('exam_id', EXAM_ID)
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .single();
-        
-        if (summary) {
-            await sb.from('released_exam_results').upsert({
-                result_id: summary.id,
-                student_id: studentId,
-                exam_id: EXAM_ID,
-                released_at: new Date().toISOString(),
-                released_by: 'auto'
-            }, { onConflict: 'result_id' });
-        }
-    }
-    
+ 
     return true;
 }
 
