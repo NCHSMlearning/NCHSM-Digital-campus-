@@ -428,30 +428,116 @@
     
     window.closeAssignExamModal = function() { document.getElementById('assignExamModal').style.display = 'none'; };
     
-    async function loadProctoringLogs() {
-        const loadingDiv = document.getElementById('proctoringLoading');
-        const table = document.getElementById('proctoringTable');
-        loadingDiv.style.display = 'block'; table.style.display = 'none';
+   async function loadProctoringLogs() {
+    const loadingDiv = document.getElementById('proctoringLoading');
+    const table = document.getElementById('proctoringTable');
+    loadingDiv.style.display = 'block'; table.style.display = 'none';
+    
+    try {
         let query = sb.from('exam_proctoring_logs').select('*').order('timestamp', { ascending: false }).limit(500);
         const { data: logs, error } = await query;
-        if (error) { console.error(error); loadingDiv.innerHTML = 'Error loading logs'; return; }
-        const studentIds = [...new Set(logs.map(l => l.student_id).filter(Boolean))];
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, program').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        proctoringLogs = logs.map(l => ({ ...l, student_profile: profileMap[l.student_id] || null }));
+        
+        if (error) {
+            console.error(error);
+            loadingDiv.innerHTML = 'Error loading logs';
+            return;
+        }
+        
+        // Get ALL students for mapping (use both user_id and student_id)
+        const { data: allStudents } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, program, email');
+        
+        // Create a map by user_id AND student_id
+        const studentMap = {};
+        allStudents?.forEach(s => {
+            studentMap[s.user_id] = s;
+            if (s.student_id) studentMap[s.student_id] = s;
+        });
+        
+        // Map each log to the student profile
+        proctoringLogs = logs.map(log => {
+            let student = studentMap[log.student_id] || null;
+            if (!student) {
+                // Try to find by student_id if the log stores it differently
+                student = studentMap[log.student_id] || null;
+            }
+            return { ...log, student_profile: student };
+        });
+        
         displayProctoringLogs();
-        loadingDiv.style.display = 'none'; table.style.display = 'table';
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
         updateStats();
+        
+    } catch(error) {
+        console.error('Error loading proctoring logs:', error);
+        loadingDiv.innerHTML = 'Error loading logs: ' + error.message;
     }
+}
     
     function displayProctoringLogs() {
-        const start = (currentPage.proctoring - 1) * itemsPerPage;
-        const page = proctoringLogs.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('proctoringBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; return; }
-        tbody.innerHTML = page.map(log => `<tr style="${log.event_type === 'multiple_faces_detected' ? 'background:#FEF2F2;' : ''}"><td>${new Date(log.timestamp).toLocaleString()}</td><td><span class="student-id-badge">${log.student_profile?.student_id || log.student_id?.substring(0,8)}</span></td><td><strong>${log.student_profile?.full_name || 'Unknown'}</strong><br><small>${log.student_profile?.program || ''}</small></td><td>${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</td><td><span class="${log.event_type === 'multiple_faces_detected' ? 'status-critical' : 'status-pending'}">${log.event_type}</span></td><td>${log.details || '-'}</td><td><span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></td><td><button class="action-btn btn-view" onclick="viewAlertDetails(${log.id})">View</button></td></tr>`).join('');
-        renderPagination('proctoring', proctoringLogs.length);
+    const start = (currentPage.proctoring - 1) * itemsPerPage;
+    const page = proctoringLogs.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('proctoringBody');
+    
+    if (page.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>';
+        return;
     }
+    
+    tbody.innerHTML = page.map(log => {
+        const student = log.student_profile || {};
+        const studentName = student.full_name || 'Unknown';
+        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
+        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        
+        // Determine severity class
+        let severityClass = 'status-pending';
+        let severityText = log.severity || 'info';
+        if (severityText === 'critical') severityClass = 'status-critical';
+        else if (severityText === 'warning') severityClass = 'status-warning';
+        
+        // Alert type icon
+        let alertIcon = '📹';
+        if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
+        else if (log.event_type === 'face_missing') alertIcon = '😞';
+        else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
+        else if (log.event_type === 'exam_submitted') alertIcon = '✅';
+        else if (log.event_type === 'exam_started') alertIcon = '▶️';
+        
+        // Check if camera snapshot exists
+        const hasSnapshot = log.snapshot_url || log.camera_snapshot;
+        const snapshotHtml = hasSnapshot 
+            ? `<a href="${log.snapshot_url || log.camera_snapshot}" target="_blank" class="btn-view" style="padding: 2px 8px; font-size: 0.6rem;">📸 View</a>` 
+            : '';
+        
+        return `
+            <tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}">
+                <td style="padding: 8px; font-size: 0.75rem;">${new Date(log.timestamp).toLocaleString()}</td>
+                <td style="padding: 8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
+                <td style="padding: 8px;">
+                    <strong>${studentName}</strong>
+                    <br><small style="color: #6b7280;">${student.program || ''}</small>
+                </td>
+                <td style="padding: 8px;">${examName}</td>
+                <td style="padding: 8px;">
+                    <span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">
+                        ${alertIcon} ${log.event_type}
+                    </span>
+                </td>
+                <td style="padding: 8px; font-size: 0.75rem;">${log.details || '-'}</td>
+                <td style="padding: 8px;"><span class="${severityClass}">${severityText}</span></td>
+                <td style="padding: 8px;">
+                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')">View</button>
+                    ${snapshotHtml}
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    renderPagination('proctoring', proctoringLogs.length);
+}
     
     window.viewAlertDetails = async function(logId) {
         const log = proctoringLogs.find(l => l.id === logId);
@@ -460,7 +546,67 @@
         document.getElementById('modalContent').innerHTML = `<div style="background:${log.event_type==='multiple_faces_detected'?'#FEE2E2':'#F0FDF4'};padding:20px;border-radius:16px;"><p><strong>Student:</strong> ${log.student_profile?.full_name} (${log.student_profile?.student_id})</p><p><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</p><p><strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p><p><strong>Details:</strong> ${log.details}</p><p><strong>Severity:</strong> ${log.severity}</p></div>`;
         document.getElementById('studentModal').style.display = 'flex';
     };
-    
+    // ========== CAMERA SNAPSHOT CAPTURE ==========
+async function captureCameraSnapshot() {
+    try {
+        const video = document.getElementById('face-video');
+        if (!video || !video.srcObject) return null;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Upload to storage
+        const timestamp = Date.now();
+        const filePath = `proctoring_snapshots/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        
+        const { data, error } = await sb.storage
+            .from('proctoring')
+            .upload(filePath, blob, { contentType: 'image/jpeg' });
+        
+        if (!error && data) {
+            const { data: { publicUrl } } = sb.storage
+                .from('proctoring')
+                .getPublicUrl(filePath);
+            return publicUrl;
+        }
+        return null;
+    } catch (error) {
+        console.error('Snapshot error:', error);
+        return null;
+    }
+}
+
+// ========== LOG PROCTORING EVENT WITH SNAPSHOT ==========
+async function logProctoringEvent(eventType, details, severity = 'info') {
+    try {
+        let snapshotUrl = null;
+        // Capture snapshot for violations
+        if (['multiple_faces_detected', 'face_missing', 'tab_switch'].includes(eventType)) {
+            snapshotUrl = await captureCameraSnapshot();
+        }
+        
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: EXAM_ID,
+            event_type: eventType,
+            details: details,
+            severity: severity,
+            snapshot_url: snapshotUrl,
+            ip_address: await getIPAddress(),
+            device_info: navigator.userAgent,
+            timestamp: new Date().toISOString()
+        });
+        console.log('📹 Proctoring event logged:', eventType);
+    } catch (error) {
+        console.error('Error logging event:', error);
+    }
+}
     async function setupRealtimeNotifications() {
         const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
         unreadCount = existingLogs?.length || 0;
