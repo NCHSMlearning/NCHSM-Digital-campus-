@@ -456,7 +456,7 @@
             }
         }
         
-        // ==================== MAIN LOAD EXAMS FUNCTION ====================
+        // ==================== OPTIMIZED MAIN LOAD EXAMS FUNCTION ====================
         async loadExams() {
             console.log('📥 Loading exams with consolidated view...');
             this.showLoading();
@@ -480,59 +480,50 @@
                     userId: this.userId
                 });
                 
-                let query = supabase
-    .from('exams')
-    .select('*, course:course_id(course_name)')
+                // BATCH LOAD: Get all data in parallel for speed
+                const [examsResult, gradesResult, releasedResult] = await Promise.all([
+                    // 1. Get exams
+                    supabase
+                        .from('exams')
+                        .select('*, course:course_id(course_name)')
+                        .eq('intake_year', this.intakeYear)
+                        .eq('program_type', this.programType)
+                        .eq('block', this.userBlock)
+                        .order('exam_date', { ascending: true }),
+                    
+                    // 2. Get grades for this student
+                    supabase
+                        .from('exam_grades')
+                        .select('*')
+                        .eq('student_id', this.userId)
+                        .eq('question_id', '00000000-0000-0000-0000-000000000000'),
+                    
+                    // 3. Get released results
+                    supabase
+                        .from('released_exam_results')
+                        .select('result_id')
+                ]);
                 
-                query = query.eq('intake_year', this.intakeYear);
-                
-                if (this.isTVETStudent) {
-                    query = query.eq('program_type', 'TVET');
-                } else {
-                    query = query.eq('program_type', 'KRCHN');
-                }
-                
-                if (this.isTVETStudent && this.userTerm) {
-                    query = query.eq('block_term', this.userTerm);
-                } else if (!this.isTVETStudent && this.userBlock) {
-                    query = query.eq('block', this.userBlock);
-                }
-                
-                let { data: exams, error: examsError } = await query;
+                const { data: exams, error: examsError } = examsResult;
                 if (examsError) throw examsError;
                 
                 console.log(`📊 Found ${exams?.length || 0} exams from local DB`);
                 
-                let grades = [];
-                if (this.userId) {
-                    const { data: gradesData, error: gradesError } = await supabase
-                        .from('exam_grades')
-                        .select('*')
-                        .eq('student_id', this.userId)
-                        .eq('question_id', '00000000-0000-0000-0000-000000000000');
-                    
-                    if (!gradesError && gradesData) {
-                        grades = gradesData;
-                        console.log(`📊 Found ${grades.length} grade records`);
-                    }
-                }
+                const grades = gradesResult.data || [];
+                console.log(`📊 Found ${grades.length} grade records`);
                 
-                // Load released results
                 this.releasedResults.clear();
-                const { data: released, error: releasedError } = await supabase
-                    .from('released_exam_results')
-                    .select('result_id');
-                
-                if (!releasedError && released && released.length > 0) {
-                    this.releasedResults = new Set(released.map(r => String(r.result_id)));
+                if (releasedResult.data && releasedResult.data.length > 0) {
+                    this.releasedResults = new Set(releasedResult.data.map(r => String(r.result_id)));
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
                 
+                // Process exams data
                 this.processExamsData(exams || [], grades);
                 
-                // Load NCK marks from Nursing School System
-                await this.loadNCKMarksFromSystem();
-                await this.loadNCKClinicalScore();
+                // Load NCK marks in background (don't block)
+                this.loadNCKMarksFromSystem().catch(e => console.warn('NCK load:', e));
+                this.loadNCKClinicalScore().catch(e => console.warn('NCK score:', e));
                 
                 this.applyDataFilter();
                 
@@ -561,8 +552,8 @@
                 if (!examGroups.has(groupKey)) {
                     examGroups.set(groupKey, {
                         id: exam.id,
-                       exam_name: exam.exam_name || exam.title || 'Untitled Exam',
-title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
+                        exam_name: exam.exam_name || exam.title || 'Untitled Exam',
+                        title: exam.title || exam.exam_name || 'Untitled Exam',
                         exam_type: exam.exam_type,
                         intake_year: exam.intake_year,
                         program_type: exam.program_type,
@@ -576,7 +567,8 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                         course_levels: new Set(),
                         blocks: new Set(),
                         programs: new Set(),
-                        grade: null
+                        grade: null,
+                        status: exam.status
                     });
                 }
                 
@@ -678,21 +670,22 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                         timeRemainingMs = timeLeftMs;
                         
                     } else if (kenyaNow > examEndDateTime) {
-    // Check if admin has closed the exam
-    if (exam.status === 'Closed' || exam.status === 'Completed') {
-        examStatus = 'expired';
-        statusMessage = '🔒 Exam Closed by Admin';
-        canStart = false;
-    } else {
-        // Keep it available for auto-grading
-        examStatus = 'available';
-        statusMessage = '📋 Exam Available - Auto-Grading Active';
-        canStart = true;  // Allow student to take it
-    }
-}
+                        // Only mark as expired if admin has closed it
+                        if (group.status === 'Closed' || group.status === 'Completed') {
+                            examStatus = 'expired';
+                            statusMessage = '🔒 Exam Closed by Admin';
+                            canStart = false;
+                        } else {
+                            // Keep it available for auto-grading
+                            examStatus = 'available';
+                            statusMessage = '📋 Exam Available - Auto-Grading Active';
+                            canStart = true;
+                        }
+                    }
+                }
                 
                 // Check if student has already taken this exam
-                const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
+                const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || grade.result_status === 'PENDING_REVIEW');
                 const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
                                     (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
                 
@@ -759,21 +752,23 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                     buttonText = countdownText || 'Coming Soon';
                     isCompleted = false;
                 }
-                // EXPIRED EXAM (NOT TAKEN)
-               else if (examStatus === 'expired' && !hasTaken && exam.status === 'Completed') {
-    finalStatus = 'expired';
-    buttonText = 'Missed';
-    gradeText = 'Missed';
-    gradeClass = 'missed';
-} else if (examStatus === 'available' && !hasTaken) {
-    // Keep showing as available, not missed
-    finalStatus = 'available';
-    buttonText = 'Start Exam';
-    gradeText = 'Not Started';
-    gradeClass = 'pending';
-}
+                // EXPIRED EXAM (NOT TAKEN) - only when admin closed it
+                else if (examStatus === 'expired' && !hasTaken && group.status === 'Completed') {
+                    finalStatus = 'expired';
+                    buttonText = 'Missed';
+                    gradeText = 'Missed';
+                    gradeClass = 'missed';
+                    isCompleted = true;
+                } else if (examStatus === 'available' && !hasTaken) {
+                    // Keep showing as available, not missed
+                    finalStatus = 'available';
+                    buttonText = 'Start Exam';
+                    gradeText = 'Not Started';
+                    gradeClass = 'pending';
+                    isCompleted = false;
+                }
                 // NO LINK AVAILABLE
-                else if (!hasValidLink) {
+                else if (!hasValidLink && !hasTaken) {
                     finalStatus = 'no_link';
                     finalCanStart = false;
                     finalMessage = '⚠️ Link coming soon';
@@ -787,13 +782,16 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                 let finalDisplay = '--';
                 const marksOutOf = group.marks_out_of || 100;
                 
-                if (isCatExam) {
-                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                } else {
-                    if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                    if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                    if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
+                // Only show scores if released or pending release
+                if (isReleased || hasTaken) {
+                    if (isCatExam) {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                    } else {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                        if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
+                    }
                 }
                 
                 // For released results, show the total percentage in CAT columns
@@ -808,6 +806,7 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                     ...group,
                     id: group.id,
                     exam_name: group.exam_name,
+                    title: group.title,
                     exam_type: group.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
                     isCatExam: isCatExam,
                     isFinalExam: isFinalExam,
@@ -844,7 +843,8 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                     programIcon: group.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
                     programDisplay: combinedProgram,
                     course: combinedCourse,
-                    block_term: combinedBlock
+                    block_term: combinedBlock,
+                    status: group.status
                 };
             });
             
@@ -872,6 +872,7 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
             
             const html = activeExams.map(exam => {
                 const isCatExam = exam.isCatExam;
+                const examDisplayName = exam.exam_name || exam.title || 'Assessment';
                 let actionHtml = '';
                 let timeRemainingHtml = '';
                 
@@ -908,7 +909,7 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
-                            <strong>${this.escapeHtml(exam.exam_name || exam.title || 'Assessment')}</strong>
+                            <strong>${this.escapeHtml(examDisplayName)}</strong>
                             <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
@@ -958,11 +959,12 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                 const displayPercentage = exam.totalPercentage !== null ? `${percentage}%` : '--';
                 const displayGrade = exam.gradeText;
                 const displayClass = exam.gradeClass;
+                const examDisplayName = exam.exam_name || exam.title || 'Assessment';
                 
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
-                          <strong>${this.escapeHtml(exam.exam_name || exam.title || 'Assessment')}</strong>
+                            <strong>${this.escapeHtml(examDisplayName)}</strong>
                             <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
