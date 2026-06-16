@@ -140,21 +140,23 @@
         <h1><i class="fas fa-shield-alt"></i> NCHSM Exam Proctoring Center</h1>
         <p>Complete Exam Management | Create | Assign | Monitor | Publish | Reset by Email</p>
         <div class="admin-info">
-            <div class="user" id="adminName">Loading admin profile...</div>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="notification-bell" id="notificationBell">
-                    <div class="notification-icon"><i class="fas fa-bell"></i></div>
-                    <span class="notification-count" id="notificationCount">0</span>
-                    <div class="notification-panel" id="notificationPanel">
-                        <div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</div>
-                        <div class="notification-list" id="notificationList">Loading alerts...</div>
-                    </div>
-                </div>
-                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="user" id="adminName">Loading admin profile...</div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <!-- SOUND TOGGLE BUTTON - ADD THIS -->
+        <button id="soundToggleBtn" onclick="toggleSound()" style="background: #10B981; color: white; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+            🔊 Sound On
+        </button>
+        <div class="notification-bell" id="notificationBell">
+            <div class="notification-icon"><i class="fas fa-bell"></i></div>
+            <span class="notification-count" id="notificationCount">0</span>
+            <div class="notification-panel" id="notificationPanel">
+                <div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</div>
+                <div class="notification-list" id="notificationList">Loading alerts...</div>
             </div>
         </div>
+        <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </div>
-
+</div>
     <div class="tabs">
         <button class="tab-btn active" data-tab="students"><i class="fas fa-graduation-cap"></i> Students Results</button>
         <button class="tab-btn" data-tab="allStudents"><i class="fas fa-users"></i> All Students</button>
@@ -695,18 +697,118 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         console.error('Error logging event:', error);
     }
 }
-    async function setupRealtimeNotifications() {
-        const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
-        unreadCount = existingLogs?.length || 0;
-        document.getElementById('notificationCount').innerText = unreadCount;
-        notificationSubscription = sb.channel('proctoring-alerts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'exam_proctoring_logs' }, async (payload) => {
-            unreadCount++; document.getElementById('notificationCount').innerText = unreadCount;
-            await loadNotifications();
-            if (currentTab === 'proctoring') loadProctoringLogs();
-            updateStats();
-        }).subscribe();
-    }
+   async function setupRealtimeNotifications() {
+    const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
+    unreadCount = existingLogs?.length || 0;
+    document.getElementById('notificationCount').innerText = unreadCount;
     
+    notificationSubscription = sb.channel('proctoring-alerts').on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'exam_proctoring_logs' 
+    }, async (payload) => {
+        const newLog = payload.new;
+        
+        unreadCount++; 
+        document.getElementById('notificationCount').innerText = unreadCount;
+        
+        // ========== PLAY SOUND ==========
+        if (isSoundEnabled) {
+            const severity = newLog.severity || 'info';
+            playNotificationSound(severity);
+        }
+        
+        await loadNotifications();
+        if (currentTab === 'proctoring') loadProctoringLogs();
+        updateStats();
+    }).subscribe();
+}
+    // ========== SOUND NOTIFICATIONS ==========
+
+let isSoundEnabled = true;
+let audioContext = null;
+
+// Initialize audio context (must be called after user interaction)
+function initAudio() {
+    if (!audioContext) {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) {
+            console.warn('AudioContext not supported');
+        }
+    }
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    return audioContext;
+}
+
+// Play a beep sound
+function playBeepSound(freq = 800, duration = 200, volume = 0.3) {
+    try {
+        const ctx = initAudio();
+        if (!ctx) return;
+        
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+        gainNode.gain.value = volume;
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration/1000);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + duration/1000);
+    } catch(e) {
+        console.warn('Beep error:', e);
+    }
+}
+
+// Play notification sound based on severity
+function playNotificationSound(severity = 'info') {
+    if (!isSoundEnabled) return;
+    
+    const sounds = {
+        info: { freq: 800, duration: 150, volume: 0.2 },
+        warning: { freq: 600, duration: 250, volume: 0.4 },
+        critical: { freq: 1000, duration: 400, volume: 0.5 }
+    };
+    
+    const sound = sounds[severity] || sounds.info;
+    
+    if (severity === 'critical') {
+        playBeepSound(1000, 300, 0.5);
+        setTimeout(() => playBeepSound(800, 300, 0.5), 350);
+    } else {
+        playBeepSound(sound.freq, sound.duration, sound.volume);
+    }
+}
+
+// Toggle sound on/off
+function toggleSound() {
+    isSoundEnabled = !isSoundEnabled;
+    const btn = document.getElementById('soundToggleBtn');
+    if (btn) {
+        btn.innerHTML = isSoundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+        btn.style.background = isSoundEnabled ? '#10B981' : '#6B7280';
+    }
+    showFeedback(isSoundEnabled ? '🔊 Sound enabled' : '🔇 Sound disabled', 'info');
+}
+
+// Initialize audio on any user interaction
+document.addEventListener('click', function() {
+    if (!audioContext) {
+        initAudio();
+    }
+}, { once: true });
+
+document.addEventListener('keydown', function() {
+    if (!audioContext) {
+        initAudio();
+    }
+}, { once: true });
     async function loadNotifications() {
         const { data: logs } = await sb.from('exam_proctoring_logs').select('*').eq('is_read', false).order('timestamp', { ascending: false }).limit(20);
         const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
@@ -785,7 +887,93 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         document.getElementById('confirmResetByEmailBtn').disabled = true;
         modal.style.display = 'flex';
     };
+    // ========== SOUND NOTIFICATIONS (Option 1 - Simple Beeps) ==========
+
+let isSoundEnabled = true;
+let audioContext = null;
+
+// Initialize audio context (must be called after user interaction)
+function initAudio() {
+    if (!audioContext) {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) {
+            console.warn('AudioContext not supported');
+        }
+    }
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    return audioContext;
+}
+
+// Play a beep sound
+function playBeepSound(freq = 800, duration = 200, volume = 0.3) {
+    try {
+        const ctx = initAudio();
+        if (!ctx) return;
+        
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+        gainNode.gain.value = volume;
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration/1000);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + duration/1000);
+    } catch(e) {
+        console.warn('Beep error:', e);
+    }
+}
+
+// Play notification sound based on severity
+function playNotificationSound(severity = 'info') {
+    if (!isSoundEnabled) return;
     
+    const sounds = {
+        info: { freq: 800, duration: 150, volume: 0.2 },      // Gentle single beep
+        warning: { freq: 600, duration: 250, volume: 0.4 },    // Lower, longer beep
+        critical: { freq: 1000, duration: 400, volume: 0.5 }  // Loud, urgent beep
+    };
+    
+    const sound = sounds[severity] || sounds.info;
+    
+    if (severity === 'critical') {
+        // Two loud beeps for critical alerts
+        playBeepSound(1000, 300, 0.5);
+        setTimeout(() => playBeepSound(800, 300, 0.5), 350);
+    } else {
+        playBeepSound(sound.freq, sound.duration, sound.volume);
+    }
+}
+
+// Toggle sound on/off
+function toggleSound() {
+    isSoundEnabled = !isSoundEnabled;
+    const btn = document.getElementById('soundToggleBtn');
+    if (btn) {
+        btn.innerHTML = isSoundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+        btn.style.background = isSoundEnabled ? '#10B981' : '#6B7280';
+    }
+    showFeedback(isSoundEnabled ? '🔊 Sound enabled' : '🔇 Sound disabled', 'info');
+}
+
+// Initialize audio on any user interaction
+document.addEventListener('click', function() {
+    if (!audioContext) {
+        initAudio();
+    }
+}, { once: true });
+
+document.addEventListener('keydown', function() {
+    if (!audioContext) {
+        initAudio();
+    }
+}, { once: true });
     async function loadExamsForResetDropdown() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('exam_name');
         const select = document.getElementById('resetExamSelect');
