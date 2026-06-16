@@ -678,11 +678,18 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                         timeRemainingMs = timeLeftMs;
                         
                     } else if (kenyaNow > examEndDateTime) {
-                        examStatus = 'expired';
-                        statusMessage = '🔒 Exam Closed';
-                        canStart = false;
-                    }
-                }
+    // Check if admin has closed the exam
+    if (exam.status === 'Closed' || exam.status === 'Completed') {
+        examStatus = 'expired';
+        statusMessage = '🔒 Exam Closed by Admin';
+        canStart = false;
+    } else {
+        // Keep it available for auto-grading
+        examStatus = 'available';
+        statusMessage = '📋 Exam Available - Auto-Grading Active';
+        canStart = true;  // Allow student to take it
+    }
+}
                 
                 // Check if student has already taken this exam
                 const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
@@ -753,15 +760,18 @@ title: exam.title || exam.exam_name || 'Untitled Exam',  // Add this line
                     isCompleted = false;
                 }
                 // EXPIRED EXAM (NOT TAKEN)
-                else if (examStatus === 'expired' && !hasTaken) {
-                    finalStatus = 'expired';
-                    finalCanStart = false;
-                    finalMessage = '🔒 Exam Closed';
-                    buttonText = 'Missed';
-                    isCompleted = true;
-                    gradeText = 'Missed';
-                    gradeClass = 'missed';
-                }
+               else if (examStatus === 'expired' && !hasTaken && exam.status === 'Completed') {
+    finalStatus = 'expired';
+    buttonText = 'Missed';
+    gradeText = 'Missed';
+    gradeClass = 'missed';
+} else if (examStatus === 'available' && !hasTaken) {
+    // Keep showing as available, not missed
+    finalStatus = 'available';
+    buttonText = 'Start Exam';
+    gradeText = 'Not Started';
+    gradeClass = 'pending';
+}
                 // NO LINK AVAILABLE
                 else if (!hasValidLink) {
                     finalStatus = 'no_link';
