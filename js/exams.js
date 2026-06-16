@@ -684,7 +684,7 @@
                     }
                 }
                 
-                // Check if student has already taken this exam
+                // Check if student has already taken this exam 
                 const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || grade.result_status === 'PENDING_REVIEW');
                 const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
                                     (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
