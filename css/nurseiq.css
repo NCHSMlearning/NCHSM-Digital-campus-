@@ -2410,3 +2410,113 @@ body, input, button, select, textarea {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+/* ========== HORIZONTAL ACTION BUTTONS PANEL ========== */
+.action-buttons-panel-horizontal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    padding: 15px 0;
+    margin: 10px 0;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.action-btn-horizontal {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.action-btn-horizontal i {
+    font-size: 16px;
+}
+
+.action-btn-horizontal.primary-action-btn {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.action-btn-horizontal.primary-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+}
+
+.action-btn-horizontal.primary-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.action-btn-horizontal.secondary-action-btn {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.action-btn-horizontal.secondary-action-btn:hover {
+    background: #e5e7eb;
+    transform: translateY(-2px);
+}
+
+.action-btn-horizontal.warning-action-btn {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.action-btn-horizontal.warning-action-btn:hover {
+    background: #fde68a;
+    transform: translateY(-2px);
+}
+
+.action-btn-horizontal.warning-action-btn.marked {
+    background: #f59e0b;
+    color: white;
+}
+
+/* Mobile responsive for horizontal buttons */
+@media (max-width: 768px) {
+    .action-buttons-panel-horizontal {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        padding: 12px 0;
+    }
+    
+    .action-btn-horizontal {
+        padding: 8px 14px;
+        font-size: 13px;
+        min-width: auto;
+        flex: 1 1 auto;
+        max-width: 160px;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-buttons-panel-horizontal {
+        gap: 6px;
+        padding: 10px 0;
+    }
+    
+    .action-btn-horizontal {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-width: auto;
+        flex: 1 1 45%;
+        max-width: 140px;
+    }
+}
