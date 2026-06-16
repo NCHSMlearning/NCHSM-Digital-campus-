@@ -219,26 +219,7 @@ async function startCamera() {
     }
 }
 
-function showFullscreenExitWarning() {
-    if (fullscreenWarningActive) return;
-    fullscreenWarningActive = true;
-    const warningOverlay = document.getElementById('fullscreen-exit-warning');
-    const countdownEl = document.getElementById('exit-countdown');
-    let countdown = 5;
-    countdownEl.textContent = countdown;
-    warningOverlay.style.display = 'flex';
-    
-    countdownInterval = setInterval(() => {
-        countdown--;
-        countdownEl.textContent = countdown;
-        if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            warningOverlay.style.display = 'none';
-            fullscreenWarningActive = false;
-            executeSubmission();
-        }
-    }, 1000);
-}
+
 
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', function() {
@@ -252,8 +233,6 @@ function setupFullscreenMonitoring() {
         }
     });
 }
-
-// ========== GRADE CALCULATION - SAVES TO DATABASE ==========
 // ========== GRADE CALCULATION - SAVES TO DATABASE (NO AUTO-RELEASE) ==========
 async function calculateAndSaveGrade() {
     console.log('📊 Calculating and saving grade...');
@@ -370,7 +349,232 @@ async function executeSubmission() {
         window.location.href = 'exam_dashboard.html';
     }, 3500);
 }
+// ========== PROCTORING EVENT LOGGER ==========
+async function logProctoringEvent(eventType, details, severity = 'info') {
+    try {
+        console.log('📹 Logging proctoring event:', eventType, details);
+        
+        // Get IP address
+        let ipAddress = 'unknown';
+        try {
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            ipAddress = ipData.ip;
+        } catch(e) {
+            console.warn('Could not get IP:', e);
+        }
+        
+        // Capture snapshot for violations
+        let snapshotUrl = null;
+        if (['multiple_faces_detected', 'face_missing', 'tab_switch', 'fullscreen_exit_attempt'].includes(eventType)) {
+            snapshotUrl = await captureCameraSnapshot();
+        }
+        
+        const { data, error } = await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            event_type: eventType,
+            details: details,
+            severity: severity,
+            snapshot_url: snapshotUrl,
+            ip_address: ipAddress,
+            device_info: navigator.userAgent,
+            timestamp: new Date().toISOString()
+        });
+        
+        if (error) {
+            console.error('Error logging proctoring event:', error);
+        } else {
+            console.log('✅ Proctoring event logged:', eventType);
+            
+            // If critical, show visual warning
+            if (severity === 'critical') {
+                showProctoringAlert('⚠️ Proctoring Violation Detected!');
+            }
+        }
+    } catch (error) {
+        console.error('Error in logProctoringEvent:', error);
+    }
+}
 
+// ========== CAPTURE CAMERA SNAPSHOT ==========
+async function captureCameraSnapshot() {
+    try {
+        const video = document.getElementById('face-video');
+        if (!video || !video.srcObject || video.readyState < 2) {
+            console.warn('Video not ready for snapshot');
+            return null;
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Upload to storage
+        const timestamp = Date.now();
+        const filePath = `proctoring/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
+        
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        
+        const { data, error } = await sb.storage
+            .from('proctoring')
+            .upload(filePath, blob, { contentType: 'image/jpeg' });
+        
+        if (!error && data) {
+            const { data: { publicUrl } } = sb.storage
+                .from('proctoring')
+                .getPublicUrl(filePath);
+            console.log('📸 Snapshot captured:', publicUrl);
+            return publicUrl;
+        } else {
+            console.warn('Snapshot upload failed:', error);
+        }
+        return null;
+    } catch (error) {
+        console.error('Snapshot error:', error);
+        return null;
+    }
+}
+
+// ========== PROCTORING ALERT DISPLAY ==========
+function showProctoringAlert(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #DC2626;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+        animation: slideDown 0.3s ease;
+        text-align: center;
+        max-width: 90%;
+    `;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.style.opacity = '0';
+        alertDiv.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => alertDiv.remove(), 500);
+    }, 4000);
+}
+
+// ========== PROCTORING MONITORING ==========
+async function startProctoringMonitoring() {
+    console.log('🔍 Starting proctoring monitoring...');
+    
+    // Log exam start
+    await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
+    
+    // Tab visibility monitoring
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            logProctoringEvent('tab_switch', 'Student switched tabs or minimized window', 'warning');
+        }
+    });
+    
+    // Copy prevention
+    document.addEventListener('copy', function(e) {
+        e.preventDefault();
+        logProctoringEvent('copy_attempt', 'Student attempted to copy content', 'warning');
+    });
+    
+    document.addEventListener('paste', function(e) {
+        e.preventDefault();
+        logProctoringEvent('paste_attempt', 'Student attempted to paste content', 'warning');
+    });
+    
+    // Right click prevention
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        logProctoringEvent('right_click', 'Student attempted to right-click', 'warning');
+    });
+    
+    // Face detection monitoring (if face-api is loaded)
+    if (typeof faceapi !== 'undefined') {
+        try {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+            console.log('✅ Face detection loaded');
+            
+            setInterval(async () => {
+                try {
+                    const video = document.getElementById('face-video');
+                    if (!video || !video.srcObject) return;
+                    
+                    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+                    const statusEl = document.getElementById('face-status');
+                    
+                    if (detections) {
+                        statusEl.textContent = '✅ Face detected';
+                        statusEl.style.color = '#16A34A';
+                        document.getElementById('face-detection-overlay').className = 'face-status-good';
+                        
+                        // Check for multiple faces
+                        const allFaces = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+                        if (allFaces && allFaces.length > 1) {
+                            if (!window._lastMultipleFacesLog || Date.now() - window._lastMultipleFacesLog > 30000) {
+                                await logProctoringEvent('multiple_faces_detected', `Detected ${allFaces.length} faces in camera`, 'critical');
+                                window._lastMultipleFacesLog = Date.now();
+                            }
+                        }
+                    } else {
+                        statusEl.textContent = '⚠️ No face detected!';
+                        statusEl.style.color = '#DC2626';
+                        document.getElementById('face-detection-overlay').className = 'face-status-danger';
+                        
+                        if (!window._lastFaceLog || Date.now() - window._lastFaceLog > 30000) {
+                            await logProctoringEvent('face_missing', 'No face detected in camera', 'warning');
+                            window._lastFaceLog = Date.now();
+                        }
+                    }
+                } catch (faceError) {
+                    console.warn('Face detection error:', faceError);
+                }
+            }, 5000);
+        } catch (loadError) {
+            console.warn('Face detection models not loaded:', loadError);
+        }
+    } else {
+        console.warn('Face-api not available');
+    }
+}
+
+// ========== OVERRIDE FULLSCREEN EXIT WARNING ==========
+// Replace your existing showFullscreenExitWarning with this:
+function showFullscreenExitWarning() {
+    if (fullscreenWarningActive) return;
+    fullscreenWarningActive = true;
+    
+    // Log the violation
+    logProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode', 'critical');
+    
+    const warningOverlay = document.getElementById('fullscreen-exit-warning');
+    const countdownEl = document.getElementById('exit-countdown');
+    let countdown = 5;
+    countdownEl.textContent = countdown;
+    warningOverlay.style.display = 'flex';
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        countdownEl.textContent = countdown;
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            warningOverlay.style.display = 'none';
+            fullscreenWarningActive = false;
+            executeSubmission();
+        }
+    }, 1000);
+}
 // ========== EXAM FUNCTIONS ==========
 async function initExam() {
     await getStudentDetails();
@@ -388,7 +592,11 @@ async function initExam() {
     setupFullscreenMonitoring();
     
     document.getElementById('camera-permission-modal').style.display = 'flex';
-    document.getElementById('allow-camera-btn').onclick = () => startCamera();
+    document.getElementById('allow-camera-btn').onclick = async () => {
+        await startCamera();
+        // Start proctoring monitoring after camera is active
+        setTimeout(startProctoringMonitoring, 2000);
+    };
 }
 
 function renderQuestion(index = currentIndex) {
