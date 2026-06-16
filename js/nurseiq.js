@@ -1110,215 +1110,207 @@ class NurseIQModule {
         }
     }
     
-    displayInteractiveQuestions(courseName, questions) {
-        if (!this.studentQuestionBankContent) return;
-        
-        const courseColor = questions[0]?.courses?.color || '#4f46e5';
-        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
-        
-        let html = `
-            <div class="interactive-questions-container">
-                <div class="questions-header-bar">
-                    <div class="header-content">
-                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
-                            <i class="fas fa-arrow-left"></i> Back to Courses
-                        </button>
-                        
-                        <div class="header-course-info">
-                            <h2 class="course-name">${courseName}</h2>
-                            <p class="practice-mode">Interactive Q&A Practice Mode</p>
+   displayInteractiveQuestions(courseName, questions) {
+    if (!this.studentQuestionBankContent) return;
+    
+    const courseColor = questions[0]?.courses?.color || '#4f46e5';
+    const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
+    
+    let html = `
+        <div class="interactive-questions-container">
+            <div class="questions-header-bar">
+                <div class="header-content">
+                    <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Courses
+                    </button>
+                    
+                    <div class="header-course-info">
+                        <h2 class="course-name">${courseName}</h2>
+                        <p class="practice-mode">Interactive Q&A Practice Mode</p>
+                    </div>
+                    
+                    <div class="header-progress-stats">
+                        <div class="progress-stat-top">
+                            <div class="progress-label-top">Question</div>
+                            <div class="progress-value-top">
+                                <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
+                            </div>
+                        </div>
+                        <div class="progress-stat-top">
+                            <div class="progress-label-top">Answered</div>
+                            <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
+                        </div>
+                        <div class="progress-stat-top">
+                            <div class="progress-label-top">Correct</div>
+                            <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
+                        </div>
+                        <div class="progress-stat-top">
+                            <div class="progress-label-top">Accuracy</div>
+                            <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="questions-main-container">
+                <div class="question-panel">
+                    <div class="question-header">
+                        <div class="question-meta">
+                            <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
+                            <span class="question-type">Multiple Choice</span>
+                            <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
                         </div>
                         
-                        <div class="header-progress-stats">
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Question</div>
-                                <div class="progress-value-top">
-                                    <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
-                                </div>
+                        <div class="mini-navigation">
+                            <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="mini-dots" id="miniDotsContainer">
+                                ${this.generateMiniDots(questions.length)}
                             </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Answered</div>
-                                <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
+                            <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="question-card">
+                        <div class="question-text" id="questionText">Loading question...</div>
+                    </div>
+                    
+                    <div class="options-panel">
+                        <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
+                        <div id="optionsContainer" class="options-container-improved"></div>
+                    </div>
+                    
+                    <!-- ACTION BUTTONS - HORIZONTAL LAYOUT (ALL IN ONE ROW) -->
+                    <div class="action-buttons-panel-horizontal">
+                        <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn-horizontal primary-action-btn">
+                            <i class="fas fa-check-circle"></i> Check Answer
+                        </button>
+                        <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn-horizontal secondary-action-btn">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                        <button onclick="window.markForReview()" id="markBtn" class="action-btn-horizontal warning-action-btn">
+                            <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
+                        </button>
+                    </div>
+                    
+                    <div class="compact-navigation">
+                        <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        
+                        <div class="compact-progress">
+                            <div class="compact-progress-bar">
+                                <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
                             </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Correct</div>
-                                <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
+                            <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
+                        </div>
+                        
+                        <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                        
+                        <button onclick="window.finishPractice()" class="compact-nav-btn compact-nav-finish">
+                            <i class="fas fa-flag-checkered"></i> Finish
+                        </button>
+                    </div>
+                    
+                    <!-- Answer & Explanation Section -->
+                    <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
+                        <div class="answer-header">
+                            <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
+                            <button onclick="window.hideAnswer()" class="hide-answer-btn">
+                                <i class="fas fa-times"></i> Hide
+                            </button>
+                        </div>
+                        
+                        <div class="correct-answer-box">
+                            <div class="correct-answer-label">
+                                <i class="fas fa-check-circle"></i> Correct Answer:
                             </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Accuracy</div>
-                                <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
+                            <div class="correct-answer-text" id="correctAnswerText">Loading...</div>
+                        </div>
+                        
+                        <div class="explanation-box">
+                            <div class="explanation-label">
+                                <i class="fas fa-info-circle"></i> Explanation:
+                            </div>
+                            <div class="explanation-content">
+                                <div class="explanation-text" id="explanationText">Select an option and click "Check Answer" to see the explanation.</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="questions-main-container">
-                    <div class="question-panel">
-                        <div class="question-header">
-                            <div class="question-meta">
-                                <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
-                                <span class="question-type">Multiple Choice</span>
-                                <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
-                            </div>
-                            
-                            <div class="mini-navigation">
-                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <div class="mini-dots" id="miniDotsContainer">
-                                    ${this.generateMiniDots(questions.length)}
-                                </div>
-                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="question-card">
-                            <div class="question-text" id="questionText">Loading question...</div>
-                        </div>
-                        
-                        <div class="options-panel">
-                            <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
-                            <div id="optionsContainer" class="options-container-improved"></div>
-                        </div>
-                        
-                        <div class="action-buttons-panel">
-                            <div class="button-group-left">
-                                <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn primary-action-btn">
-                                    <i class="fas fa-check-circle"></i> Check Answer
-                                </button>
-                                <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn secondary-action-btn">
-                                    <i class="fas fa-redo"></i> Reset
-                                </button>
-                            </div>
-                            
-                            <div class="button-group-right">
-                                <button onclick="window.showAnswer()" id="showAnswerBtn" class="action-btn info-action-btn">
-                                    <i class="fas fa-lightbulb"></i> Show Answer
-                                </button>
-                                <button onclick="window.markForReview()" id="markBtn" class="action-btn warning-action-btn">
-                                    <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="compact-navigation">
-                            <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
-                                <i class="fas fa-chevron-left"></i> Previous
+                <div class="stats-panel">
+                    <div class="horizontal-nav-card">
+                        <h3 class="nav-title"><i class="fas fa-list-ol"></i> Questions Navigator</h3>
+                        <div class="horizontal-question-grid" id="questionGridContainer"></div>
+                        <div class="grid-controls">
+                            <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
+                                <i class="fas fa-chevron-left"></i>
                             </button>
-                            
-                            <div class="compact-progress">
-                                <div class="compact-progress-bar">
-                                    <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
-                                </div>
-                                <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
-                            </div>
-                            
-                            <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
-                                Next <i class="fas fa-chevron-right"></i>
+                            <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
+                                Jump to Question
                             </button>
-                            
-                            <button onclick="window.finishPractice()" class="compact-nav-btn compact-nav-finish">
-                                <i class="fas fa-flag-checkered"></i> Finish
+                            <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
+                                <i class="fas fa-chevron-right"></i>
                             </button>
-                        </div>
-                        
-                        <!-- Answer & Explanation Section - Stays Visible -->
-                        <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
-                            <div class="answer-header">
-                                <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
-                                <button onclick="window.hideAnswer()" class="hide-answer-btn">
-                                    <i class="fas fa-times"></i> Hide
-                                </button>
-                            </div>
-                            
-                            <div class="correct-answer-box">
-                                <div class="correct-answer-label">
-                                    <i class="fas fa-check-circle"></i> Correct Answer:
-                                </div>
-                                <div class="correct-answer-text" id="correctAnswerText">Loading...</div>
-                            </div>
-                            
-                            <div class="explanation-box">
-                                <div class="explanation-label">
-                                    <i class="fas fa-info-circle"></i> Explanation:
-                                </div>
-                                <div class="explanation-content">
-                                    <div class="explanation-text" id="explanationText">Select an option and click "Check Answer" to see the explanation.</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                     
-                    <div class="stats-panel">
-                        <div class="horizontal-nav-card">
-                            <h3 class="nav-title"><i class="fas fa-list-ol"></i> Questions Navigator</h3>
-                            <div class="horizontal-question-grid" id="questionGridContainer"></div>
-                            <div class="grid-controls">
-                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
-                                    Jump to Question
-                                </button>
-                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
+                    <div class="course-overview-card">
+                        <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
+                        <div class="overview-stats">
+                            <div class="overview-stat">
+                                <div class="overview-value">${userStats.completion}%</div>
+                                <div class="overview-label">Completion</div>
+                            </div>
+                            <div class="overview-stat">
+                                <div class="overview-value">${userStats.accuracy}%</div>
+                                <div class="overview-label">Accuracy</div>
+                            </div>
+                            <div class="overview-stat">
+                                <div class="overview-value">${userStats.answered}</div>
+                                <div class="overview-label">Answered</div>
+                            </div>
+                            <div class="overview-stat">
+                                <div class="overview-value">${questions.length}</div>
+                                <div class="overview-label">Total</div>
                             </div>
                         </div>
-                        
-                        <div class="course-overview-card">
-                            <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
-                            <div class="overview-stats">
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.completion}%</div>
-                                    <div class="overview-label">Completion</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.accuracy}%</div>
-                                    <div class="overview-label">Accuracy</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.answered}</div>
-                                    <div class="overview-label">Answered</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${questions.length}</div>
-                                    <div class="overview-label">Total</div>
-                                </div>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
-                            </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
                         </div>
-                        
-                        <div class="tips-card">
-                            <h3 class="tips-title"><i class="fas fa-graduation-cap"></i> Study Tips</h3>
-                            <ul class="tips-list">
-                                <li><i class="fas fa-check"></i> Read each question carefully</li>
-                                <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
-                                <li><i class="fas fa-check"></i> Mark difficult questions</li>
-                                <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
-                            </ul>
-                        </div>
+                    </div>
+                    
+                    <div class="tips-card">
+                        <h3 class="tips-title"><i class="fas fa-graduation-cap"></i> Study Tips</h3>
+                        <ul class="tips-list">
+                            <li><i class="fas fa-check"></i> Read each question carefully</li>
+                            <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
+                            <li><i class="fas fa-check"></i> Mark difficult questions</li>
+                            <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
+                        </ul>
                     </div>
                 </div>
             </div>
-        `;
-        
-        this.studentQuestionBankContent.innerHTML = html;
-        
-        setTimeout(() => {
-            this.loadCurrentInteractiveQuestion();
-            this.updateQuestionGrid();
-            this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats();
-            this.updateNavigationButtons();
-        }, 100);
-    }
+        </div>
+    `;
     
+    this.studentQuestionBankContent.innerHTML = html;
+    
+    setTimeout(() => {
+        this.loadCurrentInteractiveQuestion();
+        this.updateQuestionGrid();
+        this.updateProgressBar();
+        this.updateMiniDots();
+        this.updateTopProgressStats();
+        this.updateNavigationButtons();
+    }, 100);
+}
     loadCurrentInteractiveQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
