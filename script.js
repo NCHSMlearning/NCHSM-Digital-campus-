@@ -4111,6 +4111,7 @@ window.populateExamCourseSelects = populateExamCourseSelects;
 window.handleAddExam = handleAddExam;
 window.loadExams = loadExams;
 window.deleteExam = deleteExam;
+window.closeExam = closeExam;  
 window.openEditExamModal = openEditExamModal;
 window.saveEditedExam = saveEditedExam;
 window.openGradeModal = openGradeModal;
