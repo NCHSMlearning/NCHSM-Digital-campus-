@@ -887,93 +887,7 @@ document.addEventListener('keydown', function() {
         document.getElementById('confirmResetByEmailBtn').disabled = true;
         modal.style.display = 'flex';
     };
-    // ========== SOUND NOTIFICATIONS (Option 1 - Simple Beeps) ==========
-
-let isSoundEnabled = true;
-let audioContext = null;
-
-// Initialize audio context (must be called after user interaction)
-function initAudio() {
-    if (!audioContext) {
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch(e) {
-            console.warn('AudioContext not supported');
-        }
-    }
-    if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
-    }
-    return audioContext;
-}
-
-// Play a beep sound
-function playBeepSound(freq = 800, duration = 200, volume = 0.3) {
-    try {
-        const ctx = initAudio();
-        if (!ctx) return;
-        
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.frequency.value = freq;
-        oscillator.type = 'sine';
-        gainNode.gain.value = volume;
-        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration/1000);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + duration/1000);
-    } catch(e) {
-        console.warn('Beep error:', e);
-    }
-}
-
-// Play notification sound based on severity
-function playNotificationSound(severity = 'info') {
-    if (!isSoundEnabled) return;
     
-    const sounds = {
-        info: { freq: 800, duration: 150, volume: 0.2 },      // Gentle single beep
-        warning: { freq: 600, duration: 250, volume: 0.4 },    // Lower, longer beep
-        critical: { freq: 1000, duration: 400, volume: 0.5 }  // Loud, urgent beep
-    };
-    
-    const sound = sounds[severity] || sounds.info;
-    
-    if (severity === 'critical') {
-        // Two loud beeps for critical alerts
-        playBeepSound(1000, 300, 0.5);
-        setTimeout(() => playBeepSound(800, 300, 0.5), 350);
-    } else {
-        playBeepSound(sound.freq, sound.duration, sound.volume);
-    }
-}
-
-// Toggle sound on/off
-function toggleSound() {
-    isSoundEnabled = !isSoundEnabled;
-    const btn = document.getElementById('soundToggleBtn');
-    if (btn) {
-        btn.innerHTML = isSoundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
-        btn.style.background = isSoundEnabled ? '#10B981' : '#6B7280';
-    }
-    showFeedback(isSoundEnabled ? '🔊 Sound enabled' : '🔇 Sound disabled', 'info');
-}
-
-// Initialize audio on any user interaction
-document.addEventListener('click', function() {
-    if (!audioContext) {
-        initAudio();
-    }
-}, { once: true });
-
-document.addEventListener('keydown', function() {
-    if (!audioContext) {
-        initAudio();
-    }
-}, { once: true });
     async function loadExamsForResetDropdown() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('exam_name');
         const select = document.getElementById('resetExamSelect');
@@ -1368,6 +1282,69 @@ document.addEventListener('keydown', function() {
     
     document.addEventListener('DOMContentLoaded', function() { if(!checkAdminAuth()) return; document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); window.switchTab('students'); setupRealtimeNotifications(); });
 })();
+    // Make sound functions globally accessible
+window.toggleSound = function() {
+    // We need to access the isSoundEnabled from inside the IIFE
+    // Since it's not accessible, let's use a global version
+    if (typeof window._soundEnabled === 'undefined') {
+        window._soundEnabled = true;
+    }
+    window._soundEnabled = !window._soundEnabled;
+    const btn = document.getElementById('soundToggleBtn');
+    if (btn) {
+        btn.innerHTML = window._soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+        btn.style.background = window._soundEnabled ? '#10B981' : '#6B7280';
+    }
+    showFeedback(window._soundEnabled ? '🔊 Sound enabled' : '🔇 Sound disabled', 'info');
+};
+
+// Also override the internal isSoundEnabled check
+// Since we can't access the IIFE's variables, we need to use a global
+// Override playNotificationSound globally too
+window.playNotificationSound = function(severity) {
+    if (!window._soundEnabled) return;
+    // Use the beep function
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        
+        const sounds = {
+            info: { freq: 800, duration: 150, volume: 0.2 },
+            warning: { freq: 600, duration: 250, volume: 0.4 },
+            critical: { freq: 1000, duration: 400, volume: 0.5 }
+        };
+        const sound = sounds[severity] || sounds.info;
+        
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = sound.freq;
+        osc.type = 'sine';
+        gain.gain.value = sound.volume;
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + sound.duration/1000);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + sound.duration/1000);
+        
+        if (severity === 'critical') {
+            setTimeout(() => {
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.frequency.value = 800;
+                osc2.type = 'sine';
+                gain2.gain.value = 0.5;
+                gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                osc2.start(ctx.currentTime);
+                osc2.stop(ctx.currentTime + 0.3);
+            }, 350);
+        }
+    } catch(e) {}
+};
+
+// Initialize global sound state
+window._soundEnabled = true;
 </script>
 </body>
 </html>
