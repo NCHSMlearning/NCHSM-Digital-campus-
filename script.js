@@ -3258,11 +3258,12 @@ async function loadExams() {
             </div>
         `;
 
-        let actionsHtml = `
-            <button class="btn-action" onclick="openEditExamModal('${e.id}')">Edit</button>
-            <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.title, true)}')">Grade</button>
-            <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.title, true)}')">Delete</button>
-        `;
+       let actionsHtml = `
+    <button class="btn-action" onclick="openEditExamModal('${e.id}')">Edit</button>
+    <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.title, true)}')">Grade</button>
+    ${e.status !== 'Completed' ? `<button class="btn-action" onclick="closeExam('${e.id}')" style="background: #F59E0B; color: white;">Close</button>` : ''}
+    <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.title, true)}')">Delete</button>
+`;
         
         if (e.online_link || e.exam_link) {
             const link = e.online_link || e.exam_link;
