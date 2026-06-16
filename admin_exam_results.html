@@ -1150,17 +1150,42 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         alert('Error: ' + err.message);
     }
 };
-    
-  async function updateStats() {
+ async function updateStats() {
     const totalStudents = allStudents.length;
     const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
     const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-    // FIX: Include PENDING_REVIEW in pending count
     const pending = studentsResults.filter(r=>r.result_status==='PENDING'||r.result_status==='PENDING_REVIEW'||!r.result_status).length;
-    // FIX: Calculate average only from scored exams
     const scoredExams = studentsResults.filter(r => r.total_score > 0);
     const avg = scoredExams.length ? (scoredExams.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/scoredExams.length).toFixed(1) : 0;
-    // ...
+    const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
+    
+    // Update the stats cards
+    document.getElementById('statsContainer').innerHTML = `
+        <div class="stat-card total">
+            <div class="stat-value">${totalStudents}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card passed">
+            <div class="stat-value">${passed}</div>
+            <div class="stat-label">Passed</div>
+        </div>
+        <div class="stat-card failed">
+            <div class="stat-value">${failed}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-value">${pending}</div>
+            <div class="stat-label">Pending Release</div>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-value">${avg}%</div>
+            <div class="stat-label">Avg Score</div>
+        </div>
+        <div class="stat-card face-alerts">
+            <div class="stat-value">${faceAlerts}</div>
+            <div class="stat-label">Face Violations</div>
+        </div>
+    `;
 }
     
     function renderPagination(type, total) { const totalPages = Math.ceil(total/itemsPerPage); const container = document.getElementById(type+'Pagination'); if(!container || totalPages<=1) { if(container) container.innerHTML=''; return; } let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`; for(let i=1;i<=totalPages;i++) { if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`; } html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`; container.innerHTML = html; }
