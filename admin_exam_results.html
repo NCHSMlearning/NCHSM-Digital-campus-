@@ -476,10 +476,105 @@
     }
 }
     
-   function displayProctoringLogs() {
+  // ========== VIEW ALERT DETAILS - DEFINED FIRST ==========
+window.viewAlertDetails = async function(logId) {
+    console.log('🔍 Opening alert details for ID:', logId);
+    
+    // Try to find in proctoringLogs
+    let log = window.proctoringLogs ? window.proctoringLogs.find(l => String(l.id) === String(logId)) : null;
+    
+    // If not found, fetch from database
+    if (!log) {
+        console.log('📹 Fetching log from database...');
+        const { data, error } = await window.supabase
+            .from('exam_proctoring_logs')
+            .select('*')
+            .eq('id', logId)
+            .single();
+        
+        if (error) {
+            console.error('❌ Log not found:', error);
+            alert('Alert not found');
+            return;
+        }
+        log = data;
+        
+        // Get student profile
+        const { data: student } = await window.supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, student_id, program, email')
+            .eq('user_id', log.student_id)
+            .single();
+        
+        log.student_profile = student || {};
+    }
+    
+    console.log('📹 Log data:', log);
+    
+    const student = log.student_profile || {};
+    const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
+    
+    // Build snapshot HTML
+    const snapshotUrl = log.snapshot_url;
+    const snapshotHtml = snapshotUrl 
+        ? `
+            <div style="margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                <h4 style="margin-bottom: 10px;">📸 Camera Snapshot</h4>
+                <div style="background: #000; border-radius: 8px; overflow: hidden; max-width: 100%;">
+                    <img src="${snapshotUrl}" 
+                         style="width: 100%; max-height: 400px; object-fit: contain;" 
+                         alt="Camera snapshot"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                </div>
+                <a href="${snapshotUrl}" target="_blank" class="btn-action" style="margin-top: 10px; display: inline-block; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">
+                    <i class="fas fa-external-link-alt"></i> View Full Image
+                </a>
+            </div>
+           ` 
+        : '<p style="color: #6b7280; margin-top: 10px;">📷 No camera snapshot captured</p>';
+    
+    // Determine background color
+    let bgColor = '#F0FDF4';
+    if (log.severity === 'critical') bgColor = '#FEE2E2';
+    else if (log.severity === 'warning') bgColor = '#FEF3C7';
+    
+    // Get modal elements
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    const studentModal = document.getElementById('studentModal');
+    
+    if (!modalTitle || !modalContent || !studentModal) {
+        console.error('❌ Modal elements not found');
+        alert('Modal elements not found');
+        return;
+    }
+    
+    modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
+    modalContent.innerHTML = `
+        <div style="background:${bgColor}; padding:20px; border-radius:16px;">
+            <p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p>
+            <p><strong>📝 Exam:</strong> ${examName}</p>
+            <p><strong>⏰ Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
+            <p><strong>📹 Alert Type:</strong> ${log.event_type}</p>
+            <p><strong>📋 Details:</strong> ${log.details || 'No details'}</p>
+            <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
+            <p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p>
+            <p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p>
+        </div>
+        ${snapshotHtml}
+    `;
+    
+    studentModal.style.display = 'flex';
+    console.log('✅ Modal opened successfully');
+};
+
+// ========== DISPLAY PROCTORING LOGS ==========
+function displayProctoringLogs() {
     const start = (currentPage.proctoring - 1) * itemsPerPage;
     const page = proctoringLogs.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('proctoringBody');
+    
+    if (!tbody) return;
     
     if (page.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>';
@@ -507,9 +602,10 @@
         // Snapshot button
         const hasSnapshot = log.snapshot_url;
         const snapshotHtml = hasSnapshot 
-            ? `<a href="${log.snapshot_url}" target="_blank" class="btn-view" style="padding: 2px 8px; font-size: 0.6rem; margin-left: 5px;" title="View Snapshot">📸</a>` 
+            ? `<a href="${log.snapshot_url}" target="_blank" class="btn-view" style="padding: 2px 8px; font-size: 0.6rem; margin-left: 5px; background: #10B981; color: white; border-radius: 4px; text-decoration: none;" title="View Snapshot">📸</a>` 
             : '';
         
+        // Use window.viewAlertDetails (global function)
         return `
             <tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}">
                 <td style="padding: 8px; font-size: 0.75rem;">${new Date(log.timestamp).toLocaleString()}</td>
@@ -527,7 +623,9 @@
                 <td style="padding: 8px; font-size: 0.75rem;">${log.details || '-'}</td>
                 <td style="padding: 8px;"><span class="${severityClass}">${severityText}</span></td>
                 <td style="padding: 8px;">
-                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')">View</button>
+                    <button class="action-btn btn-view" onclick="window.viewAlertDetails('${log.id}')" style="background: #4299E1; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-eye"></i> View
+                    </button>
                     ${snapshotHtml}
                 </td>
             </tr>
@@ -536,48 +634,6 @@
     
     renderPagination('proctoring', proctoringLogs.length);
 }
-   window.viewAlertDetails = async function(logId) {
-    const log = proctoringLogs.find(l => l.id === logId);
-    if (!log) return;
-    
-    const student = log.student_profile || {};
-    const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
-    
-    // Check for camera snapshot
-    const snapshotUrl = log.snapshot_url;
-    const snapshotHtml = snapshotUrl 
-        ? `
-            <div style="margin-top: 15px;">
-                <h4>📸 Camera Snapshot</h4>
-                <div style="background: #000; border-radius: 8px; overflow: hidden; max-width: 100%;">
-                    <img src="${snapshotUrl}" 
-                         style="width: 100%; max-height: 400px; object-fit: contain;" 
-                         alt="Camera snapshot"
-                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
-                </div>
-                <a href="${snapshotUrl}" target="_blank" class="btn-action" style="margin-top: 10px; display: inline-block; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">
-                    <i class="fas fa-external-link-alt"></i> View Full Image
-                </a>
-            </div>
-           ` 
-        : '<p style="color: #6b7280; margin-top: 10px;">📷 No camera snapshot available</p>';
-    
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
-    document.getElementById('modalContent').innerHTML = `
-        <div style="background:${log.event_type === 'multiple_faces_detected' ? '#FEE2E2' : '#F0FDF4'}; padding:20px; border-radius:16px;">
-            <p><strong>Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || 'N/A'})</p>
-            <p><strong>Exam:</strong> ${examName}</p>
-            <p><strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
-            <p><strong>Alert Type:</strong> ${log.event_type}</p>
-            <p><strong>Details:</strong> ${log.details || 'No details'}</p>
-            <p><strong>Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
-            <p><strong>IP Address:</strong> ${log.ip_address || 'N/A'}</p>
-            <p><strong>Device:</strong> ${log.device_info || 'N/A'}</p>
-        </div>
-        ${snapshotHtml}
-    `;
-    document.getElementById('studentModal').style.display = 'flex';
-};
     // ========== CAMERA SNAPSHOT CAPTURE ==========
 async function captureCameraSnapshot() {
     try {
