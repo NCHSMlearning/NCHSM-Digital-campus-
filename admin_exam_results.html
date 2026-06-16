@@ -619,32 +619,41 @@
     
     // ========== STUDENTS RESULTS ==========
     window.loadStudentsWithResults = async function() {
-        const loadingDiv = document.getElementById('studentsLoading');
-        const table = document.getElementById('studentsTable');
-        loadingDiv.style.display = 'block'; table.style.display = 'none';
-        try {
-            await loadExamsMap();
-            const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
-            if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
-            const { data: releases } = await sb.from('released_exam_results').select('result_id');
-            const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-            const studentIds = [...new Set(grades.map(g => g.student_id))];
-            const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
-            const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-            studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id), exam_info: examsMap[g.exam_id] || null }));
-            const examFilter = document.getElementById('examFilter')?.value;
-            const statusFilter = document.getElementById('statusFilter')?.value;
-            const search = document.getElementById('searchInput')?.value;
-            let filtered = studentsResults;
-            if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
-            if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
-            if (search) filtered = filtered.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase()));
-            studentsResults = filtered;
-            displayStudentsResults();
-            loadingDiv.style.display = 'none'; table.style.display = 'table';
-            updateStats();
-        } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading data'; }
-    };
+    const loadingDiv = document.getElementById('studentsLoading');
+    const table = document.getElementById('studentsTable');
+    loadingDiv.style.display = 'block'; table.style.display = 'none';
+    try {
+        await loadExamsMap();
+        // FIX: Get grades with correct question_id
+        const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
+        if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
+        const { data: releases } = await sb.from('released_exam_results').select('result_id');
+        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
+        const studentIds = [...new Set(grades.map(g => g.student_id))];
+        // FIX: Get profiles using user_id (not id)
+        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block, intake_year').in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        // FIX: Map grades with profile data
+        studentsResults = grades.map(g => ({ 
+            ...g, 
+            student_profile: profileMap[g.student_id] || null, 
+            isReleased: releasedSet.has(g.id), 
+            exam_info: examsMap[g.exam_id] || null 
+        }));
+        // Apply filters
+        const examFilter = document.getElementById('examFilter')?.value;
+        const statusFilter = document.getElementById('statusFilter')?.value;
+        const search = document.getElementById('searchInput')?.value;
+        let filtered = studentsResults;
+        if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
+        if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
+        if (search) filtered = filtered.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase()));
+        studentsResults = filtered;
+        displayStudentsResults();
+        loadingDiv.style.display = 'none'; table.style.display = 'table';
+        updateStats();
+    } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading data'; }
+};
     
     window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
         if (!confirm(`⚠️ RESET STUDENT EXAM\n\nReset "${studentName}"'s attempt for "${examName}"?\n\nThis will delete ALL their answers and scores.\n\nCannot be undone!`)) return;
@@ -892,15 +901,17 @@
         }
     };
     
-    async function updateStats() {
-        const totalStudents = allStudents.length;
-        const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
-        const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-        const pending = studentsResults.filter(r=>r.result_status==='PENDING'||!r.result_status).length;
-        const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/studentsResults.length).toFixed(1) : 0;
-        const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
-        document.getElementById('statsContainer').innerHTML = `<div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div><div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div><div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div><div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending Release</div></div><div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div><div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>`;
-    }
+  async function updateStats() {
+    const totalStudents = allStudents.length;
+    const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
+    const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
+    // FIX: Include PENDING_REVIEW in pending count
+    const pending = studentsResults.filter(r=>r.result_status==='PENDING'||r.result_status==='PENDING_REVIEW'||!r.result_status).length;
+    // FIX: Calculate average only from scored exams
+    const scoredExams = studentsResults.filter(r => r.total_score > 0);
+    const avg = scoredExams.length ? (scoredExams.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/scoredExams.length).toFixed(1) : 0;
+    // ...
+}
     
     function renderPagination(type, total) { const totalPages = Math.ceil(total/itemsPerPage); const container = document.getElementById(type+'Pagination'); if(!container || totalPages<=1) { if(container) container.innerHTML=''; return; } let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`; for(let i=1;i<=totalPages;i++) { if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`; } html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`; container.innerHTML = html; }
     window.changePage = function(type, page) { currentPage[type]=page; if(type==='students') displayStudentsResults(); if(type==='allStudents') displayAllStudents(); if(type==='exams') loadAllExams(); if(type==='proctoring') displayProctoringLogs(); };
