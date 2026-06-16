@@ -163,40 +163,43 @@ async function saveExamResult(examId, scoreData) {
             .eq('exam_id', examId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
         
+        // FIXED: Use PENDING_REVIEW instead of PENDING
+        const gradeData = {
+            student_id: currentUserId,
+            exam_id: parseInt(examId),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            marks: scoreData.marks || scoreData.score || 0,
+            total_score: scoreData.percentage || scoreData.total_score || 0,
+            cat_1_score: scoreData.cat1 || scoreData.score || 0,
+            result_status: 'PENDING_REVIEW',  // ← FIXED: This is the key change
+            graded_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        console.log('💾 Saving grade:', gradeData);
+        
+        let result;
         if (existing && existing.length > 0) {
-            console.log('Exam result already exists, updating...');
-            // Update existing
-            const { error } = await sb
+            console.log('Updating existing grade...');
+            result = await sb
                 .from('exam_grades')
-                .update({
-                    marks: scoreData.marks || scoreData.score || 0,
-                    total_score: scoreData.percentage || scoreData.total_score || 0,
-                    result_status: scoreData.status || 'PENDING',
-                    graded_at: new Date().toISOString()
-                })
+                .update(gradeData)
                 .eq('student_id', currentUserId)
                 .eq('exam_id', examId)
                 .eq('question_id', '00000000-0000-0000-0000-000000000000');
-            
-            if (error) throw error;
         } else {
-            // Insert new result
-            const { error } = await sb
+            console.log('Inserting new grade...');
+            result = await sb
                 .from('exam_grades')
-                .insert([{
-                    student_id: currentUserId,
-                    exam_id: examId,
-                    question_id: '00000000-0000-0000-0000-000000000000',
-                    marks: scoreData.marks || scoreData.score || 0,
-                    total_score: scoreData.percentage || scoreData.total_score || 0,
-                    result_status: 'PENDING',
-                    graded_at: new Date().toISOString()
-                }]);
-            
-            if (error) throw error;
+                .insert([gradeData]);
         }
         
-        console.log('Exam result saved successfully');
+        if (result.error) {
+            console.error('Database error:', result.error);
+            throw result.error;
+        }
+        
+        console.log('✅ Exam result saved successfully!');
         return true;
     } catch (error) {
         console.error('Error saving exam result:', error);
@@ -254,29 +257,33 @@ function startExam(examId, examName) {
 }
 
 // Handle exam submission from iframe
+// Handle exam submission from iframe
 window.addEventListener('message', async function(event) {
-    // Check if it's an exam completion message
+    console.log('📨 Received message:', event.data);
+    
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
         showToast('✅ Exam submitted! Saving results...', 'success');
         
-        // Extract score data if provided
         let scoreData = {
             marks: event.data?.score || event.data?.marks || 0,
             percentage: event.data?.percentage || event.data?.total_score || 0,
-            status: 'PENDING'
+            cat1: event.data?.cat1 || event.data?.score || 0,
+            status: 'PENDING_REVIEW'  // ← FIXED
         };
         
-        // Save the exam result to database
+        console.log('📊 Score data:', scoreData);
+        
         if (currentExamId) {
             const saved = await saveExamResult(currentExamId, scoreData);
             if (saved) {
                 showToast('✅ Exam results saved! Awaiting admin review.', 'success');
+                setTimeout(() => loadExams(false), 1000);
             } else {
                 showToast('⚠️ Results saved but grade submission had issues.', 'warning');
             }
         }
         
-        // Auto close the exam container
+        // Auto close
         if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
         autoCloseTimeout = setTimeout(() => {
             document.getElementById('examIframe').src = 'about:blank';
@@ -288,7 +295,6 @@ window.addEventListener('message', async function(event) {
         }, 2000);
     }
 });
-
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !isLoading && currentUserId && 
         document.getElementById('examContainer').style.display !== 'flex') {
