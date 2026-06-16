@@ -3354,7 +3354,30 @@ async function deleteExam(examId, examName) {
         showFeedback(`Failed to delete exam: ${error.message}`, 'error');
     }
 }
-
+// ========== CLOSE EXAM ==========
+async function closeExam(examId) {
+    if (!confirm(`Close this exam? Students will no longer be able to take it.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('exams')
+            .update({ 
+                status: 'Completed',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', examId);
+        
+        if (error) throw error;
+        
+        showFeedback('✅ Exam closed successfully!', 'success');
+        await loadExams();
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        
+    } catch (error) {
+        console.error('Error closing exam:', error);
+        showFeedback(`Failed to close exam: ${error.message}`, 'error');
+    }
+}
 // ========== OPEN EDIT EXAM MODAL ==========
 async function openEditExamModal(examId) {
     try {
