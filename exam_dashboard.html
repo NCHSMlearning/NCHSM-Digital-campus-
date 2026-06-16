@@ -401,34 +401,73 @@ async function loadExams(showLoading = true) {
             return;
         }
         
-        for (const exam of filteredExams) {
-            const grade = grades?.find(g => g.exam_id === exam.id);
-            const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
-            const isReleased = grade ? releasedSet.has(grade.id) : false;
-            const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
-            
-            // FIXED: Handle null exam_name
-            const examDisplayName = exam.exam_name || exam.title || 'Exam';
-            const safeExamName = examDisplayName.replace(/'/g, "\\'");
-            
-            let statusBadge, actionButton;
-            
-            if (!hasGrade) {
-                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
-            } else if (isReleased && hasFinalStatus) {
-                statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
-                actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
-            } else if (hasFinalStatus && !isReleased) {
-                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
-            } else if (grade?.result_status === 'Scheduled') {
-                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
-            } else {
-                statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
-            }
+      for (const exam of filteredExams) {
+    const grade = grades?.find(g => g.exam_id === exam.id);
+    const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
+    const isReleased = grade ? releasedSet.has(grade.id) : false;
+    const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
+    const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
+    
+    // FIXED: Handle null exam_name
+    const examDisplayName = exam.exam_name || exam.title || 'Exam';
+    const safeExamName = examDisplayName.replace(/'/g, "\\'");
+    
+    let statusBadge, actionButton;
+    
+    if (!hasGrade) {
+        // No grade yet - Not Started
+        statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+        actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
+    } else if (isReleased && hasFinalStatus) {
+        // ✅ Grade released - show results
+        statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
+        actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
+    } else if (isPendingReview || (hasGrade && !isReleased)) {
+        // ⏳ Grade exists but not released yet
+        statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
+        actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
+    } else if (grade?.result_status === 'Scheduled') {
+        statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+        actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
+    } else {
+        statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
+        actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
+    }
+    
+    let gradeHtml = '';
+    // Only show grade if released AND has final status (PASS or FAIL)
+    if (isReleased && hasFinalStatus) {
+        const percent = parseFloat(grade.total_score || 0);
+        const passMark = exam.pass_mark || 60;
+        gradeHtml = `<div class="grade-info ${percent >= passMark ? 'grade-pass' : 'grade-fail'}">
+            <span class="score-large">${percent}%</span> <strong>${percent >= passMark ? 'PASS ✓' : 'FAIL ✗'}</strong>
+            <div>Score: ${grade.marks || 0} / ${exam.total_marks || 100} marks</div>
+        </div>`;
+    } else if (isPendingReview) {
+        gradeHtml = `<div class="grade-info grade-not-released">
+            <span style="font-size: 1.2rem;">⏳</span> <strong>Pending Release</strong>
+            <div>Results will appear here after admin review.</div>
+        </div>`;
+    }
+    
+    container.innerHTML += `
+        <div class="exam-card">
+            <div class="exam-header">
+                <div class="exam-title">${examDisplayName} ${statusBadge}</div>
+            </div>
+            <div class="exam-meta">
+                <span>📋 ${exam.exam_type || 'EXAM'}</span>
+                <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
+                <span>📊 ${exam.total_marks || 'N/A'} marks</span>
+                <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
+            </div>
+            ${gradeHtml}
+            <div class="exam-actions">
+                ${actionButton}
+            </div>
+        </div>
+    `;
+}
             
             let gradeHtml = '';
             if (isReleased && hasFinalStatus) {
