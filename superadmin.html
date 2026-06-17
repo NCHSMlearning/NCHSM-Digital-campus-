@@ -698,155 +698,204 @@
     </div>
 </section>
 
-            <!-- UNIT REGISTRATION MANAGEMENT SECTION -->
-            <section id="unit-management" class="tab-content">
-                <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
-                <p>Manage all units available for student registration. Units are organized by Program, Block, and Year.</p>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-                    <h3><i class="fas fa-plus"></i> Add New Unit</h3>
-                    <div class="unit-form-row">
-                        <input type="text" id="new_unit_code" placeholder="Unit Code (e.g., NURS101)" required>
-                        <input type="text" id="new_unit_name" placeholder="Unit Name" required>
-                        <select id="new_unit_program">
-                            <option value="KRCHN">KRCHN</option>
-                            <option value="TVET">TVET</option>
-                            <option value="DPOTT">DPOTT</option>
-                            <option value="DHRIT">DHRIT</option>
-                            <option value="DSL">DSL</option>
-                        </select>
-                        <select id="new_unit_block">
-                            <option value="Introductory">Introductory Block</option>
-                            <option value="Block A">Block 1</option>
-                            <option value="Block B">Block 2</option>
-                            <option value="Block C">Block 3</option>
-                            <option value="Block D">Block 4</option>
-                            <option value="Block E">Block 5</option>
-                            <option value="Final">Final Block</option>
-                        </select>
-                        <input type="number" id="new_unit_year" placeholder="Year" value="2025">
-                        <input type="number" id="new_unit_credits" placeholder="Credits" value="3">
-                        <input type="number" id="new_unit_hours" placeholder="Hours" value="0">
-                        <select id="new_unit_type">
-                            <option value="Core">Core Unit</option>
-                            <option value="Elective">Elective Unit</option>
-                            <option value="Prerequisite">Prerequisite</option>
-                        </select>
-                        <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites (optional)">
-                    </div>
-                    <button onclick="addNewUnitRecord()" class="btn-action" style="width: auto;">
-                        <i class="fas fa-save"></i> Add Unit to Catalog
-                    </button>
-                </div>
-                
-                <div class="filter-bar">
-                    <input type="text" id="unit_search" placeholder="Search by code or name..." onkeyup="filterUnitsCatalog()">
-                    <select id="unit_filter_program" onchange="filterUnitsCatalog()">
-                        <option value="">All Programs</option>
-                        <option value="KRCHN">KRCHN</option>
-                        <option value="TVET">TVET</option>
-                        <option value="DPOTT">DPOTT</option>
-                        <option value="DHRIT">DHRIT</option>
-                        <option value="DSL">DSL</option>
-                    </select>
-                    <select id="unit_filter_year" onchange="filterUnitsCatalog()">
-                        <option value="">All Years</option>
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                    </select>
-                    <button onclick="loadAllUnits()" class="btn-action">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-                
-                <div class="block-buttons">
-                    <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')">All Blocks</button>
-                    <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')">Introductory</button>
-                    <button class="block-btn" data-block="Block A" onclick="filterUnitsByBlock('Block A')">Block A</button>
-                    <button class="block-btn" data-block="Block B" onclick="filterUnitsByBlock('Block B')">Block B</button>
-                    <button class="block-btn" data-block="Block C" onclick="filterUnitsByBlock('Block C')">Block C</button>
-                    <button class="block-btn" data-block="Block D" onclick="filterUnitsByBlock('Block D')">Block D</button>
-                    <button class="block-btn" data-block="Block E" onclick="filterUnitsByBlock('Block E')">Block E</button>
-                    <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')">Final Block</button>
-                </div>
-                
-                <h3>Unit Catalog</h3>
-                <div class="units-grid" id="units-list-container">
-                    <div class="loading-spinner"></div>
-                    <p>Loading units...</p>
-                </div>
-                
-                <div style="margin-top: 30px;">
-                    <h3><i class="fas fa-clipboard-list"></i> Student Registration Summary</h3>
-                    <div class="cards">
-                        <div class="card">
-                            <h3>Pending Approvals</h3>
-                            <p class="data" id="pendingRegistrations">0</p>
-                            <p class="minor-data">Units awaiting approval</p>
-                        </div>
-                        <div class="card">
-                            <h3>Approved Registrations</h3>
-                            <p class="data" id="approvedRegistrations">0</p>
-                            <p class="minor-data">This term</p>
-                        </div>
-                        <div class="card">
-                            <h3>Total Registrations</h3>
-                            <p class="data" id="totalRegistrations">0</p>
-                            <p class="minor-data">All time</p>
-                        </div>
-                    </div>
-                    <button onclick="loadUnitPendingRegistrations()" class="btn-action">
-                        <i class="fas fa-clock"></i> View Pending Approvals
-                    </button>
-                    <div id="pending-registrations-list" style="margin-top: 15px; display: none;"></div>
-                </div>
-                
-                <div style="margin-top: 30px;">
-                    <h3><i class="fas fa-check-circle" style="color: #059669;"></i> Approved Registrations</h3>
-                    <p>View and manage approved unit registrations. You can revoke approval if needed.</p>
-                    
-                    <div class="toolbar">
-                        <input type="text" id="approved-search" placeholder="Search by student or unit..." onkeyup="filterApprovedRegistrations()">
-                        <button onclick="exportApprovedRegistrations()" class="btn-action export-btn">
-                            <i class="fas fa-download"></i> Export Approved (CSV)
-                        </button>
-                        <button onclick="loadApprovedRegistrations()" class="btn-action">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="data-table" id="approved-registrations-table">
-                            <thead>
-                                <tr>
-                                    <th><input type="checkbox" id="selectAllApproved" onchange="toggleSelectAllApproved()"></th>
-                                    <th>Student Name</th>
-                                    <th>Student ID</th>
-                                    <th>Unit Code</th>
-                                    <th>Unit Name</th>
-                                    <th>Block</th>
-                                    <th>Reg Type</th>
-                                    <th>Approval Date</th>
-                                    <th>Approved By</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="approved-registrations-body">
-                                <tr><td colspan="10">Loading approved registrations...<\/td><\/tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="bulk-actions" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
-                        <button onclick="bulkDeapproveSelected()" class="btn-danger" id="bulkDeapproveBtn" style="display: none;">
-                            <i class="fas fa-times-circle"></i> De-approve Selected (<span id="approvedSelectedCount">0</span>)
-                        </button>
-                    </div>
-                </div>
-            </section>
+           <!-- UNIT REGISTRATION MANAGEMENT SECTION - FULLY UPDATED -->
+<section id="unit-management" class="tab-content">
+    <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
+    <p>Manage all units available for student registration. Units are organized by Program, Block, and Year.</p>
+    
+    <!-- ADD NEW UNIT FORM -->
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3><i class="fas fa-plus"></i> Add New Unit</h3>
+        <div class="unit-form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <input type="text" id="new_unit_code" placeholder="Unit Code (e.g., NURS101)" required>
+            <input type="text" id="new_unit_name" placeholder="Unit Name" required>
+            
+            <!-- Program dropdown with ALL TVET/KRCHN options -->
+            <select id="new_unit_program">
+                <option value="KRCHN">🎓 KRCHN - Nursing</option>
+                <optgroup label="🎯 TVET Diploma Programs">
+                    <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                    <option value="DCH">Diploma in Community Health</option>
+                    <option value="DHRIT">Diploma in Health Records and IT</option>
+                    <option value="DSL">Diploma in Science Lab</option>
+                    <option value="DSW">Diploma in Social Work & Community Development</option>
+                    <option value="DCJS">Diploma in Criminal Justice</option>
+                    <option value="DHSS">Diploma in Health Support Services</option>
+                    <option value="DICT">Diploma in ICT</option>
+                    <option value="DME">Diploma in Medical Engineering</option>
+                </optgroup>
+                <optgroup label="📜 TVET Certificate Programs">
+                    <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                    <option value="CCH">Certificate in Community Health</option>
+                    <option value="CHRIT">Certificate in Health Records and IT</option>
+                    <option value="CPC">Certificate in Patient Care</option>
+                    <option value="CSL">Certificate in Science Lab</option>
+                    <option value="CSW">Certificate in Social Work & Community Development</option>
+                    <option value="CCJS">Certificate in Criminal Justice</option>
+                    <option value="CAG">Certificate in Agriculture</option>
+                    <option value="CHSS">Certificate in Health Support Services</option>
+                    <option value="CICT">Certificate in ICT</option>
+                </optgroup>
+                <optgroup label="🔧 TVET Artisan Programs">
+                    <option value="ACH">Artisan in Community Health</option>
+                    <option value="AAG">Artisan in Agriculture</option>
+                    <option value="ASW">Artisan in Social Work & Community Development</option>
+                </optgroup>
+                <optgroup label="📊 Other TVET Programs">
+                    <option value="CCA">Certificate in Computer Applications</option>
+                    <option value="PTE">TVET/CDACC (PTE)</option>
+                </optgroup>
+            </select>
+            
+            <!-- Dynamic course dropdown - populated by JavaScript -->
+            <select id="new_unit_course">
+                <option value="">-- Select Course --</option>
+            </select>
+            
+            <!-- Block dropdown - changes based on program type -->
+            <select id="new_unit_block">
+                <option value="Introductory">Introductory Block</option>
+                <option value="Block 1">Block 1</option>
+                <option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option>
+                <option value="Block 4">Block 4</option>
+                <option value="Block 5">Block 5</option>
+                <option value="Final">Final Block</option>
+            </select>
+            <input type="number" id="new_unit_year" placeholder="Year" value="2025">
+            <input type="number" id="new_unit_credits" placeholder="Credits" value="3">
+            <input type="number" id="new_unit_hours" placeholder="Hours" value="0">
+            <select id="new_unit_type">
+                <option value="Core">Core Unit</option>
+                <option value="Elective">Elective Unit</option>
+                <option value="Prerequisite">Prerequisite</option>
+            </select>
+            <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites (optional)">
+        </div>
+        <button onclick="addNewUnitRecord()" class="btn-action" style="width: auto; background: #4C1D95; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-save"></i> Add Unit to Catalog
+        </button>
+    </div>
+    
+    <!-- FILTER BAR -->
+    <div class="filter-bar" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+        <input type="text" id="unit_search" placeholder="Search by code or name..." onkeyup="filterUnitsCatalog()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
+        <select id="unit_filter_program" onchange="filterUnitsCatalog()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
+            <option value="">All Programs</option>
+            <option value="KRCHN">KRCHN</option>
+            <option value="TVET">TVET</option>
+            <option value="DPOTT">DPOTT</option>
+            <option value="DHRIT">DHRIT</option>
+            <option value="DSL">DSL</option>
+            <option value="DCH">DCH</option>
+            <option value="DSW">DSW</option>
+            <option value="DCJS">DCJS</option>
+            <option value="DHSS">DHSS</option>
+            <option value="DICT">DICT</option>
+            <option value="DME">DME</option>
+        </select>
+        <select id="unit_filter_year" onchange="filterUnitsCatalog()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
+            <option value="">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button onclick="loadAllUnits()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+    
+    <!-- BLOCK FILTER BUTTONS - Block 1-5 -->
+    <div class="block-buttons" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+        <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 20px; cursor: pointer;">All Blocks</button>
+        <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Introductory</button>
+        <button class="block-btn" data-block="Block 1" onclick="filterUnitsByBlock('Block 1')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Block 1</button>
+        <button class="block-btn" data-block="Block 2" onclick="filterUnitsByBlock('Block 2')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Block 2</button>
+        <button class="block-btn" data-block="Block 3" onclick="filterUnitsByBlock('Block 3')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Block 3</button>
+        <button class="block-btn" data-block="Block 4" onclick="filterUnitsByBlock('Block 4')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Block 4</button>
+        <button class="block-btn" data-block="Block 5" onclick="filterUnitsByBlock('Block 5')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Block 5</button>
+        <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer;">Final Block</button>
+    </div>
+    
+    <!-- UNIT CATALOG DISPLAY -->
+    <h3>Unit Catalog</h3>
+    <div class="units-grid" id="units-list-container" style="max-height: 600px; overflow-y: auto;">
+        <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p>Loading units...</p>
+    </div>
+    
+    <!-- STUDENT REGISTRATION SUMMARY -->
+    <div style="margin-top: 30px;">
+        <h3><i class="fas fa-clipboard-list"></i> Student Registration Summary</h3>
+        <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin: 20px 0;">
+            <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h3>Pending Approvals</h3>
+                <p class="data" id="pendingRegistrations" style="font-size: 28px; font-weight: bold; margin: 10px 0;">0</p>
+                <p class="minor-data" style="font-size: 12px; color: #6b7280;">Units awaiting approval</p>
+            </div>
+            <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h3>Approved Registrations</h3>
+                <p class="data" id="approvedRegistrations" style="font-size: 28px; font-weight: bold; margin: 10px 0;">0</p>
+                <p class="minor-data" style="font-size: 12px; color: #6b7280;">This term</p>
+            </div>
+            <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h3>Total Registrations</h3>
+                <p class="data" id="totalRegistrations" style="font-size: 28px; font-weight: bold; margin: 10px 0;">0</p>
+                <p class="minor-data" style="font-size: 12px; color: #6b7280;">All time</p>
+            </div>
+        </div>
+        <button onclick="loadUnitPendingRegistrations()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+            <i class="fas fa-clock"></i> View Pending Approvals
+        </button>
+        <div id="pending-registrations-list" style="margin-top: 15px; display: none;"></div>
+    </div>
+    
+    <!-- APPROVED REGISTRATIONS -->
+    <div style="margin-top: 30px;">
+        <h3><i class="fas fa-check-circle" style="color: #059669;"></i> Approved Registrations</h3>
+        <p>View and manage approved unit registrations. You can revoke approval if needed.</p>
+        
+        <div class="toolbar" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="approved-search" placeholder="Search by student or unit..." onkeyup="filterApprovedRegistrations()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
+            <button onclick="exportApprovedRegistrations()" class="btn-action export-btn" style="background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-download"></i> Export Approved (CSV)
+            </button>
+            <button onclick="loadApprovedRegistrations()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table class="data-table" id="approved-registrations-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden;">
+                <thead>
+                    <tr>
+                        <th style="padding: 12px; text-align: left;"><input type="checkbox" id="selectAllApproved" onchange="toggleSelectAllApproved()"></th>
+                        <th style="padding: 12px; text-align: left;">Student Name</th>
+                        <th style="padding: 12px; text-align: left;">Student ID</th>
+                        <th style="padding: 12px; text-align: left;">Unit Code</th>
+                        <th style="padding: 12px; text-align: left;">Unit Name</th>
+                        <th style="padding: 12px; text-align: left;">Block</th>
+                        <th style="padding: 12px; text-align: left;">Reg Type</th>
+                        <th style="padding: 12px; text-align: left;">Approval Date</th>
+                        <th style="padding: 12px; text-align: left;">Approved By</th>
+                        <th style="padding: 12px; text-align: left;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="approved-registrations-body">
+                    <tr><td colspan="10" style="padding: 40px; text-align: center;">Loading approved registrations...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="bulk-actions" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="bulkDeapproveSelected()" class="btn-danger" id="bulkDeapproveBtn" style="display: none; background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-times-circle"></i> De-approve Selected (<span id="approvedSelectedCount">0</span>)
+            </button>
+        </div>
+    </div>
+</section>
             <!-- STAFF / LECTURER MANAGEMENT SECTION -->
             <section id="staff-management" class="tab-content">
                 <h2><i class="fas fa-chalkboard-user"></i> Staff & Lecturer Management</h2>
