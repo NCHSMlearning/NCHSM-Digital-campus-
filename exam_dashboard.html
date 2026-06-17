@@ -230,15 +230,27 @@ async function loadExamContent(examId, examName) {
             
         if (error) throw error;
         
-        let link = exam?.exam_link || exam?.online_link;
-        if (!link) { showToast('No exam link', 'warning'); return; }
-        link = link.replace('{user_id}', currentUserId);
+        // Get the base link from the exam record
+        let baseLink = exam?.exam_link || exam?.online_link;
+        if (!baseLink) { 
+            showToast('No exam link configured', 'warning'); 
+            return; 
+        }
+        
+        // --- FIX: Build the full URL with parameters ---
+        // Remove any existing query parameters
+        const baseUrl = baseLink.split('?')[0];
+        
+        // Build the URL with user_id and exam_id
+        const fullUrl = `${baseUrl}?user_id=${currentUserId}&exam_id=${examId}`;
+        
+        console.log('🔗 Opening exam portal:', fullUrl);
         
         currentExamId = examId;
         document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
         
         const iframe = document.getElementById('examIframe');
-        iframe.src = link;
+        iframe.src = fullUrl;  // ← Use the full URL with parameters
         
         document.getElementById('examContainer').style.display = 'flex';
         document.querySelector('header').style.display = 'none';
@@ -408,22 +420,56 @@ async function loadExams(showLoading = true) {
             const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
             const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
             
-            // FIXED: Handle null exam_name
             const examDisplayName = exam.exam_name || exam.title || 'Exam';
             const safeExamName = examDisplayName.replace(/'/g, "\\'");
+            
+            // ========== CALCULATE TIMER ==========
+            let timerHtml = '';
+            const now = new Date();
+            const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            
+            if (exam.exam_date && exam.exam_start_time) {
+                const [year, month, day] = exam.exam_date.split('-');
+                const [hours, minutes] = exam.exam_start_time.split(':');
+                const examStart = new Date(Date.UTC(year, month-1, day, hours, minutes, 0));
+                const examStartKenya = new Date(examStart.getTime() + (3 * 60 * 60 * 1000));
+                const examEnd = new Date(examStartKenya.getTime() + (exam.duration_minutes || 30) * 60000);
+                
+                if (kenyaNow < examStartKenya) {
+                    // Upcoming
+                    const diffMs = examStartKenya - kenyaNow;
+                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    timerHtml = `<div class="exam-timer timer-upcoming">
+                        <span class="timer-icon">⏰</span> 
+                        Starts in: <span class="timer-countdown" data-exam-start="${examStartKenya.toISOString()}">${diffHours}h ${diffMinutes}m</span>
+                    </div>`;
+                } else if (kenyaNow >= examStartKenya && kenyaNow <= examEnd) {
+                    // Available now - COUNTDOWN
+                    const timeLeftMs = examEnd - kenyaNow;
+                    const minutesLeft = Math.floor(timeLeftMs / 60000);
+                    const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                    timerHtml = `<div class="exam-timer timer-available">
+                        <span class="timer-icon">🔴</span> 
+                        Time left: <span class="timer-countdown" data-exam-end="${examEnd.toISOString()}" id="timer-${exam.id}">${minutesLeft}m ${secondsLeft}s</span>
+                    </div>`;
+                } else if (kenyaNow > examEnd) {
+                    timerHtml = `<div class="exam-timer timer-expired">
+                        <span class="timer-icon">⏱️</span> 
+                        Exam Closed
+                    </div>`;
+                }
+            }
             
             let statusBadge, actionButton;
             
             if (!hasGrade) {
-                // No grade yet - Not Started
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
             } else if (isReleased && hasFinalStatus) {
-                // ✅ Grade released - show results
                 statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
             } else if (isPendingReview || (hasGrade && !isReleased)) {
-                // ⏳ Grade exists but not released yet
                 statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
                 actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
             } else if (grade?.result_status === 'Scheduled') {
@@ -435,7 +481,6 @@ async function loadExams(showLoading = true) {
             }
             
             let gradeHtml = '';
-            // Only show grade if released AND has final status (PASS or FAIL)
             if (isReleased && hasFinalStatus) {
                 const percent = parseFloat(grade.total_score || 0);
                 const passMark = exam.pass_mark || 60;
@@ -450,8 +495,9 @@ async function loadExams(showLoading = true) {
                 </div>`;
             }
             
+            // ========== ADD TIMER HTML TO CARD ==========
             container.innerHTML += `
-                <div class="exam-card">
+                <div class="exam-card ${timerHtml.includes('timer-available') ? 'exam-status-available' : ''}">
                     <div class="exam-header">
                         <div class="exam-title">${examDisplayName} ${statusBadge}</div>
                     </div>
@@ -461,6 +507,7 @@ async function loadExams(showLoading = true) {
                         <span>📊 ${exam.total_marks || 'N/A'} marks</span>
                         <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
                     </div>
+                    ${timerHtml}
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${actionButton}
@@ -475,6 +522,54 @@ async function loadExams(showLoading = true) {
     }
     isLoading = false;
 }
+
+    // ========== LIVE TIMER UPDATES ==========
+function updateAllTimers() {
+    const now = new Date();
+    const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+    
+    document.querySelectorAll('.exam-timer .timer-countdown').forEach(el => {
+        // Check for exam end time (active exam)
+        const examEnd = el.dataset.examEnd;
+        if (examEnd) {
+            const endTime = new Date(examEnd);
+            const timeLeftMs = endTime - kenyaNow;
+            
+            if (timeLeftMs > 0) {
+                const minutesLeft = Math.floor(timeLeftMs / 60000);
+                const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                el.textContent = `${minutesLeft}m ${secondsLeft}s`;
+            } else {
+                el.textContent = '0m 0s';
+                const timerDiv = el.closest('.exam-timer');
+                if (timerDiv) {
+                    timerDiv.className = 'exam-timer timer-expired';
+                    timerDiv.innerHTML = '<span class="timer-icon">⏱️</span> Exam Closed';
+                }
+            }
+        }
+        
+        // Check for exam start time (upcoming exam)
+        const examStart = el.dataset.examStart;
+        if (examStart) {
+            const startTime = new Date(examStart);
+            const timeLeftMs = startTime - kenyaNow;
+            
+            if (timeLeftMs > 0) {
+                const diffHours = Math.floor(timeLeftMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+                el.textContent = `${diffHours}h ${diffMinutes}m`;
+            } else {
+                // Exam should have started, refresh to update status
+                el.textContent = 'Starting now...';
+                setTimeout(() => loadExams(false), 2000);
+            }
+        }
+    });
+}
+
+// Start timer updates every second
+setInterval(updateAllTimers, 1000);
 async function viewResult(examId) {
     const { data: grade } = await sb
         .from('exam_grades')
