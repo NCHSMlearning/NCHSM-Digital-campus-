@@ -596,6 +596,13 @@ function handleVisibilityChange() {
     }
 }
 
+// ========== FACE DETECTION VARIABLES ==========
+let faceMissingCount = 0;
+let faceMissingCountThreshold = 5; // Log after 5 consecutive misses (10 seconds)
+let lastFaceLogTime = 0;
+let lastMultipleFacesLogTime = 0;
+const FACE_LOG_INTERVAL = 30000; // Max once every 30 seconds
+
 // ========== FACE DETECTION ==========
 async function startFaceDetection() {
     console.log('🔍 Starting face detection...');
@@ -631,6 +638,10 @@ async function startFaceDetection() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (detections && detections.length > 0) {
+                    // Face detected - reset counter
+                    faceMissingCount = 0;
+                    
+                    // Draw face boxes
                     detections.forEach(det => {
                         const box = det.box;
                         ctx.strokeStyle = '#16A34A';
@@ -648,7 +659,6 @@ async function startFaceDetection() {
                         document.getElementById('face-detection-overlay').className = 'face-status-good';
                         document.getElementById('cameraStatusBadge').textContent = '✅ Face OK';
                         document.getElementById('cameraStatusBadge').className = 'camera-status-badge';
-                        faceMissingCount = 0;
                     } else if (faceCount > 1) {
                         statusEl.textContent = `⚠️ Multiple faces detected (${faceCount})!`;
                         statusEl.style.color = '#D97706';
@@ -656,35 +666,37 @@ async function startFaceDetection() {
                         document.getElementById('cameraStatusBadge').textContent = '⚠️ Multiple Faces';
                         document.getElementById('cameraStatusBadge').className = 'camera-status-badge warning';
                         
-                        if (!window._lastMultipleFacesLog || Date.now() - window._lastMultipleFacesLog > 30000) {
+                        // Only log multiple faces once every 30 seconds
+                        if (Date.now() - lastMultipleFacesLogTime > FACE_LOG_INTERVAL) {
                             await logProctoringEvent('multiple_faces_detected', 
                                 `Detected ${faceCount} faces in camera`, 'critical');
-                            window._lastMultipleFacesLog = Date.now();
+                            lastMultipleFacesLogTime = Date.now();
                             showProctoringAlert('⚠️ Multiple faces detected! Please ensure only you are in frame.');
                         }
                     }
                 } else {
+                    // No face detected - increment counter
                     faceMissingCount++;
+                    
                     statusEl.textContent = `⚠️ No face detected (${faceMissingCount})`;
                     statusEl.style.color = '#DC2626';
                     document.getElementById('face-detection-overlay').className = 'face-status-danger';
                     document.getElementById('cameraStatusBadge').textContent = '⚠️ No Face';
                     document.getElementById('cameraStatusBadge').className = 'camera-status-badge danger';
                     
-                    if (faceMissingCount >= FACE_MISSING_THRESHOLD) {
-                        if (!window._lastFaceLog || Date.now() - window._lastFaceLog > 30000) {
-                            await logProctoringEvent('face_missing', 
-                                `No face detected for ${faceMissingCount} consecutive checks`, 'warning');
-                            window._lastFaceLog = Date.now();
-                            showProctoringAlert('⚠️ Face not detected! Please look at the camera.');
-                        }
+                    // Only log if threshold reached AND enough time has passed
+                    if (faceMissingCount >= faceMissingCountThreshold && Date.now() - lastFaceLogTime > FACE_LOG_INTERVAL) {
+                        await logProctoringEvent('face_missing', 
+                            `No face detected for ${faceMissingCount} consecutive checks`, 'warning');
+                        lastFaceLogTime = Date.now();
+                        showProctoringAlert('⚠️ Face not detected! Please look at the camera.');
                     }
                 }
                 
             } catch (detectionError) {
                 console.warn('Face detection error:', detectionError);
             }
-        }, 2000);
+        }, 2000); // Check every 2 seconds
         
     } catch (modelError) {
         console.error('❌ Failed to load face detection models:', modelError);
@@ -699,7 +711,6 @@ async function startFaceDetection() {
         }, 5000);
     }
 }
-
 // ========== PROCTORING ALERT ==========
 function showProctoringAlert(message) {
     const existing = document.querySelector('.proctoring-alert');
