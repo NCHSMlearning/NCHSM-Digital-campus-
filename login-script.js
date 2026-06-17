@@ -1,4 +1,93 @@
 // ============================================
+// QUEUE SYSTEM - FIXES 35 STUDENT CRASH
+// ============================================
+const LoginQueue = {
+    queue: [],
+    active: 0,
+    maxConcurrent: 2, // Supabase free tier limit
+    
+    async add(email, password) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ email, password, resolve, reject });
+            this.process();
+            this.showStatus();
+        });
+    },
+    
+    async process() {
+        if (this.queue.length === 0 || this.active >= this.maxConcurrent) return;
+        
+        const item = this.queue.shift();
+        this.active++;
+        this.showStatus();
+        
+        try {
+            const result = await this.executeWithTimeout(
+                () => NCHSMLogin.executeLogin(item.email, item.password),
+                10000
+            );
+            item.resolve(result);
+        } catch (error) {
+            item.reject(error);
+        } finally {
+            this.active--;
+            this.showStatus();
+            this.process();
+        }
+    },
+    
+    async executeWithTimeout(fn, timeoutMs) {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('⏰ Server busy. Please wait and try again.'));
+            }, timeoutMs);
+            
+            fn().then(result => {
+                clearTimeout(timeout);
+                resolve(result);
+            }).catch(error => {
+                clearTimeout(timeout);
+                reject(error);
+            });
+        });
+    },
+    
+    showStatus() {
+        let el = document.getElementById('queueStatus');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'queueStatus';
+            el.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px;
+                background: rgba(0,0,0,0.9); color: #fff;
+                padding: 12px 18px; border-radius: 10px;
+                font-family: monospace; font-size: 13px;
+                z-index: 9999; min-width: 180px;
+                border: 1px solid rgba(255,255,255,0.1);
+                display: none;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            `;
+            document.body.appendChild(el);
+        }
+        
+        if (this.queue.length > 0 || this.active > 0) {
+            el.style.display = 'block';
+            el.innerHTML = `
+                <div style="font-weight:bold;margin-bottom:6px;">🚦 Login Queue</div>
+                <div>Active: ${this.active}/${this.maxConcurrent}</div>
+                <div>Waiting: ${this.queue.length}</div>
+                <div style="height:3px;background:rgba(255,255,255,0.1);margin-top:8px;border-radius:3px;">
+                    <div style="height:100%;width:${(this.active/this.maxConcurrent)*100}%;background:linear-gradient(90deg,#6c63ff,#3a7bd5);border-radius:3px;transition:width 0.3s;"></div>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Max 2 students at a time</div>
+            `;
+        } else {
+            el.style.display = 'none';
+        }
+    }
+};
+
+// ============================================
 // SECURE LOGIN SCRIPT - HACKER PROTECTED
 // Supports: Students, Admins, SuperAdmins, Staff, Lecturers
 // ============================================
@@ -464,7 +553,68 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SECURE LOGIN HANDLER (UPDATED for STAFF)
+    // EXECUTE LOGIN - EXTRACTED FOR QUEUE
+    // ============================================
+    executeLogin: async function(identifier, password) {
+        if (!this.supabase) {
+            throw new Error('Authentication service not available');
+        }
+        
+        // Random delay to prevent timing attacks
+        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+        
+        let profileData = null;
+        let isStaff = false;
+        
+        // Staff login check
+        const isStaffId = !identifier.includes('@');
+        if (isStaffId || identifier.includes('@')) {
+            const staffProfile = await this.verifyStaffLogin(identifier, password);
+            if (staffProfile) {
+                profileData = staffProfile;
+                isStaff = true;
+                return { profileData, isStaff };
+            }
+        }
+        
+        // Regular Supabase auth
+        const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
+            email: identifier, 
+            password 
+        });
+        
+        if (authError) {
+            this.recordFailedAttempt();
+            if (authError.message.includes('Invalid login credentials')) {
+                throw new Error('Invalid email or password');
+            } else if (authError.message.includes('Email not confirmed')) {
+                throw new Error('Please verify your email');
+            } else {
+                throw new Error('Login failed. Please try again.');
+            }
+        }
+        
+        const { data: profile, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', identifier)
+            .maybeSingle();
+        
+        if (!profile || profileError) {
+            await this.supabase.auth.signOut();
+            throw new Error('Account not found');
+        }
+        
+        if (profile.status?.toLowerCase() !== 'approved') {
+            await this.supabase.auth.signOut();
+            throw new Error('Account pending approval');
+        }
+        
+        return { profileData: profile, isStaff: false };
+    },
+    
+    // ============================================
+    // SECURE LOGIN HANDLER - QUEUED VERSION
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
@@ -511,83 +661,24 @@ window.NCHSMLogin = {
         this.clearError(errorMsg);
         this.state.isLoggingIn = true;
         loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
+        buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Queued...';
         
         this.addRateLimitRequest();
         
         try {
-            console.log('🔐 Processing login...');
+            console.log(`🔐 Queuing login for: ${identifier}`);
             
-            if (!this.supabase) {
-                throw new Error('Authentication service not available');
-            }
-            
-            // Add random delay to prevent timing attacks (2-4 seconds)
-            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
-            
-            let profileData = null;
-            let isStaff = false;
-            
-            // FIRST: Try staff login if identifier looks like staff ID or email
-            const isStaffId = !identifier.includes('@');
-            if (isStaffId || identifier.includes('@')) {
-                const staffProfile = await this.verifyStaffLogin(identifier, password);
-                if (staffProfile) {
-                    profileData = staffProfile;
-                    isStaff = true;
-                    console.log('✅ Staff login successful');
-                }
-            }
-            
-            // SECOND: If not staff, try regular Supabase auth
-            if (!profileData) {
-                const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
-                    email: identifier, 
-                    password 
-                });
-                
-                if (authError) {
-                    this.recordFailedAttempt();
-                    
-                    if (authError.message.includes('Invalid login credentials')) {
-                        throw new Error('Invalid email or password');
-                    } else if (authError.message.includes('Email not confirmed')) {
-                        throw new Error('Please verify your email');
-                    } else {
-                        throw new Error('Login failed. Please try again.');
-                    }
-                }
-                
-                console.log('✅ Authentication successful');
-                
-                const { data: profile, error: profileError } = await this.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('email', identifier)
-                    .maybeSingle();
-                
-                if (!profile || profileError) {
-                    await this.supabase.auth.signOut();
-                    throw new Error('Account not found');
-                }
-                
-                if (profile.status?.toLowerCase() !== 'approved') {
-                    await this.supabase.auth.signOut();
-                    throw new Error('Account pending approval');
-                }
-                
-                profileData = profile;
-            }
+            // 🔥 THE FIX: Add to queue instead of calling Supabase directly
+            const result = await LoginQueue.add(identifier, password);
             
             // Reset failed attempts on successful login
             this.resetFailedAttempts();
             
-            console.log('✅ Profile loaded - Role:', profileData.role);
-            
             // Generate secure session token
             const secureToken = this.generateSecureToken();
             
-            await this.completeLogin(profileData, secureToken, isStaff);
+            // Complete login
+            await this.completeLogin(result.profileData, secureToken, result.isStaff);
             
         } catch (error) {
             console.error('💥 Login error');
@@ -600,7 +691,11 @@ window.NCHSMLogin = {
                 }
             }
             
-            this.showError(errorMsg, error.message || 'Login failed');
+            if (error.message.includes('busy') || error.message.includes('timeout')) {
+                this.showError(errorMsg, '⏰ Server is busy with other students. Please wait 10 seconds and try again.');
+            } else {
+                this.showError(errorMsg, error.message || 'Login failed');
+            }
             
         } finally {
             this.state.isLoggingIn = false;
@@ -794,19 +889,18 @@ window.NCHSMLogin = {
         
         let role = profileData.role?.toLowerCase() || 'student';
         
-        // In the redirectToDashboard function, add:
-if (profileData.is_staff || role === 'staff' || role === 'lecturer') {
-    role = 'lecturer';
-}
-
-// Then the role mapping:
-const roleRedirects = {
-    'superadmin': 'superadmin.html',
-    'admin': 'admin.html',
-    'student': 'student.html',
-    'lecturer': 'lecturer.html',  // Staff go here
-    'staff': 'lecturer.html'       // Also staff here
-};
+        // Handle staff/lecturer role
+        if (profileData.is_staff || role === 'staff' || role === 'lecturer') {
+            role = 'lecturer';
+        }
+        
+        const roleRedirects = {
+            'superadmin': 'superadmin.html',
+            'admin': 'admin.html',
+            'student': 'student.html',
+            'lecturer': 'lecturer.html',
+            'staff': 'lecturer.html'
+        };
         
         let redirectFile = roleRedirects[role] || 'index.html';
         
