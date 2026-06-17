@@ -443,14 +443,14 @@ async function loadExams(showLoading = true) {
             const examType = (exam.exam_type || '').toUpperCase();
             const isCatExam = examType.includes('CAT');
             
-            // ✅ FIXED: CAT = 30 marks, others = marks_out_of or total_marks
+            // ✅ FIXED: CAT = 30 marks ALWAYS, others = marks_out_of or total_marks
             let totalMarks = 30; // Default for CAT
             if (!isCatExam) {
+                // Non-CAT: use marks_out_of or total_marks
                 totalMarks = exam.marks_out_of || exam.total_marks || 100;
-            }
-            // If the exam already has total_marks set, use that
-            if (exam.total_marks) {
-                totalMarks = exam.total_marks;
+            } else {
+                // ✅ CAT: ALWAYS 30 marks - ignore database values
+                totalMarks = 30;
             }
             
             // ----- Build exam start/end times -----
@@ -564,7 +564,7 @@ async function loadExams(showLoading = true) {
                     displayScore = Math.min(displayScore, totalMarks);
                 }
                 
-                // Calculate percentage
+                // ✅ FIXED: Calculate percentage using the CORRECT total marks
                 const percentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
                 displayPercentage = Math.round(percentage);
                 const passMark = exam.pass_mark || 60;
