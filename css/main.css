@@ -6031,3 +6031,18 @@ body.dark-mode .nav-tabs > li.active > a {
 body.dark-mode .stat-label {
     color: #94a3b8;
 }
+/* ============================================
+   ADD THIS TO YOUR CSS FILE
+   ============================================ */
+
+/* Pause ALL animations on hidden tabs */
+.tab-content:not(.active) * {
+    animation-play-state: paused !important;
+}
+
+/* Hide spinners in hidden tabs */
+.tab-content:not(.active) .loading-spinner,
+.tab-content:not(.active) .spinner,
+.tab-content:not(.active) .loader {
+    display: none !important;
+}
