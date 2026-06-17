@@ -16,7 +16,87 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 
+// ============================================
+// 🔥🔥🔥 ADD CLEANUP MODULE HERE 🔥🔥🔥
+// ============================================
+// PERMANENT CLEANUP MODULE FOR ADMIN
+class SpinnerManager {
+    constructor() {
+        this.activeSpinners = [];
+        this.interval = null;
+        this.isMonitoring = false;
+    }
 
+    showSpinner(container, message = 'Loading...') {
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        spinner.innerHTML = `
+            <div class="spinner-icon"></div>
+            <span class="spinner-message">${message}</span>
+        `;
+        
+        if (container) {
+            container.prepend(spinner);
+        } else {
+            document.body.prepend(spinner);
+        }
+
+        const cleanup = () => {
+            if (spinner.parentElement) {
+                spinner.remove();
+            }
+            const index = this.activeSpinners.indexOf(spinner);
+            if (index > -1) {
+                this.activeSpinners.splice(index, 1);
+            }
+        };
+
+        this.activeSpinners.push(spinner);
+        setTimeout(cleanup, 10000);
+        return cleanup;
+    }
+
+    cleanupAll() {
+        this.activeSpinners.forEach(spinner => {
+            if (spinner.parentElement) {
+                spinner.remove();
+            }
+        });
+        this.activeSpinners = [];
+    }
+
+    startMonitoring() {
+        if (this.isMonitoring) return;
+        this.isMonitoring = true;
+
+        this.interval = setInterval(() => {
+            document.querySelectorAll('.loading-spinner, .spinner, .loader').forEach(el => {
+                const startTime = el.dataset.startTime || Date.now();
+                if (!el.dataset.startTime) {
+                    el.dataset.startTime = startTime;
+                }
+                if (Date.now() - startTime > 10000) {
+                    el.remove();
+                    console.log('🧹 Auto-removed orphaned spinner');
+                }
+            });
+        }, 5000);
+    }
+
+    stopMonitoring() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+        this.isMonitoring = false;
+    }
+}
+
+// Create global instance
+window.spinnerManager = new SpinnerManager();
+window.spinnerManager.startMonitoring();
+
+console.log('✅ Admin Cleanup Module initialized');
 // =====================================================
 // SIMPLE GLOBAL SHOWTAB FUNCTION - FIXES ALL ONCLICK ERRORS
 // =====================================================
@@ -1089,18 +1169,221 @@ async function handleSaveWelcomeMessage(e) {
     }
 }
 
-/*******************************************************
- * 8. ENHANCED SYSTEM MANAGEMENT SECTIONS
- *******************************************************/
+// ============================================
+// SYSTEM HEALTH MONITORING - ENHANCED WITH CLEANUP
+// ============================================
 
-// System Health Monitoring
 async function loadSystemHealth() {
+    console.log('🏥 Loading System Health with Cleanup Monitoring...');
+    
     // Update progress bars with real data
     updateProgressBar('server-load-bar', 'server-load-text', 45, '%');
     updateProgressBar('db-performance-bar', 'db-query-time', 78, '% - 12ms avg');
     updateProgressBar('storage-usage-bar', 'storage-used', 62, 'GB / 100GB');
     updateProgressBar('api-response-bar', 'api-response-time', 92, '% - 180ms avg');
+    
+    // ============================================
+    // CLEANUP HEALTH CHECKS
+    // ============================================
+    
+    // 1. Check spinners
+    const spinnerCount = document.querySelectorAll('.loading-spinner, .spinner, .loader').length;
+    const spinnerHealth = document.getElementById('spinner-health');
+    if (spinnerHealth) {
+        spinnerHealth.textContent = spinnerCount;
+        spinnerHealth.style.color = spinnerCount > 5 ? '#ef4444' : (spinnerCount > 2 ? '#f59e0b' : '#10b981');
+    }
+    
+    // 2. Check intervals
+    const testId = setInterval(() => {}, 1);
+    clearInterval(testId);
+    const intervalCount = testId;
+    const intervalHealth = document.getElementById('interval-health');
+    if (intervalHealth) {
+        intervalHealth.textContent = intervalCount;
+        intervalHealth.style.color = intervalCount > 100 ? '#ef4444' : (intervalCount > 50 ? '#f59e0b' : '#10b981');
+    }
+    
+    // 3. Check memory usage
+    if (window.performance && window.performance.memory) {
+        const usedMB = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024);
+        const memoryHealth = document.getElementById('memory-health');
+        if (memoryHealth) {
+            memoryHealth.textContent = `${usedMB}MB`;
+            memoryHealth.style.color = usedMB > 200 ? '#ef4444' : (usedMB > 100 ? '#f59e0b' : '#10b981');
+        }
+    }
+    
+    // 4. Check cleanup module
+    const cleanupStatus = document.getElementById('cleanup-status');
+    if (cleanupStatus) {
+        const isActive = typeof window.spinnerManager !== 'undefined';
+        cleanupStatus.textContent = isActive ? '✅ Active' : '❌ Inactive';
+        cleanupStatus.style.color = isActive ? '#10b981' : '#ef4444';
+    }
+    
+    // 5. Check Realtime channels
+    const channelCount = window.supabase?.realtime?.channels?.length || 0;
+    const channelHealth = document.getElementById('channel-health');
+    if (channelHealth) {
+        channelHealth.textContent = channelCount;
+        channelHealth.style.color = channelCount > 5 ? '#f59e0b' : '#10b981';
+    }
+    
+    // 6. Last cleanup timestamp
+    const lastCleanup = document.getElementById('last-cleanup');
+    if (lastCleanup) {
+        lastCleanup.textContent = new Date().toLocaleString();
+    }
+    
+    // 7. Update issues list
+    updateIssuesList(spinnerCount, intervalCount, typeof window.spinnerManager !== 'undefined');
 }
+
+// ============================================
+// UPDATE ISSUES LIST
+// ============================================
+
+function updateIssuesList(spinnerCount, intervalCount, cleanupActive) {
+    const issueSpinners = document.getElementById('issue-spinners');
+    const issueIntervals = document.getElementById('issue-intervals');
+    const issueMemory = document.getElementById('issue-memory');
+    const issueCleanup = document.getElementById('issue-cleanup');
+    
+    if (issueSpinners) {
+        const isHealthy = spinnerCount <= 2;
+        issueSpinners.textContent = isHealthy ? '✅ No spinner issues' : `⚠️ ${spinnerCount} spinners found`;
+        issueSpinners.style.color = isHealthy ? '#10b981' : '#dc2626';
+    }
+    
+    if (issueIntervals) {
+        const isHealthy = intervalCount <= 50;
+        issueIntervals.textContent = isHealthy ? '✅ No interval issues' : `⚠️ ${intervalCount} intervals found`;
+        issueIntervals.style.color = isHealthy ? '#10b981' : '#dc2626';
+    }
+    
+    if (issueMemory) {
+        if (window.performance && window.performance.memory) {
+            const usedMB = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024);
+            const isHealthy = usedMB <= 100;
+            issueMemory.textContent = isHealthy ? `✅ Memory: ${usedMB}MB (normal)` : `⚠️ Memory: ${usedMB}MB (high)`;
+            issueMemory.style.color = isHealthy ? '#10b981' : '#dc2626';
+        } else {
+            issueMemory.textContent = 'ℹ️ Memory API not available';
+            issueMemory.style.color = '#6b7280';
+        }
+    }
+    
+    if (issueCleanup) {
+        issueCleanup.textContent = cleanupActive ? '✅ Cleanup module active' : '❌ Cleanup module inactive';
+        issueCleanup.style.color = cleanupActive ? '#10b981' : '#dc2626';
+    }
+}
+
+// ============================================
+// RUN SYSTEM CLEANUP
+// ============================================
+
+function runSystemCleanup() {
+    console.log('🧹 Running manual system cleanup...');
+    
+    // 1. Clean all spinners via manager
+    if (window.spinnerManager) {
+        window.spinnerManager.cleanupAll();
+        console.log('✅ SpinnerManager cleanup done');
+    }
+    
+    // 2. Remove any lingering spinners
+    const removed = document.querySelectorAll('.loading-spinner, .spinner, .loader');
+    removed.forEach(el => el.remove());
+    console.log(`✅ Removed ${removed.length} lingering spinners`);
+    
+    // 3. Stop intervals (safety)
+    let stopped = 0;
+    for (let i = 1; i < 200; i++) {
+        clearInterval(i);
+        stopped++;
+    }
+    console.log(`✅ Stopped ${stopped} intervals`);
+    
+    // 4. Show feedback
+    showFeedback(`🧹 System cleanup completed! Removed ${removed.length} spinners and stopped intervals.`, 'success');
+    
+    // 5. Update health display
+    setTimeout(() => loadSystemHealth(), 500);
+}
+
+// ============================================
+// CHECK FOR LEAKS
+// ============================================
+
+function checkForLeaks() {
+    console.log('🔍 Running leak detection...');
+    
+    const resultsDiv = document.getElementById('leak-results');
+    if (!resultsDiv) {
+        // Create results div if it doesn't exist
+        const container = document.querySelector('.system-health-container') || document.body;
+        const newDiv = document.createElement('div');
+        newDiv.id = 'leak-results';
+        newDiv.style.cssText = 'margin-top: 20px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;';
+        container.appendChild(newDiv);
+    }
+    
+    const results = document.getElementById('leak-results') || resultsDiv;
+    const leakResults = document.getElementById('leak-detection-results');
+    if (leakResults) leakResults.style.display = 'block';
+    
+    let html = '<div style="font-family: monospace; font-size: 13px;">';
+    html += '<h4>🔍 Leak Detection Results</h4>';
+    
+    // 1. Check spinners
+    const spinnerCount = document.querySelectorAll('.loading-spinner, .spinner, .loader').length;
+    html += `<div>🔄 Spinners: ${spinnerCount} ${spinnerCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    
+    // 2. Check intervals
+    const testId = setInterval(() => {}, 1);
+    clearInterval(testId);
+    html += `<div>⏱️ Intervals: ${testId} ${testId > 50 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    
+    // 3. Check memory
+    if (window.performance && window.performance.memory) {
+        const usedMB = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024);
+        html += `<div>💾 Memory: ${usedMB}MB ${usedMB > 200 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    }
+    
+    // 4. Check cleanup module
+    const cleanupActive = typeof window.spinnerManager !== 'undefined';
+    html += `<div>🧹 Cleanup Module: ${cleanupActive ? '✅ Active' : '❌ Inactive'}</div>`;
+    
+    // 5. Check Realtime channels
+    const channelCount = window.supabase?.realtime?.channels?.length || 0;
+    html += `<div>📡 Realtime Channels: ${channelCount} ${channelCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    
+    // 6. Overall verdict
+    const isClean = spinnerCount <= 2 && testId <= 50 && cleanupActive;
+    html += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-weight: bold; color: ${isClean ? '#10b981' : '#dc2626'}">
+        ${isClean ? '✅ SYSTEM IS CLEAN! No leaks detected.' : '⚠️ Some issues found. Run cleanup or fix issues above.'}
+    </div>`;
+    
+    html += '</div>';
+    
+    if (results) results.innerHTML = html;
+    
+    // Update issues list
+    updateIssuesList(spinnerCount, testId, cleanupActive);
+    
+    // Show feedback
+    if (spinnerCount <= 2 && testId <= 50 && cleanupActive) {
+        showFeedback('✅ System is clean! No leaks detected.', 'success');
+    } else {
+        showFeedback('⚠️ Some issues found. Run cleanup or check the results above.', 'warning');
+    }
+}
+
+// ============================================
+// PROGRESS BAR HELPER
+// ============================================
 
 function updateProgressBar(barId, textId, percentage, suffix) {
     const bar = $(barId);
@@ -1111,47 +1394,13 @@ function updateProgressBar(barId, textId, percentage, suffix) {
     }
 }
 
-// User Analytics
-async function loadUserAnalytics() {
-    // Placeholder for analytics data loading
-    console.log('Loading user analytics...');
-}
+// ============================================
+// EXPORT FUNCTIONS
+// ============================================
 
-// Task Scheduler
-async function loadScheduledTasks() {
-    // Placeholder for scheduled tasks loading
-    console.log('Loading scheduled tasks...');
-}
-
-// Bulk Operations
-async function loadBulkOperations() {
-    // Initialize bulk operations interface
-    console.log('Loading bulk operations...');
-}
-
-// API Management
-async function loadAPIKeys() {
-    // Placeholder for API keys loading
-    console.log('Loading API keys...');
-}
-
-// Notification Center
-async function loadNotifications() {
-    // Placeholder for notifications loading
-    console.log('Loading notifications...');
-}
-
-// Quick Actions
-async function loadQuickActions() {
-    // Placeholder for quick actions loading
-    console.log('Loading quick actions...');
-}
-
-// 2FA Settings
-async function load2FASettings() {
-    // Placeholder for 2FA settings loading
-    console.log('Loading 2FA settings...');
-}
+window.loadSystemHealth = loadSystemHealth;
+window.runSystemCleanup = runSystemCleanup;
+window.checkForLeaks = checkForLeaks;
 
 // Session Management
 // =====================================================
@@ -1768,44 +2017,265 @@ async function handleMassPromotion(e) {
     }
 }
 
-async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
-    console.log('🎯 Approving user:', { userId, fullName, studentId });
-    
-    if (!confirm(`Approve user ${fullName}?`)) return;
+// ============================================
+// APPROVE USER WITH DETAILS CHECK - ENHANCED
+// ============================================
 
+async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
+    console.log('🎯 Opening approval check for user:', { userId, fullName, studentId });
+    
     try {
-        // First, update the user profile status
-        const { data, error } = await sb
+        // Fetch full user profile from database
+        const { data: user, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        if (error || !user) {
+            showFeedback('❌ Error loading user details: ' + (error?.message || 'User not found'), 'error');
+            return;
+        }
+        
+        // Show approval modal with all user details
+        showApprovalModal(user);
+        
+    } catch (err) {
+        console.error('❌ Error in approveUser:', err);
+        showFeedback('❌ Error loading user details: ' + err.message, 'error');
+    }
+}
+
+// ============================================
+// SHOW APPROVAL MODAL WITH ALL USER DETAILS
+// ============================================
+
+function showApprovalModal(user) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('approvalModal');
+    if (existingModal) existingModal.remove();
+    
+    const programName = getProgramDisplayName(user.program);
+    const programType = getProgramType(user.program);
+    const programLevel = getProgramLevel(user.program);
+    const programBadge = programType === 'TVET' ? 'TVET' : 'KRCHN';
+    
+    const modal = document.createElement('div');
+    modal.id = 'approvalModal';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 20px;
+            max-width: 750px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        ">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
+                <div>
+                    <h2 style="margin: 0; color: #4C1D95;">
+                        <i class="fas fa-user-check"></i> Verify User Details
+                    </h2>
+                    <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">
+                        Please review all details before approving
+                    </p>
+                </div>
+                <button onclick="closeApprovalModal()" style="
+                    background: none;
+                    border: none;
+                    font-size: 28px;
+                    cursor: pointer;
+                    color: #6b7280;
+                    padding: 0 10px;
+                ">&times;</button>
+            </div>
+            
+            <!-- User Information -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fas fa-user"></i> Personal Information
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                    <div><strong>Full Name:</strong> <span style="color: #1f2937;">${escapeHtml(user.full_name || 'N/A')}</span></div>
+                    <div><strong>Email:</strong> <span style="color: #1f2937;">${escapeHtml(user.email || 'N/A')}</span></div>
+                    <div><strong>Student ID:</strong> <span style="color: #1f2937;">${escapeHtml(user.student_id || 'N/A')}</span></div>
+                    <div><strong>Phone:</strong> <span style="color: #1f2937;">${escapeHtml(user.phone || 'N/A')}</span></div>
+                    <div><strong>Role:</strong> <span style="color: #1f2937; text-transform: capitalize;">${escapeHtml(user.role || 'student')}</span></div>
+                    <div><strong>Status:</strong> <span style="color: #f59e0b; font-weight: 600;">${escapeHtml(user.status || 'pending')}</span></div>
+                </div>
+            </div>
+            
+            <!-- Academic Information -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fas fa-graduation-cap"></i> Academic Information
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                    <div><strong>Program:</strong> <span style="color: #1f2937;">${escapeHtml(programName)}</span></div>
+                    <div><strong>Program Type:</strong> <span style="color: #1f2937; font-weight: 600;">${programBadge}</span></div>
+                    <div><strong>Program Level:</strong> <span style="color: #1f2937;">${escapeHtml(programLevel)}</span></div>
+                    <div><strong>Intake Year:</strong> <span style="color: #1f2937;">${escapeHtml(user.intake_year || 'N/A')}</span></div>
+                    <div><strong>Block/Term:</strong> <span style="color: #1f2937;">${escapeHtml(user.block || 'Not Assigned')}</span></div>
+                    <div><strong>Program Code:</strong> <span style="color: #1f2937;">${escapeHtml(user.program || 'N/A')}</span></div>
+                </div>
+            </div>
+            
+            <!-- Additional Details -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fas fa-info-circle"></i> Additional Details
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                    <div><strong>User ID:</strong> <span style="color: #1f2937; font-family: monospace; font-size: 12px;">${escapeHtml(user.user_id || 'N/A')}</span></div>
+                    <div><strong>Created At:</strong> <span style="color: #1f2937;">${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</span></div>
+                    <div><strong>Last Login:</strong> <span style="color: #1f2937;">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</span></div>
+                    <div><strong>Login Count:</strong> <span style="color: #1f2937;">${user.login_count || 0}</span></div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                <button onclick="confirmApproveUser('${user.user_id}', '${escapeHtml(user.full_name)}', '${escapeHtml(user.student_id || '')}', '${escapeHtml(user.email || '')}', '${escapeHtml(user.role || 'student')}', '${escapeHtml(user.program || '')}')" style="
+                    flex: 1;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    border: none;
+                    padding: 14px 20px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-check-circle"></i> Confirm & Approve
+                </button>
+                <button onclick="closeApprovalModal()" style="
+                    flex: 0.5;
+                    background: #ef4444;
+                    color: white;
+                    border: none;
+                    padding: 14px 20px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0; font-size: 13px; color: #92400e;">
+                    <i class="fas fa-shield-alt"></i> 
+                    <strong>Approval Action:</strong> This will activate the user account and send a confirmation email.
+                </p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add slide-in animation
+    const style = document.createElement('style');
+    style.id = 'approval-modal-style';
+    style.textContent = `
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// ============================================
+// CLOSE APPROVAL MODAL
+// ============================================
+
+function closeApprovalModal() {
+    const modal = document.getElementById('approvalModal');
+    if (modal) modal.remove();
+    
+    const style = document.getElementById('approval-modal-style');
+    if (style) style.remove();
+}
+
+// ============================================
+// CONFIRM APPROVE USER (Called from modal)
+// ============================================
+
+async function confirmApproveUser(userId, fullName, studentId, email, role, program) {
+    console.log('✅ Confirming approval for:', { userId, fullName, studentId });
+    
+    // Close the modal first
+    closeApprovalModal();
+    
+    // Double-check confirmation
+    if (!confirm(`⚠️ Approve ${fullName}? They will gain access to the system.`)) {
+        return;
+    }
+    
+    try {
+        // Update user profile status
+        const { error } = await sb
             .from(USER_PROFILE_TABLE)
             .update({
                 status: 'approved',
-                student_id: studentId || ''
+                student_id: studentId || userId.substring(0, 8).toUpperCase(),
+                updated_at: new Date().toISOString()
             })
-            .eq('user_id', userId)
-            .select('*');
-
+            .eq('user_id', userId);
+        
         if (error) {
             console.error('❌ Error approving user:', error);
             await logAudit(
                 'USER_APPROVE',
-                `Failed to approve user ${fullName} (Student ID: ${studentId}). Reason: ${error.message}`,
+                `Failed to approve user ${fullName}. Reason: ${error.message}`,
                 userId,
                 'FAILURE'
             );
-            showFeedback(`Failed: ${error.message}`, 'error');
+            showFeedback(`❌ Failed to approve: ${error.message}`, 'error');
             return;
         }
-
-        // Send approval email if we have email
+        
+        // Send approval email
         if (email) {
             try {
                 await sendApprovalEmail(email, fullName, role);
             } catch (emailError) {
                 console.warn('⚠️ Approval email failed:', emailError);
-                // Continue anyway - approval succeeded even if email failed
+                // Continue anyway - approval succeeded
             }
         }
-
+        
         showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
         
         await logAudit(
@@ -1814,22 +2284,26 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
             userId,
             'SUCCESS'
         );
-
+        
         // Refresh all user tables
         loadPendingApprovals();
         loadAllUsers();
         loadStudents();
         
-        // Also refresh dashboard if it exists
+        // Refresh dashboard if exists
         if (typeof loadDashboardData === 'function') {
             loadDashboardData();
         }
-
+        
     } catch (err) {
-        console.error('❌ Unexpected error in approveUser:', err);
-        showFeedback(`Unexpected error: ${err.message}`, 'error');
+        console.error('❌ Unexpected error in confirmApproveUser:', err);
+        showFeedback(`❌ Unexpected error: ${err.message}`, 'error');
     }
 }
+
+// ============================================
+// SEND APPROVAL EMAIL
+// ============================================
 
 async function sendApprovalEmail(email, userName, role) {
     console.log('📧 Sending approval email to:', email);
@@ -1866,6 +2340,10 @@ async function sendApprovalEmail(email, userName, role) {
         document.body.appendChild(img);
     });
 }
+
+// ============================================
+// LOAD PENDING APPROVALS (UPDATED WITH REVIEW BUTTON)
+// ============================================
 
 async function loadPendingApprovals() {
     const tbody = $('pending-table');
@@ -1925,7 +2403,7 @@ async function loadPendingApprovals() {
                 <td>
                     <button class="btn btn-approve" 
                             onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
-                        Approve
+                        <i class="fas fa-eye"></i> Review & Approve
                     </button>
                     <button class="btn btn-delete" 
                             onclick="deleteProfile('${escapedUserId}', '${escapedName}')">
@@ -1935,6 +2413,10 @@ async function loadPendingApprovals() {
             </tr>`;
     });
 }
+
+// ============================================
+// UPDATE USER ROLE
+// ============================================
 
 async function updateUserRole(userId, newRole, fullName) {
     console.log('🎯 Updating user role:', { userId, newRole, fullName });
@@ -1987,6 +2469,10 @@ async function updateUserRole(userId, newRole, fullName) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
+
+// ============================================
+// LOAD ALL USERS
+// ============================================
 
 async function loadAllUsers() {
     const tbody = $('users-table');
@@ -2046,7 +2532,7 @@ async function loadAllUsers() {
                 <td class="${statusClass}">${statusText}</td>
                 <td>
                     <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
-                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Approve</button>` : ''}
+                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Review & Approve</button>` : ''}
                     <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
                 </td>
             </tr>`;
@@ -2054,6 +2540,10 @@ async function loadAllUsers() {
 
     filterTable('user-search', 'users-table', [1, 2, 4]);
 }
+
+// ============================================
+// LOAD STUDENTS
+// ============================================
 
 async function loadStudents() {
     const tbody = $('students-table');
@@ -2118,6 +2608,10 @@ async function loadStudents() {
 
     filterTable('student-search', 'students-table', [1, 3, 5]);
 }
+
+// ============================================
+// OPEN EDIT USER MODAL
+// ============================================
 
 async function openEditUserModal(userId) {
     try {
@@ -2190,6 +2684,10 @@ async function openEditUserModal(userId) {
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
+
+// ============================================
+// HANDLE EDIT USER
+// ============================================
 
 async function handleEditUser(e) {
     e.preventDefault(); 
@@ -2276,6 +2774,10 @@ async function handleEditUser(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
+
+// ============================================
+// DELETE PROFILE
+// ============================================
 
 async function deleteProfile(userId, fullName, isRejection = false) {
     console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
@@ -3379,7 +3881,10 @@ async function closeExam(examId) {
         showFeedback(`Failed to close exam: ${error.message}`, 'error');
     }
 }
-// ========== OPEN EDIT EXAM MODAL ==========
+// ============================================
+// OPEN EDIT EXAM MODAL - COMPLETE FIELDS
+// ============================================
+
 async function openEditExamModal(examId) {
     try {
         console.log('📝 Opening edit modal for exam ID:', examId);
@@ -3395,44 +3900,120 @@ async function openEditExamModal(examId) {
             return;
         }
 
-        const modal = document.getElementById('examEditModal');
+        // Check if modal exists, if not create it
+        let modal = document.getElementById('examEditModal');
         if (!modal) {
-            showFeedback('Exam edit modal not found in HTML.', 'error');
-            return;
+            modal = createExamEditModal();
         }
 
-        // Set form fields with your column names
+        // ============================================
+        // POPULATE ALL FIELDS
+        // ============================================
+        
+        // Basic Info
         const examIdInput = document.getElementById('edit_exam_id');
         const titleInput = document.getElementById('edit_exam_title');
-        const dateInput = document.getElementById('edit_exam_date');
+        const typeInput = document.getElementById('edit_exam_type');
         const statusInput = document.getElementById('edit_exam_status');
+        const basisInput = document.getElementById('edit_exam_basis');
+        
+        // Dates & Times
+        const dateInput = document.getElementById('edit_exam_date');
         const startTimeInput = document.getElementById('edit_exam_start_time');
         const durationInput = document.getElementById('edit_exam_duration');
-        const linkInput = document.getElementById('edit_exam_link');
-        const typeInput = document.getElementById('edit_exam_type');
+        const deadlineInput = document.getElementById('edit_exam_deadline');
         
+        // Program & Block
+        const programInput = document.getElementById('edit_exam_program');
+        const blockInput = document.getElementById('edit_exam_block');
+        const intakeInput = document.getElementById('edit_exam_intake');
+        
+        // Course
+        const courseInput = document.getElementById('edit_exam_course');
+        
+        // Marks
         const outOfInput = document.getElementById('edit_exam_out_of');
         const passMarkInput = document.getElementById('edit_exam_pass_mark');
         const minFeeInput = document.getElementById('edit_exam_min_fee');
-        const deadlineInput = document.getElementById('edit_exam_deadline');
-        const basisInput = document.getElementById('edit_exam_basis');
+        
+        // Link & Classes
+        const linkInput = document.getElementById('edit_exam_link');
+        const classesContainer = document.getElementById('edit_exam_classes_container');
 
+        // Set values
         if (examIdInput) examIdInput.value = exam.id;
         if (titleInput) titleInput.value = exam.title || '';
+        if (typeInput) typeInput.value = exam.exam_type || 'CAT';
+        if (statusInput) statusInput.value = exam.status || 'Upcoming';
+        if (basisInput) basisInput.value = exam.exam_basis || 'ordinary';
+        
         if (dateInput) dateInput.value = exam.exam_date || '';
         if (startTimeInput) startTimeInput.value = exam.exam_start_time || '09:00';
         if (durationInput) durationInput.value = exam.duration_minutes || 60;
-        if (linkInput) linkInput.value = exam.online_link || exam.exam_link || '';
-        if (statusInput) statusInput.value = exam.status || 'Upcoming';
-        if (typeInput) typeInput.value = exam.exam_type || 'CAT';
+        if (deadlineInput) deadlineInput.value = exam.marks_entry_deadline || '';
+        
+        // Program & Block - need to handle dropdown updates
+        if (programInput) {
+            // First update the program dropdown with all options
+            updateProgramDropdown(programInput);
+            // Set the value
+            programInput.value = exam.target_program || exam.program_type || 'KRCHN';
+            // Trigger change to update block options
+            programInput.dispatchEvent(new Event('change'));
+        }
+        
+        if (blockInput) {
+            // Wait for block options to populate, then set value
+            setTimeout(() => {
+                blockInput.value = exam.block || exam.block_term || '';
+                console.log('Block/Term set to:', exam.block || exam.block_term);
+            }, 200);
+        }
+        
+        if (intakeInput) intakeInput.value = exam.intake_year || '';
+        
+        // Course dropdown
+        if (courseInput) {
+            // Populate course dropdown
+            await populateEditExamCourses(courseInput, exam.target_program || exam.program_type);
+            courseInput.value = exam.course_id || '';
+        }
         
         if (outOfInput) outOfInput.value = exam.marks_out_of || exam.total_marks || 100;
         if (passMarkInput) passMarkInput.value = exam.pass_mark || 50;
         if (minFeeInput) minFeeInput.value = exam.min_fee_balance || 0;
-        if (deadlineInput) deadlineInput.value = exam.marks_entry_deadline || '';
-        if (basisInput) basisInput.value = exam.exam_basis || 'ordinary';
+        if (linkInput) linkInput.value = exam.online_link || exam.exam_link || '';
 
-        modal.style.display = 'block';
+        // Classes/Blocks assigned
+        if (classesContainer) {
+            const assignedClasses = exam.assigned_classes || [];
+            classesContainer.innerHTML = `
+                <div style="margin-top: 10px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-layer-group"></i> Assigned Blocks/Classes:
+                    </label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #f8f9fa; border-radius: 8px; min-height: 40px;">
+                        ${assignedClasses.length > 0 ? assignedClasses.map(cls => `
+                            <span style="background: #4C1D95; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                                ${escapeHtml(cls)}
+                                <span onclick="removeAssignedClass('${exam.id}', '${escapeHtml(cls)}')" style="cursor: pointer; margin-left: 6px; color: #fca5a5;">&times;</span>
+                            </span>
+                        `).join('') : '<span style="color: #6b7280;">No blocks assigned</span>'}
+                    </div>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <input type="text" id="edit_exam_add_class" placeholder="Add block (e.g., Block 1)" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button onclick="addAssignedClassToExam('${exam.id}')" class="btn-sm btn-edit" style="white-space: nowrap;">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Store exam ID for later use
+        window.currentEditExamId = exam.id;
+
+        modal.style.display = 'flex';
 
     } catch (err) {
         console.error('❌ Error in openEditExamModal:', err);
