@@ -1418,36 +1418,49 @@
     }
 }
             // ========== UPDATE TIMERS EVERY SECOND ==========
-            function updateAdminTimers() {
-                document.querySelectorAll('.exam-timer-cell').forEach(el => {
-                    const examStartStr = el.dataset.examStart;
-                    const examEndStr = el.dataset.examEnd;
-
-                    if (!examStartStr || !examEndStr) return;
-
-                    const examStart = new Date(examStartStr);
-                    const examEnd = new Date(examEndStr);
-                    const kenyaNow = getKenyaNow();
-                    const kenyaStart = getKenyaTime(examStart);
-                    const kenyaEnd = getKenyaTime(examEnd);
-
-                    if (kenyaNow >= kenyaStart && kenyaNow <= kenyaEnd) {
-                        const timeLeftMs = kenyaEnd - kenyaNow;
-                        const minutesLeft = Math.floor(timeLeftMs / 60000);
-                        const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
-                        el.innerHTML =
-                            `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${minutesLeft}m ${secondsLeft}s</span>`;
-                    } else if (kenyaNow < kenyaStart) {
-                        const diffMs = kenyaStart - kenyaNow;
-                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                        el.innerHTML = `<span class="badge bg-warning text-dark">⏰ ${diffHours}h ${diffMinutes}m</span>`;
-                    } else {
-                        el.innerHTML = `<span class="badge bg-secondary">⏱️ Closed</span>`;
-                    }
-                });
+           // ========== UPDATE TIMERS EVERY SECOND ==========
+function updateAdminTimers() {
+    document.querySelectorAll('.exam-timer-cell').forEach(el => {
+        const examStartStr = el.dataset.examStart;
+        const examEndStr = el.dataset.examEnd;
+        
+        // Skip if no date data or empty strings
+        if (!examStartStr || !examEndStr || examStartStr === '' || examEndStr === '') {
+            return;
+        }
+        
+        try {
+            const examStart = new Date(examStartStr);
+            const examEnd = new Date(examEndStr);
+            
+            // Skip if invalid dates
+            if (isNaN(examStart.getTime()) || isNaN(examEnd.getTime())) {
+                return;
             }
-
+            
+            const kenyaNow = getKenyaNow();
+            const kenyaStart = getKenyaTime(examStart);
+            const kenyaEnd = getKenyaTime(examEnd);
+            
+            if (kenyaNow >= kenyaStart && kenyaNow <= kenyaEnd) {
+                const timeLeftMs = kenyaEnd - kenyaNow;
+                const minutesLeft = Math.floor(timeLeftMs / 60000);
+                const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                el.innerHTML = `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${minutesLeft}m ${secondsLeft}s</span>`;
+            } else if (kenyaNow < kenyaStart) {
+                const diffMs = kenyaStart - kenyaNow;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                el.innerHTML = `<span class="badge bg-warning text-dark">⏰ ${diffHours}h ${diffMinutes}m</span>`;
+            } else {
+                el.innerHTML = `<span class="badge bg-secondary">⏱️ Closed</span>`;
+            }
+        } catch (error) {
+            // Skip this timer cell if there's an error
+            console.warn('Timer update error:', error);
+        }
+    });
+}
             // ========== SIDEBAR FUNCTIONS ==========
             window.toggleSidebar = function() {
                 const sidebar = document.getElementById('sidebar');
@@ -2131,7 +2144,7 @@
     }
 };
 
-           function displayAllExams(exams, countMap, hasResultsMap) {
+          function displayAllExams(exams, countMap, hasResultsMap) {
     const start = (currentPage.exams - 1) * itemsPerPage;
     const page = exams.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('examsBody');
@@ -2150,8 +2163,6 @@
             const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
             const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
             const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
-
-            // Use 'title' instead of 'exam_name'
             const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
 
             // Calculate timer with error handling
@@ -2175,6 +2186,10 @@
             const timerDisplay = timerData.timerHtml || `<span class="badge bg-secondary">⏱️ N/A</span>`;
             const statusDisplay = timerData.status || 'N/A';
 
+            // SAFE: Only call toISOString if examStart/examEnd exist
+            const examStartStr = timerData.examStart ? timerData.examStart.toISOString() : '';
+            const examEndStr = timerData.examEnd ? timerData.examEnd.toISOString() : '';
+
             return `<tr>
                 <td><strong>${examDisplayName}</strong></td>
                 <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
@@ -2190,8 +2205,8 @@
                 </td>
                 <td class="exam-timer-cell" 
                     data-exam-id="${e.id}"
-                    data-exam-start="${timerData.examStart ? timerData.examStart.toISOString() : ''}"
-                    data-exam-end="${timerData.examEnd ? timerData.examEnd.toISOString() : ''}">
+                    data-exam-start="${examStartStr}"
+                    data-exam-end="${examEndStr}">
                     ${timerDisplay}
                 </td>
                 <td>
@@ -2210,7 +2225,7 @@
             </tr>`;
         } catch (error) {
             console.error('Error rendering exam row:', e.id, error);
-            return `<tr><td colspan="11" style="color:red;">Error loading exam ${e.id}</td></tr>`;
+            return `<tr><td colspan="11" style="color:red; padding:10px;">❌ Error loading exam ${e.id}</td></tr>`;
         }
     }).join('');
     renderPagination('exams', exams.length);
