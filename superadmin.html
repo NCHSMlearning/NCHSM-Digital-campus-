@@ -3042,22 +3042,169 @@
     </div>
 </div>
 
-    <div id="examEditModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h3>Edit Exam</h3><span class="close" onclick="document.getElementById('examEditModal').style.display='none'">&times;</span></div>
-            <form id="edit-exam-form">
+   <!-- ============================================
+     ENHANCED EXAM EDIT MODAL - FULL FIELDS
+     ============================================ -->
+<div id="examEditModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h3 style="color: #4C1D95;"><i class="fas fa-edit"></i> Edit Exam</h3>
+            <span class="close" onclick="document.getElementById('examEditModal').style.display='none'">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="edit-exam-form" onsubmit="saveEditedExam(event)">
                 <input type="hidden" id="edit_exam_id">
-                <label>Exam Type</label><select id="edit_exam_type" class="form-input"><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="CAT">CAT</option><option value="EXAM">Final Exam</option><option value="ASSIGNMENT">Assignment</option></select>
-                <label>Exam Title</label><input type="text" id="edit_exam_title" class="form-input" required>
-                <label>Exam Date</label><input type="date" id="edit_exam_date" class="form-input" required>
-                <label>Exam Time</label><input type="time" id="edit_exam_start_time" class="form-input" required>
-                <label>Duration (minutes)</label><input type="number" id="edit_exam_duration" class="form-input" min="5" required>
-                <label>Online Link</label><input type="url" id="edit_exam_link" class="form-input">
-                <label>Status</label><select id="edit_exam_status" class="form-input"><option value="Upcoming">Upcoming</option><option value="InProgress">In Progress</option><option value="Completed">Completed</option></select>
-                <div class="modal-actions"><button type="submit" class="btn-action">Save Changes</button><button type="button" class="btn-delete" onclick="document.getElementById('examEditModal').style.display='none'">Cancel</button></div>
+
+                <!-- ====== BASIC INFO ====== -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Title *</label>
+                        <input type="text" id="edit_exam_title" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Type *</label>
+                        <select id="edit_exam_type" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                            <option value="CAT">CAT</option>
+                            <option value="CAT_1">CAT 1</option>
+                            <option value="CAT_2">CAT 2</option>
+                            <option value="EXAM">Final Exam</option>
+                            <option value="ASSIGNMENT">Assignment</option>
+                            <option value="END_TERM">End of Term</option>
+                            <option value="SUPPLEMENTARY">Supplementary</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Status</label>
+                        <select id="edit_exam_status" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                            <option value="Upcoming">📅 Upcoming</option>
+                            <option value="InProgress">⏳ In Progress</option>
+                            <option value="Completed">✅ Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Basis</label>
+                        <select id="edit_exam_basis" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                            <option value="ordinary">Ordinary (Standalone)</option>
+                            <option value="consolidated">Consolidated (Combined)</option>
+                            <option value="supplementary">Supplementary</option>
+                            <option value="special">Special</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ====== SCHEDULE ====== -->
+                <h4 style="color: #4C1D95; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
+                    <i class="fas fa-calendar"></i> Schedule
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Date *</label>
+                        <input type="date" id="edit_exam_date" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Start Time *</label>
+                        <input type="time" id="edit_exam_start_time" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Duration (minutes) *</label>
+                        <input type="number" id="edit_exam_duration" required min="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Marks Entry Deadline</label>
+                        <input type="date" id="edit_exam_deadline" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Online Exam Link</label>
+                        <input type="url" id="edit_exam_link" placeholder="https://..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <!-- ====== PROGRAM & BLOCK ====== -->
+                <h4 style="color: #4C1D95; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
+                    <i class="fas fa-graduation-cap"></i> Program & Course
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Program *</label>
+                        <select id="edit_exam_program" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                            <option value="">-- Select Program --</option>
+                            <option value="KRCHN">🎓 KRCHN Nursing</option>
+                            <option value="TVET">🔧 TVET Programs</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Block/Term *</label>
+                        <select id="edit_exam_block" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                            <option value="">-- Select Block/Term --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Intake Year *</label>
+                        <input type="text" id="edit_exam_intake" required placeholder="e.g., 2024" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">Course/Unit (Optional)</label>
+                    <select id="edit_exam_course" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                        <option value="">-- No Course --</option>
+                    </select>
+                </div>
+
+                <!-- ====== MARKS ====== -->
+                <h4 style="color: #4C1D95; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
+                    <i class="fas fa-chart-bar"></i> Marks & Grading
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Marks Out Of</label>
+                        <input type="number" id="edit_exam_out_of" value="100" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Pass Mark (%)</label>
+                        <input type="number" id="edit_exam_pass_mark" value="50" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Min Fee Balance</label>
+                        <input type="number" id="edit_exam_min_fee" value="0" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <!-- ====== ASSIGNED CLASSES ====== -->
+                <h4 style="color: #4C1D95; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
+                    <i class="fas fa-layer-group"></i> Assigned Classes/Blocks
+                </h4>
+                <div id="edit_exam_classes_container" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px;" id="edit_exam_classes_list">
+                        <!-- Classes will be populated by JavaScript -->
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="text" id="edit_exam_add_class" placeholder="Add block (e.g., Block 1)" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button type="button" onclick="addAssignedClassToExam(document.getElementById('edit_exam_id').value)" class="btn-action" style="padding: 8px 16px; background: #4C1D95;">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ====== ACTIONS ====== -->
+                <div style="display: flex; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+                    <button type="submit" style="flex: 1; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" onclick="document.getElementById('examEditModal').style.display='none'" style="flex: 0.5; background: #6b7280; color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
             </form>
         </div>
     </div>
+</div>
 
     <div id="gradeModal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 1200px;">
