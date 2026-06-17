@@ -883,24 +883,17 @@
         let timeRemainingHtml = '';
         
         if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-            // --- FIX: Build URL with user details as query parameters ---
+            // --- FIX: Use the parameter names expected by the exam portal ---
             let examLink = exam.examLink;
             
             // Check if link already has query params
-            const hasQueryParams = examLink.includes('?');
-            
-            // Build the full URL with user details
-            const baseUrl = examLink.split('?')[0]; // Remove any existing params
+            const baseUrl = examLink.split('?')[0];
             const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
             
-            // Build new params
+            // Build new params matching exam portal expectations
             const params = new URLSearchParams();
-            params.append('userId', userId);
-            params.append('program', userProgram);
-            params.append('block', userBlock);
-            params.append('intake', userIntake);
-            params.append('examId', exam.id);
-            params.append('examName', examDisplayName);
+            params.append('user_id', userId);      // ← Exam portal expects 'user_id'
+            params.append('exam_id', exam.id);     // ← Exam portal expects 'exam_id'
             
             // If there were existing params, add them too
             if (existingParams) {
@@ -917,7 +910,7 @@
             actionHtml = `<a href="${fullUrl}" 
                             target="_blank" 
                             class="exam-link-btn btn-primary"
-                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}'); sessionStorage.setItem('examProgram', '${userProgram}');"
+                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');"
                             style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
                             <i class="fas fa-external-link-alt"></i> Start Exam
                         </a>`;
@@ -977,7 +970,6 @@
     
     this.currentTable.innerHTML = html;
 }
-        
         displayCompletedTable() {
             if (!this.completedTable) return;
             
