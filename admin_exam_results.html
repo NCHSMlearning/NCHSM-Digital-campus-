@@ -1347,48 +1347,76 @@
                 });
             }
 
-            function calculateExamTimer(exam) {
-                const kenyaNow = getKenyaNow();
-                const examDate = new Date(exam.exam_date + 'T' + exam.exam_start_time + ':00');
-                const examStart = getKenyaTime(examDate);
-                const examEnd = new Date(examStart.getTime() + (exam.duration_minutes || 30) * 60000);
-
-                let status = '';
-                let timeLeft = '';
-                let timerHtml = '';
-
-                if (kenyaNow < examStart) {
-                    const diffMs = examStart - kenyaNow;
-                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                    status = '🟡 Upcoming';
-                    timeLeft = `${diffHours}h ${diffMinutes}m`;
-                    timerHtml = `<span class="badge bg-warning text-dark">⏰ ${timeLeft}</span>`;
-                } else if (kenyaNow >= examStart && kenyaNow <= examEnd) {
-                    const timeLeftMs = examEnd - kenyaNow;
-                    const minutesLeft = Math.floor(timeLeftMs / 60000);
-                    const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
-                    status = '🟢 Active';
-                    timeLeft = `${minutesLeft}m ${secondsLeft}s`;
-                    timerHtml = `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${timeLeft}</span>`;
-                } else if (kenyaNow > examEnd) {
-                    status = '🔴 Expired';
-                    timeLeft = 'Closed';
-                    timerHtml = `<span class="badge bg-secondary">⏱️ Closed</span>`;
-                }
-
-                return {
-                    timerHtml,
-                    status,
-                    timeLeft,
-                    examStart,
-                    examEnd,
-                    isActive: kenyaNow >= examStart && kenyaNow <= examEnd,
-                    isUpcoming: kenyaNow < examStart,
-                    isExpired: kenyaNow > examEnd
-                };
-            }
-
+           function calculateExamTimer(exam) {
+    const kenyaNow = getKenyaNow();
+    
+    // Check if exam has date and time
+    if (!exam.exam_date || !exam.exam_start_time) {
+        return {
+            timerHtml: `<span class="badge bg-secondary">⏱️ No Date Set</span>`,
+            status: '⏱️ No Date',
+            timeLeft: 'N/A',
+            examStart: null,
+            examEnd: null,
+            isActive: false,
+            isUpcoming: false,
+            isExpired: false
+        };
+    }
+    
+    try {
+        const examDate = new Date(exam.exam_date + 'T' + exam.exam_start_time + ':00');
+        const examStart = getKenyaTime(examDate);
+        const examEnd = new Date(examStart.getTime() + (exam.duration_minutes || 30) * 60000);
+        
+        let status = '';
+        let timeLeft = '';
+        let timerHtml = '';
+        
+        if (kenyaNow < examStart) {
+            const diffMs = examStart - kenyaNow;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            status = '🟡 Upcoming';
+            timeLeft = `${diffHours}h ${diffMinutes}m`;
+            timerHtml = `<span class="badge bg-warning text-dark">⏰ ${timeLeft}</span>`;
+        } else if (kenyaNow >= examStart && kenyaNow <= examEnd) {
+            const timeLeftMs = examEnd - kenyaNow;
+            const minutesLeft = Math.floor(timeLeftMs / 60000);
+            const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+            status = '🟢 Active';
+            timeLeft = `${minutesLeft}m ${secondsLeft}s`;
+            timerHtml = `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${timeLeft}</span>`;
+        } else if (kenyaNow > examEnd) {
+            status = '🔴 Expired';
+            timeLeft = 'Closed';
+            timerHtml = `<span class="badge bg-secondary">⏱️ Closed</span>`;
+        }
+        
+        return {
+            timerHtml,
+            status,
+            timeLeft,
+            examStart,
+            examEnd,
+            isActive: kenyaNow >= examStart && kenyaNow <= examEnd,
+            isUpcoming: kenyaNow < examStart,
+            isExpired: kenyaNow > examEnd
+        };
+    } catch (error) {
+        console.warn('Timer calculation error for exam:', exam.id, error);
+        return {
+            timerHtml: `<span class="badge bg-secondary">⏱️ Invalid Date</span>`,
+            status: '⏱️ Invalid',
+            timeLeft: 'N/A',
+            examStart: null,
+            examEnd: null,
+            isActive: false,
+            isUpcoming: false,
+            isExpired: false
+        };
+    }
+}
             // ========== UPDATE TIMERS EVERY SECOND ==========
             function updateAdminTimers() {
                 document.querySelectorAll('.exam-timer-cell').forEach(el => {
@@ -1589,73 +1617,77 @@
             window.closeResetModal = function() { document.getElementById('resetExamModal').style.display = 'none';
                 examToReset = null; };
 
-            window.openCreateExamModal = function(examId = null) {
-                document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' :
-                    '<i class="fas fa-plus-circle"></i> Create New Exam';
-                document.getElementById('editingExamId').value = examId || '';
-                if (examId && examsMap[examId]) {
-                    const exam = examsMap[examId];
-                    document.getElementById('examName').value = exam.exam_name || '';
-                    document.getElementById('examType').value = exam.exam_type || 'EXAM';
-                    document.getElementById('examCourse').value = exam.course || '';
-                    document.getElementById('examDuration').value = exam.duration_minutes || 30;
-                    document.getElementById('examTotalMarks').value = exam.total_marks || getExamTotalMarks(exam.exam_type);
-                    document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
-                    document.getElementById('examProgram').value = exam.program_type || '';
-                    document.getElementById('examBlock').value = exam.block_term || '';
-                    document.getElementById('examIntakeYear').value = exam.intake_year || '';
-                    document.getElementById('examPassMark').value = exam.pass_mark || 60;
-                } else {
-                    document.getElementById('examName').value = '';
-                    document.getElementById('examType').value = 'EXAM';
-                    document.getElementById('examCourse').value = '';
-                    document.getElementById('examDuration').value = 30;
-                    document.getElementById('examTotalMarks').value = 70;
-                    document.getElementById('examLink').value = '';
-                    document.getElementById('examProgram').value = '';
-                    document.getElementById('examBlock').value = '';
-                    document.getElementById('examIntakeYear').value = '';
-                    document.getElementById('examPassMark').value = 60;
-                }
-                updateTotalMarksHint();
-                document.getElementById('examModal').style.display = 'flex';
-            };
+         window.openCreateExamModal = function(examId = null) {
+    document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
+    document.getElementById('editingExamId').value = examId || '';
+    if (examId && examsMap[examId]) {
+        const exam = examsMap[examId];
+        // Use 'title' instead of 'exam_name'
+        document.getElementById('examName').value = exam.title || exam.exam_name || '';
+        document.getElementById('examType').value = exam.exam_type || 'EXAM';
+        document.getElementById('examCourse').value = exam.course_code || exam.course || '';
+        document.getElementById('examDuration').value = exam.duration_minutes || 30;
+        document.getElementById('examTotalMarks').value = exam.total_marks || exam.marks_out_of || getExamTotalMarks(exam.exam_type) || 100;
+        document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
+        document.getElementById('examProgram').value = exam.program_type || '';
+        document.getElementById('examBlock').value = exam.block || exam.block_term || '';
+        document.getElementById('examIntakeYear').value = exam.intake_year || '';
+        document.getElementById('examPassMark').value = exam.pass_mark || 60;
+    } else {
+        document.getElementById('examName').value = '';
+        document.getElementById('examType').value = 'EXAM';
+        document.getElementById('examCourse').value = '';
+        document.getElementById('examDuration').value = 30;
+        document.getElementById('examTotalMarks').value = 70;
+        document.getElementById('examLink').value = '';
+        document.getElementById('examProgram').value = '';
+        document.getElementById('examBlock').value = '';
+        document.getElementById('examIntakeYear').value = '';
+        document.getElementById('examPassMark').value = 60;
+    }
+    updateTotalMarksHint();
+    document.getElementById('examModal').style.display = 'flex';
+};
 
             window.closeExamModal = function() { document.getElementById('examModal').style.display = 'none'; };
 
-            document.getElementById('examForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const examId = document.getElementById('editingExamId').value;
-                const examType = document.getElementById('examType').value;
-                const totalMarks = getExamTotalMarks(examType);
-                const passMark = getPassMark(totalMarks);
-
-                const examData = {
-                    exam_name: document.getElementById('examName').value,
-                    exam_type: examType,
-                    course: document.getElementById('examCourse').value,
-                    duration_minutes: parseInt(document.getElementById('examDuration').value),
-                    total_marks: totalMarks,
-                    marks_out_of: totalMarks,
-                    pass_mark: passMark,
-                    online_link: document.getElementById('examLink').value,
-                    program_type: document.getElementById('examProgram').value || null,
-                    block_term: document.getElementById('examBlock').value || null,
-                    intake_year: document.getElementById('examIntakeYear').value || null,
-                    status: 'draft'
-                };
-                let result;
-                if (examId) {
-                    result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
-                } else {
-                    result = await sb.from('exams').insert([examData]);
-                }
-                if (result.error) { alert('Error: ' + result.error.message); } else { alert(examId ? 'Exam updated!' :
-                        'Exam created!');
-                    closeExamModal();
-                    loadAllExams(); }
-            });
-
+          document.getElementById('examForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const examId = document.getElementById('editingExamId').value;
+    const examType = document.getElementById('examType').value;
+    const totalMarks = getExamTotalMarks(examType);
+    const passMark = getPassMark(totalMarks);
+    
+    const examData = {
+        title: document.getElementById('examName').value,  // Use 'title' not 'exam_name'
+        exam_name: document.getElementById('examName').value, // Keep for compatibility
+        exam_type: examType,
+        course_code: document.getElementById('examCourse').value,
+        duration_minutes: parseInt(document.getElementById('examDuration').value),
+        total_marks: totalMarks,
+        marks_out_of: totalMarks,
+        pass_mark: passMark,
+        online_link: document.getElementById('examLink').value,
+        program_type: document.getElementById('examProgram').value || null,
+        block: document.getElementById('examBlock').value || null,  // Use 'block' not 'block_term'
+        intake_year: document.getElementById('examIntakeYear').value || null,
+        status: 'draft'
+    };
+    
+    let result;
+    if (examId) {
+        result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
+    } else {
+        result = await sb.from('exams').insert([examData]);
+    }
+    if (result.error) { 
+        alert('Error: ' + result.error.message); 
+    } else { 
+        alert(examId ? 'Exam updated!' : 'Exam created!'); 
+        closeExamModal(); 
+        loadAllExams(); 
+    }
+});
             window.deleteExam = async function(examId, examName) {
                 if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
                     await sb.from('exam_grades').delete().eq('exam_id', examId);
@@ -2062,91 +2094,127 @@
             }
 
             // ========== ALL EXAMS ==========
-            window.loadAllExams = async function() {
-                const loadingDiv = document.getElementById('examsLoading');
-                const table = document.getElementById('examsTable');
-                loadingDiv.style.display = 'block';
-                table.style.display = 'none';
-                try {
-                    const { data, error } = await sb.from('exams').select('*').order('id');
-                    if (error) throw error;
-                    allExams = data || [];
-                    const { data: grades } = await sb.from('exam_grades').select('exam_id, result_status').eq(
-                        'question_id', '00000000-0000-0000-0000-000000000000');
-                    const countMap = {};
-                    const hasResultsMap = {};
-                    if (grades) { grades.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; if (g
-                            .result_status === 'PASS' || g.result_status === 'FAIL') hasResultsMap[g
-                            .exam_id] = true; }); }
-                    let filteredExams = allExams;
-                    if (currentExamFilter === 'active') filteredExams = allExams.filter(e => !hasResultsMap[e.id]);
-                    else if (currentExamFilter === 'completed') filteredExams = allExams.filter(e => hasResultsMap[e
-                    .id]);
-                    displayAllExams(filteredExams, countMap, hasResultsMap);
-                    loadingDiv.style.display = 'none';
-                    table.style.display = 'table';
-                    updateStats();
-                } catch (err) { console.error(err);
-                    loadingDiv.innerHTML = 'Error loading exams'; }
-            };
+          window.loadAllExams = async function() {
+    const loadingDiv = document.getElementById('examsLoading');
+    const table = document.getElementById('examsTable');
+    loadingDiv.style.display = 'block';
+    table.style.display = 'none';
+    try {
+        // Use 'title' instead of 'exam_name'
+        const { data, error } = await sb.from('exams').select('*').order('id');
+        if (error) throw error;
+        allExams = data || [];
+        
+        // Get grades count
+        const { data: grades } = await sb.from('exam_grades').select('exam_id, result_status').eq('question_id', '00000000-0000-0000-0000-000000000000');
+        const countMap = {};
+        const hasResultsMap = {};
+        if (grades) { 
+            grades.forEach(g => { 
+                countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; 
+                if (g.result_status === 'PASS' || g.result_status === 'FAIL') hasResultsMap[g.exam_id] = true; 
+            }); 
+        }
+        
+        let filteredExams = allExams;
+        if (currentExamFilter === 'active') filteredExams = allExams.filter(e => !hasResultsMap[e.id]);
+        else if (currentExamFilter === 'completed') filteredExams = allExams.filter(e => hasResultsMap[e.id]);
+        
+        displayAllExams(filteredExams, countMap, hasResultsMap);
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+        updateStats();
+    } catch(err) { 
+        console.error('Error loading exams:', err); 
+        loadingDiv.innerHTML = 'Error loading exams: ' + err.message; 
+        loadingDiv.style.color = '#DC2626';
+    }
+};
 
-            function displayAllExams(exams, countMap, hasResultsMap) {
-                const start = (currentPage.exams - 1) * itemsPerPage;
-                const page = exams.slice(start, start + itemsPerPage);
-                const tbody = document.getElementById('examsBody');
-                if (page.length === 0) { tbody.innerHTML = '<tr><td colspan="11">No exams found</td></tr>'; return; }
+           function displayAllExams(exams, countMap, hasResultsMap) {
+    const start = (currentPage.exams - 1) * itemsPerPage;
+    const page = exams.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('examsBody');
+    if (!page || page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">📭 No exams found</td></tr>'; 
+        return; 
+    }
 
-                tbody.innerHTML = page.map(e => {
-                    const hasResults = hasResultsMap[e.id];
-                    const examStatus = hasResults ? 'Completed' : 'Active';
-                    const statusClass = hasResults ? 'status-completed' : 'status-active';
-                    const publishStatus = e.status || 'draft';
-                    const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
-                    const passMark = e.pass_mark || getPassMark(totalMarks);
-                    const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
-                    const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+    tbody.innerHTML = page.map(e => {
+        try {
+            const hasResults = hasResultsMap[e.id] || false;
+            const examStatus = hasResults ? 'Completed' : 'Active';
+            const statusClass = hasResults ? 'status-completed' : 'status-active';
+            const publishStatus = e.status || 'draft';
+            const totalMarks = e.total_marks || e.marks_out_of || getExamTotalMarks(e.exam_type) || 100;
+            const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
+            const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+            const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
 
-                    const timerData = calculateExamTimer(e);
-                    const timerDisplay = timerData.timerHtml;
-                    const statusDisplay = timerData.status;
+            // Use 'title' instead of 'exam_name'
+            const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
 
-                    return `<tr>
-                            <td><strong>${e.exam_name}</strong></td>
-                            <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
-                            <td>${e.course || '-'}</td>
-                            <td>${totalMarks} (Pass: ${passMark})</td>
-                            <td>${e.duration_minutes || 30} min</td>
-                            <td>${countMap[e.id] || 0}</td>
-                            <td><span class="${statusClass}">${examStatus}</span></td>
-                            <td>
-                                <span class="${timerData.isActive ? 'status-active' : timerData.isUpcoming ? 'status-pending' : 'status-fail'}">
-                                    ${statusDisplay}
-                                </span>
-                            </td>
-                            <td class="exam-timer-cell" 
-                                data-exam-id="${e.id}"
-                                data-exam-start="${timerData.examStart.toISOString()}"
-                                data-exam-end="${timerData.examEnd.toISOString()}">
-                                ${timerDisplay}
-                            </td>
-                            <td>
-                                <label class="publish-toggle">
-                                    <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
-                                           onchange="togglePublish(${e.id}, '${publishStatus}')">
-                                    <span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span>
-                                </label>
-                            </td>
-                            <td>
-                                <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button>
-                                <button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button>
-                                <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button>
-                                <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button>
-                            </td>
-                        </tr>`;
-                }).join('');
-                renderPagination('exams', exams.length);
+            // Calculate timer with error handling
+            let timerData;
+            try {
+                timerData = calculateExamTimer(e);
+            } catch (timerError) {
+                console.warn('Timer error for exam:', e.id, timerError);
+                timerData = {
+                    timerHtml: `<span class="badge bg-secondary">⏱️ N/A</span>`,
+                    status: 'N/A',
+                    timeLeft: 'N/A',
+                    examStart: null,
+                    examEnd: null,
+                    isActive: false,
+                    isUpcoming: false,
+                    isExpired: false
+                };
             }
 
+            const timerDisplay = timerData.timerHtml || `<span class="badge bg-secondary">⏱️ N/A</span>`;
+            const statusDisplay = timerData.status || 'N/A';
+
+            return `<tr>
+                <td><strong>${examDisplayName}</strong></td>
+                <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
+                <td>${e.course_code || e.course || '-'}</td>
+                <td>${totalMarks} (Pass: ${passMark})</td>
+                <td>${e.duration_minutes || 30} min</td>
+                <td>${countMap[e.id] || 0}</td>
+                <td><span class="${statusClass}">${examStatus}</span></td>
+                <td>
+                    <span class="${timerData.isActive ? 'status-active' : timerData.isUpcoming ? 'status-pending' : 'status-fail'}">
+                        ${statusDisplay}
+                    </span>
+                </td>
+                <td class="exam-timer-cell" 
+                    data-exam-id="${e.id}"
+                    data-exam-start="${timerData.examStart ? timerData.examStart.toISOString() : ''}"
+                    data-exam-end="${timerData.examEnd ? timerData.examEnd.toISOString() : ''}">
+                    ${timerDisplay}
+                </td>
+                <td>
+                    <label class="publish-toggle">
+                        <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
+                               onchange="togglePublish(${e.id}, '${publishStatus}')">
+                        <span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span>
+                    </label>
+                </td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button>
+                    <button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button>
+                    <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')">Reset All</button>
+                    <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')">Delete</button>
+                </td>
+            </tr>`;
+        } catch (error) {
+            console.error('Error rendering exam row:', e.id, error);
+            return `<tr><td colspan="11" style="color:red;">Error loading exam ${e.id}</td></tr>`;
+        }
+    }).join('');
+    renderPagination('exams', exams.length);
+}
             // ========== RELEASE MODAL ==========
             window.openReleaseModal = async function() {
                 const { data: exams } = await sb.from('exams').select('id, exam_name').order('id', { ascending: false });
