@@ -3577,9 +3577,6 @@ async function loadCoursesForExamDropdown() {
         console.error('Error loading courses:', error);
     }
 }
-// ============================================
-// 🔥 ADD THIS FUNCTION RIGHT HERE 🔥
-// ============================================
 
 // ========== POPULATE EDIT EXAM COURSES ==========
 async function populateEditExamCourses(courseSelect, program) {
@@ -4048,6 +4045,7 @@ async function openEditExamModal(examId) {
        // ========== PROGRAM & BLOCK - FIXED ==========
 const programInput = document.getElementById('edit_exam_program');
 const blockInput = document.getElementById('edit_exam_block');
+const intakeInput = document.getElementById('edit_exam_intake');  
 
 if (programInput) {
     // Step 1: Update the program dropdown with all options
