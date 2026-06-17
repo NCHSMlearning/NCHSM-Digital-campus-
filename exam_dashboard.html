@@ -366,7 +366,7 @@ async function loadExams(showLoading = true) {
         `;
         
         // ============================================
-        // 2. FETCH EXAMS (BATCH PARALLEL)
+        // 2. FETCH EXAMS, GRADES, RELEASED RESULTS
         // ============================================
         const [examsResult, gradesResult, releasedResult] = await Promise.all([
             sb
@@ -388,7 +388,7 @@ async function loadExams(showLoading = true) {
         
         const exams = examsResult.data || [];
         const grades = gradesResult.data || [];
-        const releasedSet = new Set(releasedResult.data?.map(r => r.result_id) || []);
+        const releasedSet = new Set(releasedResult.data?.map(r => String(r.result_id)) || []);
         
         console.log(`📊 Found ${exams.length} exams, ${grades.length} grades, ${releasedSet.size} released`);
         
@@ -406,7 +406,9 @@ async function loadExams(showLoading = true) {
             let blockMatch = true;
             if (studentProfile?.block) {
                 const examBlock = exam.block_term || exam.block;
-                blockMatch = examBlock === studentProfile.block;
+                if (examBlock && examBlock !== 'General') {
+                    blockMatch = examBlock === studentProfile.block;
+                }
             }
             
             let intakeMatch = true;
@@ -460,11 +462,26 @@ async function loadExams(showLoading = true) {
             }
             
             // ----- Check for existing grade -----
-            const grade = grades?.find(g => g.exam_id === exam.id);
+            const grade = grades?.find(g => String(g.exam_id) === String(exam.id));
             const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
-            const isReleased = grade ? releasedSet.has(grade.id) : false;
+            const isReleased = grade ? releasedSet.has(String(grade.id)) : false;
             const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
             const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
+            
+            // ----- Check if exam is released by admin -----
+            // ✅ FIX: Use exam.status field to determine if exam is released
+            // If your exams table has a 'status' field, check it
+            // Otherwise, default to true if the exam has a link and is within time window
+            const isExamReleased = exam.status === 'Released' || 
+                                   exam.status === 'Active' || 
+                                   exam.status === 'Published' || 
+                                   exam.status === 'Available' ||
+                                   exam.released === true ||
+                                   exam.is_published === true ||
+                                   // If no status field, treat as released if exam has a link and is not expired
+                                   (exam.online_link || exam.exam_link) && exam.status !== 'Draft';
+            
+            console.log(`📌 Exam ${exam.id} - Status: ${exam.status || 'No status'}, Released: ${isExamReleased}`);
             
             // ----- Determine exam status -----
             let examStatus = 'upcoming';
@@ -552,34 +569,48 @@ async function loadExams(showLoading = true) {
                     <div>Results will appear here after admin review.</div>
                 </div>`;
             }
-            // CASE 3: READY TO START (Available + Has Link)
-            else if (examStatus === 'available' && canStartExam && (exam.online_link || exam.exam_link)) {
-                statusBadge = '<span class="badge badge-upcoming">📝 Ready to Start</span>';
+            // CASE 3: READY TO START - ONLY WHEN ALL CONDITIONS MET
+            // 1. Exam is in available time window (canStartExam === true)
+            // 2. Exam is released by admin (isExamReleased === true)
+            // 3. Has a valid link
+            // 4. Student hasn't taken it yet (!hasGrade)
+            else if (examStatus === 'available' && canStartExam && isExamReleased && (exam.online_link || exam.exam_link) && !hasGrade) {
+                statusBadge = '<span class="badge badge-upcoming" style="background: linear-gradient(135deg, #D1FAE5, #A7F3D0); color: #065F46;">🔴 Live Now</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
             }
-            // CASE 4: UPCOMING
-            else if (examStatus === 'upcoming') {
+            // CASE 4: UPCOMING - NOT YET AVAILABLE OR NOT RELEASED
+            else if (examStatus === 'upcoming' || !isExamReleased) {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Coming Soon</button>`;
+                if (!isExamReleased) {
+                    actionButton = `<button class="btn-pending" disabled>⏳ Pending Admin Release</button>`;
+                } else {
+                    const displayText = countdownText || 'soon';
+                    actionButton = `<button class="btn-pending" disabled>⏳ Starts in ${displayText}</button>`;
+                }
             }
             // CASE 5: EXPIRED / MISSED
             else if (examStatus === 'expired' && !hasGrade) {
                 statusBadge = '<span class="badge badge-pending">⏱️ Missed</span>';
                 actionButton = `<button class="btn-pending" disabled>⏱️ Exam Closed</button>`;
             }
-            // CASE 6: DEFAULT
+            // CASE 6: DEFAULT - SAFETY FALLBACK
             else {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                if (exam.online_link || exam.exam_link) {
+                if (examStatus === 'available' && isExamReleased && (exam.online_link || exam.exam_link) && !hasGrade) {
                     actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
+                } else if (isExamReleased && examStatus === 'upcoming') {
+                    const displayText = countdownText || 'soon';
+                    actionButton = `<button class="btn-pending" disabled>⏳ Starts in ${displayText}</button>`;
+                } else if (!isExamReleased) {
+                    actionButton = `<button class="btn-pending" disabled>⏳ Pending Release</button>`;
                 } else {
-                    actionButton = `<button class="btn-pending" disabled>⏳ No Link Available</button>`;
+                    actionButton = `<button class="btn-pending" disabled>⏳ Not Available</button>`;
                 }
             }
             
             // ----- Build the exam card -----
             container.innerHTML += `
-                <div class="exam-card ${examStatus === 'available' ? 'exam-status-available' : ''}">
+                <div class="exam-card ${examStatus === 'available' ? 'exam-status-available' : ''}" data-exam-id="${exam.id}">
                     <div class="exam-header">
                         <div class="exam-title">
                             ${examDisplayName} ${statusBadge}
@@ -603,12 +634,6 @@ async function loadExams(showLoading = true) {
                 </div>
             `;
         }
-        
-        // ============================================
-        // 5. START LIVE TIMER UPDATES
-        // ============================================
-        if (window.timerInterval) clearInterval(window.timerInterval);
-        window.timerInterval = setInterval(updateAllTimers, 1000);
         
         console.log('✅ Exams loaded successfully');
         
