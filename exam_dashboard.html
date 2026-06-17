@@ -439,19 +439,28 @@ async function loadExams(showLoading = true) {
             const examDisplayName = exam.exam_name || exam.title || 'Exam';
             const safeExamName = examDisplayName.replace(/'/g, "\\'");
             
-            // ----- Determine exam type and total marks -----
+            // ============================================
+            // DETERMINE EXAM TYPE AND TOTAL MARKS
+            // ============================================
             const examType = (exam.exam_type || '').toUpperCase();
             const isCatExam = examType.includes('CAT');
+            const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
             
-            // ✅ FIXED: CAT = 30 marks ALWAYS, others = marks_out_of or total_marks
-            let totalMarks = 30; // Default for CAT
-            if (!isCatExam) {
-                // Non-CAT: use marks_out_of or total_marks
-                totalMarks = exam.marks_out_of || exam.total_marks || 100;
+            // ✅ FIXED: CAT = 30, EXAM = 70, others = marks_out_of or total_marks
+            let totalMarks = 100; // Default fallback
+            
+            if (isCatExam) {
+                totalMarks = 30; // CAT exams: ALWAYS 30 marks
+            } else if (isFinalExam) {
+                totalMarks = 70; // Final exams: ALWAYS 70 marks
             } else {
-                // ✅ CAT: ALWAYS 30 marks - ignore database values
-                totalMarks = 30;
+                totalMarks = exam.marks_out_of || exam.total_marks || 100;
             }
+            
+            // ✅ Pass mark = 60% of total marks
+            const passMark = Math.round(totalMarks * 0.6);
+            
+            console.log(`📊 Exam: ${examDisplayName}, Type: ${exam.exam_type}, Total: ${totalMarks}, Pass: ${passMark} (60%)`);
             
             // ----- Build exam start/end times -----
             let examStartDateTime = null;
@@ -559,16 +568,21 @@ async function loadExams(showLoading = true) {
                 if (isCatExam) {
                     displayScore = grade?.cat_1_score || grade?.cat_2_score || grade?.marks || 0;
                     displayScore = Math.min(displayScore, 30);
+                } else if (isFinalExam) {
+                    displayScore = grade?.exam_score || grade?.marks || 0;
+                    displayScore = Math.min(displayScore, 70);
                 } else {
                     displayScore = grade?.marks || 0;
                     displayScore = Math.min(displayScore, totalMarks);
                 }
                 
-                // ✅ FIXED: Calculate percentage using the CORRECT total marks
+                // ✅ Calculate percentage using totalMarks
                 const percentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
                 displayPercentage = Math.round(percentage);
-                const passMark = exam.pass_mark || 60;
-                const isPassed = displayPercentage >= passMark;
+                
+                // ✅ Pass mark = 60% of total marks (in marks, not percentage)
+                const passMarks = Math.round(totalMarks * 0.6);
+                const isPassed = displayScore >= passMarks;
                 
                 statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
@@ -588,10 +602,12 @@ async function loadExams(showLoading = true) {
                     gradeText = '⏳ Pending';
                 }
                 
+                const examTypeLabel = isCatExam ? '(CAT)' : isFinalExam ? '(Final Exam)' : '';
+                
                 gradeHtml = `<div class="grade-info ${gradeClass}">
                     <span class="score-large">${displayPercentage}%</span> <strong>${passText}</strong>
-                    <div>Score: ${displayScore} / ${totalMarks} marks ${isCatExam ? '(CAT)' : ''}</div>
-                    <div style="font-size: 0.8rem; color: #64748B;">${gradeText}</div>
+                    <div>Score: ${displayScore} / ${totalMarks} marks ${examTypeLabel}</div>
+                    <div style="font-size: 0.8rem; color: #64748B;">Pass mark: ${passMarks} marks (60%) | ${gradeText}</div>
                 </div>`;
             }
             // CASE 2: PENDING RELEASE
@@ -640,6 +656,8 @@ async function loadExams(showLoading = true) {
             }
             
             // ----- Build the exam card -----
+            const examTypeLabel = isCatExam ? 'marks (CAT)' : isFinalExam ? 'marks (Final Exam)' : 'marks';
+            
             container.innerHTML += `
                 <div class="exam-card ${examStatus === 'available' ? 'exam-status-available' : ''}" data-exam-id="${exam.id}">
                     <div class="exam-header">
@@ -653,8 +671,8 @@ async function loadExams(showLoading = true) {
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
-                        <span>📊 ${totalMarks} ${isCatExam ? 'marks (CAT)' : 'marks'}</span>
-                        <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
+                        <span>📊 ${totalMarks} ${examTypeLabel}</span>
+                        <span>🎯 Pass: ${passMark} marks (60%)</span>
                         ${exam.block_term ? `<span>📌 ${exam.block_term}</span>` : ''}
                     </div>
                     ${timerHtml}
@@ -723,30 +741,121 @@ function updateAllTimers() {
 // Start timer updates every second
 setInterval(updateAllTimers, 1000);
 async function viewResult(examId) {
-    const { data: grade } = await sb
-        .from('exam_grades')
-        .select('*')
-        .eq('student_id', currentUserId)
-        .eq('exam_id', examId)
-        .eq('question_id', '00000000-0000-0000-0000-000000000000')
-        .single();
-    
-    const percent = parseFloat(grade?.total_score || 0);
-    const studentIdDisplay = studentProfile?.student_id ? `<p><strong>Student ID:</strong> ${studentProfile.student_id}</p>` : '';
-    
-    document.getElementById('modalContent').innerHTML = `
-        <h2>📊 Exam Results</h2>
-        <div style="background:${percent>=60?'linear-gradient(135deg, #D1FAE5, #A7F3D0)':'linear-gradient(135deg, #FEE2E2, #FECACA)'}; padding:25px; border-radius:20px; margin:20px 0;">
-            <h3 style="margin-bottom:15px;">${percent>=60?'✅ PASS ✓':'❌ FAIL ✗'}</h3>
-            <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
-            <p><strong>Percentage:</strong> ${percent}%</p>
-            ${studentIdDisplay}
-        </div>
-        <p style="color:#64748B; font-size:0.85rem;">Results officially released by exam administrator.</p>
-    `;
-    document.getElementById('resultsModal').style.display = 'flex';
+    try {
+        const { data: grade, error } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', currentUserId)
+            .eq('exam_id', examId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (error) throw error;
+        
+        // Fetch the exam to get exam_type
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('exam_type, marks_out_of, total_marks, pass_mark, title, exam_name')
+            .eq('id', examId)
+            .single();
+        
+        if (examError) throw examError;
+        
+        const examType = (exam?.exam_type || '').toUpperCase();
+        const isCatExam = examType.includes('CAT');
+        const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
+        
+        // ✅ Determine total marks
+        let totalMarks = 100; // Default fallback
+        
+        if (isCatExam) {
+            totalMarks = 30; // CAT = 30 marks
+        } else if (isFinalExam) {
+            totalMarks = 70; // Final Exam = 70 marks
+        } else {
+            totalMarks = exam?.marks_out_of || exam?.total_marks || 100;
+        }
+        
+        // ✅ Get the actual score
+        let displayScore = 0;
+        if (isCatExam) {
+            displayScore = grade?.cat_1_score || grade?.cat_2_score || grade?.marks || 0;
+            displayScore = Math.min(displayScore, 30);
+        } else if (isFinalExam) {
+            displayScore = grade?.exam_score || grade?.marks || 0;
+            displayScore = Math.min(displayScore, 70);
+        } else {
+            displayScore = grade?.marks || 0;
+            displayScore = Math.min(displayScore, totalMarks);
+        }
+        
+        // ✅ Calculate percentage
+        const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
+        const percentage = Math.round(calcPercentage);
+        
+        // ✅ Pass mark = 60% of total marks
+        const passMark = Math.round(totalMarks * 0.6);
+        const isPassed = displayScore >= passMark;
+        
+        let gradeText = '';
+        let gradeColor = '';
+        let gradeBg = '';
+        let passText = '';
+        
+        if (isPassed) {
+            if (percentage >= 80) {
+                gradeText = 'DISTINCTION';
+                gradeColor = '#065F46';
+                gradeBg = '#D1FAE5';
+            } else if (percentage >= 70) {
+                gradeText = 'CREDIT';
+                gradeColor = '#1E40AF';
+                gradeBg = '#DBEAFE';
+            } else if (percentage >= 60) {
+                gradeText = 'PASS';
+                gradeColor = '#92400E';
+                gradeBg = '#FEF3C7';
+            }
+            passText = '✅ PASS ✓';
+        } else if (percentage > 0) {
+            gradeText = 'FAIL';
+            gradeColor = '#991B1B';
+            gradeBg = '#FEE2E2';
+            passText = '❌ FAIL ✗';
+        } else {
+            gradeText = 'PENDING';
+            gradeColor = '#6B7280';
+            gradeBg = '#F3F4F6';
+            passText = '⏳ Pending';
+        }
+        
+        const studentIdDisplay = studentProfile?.student_id ? `<p><strong>Student ID:</strong> ${studentProfile.student_id}</p>` : '';
+        const examName = exam?.title || exam?.exam_name || 'Exam';
+        const examTypeLabel = isCatExam ? 'CAT (30 marks)' : isFinalExam ? 'Final Exam (70 marks)' : 'Standard Exam';
+        
+        document.getElementById('modalContent').innerHTML = `
+            <h2>📊 Exam Results</h2>
+            <p style="color: #64748B; margin-bottom: 15px;">${examName}</p>
+            <div style="background:${isPassed ? 'linear-gradient(135deg, #D1FAE5, #A7F3D0)' : percentage > 0 ? 'linear-gradient(135deg, #FEE2E2, #FECACA)' : '#F3F4F6'}; padding:25px; border-radius:20px; margin:20px 0;">
+                <h3 style="margin-bottom:15px;">${passText}</h3>
+                <p><strong>Score:</strong> ${displayScore} / ${totalMarks} marks</p>
+                <p><strong>Percentage:</strong> ${percentage}%</p>
+                <p><strong>Pass Mark:</strong> ${passMark} marks (60%)</p>
+                <p><strong>Grade:</strong> <span style="background: ${gradeBg}; color: ${gradeColor}; padding: 4px 12px; border-radius: 20px; font-weight: 700;">${gradeText}</span></p>
+                ${studentIdDisplay}
+                <p style="font-size: 0.75rem; color: #64748B; margin-top: 10px;">
+                    <strong>Exam Type:</strong> ${examTypeLabel}
+                </p>
+            </div>
+            <p style="color:#64748B; font-size:0.85rem;">Results officially released by exam administrator.</p>
+        `;
+        document.getElementById('resultsModal').style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error viewing result:', error);
+        showToast('Error loading exam results', 'warning');
+    }
 }
-
 function manualRefresh() { 
     updateAutoUpdateStatus('🔄 Manual refresh...');
     loadExams(false);
