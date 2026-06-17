@@ -3577,7 +3577,128 @@ async function loadCoursesForExamDropdown() {
         console.error('Error loading courses:', error);
     }
 }
+// ============================================
+// 🔥 ADD THIS FUNCTION RIGHT HERE 🔥
+// ============================================
 
+// ========== POPULATE EDIT EXAM COURSES ==========
+async function populateEditExamCourses(courseSelect, program) {
+    if (!courseSelect) return;
+    
+    courseSelect.innerHTML = '<option value="">-- No Course --</option>';
+    
+    try {
+        let query = sb.from('courses').select('id, course_name, unit_code');
+        
+        if (program && program !== '') {
+            query = query.eq('target_program', program);
+        }
+        
+        const { data: courses, error } = await query.order('course_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (courses && courses.length > 0) {
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
+                courseSelect.appendChild(option);
+            });
+        }
+        
+        console.log(`✅ Loaded ${courses?.length || 0} courses for program: ${program}`);
+        
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// ========== ADD ASSIGNED CLASS TO EXAM ==========
+async function addAssignedClassToExam(examId) {
+    const input = document.getElementById('edit_exam_add_class');
+    if (!input || !input.value.trim()) {
+        showFeedback('Please enter a block name', 'warning');
+        return;
+    }
+    
+    const className = input.value.trim();
+    
+    try {
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('assigned_classes')
+            .eq('id', examId)
+            .single();
+        
+        if (error) throw error;
+        
+        const currentClasses = exam.assigned_classes || [];
+        if (currentClasses.includes(className)) {
+            showFeedback('Block already assigned', 'warning');
+            return;
+        }
+        
+        currentClasses.push(className);
+        
+        const { error: updateError } = await sb
+            .from('exams')
+            .update({ assigned_classes: currentClasses })
+            .eq('id', examId);
+        
+        if (updateError) throw updateError;
+        
+        showFeedback(`✅ Added "${className}" to exam`, 'success');
+        input.value = '';
+        
+        // Refresh the modal
+        openEditExamModal(examId);
+        
+    } catch (error) {
+        console.error('Error adding class:', error);
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+// ========== REMOVE ASSIGNED CLASS FROM EXAM ==========
+async function removeAssignedClass(examId, className) {
+    if (!confirm(`Remove "${className}" from this exam?`)) return;
+    
+    try {
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('assigned_classes')
+            .eq('id', examId)
+            .single();
+        
+        if (error) throw error;
+        
+        const currentClasses = (exam.assigned_classes || []).filter(c => c !== className);
+        
+        const { error: updateError } = await sb
+            .from('exams')
+            .update({ assigned_classes: currentClasses })
+            .eq('id', examId);
+        
+        if (updateError) throw updateError;
+        
+        showFeedback(`✅ Removed "${className}" from exam`, 'success');
+        
+        // Refresh the modal
+        openEditExamModal(examId);
+        
+    } catch (error) {
+        console.error('Error removing class:', error);
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+// ============================================
+// MAKE FUNCTIONS GLOBAL
+// ============================================
+window.populateEditExamCourses = populateEditExamCourses;
+window.addAssignedClassToExam = addAssignedClassToExam;
+window.removeAssignedClass = removeAssignedClass;
 // ========== GET SELECTED CLASSES ==========
 function getSelectedClassesForExam() {
     const selected = [];
