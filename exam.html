@@ -11,19 +11,127 @@
 body { font-family: 'Poppins', sans-serif; background: #F8F9FA; margin: 0; padding: 10px; }
 body, .exam-main, .question, .options, .options li, label { user-select: none; }
 h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; }
-#fullscreen-exit-warning { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 99999; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; }
-#fullscreen-exit-warning h1 { font-size: 3rem; color: #FF6B35; margin-bottom: 20px; }
-#fullscreen-exit-warning .warning-icon { font-size: 5rem; margin-bottom: 20px; animation: pulse 1s infinite; }
+
+/* ========== APPLICATION BLOCKING OVERLAY ========== */
+#app-block-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 99998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+    padding: 20px;
+}
+
+#app-block-overlay .block-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: pulse 1.5s infinite;
+}
+
+#app-block-overlay h2 {
+    font-size: 1.8rem;
+    color: #FF6B35;
+    margin-bottom: 10px;
+}
+
+#app-block-overlay p {
+    font-size: 1rem;
+    opacity: 0.9;
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+#app-block-overlay .app-list {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px 25px;
+    margin: 15px 0;
+    font-size: 0.85rem;
+    font-family: monospace;
+    max-width: 500px;
+    width: 90%;
+}
+
+#app-block-overlay .app-list span {
+    display: inline-block;
+    background: rgba(255, 107, 53, 0.2);
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin: 3px;
+    color: #FF6B35;
+}
+
+#app-block-overlay .return-btn {
+    background: #38A169;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: all 0.3s;
+}
+
+#app-block-overlay .return-btn:hover {
+    background: #2F855A;
+    transform: scale(1.05);
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* ========== FULLSCREEN EXIT WARNING ========== */
+#fullscreen-exit-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.98);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+    padding: 20px;
+}
+#fullscreen-exit-warning h1 { font-size: 2.5rem; color: #FF6B35; margin-bottom: 20px; }
+#fullscreen-exit-warning .warning-icon { font-size: 4rem; margin-bottom: 20px; animation: pulse 1s infinite; }
 #fullscreen-exit-warning .countdown-timer { font-size: 4rem; font-weight: bold; color: #FF6B35; margin: 20px 0; }
-@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+#fullscreen-exit-warning .instruction-text { font-size: 0.9rem; color: #94A3B8; margin-top: 10px; }
+
+/* ========== PAGE LAYOUT ========== */
 .page-wrapper { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 1200px; margin: 10px auto; }
 .sidebar { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); position: static; order: 2; }
 .exam-main { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); order: 1; }
-@media (min-width: 992px) { body { padding: 20px; } .page-wrapper { grid-template-columns: 300px 1fr; gap: 30px; margin: 20px auto; } .sidebar { position: sticky; order: 1; top: 20px; } .exam-main { order: 2; padding: 30px; } }
+@media (min-width: 992px) {
+    body { padding: 20px; }
+    .page-wrapper { grid-template-columns: 300px 1fr; gap: 30px; margin: 20px auto; }
+    .sidebar { position: sticky; order: 1; top: 20px; }
+    .exam-main { order: 2; padding: 30px; }
+}
+
+/* ========== STUDENT INFO ========== */
 .student-info-card { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); border-radius: 12px; padding: 12px; margin-bottom: 20px; color: white; }
 .student-info-card h4 { font-size: 0.75rem; opacity: 0.8; margin-bottom: 5px; }
 .student-info-card p { font-size: 0.85rem; font-weight: 600; margin: 0; }
 .student-reg { font-family: monospace; background: rgba(255,255,255,0.2); display: inline-block; padding: 2px 8px; border-radius: 6px; margin-top: 5px; font-size: 0.7rem; }
+
+/* ========== STATUS TABLE ========== */
 .status-title { font-size: 1rem; font-weight: 600; color: #073450; margin-bottom: 12px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; }
 #question-status-table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 15px; }
 @media (min-width: 576px) { #question-status-table { grid-template-columns: repeat(8, 1fr); } }
@@ -33,6 +141,8 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 .status-item.current { border-color: #0A3D62; background: #E2E8F0; font-weight: 700; }
 .status-item.answered { background: #D1FAE5; border-color: #38A169; color: #064E3B; }
 .status-item.answered::after { content: '✓'; font-size: 1rem; margin-left: 4px; color: #38A169; }
+
+/* ========== CAMERA ========== */
 .camera-section { margin-top: 15px; padding-top: 15px; border-top: 2px solid #E2E8F0; }
 .camera-title { font-size: 0.9rem; font-weight: 600; color: #073450; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
 .camera-status-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; background: #D1FAE5; color: #064E3B; }
@@ -46,21 +156,17 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 .face-status-warning { border-color: #D97706 !important; animation: pulse-warning 1s infinite; }
 .face-status-danger { border-color: #DC2626 !important; animation: pulse-danger 1s infinite; }
 
-@keyframes pulse-warning {
-    0%, 100% { border-color: #D97706; }
-    50% { border-color: #F59E0B; }
-}
-
-@keyframes pulse-danger {
-    0%, 100% { border-color: #DC2626; }
-    50% { border-color: #EF4444; }
-}
-
+@keyframes pulse-warning { 0%, 100% { border-color: #D97706; } 50% { border-color: #F59E0B; } }
+@keyframes pulse-danger { 0%, 100% { border-color: #DC2626; } 50% { border-color: #EF4444; } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ========== TIMER & PROGRESS ========== */
 #timer { font-weight: 600; font-size: 1rem; margin-bottom: 12px; color: #DC2626; text-align: center; background: #FEF3C7; padding: 6px; border-radius: 8px; }
 #progress { margin-top: 12px; margin-bottom: 8px; color: #475569; font-weight: 500; font-size: 0.85rem; }
 .progress-bar { height: 6px; background: #E2E8F0; border-radius: 4px; margin-bottom: 15px; overflow: hidden; }
 .progress-fill { height: 100%; background: #38A169; width: 0%; transition: width 0.3s ease; }
+
+/* ========== QUESTION AREA ========== */
 .question-area { border-top: 1px solid #E2E8F0; padding-top: 15px; }
 .question { margin-bottom: 15px; font-size: 0.95rem; font-weight: 600; color: #073450; }
 .options { list-style: none; padding: 0; }
@@ -77,12 +183,15 @@ button { padding: 8px 16px; font-size: 0.8rem; border-radius: 8px; border: none;
 #submit-exam-btn:hover:enabled { background: #B91C1C; transform: translateY(-1px); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 #answer-saved { display: none; background: #D1FAE5; color: #064E3B; padding: 6px 10px; border-radius: 8px; margin: 8px 0; text-align: center; font-size: 0.75rem; }
+
+/* ========== MODALS ========== */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
 .modal-content { background: #fff; padding: 20px; border-radius: 16px; max-width: 350px; width: 90%; text-align: center; }
 .modal-content h3 { color: #DC2626; margin-bottom: 10px; font-size: 1.1rem; }
 .modal-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 15px; }
 #confirm-submit-btn { background: #38A169; color: white; padding: 8px 20px; }
 #cancel-submit-btn { background: #E2E8F0; color: #475569; padding: 8px 20px; }
+
 #camera-permission-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 15px; }
 .camera-permission-content { background: white; padding: 18px 22px; border-radius: 16px; max-width: 380px; width: 90%; text-align: center; }
 .camera-permission-icon { font-size: 2.2rem; margin-bottom: 8px; }
@@ -90,38 +199,58 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .camera-warning { background: #FEF3C7; border-radius: 8px; padding: 8px; margin: 10px 0; font-size: 0.75rem; }
 #allow-camera-btn { background: #38A169; color: white; padding: 8px 20px; font-size: 0.85rem; margin-top: 8px; border-radius: 8px; cursor: pointer; border: none; }
 #allow-camera-btn:hover { background: #2F855A; }
+
 .blocked-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 3000; display: none; align-items: center; justify-content: center; text-align: center; }
 .blocked-content { max-width: 350px; padding: 20px; }
 .blocked-icon { font-size: 3rem; margin-bottom: 15px; }
+
+/* ========== SUCCESS SCREEN ========== */
 .success-screen { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%); border-radius: 16px; border: 3px solid #38A169; }
 .success-icon { font-size: 4rem; margin-bottom: 20px; animation: successPulse 2s infinite; }
 @keyframes successPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 .redirect-countdown { background: white; padding: 12px; border-radius: 10px; margin: 20px auto; max-width: 280px; border: 2px solid #38A169; font-size: 0.9rem; }
 .dashboard-link { display: inline-block; margin-top: 15px; padding: 10px 30px; background: #38A169; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
 .dashboard-link:hover { background: #2F855A; }
+
+/* ========== PROCTORING ALERT ========== */
+.proctoring-alert { animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
 @media (max-width: 768px) { #face-detection-overlay { height: 120px; } .camera-title { font-size: 0.8rem; } .status-item { height: 32px; font-size: 0.7rem; } }
-
-.proctoring-alert {
-    animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
+<!-- ========== APPLICATION BLOCKING OVERLAY ========== -->
+<div id="app-block-overlay">
+    <div class="block-icon">🚫</div>
+    <h2>Application Blocked</h2>
+    <p>To maintain exam integrity, the following have been blocked:</p>
+    <div class="app-list">
+        <span>📱 Other Applications</span>
+        <span>🔄 Background Apps</span>
+        <span>📋 Clipboard</span>
+        <span>🔍 Screen Recording</span>
+        <span>⌨️ Keyboard Shortcuts</span>
+    </div>
+    <p style="font-size: 0.85rem; color: #94A3B8;">
+        Return to the exam window to continue. The exam will auto-submit if you leave.
+    </p>
+    <button class="return-btn" onclick="returnToExam()">🔙 Return to Exam</button>
+</div>
+
+<!-- ========== FULLSCREEN EXIT WARNING ========== -->
 <div id="fullscreen-exit-warning">
     <div class="warning-icon">🚨</div>
     <h1>VIOLATION DETECTED!</h1>
     <p>You attempted to exit fullscreen mode.</p>
-    <p>Your exam will be automatically submitted in and visit the HODs ooffice immediately:</p>
+    <p>Your exam will be automatically submitted in:</p>
     <div class="countdown-timer" id="exit-countdown">5</div>
+    <p class="instruction-text">Please return to fullscreen mode immediately.</p>
 </div>
 
+<!-- ========== PAGE CONTENT ========== -->
 <div class="page-wrapper">
     <div class="sidebar">
         <div class="student-info-card" id="studentInfoCard">
@@ -164,6 +293,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     </div>
 </div>
 
+<!-- ========== MODALS ========== -->
 <div id="submission-modal" class="modal-overlay">
     <div class="modal-content">
         <h3>⚠️ Final Submission</h3>
@@ -199,6 +329,7 @@ const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ========== GET URL PARAMETERS ==========
 let studentId = new URLSearchParams(window.location.search).get('user_id') || localStorage.getItem('currentUserId');
 if (!studentId) window.location.href = 'exam_login.html';
 localStorage.setItem('currentUserId', studentId);
@@ -211,6 +342,171 @@ let videoStream = null, faceDetectionInterval = null;
 let examStarted = false, isSubmitting = false, fullscreenWarningActive = false, countdownInterval = null;
 let faceMissingCount = 0;
 const FACE_MISSING_THRESHOLD = 3;
+let isExamActive = false;
+let blurCount = 0;
+const MAX_BLUR_COUNT = 3;
+
+// ========== APPLICATION BLOCKING ==========
+function blockApplications() {
+    console.log('🔒 Blocking all applications...');
+    
+    // Block keyboard shortcuts
+    document.addEventListener('keydown', blockKeyboardShortcuts);
+    document.addEventListener('contextmenu', preventDefault);
+    document.addEventListener('copy', preventDefault);
+    document.addEventListener('paste', preventDefault);
+    document.addEventListener('cut', preventDefault);
+    document.addEventListener('dragstart', preventDefault);
+    document.addEventListener('drop', preventDefault);
+    
+    // Block print screen
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'PrintScreen') {
+            preventDefault(e);
+            showProctoringAlert('⚠️ Screenshot attempt detected!');
+            logProctoringEvent('screenshot_attempt', 'Student attempted to take screenshot', 'critical');
+        }
+    });
+}
+
+function unblockApplications() {
+    console.log('🔓 Unblocking applications...');
+    document.removeEventListener('keydown', blockKeyboardShortcuts);
+    document.removeEventListener('contextmenu', preventDefault);
+    document.removeEventListener('copy', preventDefault);
+    document.removeEventListener('paste', preventDefault);
+    document.removeEventListener('cut', preventDefault);
+    document.removeEventListener('dragstart', preventDefault);
+    document.removeEventListener('drop', preventDefault);
+}
+
+function preventDefault(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+}
+
+function blockKeyboardShortcuts(e) {
+    // Block F12 (Developer Tools)
+    if (e.key === 'F12') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Developer Tools are blocked!');
+        logProctoringEvent('devtools_attempt', 'Student attempted to open Developer Tools', 'critical');
+        return false;
+    }
+    
+    // Block Ctrl+Shift+I (Developer Tools)
+    if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Developer Tools are blocked!');
+        return false;
+    }
+    
+    // Block Alt+Tab
+    if (e.altKey && e.key === 'Tab') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Alt+Tab is blocked during exam!');
+        logProctoringEvent('alt_tab_attempt', 'Student attempted Alt+Tab', 'warning');
+        return false;
+    }
+    
+    // Block Windows key
+    if (e.key === 'Meta' || e.key === 'Windows') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Windows key is blocked!');
+        return false;
+    }
+    
+    // Block Alt+F4
+    if (e.altKey && e.key === 'F4') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Cannot close exam window!');
+        return false;
+    }
+    
+    // Block Ctrl+W (close tab)
+    if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Cannot close tab!');
+        return false;
+    }
+    
+    // Block Ctrl+N, Ctrl+T
+    if (e.ctrlKey && (e.key === 'n' || e.key === 't')) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Block Ctrl+Shift+Esc (Task Manager)
+    if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
+        e.preventDefault();
+        showProctoringAlert('⚠️ Task Manager is blocked!');
+        logProctoringEvent('task_manager_attempt', 'Student attempted to open Task Manager', 'critical');
+        return false;
+    }
+    
+    // Block Ctrl+C, Ctrl+V, Ctrl+X
+    if (e.ctrlKey && (e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V' || e.key === 'x' || e.key === 'X')) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Block Ctrl+S, Ctrl+P, Ctrl+U
+    if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        return false;
+    }
+}
+
+// ========== HANDLE WINDOW BLUR ==========
+function handleWindowBlur() {
+    if (!isExamActive) return;
+    blurCount++;
+    console.log(`⚠️ Window blur detected (${blurCount}/${MAX_BLUR_COUNT})`);
+    
+    document.getElementById('app-block-overlay').style.display = 'flex';
+    logProctoringEvent('window_blur', `Window lost focus (${blurCount})`, 'warning');
+    showProctoringAlert(`⚠️ Please stay on the exam window! (${blurCount}/${MAX_BLUR_COUNT})`);
+    
+    if (blurCount >= MAX_BLUR_COUNT) {
+        logProctoringEvent('auto_submit', 'Auto-submitted due to multiple window blur violations', 'critical');
+        executeSubmission();
+    }
+}
+
+function handleWindowFocus() {
+    if (isExamActive) {
+        blurCount = 0;
+        document.getElementById('app-block-overlay').style.display = 'none';
+        console.log('✅ Window focus restored');
+    }
+}
+
+function returnToExam() {
+    document.getElementById('app-block-overlay').style.display = 'none';
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+            showProctoringAlert('⚠️ Please enter fullscreen mode');
+        });
+    }
+    window.focus();
+    blurCount = 0;
+}
+
+// ========== ENTER SECURE FULLSCREEN ==========
+async function enterSecureFullscreen() {
+    try {
+        await document.documentElement.requestFullscreen();
+        console.log('✅ Fullscreen mode activated');
+        document.getElementById('app-block-overlay').style.display = 'none';
+        blockApplications();
+        return true;
+    } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+        showProctoringAlert('⚠️ Please enable fullscreen for exam security');
+        return false;
+    }
+}
 
 // ========== GET IP ADDRESS ==========
 async function getIPAddress() {
@@ -235,7 +531,7 @@ async function getStudentDetails() {
     }
 }
 
-// ========== IMPROVED CAMERA START ==========
+// ========== CAMERA START ==========
 async function startCamera() {
     try {
         console.log('📷 Starting camera...');
@@ -265,20 +561,21 @@ async function startCamera() {
             document.getElementById('face-status').textContent = '✅ Camera active - Detecting face...';
             document.getElementById('face-status').style.color = '#16A34A';
             
-            // Start face detection after camera is ready
             setTimeout(startFaceDetection, 1000);
         };
         
         examStarted = true;
+        isExamActive = true;
         
-        // Enter fullscreen after camera starts
-        setTimeout(() => {
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.warn('Fullscreen request failed:', err);
-                });
-            }
+        // Enter secure fullscreen
+        setTimeout(async () => {
+            await enterSecureFullscreen();
         }, 1000);
+        
+        // Setup window blur monitoring
+        window.addEventListener('blur', handleWindowBlur);
+        window.addEventListener('focus', handleWindowFocus);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         
     } catch(err) {
         console.error('❌ Camera error:', err);
@@ -286,6 +583,16 @@ async function startCamera() {
         document.getElementById('cameraStatusBadge').textContent = '❌ Camera Failed';
         document.getElementById('cameraStatusBadge').className = 'camera-status-badge danger';
         showToast('Camera access required. Please allow camera and refresh.', 'warning');
+    }
+}
+
+function handleVisibilityChange() {
+    if (document.hidden && isExamActive) {
+        document.getElementById('app-block-overlay').style.display = 'flex';
+        logProctoringEvent('app_switch', 'Student switched to another application', 'warning');
+        showProctoringAlert('⚠️ Please return to the exam window!');
+    } else if (!document.hidden && isExamActive) {
+        document.getElementById('app-block-overlay').style.display = 'none';
     }
 }
 
@@ -298,11 +605,9 @@ async function startFaceDetection() {
     const ctx = canvas.getContext('2d');
     const statusEl = document.getElementById('face-status');
     
-    // Set canvas size
     canvas.width = 640;
     canvas.height = 480;
     
-    // Try to load face detection models from CDN
     try {
         console.log('📥 Loading face detection models from CDN...');
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
@@ -311,13 +616,10 @@ async function startFaceDetection() {
         
         document.getElementById('face-status').textContent = '✅ Face detection ready';
         
-        // Start detection loop
         if (faceDetectionInterval) clearInterval(faceDetectionInterval);
         
         faceDetectionInterval = setInterval(async () => {
-            if (!video.srcObject || video.paused || video.ended) {
-                return;
-            }
+            if (!video.srcObject || video.paused || video.ended) return;
             
             try {
                 const options = new faceapi.TinyFaceDetectorOptions({
@@ -326,12 +628,9 @@ async function startFaceDetection() {
                 });
                 
                 const detections = await faceapi.detectAllFaces(video, options);
-                
-                // Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (detections && detections.length > 0) {
-                    // Draw face boxes
                     detections.forEach(det => {
                         const box = det.box;
                         ctx.strokeStyle = '#16A34A';
@@ -393,7 +692,6 @@ async function startFaceDetection() {
         document.getElementById('face-status').style.color = '#D97706';
         showToast('Face detection unavailable. Proctoring may be limited.', 'warning');
         
-        // Still start a basic detection loop without face-api
         if (faceDetectionInterval) clearInterval(faceDetectionInterval);
         faceDetectionInterval = setInterval(() => {
             statusEl.textContent = '📷 Camera active (face detection limited)';
@@ -476,13 +774,6 @@ function setupFullscreenMonitoring() {
             fullscreenWarningActive = false;
         }
     });
-    
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden && examStarted) {
-            logProctoringEvent('tab_switch', 'Student switched tabs or minimized window', 'warning');
-            showProctoringAlert('⚠️ Tab switch detected! Stay on the exam page.');
-        }
-    });
 }
 
 function showFullscreenExitWarning() {
@@ -525,7 +816,7 @@ function showFullscreenExitWarning() {
 async function logProctoringEvent(eventType, details, severity = 'info') {
     try {
         let snapshotUrl = null;
-        if (['exam_started', 'exam_submitted', 'multiple_faces_detected', 'face_missing', 'tab_switch', 'fullscreen_exit_attempt'].includes(eventType)) {
+        if (['exam_started', 'exam_submitted', 'multiple_faces_detected', 'face_missing', 'tab_switch', 'fullscreen_exit_attempt', 'window_blur'].includes(eventType)) {
             snapshotUrl = await captureCameraSnapshot();
         }
         
@@ -657,6 +948,12 @@ async function executeSubmission() {
     if (faceDetectionInterval) clearInterval(faceDetectionInterval);
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
     if (countdownInterval) clearInterval(countdownInterval);
+    
+    unblockApplications();
+    isExamActive = false;
+    window.removeEventListener('blur', handleWindowBlur);
+    window.removeEventListener('focus', handleWindowFocus);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
     
     await calculateAndSaveGrade();
     
@@ -816,12 +1113,7 @@ function submitExam() {
 // ========== PROCTORING MONITORING ==========
 async function startProctoringMonitoring() {
     console.log('🔍 Starting proctoring monitoring...');
-    
     await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
-    
-    document.addEventListener('copy', function(e) { e.preventDefault(); });
-    document.addEventListener('paste', function(e) { e.preventDefault(); });
-    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 }
 
 // ========== EVENT LISTENERS ==========
