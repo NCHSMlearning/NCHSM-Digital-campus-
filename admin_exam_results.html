@@ -1424,7 +1424,6 @@ function updateAdminTimers() {
         const examStartStr = el.dataset.examStart;
         const examEndStr = el.dataset.examEnd;
         
-        // Skip if no date data or empty strings
         if (!examStartStr || !examEndStr || examStartStr === '' || examEndStr === '') {
             return;
         }
@@ -1433,7 +1432,6 @@ function updateAdminTimers() {
             const examStart = new Date(examStartStr);
             const examEnd = new Date(examEndStr);
             
-            // Skip if invalid dates
             if (isNaN(examStart.getTime()) || isNaN(examEnd.getTime())) {
                 return;
             }
@@ -1456,8 +1454,7 @@ function updateAdminTimers() {
                 el.innerHTML = `<span class="badge bg-secondary">⏱️ Closed</span>`;
             }
         } catch (error) {
-            // Skip this timer cell if there's an error
-            console.warn('Timer update error:', error);
+            // Skip this cell
         }
     });
 }
@@ -2144,7 +2141,7 @@ function updateAdminTimers() {
     }
 };
 
-          function displayAllExams(exams, countMap, hasResultsMap) {
+        function displayAllExams(exams, countMap, hasResultsMap) {
     const start = (currentPage.exams - 1) * itemsPerPage;
     const page = exams.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('examsBody');
@@ -2186,9 +2183,20 @@ function updateAdminTimers() {
             const timerDisplay = timerData.timerHtml || `<span class="badge bg-secondary">⏱️ N/A</span>`;
             const statusDisplay = timerData.status || 'N/A';
 
-            // SAFE: Only call toISOString if examStart/examEnd exist
-            const examStartStr = timerData.examStart ? timerData.examStart.toISOString() : '';
-            const examEndStr = timerData.examEnd ? timerData.examEnd.toISOString() : '';
+            // ========== FIX: Safe toISOString with try/catch ==========
+            let examStartStr = '';
+            let examEndStr = '';
+            try {
+                if (timerData.examStart && typeof timerData.examStart === 'object' && !isNaN(timerData.examStart.getTime())) {
+                    examStartStr = timerData.examStart.toISOString();
+                }
+            } catch(e) { examStartStr = ''; }
+
+            try {
+                if (timerData.examEnd && typeof timerData.examEnd === 'object' && !isNaN(timerData.examEnd.getTime())) {
+                    examEndStr = timerData.examEnd.toISOString();
+                }
+            } catch(e) { examEndStr = ''; }
 
             return `<tr>
                 <td><strong>${examDisplayName}</strong></td>
