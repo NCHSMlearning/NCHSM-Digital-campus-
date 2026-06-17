@@ -4045,10 +4045,36 @@ async function openEditExamModal(examId) {
         const deadlineInput = document.getElementById('edit_exam_deadline');
         
         // Program & Block
-        const programInput = document.getElementById('edit_exam_program');
-        const blockInput = document.getElementById('edit_exam_block');
-        const intakeInput = document.getElementById('edit_exam_intake');
+       // ========== PROGRAM & BLOCK - FIXED ==========
+const programInput = document.getElementById('edit_exam_program');
+const blockInput = document.getElementById('edit_exam_block');
+
+if (programInput) {
+    // Step 1: Update the program dropdown with all options
+    updateProgramDropdown(programInput);
+    
+    // Step 2: Set the program value
+    const programValue = exam.target_program || exam.program_type || 'KRCHN';
+    programInput.value = programValue;
+    console.log('✅ Program set to:', programValue);
+    
+    // Step 3: IMPORTANT - Force update of block dropdown
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+        // Manually update block options based on selected program
+        updateBlockTermOptions('edit_exam_program', 'edit_exam_block');
+        console.log('✅ Block options updated for:', programValue);
         
+        // Step 4: Set the block value after options are populated
+        setTimeout(() => {
+            if (blockInput) {
+                const blockValue = exam.block || exam.block_term || '';
+                blockInput.value = blockValue;
+                console.log('✅ Block/Term set to:', blockValue);
+            }
+        }, 100);
+    }, 100);
+}
         // Course
         const courseInput = document.getElementById('edit_exam_course');
         
@@ -8985,6 +9011,24 @@ function setupEventListeners() {
         updateBlockTermOptions('exam_program', 'exam_block_term'); 
     });
     $('exam_intake')?.addEventListener('change', () => updateBlockTermOptions('exam_program', 'exam_block_term'));
+    
+    // ============================================
+    // 🔥 ADD THIS - EDIT EXAM MODAL PROGRAM DROPDOWN
+    // ============================================
+    const editExamProgram = document.getElementById('edit_exam_program');
+    const editExamBlock = document.getElementById('edit_exam_block');
+    if (editExamProgram && editExamBlock) {
+        editExamProgram.addEventListener('change', function() {
+            console.log('📋 Edit Exam: Program changed to', this.value);
+            // Update block options based on selected program
+            updateBlockTermOptions('edit_exam_program', 'edit_exam_block');
+            // Also update courses when program changes
+            const courseSelect = document.getElementById('edit_exam_course');
+            if (courseSelect) {
+                populateEditExamCourses(courseSelect, this.value);
+            }
+        });
+    }
     
     // MESSAGES TAB
     $('send-message-form')?.addEventListener('submit', handleSendMessage);
