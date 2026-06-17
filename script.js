@@ -4169,6 +4169,8 @@ if (programInput) {
 // ========== SAVE EDITED EXAM ==========
 async function saveEditedExam(e) {
     e.preventDefault();
+   e.stopPropagation();  // ✅ Stop event bubbling
+
     console.log('💾 Saving edited exam...');
 
     const examIdInput = document.getElementById('edit_exam_id');
@@ -4820,6 +4822,8 @@ function exportExamsToCSV() {
 
 // ========== INITIALIZE EXAM EDIT MODAL LISTENERS ==========
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Initializing exam edit modal...');
+    
     const closeBtn = document.querySelector('#examEditModal .close');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -4829,7 +4833,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const editForm = document.getElementById('edit-exam-form');
     if (editForm) {
+        // ✅ Clean approach: Remove old, add new
+        editForm.removeEventListener('submit', saveEditedExam);
         editForm.addEventListener('submit', saveEditedExam);
+        console.log('✅ Edit exam form listener attached');
+    } else {
+        console.warn('⚠️ edit-exam-form not found');
     }
 
     window.addEventListener('click', function(event) {
@@ -4839,6 +4848,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
 
 // ========== EXPORT ALL FUNCTIONS ==========
 window.populateExamCourseSelects = populateExamCourseSelects;
