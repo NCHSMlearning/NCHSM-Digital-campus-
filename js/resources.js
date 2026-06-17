@@ -108,26 +108,42 @@ class ResourcesModule {
         }
     }
     
-    // ==================== SUPABASE CLIENT ====================
+    // ==================== SUPABASE CLIENT - FIXED ====================
     getSupabaseClient() {
         if (this.supabaseClient) return this.supabaseClient;
         
-        if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
-            this.supabaseClient = window.db.supabase;
+        // ============================================
+        // 🔥 FIX: REUSE EXISTING CONNECTION - NO LEAK!
+        // ============================================
+        // Try 1: Use connection from login
+        if (window.NCHSMLogin && window.NCHSMLogin.supabase) {
+            this.supabaseClient = window.NCHSMLogin.supabase;
+            console.log('✅ Resources: Using existing connection from login');
             return this.supabaseClient;
         }
         
+        // Try 2: Use connection from db
+        if (window.db && window.db.supabase && typeof window.db.supabase.from === 'function') {
+            this.supabaseClient = window.db.supabase;
+            console.log('✅ Resources: Using existing connection from db');
+            return this.supabaseClient;
+        }
+        
+        // Try 3: Use global window.supabase
         if (window.supabase && typeof window.supabase.from === 'function') {
             this.supabaseClient = window.supabase;
             if (!window.db) window.db = {};
             window.db.supabase = this.supabaseClient;
+            console.log('✅ Resources: Using global window.supabase');
             return this.supabaseClient;
         }
         
+        // Try 4: Use config.js if available (fallback - should not happen on dashboard)
         if (window.APP_CONFIG?.SUPABASE_URL && window.APP_CONFIG?.SUPABASE_ANON_KEY) {
             try {
                 const { createClient } = window.supabaseJs || window.supabase || {};
                 if (createClient) {
+                    console.warn('⚠️ Resources: Creating NEW connection (fallback - should not happen)');
                     this.supabaseClient = createClient(
                         window.APP_CONFIG.SUPABASE_URL,
                         window.APP_CONFIG.SUPABASE_ANON_KEY
@@ -140,6 +156,9 @@ class ResourcesModule {
                 console.error('Failed to create Supabase client:', e);
             }
         }
+        // ============================================
+        // END FIX
+        // ============================================
         
         console.error('❌ Cannot initialize Supabase client');
         return null;
