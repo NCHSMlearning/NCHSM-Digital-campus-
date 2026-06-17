@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ... (keep all existing styles) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf1 100%); min-height: 100vh; }
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
@@ -131,6 +132,9 @@
         .release-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
         .reset-info-card { background: #F0FDF4; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #10B981; }
         .reset-error-card { background: #FEE2E2; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #DC2626; color: #B91C1C; }
+        .exam-type-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 600; }
+        .badge-cat { background: #FEF3C7; color: #92400E; }
+        .badge-exam { background: #DBEAFE; color: #1E40AF; }
         @media (max-width: 768px) { .table-header { flex-direction: column; } th, td { padding: 10px; } .tabs { flex-direction: column; } .notification-panel { width: 320px; right: -20px; } .stat-value { font-size: 1.5rem; } }
     </style>
 </head>
@@ -167,17 +171,16 @@
 
     <div class="tables-container">
         <div class="table-container" id="studentsTableContainer">
-           <div class="table-header">
-    <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
-    <div class="table-actions">
-        <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
-        <!-- ADD THIS NEW BUTTON -->
-        <button class="btn btn-success" onclick="exportMarksOnly()"><i class="fas fa-file-csv"></i> Export Marks</button>
-        <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export Excel</button>
-        <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
-        <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
-    </div>
-</div>
+            <div class="table-header">
+                <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
+                <div class="table-actions">
+                    <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
+                    <button class="btn btn-success" onclick="exportMarksOnly()"><i class="fas fa-file-csv"></i> Export Marks</button>
+                    <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export Excel</button>
+                    <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
+                    <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
+                </div>
+            </div>
             <div id="studentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading student data...</div>
             <table id="studentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Released</th><th>Actions</th></tr></thead><tbody id="studentsBody"></tbody></table>
             <div class="pagination" id="studentsPagination"></div>
@@ -204,7 +207,7 @@
                 </div>
             </div>
             <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Total</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
@@ -225,12 +228,41 @@
 
 <!-- Modals -->
 <div id="studentModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal()">&times;</span><h2 id="modalTitle">Details</h2><div id="modalContent"></div></div></div>
-<div id="examModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeExamModal()">&times;</span><h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2><form id="examForm"><div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div><div class="form-group"><label>Exam Type *</label><select id="examType" required><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div><div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div><div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div><div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"></div><div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div><div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div><div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div><div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div><input type="hidden" id="editingExamId" value=""><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button></div></form></div></div>
+
+<div id="examModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeExamModal()">&times;</span><h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2><form id="examForm"><div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div><div class="form-group"><label>Exam Type *</label><select id="examType" required onchange="updateTotalMarksHint()"><option value="EXAM">Final Exam (70 marks)</option><option value="CAT_1">CAT 1 (30 marks)</option><option value="CAT_2">CAT 2 (30 marks)</option><option value="CAT">CAT (30 marks)</option><option value="QUIZ">Quiz</option></select></div><div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div><div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div><div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"><small style="display:block; color:#64748B; margin-top:4px;" id="totalMarksHint">📊 For CAT exams: 30 marks | For Final Exam: 70 marks</small></div><div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div><div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div><div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div><div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div><div class="form-group"><label>Pass Mark (60% of total marks)</label><input type="number" id="examPassMark" value="60" min="1" max="100"><small style="display:block; color:#64748B; margin-top:4px;">✅ Default: 60% of total marks</small></div><input type="hidden" id="editingExamId" value=""><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button></div></form></div></div>
+
 <div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignExamModal()">&times;</span><h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2><div class="form-group"><label>Select Student *</label><select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div class="form-group"><label>Select Exam *</label><select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button><button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button></div></div></div>
 
 <div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2><i class="fas fa-share-alt"></i> Release Results</h2><div class="filters-grid"><div class="filter-group"><label>Select Exam:</label><select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- Select Exam --</option></select></div></div><div id="releasePreview" style="display:none;"><div class="release-actions"><button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button><button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button><span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span></div><div id="releaseSummary"></div><div style="max-height: 400px; overflow-y: auto;"><table class="preview-table" style="width:100%;"><thead><tr><th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>Student ID</th><th>Student Name</th><th>Score</th><th>%</th><th>Status</th><th>Current</th></tr></thead><tbody id="releasePreviewBody"></tbody></table></div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Release Selected</button></div></div></div></div>
 
 <div id="resetExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeResetModal()">&times;</span><h2><i class="fas fa-trash-alt"></i> Reset Exam</h2><p>Are you sure you want to reset all student answers for this exam? This action cannot be undone.</p><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeResetModal()">Cancel</button><button class="btn btn-warning" id="confirmResetBtn" onclick="confirmResetExam()">Reset Exam</button></div></div></div>
+
+<div id="resetByEmailModal" class="modal">
+    <div class="modal-content" style="max-width: 550px;">
+        <span class="close-modal" onclick="closeResetByEmailModal()">&times;</span>
+        <h2><i class="fas fa-envelope"></i> Reset Student by Email</h2>
+        <div style="margin: 20px 0;">
+            <div class="form-group">
+                <label>Student Email Address *</label>
+                <input type="email" id="resetEmailInput" placeholder="e.g., student@example.com" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
+                <small style="color: #64748B; display: block; margin-top: 5px;">Enter the student's registered email address</small>
+            </div>
+            <div class="form-group">
+                <label>Select Exam (Optional - leave empty to reset ALL exams)</label>
+                <select id="resetExamSelect" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
+                    <option value="">-- ALL EXAMS (Reset everything) --</option>
+                </select>
+                <small style="color: #64748B; display: block; margin-top: 5px;">Select a specific exam or leave empty to reset all exams for this student</small>
+            </div>
+            <div id="resetStudentInfo" style="display: none;" class="reset-info-card"></div>
+            <div id="resetErrorInfo" style="display: none;" class="reset-error-card"></div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn btn-danger" onclick="closeResetByEmailModal()">Cancel</button>
+            <button class="btn btn-warning" id="confirmResetByEmailBtn" onclick="confirmResetByEmail()" disabled>Reset Student</button>
+        </div>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -252,6 +284,41 @@
     let examToReset = null;
     let currentReleaseResults = [];
     let selectedStudentIds = new Set();
+    
+    // ========== DETERMINE TOTAL MARKS BASED ON EXAM TYPE ==========
+    function getExamTotalMarks(examType) {
+        const type = (examType || '').toUpperCase();
+        if (type.includes('CAT')) return 30;
+        if (type === 'EXAM' || type === 'FINAL' || type === 'END_TERM') return 70;
+        return 100; // Default fallback
+    }
+    
+    // ========== CALCULATE PASS MARK (60% OF TOTAL) ==========
+    function getPassMark(totalMarks) {
+        return Math.round(totalMarks * 0.6);
+    }
+    
+    // ========== UPDATE TOTAL MARKS HINT ==========
+    window.updateTotalMarksHint = function() {
+        const examType = document.getElementById('examType').value;
+        const totalMarksInput = document.getElementById('examTotalMarks');
+        const hintEl = document.getElementById('totalMarksHint');
+        const passMarkInput = document.getElementById('examPassMark');
+        
+        if (examType && examType.toUpperCase().includes('CAT')) {
+            totalMarksInput.value = 30;
+            hintEl.innerHTML = '📊 CAT exams: <strong>30 marks</strong> | Pass mark: <strong>18 marks (60%)</strong>';
+            if (passMarkInput) passMarkInput.value = 60;
+        } else if (examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM') {
+            totalMarksInput.value = 70;
+            hintEl.innerHTML = '📊 Final exams: <strong>70 marks</strong> | Pass mark: <strong>42 marks (60%)</strong>';
+            if (passMarkInput) passMarkInput.value = 60;
+        } else {
+            totalMarksInput.value = 100;
+            hintEl.innerHTML = '📊 Standard exams: <strong>100 marks</strong> | Pass mark: <strong>60 marks (60%)</strong>';
+            if (passMarkInput) passMarkInput.value = 60;
+        }
+    };
     
     function checkAdminAuth() {
         const session = localStorage.getItem('adminSession');
@@ -289,7 +356,7 @@
             container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Students</h3><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search by name or ID..."><button class="btn btn-primary" onclick="loadAllStudents()">Search</button><button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button></div>`;
             loadProgramDropdown();
         } else if (currentTab === 'exams') {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Exams</h3><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam name..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Exams</h3><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam (70)</option><option value="CAT_1">CAT 1 (30)</option><option value="CAT_2">CAT 2 (30)</option><option value="CAT">CAT (30)</option><option value="QUIZ">Quiz</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam name..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
         } else {
             container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student..."><button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button></div>`;
         }
@@ -354,22 +421,25 @@
             document.getElementById('examType').value = exam.exam_type || 'EXAM';
             document.getElementById('examCourse').value = exam.course || '';
             document.getElementById('examDuration').value = exam.duration_minutes || 30;
-            document.getElementById('examTotalMarks').value = exam.total_marks || 100;
+            document.getElementById('examTotalMarks').value = exam.total_marks || getExamTotalMarks(exam.exam_type);
             document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
             document.getElementById('examProgram').value = exam.program_type || '';
             document.getElementById('examBlock').value = exam.block_term || '';
             document.getElementById('examIntakeYear').value = exam.intake_year || '';
+            document.getElementById('examPassMark').value = exam.pass_mark || 60;
         } else {
             document.getElementById('examName').value = '';
             document.getElementById('examType').value = 'EXAM';
             document.getElementById('examCourse').value = '';
             document.getElementById('examDuration').value = 30;
-            document.getElementById('examTotalMarks').value = 100;
+            document.getElementById('examTotalMarks').value = 70;
             document.getElementById('examLink').value = '';
             document.getElementById('examProgram').value = '';
             document.getElementById('examBlock').value = '';
             document.getElementById('examIntakeYear').value = '';
+            document.getElementById('examPassMark').value = 60;
         }
+        updateTotalMarksHint();
         document.getElementById('examModal').style.display = 'flex';
     };
     
@@ -378,12 +448,18 @@
     document.getElementById('examForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const examId = document.getElementById('editingExamId').value;
+        const examType = document.getElementById('examType').value;
+        const totalMarks = getExamTotalMarks(examType);
+        const passMark = getPassMark(totalMarks);
+        
         const examData = {
             exam_name: document.getElementById('examName').value,
-            exam_type: document.getElementById('examType').value,
+            exam_type: examType,
             course: document.getElementById('examCourse').value,
             duration_minutes: parseInt(document.getElementById('examDuration').value),
-            total_marks: parseInt(document.getElementById('examTotalMarks').value),
+            total_marks: totalMarks,
+            marks_out_of: totalMarks,
+            pass_mark: passMark,
             online_link: document.getElementById('examLink').value,
             program_type: document.getElementById('examProgram').value || null,
             block_term: document.getElementById('examBlock').value || null,
@@ -430,273 +506,82 @@
     
     window.closeAssignExamModal = function() { document.getElementById('assignExamModal').style.display = 'none'; };
     
-   async function loadProctoringLogs() {
-    const loadingDiv = document.getElementById('proctoringLoading');
-    const table = document.getElementById('proctoringTable');
-    loadingDiv.style.display = 'block'; table.style.display = 'none';
-    
-    try {
-        let query = sb.from('exam_proctoring_logs').select('*').order('timestamp', { ascending: false }).limit(500);
-        const { data: logs, error } = await query;
-        
-        if (error) {
-            console.error(error);
-            loadingDiv.innerHTML = 'Error loading logs';
-            return;
+    async function loadProctoringLogs() {
+        const loadingDiv = document.getElementById('proctoringLoading');
+        const table = document.getElementById('proctoringTable');
+        loadingDiv.style.display = 'block'; table.style.display = 'none';
+        try {
+            let query = sb.from('exam_proctoring_logs').select('*').order('timestamp', { ascending: false }).limit(500);
+            const { data: logs, error } = await query;
+            if (error) { loadingDiv.innerHTML = 'Error loading logs'; return; }
+            const { data: allStudents } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, program, email');
+            const studentMap = {};
+            allStudents?.forEach(s => {
+                studentMap[s.user_id] = s;
+                if (s.student_id) studentMap[s.student_id] = s;
+            });
+            proctoringLogs = logs.map(log => {
+                let student = studentMap[log.student_id] || null;
+                if (!student) student = studentMap[log.student_id] || null;
+                return { ...log, student_profile: student };
+            });
+            displayProctoringLogs();
+            loadingDiv.style.display = 'none';
+            table.style.display = 'table';
+            updateStats();
+        } catch(error) {
+            console.error('Error loading proctoring logs:', error);
+            loadingDiv.innerHTML = 'Error loading logs: ' + error.message;
         }
-        
-        // Get ALL students for mapping (use both user_id and student_id)
-        const { data: allStudents } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, program, email');
-        
-        // Create a map by user_id AND student_id
-        const studentMap = {};
-        allStudents?.forEach(s => {
-            studentMap[s.user_id] = s;
-            if (s.student_id) studentMap[s.student_id] = s;
-        });
-        
-        // Map each log to the student profile
-        proctoringLogs = logs.map(log => {
-            let student = studentMap[log.student_id] || null;
-            if (!student) {
-                // Try to find by student_id if the log stores it differently
-                student = studentMap[log.student_id] || null;
-            }
-            return { ...log, student_profile: student };
-        });
-        
-        displayProctoringLogs();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-        updateStats();
-        
-    } catch(error) {
-        console.error('Error loading proctoring logs:', error);
-        loadingDiv.innerHTML = 'Error loading logs: ' + error.message;
     }
-}
     
-  // ========== VIEW ALERT DETAILS - DEFINED FIRST ==========
-window.viewAlertDetails = async function(logId) {
-    console.log('🔍 Opening alert details for ID:', logId);
-    
-    // Try to find in proctoringLogs
-    let log = window.proctoringLogs ? window.proctoringLogs.find(l => String(l.id) === String(logId)) : null;
-    
-    // If not found, fetch from database
-    if (!log) {
-        console.log('📹 Fetching log from database...');
-        const { data, error } = await window.supabase
-            .from('exam_proctoring_logs')
-            .select('*')
-            .eq('id', logId)
-            .single();
-        
-        if (error) {
-            console.error('❌ Log not found:', error);
-            alert('Alert not found');
-            return;
+    window.viewAlertDetails = async function(logId) {
+        let log = proctoringLogs ? proctoringLogs.find(l => String(l.id) === String(logId)) : null;
+        if (!log) {
+            const { data, error } = await sb.from('exam_proctoring_logs').select('*').eq('id', logId).single();
+            if (error) { alert('Alert not found'); return; }
+            log = data;
+            const { data: student } = await sb.from('consolidated_user_profiles_table').select('full_name, student_id, program, email').eq('user_id', log.student_id).single();
+            log.student_profile = student || {};
         }
-        log = data;
-        
-        // Get student profile
-        const { data: student } = await window.supabase
-            .from('consolidated_user_profiles_table')
-            .select('full_name, student_id, program, email')
-            .eq('user_id', log.student_id)
-            .single();
-        
-        log.student_profile = student || {};
-    }
-    
-    console.log('📹 Log data:', log);
-    
-    const student = log.student_profile || {};
-    const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
-    
-    // Build snapshot HTML
-    const snapshotUrl = log.snapshot_url;
-    const snapshotHtml = snapshotUrl 
-        ? `
-            <div style="margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
-                <h4 style="margin-bottom: 10px;">📸 Camera Snapshot</h4>
-                <div style="background: #000; border-radius: 8px; overflow: hidden; max-width: 100%;">
-                    <img src="${snapshotUrl}" 
-                         style="width: 100%; max-height: 400px; object-fit: contain;" 
-                         alt="Camera snapshot"
-                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
-                </div>
-                <a href="${snapshotUrl}" target="_blank" class="btn-action" style="margin-top: 10px; display: inline-block; padding: 8px 16px; background: #4C1D95; color: white; border-radius: 6px; text-decoration: none;">
-                    <i class="fas fa-external-link-alt"></i> View Full Image
-                </a>
-            </div>
-           ` 
-        : '<p style="color: #6b7280; margin-top: 10px;">📷 No camera snapshot captured</p>';
-    
-    // Determine background color
-    let bgColor = '#F0FDF4';
-    if (log.severity === 'critical') bgColor = '#FEE2E2';
-    else if (log.severity === 'warning') bgColor = '#FEF3C7';
-    
-    // Get modal elements
-    const modalTitle = document.getElementById('modalTitle');
-    const modalContent = document.getElementById('modalContent');
-    const studentModal = document.getElementById('studentModal');
-    
-    if (!modalTitle || !modalContent || !studentModal) {
-        console.error('❌ Modal elements not found');
-        alert('Modal elements not found');
-        return;
-    }
-    
-    modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
-    modalContent.innerHTML = `
-        <div style="background:${bgColor}; padding:20px; border-radius:16px;">
-            <p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p>
-            <p><strong>📝 Exam:</strong> ${examName}</p>
-            <p><strong>⏰ Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
-            <p><strong>📹 Alert Type:</strong> ${log.event_type}</p>
-            <p><strong>📋 Details:</strong> ${log.details || 'No details'}</p>
-            <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
-            <p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p>
-            <p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p>
-        </div>
-        ${snapshotHtml}
-    `;
-    
-    studentModal.style.display = 'flex';
-    console.log('✅ Modal opened successfully');
-};
-
-// ========== DISPLAY PROCTORING LOGS ==========
-function displayProctoringLogs() {
-    const start = (currentPage.proctoring - 1) * itemsPerPage;
-    const page = proctoringLogs.slice(start, start + itemsPerPage);
-    const tbody = document.getElementById('proctoringBody');
-    
-    if (!tbody) return;
-    
-    if (page.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = page.map(log => {
         const student = log.student_profile || {};
-        const studentName = student.full_name || 'Unknown';
-        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
-        
-        let severityClass = 'status-pending';
-        let severityText = log.severity || 'info';
-        if (severityText === 'critical') severityClass = 'status-critical';
-        else if (severityText === 'warning') severityClass = 'status-warning';
-        
-        let alertIcon = '📹';
-        if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
-        else if (log.event_type === 'face_missing') alertIcon = '😞';
-        else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
-        else if (log.event_type === 'exam_submitted') alertIcon = '✅';
-        else if (log.event_type === 'exam_started') alertIcon = '▶️';
-        
-        // Snapshot button
-        const hasSnapshot = log.snapshot_url;
-        const snapshotHtml = hasSnapshot 
-            ? `<a href="${log.snapshot_url}" target="_blank" class="btn-view" style="padding: 2px 8px; font-size: 0.6rem; margin-left: 5px; background: #10B981; color: white; border-radius: 4px; text-decoration: none;" title="View Snapshot">📸</a>` 
-            : '';
-        
-        // Use window.viewAlertDetails (global function)
-        return `
-            <tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}">
-                <td style="padding: 8px; font-size: 0.75rem;">${new Date(log.timestamp).toLocaleString()}</td>
-                <td style="padding: 8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
-                <td style="padding: 8px;">
-                    <strong>${studentName}</strong>
-                    <br><small style="color: #6b7280;">${student.program || ''}</small>
-                </td>
-                <td style="padding: 8px;">${examName}</td>
-                <td style="padding: 8px;">
-                    <span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">
-                        ${alertIcon} ${log.event_type}
-                    </span>
-                </td>
-                <td style="padding: 8px; font-size: 0.75rem;">${log.details || '-'}</td>
-                <td style="padding: 8px;"><span class="${severityClass}">${severityText}</span></td>
-                <td style="padding: 8px;">
-                    <button class="action-btn btn-view" onclick="window.viewAlertDetails('${log.id}')" style="background: #4299E1; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    ${snapshotHtml}
-                </td>
-            </tr>
-        `;
-    }).join('');
+        const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
+        const snapshotUrl = log.snapshot_url;
+        const snapshotHtml = snapshotUrl ? `<div style="margin-top:15px;border-top:1px solid #e5e7eb;padding-top:15px;"><h4>📸 Camera Snapshot</h4><div style="background:#000;border-radius:8px;overflow:hidden;max-width:100%;"><img src="${snapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'"></div><a href="${snapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a></div>` : '<p style="color:#6b7280;margin-top:10px;">📷 No camera snapshot captured</p>';
+        let bgColor = '#F0FDF4';
+        if (log.severity === 'critical') bgColor = '#FEE2E2';
+        else if (log.severity === 'warning') bgColor = '#FEF3C7';
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
+        document.getElementById('modalContent').innerHTML = `<div style="background:${bgColor};padding:20px;border-radius:16px;"><p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p><p><strong>📝 Exam:</strong> ${examName}</p><p><strong>⏰ Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p><p><strong>📹 Alert Type:</strong> ${log.event_type}</p><p><strong>📋 Details:</strong> ${log.details || 'No details'}</p><p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p><p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p><p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p></div>${snapshotHtml}`;
+        document.getElementById('studentModal').style.display = 'flex';
+    };
     
-    renderPagination('proctoring', proctoringLogs.length);
-}
-    // ========== CAMERA SNAPSHOT CAPTURE ==========
-async function captureCameraSnapshot() {
-    try {
-        const video = document.getElementById('face-video');
-        if (!video || !video.srcObject) return null;
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        
-        // Upload to storage
-        const timestamp = Date.now();
-        const filePath = `proctoring_snapshots/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
-        const response = await fetch(imageData);
-        const blob = await response.blob();
-        
-        const { data, error } = await sb.storage
-            .from('proctoring')
-            .upload(filePath, blob, { contentType: 'image/jpeg' });
-        
-        if (!error && data) {
-            const { data: { publicUrl } } = sb.storage
-                .from('proctoring')
-                .getPublicUrl(filePath);
-            return publicUrl;
-        }
-        return null;
-    } catch (error) {
-        console.error('Snapshot error:', error);
-        return null;
+    function displayProctoringLogs() {
+        const start = (currentPage.proctoring - 1) * itemsPerPage;
+        const page = proctoringLogs.slice(start, start + itemsPerPage);
+        const tbody = document.getElementById('proctoringBody');
+        if (!tbody) return;
+        if (page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; return; }
+        tbody.innerHTML = page.map(log => {
+            const student = log.student_profile || {};
+            const studentName = student.full_name || 'Unknown';
+            const studentIdDisplay = student.student_id || log.student_id || 'N/A';
+            const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+            let severityClass = 'status-pending';
+            let severityText = log.severity || 'info';
+            if (severityText === 'critical') severityClass = 'status-critical';
+            else if (severityText === 'warning') severityClass = 'status-warning';
+            let alertIcon = '📹';
+            if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
+            else if (log.event_type === 'face_missing') alertIcon = '😞';
+            else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
+            const hasSnapshot = log.snapshot_url;
+            const snapshotHtml = hasSnapshot ? `<a href="${log.snapshot_url}" target="_blank" style="padding:2px 8px;font-size:0.6rem;margin-left:5px;background:#10B981;color:white;border-radius:4px;text-decoration:none;" title="View Snapshot">📸</a>` : '';
+            return `<tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}"><td style="padding:8px;font-size:0.75rem;">${new Date(log.timestamp).toLocaleString()}</td><td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td><td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${student.program || ''}</small></td><td style="padding:8px;">${examName}</td><td style="padding:8px;"><span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">${alertIcon} ${log.event_type}</span></td><td style="padding:8px;font-size:0.75rem;">${log.details || '-'}</td><td style="padding:8px;"><span class="${severityClass}">${severityText}</span></td><td style="padding:8px;"><button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" style="background:#4299E1;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;"><i class="fas fa-eye"></i> View</button>${snapshotHtml}</td></tr>`;
+        }).join('');
+        renderPagination('proctoring', proctoringLogs.length);
     }
-}
-
-// ========== LOG PROCTORING EVENT WITH SNAPSHOT ==========
-async function logProctoringEvent(eventType, details, severity = 'info') {
-    try {
-        let snapshotUrl = null;
-        // Capture snapshot for violations
-        if (['multiple_faces_detected', 'face_missing', 'tab_switch'].includes(eventType)) {
-            snapshotUrl = await captureCameraSnapshot();
-        }
-        
-        await sb.from('exam_proctoring_logs').insert({
-            student_id: studentId,
-            exam_id: EXAM_ID,
-            event_type: eventType,
-            details: details,
-            severity: severity,
-            snapshot_url: snapshotUrl,
-            ip_address: await getIPAddress(),
-            device_info: navigator.userAgent,
-            timestamp: new Date().toISOString()
-        });
-        console.log('📹 Proctoring event logged:', eventType);
-    } catch (error) {
-        console.error('Error logging event:', error);
-    }
-}
+    
     async function setupRealtimeNotifications() {
         const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
         unreadCount = existingLogs?.length || 0;
@@ -716,7 +601,7 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         const container = document.getElementById('notificationList');
         if (!logs || logs.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;">No new alerts</div>'; return; }
-        container.innerHTML = logs.map(log => `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead(${log.id})"><div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div><div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div><div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div><div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div><button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead(${log.id})">Mark read</button></div>`).join('');
+        container.innerHTML = logs.map(log => `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead('${log.id}')"><div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div><div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div><div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div><div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div><button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead('${log.id}')">Mark read</button></div>`).join('');
         document.getElementById('notificationCount').innerText = logs.length;
     }
     
@@ -855,41 +740,37 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
     
     // ========== STUDENTS RESULTS ==========
     window.loadStudentsWithResults = async function() {
-    const loadingDiv = document.getElementById('studentsLoading');
-    const table = document.getElementById('studentsTable');
-    loadingDiv.style.display = 'block'; table.style.display = 'none';
-    try {
-        await loadExamsMap();
-        // FIX: Get grades with correct question_id
-        const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
-        if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
-        const { data: releases } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-        const studentIds = [...new Set(grades.map(g => g.student_id))];
-        // FIX: Get profiles using user_id (not id)
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block, intake_year').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        // FIX: Map grades with profile data
-        studentsResults = grades.map(g => ({ 
-            ...g, 
-            student_profile: profileMap[g.student_id] || null, 
-            isReleased: releasedSet.has(g.id), 
-            exam_info: examsMap[g.exam_id] || null 
-        }));
-        // Apply filters
-        const examFilter = document.getElementById('examFilter')?.value;
-        const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value;
-        let filtered = studentsResults;
-        if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
-        if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
-        if (search) filtered = filtered.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase()));
-        studentsResults = filtered;
-        displayStudentsResults();
-        loadingDiv.style.display = 'none'; table.style.display = 'table';
-        updateStats();
-    } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading data'; }
-};
+        const loadingDiv = document.getElementById('studentsLoading');
+        const table = document.getElementById('studentsTable');
+        loadingDiv.style.display = 'block'; table.style.display = 'none';
+        try {
+            await loadExamsMap();
+            const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
+            if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
+            const { data: releases } = await sb.from('released_exam_results').select('result_id');
+            const releasedSet = new Set(releases?.map(r => r.result_id) || []);
+            const studentIds = [...new Set(grades.map(g => g.student_id))];
+            const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block, intake_year').in('user_id', studentIds);
+            const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+            studentsResults = grades.map(g => ({ 
+                ...g, 
+                student_profile: profileMap[g.student_id] || null, 
+                isReleased: releasedSet.has(g.id), 
+                exam_info: examsMap[g.exam_id] || null 
+            }));
+            const examFilter = document.getElementById('examFilter')?.value;
+            const statusFilter = document.getElementById('statusFilter')?.value;
+            const search = document.getElementById('searchInput')?.value;
+            let filtered = studentsResults;
+            if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
+            if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
+            if (search) filtered = filtered.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase()));
+            studentsResults = filtered;
+            displayStudentsResults();
+            loadingDiv.style.display = 'none'; table.style.display = 'table';
+            updateStats();
+        } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading data'; }
+    };
     
     window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
         if (!confirm(`⚠️ RESET STUDENT EXAM\n\nReset "${studentName}"'s attempt for "${examName}"?\n\nThis will delete ALL their answers and scores.\n\nCannot be undone!`)) return;
@@ -906,7 +787,23 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         const page = studentsResults.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('studentsBody');
         if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; return; }
-        tbody.innerHTML = page.map(r => { const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'"); const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'"); return `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : (r.result_status === 'FAIL' ? 'status-fail' : 'status-pending')}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button></td></tr>`; }).join('');
+        tbody.innerHTML = page.map(r => { 
+            const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'"); 
+            const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
+            // Calculate percentage based on exam type
+            const examType = r.exam_info?.exam_type || 'EXAM';
+            const totalMarks = getExamTotalMarks(examType);
+            const passMark = getPassMark(totalMarks);
+            const score = r.marks || 0;
+            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+            const status = r.result_status || 'PENDING';
+            const isPassed = status === 'PASS' || score >= passMark;
+            const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
+            const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
+            const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
+            const totalDisplay = totalMarks;
+            return `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td><td>${score} / ${totalDisplay}</td><td>${percentage}%</td><td><span class="${statusClass}">${displayStatus}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button></td></tr>`; 
+        }).join('');
         renderPagination('students', studentsResults.length);
     }
     
@@ -958,12 +855,22 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         const start = (currentPage.exams - 1) * itemsPerPage;
         const page = exams.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('examsBody');
-        if(page.length === 0) { tbody.innerHTML = '<table><td colspan="8">No exams found</td></table>'; return; }
-        tbody.innerHTML = page.map(e => { const hasResults = hasResultsMap[e.id]; const examStatus = hasResults ? 'Completed' : 'Active'; const statusClass = hasResults ? 'status-completed' : 'status-active'; const publishStatus = e.status || 'draft'; return `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${countMap[e.id] || 0}</td><td><span class="${statusClass}">${examStatus}</span></td><td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button><button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button></td></tr>`; }).join('');
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="9">No exams found</td></tr>'; return; }
+        tbody.innerHTML = page.map(e => { 
+            const hasResults = hasResultsMap[e.id]; 
+            const examStatus = hasResults ? 'Completed' : 'Active'; 
+            const statusClass = hasResults ? 'status-completed' : 'status-active'; 
+            const publishStatus = e.status || 'draft';
+            const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
+            const passMark = e.pass_mark || getPassMark(totalMarks);
+            const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+            const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+            return `<tr><td><strong>${e.exam_name}</strong></td><td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td><td>${e.course || '-'}</td><td>${totalMarks} (Pass: ${passMark})</td><td>${e.duration_minutes || 30} min</td><td>${countMap[e.id] || 0}</td><td><span class="${statusClass}">${examStatus}</span></td><td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button><button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button></td></tr>`; 
+        }).join('');
         renderPagination('exams', exams.length);
     }
     
-    // ========== FIXED RELEASE MODAL FUNCTIONS ==========
+    // ========== RELEASE MODAL FUNCTIONS ==========
     window.openReleaseModal = async function() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('id', { ascending: false });
         const selectEl = document.getElementById('releaseExamFilter');
@@ -974,110 +881,46 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
     };
     
     window.loadReleasePreview = async function() {
-    const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { 
-        document.getElementById('releasePreview').style.display = 'none'; 
-        return; 
-    }
-    
-    document.getElementById('releasePreview').style.display = 'block';
-    selectedStudentIds.clear();
-    
-    // Get ALL grades for this exam (NO status filter)
-    const { data: results, error } = await sb
-        .from('exam_grades')
-        .select('id, student_id, marks, total_score, result_status')
-        .eq('exam_id', parseInt(examId))
-        .eq('question_id', '00000000-0000-0000-0000-000000000000');
-    
-    if (error) {
-        console.error('Error loading results:', error);
-        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message} </td></tr>`;
-        return;
-    }
-    
-    if (!results || results.length === 0) {
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
-        document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
-        return;
-    }
-    
-    // Get already released results
-    const { data: released } = await sb.from('released_exam_results').select('result_id');
-    const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-    
-    // FIX: Show ALL results that are NOT released yet (including PENDING)
-    const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
-    
-    if (eligibleResults.length === 0) {
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
-        document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
-        document.getElementById('confirmReleaseBtn').disabled = true;
-        return;
-    }
-    
-    currentReleaseResults = eligibleResults;
-    
-    // Get student profiles
-    const studentIds = eligibleResults.map(r => r.student_id);
-    const { data: profiles } = await sb
-        .from('consolidated_user_profiles_table')
-        .select('user_id, full_name, student_id, email')
-        .in('user_id', studentIds);
-    
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-    
-    // Build the preview table - Show ALL pending results
-    let html = '';
-    eligibleResults.forEach(r => {
-        const student = profileMap[r.student_id];
-        const percentage = parseFloat(r.total_score || 0).toFixed(1);
-        
-        // Determine status badge class
-        let statusClass = 'status-pending';
-        if (r.result_status === 'PASS') statusClass = 'status-pass';
-        else if (r.result_status === 'FAIL') statusClass = 'status-fail';
-        
-        html += `
-            <tr>
-                <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
-                <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
-                <td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td>
-                <td>${r.marks || 0}</td>
-                <td>${percentage}%</td>
-                <td><span class="${statusClass}">${r.result_status || 'PENDING'}</span></td>
-                <td><span class="status-pending">🔒 Not Released</span></td>
-            </tr>
-        `;
-    });
-    
-    document.getElementById('releasePreviewBody').innerHTML = html;
-    document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
-    document.getElementById('selectAllCheckbox').checked = false;
-    document.getElementById('confirmReleaseBtn').disabled = false;
-    updateSelectedCount();
-};
+        const examId = document.getElementById('releaseExamFilter').value;
+        if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
+        document.getElementById('releasePreview').style.display = 'block';
+        selectedStudentIds.clear();
+        const { data: results, error } = await sb.from('exam_grades').select('id, student_id, marks, total_score, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000');
+        if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message} </td></tr>`; return; }
+        if (!results || results.length === 0) { document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>'; document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>'; return; }
+        const { data: released } = await sb.from('released_exam_results').select('result_id');
+        const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
+        const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
+        if (eligibleResults.length === 0) { document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>'; document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>'; document.getElementById('confirmReleaseBtn').disabled = true; return; }
+        currentReleaseResults = eligibleResults;
+        const studentIds = eligibleResults.map(r => r.student_id);
+        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email').in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        let html = '';
+        eligibleResults.forEach(r => {
+            const student = profileMap[r.student_id];
+            const percentage = parseFloat(r.total_score || 0).toFixed(1);
+            let statusClass = 'status-pending';
+            if (r.result_status === 'PASS') statusClass = 'status-pass';
+            else if (r.result_status === 'FAIL') statusClass = 'status-fail';
+            html += `<tr><td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td><td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td><td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td><td>${r.marks || 0}</td><td>${percentage}%</td><td><span class="${statusClass}">${r.result_status || 'PENDING'}</span></td><td><span class="status-pending">🔒 Not Released</span></td></tr>`;
+        });
+        document.getElementById('releasePreviewBody').innerHTML = html;
+        document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
+        document.getElementById('selectAllCheckbox').checked = false;
+        document.getElementById('confirmReleaseBtn').disabled = false;
+        updateSelectedCount();
+    };
     
     window.selectAllStudents = function(select) { 
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
-        checkboxes.forEach(cb => { 
-            cb.checked = select; 
-            const id = cb.getAttribute('data-id'); 
-            if (select && id) {
-                selectedStudentIds.add(id); 
-            } else if (!select && id) {
-                selectedStudentIds.delete(id); 
-            }
-        }); 
+        checkboxes.forEach(cb => { cb.checked = select; const id = cb.getAttribute('data-id'); if (select && id) selectedStudentIds.add(id); else if (!select && id) selectedStudentIds.delete(id); }); 
         updateSelectedCount(); 
         const box = document.getElementById('selectAllCheckbox'); 
         if (box) box.checked = select; 
     };
     
-    window.toggleSelectAll = function() { 
-        const box = document.getElementById('selectAllCheckbox');
-        if (box) selectAllStudents(box.checked); 
-    };
+    window.toggleSelectAll = function() { const box = document.getElementById('selectAllCheckbox'); if (box) selectAllStudents(box.checked); };
     
     window.updateSelectedCount = function() { 
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
@@ -1085,224 +928,178 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
         document.getElementById('selectedCount').innerHTML = `${count} selected`; 
         document.getElementById('confirmReleaseBtn').disabled = (count === 0); 
         selectedStudentIds.clear(); 
-        checkboxes.forEach(cb => {
-            const idValue = cb.getAttribute('data-id'); 
-            if (idValue) selectedStudentIds.add(idValue);
-        }); 
+        checkboxes.forEach(cb => { const idValue = cb.getAttribute('data-id'); if (idValue) selectedStudentIds.add(idValue); }); 
     };
     
     window.confirmReleaseResults = async function() { 
-    const ids = Array.from(selectedStudentIds); 
-    if (ids.length === 0) {
-        alert('Please select at least one student to release results.');
-        return; 
-    }
-    
-    const examId = document.getElementById('releaseExamFilter').value; 
-    if (!examId) return; 
-    
-    if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return; 
-    
-    try {
-        const releaseRecords = []; 
-        const gradeIdsToUpdate = [];
-        
-        for (const gid of ids) { 
-            const r = currentReleaseResults.find(rr => String(rr.id) === String(gid)); 
-            if (r) {
-                releaseRecords.push({
-                    result_id: r.id, 
-                    student_id: r.student_id, 
-                    exam_id: parseInt(examId), 
-                    released_at: new Date().toISOString(), 
-                    released_by: 'admin'
-                });
-                gradeIdsToUpdate.push(r.id);
+        const ids = Array.from(selectedStudentIds); 
+        if (ids.length === 0) { alert('Please select at least one student to release results.'); return; }
+        const examId = document.getElementById('releaseExamFilter').value; 
+        if (!examId) return; 
+        if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return; 
+        try {
+            const releaseRecords = []; const gradeIdsToUpdate = [];
+            for (const gid of ids) { 
+                const r = currentReleaseResults.find(rr => String(rr.id) === String(gid)); 
+                if (r) { releaseRecords.push({ result_id: r.id, student_id: r.student_id, exam_id: parseInt(examId), released_at: new Date().toISOString(), released_by: 'admin' }); gradeIdsToUpdate.push(r.id); }
+            } 
+            if (releaseRecords.length === 0) { alert('No valid records to release'); return; }
+            const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords); 
+            if (releaseError) { alert('Error: ' + releaseError.message); return; }
+            for (const gradeId of gradeIdsToUpdate) {
+                await sb.from('exam_grades').update({ result_status: 'PASS', updated_at: new Date().toISOString() }).eq('id', gradeId);
             }
-        } 
-        
-        if (releaseRecords.length === 0) {
-            alert('No valid records to release');
-            return;
-        }
-        
-        // 1. Insert release records
-        const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords); 
-        if (releaseError) { 
-            alert('Error: ' + releaseError.message); 
-            return;
-        }
-        
-        // 2. UPDATE the grade status to PASS (FIX)
-        for (const gradeId of gradeIdsToUpdate) {
-            await sb.from('exam_grades')
-                .update({ 
-                    result_status: 'PASS',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', gradeId);
-        }
-        
-        alert(`✅ Released ${releaseRecords.length} result(s)!`); 
-        closeReleaseModal(); 
-        loadStudentsWithResults(); 
-        loadAllExams(); 
-        
-    } catch (err) {
-        alert('Error: ' + err.message);
+            alert(`✅ Released ${releaseRecords.length} result(s)!`); 
+            closeReleaseModal(); 
+            loadStudentsWithResults(); 
+            loadAllExams(); 
+        } catch (err) { alert('Error: ' + err.message); }
+    };
+    
+    async function updateStats() {
+        const totalStudents = allStudents.length;
+        const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
+        const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
+        const pending = studentsResults.filter(r=>r.result_status==='PENDING'||r.result_status==='PENDING_REVIEW'||!r.result_status).length;
+        const scoredExams = studentsResults.filter(r => r.total_score > 0);
+        const avg = scoredExams.length ? (scoredExams.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/scoredExams.length).toFixed(1) : 0;
+        const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
+        document.getElementById('statsContainer').innerHTML = `
+            <div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div>
+            <div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div>
+            <div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div>
+            <div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending Release</div></div>
+            <div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div>
+            <div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>
+        `;
     }
-};
- async function updateStats() {
-    const totalStudents = allStudents.length;
-    const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
-    const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-    const pending = studentsResults.filter(r=>r.result_status==='PENDING'||r.result_status==='PENDING_REVIEW'||!r.result_status).length;
-    const scoredExams = studentsResults.filter(r => r.total_score > 0);
-    const avg = scoredExams.length ? (scoredExams.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/scoredExams.length).toFixed(1) : 0;
-    const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
     
-    // Update the stats cards
-    document.getElementById('statsContainer').innerHTML = `
-        <div class="stat-card total">
-            <div class="stat-value">${totalStudents}</div>
-            <div class="stat-label">Total Students</div>
-        </div>
-        <div class="stat-card passed">
-            <div class="stat-value">${passed}</div>
-            <div class="stat-label">Passed</div>
-        </div>
-        <div class="stat-card failed">
-            <div class="stat-value">${failed}</div>
-            <div class="stat-label">Failed</div>
-        </div>
-        <div class="stat-card pending">
-            <div class="stat-value">${pending}</div>
-            <div class="stat-label">Pending Release</div>
-        </div>
-        <div class="stat-card avg">
-            <div class="stat-value">${avg}%</div>
-            <div class="stat-label">Avg Score</div>
-        </div>
-        <div class="stat-card face-alerts">
-            <div class="stat-value">${faceAlerts}</div>
-            <div class="stat-label">Face Violations</div>
-        </div>
-    `;
-}
+    function renderPagination(type, total) { 
+        const totalPages = Math.ceil(total/itemsPerPage); 
+        const container = document.getElementById(type+'Pagination'); 
+        if(!container || totalPages<=1) { if(container) container.innerHTML=''; return; } 
+        let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`; 
+        for(let i=1;i<=totalPages;i++) { if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`; } 
+        html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`; 
+        container.innerHTML = html; 
+    }
     
-    function renderPagination(type, total) { const totalPages = Math.ceil(total/itemsPerPage); const container = document.getElementById(type+'Pagination'); if(!container || totalPages<=1) { if(container) container.innerHTML=''; return; } let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`; for(let i=1;i<=totalPages;i++) { if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`; } html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`; container.innerHTML = html; }
     window.changePage = function(type, page) { currentPage[type]=page; if(type==='students') displayStudentsResults(); if(type==='allStudents') displayAllStudents(); if(type==='exams') loadAllExams(); if(type==='proctoring') displayProctoringLogs(); };
     window.resetFilters = function() { ['examFilter','statusFilter','searchInput'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.students=1; loadStudentsWithResults(); };
     window.resetStudentFilters = function() { ['programFilter','studentSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.allStudents=1; loadAllStudents(); };
     window.resetExamFilters = function() { ['examTypeFilter','examSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.exams=1; loadAllExams(); };
-    window.viewExamResult = async function(sid, eid) { const {data:grade}=await sb.from('exam_grades').select('*').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); const {data:exam}=await sb.from('exams').select('*').eq('id',eid).single(); const {data:profile}=await sb.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single(); document.getElementById('modalContent').innerHTML = `<div style="background:${grade?.result_status==='PASS'?'#D1FAE5':'#FEE2E2'};padding:20px;border-radius:16px;"><h3>${profile?.full_name} (${profile?.student_id})</h3><p><strong>Exam:</strong> ${exam?.exam_name}</p><p><strong>Score:</strong> ${grade?.marks || 0} marks</p><p><strong>Percentage:</strong> ${grade?.total_score || 0}%</p><p><strong>Status:</strong> <span class="${grade?.result_status==='PASS'?'status-pass':'status-fail'}">${grade?.result_status}</span></p></div>`; document.getElementById('studentModal').style.display = 'flex'; };
-    window.viewStudentProfile = async function(pid) { const {data:student}=await sb.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); document.getElementById('modalContent').innerHTML = `<p><strong>Student ID:</strong> ${student.student_id}</p><p><strong>Email:</strong> ${student.email}</p><p><strong>Program:</strong> ${student.program}</p><p><strong>Block:</strong> ${student.block}</p>`; document.getElementById('studentModal').style.display = 'flex'; };
+    
+    window.viewExamResult = async function(sid, eid) { 
+        const {data:grade}=await sb.from('exam_grades').select('*').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); 
+        const {data:exam}=await sb.from('exams').select('*').eq('id',eid).single(); 
+        const {data:profile}=await sb.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single();
+        const totalMarks = exam?.total_marks || getExamTotalMarks(exam?.exam_type);
+        const passMark = exam?.pass_mark || getPassMark(totalMarks);
+        const score = grade?.marks || 0;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const status = grade?.result_status || 'PENDING';
+        const isPassed = status === 'PASS' || score >= passMark;
+        const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
+        const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
+        document.getElementById('modalContent').innerHTML = `<div style="background:${isPassed ? '#D1FAE5' : '#FEE2E2'};padding:20px;border-radius:16px;"><h3>${profile?.full_name} (${profile?.student_id})</h3><p><strong>Exam:</strong> ${exam?.exam_name}</p><p><strong>Score:</strong> ${score} / ${totalMarks} marks</p><p><strong>Percentage:</strong> ${percentage}%</p><p><strong>Pass Mark:</strong> ${passMark} marks (60%)</p><p><strong>Status:</strong> <span class="${statusClass}">${displayStatus}</span></p></div>`; 
+        document.getElementById('studentModal').style.display = 'flex'; 
+    };
+    
+    window.viewStudentProfile = async function(pid) { 
+        const {data:student}=await sb.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); 
+        document.getElementById('modalContent').innerHTML = `<p><strong>Student ID:</strong> ${student.student_id}</p><p><strong>Email:</strong> ${student.email}</p><p><strong>Program:</strong> ${student.program}</p><p><strong>Block:</strong> ${student.block}</p>`; 
+        document.getElementById('studentModal').style.display = 'flex'; 
+    };
+    
     window.closeModal = function() { document.getElementById('studentModal').style.display = 'none'; };
     window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; selectedStudentIds.clear(); };
-    window.exportToExcel = function(type) { let data=[]; if(type==='students') data=studentsResults.map(r=>({'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':r.marks, 'Percent':r.total_score, 'Status':r.result_status})); if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes})); if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details})); const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); };
-    window.printTable = function(type) { const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':type==='exams'?'examsTable':'proctoringTable').outerHTML; const win=window.open(); win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); win.print(); };
+    
+    window.exportToExcel = function(type) { 
+        let data=[]; 
+        if(type==='students') data=studentsResults.map(r => {
+            const totalMarks = r.exam_info?.total_marks || getExamTotalMarks(r.exam_info?.exam_type);
+            const score = r.marks || 0;
+            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+            return {'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':`${score}/${totalMarks}`, 'Percent':percentage+'%', 'Status':r.result_status};
+        }); 
+        if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); 
+        if(type==='exams') data=allExams.map(e => {
+            const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
+            return {'Exam Name':e.exam_name, 'Type':e.exam_type, 'Total Marks':totalMarks, 'Duration':e.duration_minutes};
+        }); 
+        if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details})); 
+        const ws=XLSX.utils.json_to_sheet(data); 
+        const wb=XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb,ws,'Data'); 
+        XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
+    };
+    
+    window.printTable = function(type) { 
+        const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':type==='exams'?'examsTable':'proctoringTable').outerHTML; 
+        const win=window.open(); 
+        win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); 
+        win.print(); 
+    };
+    
+    window.exportMarksOnly = function() {
+        if (!studentsResults || studentsResults.length === 0) { alert('No results to export!'); return; }
+        const exportData = studentsResults.map(r => {
+            const student = r.student_profile || {};
+            const exam = r.exam_info || {};
+            const totalMarks = exam.total_marks || getExamTotalMarks(exam.exam_type);
+            const score = r.marks || 0;
+            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+            let grade = 'PENDING';
+            if (r.result_status === 'PASS') grade = 'PASS';
+            else if (r.result_status === 'FAIL') grade = 'FAIL';
+            else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') grade = 'PENDING REVIEW';
+            return {
+                'Admission Number': student.student_id || 'N/A',
+                'Student Name': student.full_name || 'Unknown',
+                'Exam': exam.exam_name || 'Exam ' + r.exam_id,
+                'CAT 1': r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--',
+                'CAT 2': r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--',
+                'Exam Score': r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--',
+                'Total': `${score} / ${totalMarks}`,
+                'Percentage': percentage + '%',
+                'Grade': grade
+            };
+        });
+        const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade'];
+        let csv = headers.join(',') + '\n';
+        exportData.forEach(row => {
+            const values = headers.map(header => {
+                let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                    value = '"' + value.replace(/"/g, '""') + '"';
+                }
+                return value;
+            });
+            csv += values.join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        alert(`✅ Exported ${exportData.length} results successfully!`);
+    };
     
     document.getElementById('notificationBell').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('notificationPanel').classList.toggle('show'); loadNotifications(); });
     document.addEventListener('click', () => { document.getElementById('notificationPanel').classList.remove('show'); });
-  // ========== EXPORT MARKS (Admission Number + Name + Scores) ==========
-window.exportMarksOnly = function() {
-    // Check if there are results
-    if (!studentsResults || studentsResults.length === 0) {
-        alert('No results to export!');
-        return;
-    }
     
-    // Build export data
-    const exportData = studentsResults.map(r => {
-        const student = r.student_profile || {};
-        const exam = r.exam_info || {};
-        const percentage = r.total_score ? parseFloat(r.total_score).toFixed(1) : '0.0';
-        
-        // Determine grade
-        let grade = 'PENDING';
-        if (r.result_status === 'PASS') grade = 'PASS';
-        else if (r.result_status === 'FAIL') grade = 'FAIL';
-        else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') grade = 'PENDING REVIEW';
-        
-        return {
-            'Admission Number': student.student_id || 'N/A',
-            'Student Name': student.full_name || 'Unknown',
-            'Exam': exam.exam_name || exam.title || 'Exam ' + r.exam_id,
-            'CAT 1': r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--',
-            'CAT 2': r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--',
-            'Exam Score': r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--',
-            'Total': r.marks || r.cat_1_score || 0,
-            'Percentage': percentage + '%',
-            'Grade': grade
-        };
+    document.addEventListener('DOMContentLoaded', function() { 
+        if(!checkAdminAuth()) return; 
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); 
+        window.switchTab('students'); 
+        setupRealtimeNotifications(); 
+        updateTotalMarksHint();
     });
-    
-    // Create CSV
-    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade'];
-    let csv = headers.join(',') + '\n';
-    
-    exportData.forEach(row => {
-        const values = headers.map(header => {
-            let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
-            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                value = '"' + value.replace(/"/g, '""') + '"';
-            }
-            return value;
-        });
-        csv += values.join(',') + '\n';
-    });
-    
-    // Download file
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    alert(`✅ Exported ${exportData.length} results successfully!`);
-};
-
-// ========== FEEDBACK TOAST FUNCTION ==========
-function showFeedback(message, type = 'success') {
-    // Remove any existing feedback
-    const existing = document.querySelector('.feedback-toast');
-    if (existing) existing.remove();
-    
-    // Create feedback element
-    const toast = document.createElement('div');
-    toast.className = 'feedback-toast';
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        padding: 16px 24px;
-        border-radius: 12px;
-        color: white;
-        font-weight: 600;
-        font-size: 0.9rem;
-        z-index: 9999;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        animation: slideInUp 0.4s ease;
-        max-width: 400px;
-        background: ${type === 'success' ? '#10B981' : '#EF4444'};
-    `;
-    toast.innerHTML = message;
-    document.body.appendChild(toast);
-    
-    // Auto remove after 4 seconds
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(20px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-    document.addEventListener('DOMContentLoaded', function() { if(!checkAdminAuth()) return; document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); window.switchTab('students'); setupRealtimeNotifications(); });
 })();
 </script>
 </body>
