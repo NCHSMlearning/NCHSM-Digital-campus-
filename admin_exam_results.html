@@ -167,15 +167,17 @@
 
     <div class="tables-container">
         <div class="table-container" id="studentsTableContainer">
-            <div class="table-header">
-                <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
-                <div class="table-actions">
-                    <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
-                    <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export</button>
-                    <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
-                    <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
-                </div>
-            </div>
+           <div class="table-header">
+    <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
+    <div class="table-actions">
+        <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
+        <!-- ADD THIS NEW BUTTON -->
+        <button class="btn btn-success" onclick="exportMarksOnly()"><i class="fas fa-file-csv"></i> Export Marks</button>
+        <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export Excel</button>
+        <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
+        <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
+    </div>
+</div>
             <div id="studentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading student data...</div>
             <table id="studentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Released</th><th>Actions</th></tr></thead><tbody id="studentsBody"></tbody></table>
             <div class="pagination" id="studentsPagination"></div>
@@ -1202,7 +1204,104 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
     
     document.getElementById('notificationBell').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('notificationPanel').classList.toggle('show'); loadNotifications(); });
     document.addEventListener('click', () => { document.getElementById('notificationPanel').classList.remove('show'); });
+  // ========== EXPORT MARKS (Admission Number + Name + Scores) ==========
+window.exportMarksOnly = function() {
+    // Check if there are results
+    if (!studentsResults || studentsResults.length === 0) {
+        alert('No results to export!');
+        return;
+    }
     
+    // Build export data
+    const exportData = studentsResults.map(r => {
+        const student = r.student_profile || {};
+        const exam = r.exam_info || {};
+        const percentage = r.total_score ? parseFloat(r.total_score).toFixed(1) : '0.0';
+        
+        // Determine grade
+        let grade = 'PENDING';
+        if (r.result_status === 'PASS') grade = 'PASS';
+        else if (r.result_status === 'FAIL') grade = 'FAIL';
+        else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') grade = 'PENDING REVIEW';
+        
+        return {
+            'Admission Number': student.student_id || 'N/A',
+            'Student Name': student.full_name || 'Unknown',
+            'Exam': exam.exam_name || exam.title || 'Exam ' + r.exam_id,
+            'CAT 1': r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--',
+            'CAT 2': r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--',
+            'Exam Score': r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--',
+            'Total': r.marks || r.cat_1_score || 0,
+            'Percentage': percentage + '%',
+            'Grade': grade
+        };
+    });
+    
+    // Create CSV
+    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade'];
+    let csv = headers.join(',') + '\n';
+    
+    exportData.forEach(row => {
+        const values = headers.map(header => {
+            let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                value = '"' + value.replace(/"/g, '""') + '"';
+            }
+            return value;
+        });
+        csv += values.join(',') + '\n';
+    });
+    
+    // Download file
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ Exported ${exportData.length} results successfully!`);
+};
+
+// ========== FEEDBACK TOAST FUNCTION ==========
+function showFeedback(message, type = 'success') {
+    // Remove any existing feedback
+    const existing = document.querySelector('.feedback-toast');
+    if (existing) existing.remove();
+    
+    // Create feedback element
+    const toast = document.createElement('div');
+    toast.className = 'feedback-toast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        z-index: 9999;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        animation: slideInUp 0.4s ease;
+        max-width: 400px;
+        background: ${type === 'success' ? '#10B981' : '#EF4444'};
+    `;
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
     document.addEventListener('DOMContentLoaded', function() { if(!checkAdminAuth()) return; document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); window.switchTab('students'); setupRealtimeNotifications(); });
 })();
 </script>
