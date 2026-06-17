@@ -860,86 +860,123 @@
             this.updateEmptyStates();
         }
         
-        displayCurrentTable() {
-            if (!this.currentTable) return;
+      displayCurrentTable() {
+    if (!this.currentTable) return;
+    
+    const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
+    
+    if (activeExams.length === 0) {
+        this.currentTable.innerHTML = '';
+        return;
+    }
+    
+    // Get user details for the link
+    const userId = this.userId || window.db?.currentUserId || '';
+    const userProgram = this.programCode || 'KRCHN';
+    const userBlock = this.userBlock || 'A';
+    const userIntake = this.intakeYear || 2025;
+    
+    const html = activeExams.map(exam => {
+        const isCatExam = exam.isCatExam;
+        const examDisplayName = exam.exam_name || exam.title || 'Assessment';
+        let actionHtml = '';
+        let timeRemainingHtml = '';
+        
+        if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
+            // --- FIX: Build URL with user details as query parameters ---
+            let examLink = exam.examLink;
             
-            const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
+            // Check if link already has query params
+            const hasQueryParams = examLink.includes('?');
             
-            if (activeExams.length === 0) {
-                this.currentTable.innerHTML = '';
-                return;
+            // Build the full URL with user details
+            const baseUrl = examLink.split('?')[0]; // Remove any existing params
+            const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
+            
+            // Build new params
+            const params = new URLSearchParams();
+            params.append('userId', userId);
+            params.append('program', userProgram);
+            params.append('block', userBlock);
+            params.append('intake', userIntake);
+            params.append('examId', exam.id);
+            params.append('examName', examDisplayName);
+            
+            // If there were existing params, add them too
+            if (existingParams) {
+                const existing = new URLSearchParams(existingParams);
+                existing.forEach((value, key) => {
+                    if (!params.has(key)) {
+                        params.append(key, value);
+                    }
+                });
             }
             
-            const html = activeExams.map(exam => {
-                const isCatExam = exam.isCatExam;
-                const examDisplayName = exam.exam_name || exam.title || 'Assessment';
-                let actionHtml = '';
-                let timeRemainingHtml = '';
-                
-                if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-                    actionHtml = `<a href="${exam.examLink}" 
-                                    target="_blank" 
-                                    class="exam-link-btn btn-primary"
-                                    onclick="sessionStorage.setItem('returningFromExam', 'true')"
-                                    style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                                    <i class="fas fa-external-link-alt"></i> Start Exam
-                                </a>`;
-                    
-                    if (exam.timeRemainingMs > 0) {
-                        const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
-                        const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
-                        timeRemainingHtml = `<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">
-                                                <i class="fas fa-hourglass-half"></i> Time left: ${minutesLeft}m ${secondsLeft}s
-                                            </div>`;
-                    }
-                } 
-                else if (exam.actionState === 'upcoming') {
-                    actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
-                                </span>`;
-                }
-                else {
-                    actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
-                                </span>`;
-                }
-                
-                let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
-                
-                let assessmentCell = `
-                    <div class="assessment-info-box">
-                        <div class="assessment-name">
-                            <strong>${this.escapeHtml(examDisplayName)}</strong>
-                            <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                        </div>
-                        <div class="assessment-details">
-                            <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
-                            <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
-                            <span class="program-badge ${exam.programBadgeClass}">
-                                <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                            </span>
-                        </div>
-                        ${exam.formattedExamDateTime !== 'TBA' ? `<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ${exam.formattedExamDateTime}</div>` : ''}
-                        ${timeRemainingHtml}
-                    </div>
-                `;
-                
-                return `
-                    <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
-                        <td class="assessment-cell">${assessmentCell}</td>
-                        <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
-                        <td class="text-center status-cell">${statusHtml}</td>
-                        <td class="text-center">${exam.cat1Display}</td>
-                        <td class="text-center">${exam.cat2Display}</td>
-                        <td class="text-center">${exam.finalDisplay}</td>
-                        <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
-                        <td class="text-center action-cell">${actionHtml}</td>
-                    </tr>
-                `;
-            }).join('');
+            const fullUrl = `${baseUrl}?${params.toString()}`;
             
-            this.currentTable.innerHTML = html;
+            actionHtml = `<a href="${fullUrl}" 
+                            target="_blank" 
+                            class="exam-link-btn btn-primary"
+                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}'); sessionStorage.setItem('examProgram', '${userProgram}');"
+                            style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                            <i class="fas fa-external-link-alt"></i> Start Exam
+                        </a>`;
+            
+            if (exam.timeRemainingMs > 0) {
+                const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
+                const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
+                timeRemainingHtml = `<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">
+                                        <i class="fas fa-hourglass-half"></i> Time left: ${minutesLeft}m ${secondsLeft}s
+                                    </div>`;
+            }
+        } 
+        else if (exam.actionState === 'upcoming') {
+            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
+                        </span>`;
         }
+        else {
+            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
+                        </span>`;
+        }
+        
+        let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
+        
+        let assessmentCell = `
+            <div class="assessment-info-box">
+                <div class="assessment-name">
+                    <strong>${this.escapeHtml(examDisplayName)}</strong>
+                    <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                </div>
+                <div class="assessment-details">
+                    <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
+                    <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
+                    <span class="program-badge ${exam.programBadgeClass}">
+                        <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                    </span>
+                </div>
+                ${exam.formattedExamDateTime !== 'TBA' ? `<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ${exam.formattedExamDateTime}</div>` : ''}
+                ${timeRemainingHtml}
+            </div>
+        `;
+        
+        return `
+            <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
+                <td class="assessment-cell">${assessmentCell}</td>
+                <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
+                <td class="text-center status-cell">${statusHtml}</td>
+                <td class="text-center">${exam.cat1Display}</td>
+                <td class="text-center">${exam.cat2Display}</td>
+                <td class="text-center">${exam.finalDisplay}</td>
+                <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
+                <td class="text-center action-cell">${actionHtml}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    this.currentTable.innerHTML = html;
+}
         
         displayCompletedTable() {
             if (!this.completedTable) return;
