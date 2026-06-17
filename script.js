@@ -6773,17 +6773,150 @@ function updateVisualization() {
 }
 // Add this at the end of your script.js, before the closing of the file
 
-/*******************************************************
- * UNIT REGISTRATION MANAGEMENT - COMPLETE MODULE
- *******************************************************/
+// =====================================================
+// UNIT REGISTRATION MANAGEMENT - COMPLETE MODULE
+// =====================================================
 
 // Global variables for unit management
 let allUnits = [];
 let currentBlockFilter = 'all';
 let pendingRegistrationsData = [];
-let selectedRegistrationIds = new Set();
 let approvedRegistrationsData = [];
-let selectedApprovedIds = new Set();
+
+// =====================================================
+// TOGGLE UNIT COURSES - POPULATES COURSE DROPDOWN
+// =====================================================
+
+window.toggleUnitCourses = async function() {
+    const programSelect = document.getElementById('new_unit_program');
+    const courseSelect = document.getElementById('new_unit_course');
+    
+    if (!programSelect || !courseSelect) return;
+    
+    const selectedProgram = programSelect.value;
+    
+    // Clear current options
+    courseSelect.innerHTML = '<option value="">-- Select Course --</option>';
+    
+    if (!selectedProgram) return;
+    
+    try {
+        // Try to get courses from database
+        const { data: courses, error } = await sb
+            .from('courses')
+            .select('id, course_name, unit_code')
+            .eq('target_program', selectedProgram)
+            .order('course_name', { ascending: true });
+        
+        if (!error && courses && courses.length > 0) {
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                const unitCode = course.unit_code ? ` (${course.unit_code})` : '';
+                option.textContent = course.course_name + unitCode;
+                courseSelect.appendChild(option);
+            });
+            console.log(`✅ Loaded ${courses.length} courses for ${selectedProgram} from DB`);
+            return;
+        }
+        
+        // If no DB courses, use program display names
+        const programName = getProgramDisplayName(selectedProgram);
+        
+        // Add main program
+        const mainOpt = document.createElement('option');
+        mainOpt.value = selectedProgram;
+        mainOpt.textContent = `📚 ${programName}`;
+        courseSelect.appendChild(mainOpt);
+        
+        // If TVET selected, show ALL TVET programs
+        if (selectedProgram === 'TVET') {
+            const separator = document.createElement('option');
+            separator.disabled = true;
+            separator.textContent = '─── All TVET Programs ───';
+            separator.style.fontWeight = 'bold';
+            courseSelect.appendChild(separator);
+            
+            TVET_PROGRAMS.forEach(code => {
+                const displayName = getProgramDisplayName(code);
+                if (displayName && displayName !== code) {
+                    const opt = document.createElement('option');
+                    opt.value = code;
+                    const level = getProgramLevel(code);
+                    const emoji = level === 'DIPLOMA' ? '🎓' : 
+                                  level === 'CERTIFICATE' ? '📜' : 
+                                  level === 'ARTISAN' ? '🔧' : '📊';
+                    opt.textContent = `${emoji} ${displayName}`;
+                    courseSelect.appendChild(opt);
+                }
+            });
+        }
+        
+        console.log(`📚 Loaded course options for ${selectedProgram}`);
+        
+    } catch (err) {
+        console.error('Error in toggleUnitCourses:', err);
+        const programName = getProgramDisplayName(selectedProgram);
+        const option = document.createElement('option');
+        option.value = selectedProgram;
+        option.textContent = programName;
+        courseSelect.appendChild(option);
+    }
+};
+
+// =====================================================
+// UPDATE BLOCK OPTIONS BASED ON PROGRAM
+// =====================================================
+
+window.updateUnitBlockOptions = function(program) {
+    const blockSelect = document.getElementById('new_unit_block');
+    if (!blockSelect) return;
+    
+    const programType = getProgramType(program);
+    const currentValue = blockSelect.value;
+    
+    blockSelect.innerHTML = '';
+    
+    if (programType === 'KRCHN') {
+        // KRCHN uses Blocks with NUMBERS (1-5)
+        ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].forEach(block => {
+            const opt = document.createElement('option');
+            opt.value = block;
+            opt.textContent = block;
+            blockSelect.appendChild(opt);
+        });
+    } else {
+        // TVET uses Terms
+        ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
+            const opt = document.createElement('option');
+            opt.value = term;
+            opt.textContent = term;
+            blockSelect.appendChild(opt);
+        });
+    }
+    
+    if (currentValue) {
+        const exists = Array.from(blockSelect.options).some(o => o.value === currentValue);
+        if (exists) blockSelect.value = currentValue;
+    }
+};
+
+// =====================================================
+// INITIALIZE UNIT FORM
+// =====================================================
+
+function initUnitForm() {
+    const programSelect = document.getElementById('new_unit_program');
+    if (programSelect) {
+        programSelect.addEventListener('change', function() {
+            const program = this.value;
+            toggleUnitCourses();
+            updateUnitBlockOptions(program);
+        });
+        // Trigger initial load
+        setTimeout(() => programSelect.dispatchEvent(new Event('change')), 200);
+    }
+}
 
 // =====================================================
 // UNIT CATALOG MANAGEMENT
@@ -6851,25 +6984,31 @@ function renderUnitsCatalog() {
         const programName = getProgramDisplayName(unit.program);
         
         html += `
-            <div class="unit-card">
-                <div class="unit-header">
+            <div class="unit-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-bottom: 12px; transition: all 0.2s;">
+                <div class="unit-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
                     <div>
-                        <span class="unit-code">${escapeHtml(unit.unit_code)}</span>
-                        <span class="unit-name">${escapeHtml(unit.unit_name)}</span>
+                        <span class="unit-code" style="font-weight: bold; color: #4C1D95; font-size: 16px;">${escapeHtml(unit.unit_code)}</span>
+                        <span class="unit-name" style="font-size: 14px; color: #374151; margin-left: 8px;">${escapeHtml(unit.unit_name)}</span>
                     </div>
-                    <div class="unit-actions">
-                        <button class="btn-sm btn-edit" onclick="editUnitRecord(${unit.id})"><i class="fas fa-edit"></i> Edit</button>
-                        <button class="btn-sm btn-delete" onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')"><i class="fas fa-trash"></i> Delete</button>
+                    <div class="unit-actions" style="display: flex; gap: 8px;">
+                        <button class="btn-sm btn-edit" onclick="editUnitRecord(${unit.id})" style="padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; background: #3b82f6; color: white; border: none;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-sm btn-delete" onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')" style="padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; background: #ef4444; color: white; border: none;">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
                     </div>
                 </div>
-                <div class="unit-meta">
-                    <span><i class="fas fa-tag"></i> ${escapeHtml(programName)}</span>
-                    <span><i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}</span>
-                    <span><i class="fas fa-calendar"></i> Year: ${unit.year || 'N/A'}</span>
-                    <span><i class="fas fa-star"></i> ${unit.credits || 3} Credits</span>
-                    <span><i class="fas fa-clock"></i> ${unit.hours || 0} Hours</span>
-                    <span class="${typeClass}"><i class="fas fa-book"></i> ${unit.unit_type || 'Core'}</span>
-                    ${unit.prerequisites ? `<span><i class="fas fa-link"></i> Pre: ${escapeHtml(unit.prerequisites)}</span>` : ''}
+                <div class="unit-meta" style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px; color: #6b7280; flex-wrap: wrap;">
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-tag"></i> ${escapeHtml(programName)}</span>
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}</span>
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-calendar"></i> Year: ${unit.year || 'N/A'}</span>
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-star"></i> ${unit.credits || 3} Credits</span>
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-clock"></i> ${unit.hours || 0} Hours</span>
+                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px; ${unit.unit_type === 'Core' ? 'background: #dbeafe; color: #2563eb;' : 'background: #fef3c7; color: #d97706;'}">
+                        <i class="fas fa-book"></i> ${unit.unit_type || 'Core'}
+                    </span>
+                    ${unit.prerequisites ? `<span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-link"></i> Pre: ${escapeHtml(unit.prerequisites)}</span>` : ''}
                 </div>
             </div>
         `;
@@ -6877,6 +7016,10 @@ function renderUnitsCatalog() {
     html += '</div>';
     container.innerHTML = html;
 }
+
+// =====================================================
+// ADD NEW UNIT RECORD
+// =====================================================
 
 async function addNewUnitRecord() {
     const unitCode = document.getElementById('new_unit_code')?.value;
@@ -6929,6 +7072,10 @@ async function addNewUnitRecord() {
     }
 }
 
+// =====================================================
+// EDIT UNIT RECORD
+// =====================================================
+
 async function editUnitRecord(unitId) {
     const unit = allUnits.find(u => u.id === unitId);
     if (!unit) return;
@@ -6946,6 +7093,10 @@ async function editUnitRecord(unitId) {
     
     document.getElementById('editUnitModal').style.display = 'flex';
 }
+
+// =====================================================
+// DELETE UNIT RECORD
+// =====================================================
 
 async function deleteUnitRecord(unitId, unitCode) {
     if (!confirm(`Are you sure you want to delete unit "${unitCode}"?`)) return;
@@ -6967,6 +7118,10 @@ async function deleteUnitRecord(unitId, unitCode) {
     }
 }
 
+// =====================================================
+// FILTER FUNCTIONS
+// =====================================================
+
 function filterUnitsCatalog() {
     renderUnitsCatalog();
 }
@@ -6978,6 +7133,11 @@ function filterUnitsByBlock(block) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-block') === block) {
             btn.classList.add('active');
+            btn.style.background = '#4C1D95';
+            btn.style.color = 'white';
+        } else {
+            btn.style.background = '#f3f4f6';
+            btn.style.color = '#374151';
         }
     });
     
@@ -7056,10 +7216,10 @@ async function loadUnitPendingRegistrations() {
             let html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button onclick="selectAllPendingUnits()" class="btn-action">Select All Units</button>
-                        <button onclick="clearAllUnitSelections()" class="btn-secondary">Clear Selection</button>
-                        <button onclick="bulkApproveSelectedUnits()" class="btn-success">Approve Selected (<span id="selectedUnitsCount">0</span>)</button>
-                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger">Reject Selected</button>
+                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Select All Units</button>
+                        <button onclick="clearAllUnitSelections()" class="btn-secondary" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Clear Selection</button>
+                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Approve Selected (<span id="selectedUnitsCount">0</span>)</button>
+                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger" style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Reject Selected</button>
                     </div>
                 </div>
                 <div class="students-pending-list">
@@ -7077,8 +7237,8 @@ async function loadUnitPendingRegistrations() {
                                 <small>ID: ${reg.student_id?.substring(0, 8)}</small>
                             </div>
                             <div>
-                                <button onclick="approveStudentAllUnits('${reg.student_id}')" class="btn-success btn-sm">Approve All</button>
-                                <button onclick="rejectStudentAllUnits('${reg.student_id}')" class="btn-danger btn-sm">Reject All</button>
+                                <button onclick="approveStudentAllUnits('${reg.student_id}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Approve All</button>
+                                <button onclick="rejectStudentAllUnits('${reg.student_id}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Reject All</button>
                             </div>
                         </div>
                         <div class="unit-item" style="border-top: 1px solid #e5e7eb; padding-top: 10px;">
@@ -7086,8 +7246,8 @@ async function loadUnitPendingRegistrations() {
                             <strong>${escapeHtml(reg.unit_code)}</strong> - ${escapeHtml(reg.unit_name)}<br>
                             <small>Block: ${escapeHtml(reg.block)} | Submitted: ${submittedDate}</small>
                             <div style="margin-top: 8px;">
-                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm">Approve</button>
-                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm">Reject</button>
+                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Approve</button>
+                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Reject</button>
                             </div>
                         </div>
                     </div>
@@ -7229,7 +7389,7 @@ async function loadApprovedRegistrations() {
     const tbody = document.getElementById('approved-registrations-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...</td></tr>';
     
     try {
         const { data: registrations, error } = await sb
@@ -7243,7 +7403,7 @@ async function loadApprovedRegistrations() {
         approvedRegistrationsData = registrations || [];
         
         if (approvedRegistrationsData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10">No approved registrations.<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="10">No approved registrations.</td></tr>';
             return;
         }
         
@@ -7267,19 +7427,19 @@ async function loadApprovedRegistrations() {
             
             html += `
                 <tr>
-                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"><\/td>
-                    <td>${escapeHtml(studentName)}<\/td>
-                    <td>${reg.student_id?.substring(0, 8)}...<\/td>
-                    <td><strong>${escapeHtml(reg.unit_code)}<\/strong><\/td>
-                    <td>${escapeHtml(reg.unit_name)}<\/td>
-                    <td>${escapeHtml(reg.block)}<\/td>
-                    <td>${escapeHtml(reg.reg_type || 'Normal')}<\/td>
-                    <td>${approvalDate}<\/td>
-                    <td>System<\/td>
+                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"></td>
+                    <td>${escapeHtml(studentName)}</td>
+                    <td>${reg.student_id?.substring(0, 8)}...</td>
+                    <td><strong>${escapeHtml(reg.unit_code)}</strong></td>
+                    <td>${escapeHtml(reg.unit_name)}</td>
+                    <td>${escapeHtml(reg.block)}</td>
+                    <td>${escapeHtml(reg.reg_type || 'Normal')}</td>
+                    <td>${approvalDate}</td>
+                    <td>System</td>
                     <td>
-                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" class="btn-danger btn-sm">De-approve<\/button>
-                    <\/td>
-                 \x3c/tr>
+                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">De-approve</button>
+                    </td>
+                </tr>
             `;
         }
         
@@ -7287,7 +7447,7 @@ async function loadApprovedRegistrations() {
         
     } catch (error) {
         console.error('Error loading approved registrations:', error);
-        tbody.innerHTML = `<tr><td colspan="10">Error: ${error.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="10">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -7295,6 +7455,11 @@ function updateApprovedSelectedCount() {
     const count = document.querySelectorAll('.approved-checkbox:checked').length;
     const countElement = document.getElementById('approvedSelectedCount');
     if (countElement) countElement.textContent = count;
+    
+    const bulkBtn = document.getElementById('bulkDeapproveBtn');
+    if (bulkBtn) {
+        bulkBtn.style.display = count > 0 ? 'flex' : 'none';
+    }
 }
 
 function toggleSelectAllApproved() {
@@ -7372,7 +7537,7 @@ async function bulkDeapproveSelected() {
 }
 
 // =====================================================
-// BLOCKS
+// LOAD BLOCKS FOR FILTER
 // =====================================================
 
 async function loadUnitBlocks() {
@@ -7402,7 +7567,7 @@ function filterUnitsByBlockSelect() {
 }
 
 // =====================================================
-// GLOBAL EXPORTS
+// EXPOSE GLOBALLY
 // =====================================================
 
 window.loadAllUnits = loadAllUnits;
@@ -7429,6 +7594,11 @@ window.approveStudentAllUnits = approveStudentAllUnits;
 window.rejectStudentAllUnits = rejectStudentAllUnits;
 window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
 window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
+window.toggleUnitCourses = toggleUnitCourses;
+window.updateUnitBlockOptions = updateUnitBlockOptions;
+window.initUnitForm = initUnitForm;
+
+console.log('✅ Unit Registration Management module loaded');
 
 // ============ FEE ACCOUNTS MANAGEMENT - CORRECTED VERSION ============
 
@@ -9028,17 +9198,13 @@ function setupEventListeners() {
     });
     $('exam_intake')?.addEventListener('change', () => updateBlockTermOptions('exam_program', 'exam_block_term'));
     
-    // ============================================
-    // 🔥 ADD THIS - EDIT EXAM MODAL PROGRAM DROPDOWN
-    // ============================================
+    // EDIT EXAM MODAL PROGRAM DROPDOWN
     const editExamProgram = document.getElementById('edit_exam_program');
     const editExamBlock = document.getElementById('edit_exam_block');
     if (editExamProgram && editExamBlock) {
         editExamProgram.addEventListener('change', function() {
             console.log('📋 Edit Exam: Program changed to', this.value);
-            // Update block options based on selected program
             updateBlockTermOptions('edit_exam_program', 'edit_exam_block');
-            // Also update courses when program changes
             const courseSelect = document.getElementById('edit_exam_course');
             if (courseSelect) {
                 populateEditExamCourses(courseSelect, this.value);
@@ -9063,10 +9229,10 @@ function setupEventListeners() {
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
     
     // =====================================================
-    // UNIT REGISTRATION MANAGEMENT
+    // UNIT REGISTRATION MANAGEMENT - COMPLETE
     // =====================================================
     
-    // Add New Unit Form
+    // ---- ADD NEW UNIT FORM ----
     const addUnitForm = document.getElementById('add-unit-form');
     if (addUnitForm) {
         addUnitForm.addEventListener('submit', (e) => {
@@ -9075,13 +9241,68 @@ function setupEventListeners() {
         });
     }
     
-    // Add Unit Button (alternative)
+    // Add Unit Button
     const addUnitBtn = document.getElementById('add-unit-btn');
     if (addUnitBtn) {
         addUnitBtn.addEventListener('click', addNewUnitRecord);
     }
     
-    // Unit filter inputs
+    // ---- NEW UNIT PROGRAM DROPDOWN ----
+    // This populates courses and updates block options
+    const newUnitProgram = document.getElementById('new_unit_program');
+    const newUnitBlock = document.getElementById('new_unit_block');
+    const newUnitCourse = document.getElementById('new_unit_course');
+    
+    if (newUnitProgram) {
+        newUnitProgram.addEventListener('change', function() {
+            const program = this.value;
+            console.log('📋 Unit Program changed to:', program);
+            
+            // 1. Update course dropdown
+            if (typeof toggleUnitCourses === 'function') {
+                toggleUnitCourses();
+            }
+            
+            // 2. Update block dropdown based on program type
+            if (newUnitBlock) {
+                const programType = getProgramType(program);
+                const currentValue = newUnitBlock.value;
+                
+                newUnitBlock.innerHTML = '';
+                
+                if (programType === 'KRCHN') {
+                    // KRCHN uses Blocks with NUMBERS (1-5)
+                    ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].forEach(block => {
+                        const opt = document.createElement('option');
+                        opt.value = block;
+                        opt.textContent = block;
+                        newUnitBlock.appendChild(opt);
+                    });
+                } else {
+                    // TVET uses Terms
+                    ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
+                        const opt = document.createElement('option');
+                        opt.value = term;
+                        opt.textContent = term;
+                        newUnitBlock.appendChild(opt);
+                    });
+                }
+                
+                // Restore previous value if it exists
+                if (currentValue) {
+                    const exists = Array.from(newUnitBlock.options).some(o => o.value === currentValue);
+                    if (exists) newUnitBlock.value = currentValue;
+                }
+            }
+        });
+        
+        // Trigger initial load
+        setTimeout(() => {
+            newUnitProgram.dispatchEvent(new Event('change'));
+        }, 200);
+    }
+    
+    // ---- UNIT FILTER INPUTS ----
     const unitSearch = document.getElementById('unit_search');
     if (unitSearch) {
         unitSearch.addEventListener('keyup', filterUnitsCatalog);
@@ -9102,7 +9323,7 @@ function setupEventListeners() {
         unitFilterBlock.addEventListener('change', filterUnitsByBlockSelect);
     }
     
-    // Block filter buttons
+    // ---- BLOCK FILTER BUTTONS ----
     const blockBtns = document.querySelectorAll('.block-btn');
     blockBtns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -9111,76 +9332,125 @@ function setupEventListeners() {
         });
     });
     
-    // Refresh units button
+    // ---- REFRESH UNITS BUTTON ----
     const refreshUnitsBtn = document.getElementById('refresh-units-btn');
     if (refreshUnitsBtn) {
         refreshUnitsBtn.addEventListener('click', loadAllUnits);
     }
     
-    // View pending registrations button
+    // ---- VIEW PENDING REGISTRATIONS ----
     const viewPendingBtn = document.getElementById('view-pending-registrations');
     if (viewPendingBtn) {
         viewPendingBtn.addEventListener('click', loadUnitPendingRegistrations);
     }
     
-    // Refresh approved registrations button
+    // ---- REFRESH APPROVED REGISTRATIONS ----
     const refreshApprovedBtn = document.getElementById('refresh-approved-btn');
     if (refreshApprovedBtn) {
         refreshApprovedBtn.addEventListener('click', loadApprovedRegistrations);
     }
     
-    // Search approved registrations
+    // ---- SEARCH APPROVED REGISTRATIONS ----
     const approvedSearch = document.getElementById('approved-search');
     if (approvedSearch) {
         approvedSearch.addEventListener('keyup', filterApprovedRegistrations);
     }
     
-    // Select all approved checkbox
+    // ---- SELECT ALL APPROVED CHECKBOX ----
     const selectAllApproved = document.getElementById('selectAllApproved');
     if (selectAllApproved) {
         selectAllApproved.addEventListener('change', toggleSelectAllApproved);
     }
     
-    // Bulk deapprove button
+    // ---- BULK DEAPPROVE BUTTON ----
     const bulkDeapproveBtn = document.getElementById('bulkDeapproveBtn');
     if (bulkDeapproveBtn) {
         bulkDeapproveBtn.addEventListener('click', bulkDeapproveSelected);
     }
     
-    // Program dropdown for new unit form - update block options based on program
-    const newUnitProgram = document.getElementById('new_unit_program');
-    const newUnitBlock = document.getElementById('new_unit_block');
-    if (newUnitProgram && newUnitBlock) {
-        newUnitProgram.addEventListener('change', function() {
-            const program = this.value;
-            const isTVET = program !== 'KRCHN';
+    // ---- EDIT UNIT FORM ----
+    const editUnitForm = document.getElementById('edit-unit-form');
+    if (editUnitForm) {
+        editUnitForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const unitId = document.getElementById('edit_unit_id').value;
+            const unitData = {
+                unit_code: document.getElementById('edit_unit_code').value.trim(),
+                unit_name: document.getElementById('edit_unit_name').value.trim(),
+                program: document.getElementById('edit_unit_program').value,
+                block: document.getElementById('edit_unit_block').value,
+                year: parseInt(document.getElementById('edit_unit_year').value) || 2025,
+                credits: parseInt(document.getElementById('edit_unit_credits').value) || 3,
+                hours: parseInt(document.getElementById('edit_unit_hours').value) || 0,
+                unit_type: document.getElementById('edit_unit_type').value,
+                prerequisites: document.getElementById('edit_unit_prerequisites').value.trim() || null
+            };
             
-            newUnitBlock.innerHTML = '';
-            
-            if (isTVET) {
-                // TVET uses Terms
-                const terms = ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6'];
-                terms.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term;
-                    option.textContent = term;
-                    newUnitBlock.appendChild(option);
-                });
-            } else {
-                // KRCHN uses Blocks
-                const blocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
-                blocks.forEach(block => {
-                    const option = document.createElement('option');
-                    option.value = block;
-                    option.textContent = block;
-                    newUnitBlock.appendChild(option);
-                });
+            try {
+                const { error } = await sb.from('units_catalog').update(unitData).eq('id', unitId);
+                if (error) throw error;
+                showFeedback('Unit updated successfully!', 'success');
+                document.getElementById('editUnitModal').style.display = 'none';
+                loadAllUnits();
+            } catch (error) {
+                showFeedback(`Error: ${error.message}`, 'error');
             }
         });
-        // Trigger initial load
-        newUnitProgram.dispatchEvent(new Event('change'));
     }
     
+    // ---- CLOSE EDIT UNIT MODAL ----
+    const closeEditUnitBtn = document.querySelector('#editUnitModal .close');
+    if (closeEditUnitBtn) {
+        closeEditUnitBtn.addEventListener('click', function() {
+            document.getElementById('editUnitModal').style.display = 'none';
+        });
+    }
+    
+    // ---- CLOSE UNIT MODAL ON OUTSIDE CLICK ----
+    const editUnitModal = document.getElementById('editUnitModal');
+    if (editUnitModal) {
+        editUnitModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    }
+    
+    // ---- UNIT FORM - INITIALIZE COURSE DROPDOWN ----
+    // Also trigger when program changes on edit modal
+    const editUnitProgram = document.getElementById('edit_unit_program');
+    const editUnitBlockSelect = document.getElementById('edit_unit_block');
+    if (editUnitProgram && editUnitBlockSelect) {
+        editUnitProgram.addEventListener('change', function() {
+            const program = this.value;
+            const programType = getProgramType(program);
+            const currentValue = editUnitBlockSelect.value;
+            
+            editUnitBlockSelect.innerHTML = '';
+            
+            if (programType === 'KRCHN') {
+                ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].forEach(block => {
+                    const opt = document.createElement('option');
+                    opt.value = block;
+                    opt.textContent = block;
+                    editUnitBlockSelect.appendChild(opt);
+                });
+            } else {
+                ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
+                    const opt = document.createElement('option');
+                    opt.value = term;
+                    opt.textContent = term;
+                    editUnitBlockSelect.appendChild(opt);
+                });
+            }
+            
+            if (currentValue) {
+                const exists = Array.from(editUnitBlockSelect.options).some(o => o.value === currentValue);
+                if (exists) editUnitBlockSelect.value = currentValue;
+            }
+        });
+    }
+
     // =====================================================
     // FEE ACCOUNTS TAB - EVENT LISTENERS
     // =====================================================
