@@ -1347,10 +1347,9 @@
                 });
             }
 
-           function calculateExamTimer(exam) {
+          function calculateExamTimer(exam) {
     const kenyaNow = getKenyaNow();
     
-    // Check if exam has date and time
     if (!exam.exam_date || !exam.exam_start_time) {
         return {
             timerHtml: `<span class="badge bg-secondary">⏱️ No Date Set</span>`,
@@ -1365,8 +1364,19 @@
     }
     
     try {
-        const examDate = new Date(exam.exam_date + 'T' + exam.exam_start_time + ':00');
-        const examStart = getKenyaTime(examDate);
+        // Handle different time formats
+        let timeStr = exam.exam_start_time;
+        if (timeStr.split(':').length === 2) {
+            timeStr = timeStr + ':00';
+        }
+        
+        const examDateTime = new Date(exam.exam_date + 'T' + timeStr);
+        
+        if (isNaN(examDateTime.getTime())) {
+            throw new Error('Invalid date');
+        }
+        
+        const examStart = getKenyaTime(examDateTime);
         const examEnd = new Date(examStart.getTime() + (exam.duration_minutes || 30) * 60000);
         
         let status = '';
