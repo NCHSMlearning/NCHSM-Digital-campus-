@@ -206,8 +206,24 @@
                     <button class="btn btn-secondary" onclick="exportToExcel('exams')"><i class="fas fa-file-excel"></i> Export</button>
                 </div>
             </div>
-            <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Total</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div<table id="examsTable" style="display:none;">
+    <thead>
+        <tr>
+            <th>Exam Name</th>
+            <th>Type</th>
+            <th>Course</th>
+            <th>Total</th>
+            <th>Duration</th>
+            <th>Students</th>
+            <th>Status</th>
+            <th>Timer Status</th>
+            <th>Time Remaining</th>
+            <th>Published</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="examsBody"></tbody>
+</table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
@@ -284,7 +300,102 @@
     let examToReset = null;
     let currentReleaseResults = [];
     let selectedStudentIds = new Set();
+   // ========== KENYA TIMEZONE HELPERS ==========
+function getKenyaNow() {
+    const now = new Date();
+    return new Date(now.getTime() + (3 * 60 * 60 * 1000));
+}
+
+function getKenyaTime(date) {
+    const d = new Date(date);
+    return new Date(d.getTime() + (3 * 60 * 60 * 1000));
+}
+
+function formatKenyaTime(date) {
+    const d = new Date(date);
+    const kenyaTime = new Date(d.getTime() + (3 * 60 * 60 * 1000));
+    return kenyaTime.toLocaleString('en-KE', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function calculateExamTimer(exam) {
+    const kenyaNow = getKenyaNow();
+    const examDate = new Date(exam.exam_date + 'T' + exam.exam_start_time + ':00');
+    const examStart = getKenyaTime(examDate);
+    const examEnd = new Date(examStart.getTime() + (exam.duration_minutes || 30) * 60000);
     
+    let status = '';
+    let timeLeft = '';
+    let timerHtml = '';
+    
+    if (kenyaNow < examStart) {
+        const diffMs = examStart - kenyaNow;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        status = '🟡 Upcoming';
+        timeLeft = `${diffHours}h ${diffMinutes}m`;
+        timerHtml = `<span class="badge bg-warning text-dark">⏰ ${timeLeft}</span>`;
+    } else if (kenyaNow >= examStart && kenyaNow <= examEnd) {
+        const timeLeftMs = examEnd - kenyaNow;
+        const minutesLeft = Math.floor(timeLeftMs / 60000);
+        const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+        status = '🟢 Active';
+        timeLeft = `${minutesLeft}m ${secondsLeft}s`;
+        timerHtml = `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${timeLeft}</span>`;
+    } else if (kenyaNow > examEnd) {
+        status = '🔴 Expired';
+        timeLeft = 'Closed';
+        timerHtml = `<span class="badge bg-secondary">⏱️ Closed</span>`;
+    }
+    
+    return {
+        timerHtml,
+        status,
+        timeLeft,
+        examStart,
+        examEnd,
+        isActive: kenyaNow >= examStart && kenyaNow <= examEnd,
+        isUpcoming: kenyaNow < examStart,
+        isExpired: kenyaNow > examEnd
+    };
+}
+
+// ========== UPDATE TIMERS EVERY SECOND ==========
+function updateAdminTimers() {
+    document.querySelectorAll('.exam-timer-cell').forEach(el => {
+        const examStartStr = el.dataset.examStart;
+        const examEndStr = el.dataset.examEnd;
+        
+        if (!examStartStr || !examEndStr) return;
+        
+        const examStart = new Date(examStartStr);
+        const examEnd = new Date(examEndStr);
+        const kenyaNow = getKenyaNow();
+        const kenyaStart = getKenyaTime(examStart);
+        const kenyaEnd = getKenyaTime(examEnd);
+        
+        if (kenyaNow >= kenyaStart && kenyaNow <= kenyaEnd) {
+            const timeLeftMs = kenyaEnd - kenyaNow;
+            const minutesLeft = Math.floor(timeLeftMs / 60000);
+            const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+            el.innerHTML = `<span class="badge bg-danger" style="animation: pulse-green 1s infinite;">🔴 ${minutesLeft}m ${secondsLeft}s</span>`;
+        } else if (kenyaNow < kenyaStart) {
+            const diffMs = kenyaStart - kenyaNow;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            el.innerHTML = `<span class="badge bg-warning text-dark">⏰ ${diffHours}h ${diffMinutes}m</span>`;
+        } else {
+            el.innerHTML = `<span class="badge bg-secondary">⏱️ Closed</span>`;
+        }
+    });
+} 
     // ========== DETERMINE TOTAL MARKS BASED ON EXAM TYPE ==========
     function getExamTotalMarks(examType) {
         const type = (examType || '').toUpperCase();
@@ -851,24 +962,63 @@
         } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading exams'; }
     };
     
-    function displayAllExams(exams, countMap, hasResultsMap) {
-        const start = (currentPage.exams - 1) * itemsPerPage;
-        const page = exams.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('examsBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="9">No exams found</td></tr>'; return; }
-        tbody.innerHTML = page.map(e => { 
-            const hasResults = hasResultsMap[e.id]; 
-            const examStatus = hasResults ? 'Completed' : 'Active'; 
-            const statusClass = hasResults ? 'status-completed' : 'status-active'; 
-            const publishStatus = e.status || 'draft';
-            const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
-            const passMark = e.pass_mark || getPassMark(totalMarks);
-            const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
-            const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
-            return `<tr><td><strong>${e.exam_name}</strong></td><td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td><td>${e.course || '-'}</td><td>${totalMarks} (Pass: ${passMark})</td><td>${e.duration_minutes || 30} min</td><td>${countMap[e.id] || 0}</td><td><span class="${statusClass}">${examStatus}</span></td><td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button><button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button></td></tr>`; 
-        }).join('');
-        renderPagination('exams', exams.length);
-    }
+   function displayAllExams(exams, countMap, hasResultsMap) {
+    const start = (currentPage.exams - 1) * itemsPerPage;
+    const page = exams.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('examsBody');
+    if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="11">No exams found</td></tr>'; return; }
+    
+    tbody.innerHTML = page.map(e => { 
+        const hasResults = hasResultsMap[e.id]; 
+        const examStatus = hasResults ? 'Completed' : 'Active'; 
+        const statusClass = hasResults ? 'status-completed' : 'status-active'; 
+        const publishStatus = e.status || 'draft';
+        const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
+        const passMark = e.pass_mark || getPassMark(totalMarks);
+        const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+        const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+        
+        // Calculate timer
+        const timerData = calculateExamTimer(e);
+        const timerDisplay = timerData.timerHtml;
+        const statusDisplay = timerData.status;
+        
+        return `<tr>
+            <td><strong>${e.exam_name}</strong></td>
+            <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
+            <td>${e.course || '-'}</td>
+            <td>${totalMarks} (Pass: ${passMark})</td>
+            <td>${e.duration_minutes || 30} min</td>
+            <td>${countMap[e.id] || 0}</td>
+            <td><span class="${statusClass}">${examStatus}</span></td>
+            <td>
+                <span class="${timerData.isActive ? 'status-active' : timerData.isUpcoming ? 'status-pending' : 'status-fail'}">
+                    ${statusDisplay}
+                </span>
+            </td>
+            <td class="exam-timer-cell" 
+                data-exam-id="${e.id}"
+                data-exam-start="${timerData.examStart.toISOString()}"
+                data-exam-end="${timerData.examEnd.toISOString()}">
+                ${timerDisplay}
+            </td>
+            <td>
+                <label class="publish-toggle">
+                    <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
+                           onchange="togglePublish(${e.id}, '${publishStatus}')">
+                    <span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span>
+                </label>
+            </td>
+            <td>
+                <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button>
+                <button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button>
+                <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button>
+                <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button>
+            </td>
+        </tr>`; 
+    }).join('');
+    renderPagination('exams', exams.length);
+}
     
     // ========== RELEASE MODAL FUNCTIONS ==========
     window.openReleaseModal = async function() {
@@ -1093,14 +1243,24 @@
     document.getElementById('notificationBell').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('notificationPanel').classList.toggle('show'); loadNotifications(); });
     document.addEventListener('click', () => { document.getElementById('notificationPanel').classList.remove('show'); });
     
-    document.addEventListener('DOMContentLoaded', function() { 
-        if(!checkAdminAuth()) return; 
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); 
-        window.switchTab('students'); 
-        setupRealtimeNotifications(); 
-        updateTotalMarksHint();
+   document.addEventListener('DOMContentLoaded', function() { 
+    if(!checkAdminAuth()) return; 
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab')))); 
+    window.switchTab('students'); 
+    setupRealtimeNotifications(); 
+    updateTotalMarksHint();
+    
+    // ========== START TIMER UPDATES ==========
+    // Update timers every second
+    setInterval(updateAdminTimers, 1000);
+    
+    // Also update when tab becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            updateAdminTimers();
+        }
     });
-})();
+});
 </script>
 </body>
 </html>
