@@ -38,13 +38,24 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 .camera-status-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; background: #D1FAE5; color: #064E3B; }
 .camera-status-badge.warning { background: #FEF3C7; color: #92400E; }
 .camera-status-badge.danger { background: #FEE2E2; color: #DC2626; animation: blink 1s infinite; }
-#face-detection-overlay { width: 100%; height: 160px; background: #000; border-radius: 10px; border: 3px solid #38A169; overflow: hidden; position: relative; margin-bottom: 8px; }
+#face-detection-overlay { width: 100%; height: 160px; background: #1a1a2e; border-radius: 10px; border: 3px solid #38A169; overflow: hidden; position: relative; margin-bottom: 8px; display: none; }
 #face-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 #face-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-#face-status { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 6px; font-size: 0.7rem; text-align: center; font-weight: 500; z-index: 1; }
+#face-status { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); color: white; padding: 8px 12px; font-size: 0.7rem; text-align: center; font-weight: 500; z-index: 1; backdrop-filter: blur(4px); }
 .face-status-good { border-color: #16A34A !important; }
-.face-status-warning { border-color: #D97706 !important; }
-.face-status-danger { border-color: #DC2626 !important; }
+.face-status-warning { border-color: #D97706 !important; animation: pulse-warning 1s infinite; }
+.face-status-danger { border-color: #DC2626 !important; animation: pulse-danger 1s infinite; }
+
+@keyframes pulse-warning {
+    0%, 100% { border-color: #D97706; }
+    50% { border-color: #F59E0B; }
+}
+
+@keyframes pulse-danger {
+    0%, 100% { border-color: #DC2626; }
+    50% { border-color: #EF4444; }
+}
+
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 #timer { font-weight: 600; font-size: 1rem; margin-bottom: 12px; color: #DC2626; text-align: center; background: #FEF3C7; padding: 6px; border-radius: 8px; }
 #progress { margin-top: 12px; margin-bottom: 8px; color: #475569; font-weight: 500; font-size: 0.85rem; }
@@ -89,6 +100,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .dashboard-link { display: inline-block; margin-top: 15px; padding: 10px 30px; background: #38A169; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
 .dashboard-link:hover { background: #2F855A; }
 @media (max-width: 768px) { #face-detection-overlay { height: 120px; } .camera-title { font-size: 0.8rem; } .status-item { height: 32px; font-size: 0.7rem; } }
+
+.proctoring-alert {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -189,6 +209,9 @@ let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false;
 let videoStream = null, faceDetectionInterval = null;
 let examStarted = false, isSubmitting = false, fullscreenWarningActive = false, countdownInterval = null;
+let faceMissingCount = 0;
+const FACE_MISSING_THRESHOLD = 3;
+
 // ========== GET IP ADDRESS ==========
 async function getIPAddress() {
     try {
@@ -200,6 +223,8 @@ async function getIPAddress() {
         return 'unknown';
     }
 }
+
+// ========== GET STUDENT DETAILS ==========
 async function getStudentDetails() {
     const { data: profile } = await sb.from('consolidated_user_profiles_table').select('full_name, student_id').eq('user_id', studentId).single();
     if (profile) {
@@ -210,40 +235,364 @@ async function getStudentDetails() {
     }
 }
 
+// ========== IMPROVED CAMERA START ==========
 async function startCamera() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        console.log('📷 Starting camera...');
+        
+        const constraints = {
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                frameRate: { ideal: 15 }
+            },
+            audio: false
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         videoStream = stream;
-        document.getElementById('face-video').srcObject = stream;
-        document.getElementById('face-detection-overlay').style.display = 'block';
-        document.getElementById('camera-permission-modal').style.display = 'none';
-        document.getElementById('cameraStatusBadge').textContent = 'Active';
+        
+        const video = document.getElementById('face-video');
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            console.log('✅ Camera started successfully');
+            document.getElementById('face-detection-overlay').style.display = 'block';
+            document.getElementById('camera-permission-modal').style.display = 'none';
+            document.getElementById('cameraStatusBadge').textContent = '✅ Active';
+            document.getElementById('cameraStatusBadge').className = 'camera-status-badge';
+            document.getElementById('face-status').textContent = '✅ Camera active - Detecting face...';
+            document.getElementById('face-status').style.color = '#16A34A';
+            
+            // Start face detection after camera is ready
+            setTimeout(startFaceDetection, 1000);
+        };
+        
         examStarted = true;
         
         // Enter fullscreen after camera starts
         setTimeout(() => {
-            document.documentElement.requestFullscreen();
-        }, 500);
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn('Fullscreen request failed:', err);
+                });
+            }
+        }, 1000);
+        
     } catch(err) {
+        console.error('❌ Camera error:', err);
         document.getElementById('blocked-screen').style.display = 'flex';
+        document.getElementById('cameraStatusBadge').textContent = '❌ Camera Failed';
+        document.getElementById('cameraStatusBadge').className = 'camera-status-badge danger';
+        showToast('Camera access required. Please allow camera and refresh.', 'warning');
     }
 }
 
+// ========== FACE DETECTION ==========
+async function startFaceDetection() {
+    console.log('🔍 Starting face detection...');
+    
+    const video = document.getElementById('face-video');
+    const canvas = document.getElementById('face-canvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('face-status');
+    
+    // Set canvas size
+    canvas.width = 640;
+    canvas.height = 480;
+    
+    // Try to load face detection models from CDN
+    try {
+        console.log('📥 Loading face detection models from CDN...');
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        console.log('✅ Face detection models loaded from CDN');
+        
+        document.getElementById('face-status').textContent = '✅ Face detection ready';
+        
+        // Start detection loop
+        if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+        
+        faceDetectionInterval = setInterval(async () => {
+            if (!video.srcObject || video.paused || video.ended) {
+                return;
+            }
+            
+            try {
+                const options = new faceapi.TinyFaceDetectorOptions({
+                    inputSize: 224,
+                    scoreThreshold: 0.5
+                });
+                
+                const detections = await faceapi.detectAllFaces(video, options);
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (detections && detections.length > 0) {
+                    // Draw face boxes
+                    detections.forEach(det => {
+                        const box = det.box;
+                        ctx.strokeStyle = '#16A34A';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+                        ctx.fillStyle = 'rgba(22, 163, 74, 0.1)';
+                        ctx.fillRect(box.x, box.y, box.width, box.height);
+                    });
+                    
+                    const faceCount = detections.length;
+                    
+                    if (faceCount === 1) {
+                        statusEl.textContent = '✅ Face detected';
+                        statusEl.style.color = '#16A34A';
+                        document.getElementById('face-detection-overlay').className = 'face-status-good';
+                        document.getElementById('cameraStatusBadge').textContent = '✅ Face OK';
+                        document.getElementById('cameraStatusBadge').className = 'camera-status-badge';
+                        faceMissingCount = 0;
+                    } else if (faceCount > 1) {
+                        statusEl.textContent = `⚠️ Multiple faces detected (${faceCount})!`;
+                        statusEl.style.color = '#D97706';
+                        document.getElementById('face-detection-overlay').className = 'face-status-warning';
+                        document.getElementById('cameraStatusBadge').textContent = '⚠️ Multiple Faces';
+                        document.getElementById('cameraStatusBadge').className = 'camera-status-badge warning';
+                        
+                        if (!window._lastMultipleFacesLog || Date.now() - window._lastMultipleFacesLog > 30000) {
+                            await logProctoringEvent('multiple_faces_detected', 
+                                `Detected ${faceCount} faces in camera`, 'critical');
+                            window._lastMultipleFacesLog = Date.now();
+                            showProctoringAlert('⚠️ Multiple faces detected! Please ensure only you are in frame.');
+                        }
+                    }
+                } else {
+                    faceMissingCount++;
+                    statusEl.textContent = `⚠️ No face detected (${faceMissingCount})`;
+                    statusEl.style.color = '#DC2626';
+                    document.getElementById('face-detection-overlay').className = 'face-status-danger';
+                    document.getElementById('cameraStatusBadge').textContent = '⚠️ No Face';
+                    document.getElementById('cameraStatusBadge').className = 'camera-status-badge danger';
+                    
+                    if (faceMissingCount >= FACE_MISSING_THRESHOLD) {
+                        if (!window._lastFaceLog || Date.now() - window._lastFaceLog > 30000) {
+                            await logProctoringEvent('face_missing', 
+                                `No face detected for ${faceMissingCount} consecutive checks`, 'warning');
+                            window._lastFaceLog = Date.now();
+                            showProctoringAlert('⚠️ Face not detected! Please look at the camera.');
+                        }
+                    }
+                }
+                
+            } catch (detectionError) {
+                console.warn('Face detection error:', detectionError);
+            }
+        }, 2000);
+        
+    } catch (modelError) {
+        console.error('❌ Failed to load face detection models:', modelError);
+        document.getElementById('face-status').textContent = '⚠️ Face detection unavailable';
+        document.getElementById('face-status').style.color = '#D97706';
+        showToast('Face detection unavailable. Proctoring may be limited.', 'warning');
+        
+        // Still start a basic detection loop without face-api
+        if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+        faceDetectionInterval = setInterval(() => {
+            statusEl.textContent = '📷 Camera active (face detection limited)';
+            statusEl.style.color = '#D97706';
+        }, 5000);
+    }
+}
 
+// ========== PROCTORING ALERT ==========
+function showProctoringAlert(message) {
+    const existing = document.querySelector('.proctoring-alert');
+    if (existing) existing.remove();
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'proctoring-alert';
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #DC2626;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+        animation: slideDown 0.3s ease;
+        text-align: center;
+        max-width: 90%;
+        font-size: 0.9rem;
+    `;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.style.opacity = '0';
+        alertDiv.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => alertDiv.remove(), 500);
+    }, 5000);
+}
 
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 14px 24px;
+        border-radius: 16px;
+        background: ${type === 'warning' ? '#F59E0B' : '#10B981'};
+        color: white;
+        z-index: 10000;
+        animation: slideInRight 0.3s ease;
+        font-size: 0.85rem;
+        font-weight: 500;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        max-width: 90%;
+    `;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
+// ========== FULLSCREEN MONITORING ==========
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', function() {
         const isFullscreen = !!document.fullscreenElement;
         if (!isFullscreen && examStarted && !fullscreenWarningActive) {
-            showFullscreenExitWarning();
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {
+                    showFullscreenExitWarning();
+                });
+            } else {
+                showFullscreenExitWarning();
+            }
         } else if (isFullscreen && fullscreenWarningActive) {
             if (countdownInterval) clearInterval(countdownInterval);
             document.getElementById('fullscreen-exit-warning').style.display = 'none';
             fullscreenWarningActive = false;
         }
     });
+    
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden && examStarted) {
+            logProctoringEvent('tab_switch', 'Student switched tabs or minimized window', 'warning');
+            showProctoringAlert('⚠️ Tab switch detected! Stay on the exam page.');
+        }
+    });
 }
-// ========== GRADE CALCULATION - SAVES TO DATABASE (NO AUTO-RELEASE) ==========
+
+function showFullscreenExitWarning() {
+    if (fullscreenWarningActive) return;
+    fullscreenWarningActive = true;
+    
+    logProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode', 'critical');
+    
+    const warningOverlay = document.getElementById('fullscreen-exit-warning');
+    const countdownEl = document.getElementById('exit-countdown');
+    let countdown = 5;
+    countdownEl.textContent = countdown;
+    warningOverlay.style.display = 'flex';
+    
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        countdownEl.textContent = countdown;
+        
+        if (document.fullscreenElement) {
+            clearInterval(countdownInterval);
+            warningOverlay.style.display = 'none';
+            fullscreenWarningActive = false;
+            return;
+        }
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            warningOverlay.style.display = 'none';
+            fullscreenWarningActive = false;
+            executeSubmission();
+        }
+    }, 1000);
+}
+
+// ========== PROCTORING EVENT LOGGER ==========
+async function logProctoringEvent(eventType, details, severity = 'info') {
+    try {
+        let snapshotUrl = null;
+        if (['exam_started', 'exam_submitted', 'multiple_faces_detected', 'face_missing', 'tab_switch', 'fullscreen_exit_attempt'].includes(eventType)) {
+            snapshotUrl = await captureCameraSnapshot();
+        }
+        
+        const { data, error } = await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            event_type: eventType,
+            details: details,
+            severity: severity,
+            snapshot_url: snapshotUrl,
+            ip_address: await getIPAddress(),
+            device_info: navigator.userAgent,
+            timestamp: new Date().toISOString()
+        });
+        
+        if (error) {
+            console.error('Error logging:', error);
+        } else {
+            console.log('✅ Proctoring event logged:', eventType);
+        }
+    } catch (error) {
+        console.error('Error in logProctoringEvent:', error);
+    }
+}
+
+// ========== CAPTURE CAMERA SNAPSHOT ==========
+async function captureCameraSnapshot() {
+    try {
+        const video = document.getElementById('face-video');
+        if (!video || !video.srcObject || video.readyState < 2) {
+            return null;
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+        
+        const timestamp = Date.now();
+        const filePath = `proctoring/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
+        
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        
+        const { data, error } = await sb.storage
+            .from('proctoring')
+            .upload(filePath, blob, { 
+                contentType: 'image/jpeg',
+                cacheControl: '3600'
+            });
+        
+        if (!error && data) {
+            const { data: { publicUrl } } = sb.storage
+                .from('proctoring')
+                .getPublicUrl(filePath);
+            return publicUrl;
+        }
+        return null;
+    } catch (error) {
+        console.error('Snapshot error:', error);
+        return null;
+    }
+}
+
+// ========== GRADE CALCULATION ==========
 async function calculateAndSaveGrade() {
     console.log('📊 Calculating and saving grade...');
     
@@ -275,34 +624,29 @@ async function calculateAndSaveGrade() {
     }
     
     const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
     
-    console.log(`📊 Result: ${totalEarned}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
+    console.log(`📊 Result: ${totalEarned}/${totalPossible} = ${percentage.toFixed(1)}%`);
     
-    // Delete existing records
     await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', EXAM_ID);
     
-    // Save individual answers
     if (answerRecords.length > 0) {
         await sb.from('exam_grades').insert(answerRecords);
     }
     
-    // Save summary record with PENDING_REVIEW status
     await sb.from('exam_grades').insert({
         student_id: studentId,
         exam_id: EXAM_ID,
         question_id: '00000000-0000-0000-0000-000000000000',
         marks: totalEarned,
         total_score: percentage,
-        result_status: 'PENDING_REVIEW',  // ← FIXED: Always PENDING_REVIEW
+        result_status: 'PENDING_REVIEW',
         graded_at: new Date().toISOString()
     });
     
- 
     return true;
 }
 
-// ========== SUBMISSION - HIDES SCORE FROM STUDENT ==========
+// ========== SUBMISSION ==========
 async function executeSubmission() {
     if (isSubmitting) return;
     isSubmitting = true;
@@ -314,10 +658,8 @@ async function executeSubmission() {
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
     if (countdownInterval) clearInterval(countdownInterval);
     
-    // Save grade silently (student never sees the score)
     await calculateAndSaveGrade();
     
-    // Show success screen WITHOUT score
     const container = document.getElementById('exam-container');
     container.innerHTML = `
         <div class="success-screen">
@@ -334,7 +676,6 @@ async function executeSubmission() {
         </div>
     `;
     
-    // Hide navigation
     const navButtons = document.getElementById('nav-buttons');
     const progress = document.getElementById('progress');
     const timer = document.getElementById('timer');
@@ -342,7 +683,6 @@ async function executeSubmission() {
     if (progress) progress.style.display = 'none';
     if (timer) timer.style.display = 'none';
     
-    // Countdown and redirect
     let countdown = 3;
     const redirectInterval = setInterval(() => {
         countdown--;
@@ -354,311 +694,11 @@ async function executeSubmission() {
         }
     }, 1000);
     
-    // Backup redirect
     setTimeout(() => {
         window.location.href = 'exam_dashboard.html';
     }, 3500);
 }
-// ========== PROCTORING EVENT LOGGER ==========
-async function logProctoringEvent(eventType, details, severity = 'info') {
-    try {
-        console.log('📹 Logging proctoring event:', eventType, details);
-        
-        // Get IP address
-        let ipAddress = 'unknown';
-        try {
-            const ipResponse = await fetch('https://api.ipify.org?format=json');
-            const ipData = await ipResponse.json();
-            ipAddress = ipData.ip;
-        } catch(e) {
-            console.warn('Could not get IP:', e);
-        }
-        
-        // Capture snapshot for violations
-        let snapshotUrl = null;
-        if (['multiple_faces_detected', 'face_missing', 'tab_switch', 'fullscreen_exit_attempt'].includes(eventType)) {
-            snapshotUrl = await captureCameraSnapshot();
-        }
-        
-        const { data, error } = await sb.from('exam_proctoring_logs').insert({
-            student_id: studentId,
-            exam_id: parseInt(EXAM_ID),
-            event_type: eventType,
-            details: details,
-            severity: severity,
-            snapshot_url: snapshotUrl,
-            ip_address: ipAddress,
-            device_info: navigator.userAgent,
-            timestamp: new Date().toISOString()
-        });
-        
-        if (error) {
-            console.error('Error logging proctoring event:', error);
-        } else {
-            console.log('✅ Proctoring event logged:', eventType);
-            
-            // If critical, show visual warning
-            if (severity === 'critical') {
-                showProctoringAlert('⚠️ Proctoring Violation Detected!');
-            }
-        }
-    } catch (error) {
-        console.error('Error in logProctoringEvent:', error);
-    }
-}
 
-// ========== CAPTURE CAMERA SNAPSHOT ==========
-async function captureCameraSnapshot() {
-    try {
-        const video = document.getElementById('face-video');
-        if (!video || !video.srcObject || video.readyState < 2) {
-            console.warn('Video not ready for snapshot');
-            return null;
-        }
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 240;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg', 0.7);
-        
-        // Upload to storage
-        const timestamp = Date.now();
-        const filePath = `proctoring/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
-        
-        const response = await fetch(imageData);
-        const blob = await response.blob();
-        
-        const { data, error } = await sb.storage
-            .from('proctoring')
-            .upload(filePath, blob, { contentType: 'image/jpeg' });
-        
-        if (!error && data) {
-            const { data: { publicUrl } } = sb.storage
-                .from('proctoring')
-                .getPublicUrl(filePath);
-            console.log('📸 Snapshot captured:', publicUrl);
-            return publicUrl;
-        } else {
-            console.warn('Snapshot upload failed:', error);
-        }
-        return null;
-    } catch (error) {
-        console.error('Snapshot error:', error);
-        return null;
-    }
-}
-
-// ========== PROCTORING ALERT DISPLAY ==========
-function showProctoringAlert(message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #DC2626;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-weight: 600;
-        z-index: 9999;
-        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
-        animation: slideDown 0.3s ease;
-        text-align: center;
-        max-width: 90%;
-    `;
-    alertDiv.textContent = message;
-    document.body.appendChild(alertDiv);
-    
-    setTimeout(() => {
-        alertDiv.style.opacity = '0';
-        alertDiv.style.transition = 'opacity 0.5s ease';
-        setTimeout(() => alertDiv.remove(), 500);
-    }, 4000);
-}
-
-// ========== PROCTORING MONITORING ==========
-async function startProctoringMonitoring() {
-    console.log('🔍 Starting proctoring monitoring...');
-    
-    // Log exam start
-    await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
-    
-    // Tab visibility monitoring
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-            logProctoringEvent('tab_switch', 'Student switched tabs or minimized window', 'warning');
-        }
-    });
-    
-    // Copy prevention
-    document.addEventListener('copy', function(e) {
-        e.preventDefault();
-        logProctoringEvent('copy_attempt', 'Student attempted to copy content', 'warning');
-    });
-    
-    document.addEventListener('paste', function(e) {
-        e.preventDefault();
-        logProctoringEvent('paste_attempt', 'Student attempted to paste content', 'warning');
-    });
-    
-    // Right click prevention
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        logProctoringEvent('right_click', 'Student attempted to right-click', 'warning');
-    });
-    
-    // Face detection monitoring (if face-api is loaded)
-    if (typeof faceapi !== 'undefined') {
-        try {
-            await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-            console.log('✅ Face detection loaded');
-            
-            setInterval(async () => {
-                try {
-                    const video = document.getElementById('face-video');
-                    if (!video || !video.srcObject) return;
-                    
-                    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-                    const statusEl = document.getElementById('face-status');
-                    
-                    if (detections) {
-                        statusEl.textContent = '✅ Face detected';
-                        statusEl.style.color = '#16A34A';
-                        document.getElementById('face-detection-overlay').className = 'face-status-good';
-                        
-                        // Check for multiple faces
-                        const allFaces = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
-                        if (allFaces && allFaces.length > 1) {
-                            if (!window._lastMultipleFacesLog || Date.now() - window._lastMultipleFacesLog > 30000) {
-                                await logProctoringEvent('multiple_faces_detected', `Detected ${allFaces.length} faces in camera`, 'critical');
-                                window._lastMultipleFacesLog = Date.now();
-                            }
-                        }
-                    } else {
-                        statusEl.textContent = '⚠️ No face detected!';
-                        statusEl.style.color = '#DC2626';
-                        document.getElementById('face-detection-overlay').className = 'face-status-danger';
-                        
-                        if (!window._lastFaceLog || Date.now() - window._lastFaceLog > 30000) {
-                            await logProctoringEvent('face_missing', 'No face detected in camera', 'warning');
-                            window._lastFaceLog = Date.now();
-                        }
-                    }
-                } catch (faceError) {
-                    console.warn('Face detection error:', faceError);
-                }
-            }, 5000);
-        } catch (loadError) {
-            console.warn('Face detection models not loaded:', loadError);
-        }
-    } else {
-        console.warn('Face-api not available');
-    }
-}
-// ========== CAPTURE CAMERA SNAPSHOT ==========
-async function captureCameraSnapshot() {
-    try {
-        const video = document.getElementById('face-video');
-        if (!video || !video.srcObject || video.readyState < 2) {
-            console.warn('Video not ready for snapshot');
-            return null;
-        }
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;  // Higher resolution for admin viewing
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg', 0.9);
-        
-        // Upload to storage
-        const timestamp = Date.now();
-        const filePath = `proctoring/${studentId}/${EXAM_ID}/${timestamp}.jpg`;
-        
-        const response = await fetch(imageData);
-        const blob = await response.blob();
-        
-        const { data, error } = await sb.storage
-            .from('proctoring')
-            .upload(filePath, blob, { 
-                contentType: 'image/jpeg',
-                cacheControl: '3600'
-            });
-        
-        if (!error && data) {
-            const { data: { publicUrl } } = sb.storage
-                .from('proctoring')
-                .getPublicUrl(filePath);
-            console.log('📸 Snapshot captured:', publicUrl);
-            return publicUrl;
-        }
-        return null;
-    } catch (error) {
-        console.error('Snapshot error:', error);
-        return null;
-    }
-}
-
-// ========== LOG PROCTORING EVENT WITH SNAPSHOT ==========
-async function logProctoringEvent(eventType, details, severity = 'info') {
-    try {
-        let snapshotUrl = null;
-        
-        // Always capture snapshot for exam_started and violations
-        if (['exam_started', 'exam_submitted', 'multiple_faces_detected', 'face_missing', 'tab_switch'].includes(eventType)) {
-            snapshotUrl = await captureCameraSnapshot();
-        }
-        
-        const { data, error } = await sb.from('exam_proctoring_logs').insert({
-            student_id: studentId,
-            exam_id: parseInt(EXAM_ID),
-            event_type: eventType,
-            details: details,
-            severity: severity,
-            snapshot_url: snapshotUrl,
-            ip_address: await getIPAddress(),
-            device_info: navigator.userAgent,
-            timestamp: new Date().toISOString()
-        });
-        
-        if (error) {
-            console.error('Error logging:', error);
-        } else {
-            console.log('✅ Proctoring event logged with snapshot:', eventType);
-        }
-    } catch (error) {
-        console.error('Error in logProctoringEvent:', error);
-    }
-}
-
-// ========== OVERRIDE FULLSCREEN EXIT WARNING ==========
-function showFullscreenExitWarning() {
-    if (fullscreenWarningActive) return;
-    fullscreenWarningActive = true;
-    
-    // Log the violation
-    logProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode', 'critical');
-    
-    const warningOverlay = document.getElementById('fullscreen-exit-warning');
-    const countdownEl = document.getElementById('exit-countdown');
-    let countdown = 5;
-    countdownEl.textContent = countdown;
-    warningOverlay.style.display = 'flex';
-    
-    countdownInterval = setInterval(() => {
-        countdown--;
-        countdownEl.textContent = countdown;
-        if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            warningOverlay.style.display = 'none';
-            fullscreenWarningActive = false;
-            executeSubmission();
-        }
-    }, 1000);
-}
 // ========== EXAM FUNCTIONS ==========
 async function initExam() {
     await getStudentDetails();
@@ -678,7 +718,6 @@ async function initExam() {
     document.getElementById('camera-permission-modal').style.display = 'flex';
     document.getElementById('allow-camera-btn').onclick = async () => {
         await startCamera();
-        // Start proctoring monitoring after camera is active
         setTimeout(startProctoringMonitoring, 2000);
     };
 }
@@ -774,7 +813,18 @@ function submitExam() {
     document.getElementById('submission-modal').style.display = 'flex';
 }
 
-// Event listeners
+// ========== PROCTORING MONITORING ==========
+async function startProctoringMonitoring() {
+    console.log('🔍 Starting proctoring monitoring...');
+    
+    await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
+    
+    document.addEventListener('copy', function(e) { e.preventDefault(); });
+    document.addEventListener('paste', function(e) { e.preventDefault(); });
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+}
+
+// ========== EVENT LISTENERS ==========
 document.getElementById('prev-btn').addEventListener('click', prevQuestion);
 document.getElementById('next-btn').addEventListener('click', nextQuestion);
 document.getElementById('submit-exam-btn').addEventListener('click', submitExam);
