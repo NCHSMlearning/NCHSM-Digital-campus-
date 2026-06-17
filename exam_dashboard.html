@@ -345,7 +345,9 @@ async function loadExams(showLoading = true) {
     }
     
     try {
-        // Fetch profile
+        // ============================================
+        // 1. FETCH USER PROFILE
+        // ============================================
         const { data: profile } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -363,14 +365,37 @@ async function loadExams(showLoading = true) {
             <br>${studentIdDisplay}
         `;
         
-        // Fetch exams
-        const { data: exams } = await sb
-            .from('exams')
-            .select('*')
-            .not('online_link', 'is', null);
+        // ============================================
+        // 2. FETCH EXAMS (BATCH PARALLEL)
+        // ============================================
+        const [examsResult, gradesResult, releasedResult] = await Promise.all([
+            sb
+                .from('exams')
+                .select('*')
+                .not('online_link', 'is', null)
+                .order('exam_date', { ascending: true }),
+            
+            sb
+                .from('exam_grades')
+                .select('*')
+                .eq('student_id', currentUserId)
+                .eq('question_id', '00000000-0000-0000-0000-000000000000'),
+            
+            sb
+                .from('released_exam_results')
+                .select('result_id')
+        ]);
         
-        // FIXED: Filter using both block and block_term
-        const filteredExams = (exams || []).filter(exam => {
+        const exams = examsResult.data || [];
+        const grades = gradesResult.data || [];
+        const releasedSet = new Set(releasedResult.data?.map(r => r.result_id) || []);
+        
+        console.log(`📊 Found ${exams.length} exams, ${grades.length} grades, ${releasedSet.size} released`);
+        
+        // ============================================
+        // 3. FILTER EXAMS FOR THIS STUDENT
+        // ============================================
+        const filteredExams = exams.filter(exam => {
             if (!exam.online_link && !exam.exam_link) return false;
             
             let programMatch = true;
@@ -392,18 +417,7 @@ async function loadExams(showLoading = true) {
             return programMatch && blockMatch && intakeMatch;
         });
         
-        // Fetch grades
-        const { data: grades } = await sb
-            .from('exam_grades')
-            .select('*')
-            .eq('student_id', currentUserId)
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        // Fetch released results
-        const { data: released } = await sb
-            .from('released_exam_results')
-            .select('result_id');
-        const releasedSet = new Set(released?.map(r => r.result_id) || []);
+        console.log(`✅ Filtered to ${filteredExams.length} exams for this student`);
         
         const container = document.getElementById('examList');
         container.innerHTML = '';
@@ -414,99 +428,172 @@ async function loadExams(showLoading = true) {
             return;
         }
         
+        // ============================================
+        // 4. PROCESS EACH EXAM
+        // ============================================
+        const kenyaNow = new Date(new Date().getTime() + (3 * 60 * 60 * 1000));
+        
         for (const exam of filteredExams) {
+            const examDisplayName = exam.exam_name || exam.title || 'Exam';
+            const safeExamName = examDisplayName.replace(/'/g, "\\'");
+            
+            // ----- Build exam start/end times -----
+            let examStartDateTime = null;
+            let examEndDateTime = null;
+            let formattedExamDateTime = 'TBA';
+            
+            if (exam.exam_date && exam.exam_start_time) {
+                const [year, month, day] = exam.exam_date.split('-');
+                const [hours, minutes] = exam.exam_start_time.split(':');
+                examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, 0));
+                examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
+                examEndDateTime = new Date(examStartDateTime.getTime() + (exam.duration_minutes || 40) * 60000);
+                
+                const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+                formattedExamDateTime = new Date(exam.exam_date).toLocaleDateString('en-US', dateOptions);
+                if (exam.exam_start_time) {
+                    const [h, m] = exam.exam_start_time.split(':');
+                    const hour12 = parseInt(h) % 12 || 12;
+                    const ampm = parseInt(h) >= 12 ? 'PM' : 'AM';
+                    formattedExamDateTime += ` at ${hour12}:${m} ${ampm}`;
+                }
+            }
+            
+            // ----- Check for existing grade -----
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
             const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
             
-            const examDisplayName = exam.exam_name || exam.title || 'Exam';
-            const safeExamName = examDisplayName.replace(/'/g, "\\'");
-            
-            // ========== CALCULATE TIMER ==========
+            // ----- Determine exam status -----
+            let examStatus = 'upcoming';
+            let canStartExam = false;
             let timerHtml = '';
-            const now = new Date();
-            const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            let countdownText = '';
             
-            if (exam.exam_date && exam.exam_start_time) {
-                const [year, month, day] = exam.exam_date.split('-');
-                const [hours, minutes] = exam.exam_start_time.split(':');
-                const examStart = new Date(Date.UTC(year, month-1, day, hours, minutes, 0));
-                const examStartKenya = new Date(examStart.getTime() + (3 * 60 * 60 * 1000));
-                const examEnd = new Date(examStartKenya.getTime() + (exam.duration_minutes || 30) * 60000);
-                
-                if (kenyaNow < examStartKenya) {
-                    // Upcoming
-                    const diffMs = examStartKenya - kenyaNow;
+            if (examStartDateTime && examEndDateTime) {
+                if (kenyaNow < examStartDateTime) {
+                    // UPCOMING
+                    examStatus = 'upcoming';
+                    const diffMs = examStartDateTime - kenyaNow;
                     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const diffDays = Math.floor(diffHours / 24);
+                    
+                    if (diffDays > 0) {
+                        countdownText = `${diffDays}d ${diffHours % 24}h ${diffMinutes}m`;
+                    } else if (diffHours > 0) {
+                        countdownText = `${diffHours}h ${diffMinutes}m`;
+                    } else {
+                        countdownText = `${diffMinutes}m`;
+                    }
+                    
                     timerHtml = `<div class="exam-timer timer-upcoming">
                         <span class="timer-icon">⏰</span> 
-                        Starts in: <span class="timer-countdown" data-exam-start="${examStartKenya.toISOString()}">${diffHours}h ${diffMinutes}m</span>
+                        Starts in: <span class="timer-countdown" data-exam-start="${examStartDateTime.toISOString()}">${countdownText}</span>
                     </div>`;
-                } else if (kenyaNow >= examStartKenya && kenyaNow <= examEnd) {
-                    // Available now - COUNTDOWN
-                    const timeLeftMs = examEnd - kenyaNow;
+                    canStartExam = false;
+                    
+                } else if (kenyaNow >= examStartDateTime && kenyaNow <= examEndDateTime) {
+                    // AVAILABLE NOW
+                    examStatus = 'available';
+                    const timeLeftMs = examEndDateTime - kenyaNow;
                     const minutesLeft = Math.floor(timeLeftMs / 60000);
                     const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                    
                     timerHtml = `<div class="exam-timer timer-available">
                         <span class="timer-icon">🔴</span> 
-                        Time left: <span class="timer-countdown" data-exam-end="${examEnd.toISOString()}" id="timer-${exam.id}">${minutesLeft}m ${secondsLeft}s</span>
+                        Time left: <span class="timer-countdown" data-exam-end="${examEndDateTime.toISOString()}" id="timer-${exam.id}">${minutesLeft}m ${secondsLeft}s</span>
                     </div>`;
-                } else if (kenyaNow > examEnd) {
+                    canStartExam = true;
+                    
+                } else if (kenyaNow > examEndDateTime) {
+                    // EXPIRED
+                    examStatus = 'expired';
                     timerHtml = `<div class="exam-timer timer-expired">
                         <span class="timer-icon">⏱️</span> 
                         Exam Closed
                     </div>`;
+                    canStartExam = false;
                 }
             }
             
-            let statusBadge, actionButton;
+            // ----- Build status badge, action button, grade HTML -----
+            let statusBadge = '';
+            let actionButton = '';
+            let gradeHtml = '';
+            let displayPercentage = null;
+            let isCompleted = false;
             
-            if (!hasGrade) {
-                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
-            } else if (isReleased && hasFinalStatus) {
+            // CASE 1: RELEASED RESULTS (PASS or FAIL)
+            if (hasGrade && isReleased && hasFinalStatus) {
+                isCompleted = true;
+                displayPercentage = parseFloat(grade.total_score || 0);
+                const passMark = exam.pass_mark || 60;
+                
                 statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
-            } else if (isPendingReview || (hasGrade && !isReleased)) {
-                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
-            } else if (grade?.result_status === 'Scheduled') {
-                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
-                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
-            } else {
-                statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
-            }
-            
-            let gradeHtml = '';
-            if (isReleased && hasFinalStatus) {
-                const percent = parseFloat(grade.total_score || 0);
-                const passMark = exam.pass_mark || 60;
-                gradeHtml = `<div class="grade-info ${percent >= passMark ? 'grade-pass' : 'grade-fail'}">
-                    <span class="score-large">${percent}%</span> <strong>${percent >= passMark ? 'PASS ✓' : 'FAIL ✗'}</strong>
+                
+                const gradeClass = displayPercentage >= passMark ? 'grade-pass' : 'grade-fail';
+                const passText = displayPercentage >= passMark ? 'PASS ✓' : 'FAIL ✗';
+                gradeHtml = `<div class="grade-info ${gradeClass}">
+                    <span class="score-large">${displayPercentage}%</span> <strong>${passText}</strong>
                     <div>Score: ${grade.marks || 0} / ${exam.total_marks || 100} marks</div>
                 </div>`;
-            } else if (isPendingReview) {
+            }
+            // CASE 2: PENDING RELEASE
+            else if (hasGrade && !isReleased) {
+                examStatus = 'pending_release';
+                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
+                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
                 gradeHtml = `<div class="grade-info grade-not-released">
                     <span style="font-size: 1.2rem;">⏳</span> <strong>Pending Release</strong>
                     <div>Results will appear here after admin review.</div>
                 </div>`;
             }
+            // CASE 3: READY TO START (Available + Has Link)
+            else if (examStatus === 'available' && canStartExam && (exam.online_link || exam.exam_link)) {
+                statusBadge = '<span class="badge badge-upcoming">📝 Ready to Start</span>';
+                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
+            }
+            // CASE 4: UPCOMING
+            else if (examStatus === 'upcoming') {
+                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+                actionButton = `<button class="btn-pending" disabled>⏳ Coming Soon</button>`;
+            }
+            // CASE 5: EXPIRED / MISSED
+            else if (examStatus === 'expired' && !hasGrade) {
+                statusBadge = '<span class="badge badge-pending">⏱️ Missed</span>';
+                actionButton = `<button class="btn-pending" disabled>⏱️ Exam Closed</button>`;
+            }
+            // CASE 6: DEFAULT
+            else {
+                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+                if (exam.online_link || exam.exam_link) {
+                    actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
+                } else {
+                    actionButton = `<button class="btn-pending" disabled>⏳ No Link Available</button>`;
+                }
+            }
             
-            // ========== ADD TIMER HTML TO CARD ==========
+            // ----- Build the exam card -----
             container.innerHTML += `
-                <div class="exam-card ${timerHtml.includes('timer-available') ? 'exam-status-available' : ''}">
+                <div class="exam-card ${examStatus === 'available' ? 'exam-status-available' : ''}">
                     <div class="exam-header">
-                        <div class="exam-title">${examDisplayName} ${statusBadge}</div>
+                        <div class="exam-title">
+                            ${examDisplayName} ${statusBadge}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748B;">
+                            ${formattedExamDateTime}
+                        </div>
                     </div>
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
-                        <span>📊 ${exam.total_marks || 'N/A'} marks</span>
+                        <span>📊 ${exam.total_marks || 100} marks</span>
                         <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
+                        ${exam.block_term ? `<span>📌 ${exam.block_term}</span>` : ''}
                     </div>
                     ${timerHtml}
                     ${gradeHtml}
@@ -517,7 +604,15 @@ async function loadExams(showLoading = true) {
             `;
         }
         
-    } catch(err) { 
+        // ============================================
+        // 5. START LIVE TIMER UPDATES
+        // ============================================
+        if (window.timerInterval) clearInterval(window.timerInterval);
+        window.timerInterval = setInterval(updateAllTimers, 1000);
+        
+        console.log('✅ Exams loaded successfully');
+        
+    } catch (err) { 
         console.error('Error in loadExams:', err); 
         document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>'; 
     }
