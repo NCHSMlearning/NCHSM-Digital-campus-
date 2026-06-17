@@ -2259,51 +2259,73 @@ function updateAdminTimers() {
                 document.getElementById('releaseModal').style.display = 'flex';
             };
 
-            window.loadReleasePreview = async function() {
-                const examId = document.getElementById('releaseExamFilter').value;
-                if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
-                document.getElementById('releasePreview').style.display = 'block';
-                selectedStudentIds.clear();
-                const { data: results, error } = await sb.from('exam_grades').select(
-                    'id, student_id, marks, total_score, result_status').eq('exam_id', parseInt(examId)).eq(
-                    'question_id', '00000000-0000-0000-0000-000000000000');
-                if (error) { document.getElementById('releasePreviewBody').innerHTML =
-                        `<tr><td colspan="7">Error: ${error.message} </td></tr>`; return; }
-                if (!results || results.length === 0) { document.getElementById('releasePreviewBody').innerHTML =
-                        '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
-                    document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
-                    return; }
-                const { data: released } = await sb.from('released_exam_results').select('result_id');
-                const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-                const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
-                if (eligibleResults.length === 0) { document.getElementById('releasePreviewBody').innerHTML =
-                        '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
-                    document.getElementById('releaseSummary').innerHTML =
-                    '<strong>No pending results to release</strong>';
-                    document.getElementById('confirmReleaseBtn').disabled = true; return; }
-                currentReleaseResults = eligibleResults;
-                const studentIds = eligibleResults.map(r => r.student_id);
-                const { data: profiles } = await sb.from('consolidated_user_profiles_table').select(
-                    'user_id, full_name, student_id, email').in('user_id', studentIds);
-                const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-                let html = '';
-                eligibleResults.forEach(r => {
-                    const student = profileMap[r.student_id];
-                    const percentage = parseFloat(r.total_score || 0).toFixed(1);
-                    let statusClass = 'status-pending';
-                    if (r.result_status === 'PASS') statusClass = 'status-pass';
-                    else if (r.result_status === 'FAIL') statusClass = 'status-fail';
-                    html +=
-                        `<tr><td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td><td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td><td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td><td>${r.marks || 0}</td><td>${percentage}%</td><td><span class="${statusClass}">${r.result_status || 'PENDING'}</span></td><td><span class="status-pending">🔒 Not Released</span></td></tr>`;
-                });
-                document.getElementById('releasePreviewBody').innerHTML = html;
-                document.getElementById('releaseSummary').innerHTML =
-                    `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
-                document.getElementById('selectAllCheckbox').checked = false;
-                document.getElementById('confirmReleaseBtn').disabled = false;
-                updateSelectedCount();
-            };
-
+           window.loadReleasePreview = async function() {
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
+    document.getElementById('releasePreview').style.display = 'block';
+    selectedStudentIds.clear();
+    
+    const { data: results, error } = await sb.from('exam_grades')
+        .select('id, student_id, marks, total_score, result_status')
+        .eq('exam_id', parseInt(examId))
+        .eq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
+    if (!results || results.length === 0) { 
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
+        document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
+        return; 
+    }
+    
+    // ========== FIX: Get exam pass mark ==========
+    const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
+    const passMark = exam?.pass_mark || 18;
+    
+    const { data: released } = await sb.from('released_exam_results').select('result_id');
+    const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
+    const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
+    
+    if (eligibleResults.length === 0) { 
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
+        document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
+        document.getElementById('confirmReleaseBtn').disabled = true; 
+        return; 
+    }
+    
+    currentReleaseResults = eligibleResults;
+    const studentIds = eligibleResults.map(r => r.student_id);
+    const { data: profiles } = await sb.from('consolidated_user_profiles_table')
+        .select('user_id, full_name, student_id, email')
+        .in('user_id', studentIds);
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    
+    let html = '';
+    eligibleResults.forEach(r => {
+        const student = profileMap[r.student_id];
+        const percentage = parseFloat(r.total_score || 0).toFixed(1);
+        
+        // ========== FIX: Calculate correct status ==========
+        const score = parseFloat(r.total_score) || 0;
+        const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
+        const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
+        
+        html += `<tr>
+            <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
+            <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
+            <td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td>
+            <td>${r.marks || 0}</td>
+            <td>${percentage}%</td>
+            <td><span class="${statusClass}">${correctStatus}</span></td>
+            <td><span class="status-pending">🔒 Not Released</span></td>
+        </tr>`;
+    });
+    
+    document.getElementById('releasePreviewBody').innerHTML = html;
+    document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
+    document.getElementById('selectAllCheckbox').checked = false;
+    document.getElementById('confirmReleaseBtn').disabled = false;
+    updateSelectedCount();
+};
             window.selectAllStudents = function(select) {
                 const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
                 checkboxes.forEach(cb => { cb.checked = select;
@@ -2327,39 +2349,60 @@ function updateAdminTimers() {
                         .add(idValue); });
             };
 
-            window.confirmReleaseResults = async function() {
-                const ids = Array.from(selectedStudentIds);
-                if (ids.length === 0) { alert('Please select at least one student to release results.'); return; }
-                const examId = document.getElementById('releaseExamFilter').value;
-                if (!examId) return;
-                if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
-                try {
-                    const releaseRecords = [];
-                    const gradeIdsToUpdate = [];
-                    for (const gid of ids) {
-                        const r = currentReleaseResults.find(rr => String(rr.id) === String(gid));
-                        if (r) { releaseRecords.push({ result_id: r.id, student_id: r.student_id,
-                                exam_id: parseInt(examId), released_at: new Date().toISOString(),
-                                released_by: 'admin' });
-                            gradeIdsToUpdate.push(r.id); }
-                    }
-                    if (releaseRecords.length === 0) { alert('No valid records to release'); return; }
-                    const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords);
-                    if (releaseError) { alert('Error: ' + releaseError.message); return; }
-                    for (const gradeId of gradeIdsToUpdate) {
-                        await sb.from('exam_grades').update({ result_status: 'PASS', updated_at: new Date()
-                                .toISOString() }).eq('id', gradeId);
-                    }
-                    alert(`✅ Released ${releaseRecords.length} result(s)!`);
-                    closeReleaseModal();
-                    loadStudentsWithResults();
-                    loadAllExams();
-                } catch (err) { alert('Error: ' + err.message); }
-            };
-
-            window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none';
-                selectedStudentIds.clear(); };
-
+           window.confirmReleaseResults = async function() {
+    const ids = Array.from(selectedStudentIds);
+    if (ids.length === 0) { alert('Please select at least one student to release results.'); return; }
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) return;
+    if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
+    
+    try {
+        // ========== FIX: Get exam pass mark ==========
+        const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
+        const passMark = exam?.pass_mark || 18;
+        
+        const releaseRecords = [];
+        const gradeIdsToUpdate = [];
+        
+        for (const gid of ids) {
+            const r = currentReleaseResults.find(rr => String(rr.id) === String(gid));
+            if (r) {
+                // ========== FIX: Calculate PASS/FAIL based on score ==========
+                const score = parseFloat(r.total_score) || 0;
+                const resultStatus = score >= passMark ? 'PASS' : 'FAIL';
+                
+                releaseRecords.push({ 
+                    result_id: r.id, 
+                    student_id: r.student_id,
+                    exam_id: parseInt(examId), 
+                    released_at: new Date().toISOString(),
+                    released_by: 'admin' 
+                });
+                gradeIdsToUpdate.push({ id: r.id, status: resultStatus });
+            }
+        }
+        
+        if (releaseRecords.length === 0) { alert('No valid records to release'); return; }
+        
+        const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords);
+        if (releaseError) { alert('Error: ' + releaseError.message); return; }
+        
+        // ========== FIX: Update with correct PASS/FAIL ==========
+        for (const grade of gradeIdsToUpdate) {
+            await sb.from('exam_grades')
+                .update({ 
+                    result_status: grade.status, 
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('id', grade.id);
+        }
+        
+        alert(`✅ Released ${releaseRecords.length} result(s) with correct PASS/FAIL status!`);
+        closeReleaseModal();
+        loadStudentsWithResults();
+        loadAllExams();
+    } catch (err) { alert('Error: ' + err.message); }
+};
             // ========== STATS ==========
             async function updateStats() {
                 const totalStudents = allStudents.length;
@@ -2491,64 +2534,91 @@ function updateAdminTimers() {
                 win.print();
             };
 
-            window.exportMarksOnly = function() {
-                if (!studentsResults || studentsResults.length === 0) { alert('No results to export!'); return; }
-                const exportData = studentsResults.map(r => {
-                    const student = r.student_profile || {};
-                    const exam = r.exam_info || {};
-                    const totalMarks = exam.total_marks || getExamTotalMarks(exam.exam_type);
-                    const score = r.marks || 0;
-                    const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-                    let grade = 'PENDING';
-                    if (r.result_status === 'PASS') grade = 'PASS';
-                    else if (r.result_status === 'FAIL') grade = 'FAIL';
-                    else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') grade =
-                        'PENDING REVIEW';
-                    return {
-                        'Admission Number': student.student_id || 'N/A',
-                        'Student Name': student.full_name || 'Unknown',
-                        'Exam': exam.exam_name || 'Exam ' + r.exam_id,
-                        'CAT 1': r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score :
-                        '--',
-                        'CAT 2': r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score :
-                        '--',
-                        'Exam Score': r.exam_score !== undefined && r.exam_score !== null ? r
-                        .exam_score : '--',
-                        'Total': `${score} / ${totalMarks}`,
-                        'Percentage': percentage + '%',
-                        'Grade': grade
-                    };
-                });
-                const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score',
-                    'Total', 'Percentage', 'Grade'
-                ];
-                let csv = headers.join(',') + '\n';
-                exportData.forEach(row => {
-                    const values = headers.map(header => {
-                        let value = row[header] !== undefined && row[header] !== null ? row[
-                        header] : '';
-                        if (typeof value === 'string' && (value.includes(',') || value.includes(
-                                '"') || value.includes('\n'))) {
-                            value = '"' + value.replace(/"/g, '""') + '"';
-                        }
-                        return value;
-                    });
-                    csv += values.join(',') + '\n';
-                });
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download',
-                    `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-                alert(`✅ Exported ${exportData.length} results successfully!`);
-            };
-
+          window.exportMarksOnly = function() {
+    if (!studentsResults || studentsResults.length === 0) { alert('No results to export!'); return; }
+    
+    const exportData = studentsResults.map(r => {
+        const student = r.student_profile || {};
+        const exam = r.exam_info || {};
+        const totalMarks = exam.total_marks || getExamTotalMarks(exam.exam_type) || 30;
+        const passMark = exam.pass_mark || getPassMark(totalMarks) || 18;
+        const score = r.marks || 0;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        
+        // ========== FIX: Calculate grade based on score ==========
+        let grade = 'PENDING';
+        const percentNum = parseFloat(percentage);
+        if (score === 0 && passMark > 0) {
+            grade = 'FAIL';
+        } else if (percentNum >= passMark) {
+            grade = 'PASS';
+        } else if (percentNum < passMark) {
+            grade = 'FAIL';
+        } else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') {
+            grade = 'PENDING REVIEW';
+        }
+        
+        // ========== FIX: Handle CAT scores properly ==========
+        const examType = (exam.exam_type || '').toUpperCase();
+        const isCatExam = examType.includes('CAT');
+        
+        let cat1Display = '--';
+        let cat2Display = '--';
+        let examScoreDisplay = '--';
+        
+        if (isCatExam) {
+            // For CAT exams, show the total score in CAT 1 column
+            cat1Display = score > 0 ? score : '--';
+            cat2Display = '--';
+            examScoreDisplay = '--';
+        } else {
+            // For regular exams, show individual scores
+            cat1Display = r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--';
+            cat2Display = r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--';
+            examScoreDisplay = r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--';
+        }
+        
+        return {
+            'Admission Number': student.student_id || 'N/A',
+            'Student Name': student.full_name || 'Unknown',
+            'Exam': exam.exam_name || 'Exam ' + r.exam_id,
+            'CAT 1': cat1Display,
+            'CAT 2': cat2Display,
+            'Exam Score': examScoreDisplay,
+            'Total': `${score} / ${totalMarks}`,
+            'Percentage': percentage + '%',
+            'Grade': grade
+        };
+    });
+    
+    // Create CSV
+    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade'];
+    let csv = headers.join(',') + '\n';
+    
+    exportData.forEach(row => {
+        const values = headers.map(header => {
+            let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                value = '"' + value.replace(/"/g, '""') + '"';
+            }
+            return value;
+        });
+        csv += values.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ Exported ${exportData.length} results with correct grades!`);
+};
             // ========== NOTIFICATION BELL ==========
             document.getElementById('notificationBell').addEventListener('click', function(e) {
                 e.stopPropagation();
