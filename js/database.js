@@ -40,25 +40,44 @@ class Database {
             console.log('🏗️ Build:', window.APP_CONFIG.BUILD_TIME);
             console.log('🔑 Commit:', window.APP_CONFIG.COMMIT_SHA?.substring(0, 7) || 'unknown');
             
-            // 3. Initialize Supabase client
-            this.supabase = supabase.createClient(
-                window.APP_CONFIG.SUPABASE_URL,
-                window.APP_CONFIG.SUPABASE_ANON_KEY,
-                {
-                    auth: {
-                        persistSession: true,
-                        autoRefreshToken: true,
-                        detectSessionInUrl: true
-                    },
-                    global: {
-                        headers: {
-                            'x-application-name': 'nchsm-student-portal',
-                            'x-version': window.APP_CONFIG.COMMIT_SHA || 'unknown',
-                            'x-environment': window.APP_CONFIG.ENVIRONMENT || 'production'
+            // ============================================
+            // 🔥 FIX: REUSE EXISTING CONNECTION - NO LEAK!
+            // ============================================
+            // Try to reuse existing connection from login
+            if (window.NCHSMLogin && window.NCHSMLogin.supabase) {
+                this.supabase = window.NCHSMLogin.supabase;
+                console.log('✅ Database: Using existing Supabase connection from login');
+            } else if (window.db && window.db.supabase && typeof window.db.supabase.from === 'function') {
+                this.supabase = window.db.supabase;
+                console.log('✅ Database: Using existing Supabase connection from db');
+            } else if (window.supabase && typeof window.supabase.from === 'function') {
+                this.supabase = window.supabase;
+                console.log('✅ Database: Using global window.supabase');
+            } else {
+                // Only create NEW if absolutely necessary (should not happen on dashboard)
+                console.warn('⚠️ Database: No existing connection found, creating new one (should not happen)');
+                this.supabase = supabase.createClient(
+                    window.APP_CONFIG.SUPABASE_URL,
+                    window.APP_CONFIG.SUPABASE_ANON_KEY,
+                    {
+                        auth: {
+                            persistSession: true,
+                            autoRefreshToken: true,
+                            detectSessionInUrl: true
+                        },
+                        global: {
+                            headers: {
+                                'x-application-name': 'nchsm-student-portal',
+                                'x-version': window.APP_CONFIG.COMMIT_SHA || 'unknown',
+                                'x-environment': window.APP_CONFIG.ENVIRONMENT || 'production'
+                            }
                         }
                     }
-                }
-            );
+                );
+            }
+            // ============================================
+            // END FIX
+            // ============================================
             
             // 4. Test connection
             await this.testConnection();
