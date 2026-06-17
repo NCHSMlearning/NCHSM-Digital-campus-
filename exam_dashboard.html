@@ -439,6 +439,20 @@ async function loadExams(showLoading = true) {
             const examDisplayName = exam.exam_name || exam.title || 'Exam';
             const safeExamName = examDisplayName.replace(/'/g, "\\'");
             
+            // ----- Determine exam type and total marks -----
+            const examType = (exam.exam_type || '').toUpperCase();
+            const isCatExam = examType.includes('CAT');
+            
+            // ✅ FIXED: CAT = 30 marks, others = marks_out_of or total_marks
+            let totalMarks = 30; // Default for CAT
+            if (!isCatExam) {
+                totalMarks = exam.marks_out_of || exam.total_marks || 100;
+            }
+            // If the exam already has total_marks set, use that
+            if (exam.total_marks) {
+                totalMarks = exam.total_marks;
+            }
+            
             // ----- Build exam start/end times -----
             let examStartDateTime = null;
             let examEndDateTime = null;
@@ -469,19 +483,12 @@ async function loadExams(showLoading = true) {
             const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
             
             // ----- Check if exam is released by admin -----
-            // ✅ FIX: Use exam.status field to determine if exam is released
-            // If your exams table has a 'status' field, check it
-            // Otherwise, default to true if the exam has a link and is within time window
             const isExamReleased = exam.status === 'Released' || 
                                    exam.status === 'Active' || 
                                    exam.status === 'Published' || 
                                    exam.status === 'Available' ||
                                    exam.released === true ||
-                                   exam.is_published === true ||
-                                   // If no status field, treat as released if exam has a link and is not expired
-                                   (exam.online_link || exam.exam_link) && exam.status !== 'Draft';
-            
-            console.log(`📌 Exam ${exam.id} - Status: ${exam.status || 'No status'}, Released: ${isExamReleased}`);
+                                   exam.is_published === true;
             
             // ----- Determine exam status -----
             let examStatus = 'upcoming';
@@ -546,17 +553,45 @@ async function loadExams(showLoading = true) {
             // CASE 1: RELEASED RESULTS (PASS or FAIL)
             if (hasGrade && isReleased && hasFinalStatus) {
                 isCompleted = true;
-                displayPercentage = parseFloat(grade.total_score || 0);
+                
+                // ✅ FIXED: Get the actual score based on exam type
+                let displayScore = 0;
+                if (isCatExam) {
+                    displayScore = grade?.cat_1_score || grade?.cat_2_score || grade?.marks || 0;
+                    displayScore = Math.min(displayScore, 30);
+                } else {
+                    displayScore = grade?.marks || 0;
+                    displayScore = Math.min(displayScore, totalMarks);
+                }
+                
+                // Calculate percentage
+                const percentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
+                displayPercentage = Math.round(percentage);
                 const passMark = exam.pass_mark || 60;
+                const isPassed = displayPercentage >= passMark;
                 
                 statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
                 
-                const gradeClass = displayPercentage >= passMark ? 'grade-pass' : 'grade-fail';
-                const passText = displayPercentage >= passMark ? 'PASS ✓' : 'FAIL ✗';
+                const gradeClass = isPassed ? 'grade-pass' : 'grade-fail';
+                const passText = isPassed ? 'PASS ✓' : 'FAIL ✗';
+                
+                // Grade text based on percentage
+                let gradeText = '';
+                if (isPassed) {
+                    if (displayPercentage >= 80) gradeText = '🌟 Distinction';
+                    else if (displayPercentage >= 70) gradeText = '💎 Credit';
+                    else if (displayPercentage >= 60) gradeText = '✅ Pass';
+                } else if (displayPercentage > 0) {
+                    gradeText = '❌ Fail';
+                } else {
+                    gradeText = '⏳ Pending';
+                }
+                
                 gradeHtml = `<div class="grade-info ${gradeClass}">
                     <span class="score-large">${displayPercentage}%</span> <strong>${passText}</strong>
-                    <div>Score: ${grade.marks || 0} / ${exam.total_marks || 100} marks</div>
+                    <div>Score: ${displayScore} / ${totalMarks} marks ${isCatExam ? '(CAT)' : ''}</div>
+                    <div style="font-size: 0.8rem; color: #64748B;">${gradeText}</div>
                 </div>`;
             }
             // CASE 2: PENDING RELEASE
@@ -569,16 +604,12 @@ async function loadExams(showLoading = true) {
                     <div>Results will appear here after admin review.</div>
                 </div>`;
             }
-            // CASE 3: READY TO START - ONLY WHEN ALL CONDITIONS MET
-            // 1. Exam is in available time window (canStartExam === true)
-            // 2. Exam is released by admin (isExamReleased === true)
-            // 3. Has a valid link
-            // 4. Student hasn't taken it yet (!hasGrade)
+            // CASE 3: READY TO START
             else if (examStatus === 'available' && canStartExam && isExamReleased && (exam.online_link || exam.exam_link) && !hasGrade) {
                 statusBadge = '<span class="badge badge-upcoming" style="background: linear-gradient(135deg, #D1FAE5, #A7F3D0); color: #065F46;">🔴 Live Now</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${safeExamName}')">▶ Start Exam</button>`;
             }
-            // CASE 4: UPCOMING - NOT YET AVAILABLE OR NOT RELEASED
+            // CASE 4: UPCOMING
             else if (examStatus === 'upcoming' || !isExamReleased) {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 if (!isExamReleased) {
@@ -593,7 +624,7 @@ async function loadExams(showLoading = true) {
                 statusBadge = '<span class="badge badge-pending">⏱️ Missed</span>';
                 actionButton = `<button class="btn-pending" disabled>⏱️ Exam Closed</button>`;
             }
-            // CASE 6: DEFAULT - SAFETY FALLBACK
+            // CASE 6: DEFAULT
             else {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 if (examStatus === 'available' && isExamReleased && (exam.online_link || exam.exam_link) && !hasGrade) {
@@ -622,7 +653,7 @@ async function loadExams(showLoading = true) {
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
-                        <span>📊 ${exam.total_marks || 100} marks</span>
+                        <span>📊 ${totalMarks} ${isCatExam ? 'marks (CAT)' : 'marks'}</span>
                         <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
                         ${exam.block_term ? `<span>📌 ${exam.block_term}</span>` : ''}
                     </div>
