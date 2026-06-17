@@ -4186,28 +4186,29 @@ async function saveEditedExam(e) {
     const deadlineInput = document.getElementById('edit_exam_deadline');
     const basisInput = document.getElementById('edit_exam_basis');
 
-    if (!examIdInput || !titleInput || !dateInput) {
+    if (!examIdInput || !titleInput) {
         showFeedback('❌ Required form elements not found.', 'error');
         return;
     }
 
     const examId = examIdInput.value.trim();
     const title = titleInput.value.trim();
-    const date = dateInput.value;
-    const startTime = startTimeInput ? startTimeInput.value : '09:00';
+    // ✅ FIX: Convert empty string to null
+    const date = dateInput ? (dateInput.value || null) : null;
+    const startTime = startTimeInput ? startTimeInput.value || null : null;
     const duration = durationInput ? parseInt(durationInput.value) || 60 : 60;
     const status = statusInput ? statusInput.value : 'Upcoming';
     const type = typeInput ? typeInput.value : 'CAT';
-    const link = linkInput ? linkInput.value.trim() : null;
+    const link = linkInput ? linkInput.value.trim() || null : null;
     
     const marksOutOf = outOfInput ? parseInt(outOfInput.value) || 100 : 100;
     const passMark = passMarkInput ? parseInt(passMarkInput.value) || 50 : 50;
     const minFee = minFeeInput ? parseInt(minFeeInput.value) || 0 : 0;
-    const deadline = deadlineInput ? deadlineInput.value : null;
+    const deadline = deadlineInput ? deadlineInput.value || null : null;
     const examBasis = basisInput ? basisInput.value : 'ordinary';
 
-    if (!title || !date || !duration) {
-        showFeedback('❌ Title, Date, and Duration are required.', 'error');
+    if (!title || !duration) {
+        showFeedback('❌ Title and Duration are required.', 'error');
         return;
     }
 
@@ -4215,7 +4216,7 @@ async function saveEditedExam(e) {
         const updateData = {
             title: title,
             exam_type: type,
-            exam_date: date,
+            exam_date: date,  // ← Now null if empty
             exam_start_time: startTime,
             duration_minutes: duration,
             status: status,
@@ -4227,9 +4228,16 @@ async function saveEditedExam(e) {
             exam_basis: examBasis
         };
 
-        if (link && link !== '') {
+        if (link) {
             updateData.online_link = link;
         }
+
+        // ✅ Remove undefined values
+        Object.keys(updateData).forEach(key => 
+            updateData[key] === undefined && delete updateData[key]
+        );
+
+        console.log('📤 Sending update data:', updateData);
 
         const { error } = await sb
             .from('exams')
