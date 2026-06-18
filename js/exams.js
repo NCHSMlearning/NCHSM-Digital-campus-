@@ -616,10 +616,17 @@
             }
         }
         
-       processExamsData(exams, grades) {
+      processExamsData(exams, grades) {
+    // 🔥 FIX: Create grade map with ID preserved
     const gradeMap = new Map();
     grades.forEach(grade => {
-        gradeMap.set(String(grade.exam_id), grade);
+        // Make sure the grade object has an id
+        // The grade from the database has an 'id' field
+        const gradeWithId = {
+            ...grade,
+            id: grade.id || grade._id || grade.grade_id || null
+        };
+        gradeMap.set(String(grade.exam_id), gradeWithId);
     });
     
     // 🔥 FIX: Get current time (Kenya Time UTC+3)
@@ -669,11 +676,15 @@
         if (exam.block_term) group.blocks.add(exam.block_term);
         if (exam.program_type) group.programs.add(exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program');
         
-        // 🔥 FIX: Check if grade exists and is released
+        // 🔥 FIX: Check if grade exists and preserve the ID
         const grade = gradeMap.get(String(exam.id));
         if (grade) {
             // Only set grade if it has valid data
             if (grade.marks !== null || grade.total_score !== null || grade.result_status) {
+                // 🔥 CRITICAL: Make sure the grade has an ID
+                if (!grade.id) {
+                    grade.id = grade._id || grade.grade_id || grade.uuid || null;
+                }
                 group.grade = grade;
             }
         }
@@ -682,11 +693,18 @@
     // Process each exam group
     this.allExams = Array.from(examGroups.values()).map(group => {
         const grade = group.grade;
-        const gradeId = grade?.id;
+        // 🔥 FIX: Get the grade ID from the grade object
+        const gradeId = grade?.id || grade?._id || grade?.grade_id || null;
         
         // 🔥 CRITICAL FIX: Check release status from MULTIPLE sources
         let isReleased = false;
         let isPendingRelease = false;
+        
+        // 🔥 FIX: If grade has PASS or FAIL status, it's released
+        if (grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
+            isReleased = true;
+            isPendingRelease = false;
+        }
         
         if (gradeId) {
             // 1. Check released_exam_results table via this.releasedResults Set
@@ -695,14 +713,13 @@
             }
             
             // 2. Check if grade has result_status = 'RELEASED'
-            if (grade?.result_status === 'RELEASED' || grade?.result_status === 'PASS' || grade?.result_status === 'FAIL') {
+            if (grade?.result_status === 'RELEASED') {
                 isReleased = true;
             }
             
             // 3. Check if grade has been graded (has marks and is not pending)
             if (grade?.marks !== null && grade?.marks !== undefined && 
                 (grade?.result_status !== 'PENDING_REVIEW' && grade?.result_status !== 'PENDING')) {
-                // If marks exist and not pending, it's released
                 if (grade.marks > 0 || grade.total_score > 0) {
                     isReleased = true;
                 }
@@ -716,7 +733,15 @@
             // 5. Check if result_status is PENDING_REVIEW or PENDING
             if (grade?.result_status === 'PENDING_REVIEW' || grade?.result_status === 'PENDING') {
                 isPendingRelease = true;
-                isReleased = false; // Not released yet
+                isReleased = false;
+            }
+        }
+        
+        // 🔥 FIX: If marks exist and status is PASS or FAIL, force release
+        if (grade && grade.marks !== null && grade.marks !== undefined) {
+            if (grade.result_status === 'PASS' || grade.result_status === 'FAIL') {
+                isReleased = true;
+                isPendingRelease = false;
             }
         }
         
@@ -878,23 +903,23 @@
             }
             
         } else if (isPendingRelease) {
-            // ⏳ PENDING RELEASE - Show in Current section with pending badge
+            // ⏳ PENDING RELEASE - Show in Completed section with pending badge
             finalStatus = 'pending_release';
             finalCanStart = false;
             finalMessage = '⏳ Pending Release';
             buttonText = 'Pending Release';
-            isCompleted = false;
-            gradeText = 'Pending';
+            isCompleted = true;  // 🔥 FIX: Show in completed section
+            gradeText = 'Pending Release';
             gradeClass = 'pending';
             displayPercentage = null;
             
         } else if (hasTaken && !isReleased) {
-            // ⏳ Taken but not released
+            // ⏳ Taken but not released - Show in completed section
             finalStatus = 'pending_release';
             finalCanStart = false;
             finalMessage = '⏳ Awaiting Admin Review';
             buttonText = 'Pending';
-            isCompleted = false;
+            isCompleted = true;  // 🔥 FIX: Show in completed section
             gradeText = 'Pending Review';
             gradeClass = 'pending';
             
@@ -934,10 +959,10 @@
             if (isCatExam) {
                 if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
                 if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                // For released CAT, show percentage in CAT columns
-                if (isReleased && displayPercentage !== null) {
-                    cat1Display = `${displayPercentage}%`;
-                    cat2Display = `${displayPercentage}%`;
+                // For released CAT, show marks with denominator
+                if (isReleased && displayScore > 0) {
+                    cat1Display = `${displayScore}/${totalMarks}`;
+                    cat2Display = `${displayScore}/${totalMarks}`;
                 }
             } else {
                 if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
@@ -946,12 +971,9 @@
             }
         }
         
-        // For released results, show the total percentage
+        // For released results, show percentage in total
         if (isReleased && displayPercentage !== null) {
-            if (isCatExam) {
-                cat1Display = `${displayPercentage}%`;
-                cat2Display = `${displayPercentage}%`;
-            }
+            // Already set
         }
         
         return {
@@ -1000,7 +1022,8 @@
             course: combinedCourse,
             block_term: combinedBlock,
             status: group.status,
-            result_status: grade?.result_status || null
+            result_status: grade?.result_status || null,
+            grade: grade // 🔥 FIX: Store the full grade object with ID
         };
     });
     
@@ -1016,7 +1039,6 @@
     console.log(`   📝 Current: ${currentCount}`);
     console.log(`   ✅ Completed: ${completedCount}`);
 }
-        
         displayTables() {
             this.displayCurrentTable();
             this.displayCompletedTable();
