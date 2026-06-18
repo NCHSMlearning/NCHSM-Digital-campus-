@@ -1,6 +1,4 @@
-// exams.js - COMPLETE FIXED VERSION WITH ONE-CALL OPTIMIZATION
-// Displays released results (including FAIL with 0 marks) in Completed section
-// Also fetches published scores from Nursing School System
+
 (function() {
     'use strict';
     
@@ -1173,23 +1171,39 @@
     
     const html = completedReleased.map(exam => {
         const isCatExam = exam.isCatExam;
-        
-        // 🔥 FIX: Safely get exam name (handle [object Object])
-        let examDisplayName = 'Assessment';
-        if (exam.exam_name) {
-            if (typeof exam.exam_name === 'string') {
-                examDisplayName = exam.exam_name;
-            } else if (typeof exam.exam_name === 'object') {
-                examDisplayName = exam.exam_name?.exam_name || exam.exam_name?.title || exam.exam_name?.name || 'Assessment';
-            }
-        } else if (exam.title) {
-            if (typeof exam.title === 'string') {
-                examDisplayName = exam.title;
-            } else if (typeof exam.title === 'object') {
-                examDisplayName = exam.title?.title || exam.title?.exam_name || 'Assessment';
+       // 🔥 FIX: Safely get exam name (handle [object Object])
+let examDisplayName = 'Assessment';
+
+// Helper function to safely extract name
+function safeExtractName(obj) {
+    if (!obj) return null;
+    if (typeof obj === 'string') {
+        // Clean up any accidental [object Object] strings
+        if (obj === '[object Object]') return null;
+        return obj;
+    }
+    if (typeof obj === 'object' && obj !== null) {
+        // Try common property names
+        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject'];
+        for (const prop of props) {
+            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
+                return obj[prop];
             }
         }
-        
+        // Get first string value from object
+        const values = Object.values(obj);
+        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
+        if (stringVal) return stringVal;
+    }
+    return null;
+}
+
+let name = safeExtractName(exam.exam_name);
+if (!name) name = safeExtractName(exam.title);
+if (!name) name = safeExtractName(exam.course);
+if (!name) name = safeExtractName(exam.exam_info);
+if (!name) name = safeExtractName(exam.course_name);
+examDisplayName = name || 'Assessment';
         // ✅ Determine total marks based on exam type
         let totalMarks = 0;
         if (isCatExam) {
