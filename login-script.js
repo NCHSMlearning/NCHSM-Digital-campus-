@@ -1,19 +1,23 @@
 // ============================================
-// QUEUE SYSTEM - FIXES 35 STUDENT CRASH
+// QUEUE SYSTEM - BYPASSED (Direct Login Only)
 // ============================================
 const LoginQueue = {
     queue: [],
     active: 0,
-maxConcurrent: 10, // Allow 10 students at once
+    maxConcurrent: 999,
     
     async add(email, password) {
-        return new Promise((resolve, reject) => {
-            this.queue.push({ email, password, resolve, reject });
-            this.process();
-            this.showStatus();
-        });
+        // Direct login - no queue
+        return await NCHSMLogin.executeLogin(email, password);
     },
     
+    process() { return; },
+    executeWithTimeout() { return; },
+    showStatus() { 
+        const el = document.getElementById('queueStatus');
+        if (el) el.style.display = 'none';
+    }
+};
   async process() {
     if (this.queue.length === 0 || this.active >= this.maxConcurrent) return;
     
@@ -662,7 +666,7 @@ await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); //
         this.clearError(errorMsg);
         this.state.isLoggingIn = true;
         loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Queued...';
+buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Logging in...';
         
         this.addRateLimitRequest();
         
