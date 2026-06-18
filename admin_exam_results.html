@@ -2625,7 +2625,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedStudentIds.clear();
                 document.getElementById('releaseModal').style.display = 'flex';
             };
-
+// ============================================
+// 🔒 CLOSE RELEASE MODAL - ADD THIS HERE!
+// ============================================
+window.closeReleaseModal = function() {
+    document.getElementById('releaseModal').style.display = 'none';
+    if (window.selectedStudentIds) {
+        window.selectedStudentIds.clear();
+    }
+    const preview = document.getElementById('releasePreview');
+    if (preview) preview.style.display = 'none';
+    console.log('✅ Release modal closed');
+};
            window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
@@ -2643,15 +2654,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
         return; 
     }
-    window.closeReleaseModal = function() {
-    document.getElementById('releaseModal').style.display = 'none';
-    if (window.selectedStudentIds) {
-        window.selectedStudentIds.clear();
-    }
-    const preview = document.getElementById('releasePreview');
-    if (preview) preview.style.display = 'none';
-    console.log('✅ Release modal closed');
-};
+
     // ========== FIX: Get exam pass mark ==========
     const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
     const passMark = exam?.pass_mark || 18;
