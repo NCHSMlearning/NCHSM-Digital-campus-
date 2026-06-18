@@ -1111,9 +1111,7 @@
             
             this.currentTable.innerHTML = html;
         }
-        
-        // ✅ FIXED: Proper CAT marks display
-      displayCompletedTable() {
+       displayCompletedTable() {
     if (!this.completedTable) return;
     
     // 🔥 FIX: Show both completed AND released exams
@@ -1122,7 +1120,14 @@
     );
     
     if (completedReleased.length === 0) {
-        this.completedTable.innerHTML = '';
+        this.completedTable.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                    No completed assessments yet.
+                </td>
+            </tr>
+        `;
         return;
     }
     
@@ -1130,27 +1135,53 @@
         const isCatExam = exam.isCatExam;
         const examDisplayName = exam.exam_name || exam.title || 'Assessment';
         
-        // ✅ Determine total marks and display correctly
-        let totalMarks = isCatExam ? 30 : (exam.marks_out_of || 100);
-        let displayScore = exam.displayScore || exam.marks || 0;
-        displayScore = Math.min(displayScore, totalMarks);
-        
-        // ✅ Calculate percentage
-        const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
-        const displayPercent = Math.round(calcPercentage);
-        const displayPercentage = `${displayPercent}%`;
-        
-        // ✅ CAT display: Show marks with denominator
-        let catDisplayValue = '--';
-        if (displayScore > 0) {
-            catDisplayValue = `${displayScore}/${totalMarks}`;
+        // ✅ FIX: Determine total marks based on exam type
+        let totalMarks = 0;
+        if (isCatExam) {
+            totalMarks = 30; // CAT is always 30
+        } else {
+            totalMarks = exam.marks_out_of || 100; // Final exams use marks_out_of
         }
         
-        // ✅ Grade determination
+        // ✅ FIX: Get the actual score
+        let displayScore = 0;
+        
+        // If released, use the marks from the grade
+        if (exam.isReleased && exam.hasGrade) {
+            if (isCatExam) {
+                // CAT: use cat1Score or cat2Score or marks
+                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
+            } else {
+                // Final Exam: use marks or totalPercentage
+                displayScore = exam.marks || exam.totalPercentage || 0;
+            }
+        } else if (exam.actionState === 'pending_release') {
+            // Pending: show what we have
+            if (isCatExam) {
+                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
+            } else {
+                displayScore = exam.marks || exam.totalPercentage || 0;
+            }
+        } else {
+            displayScore = exam.displayScore || exam.marks || 0;
+        }
+        
+        // ✅ FIX: Ensure score doesn't exceed total marks
+        displayScore = Math.min(displayScore, totalMarks);
+        
+        // ✅ FIX: Calculate percentage correctly
+        let displayPercent = 0;
+        if (totalMarks > 0 && displayScore > 0) {
+            displayPercent = Math.round((displayScore / totalMarks) * 100);
+        }
+        const displayPercentage = `${displayPercent}%`;
+        
+        // ✅ Grade determination based on percentage
         let displayGrade = exam.gradeText || 'Not Started';
         let displayClass = exam.gradeClass || 'pending';
         
-        if (displayPercent > 0) {
+        // 🔥 If released, determine grade from percentage
+        if (exam.isReleased && exam.hasGrade) {
             if (displayPercent >= 85) {
                 displayGrade = 'Distinction';
                 displayClass = 'distinction';
@@ -1160,6 +1191,9 @@
             } else if (displayPercent >= 60) {
                 displayGrade = 'Pass';
                 displayClass = 'pass';
+            } else if (displayPercent > 0) {
+                displayGrade = 'Fail';
+                displayClass = 'fail';
             } else {
                 displayGrade = 'Fail';
                 displayClass = 'fail';
@@ -1172,10 +1206,18 @@
             displayClass = 'pending';
         }
         
-        // 🔥 If FAIL with 0 marks, show properly
-        if (exam.isReleased && displayPercent === 0 && exam.gradeText === 'Fail') {
-            displayGrade = 'Fail';
-            displayClass = 'fail';
+        // 🔥 If expired and not taken
+        if (exam.actionState === 'expired' && !exam.hasGrade) {
+            displayGrade = 'Missed';
+            displayClass = 'missed';
+        }
+        
+        // ✅ Build assessment cell with proper badges
+        let statusBadges = '';
+        if (exam.isReleased) {
+            statusBadges = '<span class="badge-released">✅ Released</span>';
+        } else if (exam.actionState === 'pending_release') {
+            statusBadges = '<span class="badge-pending">⏳ Pending</span>';
         }
         
         let assessmentCell = `
@@ -1183,8 +1225,7 @@
                 <div class="assessment-name">
                     <strong>${this.escapeHtml(examDisplayName)}</strong>
                     <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                    ${exam.isReleased ? '<span class="badge-released">✅ Released</span>' : ''}
-                    ${exam.actionState === 'pending_release' ? '<span class="badge-pending">⏳ Pending</span>' : ''}
+                    ${statusBadges}
                 </div>
                 <div class="assessment-details">
                     <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
@@ -1198,52 +1239,89 @@
             </div>
         `;
         
-        // CAT columns
-        let cat1Display = exam.cat1Display || '--';
-        let cat2Display = exam.cat2Display || '--';
-        let finalDisplay = exam.finalDisplay || '--';
+        // ✅ CAT columns - Show proper values
+        let cat1Display = '--';
+        let cat2Display = '--';
+        let finalDisplay = '--';
         
-        // If released, show properly
-        if (exam.isReleased && displayScore > 0) {
+        if (exam.isReleased && exam.hasGrade) {
             if (isCatExam) {
+                // CAT: Show marks/total in CAT column
                 cat1Display = `${displayScore}/${totalMarks}`;
                 cat2Display = `${displayScore}/${totalMarks}`;
             } else {
-                if (exam.cat1Score !== null && exam.cat1Score !== undefined) {
+                // Final Exam: Show individual scores
+                if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
                     cat1Display = `${exam.cat1Score}`;
                 }
-                if (exam.cat2Score !== null && exam.cat2Score !== undefined) {
+                if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
                     cat2Display = `${exam.cat2Score}`;
                 }
-                if (exam.finalScore !== null && exam.finalScore !== undefined) {
+                if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
                     finalDisplay = `${exam.finalScore}`;
                 }
+                // If no individual scores, show the total
+                if (cat1Display === '--' && displayScore > 0) {
+                    cat1Display = `${displayScore}/${totalMarks}`;
+                }
+            }
+        } else if (exam.actionState === 'pending_release') {
+            // Pending: Show what's available
+            if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
+                cat1Display = `${exam.cat1Score}`;
+            }
+            if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
+                cat2Display = `${exam.cat2Score}`;
+            }
+            if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
+                finalDisplay = `${exam.finalScore}`;
+            }
+            // If we have marks but no individual scores, show the total
+            if (cat1Display === '--' && displayScore > 0) {
+                cat1Display = `${displayScore}/${totalMarks}`;
             }
         }
         
+        // ✅ Grade badge
         let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
-        let actionHtml = '';
         
+        // ✅ Action button
+        let actionHtml = '';
         if (exam.isReleased && exam.hasGrade) {
-            actionHtml = `<button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
-                            <i class="fas fa-chart-line"></i> View Results
-                        </button>`;
+            actionHtml = `
+                <button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
+                    <i class="fas fa-chart-line"></i> View Results
+                </button>
+            `;
         } else if (exam.actionState === 'pending_release') {
-            actionHtml = `<span class="exam-link-btn btn-warning" style="padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
-                            <i class="fas fa-clock"></i> Pending Release
-                        </span>`;
+            actionHtml = `
+                <span class="exam-link-btn btn-warning" style="padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
+                    <i class="fas fa-clock"></i> Pending Release
+                </span>
+            `;
         } else if (exam.actionState === 'expired') {
-            actionHtml = `<span class="exam-link-btn btn-danger" style="padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
-                            <i class="fas fa-calendar-times"></i> Missed
-                        </span>`;
+            actionHtml = `
+                <span class="exam-link-btn btn-danger" style="padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
+                    <i class="fas fa-calendar-times"></i> Missed
+                </span>
+            `;
         } else {
-            actionHtml = `<span class="exam-link-btn btn-secondary" style="padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                            <i class="fas fa-check-circle"></i> ${exam.gradeText || 'Completed'}
-                        </span>`;
+            actionHtml = `
+                <span class="exam-link-btn btn-secondary" style="padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                    <i class="fas fa-check-circle"></i> ${exam.gradeText || 'Completed'}
+                </span>
+            `;
         }
         
+        // 🔥 Row class
+        let rowClass = 'assessment-row';
+        if (isCatExam) rowClass += ' cat-exam';
+        else rowClass += ' final-exam';
+        if (exam.isReleased) rowClass += ' row-released';
+        if (exam.actionState === 'pending_release') rowClass += ' row-pending';
+        
         return `
-            <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'} ${exam.isReleased ? 'row-released' : ''}">
+            <tr class="${rowClass}" data-exam-id="${exam.id}">
                 <td class="assessment-cell">${assessmentCell}</td>
                 <td class="text-center date-cell">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}</td>
                 <td class="text-center status-cell">${gradeBadge}</td>
