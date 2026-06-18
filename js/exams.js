@@ -1293,30 +1293,46 @@
         let finalDisplay = '--';
         
         if (exam.isReleased && exam.hasGrade) {
-            // ✅ RELEASED - Show marks
-            if (isCatExam) {
-                cat1Display = `${displayScore}/${totalMarks}`;
-                cat2Display = `${displayScore}/${totalMarks}`;
-            } else {
-                if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
-                    cat1Display = `${exam.cat1Score}`;
-                }
-                if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
-                    cat2Display = `${exam.cat2Score}`;
-                }
-                if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
-                    finalDisplay = `${exam.finalScore}`;
-                }
-                if (cat1Display === '--' && displayScore > 0) {
-                    cat1Display = `${displayScore}/${totalMarks}`;
-                }
-            }
-        } else if (exam.actionState === 'pending_release') {
-            // ❌ PENDING - Hide all marks
-            cat1Display = '🔒';
-            cat2Display = '🔒';
-            finalDisplay = '🔒';
+    // ✅ RELEASED - Show marks
+    if (isCatExam) {
+        // 🔥 FIX: Determine which CAT column based on exam_type
+        const examType = (exam.exam_type || '').toUpperCase();
+        
+        if (examType === 'CAT_1') {
+            // CAT 1: Show in CAT 1 column only
+            cat1Display = `${displayScore}/${totalMarks}`;
+            cat2Display = '--';
+        } else if (examType === 'CAT_2') {
+            // CAT 2: Show in CAT 2 column only
+            cat1Display = '--';
+            cat2Display = `${displayScore}/${totalMarks}`;
+        } else {
+            // Generic CAT: Show in CAT 1 only
+            cat1Display = `${displayScore}/${totalMarks}`;
+            cat2Display = '--';
         }
+        finalDisplay = '--';
+    } else {
+        // Final Exam: Show individual scores
+        if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
+            cat1Display = `${exam.cat1Score}`;
+        }
+        if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
+            cat2Display = `${exam.cat2Score}`;
+        }
+        if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
+            finalDisplay = `${exam.finalScore}`;
+        }
+        if (cat1Display === '--' && displayScore > 0) {
+            cat1Display = `${displayScore}/${totalMarks}`;
+        }
+    }
+} else if (exam.actionState === 'pending_release') {
+    // ❌ PENDING - Hide all marks
+    cat1Display = '🔒';
+    cat2Display = '🔒';
+    finalDisplay = '🔒';
+}
         
         // ✅ Grade badge
         let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
