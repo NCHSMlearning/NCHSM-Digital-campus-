@@ -2002,349 +2002,6 @@ function updateAdminTimers() {
                 }
             });
 
-// ============================================
-// 🕐 RESET EXAM TIMER FOR STUDENT
-// ============================================
-
-window.resetStudentTimer = async function(studentId, examId) {
-    if (!confirm(`⚠️ Reset timer for this student?\n\nThis will allow the student to continue the exam.\n\nAre you sure?`)) return;
-    
-    try {
-        const { error: deleteError } = await sb
-            .from('exam_timers')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId));
-        
-        if (deleteError) throw deleteError;
-        
-        const { error: lockError } = await sb
-            .from('exam_proctoring_logs')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .in('event_type', ['timer_expired', 'exam_blocked']);
-        
-        if (lockError) console.warn('Lock reset error:', lockError);
-        
-        alert('✅ Timer reset successfully!\n\nThe student can now continue the exam.');
-        
-        if (currentTab === 'students') loadStudentsWithResults();
-        if (currentTab === 'proctoring') loadProctoringLogs();
-        
-    } catch (error) {
-        console.error('Error resetting timer:', error);
-        alert('❌ Error resetting timer: ' + error.message);
-    }
-};
-
-// ============================================
-// 🕐 RESET TIMER FOR ALL STUDENTS IN AN EXAM
-// ============================================
-
-window.resetAllTimersForExam = async function(examId) {
-    if (!confirm(`⚠️ Reset timer for ALL students in this exam?\n\nThis will allow all students to continue.\n\nAre you sure?`)) return;
-    
-    try {
-        const { error: deleteError } = await sb
-            .from('exam_timers')
-            .delete()
-            .eq('exam_id', parseInt(examId));
-        
-        if (deleteError) throw deleteError;
-        
-        const { error: lockError } = await sb
-            .from('exam_proctoring_logs')
-            .delete()
-            .eq('exam_id', parseInt(examId))
-            .in('event_type', ['timer_expired', 'exam_blocked']);
-        
-        if (lockError) console.warn('Lock reset error:', lockError);
-        
-        alert('✅ All timers reset successfully!');
-        loadAllExams();
-        loadStudentsWithResults();
-        
-    } catch (error) {
-        console.error('Error resetting all timers:', error);
-        alert('❌ Error: ' + error.message);
-    }
-};
-
-// ============================================
-// 📊 VIEW STUDENT LIVE PROGRESS
-// ============================================
-
-window.viewStudentProgress = async function(studentId, studentName, examId) {
-    try {
-        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading ${studentName}'s progress...`;
-        document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading live progress...</div>';
-        document.getElementById('studentModal').style.display = 'flex';
-        
-        const { data: profile } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', studentId)
-            .single();
-        
-        const { data: exam } = await sb
-            .from('exams')
-            .select('*')
-            .eq('id', parseInt(examId))
-            .single();
-        
-        const { data: grade } = await sb
-            .from('exam_grades')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .maybeSingle();
-        
-        const { data: answers } = await sb
-            .from('exam_answers')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .order('created_at', { ascending: true });
-        
-        const { data: proctoring } = await sb
-            .from('exam_proctoring_logs')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .order('timestamp', { ascending: false })
-            .limit(20);
-        
-        const { data: timer } = await sb
-            .from('exam_timers')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .maybeSingle();
-        
-        const totalQuestions = exam?.total_questions || 0;
-        const answeredCount = answers?.length || 0;
-        const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-        
-        let score = grade?.marks || 0;
-        let totalMarks = exam?.total_marks || 30;
-        let percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        
-        let statusColor = 'status-pending';
-        let statusText = '⏳ In Progress';
-        if (grade?.result_status === 'PASS') { statusColor = 'status-pass';
-            statusText = '✅ PASS'; }
-        if (grade?.result_status === 'FAIL') { statusColor = 'status-fail';
-            statusText = '❌ FAIL'; }
-        if (grade?.isReleased) { statusText += ' (Released)'; }
-        
-        let timerHtml = '<span class="status-pending">⏳ No timer data</span>';
-        if (timer) {
-            const startTime = new Date(timer.start_time);
-            const now = new Date();
-            const elapsedMs = now - startTime;
-            const elapsedMinutes = Math.floor(elapsedMs / 60000);
-            const elapsedSeconds = Math.floor((elapsedMs % 60000) / 1000);
-            const remainingMs = timer.time_remaining || 0;
-            const remainingMinutes = Math.floor(remainingMs / 60000);
-            const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
-            timerHtml = `
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.85rem;">
-                    <div><strong>Started:</strong> ${new Date(timer.start_time).toLocaleTimeString()}</div>
-                    <div><strong>Elapsed:</strong> ${elapsedMinutes}m ${elapsedSeconds}s</div>
-                    <div><strong>Remaining:</strong> ${remainingMinutes}m ${remainingSeconds}s</div>
-                    <div><strong>Status:</strong> ${timer.is_paused ? '⏸️ Paused' : '▶️ Active'}</div>
-                </div>
-            `;
-        }
-        
-        let proctoringHtml = '<div style="color:#6B7280;">No alerts</div>';
-        if (proctoring && proctoring.length > 0) {
-            const critical = proctoring.filter(l => l.event_type === 'multiple_faces_detected' || l.severity === 'critical');
-            proctoringHtml = proctoring.slice(0, 5).map(l => {
-                const icon = l.event_type === 'multiple_faces_detected' ? '🚨' : '📹';
-                const bg = l.event_type === 'multiple_faces_detected' ? '#FEE2E2' : '#FEF3C7';
-                return `<div style="background:${bg};padding:6px 10px;border-radius:6px;margin:3px 0;font-size:0.75rem;display:flex;justify-content:space-between;">
-                    <span>${icon} ${l.event_type}</span>
-                    <span style="color:#64748B;">${new Date(l.timestamp).toLocaleTimeString()}</span>
-                </div>`;
-            }).join('');
-            if (critical.length > 0) {
-                proctoringHtml += `<div style="margin-top:6px;color:#DC2626;font-weight:600;">⚠️ ${critical.length} critical alert(s)</div>`;
-            }
-        }
-        
-        let answersHtml = '<div style="color:#6B7280;">No answers recorded yet</div>';
-        if (answers && answers.length > 0) {
-            answersHtml = answers.map((a, i) => {
-                const isCorrect = a.is_correct === true;
-                return `<div style="display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid #E2E8F0;font-size:0.75rem;">
-                    <span>Q${i + 1}: ${a.question_text || 'Question'}</span>
-                    <span style="color:${isCorrect ? '#10B981' : '#DC2626'}">${isCorrect ? '✅' : '❌'} ${a.selected_answer || 'No answer'}</span>
-                </div>`;
-            }).join('');
-        }
-        
-        const studentNameDisplay = profile?.full_name || studentName || 'Unknown';
-        const studentIdDisplay = profile?.student_id || studentId || 'N/A';
-        
-        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-user-graduate"></i> ${studentNameDisplay} - Live Progress`;
-        
-        document.getElementById('modalContent').innerHTML = `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
-                <div style="background:#F8FAFC;padding:15px;border-radius:12px;">
-                    <div style="font-size:0.7rem;color:#64748B;">Student ID</div>
-                    <div style="font-weight:600;">${studentIdDisplay}</div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:8px;">Program</div>
-                    <div style="font-weight:600;">${profile?.program || 'N/A'}</div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:8px;">Block</div>
-                    <div style="font-weight:600;">${profile?.block || 'N/A'}</div>
-                </div>
-                <div style="background:#F8FAFC;padding:15px;border-radius:12px;">
-                    <div style="font-size:0.7rem;color:#64748B;">Exam</div>
-                    <div style="font-weight:600;">${exam?.exam_name || 'Exam ' + examId}</div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:8px;">Status</div>
-                    <div><span class="${statusColor}">${statusText}</span></div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:8px;">Score</div>
-                    <div style="font-weight:600;">${score} / ${totalMarks} (${percentage}%)</div>
-                </div>
-            </div>
-            
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
-                <div style="background:#F0FDF4;padding:15px;border-radius:12px;border-left:4px solid #10B981;">
-                    <div style="font-size:0.7rem;color:#64748B;">Progress</div>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="flex:1;background:#E2E8F0;border-radius:10px;height:10px;overflow:hidden;">
-                            <div style="width:${progress}%;background:#10B981;height:100%;border-radius:10px;transition:width 0.5s;"></div>
-                        </div>
-                        <div style="font-weight:700;font-size:1.1rem;">${progress}%</div>
-                    </div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:4px;">${answeredCount} / ${totalQuestions || 0} questions answered</div>
-                </div>
-                <div style="background:#FEF3C7;padding:15px;border-radius:12px;border-left:4px solid #F59E0B;">
-                    <div style="font-size:0.7rem;color:#64748B;">⏱️ Timer</div>
-                    ${timerHtml}
-                </div>
-            </div>
-            
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-                <div style="background:#F8FAFC;padding:15px;border-radius:12px;max-height:200px;overflow-y:auto;">
-                    <div style="font-weight:600;margin-bottom:8px;font-size:0.85rem;">📝 Answers (${answers?.length || 0})</div>
-                    ${answersHtml}
-                </div>
-                <div style="background:#F8FAFC;padding:15px;border-radius:12px;max-height:200px;overflow-y:auto;">
-                    <div style="font-weight:600;margin-bottom:8px;font-size:0.85rem;">📹 Proctoring Alerts (${proctoring?.length || 0})</div>
-                    ${proctoringHtml}
-                </div>
-            </div>
-            
-            <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="padding:8px 16px;">
-                    <i class="fas fa-clock"></i> Reset Timer
-                </button>
-                <button class="btn btn-info" onclick="viewStudentLiveStream('${studentId}', ${examId})" style="padding:8px 16px;">
-                    <i class="fas fa-video"></i> View Live Stream
-                </button>
-                <button class="btn btn-danger" onclick="forceSubmitStudent('${studentId}', ${examId})" style="padding:8px 16px;">
-                    <i class="fas fa-flag"></i> Force Submit
-                </button>
-                <button class="btn btn-secondary" onclick="refreshStudentProgress('${studentId}', ${examId}, '${studentNameDisplay}')" style="padding:8px 16px;">
-                    <i class="fas fa-sync"></i> Refresh
-                </button>
-            </div>
-        `;
-        
-    } catch (error) {
-        console.error('Error loading student progress:', error);
-        document.getElementById('modalContent').innerHTML = `
-            <div style="color:#DC2626;padding:20px;text-align:center;">
-                <i class="fas fa-exclamation-circle fa-2x"></i>
-                <p>Error loading progress: ${error.message}</p>
-                <button class="btn btn-primary" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})">Retry</button>
-            </div>
-        `;
-    }
-};
-
-// ============================================
-// 🔄 REFRESH STUDENT PROGRESS
-// ============================================
-
-window.refreshStudentProgress = function(studentId, examId, studentName) {
-    viewStudentProgress(studentId, studentName, examId);
-};
-
-// ============================================
-// 📹 VIEW STUDENT LIVE STREAM (Placeholder)
-// ============================================
-
-window.viewStudentLiveStream = function(studentId, examId) {
-    alert(`📹 Live stream for student ${studentId}\n\nThis will open the student's camera feed if available.\n\n(Feature coming soon)`);
-};
-
-// ============================================
-// 🚨 FORCE SUBMIT STUDENT EXAM
-// ============================================
-
-window.forceSubmitStudent = async function(studentId, examId) {
-    if (!confirm(`⚠️ Force submit exam for this student?\n\nThis will automatically submit all answers.\n\nThe student will NOT be able to continue.\n\nAre you sure?`)) return;
-    
-    try {
-        const { data: answers } = await sb
-            .from('exam_answers')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .eq('is_submitted', false);
-        
-        if (answers && answers.length > 0) {
-            for (const answer of answers) {
-                await sb
-                    .from('exam_answers')
-                    .update({ is_submitted: true, submitted_at: new Date().toISOString() })
-                    .eq('id', answer.id);
-            }
-        }
-        
-        const { error: gradeError } = await sb
-            .from('exam_grades')
-            .update({
-                result_status: 'PENDING_REVIEW',
-                updated_at: new Date().toISOString()
-            })
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        if (gradeError) throw gradeError;
-        
-        await sb
-            .from('exam_timers')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId));
-        
-        alert('✅ Exam force submitted successfully!');
-        
-        loadStudentsWithResults();
-        if (document.getElementById('studentModal').style.display === 'flex') {
-            viewStudentProgress(studentId, 'Student', parseInt(examId));
-        }
-        
-    } catch (error) {
-        console.error('Error force submitting:', error);
-        alert('❌ Error: ' + error.message);
-    }
-};
-
-// ============================================
-// 🆕 END OF NEW SCRIPTS
-// ============================================
-
-// Add email input listener
-document.addEventListener('DOMContentLoaded', function() {
-  
             // ========== STUDENTS RESULTS ==========
             window.loadStudentsWithResults = async function() {
                 const loadingDiv = document.getElementById('studentsLoading');
@@ -2400,55 +2057,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch (err) { alert('Error: ' + err.message); }
             };
 
-          function displayStudentsResults() {
-    const start = (currentPage.students - 1) * itemsPerPage;
-    const page = studentsResults.slice(start, start + itemsPerPage);
-    const tbody = document.getElementById('studentsBody');
-    if (page.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; 
-        return; 
-    }
-    
-    tbody.innerHTML = page.map(r => {
-        const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
-        const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
-        const examType = r.exam_info?.exam_type || 'EXAM';
-        const totalMarks = getExamTotalMarks(examType);
-        const passMark = getPassMark(totalMarks);
-        const score = r.marks || 0;
-        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        const status = r.result_status || 'PENDING';
-        const isPassed = status === 'PASS' || score >= passMark;
-        const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
-        const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
-        const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
-        const totalDisplay = totalMarks;
-        
-        // 🔥 Safe student ID for functions
-        const studentId = r.student_id || r.student_profile?.user_id || '';
-        const examId = r.exam_id || '';
-        
-        return `<tr>
-            <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
-            <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-            <td>${r.student_profile?.email || '-'}</td>
-            <td>${r.student_profile?.program || '-'}</td>
-            <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td>
-            <td>${score} / ${totalDisplay}</td>
-            <td>${percentage}%</td>
-            <td><span class="${statusClass}">${displayStatus}</span></td>
-            <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
-            <td>
-                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
-                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Live Progress"><i class="fas fa-chart-line"></i> Progress</button>
-                <button class="action-btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Reset Timer"><i class="fas fa-clock"></i> Timer</button>
-                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;"><i class="fas fa-user-slash"></i> Reset</button>
-            </td>
-        </tr>`;
-    }).join('');
-    
-    renderPagination('students', studentsResults.length);
-}
+            function displayStudentsResults() {
+                const start = (currentPage.students - 1) * itemsPerPage;
+                const page = studentsResults.slice(start, start + itemsPerPage);
+                const tbody = document.getElementById('studentsBody');
+                if (page.length === 0) { tbody.innerHTML =
+                    '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; return; }
+                tbody.innerHTML = page.map(r => {
+                    const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
+                    const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
+                    const examType = r.exam_info?.exam_type || 'EXAM';
+                    const totalMarks = getExamTotalMarks(examType);
+                    const passMark = getPassMark(totalMarks);
+                    const score = r.marks || 0;
+                    const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+                    const status = r.result_status || 'PENDING';
+                    const isPassed = status === 'PASS' || score >= passMark;
+                    const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
+                    const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ?
+                        'status-fail' : 'status-pending');
+                    const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
+                    const totalDisplay = totalMarks;
+                    return `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td><td>${score} / ${totalDisplay}</td><td>${percentage}%</td><td><span class="${statusClass}">${displayStatus}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button></td></tr>`;
+                }).join('');
+                renderPagination('students', studentsResults.length);
+            }
 
             // ========== ALL STUDENTS ==========
             window.loadAllStudents = async function() {
@@ -2625,24 +2258,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedStudentIds.clear();
                 document.getElementById('releaseModal').style.display = 'flex';
             };
-// ============================================
-// 🔒 CLOSE RELEASE MODAL - ADD THIS HERE!
-// ============================================
-window.closeReleaseModal = function() {
-    document.getElementById('releaseModal').style.display = 'none';
-    if (window.selectedStudentIds) {
-        window.selectedStudentIds.clear();
-    }
-    const preview = document.getElementById('releasePreview');
-    if (preview) preview.style.display = 'none';
-    console.log('✅ Release modal closed');
-};
-         window.loadReleasePreview = async function() {
+
+           window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { 
-        document.getElementById('releasePreview').style.display = 'none'; 
-        return; 
-    }
+    if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
     document.getElementById('releasePreview').style.display = 'block';
     selectedStudentIds.clear();
     
@@ -2651,17 +2270,13 @@ window.closeReleaseModal = function() {
         .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    if (error) { 
-        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; 
-        return; 
-    }
-    
+    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
     if (!results || results.length === 0) { 
         document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
         document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
         return; 
     }
-
+    
     // ========== FIX: Get exam pass mark ==========
     const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
     const passMark = exam?.pass_mark || 18;
@@ -2688,6 +2303,8 @@ window.closeReleaseModal = function() {
     eligibleResults.forEach(r => {
         const student = profileMap[r.student_id];
         const percentage = parseFloat(r.total_score || 0).toFixed(1);
+        
+        // ========== FIX: Calculate correct status ==========
         const score = parseFloat(r.total_score) || 0;
         const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
         const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
@@ -3111,25 +2728,18 @@ window.closeReleaseModal = function() {
                 });
             });
 
-          // ========== MAKE FUNCTIONS GLOBAL ==========
-window.getKenyaNow = getKenyaNow;
-window.getKenyaTime = getKenyaTime;
-window.formatKenyaTime = formatKenyaTime;
-window.calculateExamTimer = calculateExamTimer;
-window.updateAdminTimers = updateAdminTimers;
-window.switchTab = switchTab;
-window.toggleSidebar = toggleSidebar;
-window.getExamTotalMarks = getExamTotalMarks;
-window.getPassMark = getPassMark;
-window.closeReleaseModal = closeReleaseModal;        // ← ADD THIS
-window.loadReleasePreview = loadReleasePreview;      // ← ADD THIS
-window.openReleaseModal = openReleaseModal;          // ← ADD THIS
-window.confirmReleaseResults = confirmReleaseResults; // ← ADD THIS
-window.selectAllStudents = selectAllStudents;        // ← ADD THIS
-window.toggleSelectAll = toggleSelectAll;            // ← ADD THIS
-window.updateSelectedCount = updateSelectedCount;
+            // ========== MAKE FUNCTIONS GLOBAL ==========
+            window.getKenyaNow = getKenyaNow;
+            window.getKenyaTime = getKenyaTime;
+            window.formatKenyaTime = formatKenyaTime;
+            window.calculateExamTimer = calculateExamTimer;
+            window.updateAdminTimers = updateAdminTimers;
+            window.switchTab = switchTab;
+            window.toggleSidebar = toggleSidebar;
+            window.getExamTotalMarks = getExamTotalMarks;
+            window.getPassMark = getPassMark;
 
-        })();  // ← THIS CLOSES EVERYTHING
+        })();
     </script>
 </body>
 </html>
