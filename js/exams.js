@@ -317,27 +317,45 @@
                     completedSection.style.display = 'block';
             }
         }
-        
-        applyDataFilter() {
-            // Current exams: NOT completed AND NOT expired AND NOT released (pending)
-            this.currentExams = this.allExams.filter(exam => 
-                !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release'
-            );
-            
-            // Completed exams: isCompleted OR expired OR released (including FAIL)
-            this.completedExams = this.allExams.filter(exam => 
-                exam.isCompleted || exam.actionState === 'expired' || exam.actionState === 'pending_release'
-            );
-            
-            if (this.currentFilter === 'current') {
-                this.completedExams = [];
-            } else if (this.currentFilter === 'completed') {
-                this.currentExams = [];
-            }
-            
-            this.displayTables();
-            this.updateCounts();
-        }
+       applyDataFilter() {
+    // 🔥 FIX: Move pending exams with marks to completed
+    // First, identify pending exams that have marks
+    const pendingWithMarks = this.allExams.filter(exam => 
+        exam.hasGrade && 
+        !exam.isReleased && 
+        (exam.marks !== null && exam.marks > 0) &&
+        exam.actionState !== 'available'
+    );
+    
+    // Mark them as completed so they show in Completed section
+    pendingWithMarks.forEach(exam => {
+        exam.isCompleted = true;
+        exam.actionState = 'pending_release';
+    });
+    
+    // Current exams: NOT completed AND NOT expired AND NOT pending_release
+    this.currentExams = this.allExams.filter(exam => 
+        !exam.isCompleted && 
+        exam.actionState !== 'expired' && 
+        exam.actionState !== 'pending_release'
+    );
+    
+    // Completed exams: isCompleted OR expired OR pending_release
+    this.completedExams = this.allExams.filter(exam => 
+        exam.isCompleted || 
+        exam.actionState === 'expired' || 
+        exam.actionState === 'pending_release'
+    );
+    
+    if (this.currentFilter === 'current') {
+        this.completedExams = [];
+    } else if (this.currentFilter === 'completed') {
+        this.currentExams = [];
+    }
+    
+    this.displayTables();
+    this.updateCounts();
+}
         
         // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
         async loadNCKMarksFromSystem() {
