@@ -14,27 +14,30 @@ maxConcurrent: 10, // Allow 10 students at once
         });
     },
     
-    async process() {
-        if (this.queue.length === 0 || this.active >= this.maxConcurrent) return;
+  async process() {
+    if (this.queue.length === 0 || this.active >= this.maxConcurrent) return;
+    
+    const item = this.queue.shift();
+    this.active++;
+    this.showStatus();
+    
+    try {
+        // ⭐ ADD THIS - 2 second cooldown between logins
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        const item = this.queue.shift();
-        this.active++;
+        const result = await this.executeWithTimeout(
+            () => NCHSMLogin.executeLogin(item.email, item.password),
+            30000
+        );
+        item.resolve(result);
+    } catch (error) {
+        item.reject(error);
+    } finally {
+        this.active--;
         this.showStatus();
-        
-        try {
-            const result = await this.executeWithTimeout(
-                () => NCHSMLogin.executeLogin(item.email, item.password),
-            30000  // ← 30 SECONDS
-            );
-            item.resolve(result);
-        } catch (error) {
-            item.reject(error);
-        } finally {
-            this.active--;
-            this.showStatus();
-            this.process();
-        }
-    },
+        this.process();
+    }
+},
     
     async executeWithTimeout(fn, timeoutMs) {
         return new Promise((resolve, reject) => {
