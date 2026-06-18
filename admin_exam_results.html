@@ -3111,16 +3111,23 @@ window.closeReleaseModal = function() {
                 });
             });
 
-            // ========== MAKE FUNCTIONS GLOBAL ==========
-            window.getKenyaNow = getKenyaNow;
-            window.getKenyaTime = getKenyaTime;
-            window.formatKenyaTime = formatKenyaTime;
-            window.calculateExamTimer = calculateExamTimer;
-            window.updateAdminTimers = updateAdminTimers;
-            window.switchTab = switchTab;
-            window.toggleSidebar = toggleSidebar;
-            window.getExamTotalMarks = getExamTotalMarks;
-            window.getPassMark = getPassMark;
+          // ========== MAKE FUNCTIONS GLOBAL ==========
+window.getKenyaNow = getKenyaNow;
+window.getKenyaTime = getKenyaTime;
+window.formatKenyaTime = formatKenyaTime;
+window.calculateExamTimer = calculateExamTimer;
+window.updateAdminTimers = updateAdminTimers;
+window.switchTab = switchTab;
+window.toggleSidebar = toggleSidebar;
+window.getExamTotalMarks = getExamTotalMarks;
+window.getPassMark = getPassMark;
+window.closeReleaseModal = closeReleaseModal;        // ← ADD THIS
+window.loadReleasePreview = loadReleasePreview;      // ← ADD THIS
+window.openReleaseModal = openReleaseModal;          // ← ADD THIS
+window.confirmReleaseResults = confirmReleaseResults; // ← ADD THIS
+window.selectAllStudents = selectAllStudents;        // ← ADD THIS
+window.toggleSelectAll = toggleSelectAll;            // ← ADD THIS
+window.updateSelectedCount = updateSelectedCount;    // ← ADD THIS
 
         })();
     </script>
