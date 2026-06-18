@@ -79,8 +79,7 @@ maxConcurrent: 10, // Allow 10 students at once
                 <div style="height:3px;background:rgba(255,255,255,0.1);margin-top:8px;border-radius:3px;">
                     <div style="height:100%;width:${(this.active/this.maxConcurrent)*100}%;background:linear-gradient(90deg,#6c63ff,#3a7bd5);border-radius:3px;transition:width 0.3s;"></div>
                 </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Max 2 students at a time</div>
-            `;
+<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Max ${this.maxConcurrent} students at a time</div>            `;
         } else {
             el.style.display = 'none';
         }
@@ -561,8 +560,7 @@ window.NCHSMLogin = {
         }
         
         // Random delay to prevent timing attacks
-        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
-        
+await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); // 0.3-0.5 seconds        
         let profileData = null;
         let isStaff = false;
         
