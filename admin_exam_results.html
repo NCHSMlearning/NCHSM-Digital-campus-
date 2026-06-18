@@ -2349,59 +2349,110 @@ function updateAdminTimers() {
                         .add(idValue); });
             };
 
-           window.confirmReleaseResults = async function() {
+          window.confirmReleaseResults = async function() {
     const ids = Array.from(selectedStudentIds);
-    if (ids.length === 0) { alert('Please select at least one student to release results.'); return; }
+    if (ids.length === 0) { 
+        alert('Please select at least one student to release results.'); 
+        return; 
+    }
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) return;
     if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
     
     try {
-        // ========== FIX: Get exam pass mark ==========
-        const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
+        // Get exam details
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('pass_mark, total_marks, exam_type')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError) throw examError;
+        
         const passMark = exam?.pass_mark || 18;
+        const totalMarks = exam?.total_marks || 30;
+        const isCatExam = (exam?.exam_type || '').toUpperCase().includes('CAT');
         
-        const releaseRecords = [];
-        const gradeIdsToUpdate = [];
+        // Get admin info
+        const session = JSON.parse(localStorage.getItem('adminSession') || '{}');
+        const adminId = session.user_id || '00000000-0000-0000-0000-000000000000';
         
-        for (const gid of ids) {
-            const r = currentReleaseResults.find(rr => String(rr.id) === String(gid));
-            if (r) {
-                // ========== FIX: Calculate PASS/FAIL based on score ==========
-                const score = parseFloat(r.total_score) || 0;
-                const resultStatus = score >= passMark ? 'PASS' : 'FAIL';
-                
-                releaseRecords.push({ 
-                    result_id: r.id, 
-                    student_id: r.student_id,
-                    exam_id: parseInt(examId), 
-                    released_at: new Date().toISOString(),
-                    released_by: 'admin' 
-                });
-                gradeIdsToUpdate.push({ id: r.id, status: resultStatus });
+        let releasedCount = 0;
+        let failedCount = 0;
+        
+        for (const gradeId of ids) {
+            // Get the grade record
+            const { data: grade, error: gradeError } = await sb
+                .from('exam_grades')
+                .select('id, student_id, marks, total_score')
+                .eq('id', gradeId)
+                .single();
+            
+            if (gradeError || !grade) {
+                console.error('Grade not found:', gradeId);
+                failedCount++;
+                continue;
             }
-        }
-        
-        if (releaseRecords.length === 0) { alert('No valid records to release'); return; }
-        
-        const { error: releaseError } = await sb.from('released_exam_results').insert(releaseRecords);
-        if (releaseError) { alert('Error: ' + releaseError.message); return; }
-        
-        // ========== FIX: Update with correct PASS/FAIL ==========
-        for (const grade of gradeIdsToUpdate) {
-            await sb.from('exam_grades')
-                .update({ 
-                    result_status: grade.status, 
-                    updated_at: new Date().toISOString() 
+            
+            // Calculate score correctly
+            let score = 0;
+            if (isCatExam) {
+                // CAT: use marks or total_score (max 30)
+                score = grade.marks || parseFloat(grade.total_score) || 0;
+                score = Math.min(score, 30);
+            } else {
+                // Final Exam: use total_score or marks
+                score = parseFloat(grade.total_score) || grade.marks || 0;
+                score = Math.min(score, totalMarks || 70);
+            }
+            
+            // Determine PASS/FAIL
+            const isPassed = score >= passMark;
+            const resultStatus = isPassed ? 'PASS' : 'FAIL';
+            
+            // Insert into released_exam_results
+            const { error: releaseError } = await sb
+                .from('released_exam_results')
+                .insert({
+                    result_id: gradeId,
+                    released_by: adminId,
+                    released_at: new Date().toISOString()
+                });
+            
+            if (releaseError) {
+                console.error('Release error:', releaseError);
+                failedCount++;
+                continue;
+            }
+            
+            // Update grade status
+            const { error: updateError } = await sb
+                .from('exam_grades')
+                .update({
+                    result_status: resultStatus,
+                    updated_at: new Date().toISOString()
                 })
-                .eq('id', grade.id);
+                .eq('id', gradeId);
+            
+            if (updateError) {
+                console.error('Update error:', updateError);
+                failedCount++;
+                continue;
+            }
+            
+            releasedCount++;
+            console.log(`✅ Released: ${gradeId} -> ${resultStatus} (${score}/${totalMarks})`);
         }
         
-        alert(`✅ Released ${releaseRecords.length} result(s) with correct PASS/FAIL status!`);
+        alert(`✅ Released ${releasedCount} result(s)\n❌ Failed: ${failedCount}\n\nPASS/FAIL calculated correctly!`);
         closeReleaseModal();
         loadStudentsWithResults();
         loadAllExams();
-    } catch (err) { alert('Error: ' + err.message); }
+        
+    } catch (err) { 
+        alert('❌ Error: ' + err.message); 
+        console.error(err);
+    }
 };
             // ========== STATS ==========
             async function updateStats() {
@@ -2534,45 +2585,58 @@ function updateAdminTimers() {
                 win.print();
             };
 
-          window.exportMarksOnly = function() {
-    if (!studentsResults || studentsResults.length === 0) { alert('No results to export!'); return; }
+      window.exportMarksOnly = function() {
+    if (!studentsResults || studentsResults.length === 0) { 
+        alert('No results to export!'); 
+        return; 
+    }
     
     const exportData = studentsResults.map(r => {
         const student = r.student_profile || {};
         const exam = r.exam_info || {};
         const totalMarks = exam.total_marks || getExamTotalMarks(exam.exam_type) || 30;
         const passMark = exam.pass_mark || getPassMark(totalMarks) || 18;
-        const score = r.marks || 0;
-        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
         
-        // ========== FIX: Calculate grade based on score ==========
-        let grade = 'PENDING';
-        const percentNum = parseFloat(percentage);
-        if (score === 0 && passMark > 0) {
-            grade = 'FAIL';
-        } else if (percentNum >= passMark) {
-            grade = 'PASS';
-        } else if (percentNum < passMark) {
-            grade = 'FAIL';
-        } else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') {
-            grade = 'PENDING REVIEW';
-        }
-        
-        // ========== FIX: Handle CAT scores properly ==========
+        // 🔥 FIX: Get correct score
         const examType = (exam.exam_type || '').toUpperCase();
         const isCatExam = examType.includes('CAT');
         
+        let score = 0;
+        if (isCatExam) {
+            score = r.marks || parseFloat(r.total_score) || 0;
+            score = Math.min(score, 30);
+        } else {
+            score = parseFloat(r.total_score) || r.marks || 0;
+            score = Math.min(score, totalMarks);
+        }
+        
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const percentNum = parseFloat(percentage);
+        
+        // 🔥 FIX: Correct grade calculation
+        let grade = 'PENDING';
+        if (r.isReleased) {
+            if (percentNum >= passMark) {
+                grade = 'PASS';
+            } else {
+                grade = 'FAIL';
+            }
+        } else if (r.result_status === 'PASS' || r.result_status === 'FAIL') {
+            grade = r.result_status;
+        } else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') {
+            grade = 'PENDING REVIEW';
+        } else if (score === 0) {
+            grade = 'FAIL';
+        }
+        
+        // Get individual scores
         let cat1Display = '--';
         let cat2Display = '--';
         let examScoreDisplay = '--';
         
         if (isCatExam) {
-            // For CAT exams, show the total score in CAT 1 column
             cat1Display = score > 0 ? score : '--';
-            cat2Display = '--';
-            examScoreDisplay = '--';
         } else {
-            // For regular exams, show individual scores
             cat1Display = r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--';
             cat2Display = r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--';
             examScoreDisplay = r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--';
@@ -2587,12 +2651,13 @@ function updateAdminTimers() {
             'Exam Score': examScoreDisplay,
             'Total': `${score} / ${totalMarks}`,
             'Percentage': percentage + '%',
-            'Grade': grade
+            'Grade': grade,
+            'Released': r.isReleased ? '✅ Yes' : '❌ No'
         };
     });
     
     // Create CSV
-    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade'];
+    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade', 'Released'];
     let csv = headers.join(',') + '\n';
     
     exportData.forEach(row => {
@@ -2618,8 +2683,7 @@ function updateAdminTimers() {
     URL.revokeObjectURL(url);
     
     alert(`✅ Exported ${exportData.length} results with correct grades!`);
-};
-            // ========== NOTIFICATION BELL ==========
+};       // ========== NOTIFICATION BELL ==========
             document.getElementById('notificationBell').addEventListener('click', function(e) {
                 e.stopPropagation();
                 document.getElementById('notificationPanel').classList.toggle('show');
