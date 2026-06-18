@@ -1173,55 +1173,66 @@
     
     const html = completedReleased.map(exam => {
         const isCatExam = exam.isCatExam;
-        const examDisplayName = exam.exam_name || exam.title || 'Assessment';
         
-        // ✅ FIX: Determine total marks based on exam type
+        // 🔥 FIX: Safely get exam name (handle [object Object])
+        let examDisplayName = 'Assessment';
+        if (exam.exam_name) {
+            if (typeof exam.exam_name === 'string') {
+                examDisplayName = exam.exam_name;
+            } else if (typeof exam.exam_name === 'object') {
+                examDisplayName = exam.exam_name?.exam_name || exam.exam_name?.title || exam.exam_name?.name || 'Assessment';
+            }
+        } else if (exam.title) {
+            if (typeof exam.title === 'string') {
+                examDisplayName = exam.title;
+            } else if (typeof exam.title === 'object') {
+                examDisplayName = exam.title?.title || exam.title?.exam_name || 'Assessment';
+            }
+        }
+        
+        // ✅ Determine total marks based on exam type
         let totalMarks = 0;
         if (isCatExam) {
             totalMarks = 30; // CAT is always 30
         } else {
-            totalMarks = exam.marks_out_of || 100; // Final exams use marks_out_of
+            totalMarks = exam.marks_out_of || 100;
         }
         
-        // ✅ FIX: Get the actual score
+        // 🔥 FIX: Only show marks if RELEASED
         let displayScore = 0;
-        
-        // If released, use the marks from the grade
-        if (exam.isReleased && exam.hasGrade) {
-            if (isCatExam) {
-                // CAT: use cat1Score or cat2Score or marks
-                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
-            } else {
-                // Final Exam: use marks or totalPercentage
-                displayScore = exam.marks || exam.totalPercentage || 0;
-            }
-        } else if (exam.actionState === 'pending_release') {
-            // Pending: show what we have
-            if (isCatExam) {
-                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
-            } else {
-                displayScore = exam.marks || exam.totalPercentage || 0;
-            }
-        } else {
-            displayScore = exam.displayScore || exam.marks || 0;
-        }
-        
-        // ✅ FIX: Ensure score doesn't exceed total marks
-        displayScore = Math.min(displayScore, totalMarks);
-        
-        // ✅ FIX: Calculate percentage correctly
         let displayPercent = 0;
-        if (totalMarks > 0 && displayScore > 0) {
-            displayPercent = Math.round((displayScore / totalMarks) * 100);
-        }
-        const displayPercentage = `${displayPercent}%`;
+        let displayPercentage = '--';
+        let showMarks = false;
         
-        // ✅ Grade determination based on percentage
+        if (exam.isReleased && exam.hasGrade) {
+            // ✅ RELEASED - Show marks
+            showMarks = true;
+            if (isCatExam) {
+                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
+            } else {
+                displayScore = exam.marks || exam.totalPercentage || 0;
+            }
+            displayScore = Math.min(displayScore, totalMarks);
+            displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
+            displayPercentage = displayPercent + '%';
+        } else if (exam.actionState === 'pending_release') {
+            // ❌ PENDING - Hide marks
+            showMarks = false;
+            displayScore = 0;
+            displayPercentage = '--';
+        } else {
+            // Other cases
+            displayScore = exam.displayScore || exam.marks || 0;
+            displayScore = Math.min(displayScore, totalMarks);
+            displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
+            displayPercentage = displayPercent + '%';
+        }
+        
+        // ✅ Grade determination - ONLY if released
         let displayGrade = exam.gradeText || 'Not Started';
         let displayClass = exam.gradeClass || 'pending';
         
-        // 🔥 If released, determine grade from percentage
-        if (exam.isReleased && exam.hasGrade) {
+        if (exam.isReleased && exam.hasGrade && displayPercent > 0) {
             if (displayPercent >= 85) {
                 displayGrade = 'Distinction';
                 displayClass = 'distinction';
@@ -1231,9 +1242,6 @@
             } else if (displayPercent >= 60) {
                 displayGrade = 'Pass';
                 displayClass = 'pass';
-            } else if (displayPercent > 0) {
-                displayGrade = 'Fail';
-                displayClass = 'fail';
             } else {
                 displayGrade = 'Fail';
                 displayClass = 'fail';
@@ -1275,22 +1283,21 @@
                     </span>
                 </div>
                 ${exam.isReleased ? `<div style="font-size: 0.7rem; color: #10B981; margin-top: 4px;">📊 ${displayScore} / ${totalMarks} marks</div>` : ''}
-                ${exam.actionState === 'pending_release' ? `<div style="font-size: 0.7rem; color: #F59E0B; margin-top: 4px;">⏳ Awaiting admin release</div>` : ''}
+                ${exam.actionState === 'pending_release' ? `<div style="font-size: 0.7rem; color: #F59E0B; margin-top: 4px;">⏳ Results pending release - marks hidden</div>` : ''}
             </div>
         `;
         
-        // ✅ CAT columns - Show proper values
+        // 🔥 CAT columns - Only show if released
         let cat1Display = '--';
         let cat2Display = '--';
         let finalDisplay = '--';
         
         if (exam.isReleased && exam.hasGrade) {
+            // ✅ RELEASED - Show marks
             if (isCatExam) {
-                // CAT: Show marks/total in CAT column
                 cat1Display = `${displayScore}/${totalMarks}`;
                 cat2Display = `${displayScore}/${totalMarks}`;
             } else {
-                // Final Exam: Show individual scores
                 if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
                     cat1Display = `${exam.cat1Score}`;
                 }
@@ -1300,26 +1307,15 @@
                 if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
                     finalDisplay = `${exam.finalScore}`;
                 }
-                // If no individual scores, show the total
                 if (cat1Display === '--' && displayScore > 0) {
                     cat1Display = `${displayScore}/${totalMarks}`;
                 }
             }
         } else if (exam.actionState === 'pending_release') {
-            // Pending: Show what's available
-            if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
-                cat1Display = `${exam.cat1Score}`;
-            }
-            if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
-                cat2Display = `${exam.cat2Score}`;
-            }
-            if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
-                finalDisplay = `${exam.finalScore}`;
-            }
-            // If we have marks but no individual scores, show the total
-            if (cat1Display === '--' && displayScore > 0) {
-                cat1Display = `${displayScore}/${totalMarks}`;
-            }
+            // ❌ PENDING - Hide all marks
+            cat1Display = '🔒';
+            cat2Display = '🔒';
+            finalDisplay = '🔒';
         }
         
         // ✅ Grade badge
