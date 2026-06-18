@@ -536,11 +536,12 @@ window.NCHSMLogin = {
             await this.supabase.auth.signOut();
             throw new Error('Account not found');
         }
-        
-        if (profile.status?.toLowerCase() !== 'approved') {
-            await this.supabase.auth.signOut();
-            throw new Error('Account pending approval');
-        }
+    // Allow 'approved', 'active', and 'approved' statuses
+const validStatuses = ['approved', 'active', 'approved'];
+if (!validStatuses.includes(profile.status?.toLowerCase())) {
+    await this.supabase.auth.signOut();
+    throw new Error('Account pending approval');
+}
         
         return { profileData: profile, isStaff: false };
     },
