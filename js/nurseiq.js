@@ -342,70 +342,71 @@ class NurseIQModule {
         }
     }
     
-    // Ensure user exists in consolidated_user_profiles_table
-    async ensureUserExistsInProfileTable() {
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            // Get user info from various sources
-            const userEmail = localStorage.getItem('userEmail') || 
-                             sessionStorage.getItem('userEmail') || 
-                             document.querySelector('meta[name="user-email"]')?.content ||
-                             `${this.userId}@student.nurseiq.com`;
-            
-            const userName = localStorage.getItem('userName') || 
-                            sessionStorage.getItem('userName') || 
-                            sessionStorage.getItem('studentName') ||
-                            document.querySelector('meta[name="user-name"]')?.content ||
-                            'Student';
-            
-            // Try to get student ID from storage
-            const studentId = localStorage.getItem('studentId') || 
-                             sessionStorage.getItem('studentId') || 
-                             null;
-            
-            console.log('📝 Ensuring user exists in consolidated_user_profiles_table:', this.userId);
-            
-            // First check if user already exists
-            const { data: existingUser, error: checkError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('id')
-                .eq('id', this.userId)
-                .maybeSingle();
-            
-            if (checkError && checkError.code !== 'PGRST116') {
-                console.error('Error checking user existence:', checkError);
-                return;
-            }
-            
-            if (!existingUser) {
-                // User doesn't exist, create them
-                const { error: insertError } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .insert({
-                        id: this.userId,
-                        email: userEmail,
-                        full_name: userName,
-                        role: 'student',
-                        student_id: studentId,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    });
-                
-                if (insertError) {
-                    console.error('❌ Failed to create user profile:', insertError);
-                } else {
-                    console.log('✅ User profile created successfully in consolidated_user_profiles_table');
-                }
-            } else {
-                console.log('✅ User already exists in profile table');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error ensuring user exists:', error);
+  // Ensure user exists in consolidated_user_profiles_table
+async ensureUserExistsInProfileTable() {
+    try {
+        const supabase = this.getSupabaseClient();
+        if (!supabase) return;
+        
+        // Get user info from various sources
+        const userEmail = localStorage.getItem('userEmail') || 
+                         sessionStorage.getItem('userEmail') || 
+                         document.querySelector('meta[name="user-email"]')?.content ||
+                         `${this.userId}@student.nurseiq.com`;
+        
+        const userName = localStorage.getItem('userName') || 
+                        sessionStorage.getItem('userName') || 
+                        sessionStorage.getItem('studentName') ||
+                        document.querySelector('meta[name="user-name"]')?.content ||
+                        'Student';
+        
+        // Try to get student ID from storage
+        const studentId = localStorage.getItem('studentId') || 
+                         sessionStorage.getItem('studentId') || 
+                         null;
+        
+        console.log('📝 Ensuring user exists in consolidated_user_profiles_table:', this.userId);
+        
+        // ✅ FIX: Use 'user_id' column, not 'id'!
+        const { data: existingUser, error: checkError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('user_id', this.userId)  // ← 'user_id' column
+            .maybeSingle();
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+            console.error('Error checking user existence:', checkError);
+            return;
         }
+        
+        if (!existingUser) {
+            // ✅ FIX: Use 'user_id' column, not 'id'!
+            const { error: insertError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .insert({
+                    user_id: this.userId,  // ← THIS IS THE CORRECT COLUMN NAME!
+                    email: userEmail,
+                    full_name: userName,
+                    role: 'student',
+                    student_id: studentId,
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (insertError) {
+                console.error('❌ Failed to create user profile:', insertError);
+            } else {
+                console.log('✅ User profile created successfully in consolidated_user_profiles_table');
+            }
+        } else {
+            console.log('✅ User already exists in profile table');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error ensuring user exists:', error);
     }
+}
     
     saveUserProgress() {
         try {
