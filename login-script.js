@@ -4,7 +4,7 @@
 const LoginQueue = {
     queue: [],
     active: 0,
-    maxConcurrent: 2, // Supabase free tier limit
+maxConcurrent: 10, // Allow 10 students at once
     
     async add(email, password) {
         return new Promise((resolve, reject) => {
