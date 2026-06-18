@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH COMPACT NEXT CLASS CARD
+// dashboard.js - COMPLETE WORKING VERSION WITH ONE-CALL OPTIMIZATION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -66,8 +66,7 @@ class DashboardModule {
         });
         
         document.addEventListener('attendanceCheckedIn', () => {
-            this.loadAttendanceMetrics();
-            this.updateUIFromMetrics();
+            this.loadAllMetrics();
         });
         
         document.querySelectorAll('.leaderboard-tabs span').forEach(tab => {
@@ -76,15 +75,6 @@ class DashboardModule {
                 tab.classList.add('active');
                 const period = tab.innerText.trim().toLowerCase();
                 this.loadLeaderboardData(period);
-            });
-        });
-        
-        document.querySelectorAll('.week-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const week = btn.getAttribute('data-week');
-                this.loadTimetableData(week);
             });
         });
         
@@ -142,24 +132,58 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 🔥 THE FIX: ONE API CALL INSTEAD OF 8!
+    // ============================================================
     async loadAllMetrics() {
-        console.log('📊 Loading all dashboard metrics...');
+        console.log('📊 Loading all dashboard metrics in ONE call...');
         
-        await Promise.all([
-            this.loadAttendanceMetrics(),
-            this.loadResourcesMetrics(),
-            this.loadExamCardMetrics(),
-            this.loadNurseIQMetrics(),
-            this.updateExamsMetric(),
-            this.loadXPMetrics(),
-            this.loadAnnouncement(),
-            this.loadLeaderboardData('all'),
-            this.loadQuickNextClass()
-        ]);
-        
-        this.updateUIFromMetrics();
-        
-        setTimeout(() => {
+        try {
+            // 🔥 ONE API CALL - REPLACES 8 SEPARATE CALLS!
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+            
+            if (error) throw error;
+            
+            // Update all metrics from the single response
+            this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
+            this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
+            
+            this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
+            this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
+            this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) : 0;
+            this.metrics.exams = data.exam?.title || 'No upcoming exams';
+            this.metrics.resources = data.resources || 0;
+            this.metrics.courses = data.examCard?.approved || 0;
+            
+            // Update XP
+            const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
+            const nurseIQPoints = this.metrics.nurseiq.questions || 0;
+            const totalXP = attendancePoints + nurseIQPoints;
+            const maxXP = 100;
+            const currentXP = totalXP % maxXP;
+            const level = Math.floor(totalXP / maxXP) + 1;
+            const percent = (currentXP / maxXP) * 100;
+            this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
+            
+            // Update UI
+            this.updateUIFromMetrics();
+            
+            // Update announcement
+            if (this.elements.announcementText && data.announcement) {
+                this.elements.announcementText.innerHTML = data.announcement;
+            } else if (this.elements.announcementText) {
+                this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
+            }
+            
+            // Update XP elements
+            if (this.elements.userLevel) this.elements.userLevel.innerText = level;
+            if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
+            if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
+            if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
+            
+            // Update exam status
             const approved = this.metrics.examCard?.approved || 0;
             if (this.elements.examStatus) {
                 this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
@@ -168,7 +192,35 @@ class DashboardModule {
             if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = this.metrics.exams;
-        }, 200);
+            
+            console.log('✅ Dashboard loaded with 1 API call!');
+            
+            // Still load leaderboard and next class separately (they need different queries)
+            await Promise.all([
+                this.loadLeaderboardData('all'),
+                this.loadQuickNextClass()
+            ]);
+            
+        } catch (error) {
+            console.error('Dashboard error:', error);
+            // Fallback: load individually if batch fails
+            await this.loadIndividualMetrics();
+        }
+    }
+    
+    // Fallback method (keep this for safety)
+    async loadIndividualMetrics() {
+        console.log('⚠️ Falling back to individual metrics...');
+        await Promise.all([
+            this.loadAttendanceMetrics(),
+            this.loadResourcesMetrics(),
+            this.loadExamCardMetrics(),
+            this.loadNurseIQMetrics(),
+            this.updateExamsMetric(),
+            this.loadXPMetrics(),
+            this.loadAnnouncement()
+        ]);
+        this.updateUIFromMetrics();
     }
     
     async loadAttendanceMetrics() {
@@ -282,38 +334,38 @@ class DashboardModule {
         }
     }
     
-   async updateExamsMetric() {
-    let upcomingText = 'No upcoming exams';
-    
-    try {
-        if (!this.userProfile) return;
+    async updateExamsMetric() {
+        let upcomingText = 'No upcoming exams';
         
-        const today = new Date().toISOString().split('T')[0];
-        
-        const { data: exams, error } = await this.sb
-            .from('exams')
-            .select('title, exam_name, exam_date')
-            .eq('program_type', this.userProfile.program)
-            .eq('block', this.userProfile.block)
-            .gte('exam_date', today)
-            .order('exam_date', { ascending: true })
-            .limit(1);
-        
-        if (error) throw error;
-        
-        if (exams && exams.length > 0) {
-            const examDate = new Date(exams[0].exam_date).toLocaleDateString();
-            const examTitle = exams[0].exam_name || exams[0].title;
-            upcomingText = `${examTitle} - ${examDate}`;
+        try {
+            if (!this.userProfile) return;
+            
+            const today = new Date().toISOString().split('T')[0];
+            
+            const { data: exams, error } = await this.sb
+                .from('exams')
+                .select('title, exam_name, exam_date')
+                .eq('program_type', this.userProfile.program)
+                .eq('block', this.userProfile.block)
+                .gte('exam_date', today)
+                .order('exam_date', { ascending: true })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            if (exams && exams.length > 0) {
+                const examDate = new Date(exams[0].exam_date).toLocaleDateString();
+                const examTitle = exams[0].exam_name || exams[0].title;
+                upcomingText = `${examTitle} - ${examDate}`;
+            }
+            
+        } catch (error) {
+            console.error('Exams error:', error);
         }
         
-    } catch (error) {
-        console.error('Exams error:', error);
+        this.metrics.exams = upcomingText;
+        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
     }
-    
-    this.metrics.exams = upcomingText;
-    if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
-}
     
     async loadAnnouncement() {
         if (!this.userProfile || !this.sb) return;
@@ -441,217 +493,119 @@ class DashboardModule {
         }
     }
     
-  // ========== SIMPLIFIED NEXT CLASS CARD (USING DATABASE DATES) ==========
-// ========== FIXED: Find next UNFINISHED class ==========
-async loadQuickNextClass() {
-    console.log('📅 Loading next UNFINISHED class...');
-    
-    try {
-        const studentBlock = this.userProfile?.block;
-        if (!studentBlock) {
-            console.log('No block found');
-            return;
-        }
-        
-        const now = new Date();
-        const todayDate = now.toISOString().split('T')[0];
-        const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:00`;
-        
-        console.log(`Current: ${todayDate} at ${currentTime}`);
-        
-        // Get all future classes (date >= today)
-        const { data: futureClasses, error } = await this.sb
-            .from('timetables')
-            .select('*')
-            .eq('block', studentBlock)
-            .gte('class_date', todayDate)
-            .order('class_date', { ascending: true })
-            .order('start_time', { ascending: true });
-        
-        if (error) {
-            console.error('Query error:', error);
-            return;
-        }
-        
-        if (!futureClasses || futureClasses.length === 0) {
-            console.log('No upcoming classes found');
-            const card = document.getElementById('quick-next-class');
-            if (card) card.style.display = 'none';
-            return;
-        }
-        
-        // Find the first class that hasn't started yet
-        let nextClass = null;
-        
-        for (const cls of futureClasses) {
-            const classDateTime = new Date(`${cls.class_date}T${cls.start_time}`);
-            if (classDateTime > now) {
-                nextClass = cls;
-                break;
-            }
-        }
-        
-        if (!nextClass) {
-            console.log('No future classes (all today are done)');
-            const card = document.getElementById('quick-next-class');
-            if (card) card.style.display = 'none';
-            return;
-        }
-        
-        const classDate = new Date(nextClass.class_date);
-        const isToday = classDate.toDateString() === now.toDateString();
-        const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
-        const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
-        
-        // Format date
-        const formattedDate = classDate.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-        
-        console.log(`✅ NEXT CLASS: ${nextClass.session_name} on ${formattedDate} at ${startTime}`);
-        
-        // Update card elements
-        const timeEl = document.getElementById('quick-next-class-time');
-        const nameEl = document.getElementById('quick-next-class-name');
-        const codeEl = document.getElementById('quick-next-class-code');
-        const lecturerEl = document.getElementById('quick-next-class-lecturer');
-        const venueEl = document.getElementById('quick-next-class-venue');
-        const daySpan = document.getElementById('quick-next-class-day');
-        const dayContainer = document.getElementById('quick-next-class-day-container');
-        
-        if (timeEl) timeEl.innerHTML = `${startTime} — ${endTime}`;
-        if (nameEl) nameEl.innerHTML = nextClass.session_name || nextClass.course_name;
-        if (codeEl) codeEl.innerHTML = nextClass.course_name || studentBlock;
-        
-        let lecturerName = nextClass.lecturer_name || 'TBA';
-        if (lecturerName !== 'TBA' && lecturerName !== '—') {
-            lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
-        }
-        if (lecturerEl) lecturerEl.innerHTML = lecturerName;
-        if (venueEl) venueEl.innerHTML = nextClass.venue || 'TBD';
-        
-        if (daySpan) {
-            if (isToday) {
-                if (dayContainer) dayContainer.classList.add('today');
-                daySpan.innerHTML = 'TODAY';
-            } else {
-                if (dayContainer) dayContainer.classList.remove('today');
-                daySpan.innerHTML = formattedDate;
-            }
-        }
-        
-        // Show the card
-        const card = document.getElementById('quick-next-class');
-        if (card) {
-            card.style.display = 'block';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }
-        
-        // Click to go to calendar
-        if (card) {
-            card.onclick = () => {
-                const calendarTab = document.querySelector('[data-tab="calendar"]');
-                if (calendarTab) calendarTab.click();
-            };
-        }
-        
-    } catch (error) {
-        console.error('Error loading next class:', error);
-        const card = document.getElementById('quick-next-class');
-        if (card) card.style.display = 'none';
-    }
-}
-    
-   getClassDate(classItem) {
-    // Anchor: June 3, 2026 is Tuesday of Week 1 at 11:00 AM (CHANGED TO 2026)
-    const anchorDate = new Date(2026, 5, 3, 11, 0, 0);
-    const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-    
-    const weekDiff = (classItem.week_number || 1) - 1;
-    const dayDiff = (dayOrder[classItem.day_of_week] || 1) - 1;
-    const totalDays = (weekDiff * 7) + dayDiff;
-    
-    const classDate = new Date(anchorDate);
-    classDate.setDate(anchorDate.getDate() + totalDays);
-    
-    const [hours, minutes] = (classItem.start_time || '11:00:00').split(':');
-    classDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    
-    return classDate;
-}
-    
-    findNextClass(timetable) {
-        const now = new Date();
-        let nextClass = null;
-        let nextDate = null;
-        
-        for (const cls of timetable) {
-            const classDate = this.getClassDate(cls);
-            if (classDate > now) {
-                if (!nextClass || classDate < nextDate) {
-                    nextClass = cls;
-                    nextDate = classDate;
-                }
-            }
-        }
-        return nextClass;
-    }
-    
-    truncateText(text, maxLength) {
-        if (!text) return '—';
-        if (text.length <= maxLength) return text;
-        return text.substring(0, maxLength - 3) + '...';
-    }
-    
-    async loadTimetableData(week = 'all') {
-        const container = document.getElementById('timetable-container');
-        const loading = document.getElementById('timetable-loading');
-        const empty = document.getElementById('timetable-empty');
-        
-        if (loading) loading.style.display = 'block';
-        if (container) container.style.display = 'none';
-        if (empty) empty.style.display = 'none';
+    async loadQuickNextClass() {
+        console.log('📅 Loading next UNFINISHED class...');
         
         try {
-            const { data: courses, error } = await this.sb
-                .from('student_unit_registrations')
-                .select('unit_code, unit_name')
-                .eq('student_id', this.userId)
-                .eq('status', 'approved')
-                .limit(5);
+            const studentBlock = this.userProfile?.block;
+            if (!studentBlock) {
+                console.log('No block found');
+                return;
+            }
             
-            if (loading) loading.style.display = 'none';
+            const now = new Date();
+            const todayDate = now.toISOString().split('T')[0];
+            const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:00`;
             
-            if (courses && courses.length > 0 && container) {
-                container.style.display = 'block';
-                container.innerHTML = `
-                    <div class="class-row">
-                        <span class="class-time">Mon 9:00 AM</span>
-                        <span class="class-name">${courses[0]?.unit_name || 'Clinical Rotation'}</span>
-                        <span class="class-room">Rm 101</span>
-                    </div>
-                    <div class="class-row">
-                        <span class="class-time">Wed 2:00 PM</span>
-                        <span class="class-name">${courses[1]?.unit_name || 'Nursing Leadership'}</span>
-                        <span class="class-room">Hall B</span>
-                    </div>
-                    <div class="class-row">
-                        <span class="class-time">Fri 10:00 AM</span>
-                        <span class="class-name">${courses[2]?.unit_name || 'Pharmacology Lab'}</span>
-                        <span class="class-room">Lab 3</span>
-                    </div>
-                `;
-            } else if (empty) {
-                empty.style.display = 'block';
+            console.log(`Current: ${todayDate} at ${currentTime}`);
+            
+            const { data: futureClasses, error } = await this.sb
+                .from('timetables')
+                .select('*')
+                .eq('block', studentBlock)
+                .gte('class_date', todayDate)
+                .order('class_date', { ascending: true })
+                .order('start_time', { ascending: true });
+            
+            if (error) {
+                console.error('Query error:', error);
+                return;
+            }
+            
+            if (!futureClasses || futureClasses.length === 0) {
+                console.log('No upcoming classes found');
+                const card = document.getElementById('quick-next-class');
+                if (card) card.style.display = 'none';
+                return;
+            }
+            
+            let nextClass = null;
+            
+            for (const cls of futureClasses) {
+                const classDateTime = new Date(`${cls.class_date}T${cls.start_time}`);
+                if (classDateTime > now) {
+                    nextClass = cls;
+                    break;
+                }
+            }
+            
+            if (!nextClass) {
+                console.log('No future classes (all today are done)');
+                const card = document.getElementById('quick-next-class');
+                if (card) card.style.display = 'none';
+                return;
+            }
+            
+            const classDate = new Date(nextClass.class_date);
+            const isToday = classDate.toDateString() === now.toDateString();
+            const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
+            const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
+            
+            const formattedDate = classDate.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            
+            console.log(`✅ NEXT CLASS: ${nextClass.session_name} on ${formattedDate} at ${startTime}`);
+            
+            const timeEl = document.getElementById('quick-next-class-time');
+            const nameEl = document.getElementById('quick-next-class-name');
+            const codeEl = document.getElementById('quick-next-class-code');
+            const lecturerEl = document.getElementById('quick-next-class-lecturer');
+            const venueEl = document.getElementById('quick-next-class-venue');
+            const daySpan = document.getElementById('quick-next-class-day');
+            const dayContainer = document.getElementById('quick-next-class-day-container');
+            
+            if (timeEl) timeEl.innerHTML = `${startTime} — ${endTime}`;
+            if (nameEl) nameEl.innerHTML = nextClass.session_name || nextClass.course_name;
+            if (codeEl) codeEl.innerHTML = nextClass.course_name || studentBlock;
+            
+            let lecturerName = nextClass.lecturer_name || 'TBA';
+            if (lecturerName !== 'TBA' && lecturerName !== '—') {
+                lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
+            }
+            if (lecturerEl) lecturerEl.innerHTML = lecturerName;
+            if (venueEl) venueEl.innerHTML = nextClass.venue || 'TBD';
+            
+            if (daySpan) {
+                if (isToday) {
+                    if (dayContainer) dayContainer.classList.add('today');
+                    daySpan.innerHTML = 'TODAY';
+                } else {
+                    if (dayContainer) dayContainer.classList.remove('today');
+                    daySpan.innerHTML = formattedDate;
+                }
+            }
+            
+            const card = document.getElementById('quick-next-class');
+            if (card) {
+                card.style.display = 'block';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }
+            
+            if (card) {
+                card.onclick = () => {
+                    const calendarTab = document.querySelector('[data-tab="calendar"]');
+                    if (calendarTab) calendarTab.click();
+                };
             }
             
         } catch (error) {
-            console.error('Timetable error:', error);
-            if (loading) loading.style.display = 'none';
-            if (empty) empty.style.display = 'block';
+            console.error('Error loading next class:', error);
+            const card = document.getElementById('quick-next-class');
+            if (card) card.style.display = 'none';
         }
     }
     
