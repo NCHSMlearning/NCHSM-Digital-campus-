@@ -24,7 +24,7 @@ maxConcurrent: 10, // Allow 10 students at once
         try {
             const result = await this.executeWithTimeout(
                 () => NCHSMLogin.executeLogin(item.email, item.password),
-                10000
+            30000  // ← 30 SECONDS
             );
             item.resolve(result);
         } catch (error) {
