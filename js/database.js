@@ -13,6 +13,9 @@ class Database {
         };
         this.isInitialized = false;
         this.profileModule = null;
+        // ✅ NEW: Track connection usage
+        this.connectionCount = 0;
+        this.lastConnectionTime = null;
     }
     
     // Initialize database connection with GitHub Secrets
@@ -37,8 +40,6 @@ class Database {
             
             console.log('🔧 Using Supabase project:', window.APP_CONFIG.SUPABASE_URL);
             console.log('📦 Environment:', window.APP_CONFIG.ENVIRONMENT || 'production');
-            console.log('🏗️ Build:', window.APP_CONFIG.BUILD_TIME);
-            console.log('🔑 Commit:', window.APP_CONFIG.COMMIT_SHA?.substring(0, 7) || 'unknown');
             
             // ============================================
             // 🔥 FIX: REUSE EXISTING CONNECTION - NO LEAK!
@@ -255,7 +256,7 @@ class Database {
         
         document.body.innerHTML = errorHtml;
     }
-    
+
     // === AUTHENTICATION FUNCTIONS ===
     async checkAuth() {
         try {
@@ -495,8 +496,47 @@ class Database {
         }
     }
     
-    // === DASHBOARD FUNCTIONS ===
+    // === DASHBOARD FUNCTIONS - ONE CALL OPTIMIZATION ===
     async getDashboardMetrics() {
+        const userId = this.currentUserId;
+        
+        try {
+            // 🔥 ONE CALL: Get all dashboard data at once
+            const { data, error } = await this.supabase.rpc('get_student_dashboard', {
+                p_user_id: userId
+            });
+            
+            if (error) throw error;
+            
+            // Get last login info from profile (already included in the call)
+            const profile = this.currentUserProfile || {};
+            
+            // Also get courses and resources (from cache or separate calls)
+            const courses = await this.getCourses();
+            const resources = await this.getResources();
+            
+            return {
+                attendance: data.attendance || { rate: 0, verified: 0, total: 0, pending: 0 },
+                examCard: data.examCard || { approved: 0, eligible: false },
+                nurseiq: data.nurseiq || { questions: 0, accuracy: 0 },
+                exam: data.exam || null,
+                announcement: data.announcement || null,
+                resources: resources.length || 0,
+                courses: courses.length || 0,
+                lastLogin: profile?.last_login || null,
+                lastLogout: profile?.last_logout || null,
+                loginCount: profile?.login_count || 0
+            };
+            
+        } catch (error) {
+            console.error('Failed to get dashboard metrics:', error);
+            // Fallback to individual calls if RPC fails
+            return await this.getDashboardMetricsFallback();
+        }
+    }
+    
+    // Fallback method if RPC fails
+    async getDashboardMetricsFallback() {
         const userId = this.currentUserId;
         
         try {
@@ -521,16 +561,15 @@ class Database {
             const courses = await this.getCourses();
             const coursesCount = courses.length;
             
+            // Resources count
+            const resources = await this.getResources();
+            const resourcesCount = resources.length;
+            
             // Upcoming exams
             const exams = await this.getExams();
-            const upcomingExams = exams
+            const upcomingExam = exams
                 .filter(exam => new Date(exam.exam_date) > new Date())
-                .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
-            
-            // New resources (last 7 days)
-            const resources = await this.getResources();
-            const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            const newResourcesCount = resources.filter(r => r.created_at >= oneWeekAgo).length;
+                .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date))[0] || null;
             
             return {
                 attendance: {
@@ -539,17 +578,19 @@ class Database {
                     total: totalLogs,
                     pending: totalLogs - verifiedCount
                 },
+                examCard: { approved: coursesCount, eligible: coursesCount > 0 },
+                nurseiq: { questions: 0, accuracy: 0 },
+                exam: upcomingExam,
+                announcement: null,
+                resources: resourcesCount,
                 courses: coursesCount,
-                upcomingExam: upcomingExams[0],
-                newResources: newResourcesCount,
                 lastLogin: profile?.last_login || null,
                 lastLogout: profile?.last_logout || null,
-                lastActivity: profile?.last_activity || null,
                 loginCount: profile?.login_count || 0
             };
             
         } catch (error) {
-            console.error('Failed to get dashboard metrics:', error);
+            console.error('Failed to get dashboard metrics (fallback):', error);
             return null;
         }
     }
