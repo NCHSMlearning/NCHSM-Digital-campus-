@@ -2637,9 +2637,12 @@ window.closeReleaseModal = function() {
     if (preview) preview.style.display = 'none';
     console.log('✅ Release modal closed');
 };
-           window.loadReleasePreview = async function() {
+         window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
+    if (!examId) { 
+        document.getElementById('releasePreview').style.display = 'none'; 
+        return; 
+    }
     document.getElementById('releasePreview').style.display = 'block';
     selectedStudentIds.clear();
     
@@ -2648,7 +2651,11 @@ window.closeReleaseModal = function() {
         .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
+    if (error) { 
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; 
+        return; 
+    }
+    
     if (!results || results.length === 0) { 
         document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
         document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
@@ -2681,8 +2688,6 @@ window.closeReleaseModal = function() {
     eligibleResults.forEach(r => {
         const student = profileMap[r.student_id];
         const percentage = parseFloat(r.total_score || 0).toFixed(1);
-        
-        // ========== FIX: Calculate correct status ==========
         const score = parseFloat(r.total_score) || 0;
         const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
         const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
