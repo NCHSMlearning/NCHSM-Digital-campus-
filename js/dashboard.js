@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH ONE-CALL OPTIMIZATION
+// dashboard.js - COMPLETE WORKING VERSION WITH ONE-CALL OPTIMIZATION + CACHING
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -7,6 +7,10 @@ class DashboardModule {
         this.userId = null;
         this.userProfile = null;
         this.autoRefreshInterval = null;
+        
+        // 🔥 Cache configuration
+        this.CACHE_DURATION = 120000; // 2 minutes
+        this.cacheKey = null;
         
         this.metrics = {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0, points: 0 },
@@ -62,6 +66,7 @@ class DashboardModule {
                     questions: e.detail.totalQuestions || 0
                 };
                 this.updateUIFromMetrics();
+                this.saveToCache();
             }
         });
         
@@ -91,6 +96,7 @@ class DashboardModule {
         
         this.userId = userId;
         this.userProfile = userProfile;
+        this.cacheKey = `dashboard_${this.userId}`;
         
         if (!userId || !userProfile) return false;
         
@@ -133,20 +139,45 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🔥 THE FIX: ONE API CALL INSTEAD OF 8!
+    // 🔥 ONE API CALL WITH CACHING
     // ============================================================
     async loadAllMetrics() {
-        console.log('📊 Loading all dashboard metrics in ONE call...');
+        console.log('📊 Loading dashboard metrics...');
+        
+        // ✅ CHECK CACHE FIRST
+        if (this.cacheKey) {
+            const cached = localStorage.getItem(this.cacheKey);
+            if (cached) {
+                try {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < this.CACHE_DURATION) {
+                        this.metrics = data;
+                        this.updateUIFromMetrics();
+                        console.log('✅ Dashboard loaded from CACHE (2x faster!)');
+                        // Still refresh in background
+                        this.loadFreshData();
+                        return;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        }
+        
+        // Fetch fresh data
+        await this.loadFreshData();
+    }
+    
+    // Separate function for fresh data
+    async loadFreshData() {
+        console.log('📊 Loading fresh dashboard data...');
         
         try {
-            // 🔥 ONE API CALL - REPLACES 8 SEPARATE CALLS!
             const { data, error } = await this.sb.rpc('get_student_dashboard', {
                 p_user_id: this.userId
             });
             
             if (error) throw error;
             
-            // Update all metrics from the single response
+            // Update metrics
             this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
             this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
             
@@ -166,6 +197,9 @@ class DashboardModule {
             const level = Math.floor(totalXP / maxXP) + 1;
             const percent = (currentXP / maxXP) * 100;
             this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
+            
+            // Save to cache
+            this.saveToCache();
             
             // Update UI
             this.updateUIFromMetrics();
@@ -193,9 +227,9 @@ class DashboardModule {
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = this.metrics.exams;
             
-            console.log('✅ Dashboard loaded with 1 API call!');
+            console.log('✅ Dashboard loaded from DATABASE');
             
-            // Still load leaderboard and next class separately (they need different queries)
+            // Load secondary data
             await Promise.all([
                 this.loadLeaderboardData('all'),
                 this.loadQuickNextClass()
@@ -206,6 +240,17 @@ class DashboardModule {
             // Fallback: load individually if batch fails
             await this.loadIndividualMetrics();
         }
+    }
+    
+    // Save metrics to cache
+    saveToCache() {
+        if (!this.cacheKey) return;
+        try {
+            localStorage.setItem(this.cacheKey, JSON.stringify({
+                data: this.metrics,
+                timestamp: Date.now()
+            }));
+        } catch (e) { /* ignore */ }
     }
     
     // Fallback method (keep this for safety)
@@ -221,6 +266,7 @@ class DashboardModule {
             this.loadAnnouncement()
         ]);
         this.updateUIFromMetrics();
+        this.saveToCache();
     }
     
     async loadAttendanceMetrics() {
@@ -684,13 +730,20 @@ class DashboardModule {
     startAutoRefresh() {
         if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
         this.autoRefreshInterval = setInterval(() => {
-            if (!document.hidden) this.loadAllMetrics();
-        }, 120000);
+            if (!document.hidden) {
+                // Refresh in background without blocking UI
+                this.loadFreshData();
+            }
+        }, 120000); // 2 minutes
     }
     
     async refreshAll() {
         console.log('🔄 Manual refresh...');
-        await this.loadAllMetrics();
+        // Force refresh by clearing cache
+        if (this.cacheKey) {
+            localStorage.removeItem(this.cacheKey);
+        }
+        await this.loadFreshData();
     }
     
     showToast(message, duration = 2000) {
@@ -746,4 +799,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready');
+console.log('✅ Dashboard module ready with caching');
