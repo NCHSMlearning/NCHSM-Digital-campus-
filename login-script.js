@@ -1,5 +1,5 @@
 // ============================================
-// QUEUE SYSTEM - BYPASSED (Direct Login Only)
+// QUEUE SYSTEM - COMPLETELY BYPASSED
 // ============================================
 const LoginQueue = {
     queue: [],
@@ -16,80 +16,6 @@ const LoginQueue = {
     showStatus() { 
         const el = document.getElementById('queueStatus');
         if (el) el.style.display = 'none';
-    }
-};
-  async process() {
-    if (this.queue.length === 0 || this.active >= this.maxConcurrent) return;
-    
-    const item = this.queue.shift();
-    this.active++;
-    this.showStatus();
-    
-    try {
-        // ⭐ ADD THIS - 2 second cooldown between logins
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const result = await this.executeWithTimeout(
-            () => NCHSMLogin.executeLogin(item.email, item.password),
-            30000
-        );
-        item.resolve(result);
-    } catch (error) {
-        item.reject(error);
-    } finally {
-        this.active--;
-        this.showStatus();
-        this.process();
-    }
-},
-    
-    async executeWithTimeout(fn, timeoutMs) {
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject(new Error('⏰ Server busy. Please wait and try again.'));
-            }, timeoutMs);
-            
-            fn().then(result => {
-                clearTimeout(timeout);
-                resolve(result);
-            }).catch(error => {
-                clearTimeout(timeout);
-                reject(error);
-            });
-        });
-    },
-    
-    showStatus() {
-        let el = document.getElementById('queueStatus');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'queueStatus';
-            el.style.cssText = `
-                position: fixed; bottom: 20px; right: 20px;
-                background: rgba(0,0,0,0.9); color: #fff;
-                padding: 12px 18px; border-radius: 10px;
-                font-family: monospace; font-size: 13px;
-                z-index: 9999; min-width: 180px;
-                border: 1px solid rgba(255,255,255,0.1);
-                display: none;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            `;
-            document.body.appendChild(el);
-        }
-        
-        if (this.queue.length > 0 || this.active > 0) {
-            el.style.display = 'block';
-            el.innerHTML = `
-                <div style="font-weight:bold;margin-bottom:6px;">🚦 Login Queue</div>
-                <div>Active: ${this.active}/${this.maxConcurrent}</div>
-                <div>Waiting: ${this.queue.length}</div>
-                <div style="height:3px;background:rgba(255,255,255,0.1);margin-top:8px;border-radius:3px;">
-                    <div style="height:100%;width:${(this.active/this.maxConcurrent)*100}%;background:linear-gradient(90deg,#6c63ff,#3a7bd5);border-radius:3px;transition:width 0.3s;"></div>
-                </div>
-<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Max ${this.maxConcurrent} students at a time</div>            `;
-        } else {
-            el.style.display = 'none';
-        }
     }
 };
 
@@ -567,7 +493,8 @@ window.NCHSMLogin = {
         }
         
         // Random delay to prevent timing attacks
-await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); // 0.3-0.5 seconds        
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); // 0.3-0.5 seconds
+        
         let profileData = null;
         let isStaff = false;
         
@@ -666,15 +593,15 @@ await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); //
         this.clearError(errorMsg);
         this.state.isLoggingIn = true;
         loginButton.disabled = true;
-buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Logging in...';
+        buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Logging in...';
         
         this.addRateLimitRequest();
         
         try {
-            console.log(`🔐 Queuing login for: ${identifier}`);
+            console.log(`🔐 Logging in: ${identifier}`);
             
-            // 🔥 THE FIX: Add to queue instead of calling Supabase directly
-const result = await NCHSMLogin.executeLogin(identifier, password);
+            // 🔥 DIRECT LOGIN - NO QUEUE
+            const result = await NCHSMLogin.executeLogin(identifier, password);
             
             // Reset failed attempts on successful login
             this.resetFailedAttempts();
@@ -686,7 +613,7 @@ const result = await NCHSMLogin.executeLogin(identifier, password);
             await this.completeLogin(result.profileData, secureToken, result.isStaff);
             
         } catch (error) {
-            console.error('💥 Login error');
+            console.error('💥 Login error:', error);
             
             if (this.supabase && !error.message.includes('staff')) {
                 try {
