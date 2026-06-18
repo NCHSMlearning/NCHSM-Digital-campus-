@@ -670,7 +670,7 @@ await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); //
             console.log(`🔐 Queuing login for: ${identifier}`);
             
             // 🔥 THE FIX: Add to queue instead of calling Supabase directly
-            const result = await LoginQueue.add(identifier, password);
+const result = await NCHSMLogin.executeLogin(identifier, password);
             
             // Reset failed attempts on successful login
             this.resetFailedAttempts();
