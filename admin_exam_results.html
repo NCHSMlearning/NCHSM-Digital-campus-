@@ -3015,7 +3015,7 @@ window.saveEditedMarks = async function() {
     URL.revokeObjectURL(url);
     
     alert(`✅ Exported ${exportData.length} results with correct grades!`);
-};                   // ========== NOTIFICATION BELL ==========
+};                               // ========== NOTIFICATION BELL ==========
             document.getElementById('notificationBell').addEventListener('click', function(e) {
                 e.stopPropagation();
                 document.getElementById('notificationPanel').classList.toggle('show');
@@ -3025,9 +3025,40 @@ window.saveEditedMarks = async function() {
                 document.getElementById('notificationPanel').classList.remove('show');
             });
 
+            // ✅ 👇 PASTE THE DOM READY LISTENER HERE 👇
             // ========== DOM READY ==========
             document.addEventListener('DOMContentLoaded', function() {
-                // ... existing code ...
+                if (!checkAdminAuth()) return;
+
+                // Set admin info
+                const session = JSON.parse(localStorage.getItem('adminSession') || '{}');
+                document.getElementById('adminName').textContent = session.name || 'Admin';
+                document.getElementById('adminEmail').textContent = session.email || 'admin@nchsm.ac.ke';
+                document.getElementById('adminInitial').textContent = (session.name || 'A')[0].toUpperCase();
+
+                // Switch to default tab
+                window.switchTab('students');
+                setupRealtimeNotifications();
+                updateTotalMarksHint();
+
+                // Start timer updates
+                setInterval(updateAdminTimers, 1000);
+
+                document.addEventListener('visibilitychange', function() {
+                    if (!document.hidden) updateAdminTimers();
+                });
+
+                // Close sidebar on outside click (mobile)
+                document.addEventListener('click', function(e) {
+                    const sidebar = document.getElementById('sidebar');
+                    const overlay = document.getElementById('sidebarOverlay');
+                    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+                        if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
+                            sidebar.classList.remove('open');
+                            overlay.classList.remove('show');
+                        }
+                    }
+                });
             });
 
             // ✅ MOVE THESE INSIDE THE IIFE
@@ -3079,7 +3110,7 @@ window.saveEditedMarks = async function() {
             window.getExamTotalMarks = getExamTotalMarks;
             window.getPassMark = getPassMark;
 
-        })(); 
+        })();
     </script>
 </body>
 </html>
