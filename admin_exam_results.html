@@ -308,7 +308,19 @@
             margin-top: 4px;
             font-weight: 500;
         }
-
+/* ========== CLICKABLE SCORES ========== */
+.clickable-score, .clickable-percentage {
+    transition: all 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.clickable-score:hover, .clickable-percentage:hover {
+    background: #DBEAFE;
+    transform: scale(1.05);
+}
+.clickable-score:active, .clickable-percentage:active {
+    transform: scale(0.95);
+}
         /* ========== STATS ========== */
         .stats-container {
             display: grid;
@@ -2058,32 +2070,63 @@ function updateAdminTimers() {
                 } catch (err) { alert('Error: ' + err.message); }
             };
 
-            function displayStudentsResults() {
-                const start = (currentPage.students - 1) * itemsPerPage;
-                const page = studentsResults.slice(start, start + itemsPerPage);
-                const tbody = document.getElementById('studentsBody');
-                if (page.length === 0) { tbody.innerHTML =
-                    '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; return; }
-                tbody.innerHTML = page.map(r => {
-                    const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
-                    const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
-                    const examType = r.exam_info?.exam_type || 'EXAM';
-                    const totalMarks = getExamTotalMarks(examType);
-                    const passMark = getPassMark(totalMarks);
-                    const score = r.marks || 0;
-                    const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-                    const status = r.result_status || 'PENDING';
-                    const isPassed = status === 'PASS' || score >= passMark;
-                    const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
-                    const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ?
-                        'status-fail' : 'status-pending');
-                    const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
-                    const totalDisplay = totalMarks;
-                    return `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td><td>${score} / ${totalDisplay}</td><td>${percentage}%</td><td><span class="${statusClass}">${displayStatus}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button></td></tr>`;
-                }).join('');
-                renderPagination('students', studentsResults.length);
-            }
-
+           function displayStudentsResults() {
+    const start = (currentPage.students - 1) * itemsPerPage;
+    const page = studentsResults.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('studentsBody');
+    
+    if (page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; 
+        return; 
+    }
+    
+    tbody.innerHTML = page.map(r => {
+        const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
+        const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
+        const examType = r.exam_info?.exam_type || 'EXAM';
+        const totalMarks = getExamTotalMarks(examType);
+        const passMark = getPassMark(totalMarks);
+        const score = r.marks || 0;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const status = r.result_status || 'PENDING';
+        const isPassed = status === 'PASS' || score >= passMark;
+        const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
+        const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
+        const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
+        const totalDisplay = totalMarks;
+        
+        // Get student ID safely
+        const studentId = r.student_id || r.student_profile?.user_id || '';
+        const examId = r.exam_id || '';
+        
+        return `<tr>
+            <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
+            <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
+            <td>${r.student_profile?.email || '-'}</td>
+            <td>${r.student_profile?.program || '-'}</td>
+            <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td>
+            
+            <!-- ✅ CLICKABLE SCORE - EDIT MARKS -->
+            <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${score} / ${totalDisplay} ✏️
+            </td>
+            
+            <!-- ✅ CLICKABLE PERCENTAGE - EDIT MARKS -->
+            <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${percentage}% ✏️
+            </td>
+            
+            <td><span class="${statusClass}">${displayStatus}</span></td>
+            <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
+            <td>
+                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})">View</button>
+                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    renderPagination('students', studentsResults.length);
+}
             // ========== ALL STUDENTS ==========
             window.loadAllStudents = async function() {
                 const loadingDiv = document.getElementById('allStudentsLoading');
@@ -2613,6 +2656,234 @@ window.closeResetModal = function() {
         modal.style.display = 'none';
     }
     examToReset = null;
+};
+
+            // ============================================
+// ✏️ EDIT MARKS - COMPLETE SET
+// ============================================
+
+window.openEditMarksModal = async function(studentId, examId, studentName, examName) {
+    try {
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading...`;
+        document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading student data...</div>';
+        document.getElementById('studentModal').style.display = 'flex';
+        
+        const { data: grade, error: gradeError } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .maybeSingle();
+        
+        if (gradeError) throw gradeError;
+        
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('*')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError) throw examError;
+        
+        const examType = exam?.exam_type || 'EXAM';
+        const isCatExam = examType.toUpperCase().includes('CAT');
+        const totalMarks = isCatExam ? 30 : (exam?.total_marks || 70);
+        const passMark = exam?.pass_mark || getPassMark(totalMarks) || 18;
+        
+        let cat1Score = grade?.cat_1_score !== undefined ? grade.cat_1_score : null;
+        let cat2Score = grade?.cat_2_score !== undefined ? grade.cat_2_score : null;
+        let examScore = grade?.exam_score !== undefined ? grade.exam_score : null;
+        let currentTotal = grade?.marks || 0;
+        let currentPercentage = totalMarks > 0 ? ((currentTotal / totalMarks) * 100).toFixed(1) : '0.0';
+        
+        if (isCatExam) {
+            cat1Score = grade?.marks || 0;
+            cat2Score = null;
+            examScore = null;
+        }
+        
+        let editHtml = `
+            <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
+                <h3 style="margin-bottom:8px;">${studentName}</h3>
+                <p style="color:#64748B;font-size:0.85rem;">${examName} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
+                <p style="color:#64748B;font-size:0.8rem;">Total Marks: ${totalMarks} | Pass Mark: ${passMark} (60%)</p>
+                <p><strong>Current Score:</strong> ${currentTotal} / ${totalMarks} (${currentPercentage}%)</p>
+                <p><strong>Current Status:</strong> <span class="${parseFloat(currentPercentage) >= passMark ? 'status-pass' : 'status-fail'}">${parseFloat(currentPercentage) >= passMark ? 'PASS' : 'FAIL'}</span></p>
+            </div>
+        `;
+        
+        if (isCatExam) {
+            editHtml += `
+                <div class="form-group">
+                    <label>CAT Score (max ${totalMarks} marks) *</label>
+                    <input type="number" id="editCat1Score" value="${cat1Score || 0}" min="0" max="${totalMarks}" step="0.5" style="width:100%;padding:12px;border-radius:12px;border:2px solid #E2E8F0;">
+                    <small style="color:#64748B;">Enter the student's CAT score</small>
+                </div>
+            `;
+        } else {
+            editHtml += `
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>CAT 1 (max 30) *</label>
+                        <input type="number" id="editCat1Score" value="${cat1Score !== null ? cat1Score : ''}" min="0" max="30" step="0.5" style="width:100%;padding:12px;border-radius:12px;border:2px solid #E2E8F0;" placeholder="e.g., 25">
+                    </div>
+                    <div class="form-group">
+                        <label>CAT 2 (max 30) *</label>
+                        <input type="number" id="editCat2Score" value="${cat2Score !== null ? cat2Score : ''}" min="0" max="30" step="0.5" style="width:100%;padding:12px;border-radius:12px;border:2px solid #E2E8F0;" placeholder="e.g., 28">
+                    </div>
+                    <div class="form-group">
+                        <label>Exam Score (max 70) *</label>
+                        <input type="number" id="editExamScore" value="${examScore !== null ? examScore : ''}" min="0" max="70" step="0.5" style="width:100%;padding:12px;border-radius:12px;border:2px solid #E2E8F0;" placeholder="e.g., 65">
+                    </div>
+                </div>
+                <small style="color:#64748B;display:block;margin-top:4px;">📊 Total = CAT1 + CAT2 + Exam Score (max 100)</small>
+            `;
+        }
+        
+        editHtml += `
+            <div style="margin-top:20px;padding:12px;background:#EFF6FF;border-radius:10px;">
+                <p><strong>Preview:</strong> <span id="editPreviewTotal">${currentTotal}</span> / ${totalMarks} 
+                (<span id="editPreviewPercent">${currentPercentage}</span>%) 
+                → <span id="editPreviewStatus" class="${parseFloat(currentPercentage) >= passMark ? 'status-pass' : 'status-fail'}">${parseFloat(currentPercentage) >= passMark ? 'PASS' : 'FAIL'}</span></p>
+            </div>
+            
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid #E2E8F0;padding-top:20px;">
+                <input type="hidden" id="editStudentId" value="${studentId}">
+                <input type="hidden" id="editExamId" value="${examId}">
+                <input type="hidden" id="editGradeId" value="${grade?.id || ''}">
+                <input type="hidden" id="editTotalMarks" value="${totalMarks}">
+                <input type="hidden" id="editPassMark" value="${passMark}">
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditedMarks()"><i class="fas fa-save"></i> Save Marks</button>
+            </div>
+        `;
+        
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit Marks - ${studentName}`;
+        document.getElementById('modalContent').innerHTML = editHtml;
+        
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('#editCat1Score, #editCat2Score, #editExamScore');
+            inputs.forEach(input => {
+                if (input) {
+                    input.addEventListener('input', updateEditPreview);
+                    input.addEventListener('change', updateEditPreview);
+                }
+            });
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error loading edit modal:', error);
+        document.getElementById('modalContent').innerHTML = `
+            <div style="color:#DC2626;padding:20px;text-align:center;">
+                <i class="fas fa-exclamation-circle fa-2x"></i>
+                <p>Error: ${error.message}</p>
+                <button class="btn btn-primary" onclick="closeModal()">Close</button>
+            </div>
+        `;
+    }
+};
+
+window.updateEditPreview = function() {
+    const isCatExam = !document.getElementById('editExamScore');
+    let total = 0;
+    let cat1 = parseFloat(document.getElementById('editCat1Score')?.value) || 0;
+    let cat2 = parseFloat(document.getElementById('editCat2Score')?.value) || 0;
+    let examSc = parseFloat(document.getElementById('editExamScore')?.value) || 0;
+    
+    if (document.getElementById('editExamScore')) {
+        total = cat1 + cat2 + examSc;
+    } else {
+        total = cat1;
+    }
+    
+    const totalMarks = parseInt(document.getElementById('editTotalMarks')?.value) || 100;
+    const passMark = parseInt(document.getElementById('editPassMark')?.value) || 60;
+    const percentage = totalMarks > 0 ? ((total / totalMarks) * 100).toFixed(1) : '0.0';
+    const isPassed = parseFloat(percentage) >= passMark;
+    
+    const totalEl = document.getElementById('editPreviewTotal');
+    const percentEl = document.getElementById('editPreviewPercent');
+    const statusEl = document.getElementById('editPreviewStatus');
+    
+    if (totalEl) totalEl.textContent = total.toFixed(1);
+    if (percentEl) percentEl.textContent = percentage;
+    if (statusEl) {
+        statusEl.textContent = isPassed ? 'PASS' : 'FAIL';
+        statusEl.className = isPassed ? 'status-pass' : 'status-fail';
+    }
+};
+
+window.saveEditedMarks = async function() {
+    try {
+        const studentId = document.getElementById('editStudentId').value;
+        const examId = parseInt(document.getElementById('editExamId').value);
+        const gradeId = document.getElementById('editGradeId').value;
+        const totalMarks = parseInt(document.getElementById('editTotalMarks').value);
+        const passMark = parseInt(document.getElementById('editPassMark').value);
+        
+        const isCatExam = !document.getElementById('editExamScore');
+        
+        let cat1 = parseFloat(document.getElementById('editCat1Score')?.value) || 0;
+        let cat2 = 0;
+        let examScore = 0;
+        let total = cat1;
+        
+        if (!isCatExam) {
+            cat2 = parseFloat(document.getElementById('editCat2Score')?.value) || 0;
+            examScore = parseFloat(document.getElementById('editExamScore')?.value) || 0;
+            total = cat1 + cat2 + examScore;
+        }
+        
+        if (isCatExam && cat1 > 30) {
+            alert('CAT score cannot exceed 30 marks!');
+            return;
+        }
+        if (!isCatExam) {
+            if (cat1 > 30 || cat2 > 30 || examScore > 70) {
+                alert('CAT scores max 30, Exam score max 70!');
+                return;
+            }
+        }
+        
+        const percentage = totalMarks > 0 ? ((total / totalMarks) * 100) : 0;
+        const isPassed = percentage >= passMark;
+        const resultStatus = isPassed ? 'PASS' : 'FAIL';
+        
+        if (!confirm(`Save marks?\n\n${isCatExam ? 'CAT: ' + cat1 : 'CAT1: ' + cat1 + ' | CAT2: ' + cat2 + ' | Exam: ' + examScore}\nTotal: ${total.toFixed(1)} / ${totalMarks} (${percentage.toFixed(1)}%)\nStatus: ${resultStatus}`)) {
+            return;
+        }
+        
+        const updateData = {
+            marks: total,
+            total_score: total,
+            result_status: resultStatus,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (isCatExam) {
+            updateData.cat_1_score = cat1;
+        } else {
+            updateData.cat_1_score = cat1;
+            updateData.cat_2_score = cat2;
+            updateData.exam_score = examScore;
+        }
+        
+        const { error: updateError } = await sb
+            .from('exam_grades')
+            .update(updateData)
+            .eq('id', gradeId);
+        
+        if (updateError) throw updateError;
+        
+        alert(`✅ Marks updated successfully!\n\nTotal: ${total.toFixed(1)} / ${totalMarks} (${percentage.toFixed(1)}%)\nStatus: ${resultStatus}`);
+        closeModal();
+        loadStudentsWithResults();
+        
+    } catch (error) {
+        console.error('Error saving marks:', error);
+        alert('❌ Error saving marks: ' + error.message);
+    }
 };
             // ========== EXPORT FUNCTIONS ==========
             window.exportToExcel = function(type) {
