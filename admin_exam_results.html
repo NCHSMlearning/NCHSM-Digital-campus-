@@ -2297,7 +2297,7 @@ function updateAdminTimers() {
                 document.getElementById('releaseModal').style.display = 'flex';
             };
 
-           window.loadReleasePreview = async function() {
+       window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
     document.getElementById('releasePreview').style.display = 'block';
@@ -2315,9 +2315,11 @@ function updateAdminTimers() {
         return; 
     }
     
-    // ========== FIX: Get exam pass mark ==========
-    const { data: exam } = await sb.from('exams').select('pass_mark, total_marks').eq('id', parseInt(examId)).single();
+    // ========== FIX: Get exam pass mark and exam name ==========
+    const { data: exam } = await sb.from('exams').select('pass_mark, total_marks, exam_name, exam_type').eq('id', parseInt(examId)).single();
     const passMark = exam?.pass_mark || 18;
+    const examName = exam?.exam_name || 'Exam';
+    const examType = exam?.exam_type || 'EXAM';
     
     const { data: released } = await sb.from('released_exam_results').select('result_id');
     const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
@@ -2347,12 +2349,28 @@ function updateAdminTimers() {
         const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
         const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
         
+        // ✅ Get student name and escape single quotes for JavaScript
+        const studentName = (student?.full_name || 'Unknown').replace(/'/g, "\\'");
+        const studentId = r.student_id || '';
+        const studentIdDisplay = student?.student_id || 'N/A';
+        const studentEmail = student?.email || '';
+        const marks = r.marks || 0;
+        
         html += `<tr>
             <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
-            <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
-            <td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td>
-            <td>${r.marks || 0}</td>
-            <td>${percentage}%</td>
+            <td><span class="student-id-badge">${studentIdDisplay}</span></td>
+            <td><strong>${studentName}</strong><br><small>${studentEmail}</small></td>
+            
+            <!-- ✅ CLICKABLE SCORE - EDIT MARKS -->
+            <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${marks} ✏️
+            </td>
+            
+            <!-- ✅ CLICKABLE PERCENTAGE - EDIT MARKS -->
+            <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${percentage}% ✏️
+            </td>
+            
             <td><span class="${statusClass}">${correctStatus}</span></td>
             <td><span class="status-pending">🔒 Not Released</span></td>
         </tr>`;
