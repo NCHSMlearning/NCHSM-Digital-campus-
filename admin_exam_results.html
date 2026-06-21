@@ -1044,33 +1044,32 @@
                 <div class="pagination" id="studentsPagination"></div>
             </div>
 
-            <!-- All Students Table -->
-            <div class="table-container" id="allStudentsTableContainer" style="display:none;">
-                <div class="table-header">
-                    <h2><i class="fas fa-address-book"></i> All Registered Students</h2>
-                    <div class="table-actions">
-                        <button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button>
-                    </div>
-                </div>
-                <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-                <table id="allStudentsTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Program</th>
-                            <th>Block</th>
-                            <th>Exams Taken</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="allStudentsBody"></tbody>
-                </table>
-                <div class="pagination" id="allStudentsPagination"></div>
-            </div>
-
+           <!-- All Students Table -->
+<div class="table-container" id="allStudentsTableContainer" style="display:none;">
+    <div class="table-header">
+        <h2><i class="fas fa-address-book"></i> All Registered Students</h2>
+        <div class="table-actions">
+            <button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button>
+            <button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button>
+        </div>
+    </div>
+    <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
+    <table id="allStudentsTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Program</th>
+                <th>Block</th>
+                <th>Exams Taken</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="allStudentsBody"></tbody>
+    </table>
+    <div class="pagination" id="allStudentsPagination"></div>
+</div>
             <!-- Exams Table -->
             <div class="table-container" id="examsTableContainer" style="display:none;">
                 <div class="table-header">
@@ -1245,27 +1244,28 @@
                     <button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button>
                     <span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span>
                 </div>
-                <div id="releaseSummary"></div>
-                <div style="max-height: 400px; overflow-y: auto;">
-                    <table class="preview-table" style="width:100%;">
-                        <thead>
-                            <tr>
-                                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-                                <th>Student ID</th>
-                                <th>Student Name</th>
-                                <th>Score</th>
-                                <th>%</th>
-                                <th>Status</th>
-                                <th>Current</th>
-                            </tr>
-                        </thead>
-                        <tbody id="releasePreviewBody"></tbody>
-                    </table>
-                </div>
-                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                    <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
-                    <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Release Selected</button>
-                </div>
+               <div id="releaseSummary"></div>
+<div style="max-height: 400px; overflow-y: auto;">
+    <table class="preview-table" style="width:100%;">
+        <thead>
+            <tr>
+                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                <th>Student ID</th>
+                <th>Student Name</th>
+                <th>Score</th>
+                <th>%</th>
+                <th>Status</th>
+                <th>Current</th>
+                <th style="min-width:120px;">Actions</th>  <!-- ✅ ADD THIS COLUMN -->
+            </tr>
+        </thead>
+        <tbody id="releasePreviewBody"></tbody>
+    </table>
+</div>
+<div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+    <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
+    <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Release Selected</button>
+</div>
             </div>
         </div>
     </div>
@@ -2064,13 +2064,13 @@ function updateAdminTimers() {
                 } catch (err) { alert('Error: ' + err.message); }
             };
 
-           function displayStudentsResults() {
+          function displayStudentsResults() {
     const start = (currentPage.students - 1) * itemsPerPage;
     const page = studentsResults.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('studentsBody');
     
     if (page.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center">No results found</td></tr>'; 
         return; 
     }
     
@@ -2113,8 +2113,21 @@ function updateAdminTimers() {
             <td><span class="${statusClass}">${displayStatus}</span></td>
             <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
             <td>
-                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})">View</button>
-                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button>
+                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
+                
+                <!-- ✅ PROGRESS BUTTON -->
+                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
+                    <i class="fas fa-chart-line"></i> Progress
+                </button>
+                
+                <!-- ✅ TIMER RESET BUTTON -->
+                <button class="action-btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Reset Timer">
+                    <i class="fas fa-clock"></i> Timer
+                </button>
+                
+                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
+                    <i class="fas fa-user-slash"></i> Reset
+                </button>
             </td>
         </tr>`;
     }).join('');
@@ -2297,7 +2310,7 @@ function updateAdminTimers() {
                 document.getElementById('releaseModal').style.display = 'flex';
             };
 
-       window.loadReleasePreview = async function() {
+    window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
     document.getElementById('releasePreview').style.display = 'block';
@@ -2308,9 +2321,9 @@ function updateAdminTimers() {
         .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
+    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; return; }
     if (!results || results.length === 0) { 
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">No students have taken this exam yet</td></tr>';
         document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
         return; 
     }
@@ -2326,7 +2339,7 @@ function updateAdminTimers() {
     const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
     
     if (eligibleResults.length === 0) { 
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">✅ All results have already been released!</td></tr>';
         document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
         document.getElementById('confirmReleaseBtn').disabled = true; 
         return; 
@@ -2373,6 +2386,16 @@ function updateAdminTimers() {
             
             <td><span class="${statusClass}">${correctStatus}</span></td>
             <td><span class="status-pending">🔒 Not Released</span></td>
+            
+            <!-- ✅ ACTIONS - PROGRESS & TIMER -->
+            <td>
+                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
+                    <i class="fas fa-chart-line"></i> Progress
+                </button>
+                <button class="action-btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Reset Timer">
+                    <i class="fas fa-clock"></i> Timer
+                </button>
+            </td>
         </tr>`;
     });
     
