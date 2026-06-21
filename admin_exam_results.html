@@ -2546,8 +2546,74 @@ function updateAdminTimers() {
                 document.getElementById('studentModal').style.display = 'flex';
             };
 
-            window.closeModal = function() { document.getElementById('studentModal').style.display = 'none'; };
+           // ========== MODAL FUNCTIONS - COMPLETE SET ==========
 
+// Close Student Modal (View details)
+window.closeModal = function() {
+    const modal = document.getElementById('studentModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Close Release Modal
+window.closeReleaseModal = function() {
+    const modal = document.getElementById('releaseModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    selectedStudentIds = new Set();
+    const checkbox = document.getElementById('selectAllCheckbox');
+    if (checkbox) checkbox.checked = false;
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.innerHTML = '0 selected';
+    const confirmBtn = document.getElementById('confirmReleaseBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+    const preview = document.getElementById('releasePreview');
+    if (preview) preview.style.display = 'none';
+};
+
+// Close Assign Exam Modal
+window.closeAssignExamModal = function() {
+    const modal = document.getElementById('assignExamModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Close Reset by Email Modal
+window.closeResetByEmailModal = function() {
+    const modal = document.getElementById('resetByEmailModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    window.resetTargetStudent = null;
+    const emailInput = document.getElementById('resetEmailInput');
+    if (emailInput) emailInput.value = '';
+    const infoDiv = document.getElementById('resetStudentInfo');
+    if (infoDiv) infoDiv.style.display = 'none';
+    const errorDiv = document.getElementById('resetErrorInfo');
+    if (errorDiv) errorDiv.style.display = 'none';
+    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+};
+
+// Close Exam Modal (Create/Edit)
+window.closeExamModal = function() {
+    const modal = document.getElementById('examModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Close Reset Modal (Reset Exam)
+window.closeResetModal = function() {
+    const modal = document.getElementById('resetExamModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    examToReset = null;
+};
             // ========== EXPORT FUNCTIONS ==========
             window.exportToExcel = function(type) {
                 let data = [];
@@ -2728,7 +2794,47 @@ function updateAdminTimers() {
                     }
                 });
             });
+// ============================================
+// 🖱️ CLICK OUTSIDE MODAL TO CLOSE
+// ============================================
 
+// Close modals when clicking on the overlay background
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
+        // Reset any modal-specific states
+        if (e.target.id === 'releaseModal') {
+            selectedStudentIds = new Set();
+            const checkbox = document.getElementById('selectAllCheckbox');
+            if (checkbox) checkbox.checked = false;
+            const countEl = document.getElementById('selectedCount');
+            if (countEl) countEl.innerHTML = '0 selected';
+            const confirmBtn = document.getElementById('confirmReleaseBtn');
+            if (confirmBtn) confirmBtn.disabled = true;
+        }
+    }
+});
+
+// Also close with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+                // Reset release modal state
+                if (modal.id === 'releaseModal') {
+                    selectedStudentIds = new Set();
+                    const checkbox = document.getElementById('selectAllCheckbox');
+                    if (checkbox) checkbox.checked = false;
+                    const countEl = document.getElementById('selectedCount');
+                    if (countEl) countEl.innerHTML = '0 selected';
+                    const confirmBtn = document.getElementById('confirmReleaseBtn');
+                    if (confirmBtn) confirmBtn.disabled = true;
+                }
+            }
+        });
+    }
+});
             // ========== MAKE FUNCTIONS GLOBAL ==========
             window.getKenyaNow = getKenyaNow;
             window.getKenyaTime = getKenyaTime;
