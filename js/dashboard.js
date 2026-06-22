@@ -135,56 +135,63 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🖱️ CLICKABLE STATS NAVIGATION
+    // 🖱️ CLICKABLE STATS NAVIGATION - MATCHES YOUR TAB IDs
     // ============================================================
     setupClickableStats() {
-        // Attendance stats
-        const attendanceCard = document.querySelector('.attendance-card');
-        if (attendanceCard) {
-            attendanceCard.style.cursor = 'pointer';
-            attendanceCard.title = 'Click to view attendance details';
-            attendanceCard.addEventListener('click', () => this.navigateTo('attendance'));
-        }
+        console.log('🖱️ Setting up clickable stats...');
         
-        // Exam status / Exam card
-        const examCard = document.querySelector('.exam-card');
-        if (examCard) {
-            examCard.style.cursor = 'pointer';
-            examCard.title = 'Click to view exam card details';
-            examCard.addEventListener('click', () => this.navigateTo('examCard'));
-        }
+        // Map of elements to tab IDs
+        const clickableMap = [
+            { selector: '.attendance-card', tabId: 'attendance' },
+            { selector: '.mini-card[data-tab="cats"]', tabId: 'cats' },
+            { selector: '.mini-card[data-tab="hub-courses"]', tabId: 'hub-courses' },
+            { selector: '.mini-card[data-tab="profile"]', tabId: 'profile' },
+            { selector: '.mini-card[data-tab="resources"]', tabId: 'resources' },
+            { selector: '.mini-card[data-tab="nurseiq"]', tabId: 'nurseiq' },
+            { selector: '.mini-card[data-tab="hub-exam-card"]', tabId: 'hub-exam-card' },
+            { selector: '.action-btn[data-tab="resources"]', tabId: 'resources' },
+            { selector: '.action-btn[data-tab="profile"]', tabId: 'profile' },
+            { selector: '.next-exam-widget', tabId: 'cats' },
+            { selector: '#quick-next-class', tabId: 'calendar' }
+        ];
         
-        // NurseIQ card
-        const nurseiqCard = document.querySelector('.nurseiq-card');
-        if (nurseiqCard) {
-            nurseiqCard.style.cursor = 'pointer';
-            nurseiqCard.title = 'Click to view NurseIQ progress';
-            nurseiqCard.addEventListener('click', () => this.navigateTo('nurseiq'));
-        }
+        clickableMap.forEach(({ selector, tabId }) => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                // Skip if already has click listener
+                if (el.dataset.clickable === 'true') return;
+                el.dataset.clickable = 'true';
+                
+                // Add cursor style if not already set
+                if (!el.style.cursor) {
+                    el.style.cursor = 'pointer';
+                }
+                
+                // Add title if not already set
+                if (!el.title) {
+                    el.title = `Click to view ${tabId.replace('-', ' ')}`;
+                }
+                
+                // Add click event
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.navigateTo(tabId);
+                });
+            });
+        });
         
-        // Resources card
-        const resourcesCard = document.querySelector('.resources-card');
-        if (resourcesCard) {
-            resourcesCard.style.cursor = 'pointer';
-            resourcesCard.title = 'Click to view resources';
-            resourcesCard.addEventListener('click', () => this.navigateTo('resources'));
-        }
+        // Also make all mini-card values clickable
+        document.querySelectorAll('.mini-card-value').forEach(el => {
+            const parent = el.closest('.mini-card');
+            if (parent && parent.dataset.tab) {
+                parent.style.cursor = 'pointer';
+                parent.addEventListener('click', () => {
+                    this.navigateTo(parent.dataset.tab);
+                });
+            }
+        });
         
-        // Upcoming exam widget
-        const nextExamWidget = document.querySelector('.next-exam-widget');
-        if (nextExamWidget) {
-            nextExamWidget.style.cursor = 'pointer';
-            nextExamWidget.title = 'Click to view all exams';
-            nextExamWidget.addEventListener('click', () => this.navigateTo('exams'));
-        }
-        
-        // Quick next class
-        const quickNextClass = document.querySelector('.quick-next-class');
-        if (quickNextClass) {
-            quickNextClass.style.cursor = 'pointer';
-            quickNextClass.title = 'Click to view calendar';
-            quickNextClass.addEventListener('click', () => this.navigateTo('calendar'));
-        }
+        console.log('✅ Clickable stats configured');
     }
     
     // ============================================================
@@ -196,10 +203,14 @@ class DashboardModule {
         // Find the tab button
         let tabMap = {
             'attendance': 'attendance',
-            'examCard': 'exams',
-            'nurseiq': 'nurseiq',
+            'cats': 'cats',
+            'hub-courses': 'hub-courses',
+            'profile': 'profile',
             'resources': 'resources',
-            'exams': 'exams',
+            'nurseiq': 'nurseiq',
+            'hub-exam-card': 'hub-exam-card',
+            'examCard': 'hub-exam-card',
+            'exams': 'cats',
             'calendar': 'calendar',
             'dashboard': 'dashboard'
         };
@@ -210,21 +221,20 @@ class DashboardModule {
         const tabElement = document.querySelector(`[data-tab="${tabName}"]`);
         if (tabElement) {
             tabElement.click();
-            this.showToast(`📂 Navigating to ${section.charAt(0).toUpperCase() + section.slice(1)}`, 1500);
-        } else {
-            // If no tab found, try to find any element with the section class
-            const sectionElement = document.querySelector(`.${section}-section`);
-            if (sectionElement) {
-                sectionElement.scrollIntoView({ behavior: 'smooth' });
-                sectionElement.style.boxShadow = '0 0 0 3px #4C1D95';
+            this.showToast(`📂 Opening ${section.replace('-', ' ').toUpperCase()}`, 1500);
+            
+            // Highlight the clicked card briefly
+            const sourceCard = document.querySelector(`[data-tab="${section}"]`);
+            if (sourceCard) {
+                sourceCard.style.transition = 'box-shadow 0.3s ease';
+                sourceCard.style.boxShadow = '0 0 0 3px #4C1D95, 0 4px 15px rgba(76, 29, 149, 0.3)';
                 setTimeout(() => {
-                    sectionElement.style.boxShadow = '';
+                    sourceCard.style.boxShadow = '';
                 }, 2000);
-                this.showToast(`📍 Scrolling to ${section}`, 1500);
-            } else {
-                // Fallback: show a toast with the section name
-                this.showToast(`📂 ${section.charAt(0).toUpperCase() + section.slice(1)} section coming soon!`, 2000);
             }
+        } else {
+            // Fallback: show toast
+            this.showToast(`📂 ${section.replace('-', ' ').toUpperCase()} section`, 2000);
         }
     }
     
@@ -841,7 +851,7 @@ class DashboardModule {
         // Make the whole widget clickable to go to exams tab
         container.style.cursor = 'pointer';
         container.onclick = () => {
-            this.navigateTo('exams');
+            this.navigateTo('cats');
         };
     }
     
