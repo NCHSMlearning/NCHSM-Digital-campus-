@@ -2047,7 +2047,7 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL WITH ALL USER DETAILS
+// SHOW APPROVAL MODAL WITH EDITABLE FIELDS
 // ============================================
 
 function showApprovalModal(user) {
@@ -2059,6 +2059,44 @@ function showApprovalModal(user) {
     const programType = getProgramType(user.program);
     const programLevel = getProgramLevel(user.program);
     const programBadge = programType === 'TVET' ? 'TVET' : 'KRCHN';
+    
+    // Build program options for dropdown
+    const programOptions = `
+        <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>KRCHN Nursing</option>
+        <optgroup label="TVET Diploma Programs">
+            <option value="DPOTT" ${user.program === 'DPOTT' ? 'selected' : ''}>Diploma in Perioperative Theatre Technology</option>
+            <option value="DCH" ${user.program === 'DCH' ? 'selected' : ''}>Diploma in Community Health</option>
+            <option value="DHRIT" ${user.program === 'DHRIT' ? 'selected' : ''}>Diploma in Health Records and IT</option>
+            <option value="DSL" ${user.program === 'DSL' ? 'selected' : ''}>Diploma in Science Lab</option>
+            <option value="DSW" ${user.program === 'DSW' ? 'selected' : ''}>Diploma in Social Work</option>
+            <option value="DICT" ${user.program === 'DICT' ? 'selected' : ''}>Diploma in ICT</option>
+            <option value="DME" ${user.program === 'DME' ? 'selected' : ''}>Diploma in Medical Engineering</option>
+        </optgroup>
+        <optgroup label="TVET Certificate Programs">
+            <option value="CPOTT" ${user.program === 'CPOTT' ? 'selected' : ''}>Certificate in Perioperative Theatre Technology</option>
+            <option value="CCH" ${user.program === 'CCH' ? 'selected' : ''}>Certificate in Community Health</option>
+            <option value="CHRIT" ${user.program === 'CHRIT' ? 'selected' : ''}>Certificate in Health Records and IT</option>
+            <option value="CPC" ${user.program === 'CPC' ? 'selected' : ''}>Certificate in Patient Care</option>
+            <option value="CSL" ${user.program === 'CSL' ? 'selected' : ''}>Certificate in Science Lab</option>
+            <option value="CSW" ${user.program === 'CSW' ? 'selected' : ''}>Certificate in Social Work</option>
+            <option value="CICT" ${user.program === 'CICT' ? 'selected' : ''}>Certificate in ICT</option>
+        </optgroup>
+        <optgroup label="TVET Artisan Programs">
+            <option value="ACH" ${user.program === 'ACH' ? 'selected' : ''}>Artisan in Community Health</option>
+            <option value="AAG" ${user.program === 'AAG' ? 'selected' : ''}>Artisan in Agriculture</option>
+            <option value="ASW" ${user.program === 'ASW' ? 'selected' : ''}>Artisan in Social Work</option>
+        </optgroup>
+    `;
+    
+    // Block/Term options based on program type
+    const isTVET = programType === 'TVET';
+    const blockOptions = isTVET 
+        ? ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
+        : ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+    
+    const blockSelectOptions = blockOptions.map(b => 
+        `<option value="${b}" ${user.block === b ? 'selected' : ''}>${b}</option>`
+    ).join('');
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
@@ -2082,7 +2120,7 @@ function showApprovalModal(user) {
         <div style="
             background: white;
             border-radius: 20px;
-            max-width: 750px;
+            max-width: 800px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -2091,13 +2129,13 @@ function showApprovalModal(user) {
             animation: slideIn 0.3s ease;
         ">
             <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
                 <div>
                     <h2 style="margin: 0; color: #4C1D95;">
-                        <i class="fas fa-user-check"></i> Verify User Details
+                        <i class="fas fa-user-check"></i> Review & Edit User
                     </h2>
                     <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">
-                        Please review all details before approving
+                        Edit fields below before approving
                     </p>
                 </div>
                 <button onclick="closeApprovalModal()" style="
@@ -2110,95 +2148,134 @@ function showApprovalModal(user) {
                 ">&times;</button>
             </div>
             
-            <!-- User Information -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
-                    <i class="fas fa-user"></i> Personal Information
-                </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
-                    <div><strong>Full Name:</strong> <span style="color: #1f2937;">${escapeHtml(user.full_name || 'N/A')}</span></div>
-                    <div><strong>Email:</strong> <span style="color: #1f2937;">${escapeHtml(user.email || 'N/A')}</span></div>
-                    <div><strong>Student ID:</strong> <span style="color: #1f2937;">${escapeHtml(user.student_id || 'N/A')}</span></div>
-                    <div><strong>Phone:</strong> <span style="color: #1f2937;">${escapeHtml(user.phone || 'N/A')}</span></div>
-                    <div><strong>Role:</strong> <span style="color: #1f2937; text-transform: capitalize;">${escapeHtml(user.role || 'student')}</span></div>
-                    <div><strong>Status:</strong> <span style="color: #f59e0b; font-weight: 600;">${escapeHtml(user.status || 'pending')}</span></div>
+            <form id="approvalForm">
+                <!-- Personal Information -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fas fa-user"></i> Personal Information
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Full Name *</label>
+                            <input type="text" id="edit_full_name" value="${escapeHtml(user.full_name || '')}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Email *</label>
+                            <input type="email" id="edit_email" value="${escapeHtml(user.email || '')}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Student ID</label>
+                            <input type="text" id="edit_student_id" value="${escapeHtml(user.student_id || '')}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Phone</label>
+                            <input type="text" id="edit_phone" value="${escapeHtml(user.phone || '')}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Role</label>
+                            <select id="edit_role" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                <option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option>
+                                <option value="lecturer" ${user.role === 'lecturer' ? 'selected' : ''}>Lecturer</option>
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Academic Information -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
-                    <i class="fas fa-graduation-cap"></i> Academic Information
-                </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
-                    <div><strong>Program:</strong> <span style="color: #1f2937;">${escapeHtml(programName)}</span></div>
-                    <div><strong>Program Type:</strong> <span style="color: #1f2937; font-weight: 600;">${programBadge}</span></div>
-                    <div><strong>Program Level:</strong> <span style="color: #1f2937;">${escapeHtml(programLevel)}</span></div>
-                    <div><strong>Intake Year:</strong> <span style="color: #1f2937;">${escapeHtml(user.intake_year || 'N/A')}</span></div>
-                    <div><strong>Block/Term:</strong> <span style="color: #1f2937;">${escapeHtml(user.block || 'Not Assigned')}</span></div>
-                    <div><strong>Program Code:</strong> <span style="color: #1f2937;">${escapeHtml(user.program || 'N/A')}</span></div>
+                
+                <!-- Academic Information -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fas fa-graduation-cap"></i> Academic Information
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
+                            <select id="edit_program" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                ${programOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
+                            <input type="text" id="edit_program_type" value="${escapeHtml(programType)}" readonly
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
+                            <input type="text" id="edit_intake_year" value="${escapeHtml(user.intake_year || '')}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Block / Term</label>
+                            <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                ${blockSelectOptions}
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Additional Details -->
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">
-                    <i class="fas fa-info-circle"></i> Additional Details
-                </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
-                    <div><strong>User ID:</strong> <span style="color: #1f2937; font-family: monospace; font-size: 12px;">${escapeHtml(user.user_id || 'N/A')}</span></div>
-                    <div><strong>Created At:</strong> <span style="color: #1f2937;">${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</span></div>
-                    <div><strong>Last Login:</strong> <span style="color: #1f2937;">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</span></div>
-                    <div><strong>Login Count:</strong> <span style="color: #1f2937;">${user.login_count || 0}</span></div>
+                
+                <!-- Additional Details (Read-only) -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fas fa-info-circle"></i> System Information (Read-only)
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                        <div><strong>User ID:</strong> <span style="font-family: monospace; font-size: 12px;">${escapeHtml(user.user_id || 'N/A')}</span></div>
+                        <div><strong>Created:</strong> ${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</div>
+                        <div><strong>Status:</strong> <span style="color: #f59e0b; font-weight: 600;">${escapeHtml(user.status || 'pending')}</span></div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Actions -->
-            <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                <button onclick="confirmApproveUser('${user.user_id}', '${escapeHtml(user.full_name)}', '${escapeHtml(user.student_id || '')}', '${escapeHtml(user.email || '')}', '${escapeHtml(user.role || 'student')}', '${escapeHtml(user.program || '')}')" style="
-                    flex: 1;
-                    background: linear-gradient(135deg, #10b981, #059669);
-                    color: white;
-                    border: none;
-                    padding: 14px 20px;
-                    border-radius: 10px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 10px;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-check-circle"></i> Confirm & Approve
-                </button>
-                <button onclick="closeApprovalModal()" style="
-                    flex: 0.5;
-                    background: #ef4444;
-                    color: white;
-                    border: none;
-                    padding: 14px 20px;
-                    border-radius: 10px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 10px;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-            </div>
-            
-            <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0; font-size: 13px; color: #92400e;">
-                    <i class="fas fa-shield-alt"></i> 
-                    <strong>Approval Action:</strong> This will activate the user account and send a confirmation email.
-                </p>
-            </div>
+                
+                <!-- Actions -->
+                <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <button type="button" onclick="confirmApproveUser()" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #10b981, #059669);
+                        color: white;
+                        border: none;
+                        padding: 14px 20px;
+                        border-radius: 10px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-check-circle"></i> Confirm & Approve
+                    </button>
+                    <button type="button" onclick="closeApprovalModal()" style="
+                        flex: 0.5;
+                        background: #ef4444;
+                        color: white;
+                        border: none;
+                        padding: 14px 20px;
+                        border-radius: 10px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                    <p style="margin: 0; font-size: 13px; color: #92400e;">
+                        <i class="fas fa-shield-alt"></i> 
+                        <strong>Approval Action:</strong> This will activate the user account with the edited details above.
+                    </p>
+                </div>
+            </form>
         </div>
     `;
     
@@ -2212,8 +2289,13 @@ function showApprovalModal(user) {
             from { opacity: 0; transform: translateY(30px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        .form-group label { display: block; margin-bottom: 4px; }
     `;
     document.head.appendChild(style);
+    
+    // Store user ID for the confirm function
+    modal.dataset.userId = user.user_id;
+    modal.dataset.originalFullName = user.full_name;
 }
 
 // ============================================
@@ -2229,27 +2311,76 @@ function closeApprovalModal() {
 }
 
 // ============================================
-// CONFIRM APPROVE USER (Called from modal)
+// CONFIRM APPROVE USER - WITH EDITED FIELDS
 // ============================================
 
-async function confirmApproveUser(userId, fullName, studentId, email, role, program) {
-    console.log('✅ Confirming approval for:', { userId, fullName, studentId });
+async function confirmApproveUser() {
+    const modal = document.getElementById('approvalModal');
+    if (!modal) {
+        showFeedback('❌ Modal not found', 'error');
+        return;
+    }
+    
+    const userId = modal.dataset.userId;
+    const originalName = modal.dataset.originalFullName || 'User';
+    
+    // Get edited values from form
+    const fullName = document.getElementById('edit_full_name').value.trim();
+    const email = document.getElementById('edit_email').value.trim();
+    const studentId = document.getElementById('edit_student_id').value.trim();
+    const phone = document.getElementById('edit_phone').value.trim();
+    const role = document.getElementById('edit_role').value;
+    const program = document.getElementById('edit_program').value;
+    const intakeYear = document.getElementById('edit_intake_year').value.trim();
+    const block = document.getElementById('edit_block').value;
+    
+    // Validate required fields
+    if (!fullName) {
+        showFeedback('❌ Full Name is required', 'error');
+        document.getElementById('edit_full_name').focus();
+        document.getElementById('edit_full_name').style.borderColor = '#DC2626';
+        return;
+    }
+    
+    if (!email) {
+        showFeedback('❌ Email is required', 'error');
+        document.getElementById('edit_email').focus();
+        document.getElementById('edit_email').style.borderColor = '#DC2626';
+        return;
+    }
     
     // Close the modal first
     closeApprovalModal();
     
-    // Double-check confirmation
-    if (!confirm(`⚠️ Approve ${fullName}? They will gain access to the system.`)) {
+    // Show confirmation with edited details
+    const confirmMsg = `⚠️ Approve User with the following details:\n\n` +
+        `Name: ${fullName}\n` +
+        `Email: ${email}\n` +
+        `Student ID: ${studentId || 'Not set'}\n` +
+        `Program: ${program}\n` +
+        `Block: ${block}\n` +
+        `Intake: ${intakeYear || 'Not set'}\n` +
+        `Role: ${role}\n\n` +
+        `Proceed with approval?`;
+    
+    if (!confirm(confirmMsg)) {
         return;
     }
     
     try {
-        // Update user profile status
+        // Update user profile with edited values
         const { error } = await sb
             .from(USER_PROFILE_TABLE)
             .update({
-                status: 'approved',
+                full_name: fullName,
+                email: email,
                 student_id: studentId || userId.substring(0, 8).toUpperCase(),
+                phone: phone || null,
+                role: role,
+                program: program,
+                intake_year: intakeYear || null,
+                block: block,
+                status: 'approved',
                 updated_at: new Date().toISOString()
             })
             .eq('user_id', userId);
@@ -2272,7 +2403,6 @@ async function confirmApproveUser(userId, fullName, studentId, email, role, prog
                 await sendApprovalEmail(email, fullName, role);
             } catch (emailError) {
                 console.warn('⚠️ Approval email failed:', emailError);
-                // Continue anyway - approval succeeded
             }
         }
         
@@ -2280,27 +2410,22 @@ async function confirmApproveUser(userId, fullName, studentId, email, role, prog
         
         await logAudit(
             'USER_APPROVE',
-            `User ${fullName} (Student ID: ${studentId}) approved successfully.`,
+            `User ${fullName} (Student ID: ${studentId || 'N/A'}) approved with edited details.`,
             userId,
             'SUCCESS'
         );
         
         // Refresh all user tables
-        loadPendingApprovals();
-        loadAllUsers();
-        loadStudents();
-        
-        // Refresh dashboard if exists
-        if (typeof loadDashboardData === 'function') {
-            loadDashboardData();
-        }
+        if (typeof loadPendingApprovals === 'function') loadPendingApprovals();
+        if (typeof loadAllUsers === 'function') loadAllUsers();
+        if (typeof loadStudents === 'function') loadStudents();
+        if (typeof loadDashboardData === 'function') loadDashboardData();
         
     } catch (err) {
         console.error('❌ Unexpected error in confirmApproveUser:', err);
         showFeedback(`❌ Unexpected error: ${err.message}`, 'error');
     }
 }
-
 // ============================================
 // SEND APPROVAL EMAIL
 // ============================================
