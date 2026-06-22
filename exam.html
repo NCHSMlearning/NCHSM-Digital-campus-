@@ -2148,18 +2148,24 @@
         }
 
         function saveAnswer(answer) {
-            const q = questions[currentIndex];
-            answers[q.id] = answer;
-            document.getElementById('answer-saved').style.display = 'block';
-            setTimeout(() => document.getElementById('answer-saved').style.display = 'none', 1000);
-            if (!hasAnsweredAtLeastOne) {
-                hasAnsweredAtLeastOne = true;
-                submitBtn.disabled = false;
-            }
-            updateStatusTable();
-            saveProgressLocally();
-        }
-
+    const q = questions[currentIndex];
+    answers[q.id] = answer;
+    
+    // Show saved confirmation
+    document.getElementById('answer-saved').style.display = 'block';
+    setTimeout(() => document.getElementById('answer-saved').style.display = 'none', 1000);
+    
+    // ✅ PERMANENT SAVE: Save to database
+    saveAnswerToDatabase(q.id, answer);
+    
+    // Update UI
+    if (!hasAnsweredAtLeastOne) {
+        hasAnsweredAtLeastOne = true;
+        submitBtn.disabled = false;
+    }
+    updateStatusTable();
+    saveProgressLocally();
+}
         function renderQuestionStatusTable() {
             questionStatusTable.innerHTML = '';
             questions.forEach((_, index) => {
@@ -2337,37 +2343,127 @@
             } catch (e) { /* silent fail */ }
         }
 
-        async function saveAnswerToDatabase(questionId, answer) {
-            try {
-                await sb.from('exam_answers').upsert({
-                    student_id: studentId,
-                    exam_id: parseInt(EXAM_ID),
-                    question_id: questionId,
-                    selected_answer: answer,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'student_id, exam_id, question_id' });
-            } catch (e) { /* silent fail */ }
+      // ============================================================
+// PERMANENT SAVE - With localStorage Fallback
+// ============================================================
+
+async function saveAnswerToDatabase(questionId, answer) {
+    try {
+        // Save to exam_grades (main table)
+        const { error } = await sb.from('exam_grades').upsert({
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            question_id: questionId,
+            selected_answer: answer,
+            marks: 0,  // Will be calculated on final submission
+            graded_at: new Date().toISOString()
+        }, { onConflict: 'student_id, exam_id, question_id' });
+
+        if (error) {
+            throw error;
         }
 
-        async function loadSavedAnswers() {
-            try {
-                const { data } = await sb.from('exam_answers')
-                    .select('question_id, selected_answer')
-                    .eq('student_id', studentId)
-                    .eq('exam_id', parseInt(EXAM_ID));
+        console.log(`✅ Answer saved to database: Q${questionId}`);
+        
+        // Also save to exam_answers for backup
+        try {
+            await sb.from('exam_answers').upsert({
+                student_id: studentId,
+                exam_id: parseInt(EXAM_ID),
+                question_id: questionId,
+                selected_answer: answer,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'student_id, exam_id, question_id' });
+        } catch (e) {
+            // exam_answers might not exist yet - ignore
+        }
 
-                if (data) {
-                    data.forEach(row => {
-                        answers[row.question_id] = row.selected_answer;
-                    });
-                    if (Object.keys(answers).length > 0) {
-                        hasAnsweredAtLeastOne = true;
-                        submitBtn.disabled = false;
-                    }
-                    console.log(`✅ Loaded ${Object.keys(answers).length} saved answers`);
+        // Remove from localStorage once saved to DB
+        removeFromLocalStorage(questionId);
+
+    } catch (e) {
+        console.warn('⚠️ Save to database failed, saving locally:', e);
+        saveToLocalStorage(questionId, answer);
+        showToast('📡 Network issue - Answer saved locally', 'warning');
+    }
+}
+
+// ============================================================
+// LOCAL STORAGE BACKUP FUNCTIONS
+// ============================================================
+
+function saveToLocalStorage(questionId, answer) {
+    const saved = JSON.parse(localStorage.getItem(`exam_${EXAM_ID}_draft_${studentId}`) || '{}');
+    saved[questionId] = {
+        answer: answer,
+        timestamp: Date.now()
+    };
+    localStorage.setItem(`exam_${EXAM_ID}_draft_${studentId}`, JSON.stringify(saved));
+    console.log(`💾 Saved to localStorage: Question ${questionId}`);
+}
+
+function removeFromLocalStorage(questionId) {
+    const saved = JSON.parse(localStorage.getItem(`exam_${EXAM_ID}_draft_${studentId}`) || '{}');
+    delete saved[questionId];
+    localStorage.setItem(`exam_${EXAM_ID}_draft_${studentId}`, JSON.stringify(saved));
+}
+
+     // ============================================================
+// RESTORE SAVED ANSWERS
+// ============================================================
+
+async function loadSavedAnswers() {
+    try {
+        // Try to load from exam_grades first
+        const { data } = await sb.from('exam_grades')
+            .select('question_id, selected_answer')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(EXAM_ID))
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+
+        if (data && data.length > 0) {
+            let loaded = 0;
+            data.forEach(row => {
+                if (row.selected_answer) {
+                    answers[row.question_id] = row.selected_answer;
+                    loaded++;
                 }
-            } catch (e) { console.warn('Could not load saved answers:', e); }
+            });
+            if (loaded > 0) {
+                hasAnsweredAtLeastOne = true;
+                submitBtn.disabled = false;
+            }
+            console.log(`✅ Loaded ${loaded} saved answers from database`);
+            return;
         }
+
+        // If no DB answers, check localStorage
+        const local = localStorage.getItem(`exam_${EXAM_ID}_draft_${studentId}`);
+        if (local) {
+            const parsed = JSON.parse(local);
+            let restored = 0;
+            for (const [qId, data] of Object.entries(parsed)) {
+                if (data.answer) {
+                    answers[qId] = data.answer;
+                    restored++;
+                    // Sync to database
+                    await saveAnswerToDatabase(qId, data.answer);
+                }
+            }
+            if (restored > 0) {
+                hasAnsweredAtLeastOne = true;
+                submitBtn.disabled = false;
+                showToast(`✅ Restored ${restored} answers from local backup`, 'success');
+                // Clear localStorage after syncing
+                localStorage.removeItem(`exam_${EXAM_ID}_draft_${studentId}`);
+            }
+            console.log(`✅ Restored ${restored} answers from localStorage`);
+        }
+
+    } catch (e) {
+        console.warn('Could not load saved answers:', e);
+    }
+}
 
         function saveProgressLocally() {
             if (!isExamActive) return;
@@ -2410,16 +2506,40 @@
             }
         }
 
-        function setupNetworkMonitoring() {
-            window.addEventListener('online', () => {
-                showToast('✅ Network connection restored', 'success');
-            });
+       // ============================================================
+// ENHANCED: Network Monitoring with Auto-Sync
+// ============================================================
 
-            window.addEventListener('offline', () => {
-                showToast('⚠️ Network connection lost! Your answers are saved locally.', 'warning');
-                localStorage.setItem(`exam_${EXAM_ID}_answers_backup_${studentId}`, JSON.stringify(answers));
-            });
+function setupNetworkMonitoring() {
+    window.addEventListener('online', async () => {
+        showToast('✅ Network restored! Syncing answers...', 'success');
+        
+        // Sync all unsaved answers from localStorage
+        const local = localStorage.getItem(`exam_${EXAM_ID}_draft_${studentId}`);
+        if (local) {
+            const parsed = JSON.parse(local);
+            let synced = 0;
+            for (const [qId, data] of Object.entries(parsed)) {
+                try {
+                    await saveAnswerToDatabase(qId, data.answer);
+                    synced++;
+                } catch (e) { /* continue */ }
+            }
+            if (synced > 0) {
+                showToast(`✅ Synced ${synced} answers to server`, 'success');
+                localStorage.removeItem(`exam_${EXAM_ID}_draft_${studentId}`);
+            }
         }
+    });
+
+    window.addEventListener('offline', () => {
+        showToast('⚠️ Network lost! Answers saved locally.', 'warning');
+        // Save all current answers to localStorage as backup
+        for (const [qId, answer] of Object.entries(answers)) {
+            saveToLocalStorage(qId, answer);
+        }
+    });
+}
 
         function setupFullscreenMonitoring() {
             document.addEventListener('fullscreenchange', function() {
@@ -2618,64 +2738,104 @@
             }, 5000);
         }
 
-        async function calculateAndSaveGrade() {
-            const { data: questions_data } = await sb.from('exam_questions')
-                .select('id, correct_answer, marks')
-                .eq('exam_id', EXAM_ID);
+       // ============================================================
+// MODIFIED: calculateAndSaveGrade() with PERCENTAGE
+// ============================================================
 
-            let totalEarned = 0;
-            let totalPossible = 0;
-            const answerRecords = [];
+async function calculateAndSaveGrade() {
+    try {
+        const { data: questions_data } = await sb.from('exam_questions')
+            .select('id, correct_answer, marks')
+            .eq('exam_id', parseInt(EXAM_ID));
 
-            for (const q of questions_data || []) {
-                const marks = q.marks || 1;
-                totalPossible += marks;
-                const studentAnswer = answers[q.id];
-                const isCorrect = studentAnswer === q.correct_answer;
-                const earned = isCorrect ? marks : 0;
-                totalEarned += earned;
-                answerRecords.push({
-                    student_id: studentId,
-                    exam_id: EXAM_ID,
-                    question_id: q.id,
-                    selected_answer: studentAnswer || null,
-                    marks: earned,
-                    graded_at: new Date().toISOString()
-                });
-            }
-
-            const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-
-            await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', EXAM_ID);
-            if (answerRecords.length > 0) {
-                await sb.from('exam_grades').insert(answerRecords);
-            }
-            await sb.from('exam_grades').insert({
-                student_id: studentId,
-                exam_id: EXAM_ID,
-                question_id: '00000000-0000-0000-0000-000000000000',
-                marks: totalEarned,
-                total_score: percentage,
-                result_status: 'PENDING_REVIEW',
-                graded_at: new Date().toISOString()
-            });
-
-            // Save question times
-            for (const [qId, timeSpent] of Object.entries(questionTimes)) {
-                try {
-                    await sb.from('exam_question_times').insert({
-                        student_id: studentId,
-                        exam_id: parseInt(EXAM_ID),
-                        question_id: qId,
-                        time_spent_seconds: Math.round(timeSpent),
-                        created_at: new Date().toISOString()
-                    });
-                } catch (e) { /* silent fail */ }
-            }
-
-            return true;
+        if (!questions_data || questions_data.length === 0) {
+            console.error('No questions found');
+            return false;
         }
 
+        let totalEarned = 0;
+        let totalPossible = 0;
+        const answerRecords = [];
+
+        for (const q of questions_data || []) {
+            const marks = q.marks || 1;
+            totalPossible += marks;
+            const studentAnswer = answers[q.id];
+            const isCorrect = studentAnswer === q.correct_answer;
+            const earned = isCorrect ? marks : 0;
+            totalEarned += earned;
+            
+            answerRecords.push({
+                student_id: studentId,
+                exam_id: parseInt(EXAM_ID),
+                question_id: q.id,
+                selected_answer: studentAnswer || null,
+                marks: earned,
+                graded_at: new Date().toISOString()
+            });
+        }
+
+        const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
+
+        // ✅ DELETE old summary record first (prevents duplicates)
+        await sb.from('exam_grades')
+            .delete()
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(EXAM_ID))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+
+        // ✅ DELETE old individual answers
+        await sb.from('exam_grades')
+            .delete()
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(EXAM_ID))
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+
+        // ✅ Insert NEW individual answers
+        if (answerRecords.length > 0) {
+            await sb.from('exam_grades').insert(answerRecords);
+            console.log(`✅ Inserted ${answerRecords.length} answer records`);
+        }
+
+        // ✅ Insert NEW summary record with PERCENTAGE
+        await sb.from('exam_grades').insert({
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            marks: totalEarned,
+            total_score: totalEarned,        // Actual marks earned
+            percentage: percentage,           // ✅ PERCENTAGE stored here!
+            result_status: 'PENDING_REVIEW',
+            graded_at: new Date().toISOString()
+        });
+
+        console.log(`✅ Exam submitted: ${totalEarned}/${totalPossible} marks (${percentage.toFixed(2)}%)`);
+
+        // Clear localStorage after successful submission
+        localStorage.removeItem(`exam_${EXAM_ID}_draft_${studentId}`);
+        localStorage.removeItem(`exam_${EXAM_ID}_progress_${studentId}`);
+
+        // Save question times
+        for (const [qId, timeSpent] of Object.entries(questionTimes)) {
+            try {
+                await sb.from('exam_question_times').insert({
+                    student_id: studentId,
+                    exam_id: parseInt(EXAM_ID),
+                    question_id: qId,
+                    time_spent_seconds: Math.round(timeSpent),
+                    created_at: new Date().toISOString()
+                });
+            } catch (e) { /* silent fail */ }
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error('❌ Error calculating grade:', error);
+        showToast('Error submitting exam. Please contact support.', 'error');
+        return false;
+    }
+}
         function showCompletionCertificate() {
             const totalQuestions = questions.length;
             const answered = Object.keys(answers).length;
