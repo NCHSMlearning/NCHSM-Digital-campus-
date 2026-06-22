@@ -1,4 +1,4 @@
-// js/exam-card.js - v9.0 (FIXED: Clean table layout, no HTML entities, signature only)
+// js/exam-card.js - v9.1 (FIXED: A4 Page Sizing, Proper Table Layout)
 
 (function() {
     'use strict';
@@ -51,7 +51,6 @@
         
         cleanText(str) {
             if (!str) return '';
-            // Convert HTML entities to actual characters
             return str.replace(/&amp;/g, '&')
                       .replace(/&#x27;/g, "'")
                       .replace(/&quot;/g, '"')
@@ -258,11 +257,12 @@
                 const allButtons = cloneCard.querySelectorAll('button');
                 allButtons.forEach(btn => btn.style.display = 'none');
                 
+                // Set A4 dimensions for rendering
                 const tempContainer = document.createElement('div');
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
                 tempContainer.style.top = '-9999px';
-                tempContainer.style.width = '800px';
+                tempContainer.style.width = '794px'; // A4 width at 96dpi
                 tempContainer.style.backgroundColor = 'white';
                 tempContainer.appendChild(cloneCard);
                 document.body.appendChild(tempContainer);
@@ -270,19 +270,21 @@
                 await new Promise(resolve => setTimeout(resolve, 200));
                 
                 const canvas = await html2canvas(cloneCard, {
-                    scale: 3,
+                    scale: 2,
                     backgroundColor: '#ffffff',
                     logging: false,
                     useCORS: true,
-                    allowTaint: false
+                    allowTaint: false,
+                    width: 794,
+                    height: 1123 // A4 height at 96dpi
                 });
                 
                 document.body.removeChild(tempContainer);
                 
                 const { jsPDF } = window.jspdf;
                 const imgData = canvas.toDataURL('image/png');
-                const imgWidth = 210;
-                const pageHeight = 297;
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 297; // A4 height in mm
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 
                 const pdf = new jsPDF('p', 'mm', 'a4');
@@ -360,21 +362,33 @@
                         ${styles}
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-                            padding: 20px;
+                            padding: 0;
                             margin: 0;
                             background: white;
+                            width: 210mm;
+                            margin: 0 auto;
                         }
                         .action-buttons, button {
                             display: none !important;
                         }
                         .exam-card-wrapper {
-                            max-width: 800px;
+                            max-width: 210mm;
                             margin: 0 auto;
+                            padding: 5mm;
+                        }
+                        .exam-card-compact {
+                            width: 100%;
+                            box-sizing: border-box;
                         }
                         @media print {
                             body { padding: 0; margin: 0; }
                             .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            .signature-line, .sign-line, .signature-line-inline { 
+                                border-top: 1px solid #000 !important; 
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact; 
+                            }
                         }
                     </style>
                 </head>
@@ -404,13 +418,16 @@
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            // Clean unit names to remove HTML entities
             const cleanUnitName = (name) => {
                 if (!name) return '';
                 return name.replace(/&amp;/g, '&').replace(/&#x27;/g, "'");
             };
             
-            const tableRows = approvedUnits.map((unit, index) => {
+            // Limit units shown to fit A4 page (show max 15 units)
+            const displayUnits = approvedUnits.slice(0, 15);
+            const hasMore = approvedUnits.length > 15;
+            
+            const tableRows = displayUnits.map((unit, index) => {
                 const unitName = cleanUnitName(unit.unit_name || unit.name || '');
                 const unitCode = unit.unit_code || unit.code || '';
                 return `
@@ -466,6 +483,7 @@
                                 </thead>
                                 <tbody>
                                     ${tableRows}
+                                    ${hasMore ? `<tr><td colspan="5" class="text-center" style="color:#64748b;font-style:italic;">... and ${approvedUnits.length - 15} more units</td></tr>` : ''}
                                     <tr class="total-row">
                                         <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${approvedUnits.length}</strong></td>
                                         <td class="text-center"><strong>${totalCredits}</strong></td>
@@ -550,74 +568,295 @@
             const style = document.createElement('style');
             style.id = 'exam-card-compact-styles';
             style.textContent = `
-                .exam-card-wrapper { max-width: 850px; margin: 0 auto; font-family: 'Segoe UI', Roboto, sans-serif; }
-                .exam-card-compact { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                .exam-card-wrapper { 
+                    max-width: 210mm; 
+                    margin: 0 auto; 
+                    font-family: 'Segoe UI', Roboto, sans-serif;
+                    font-size: 11px;
+                    padding: 5mm;
+                }
+                .exam-card-compact { 
+                    background: white; 
+                    border: 1px solid #e2e8f0; 
+                    border-radius: 8px; 
+                    overflow: hidden; 
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                    width: 100%;
+                    box-sizing: border-box;
+                }
                 
-                .card-header { background: linear-gradient(135deg, #1e3a5f, #2c5a8c); color: white; padding: 15px 20px; display: flex; align-items: center; gap: 15px; }
-                .card-logo { height: 55px; width: auto; background: white; padding: 5px; border-radius: 8px; object-fit: contain; }
-                .header-text { flex: 1; }
-                .institution { font-size: 12px; opacity: 0.9; letter-spacing: 0.5px; }
-                .card-title { font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-top: 2px; }
-                .card-subtitle { font-size: 10px; opacity: 0.8; margin-top: 2px; }
-                .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+                .card-header { 
+                    background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
+                    color: white; 
+                    padding: 12px 16px; 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 12px; 
+                }
+                .card-logo { 
+                    height: 45px; 
+                    width: auto; 
+                    background: white; 
+                    padding: 4px; 
+                    border-radius: 6px; 
+                    object-fit: contain; 
+                    flex-shrink: 0;
+                }
+                .header-text { 
+                    flex: 1; 
+                    min-width: 0;
+                }
+                .institution { 
+                    font-size: 10px; 
+                    opacity: 0.9; 
+                    letter-spacing: 0.5px; 
+                }
+                .card-title { 
+                    font-size: 18px; 
+                    font-weight: 800; 
+                    letter-spacing: 1px; 
+                    margin-top: 2px; 
+                }
+                .card-subtitle { 
+                    font-size: 9px; 
+                    opacity: 0.8; 
+                    margin-top: 2px; 
+                }
+                .status-badge { 
+                    padding: 4px 12px; 
+                    border-radius: 20px; 
+                    font-size: 10px; 
+                    font-weight: 700; 
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                }
                 .status-badge.eligible { background: #10b981; }
                 .status-badge.ineligible { background: #dc2626; }
                 
-                .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
-                .info-item { color: #334155; }
-                .info-label { font-weight: 600; color: #64748b; margin-right: 8px; }
+                .info-grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(3, 1fr); 
+                    gap: 6px 16px; 
+                    padding: 10px 16px; 
+                    background: #f8fafc; 
+                    border-bottom: 1px solid #e2e8f0; 
+                    font-size: 10px; 
+                }
+                .info-item { 
+                    color: #334155;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .info-label { 
+                    font-weight: 600; 
+                    color: #64748b; 
+                    margin-right: 6px; 
+                }
                 
-                .units-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-                .units-table th { background: #f1f5f9; padding: 10px 8px; text-align: left; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
-                .units-table td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+                .units-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    font-size: 9.5px; 
+                    table-layout: fixed;
+                }
+                .units-table th { 
+                    background: #f1f5f9; 
+                    padding: 6px 6px; 
+                    text-align: left; 
+                    font-weight: 700; 
+                    border-bottom: 2px solid #cbd5e1;
+                    font-size: 9px;
+                }
+                .units-table td { 
+                    padding: 6px 6px; 
+                    border-bottom: 1px solid #e2e8f0; 
+                    vertical-align: middle;
+                    word-wrap: break-word;
+                }
+                .units-table th:nth-child(1) { width: 5%; }
+                .units-table th:nth-child(2) { width: 18%; }
+                .units-table th:nth-child(3) { width: 40%; }
+                .units-table th:nth-child(4) { width: 7%; }
+                .units-table th:nth-child(5) { width: 30%; }
+                
                 .text-center { text-align: center; }
                 
-                .signature-cell { padding: 5px 0; }
-                .signature-line { width: 100%; height: 1px; background: #333; border-top: 1px solid #333; margin: 8px 0; }
+                .signature-cell { 
+                    padding: 2px 6px !important; 
+                }
+                .signature-line { 
+                    width: 100%; 
+                    border-top: 1px solid #333; 
+                    margin: 4px 0; 
+                }
                 
-                .total-row { background: #f8fafc; font-weight: 600; border-top: 2px solid #cbd5e1; }
-                .no-units { padding: 30px; text-align: center; color: #ef4444; font-size: 14px; }
+                .total-row { 
+                    background: #f8fafc; 
+                    font-weight: 600; 
+                    border-top: 2px solid #cbd5e1; 
+                }
+                .no-units { 
+                    padding: 20px; 
+                    text-align: center; 
+                    color: #ef4444; 
+                    font-size: 12px; 
+                }
                 
-                .signatures-row { display: flex; justify-content: space-between; padding: 15px 20px; gap: 20px; border-top: 1px solid #e2e8f0; background: white; }
-                .signature { flex: 1; text-align: center; font-size: 11px; color: #475569; }
-                .sign-line { border-top: 1px solid #334155; margin-bottom: 8px; padding-top: 12px; width: 100%; }
+                .signatures-row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    padding: 10px 16px; 
+                    gap: 16px; 
+                    border-top: 1px solid #e2e8f0; 
+                    background: white; 
+                }
+                .signature { 
+                    flex: 1; 
+                    text-align: center; 
+                    font-size: 9px; 
+                    color: #475569; 
+                }
+                .sign-line { 
+                    border-top: 1px solid #334155; 
+                    margin-bottom: 6px; 
+                    padding-top: 10px; 
+                    width: 100%; 
+                }
                 
-                .card-footer { padding: 15px 20px; background: #fefce8; border-top: 1px solid #e2e8f0; }
-                .rules-header { font-weight: 700; font-size: 12px; color: #854d0e; margin-bottom: 10px; }
-                .rules-list { margin-bottom: 15px; }
-                .rule-item { font-size: 10px; color: #713f12; margin-bottom: 4px; }
+                .card-footer { 
+                    padding: 10px 16px; 
+                    background: #fefce8; 
+                    border-top: 1px solid #e2e8f0; 
+                }
+                .rules-header { 
+                    font-weight: 700; 
+                    font-size: 10px; 
+                    color: #854d0e; 
+                    margin-bottom: 6px; 
+                }
+                .rules-list { 
+                    margin-bottom: 10px; 
+                }
+                .rule-item { 
+                    font-size: 8.5px; 
+                    color: #713f12; 
+                    margin-bottom: 2px; 
+                }
                 
-                .student-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
-                .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; text-align: center; }
-                .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
-                .student-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
-                .signature-line-inline { display: inline-block; flex: 1; height: 1px; background: #333; border-top: 1px solid #333; }
+                .student-section { 
+                    border-top: 1px dashed #e2e8f0; 
+                    padding-top: 8px; 
+                    margin-top: 3px; 
+                }
+                .student-declaration { 
+                    font-size: 8.5px; 
+                    color: #475569; 
+                    margin: 6px 0; 
+                    text-align: center; 
+                }
+                .student-sign-line { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 8px; 
+                    margin: 8px 0 4px 0; 
+                }
+                .student-label { 
+                    font-weight: 600; 
+                    font-size: 9px; 
+                    color: #334155; 
+                    min-width: 100px; 
+                }
+                .signature-line-inline { 
+                    display: inline-block; 
+                    flex: 1; 
+                    border-top: 1px solid #333; 
+                    height: 0; 
+                }
                 
-                .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
-                .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; }
-                .download-btn { background: #059669; color: white; }
-                .download-btn:hover { background: #047857; transform: scale(1.02); }
-                .print-btn { background: #1e3a5f; color: white; }
-                .print-btn:hover { background: #2c5a8c; transform: scale(1.02); }
+                .action-buttons { 
+                    display: flex; 
+                    gap: 12px; 
+                    justify-content: center; 
+                    margin-top: 16px; 
+                }
+                .download-btn, .print-btn { 
+                    display: inline-flex; 
+                    align-items: center; 
+                    gap: 6px; 
+                    padding: 8px 20px; 
+                    border: none; 
+                    border-radius: 40px; 
+                    font-weight: 600; 
+                    font-size: 11px; 
+                    cursor: pointer; 
+                }
+                .download-btn { 
+                    background: #059669; 
+                    color: white; 
+                }
+                .download-btn:hover { 
+                    background: #047857; 
+                    transform: scale(1.02); 
+                }
+                .print-btn { 
+                    background: #1e3a5f; 
+                    color: white; 
+                }
+                .print-btn:hover { 
+                    background: #2c5a8c; 
+                    transform: scale(1.02); 
+                }
                 
                 @media print {
                     body * { visibility: hidden; }
                     .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
-                    .exam-card-wrapper { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 10px; }
+                    .exam-card-wrapper { 
+                        position: absolute; 
+                        top: 0; 
+                        left: 0; 
+                        width: 210mm;
+                        margin: 0; 
+                        padding: 5mm; 
+                    }
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .signature-line, .sign-line, .signature-line-inline { border-top: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .signature-line, .sign-line, .signature-line-inline { 
+                        border-top: 1px solid #000 !important; 
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact; 
+                    }
                 }
                 
                 @media (max-width: 600px) {
-                    .info-grid { grid-template-columns: repeat(2, 1fr); gap: 6px 10px; padding: 10px 15px; }
-                    .card-header { padding: 10px 15px; gap: 10px; }
-                    .card-logo { height: 40px; }
-                    .card-title { font-size: 16px; }
-                    .signatures-row { flex-direction: column; gap: 15px; }
-                    .action-buttons { flex-direction: column; gap: 10px; padding: 0 10px; }
-                    .download-btn, .print-btn { justify-content: center; width: 100%; }
+                    .info-grid { 
+                        grid-template-columns: repeat(2, 1fr); 
+                        gap: 4px 8px; 
+                        padding: 8px 12px; 
+                    }
+                    .card-header { 
+                        padding: 8px 12px; 
+                        gap: 8px; 
+                        flex-wrap: wrap;
+                    }
+                    .card-logo { height: 32px; }
+                    .card-title { font-size: 14px; }
+                    .signatures-row { 
+                        flex-direction: column; 
+                        gap: 10px; 
+                    }
+                    .action-buttons { 
+                        flex-direction: column; 
+                        gap: 8px; 
+                        padding: 0 10px; 
+                    }
+                    .download-btn, .print-btn { 
+                        justify-content: center; 
+                        width: 100%; 
+                    }
+                    .units-table { font-size: 8px; }
+                    .units-table th, .units-table td { padding: 4px; }
                 }
             `;
             document.head.appendChild(style);
@@ -655,5 +894,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('Exam Card module ready - Clean version!');
+    console.log('Exam Card module ready - A4 Optimized version!');
 })();
