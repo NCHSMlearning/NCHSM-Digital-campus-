@@ -3158,7 +3158,149 @@ window.saveEditedMarks = async function() {
             window.openEditMarksModal = openEditMarksModal;
             window.saveEditedMarks = saveEditedMarks;
             window.updateEditPreview = updateEditPreview;
+// ============================================
+// 📊 STUDENT PROGRESS - VIEW ANSWERS
+// ============================================
+window.viewStudentProgress = async function(studentId, studentName, examId) {
+    try {
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-line"></i> Student Progress`;
+        document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...</div>';
+        document.getElementById('studentModal').style.display = 'flex';
+        
+        // Get student's answers
+        const { data: answers } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        const { data: questions } = await sb
+            .from('exam_questions')
+            .select('*')
+            .eq('exam_id', parseInt(examId))
+            .order('question_number');
+        
+        const { data: exam } = await sb
+            .from('exams')
+            .select('exam_name')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        const examName = exam?.exam_name || 'Exam ' + examId;
+        const answeredCount = answers?.length || 0;
+        const totalQuestions = questions?.length || 0;
+        const correctCount = answers?.filter(a => a.selected_answer && a.marks > 0).length || 0;
+        
+        let html = `
+            <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
+                <h3>${studentName}</h3>
+                <p style="color:#64748B;">${examName}</p>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
+                    <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#0A3D62;">${answeredCount}/${totalQuestions}</div>
+                        <div style="font-size:0.7rem;color:#64748B;">Answered</div>
+                    </div>
+                    <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#38A169;">${correctCount}</div>
+                        <div style="font-size:0.7rem;color:#64748B;">Correct</div>
+                    </div>
+                    <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#F59E0B;">${totalQuestions - answeredCount}</div>
+                        <div style="font-size:0.7rem;color:#64748B;">Unanswered</div>
+                    </div>
+                </div>
+            </div>
+            <div style="max-height:400px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+                    <thead>
+                        <tr style="background:#F1F5F9;">
+                            <th style="padding:8px;text-align:left;">Q#</th>
+                            <th style="padding:8px;text-align:left;">Question</th>
+                            <th style="padding:8px;text-align:center;">Answer</th>
+                            <th style="padding:8px;text-align:center;">Correct</th>
+                            <th style="padding:8px;text-align:center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        questions?.forEach((q, index) => {
+            const answer = answers?.find(a => a.question_id === q.id);
+            const isCorrect = answer?.selected_answer === q.correct_answer;
+            const isAnswered = !!answer?.selected_answer;
+            const statusIcon = isAnswered ? (isCorrect ? '✅' : '❌') : '⬜';
+            const statusText = isAnswered ? (isCorrect ? 'Correct' : 'Wrong') : 'Not answered';
+            const statusColor = isAnswered ? (isCorrect ? '#38A169' : '#DC2626') : '#94A3B8';
+            
+            html += `
+                <tr style="border-bottom:1px solid #E2E8F0;">
+                    <td style="padding:8px;">${index + 1}</td>
+                    <td style="padding:8px;">${q.question_text.substring(0, 60)}...</td>
+                    <td style="padding:8px;text-align:center;">${answer?.selected_answer || '-'}</td>
+                    <td style="padding:8px;text-align:center;">${q.correct_answer}</td>
+                    <td style="padding:8px;text-align:center;color:${statusColor};font-weight:600;">${statusIcon} ${statusText}</td>
+                </tr>
+            `;
+        });
+        
+        html += `</tbody></table></div>`;
+        
+        document.getElementById('modalContent').innerHTML = html;
+        
+    } catch (error) {
+        document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${error.message}</div>`;
+    }
+};
 
+// ============================================
+// ⏱️ RESET STUDENT TIMER
+// ============================================
+window.resetStudentTimer = async function(studentId, examId) {
+    if (!confirm(`⚠️ Reset timer for this student?\n\nThis will clear their exam timer.`)) return;
+    
+    try {
+        await sb.from('exam_heartbeats')
+            .delete()
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId));
+        
+        alert('✅ Student timer reset successfully!');
+        loadStudentsWithResults();
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+// ============================================
+// 🚀 FORCE SUBMIT STUDENT
+// ============================================
+window.forceSubmitStudent = async function(studentId, examId) {
+    if (!confirm(`⚠️ Force submit this student's exam?`)) return;
+    
+    try {
+        await sb.from('exam_grades').upsert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            result_status: 'PENDING_REVIEW',
+            graded_at: new Date().toISOString()
+        }, { onConflict: 'student_id, exam_id, question_id' });
+        
+        alert('✅ Exam force submitted!');
+        loadStudentsWithResults();
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+// ============================================
+// 🔄 REFRESH STUDENT PROGRESS
+// ============================================
+window.refreshStudentProgress = function() {
+    loadStudentsWithResults();
+    alert('🔄 Data refreshed!');
+};
         })();  
     </script>
 </body>
