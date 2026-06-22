@@ -2349,33 +2349,62 @@ function updateAdminTimers() {
                 document.getElementById('releaseModal').style.display = 'flex';
             };
 
-    window.loadReleasePreview = async function() {
+   window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
+    if (!examId) { 
+        document.getElementById('releasePreview').style.display = 'none'; 
+        return; 
+    }
+    
     document.getElementById('releasePreview').style.display = 'block';
     selectedStudentIds.clear();
     
-    const { data: results, error } = await sb.from('exam_grades')
+    // ✅ FIX: Explicitly select student_id
+    const { data: results, error } = await sb
+        .from('exam_grades')
         .select('id, student_id, marks, total_score, result_status')
         .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; return; }
+    if (error) { 
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; 
+        return; 
+    }
+    
     if (!results || results.length === 0) { 
         document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">No students have taken this exam yet</td></tr>';
         document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
         return; 
     }
     
-    // ========== FIX: Get exam pass mark and exam name ==========
-    const { data: exam } = await sb.from('exams').select('pass_mark, total_marks, exam_name, exam_type').eq('id', parseInt(examId)).single();
+    // Get exam details
+    const { data: exam } = await sb
+        .from('exams')
+        .select('pass_mark, total_marks, exam_name, exam_type')
+        .eq('id', parseInt(examId))
+        .single();
+    
     const passMark = exam?.pass_mark || 18;
     const examName = exam?.exam_name || 'Exam';
     const examType = exam?.exam_type || 'EXAM';
+    const totalMarks = exam?.total_marks || 30;
+    const isCatExam = examType.toUpperCase().includes('CAT');
     
-    const { data: released } = await sb.from('released_exam_results').select('result_id');
+    // Check already released
+    const { data: released } = await sb
+        .from('released_exam_results')
+        .select('result_id');
     const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-    const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
+    
+    // ✅ FIX: Filter eligible results and ensure student_id exists
+    const eligibleResults = results.filter(r => {
+        const isAlreadyReleased = releasedSet.has(String(r.id));
+        const hasStudentId = !!r.student_id;
+        if (!hasStudentId) {
+            console.warn('⚠️ Missing student_id for grade:', r.id);
+        }
+        return !isAlreadyReleased && hasStudentId;
+    });
     
     if (eligibleResults.length === 0) { 
         document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">✅ All results have already been released!</td></tr>';
@@ -2385,8 +2414,11 @@ function updateAdminTimers() {
     }
     
     currentReleaseResults = eligibleResults;
-    const studentIds = eligibleResults.map(r => r.student_id);
-    const { data: profiles } = await sb.from('consolidated_user_profiles_table')
+    
+    // Get student profiles
+    const studentIds = eligibleResults.map(r => r.student_id).filter(id => id);
+    const { data: profiles } = await sb
+        .from('consolidated_user_profiles_table')
         .select('user_id, full_name, student_id, email')
         .in('user_id', studentIds);
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
@@ -2396,12 +2428,11 @@ function updateAdminTimers() {
         const student = profileMap[r.student_id];
         const percentage = parseFloat(r.total_score || 0).toFixed(1);
         
-        // ========== FIX: Calculate correct status ==========
+        // Calculate correct status
         const score = parseFloat(r.total_score) || 0;
         const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
         const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
         
-        // ✅ Get student name and escape single quotes for JavaScript
         const studentName = (student?.full_name || 'Unknown').replace(/'/g, "\\'");
         const studentId = r.student_id || '';
         const studentIdDisplay = student?.student_id || 'N/A';
@@ -2412,26 +2443,19 @@ function updateAdminTimers() {
             <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
             <td><span class="student-id-badge">${studentIdDisplay}</span></td>
             <td><strong>${studentName}</strong><br><small>${studentEmail}</small></td>
-            
-            <!-- ✅ CLICKABLE SCORE - EDIT MARKS -->
             <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
                 ${marks} ✏️
             </td>
-            
-            <!-- ✅ CLICKABLE PERCENTAGE - EDIT MARKS -->
             <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
                 ${percentage}% ✏️
             </td>
-            
             <td><span class="${statusClass}">${correctStatus}</span></td>
             <td><span class="status-pending">🔒 Not Released</span></td>
-            
-            <!-- ✅ ACTIONS - PROGRESS & TIMER -->
             <td>
                 <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
                     <i class="fas fa-chart-line"></i> Progress
                 </button>
-                <button class="action-btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Reset Timer">
+                <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
                     <i class="fas fa-clock"></i> Timer
                 </button>
             </td>
@@ -2467,21 +2491,23 @@ function updateAdminTimers() {
                         .add(idValue); });
             };
 
-          window.confirmReleaseResults = async function() {
+         window.confirmReleaseResults = async function() {
     const ids = Array.from(selectedStudentIds);
     if (ids.length === 0) { 
         alert('Please select at least one student to release results.'); 
         return; 
     }
+    
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) return;
+    
     if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
     
     try {
         // Get exam details
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('pass_mark, total_marks, exam_type')
+            .select('pass_mark, total_marks, exam_type, exam_name')
             .eq('id', parseInt(examId))
             .single();
         
@@ -2497,29 +2523,37 @@ function updateAdminTimers() {
         
         let releasedCount = 0;
         let failedCount = 0;
+        let errorMessages = [];
         
         for (const gradeId of ids) {
-            // Get the grade record
+            // ✅ FIX: Get the FULL grade record including student_id
             const { data: grade, error: gradeError } = await sb
                 .from('exam_grades')
-                .select('id, student_id, marks, total_score')
+                .select('id, student_id, marks, total_score, result_status')
                 .eq('id', gradeId)
                 .single();
             
             if (gradeError || !grade) {
                 console.error('Grade not found:', gradeId);
                 failedCount++;
+                errorMessages.push(`Grade ID ${gradeId} not found`);
+                continue;
+            }
+            
+            // ✅ FIX: Ensure student_id exists
+            if (!grade.student_id) {
+                console.error('Missing student_id for grade:', gradeId);
+                failedCount++;
+                errorMessages.push(`Missing student_id for grade ${gradeId}`);
                 continue;
             }
             
             // Calculate score correctly
             let score = 0;
             if (isCatExam) {
-                // CAT: use marks or total_score (max 30)
                 score = grade.marks || parseFloat(grade.total_score) || 0;
                 score = Math.min(score, 30);
             } else {
-                // Final Exam: use total_score or marks
                 score = parseFloat(grade.total_score) || grade.marks || 0;
                 score = Math.min(score, totalMarks || 70);
             }
@@ -2528,18 +2562,20 @@ function updateAdminTimers() {
             const isPassed = score >= passMark;
             const resultStatus = isPassed ? 'PASS' : 'FAIL';
             
-            // Insert into released_exam_results
+            // ✅ FIX: Include student_id in the insert
             const { error: releaseError } = await sb
                 .from('released_exam_results')
                 .insert({
                     result_id: gradeId,
+                    student_id: grade.student_id,  // ✅ THIS WAS MISSING!
                     released_by: adminId,
                     released_at: new Date().toISOString()
                 });
             
             if (releaseError) {
-                console.error('Release error:', releaseError);
+                console.error('Release error for grade', gradeId, ':', releaseError);
                 failedCount++;
+                errorMessages.push(`Release error for grade ${gradeId}: ${releaseError.message}`);
                 continue;
             }
             
@@ -2553,8 +2589,9 @@ function updateAdminTimers() {
                 .eq('id', gradeId);
             
             if (updateError) {
-                console.error('Update error:', updateError);
+                console.error('Update error for grade', gradeId, ':', updateError);
                 failedCount++;
+                errorMessages.push(`Update error for grade ${gradeId}: ${updateError.message}`);
                 continue;
             }
             
@@ -2562,7 +2599,19 @@ function updateAdminTimers() {
             console.log(`✅ Released: ${gradeId} -> ${resultStatus} (${score}/${totalMarks})`);
         }
         
-        alert(`✅ Released ${releasedCount} result(s)\n❌ Failed: ${failedCount}\n\nPASS/FAIL calculated correctly!`);
+        // Show result
+        let message = `✅ Released ${releasedCount} result(s)`;
+        if (failedCount > 0) {
+            message += `\n❌ Failed: ${failedCount}`;
+            if (errorMessages.length > 0) {
+                message += `\n\nErrors:\n${errorMessages.slice(0, 5).join('\n')}`;
+                if (errorMessages.length > 5) {
+                    message += `\n... and ${errorMessages.length - 5} more`;
+                }
+            }
+        }
+        alert(message);
+        
         closeReleaseModal();
         loadStudentsWithResults();
         loadAllExams();
@@ -2571,8 +2620,7 @@ function updateAdminTimers() {
         alert('❌ Error: ' + err.message); 
         console.error(err);
     }
-};
-            // ========== STATS ==========
+};         // ========== STATS ==========
             async function updateStats() {
                 const totalStudents = allStudents.length;
                 const passed = studentsResults.filter(r => r.result_status === 'PASS').length;
