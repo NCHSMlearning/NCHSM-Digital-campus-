@@ -3139,26 +3139,7 @@ window.saveEditedMarks = async function() {
                     });
                 }
             });
-            // ========== MAKE FUNCTIONS GLOBAL ==========
-            window.getKenyaNow = getKenyaNow;
-            window.getKenyaTime = getKenyaTime;
-            window.formatKenyaTime = formatKenyaTime;
-            window.calculateExamTimer = calculateExamTimer;
-            window.updateAdminTimers = updateAdminTimers;
-            window.switchTab = switchTab;
-            window.toggleSidebar = toggleSidebar;
-            window.getExamTotalMarks = getExamTotalMarks;
-            window.getPassMark = getPassMark;
-
-            // ✅ ADD THESE LINES
-            window.viewStudentProgress = viewStudentProgress;
-            window.resetStudentTimer = resetStudentTimer;
-            window.forceSubmitStudent = forceSubmitStudent;
-            window.refreshStudentProgress = refreshStudentProgress;
-            window.openEditMarksModal = openEditMarksModal;
-            window.saveEditedMarks = saveEditedMarks;
-            window.updateEditPreview = updateEditPreview;
-// ============================================
+            // ============================================
 // 📊 STUDENT PROGRESS - VIEW ANSWERS
 // ============================================
 window.viewStudentProgress = async function(studentId, studentName, examId) {
@@ -3301,6 +3282,17 @@ window.refreshStudentProgress = function() {
     loadStudentsWithResults();
     alert('🔄 Data refreshed!');
 };
+            // ========== MAKE FUNCTIONS GLOBAL ==========
+            window.getKenyaNow = getKenyaNow;
+            window.getKenyaTime = getKenyaTime;
+            window.formatKenyaTime = formatKenyaTime;
+            window.calculateExamTimer = calculateExamTimer;
+            window.updateAdminTimers = updateAdminTimers;
+            window.switchTab = switchTab;
+            window.toggleSidebar = toggleSidebar;
+            window.getExamTotalMarks = getExamTotalMarks;
+            window.getPassMark = getPassMark;
+
         })();  
     </script>
 </body>
