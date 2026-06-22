@@ -2025,7 +2025,6 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
     console.log('🎯 Opening approval check for user:', { userId, fullName, studentId });
     
     try {
-        // Fetch full user profile from database
         const { data: user, error } = await sb
             .from(USER_PROFILE_TABLE)
             .select('*')
@@ -2037,7 +2036,6 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
             return;
         }
         
-        // Show approval modal with all user details
         showApprovalModal(user);
         
     } catch (err) {
@@ -2092,7 +2090,7 @@ function showApprovalModal(user) {
     const isTVET = programType === 'TVET';
     const blockOptions = isTVET 
         ? ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
-        : ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
     const blockSelectOptions = blockOptions.map(b => 
         `<option value="${b}" ${user.block === b ? 'selected' : ''}>${b}</option>`
@@ -2138,7 +2136,7 @@ function showApprovalModal(user) {
                         Edit fields below before approving
                     </p>
                 </div>
-                <button onclick="closeApprovalModal()" style="
+                <button onclick="window.closeApprovalModal()" style="
                     background: none;
                     border: none;
                     font-size: 28px;
@@ -2231,7 +2229,7 @@ function showApprovalModal(user) {
                 
                 <!-- Actions -->
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                    <button type="button" onclick="confirmApproveUser()" style="
+                    <button type="button" onclick="window.confirmApproveUser()" style="
                         flex: 1;
                         background: linear-gradient(135deg, #10b981, #059669);
                         color: white;
@@ -2249,7 +2247,7 @@ function showApprovalModal(user) {
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                         <i class="fas fa-check-circle"></i> Confirm & Approve
                     </button>
-                    <button type="button" onclick="closeApprovalModal()" style="
+                    <button type="button" onclick="window.closeApprovalModal()" style="
                         flex: 0.5;
                         background: #ef4444;
                         color: white;
@@ -2315,6 +2313,8 @@ function closeApprovalModal() {
 // ============================================
 
 async function confirmApproveUser() {
+    console.log('✅ confirmApproveUser called');
+    
     const modal = document.getElementById('approvalModal');
     if (!modal) {
         showFeedback('❌ Modal not found', 'error');
@@ -2426,6 +2426,20 @@ async function confirmApproveUser() {
         showFeedback(`❌ Unexpected error: ${err.message}`, 'error');
     }
 }
+
+// ============================================
+// ✅ EXPOSE FUNCTIONS TO GLOBAL SCOPE (FIX)
+// ============================================
+
+// Make approval functions globally accessible
+window.confirmApproveUser = confirmApproveUser;
+window.closeApprovalModal = closeApprovalModal;
+window.approveUser = approveUser;
+window.showApprovalModal = showApprovalModal;
+window.deleteProfile = deleteProfile;
+window.loadPendingApprovals = loadPendingApprovals;
+
+console.log('✅ Approval functions exposed to global scope');
 // ============================================
 // SEND APPROVAL EMAIL
 // ============================================
