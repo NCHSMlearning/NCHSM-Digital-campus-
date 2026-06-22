@@ -780,30 +780,36 @@
         let canStart = false;
         let timeRemainingMs = 0;
         
-        if (group.exam_date) {
-            const [year, month, day] = group.exam_date.split('-');
-            
-            if (group.exam_start_time) {
-                const [hours, minutes, seconds] = group.exam_start_time.split(':');
-                examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds || 0));
-                examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-            } else {
-                examStartDateTime = new Date(Date.UTC(year, month-1, day, 0, 0, 0));
-                examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-            }
-            
-            examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
-            
-            const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-            formattedExamDateTime = new Date(group.exam_date).toLocaleDateString('en-US', dateOptions);
-            
-            if (group.exam_start_time) {
-                const [hours, minutes] = group.exam_start_time.split(':');
-                const hour12 = parseInt(hours) % 12 || 12;
-                const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
-                formattedExamDateTime += ` at ${hour12}:${minutes} ${ampm}`;
-            }
-        }
+       // ✅ NEW CODE - shows Kenya time (UTC+3)
+if (group.exam_date) {
+    const [year, month, day] = group.exam_date.split('-');
+    
+    if (group.exam_start_time) {
+        const [hours, minutes, seconds] = group.exam_start_time.split(':');
+        examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds || 0));
+        // ✅ Convert to Kenya time (UTC+3)
+        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
+    } else {
+        examStartDateTime = new Date(Date.UTC(year, month-1, day, 0, 0, 0));
+        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
+    }
+    
+    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
+    
+    // ✅ FIX: Format using the Kenya time, not UTC
+    const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    // Use examStartDateTime (which is already in Kenya time)
+    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
+    
+    if (group.exam_start_time) {
+        // ✅ FIX: Use the Kenya time for display
+        const kenyaHours = examStartDateTime.getHours();
+        const kenyaMinutes = String(examStartDateTime.getMinutes()).padStart(2, '0');
+        const hour12 = kenyaHours % 12 || 12;
+        const ampm = kenyaHours >= 12 ? 'PM' : 'AM';
+        formattedExamDateTime += ` at ${hour12}:${kenyaMinutes} ${ampm}`;
+    }
+}
         
         // Determine exam status based on current time
         if (examStartDateTime && examEndDateTime) {
@@ -1013,7 +1019,8 @@
             examDate: group.exam_date,
             examStartTime: group.exam_start_time,
             formattedExamDateTime: formattedExamDateTime,
-            formattedGradedDate: grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '--',
+           formattedGradedDate: grade?.graded_at ? 
+    new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleDateString() : '--',
             programBadgeClass: group.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
             programIcon: group.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
             programDisplay: combinedProgram,
