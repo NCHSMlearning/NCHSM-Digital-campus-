@@ -784,10 +784,7 @@ function formatKenyaDateTime(date) {
                 let canStart = false;
                 let timeRemainingMs = 0;
                 
-                // ============================================
-// 🕐 EXAM DATE/TIME - FIXED
-// ============================================
-if (group.exam_date) {
+                if (group.exam_date) {
     const [year, month, day] = group.exam_date.split('-');
     
     if (group.exam_start_time) {
@@ -800,7 +797,7 @@ if (group.exam_date) {
     
     examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
     
-    // ✅ Format with Kenya timezone for display
+    // ✅ Format using Kenya timezone
     const dateOptions = { 
         month: 'short', 
         day: 'numeric', 
@@ -820,20 +817,8 @@ if (group.exam_date) {
         formattedExamDateTime += ` at ${timeString}`;
     }
 }
-                    
-                    if (group.exam_start_time) {
-                        const timeOptions = {
-                            timeZone: 'Africa/Nairobi',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                        };
-                        const timeString = examStartDateTime.toLocaleTimeString('en-US', timeOptions);
-                        formattedExamDateTime += ` at ${timeString}`;
-                    }
-                }
                 
-                // Determine exam status based on current Kenya time
+           // Determine exam status based on current Kenya time
                 if (examStartDateTime && examEndDateTime) {
                     if (kenyaNow < examStartDateTime) {
                         examStatus = 'upcoming';
