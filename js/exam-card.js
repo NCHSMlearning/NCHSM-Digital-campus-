@@ -1,4 +1,4 @@
-// js/exam-card.js - v9.0 (FIXED: A4 margins, shorter signature lines)
+// js/exam-card.js - v9.0 (FIXED: Past exam records table with View button)
 
 (function() {
     'use strict';
@@ -30,6 +30,33 @@
             { unit_code: 'NCHSCH 113', unit_name: 'Environmental and Occupational Health', credits: 3 },
             { unit_code: 'NCHSCH 114', unit_name: 'Sociology and Anthropology', credits: 3 },
             { unit_code: 'NCHSCH 125', unit_name: 'Community Health I', credits: 3 }
+        ],
+        // Sample past exam records
+        PAST_EXAMS: [
+            {
+                id: 1,
+                period: 'November - February 2025/2026 (Trimester 3)',
+                units: 12,
+                credits: 36,
+                date: '28 February 2026',
+                status: 'Completed'
+            },
+            {
+                id: 2,
+                period: 'July - October 2025 (Trimester 2)',
+                units: 10,
+                credits: 30,
+                date: '30 October 2025',
+                status: 'Completed'
+            },
+            {
+                id: 3,
+                period: 'March - June 2025 (Trimester 1)',
+                units: 8,
+                credits: 24,
+                date: '30 June 2025',
+                status: 'Completed'
+            }
         ]
     };
     
@@ -41,6 +68,7 @@
             this.userBlock = null;
             this.userId = null;
             this.isLoading = false;
+            this.pastExamRecords = [];
             
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => this.init());
@@ -80,10 +108,36 @@
             return `November - February ${year}/${year + 1} (Trimester 3)`;
         }
         
+        isExamOver() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const examEndDates = {
+                'Trimester 1': new Date(currentYear, 5, 30),
+                'Trimester 2': new Date(currentYear, 9, 30),
+                'Trimester 3': new Date(currentYear + 1, 1, 28)
+            };
+            
+            const period = this.getExamPeriod();
+            let endDate;
+            
+            if (period.includes('Trimester 1')) {
+                endDate = examEndDates['Trimester 1'];
+            } else if (period.includes('Trimester 2')) {
+                endDate = examEndDates['Trimester 2'];
+            } else {
+                endDate = examEndDates['Trimester 3'];
+            }
+            
+            return now > endDate;
+        }
+        
         init() {
             this.cacheElements();
             this.setupEventListeners();
             this.loadRequiredLibraries();
+            this.loadPastExamRecords();
             setTimeout(() => this.tryLoadIfLoggedIn(), CONFIG.LOAD_DELAY);
         }
         
@@ -105,6 +159,7 @@
             this.examCardContent = document.getElementById('exam-card-content-standalone');
             this.dashboardExamStatus = document.getElementById('dashboard-exam-status');
             this.dashboardApprovedUnits = document.getElementById('dashboard-approved-units');
+            this.pastExamsContainer = document.getElementById('past-exams-container');
         }
         
         setupEventListeners() {
@@ -177,6 +232,7 @@
                 if (success) {
                     await this.updateDashboard();
                     this.displayExamCard();
+                    this.displayPastExams();
                     this.loaded = true;
                 } else {
                     this.showDemoCard();
@@ -223,13 +279,132 @@
         
         async updateDashboard() {
             const approvedCount = this.approvedUnits.length;
+            const examOver = this.isExamOver();
+            
             if (this.dashboardExamStatus) {
-                this.dashboardExamStatus.textContent = approvedCount > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                this.dashboardExamStatus.style.color = approvedCount > 0 ? '#059669' : '#dc2626';
+                if (examOver) {
+                    this.dashboardExamStatus.textContent = 'COMPLETED ✓';
+                    this.dashboardExamStatus.style.color = '#059669';
+                } else {
+                    this.dashboardExamStatus.textContent = approvedCount > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                    this.dashboardExamStatus.style.color = approvedCount > 0 ? '#059669' : '#dc2626';
+                }
             }
             if (this.dashboardApprovedUnits) {
                 this.dashboardApprovedUnits.textContent = approvedCount;
             }
+        }
+        
+        // NEW: Load past exam records
+        loadPastExamRecords() {
+            // In production, this would come from database
+            // For demo, using sample data
+            this.pastExamRecords = CONFIG.PAST_EXAMS;
+        }
+        
+        // NEW: Display past exams table
+        displayPastExams() {
+            if (!this.pastExamsContainer) return;
+            
+            if (this.pastExamRecords.length === 0) {
+                this.pastExamsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #64748b; font-size: 13px;">
+                        No past exam records found.
+                    </div>
+                `;
+                return;
+            }
+            
+            const tableRows = this.pastExamRecords.map((record, index) => {
+                return `
+                    <tr>
+                        <td class="text-center">${index + 1}</td>
+                        <td>${record.period}</td>
+                        <td class="text-center">${record.units}</td>
+                        <td class="text-center">${record.credits}</td>
+                        <td>${record.date}</td>
+                        <td class="text-center">
+                            <span class="status-badge completed" style="font-size: 9px; padding: 2px 10px;">
+                                ${record.status}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <button class="view-exam-btn" data-exam-id="${record.id}" style="
+                                background: #1e3a5f;
+                                color: white;
+                                border: none;
+                                padding: 4px 14px;
+                                border-radius: 20px;
+                                font-size: 11px;
+                                cursor: pointer;
+                                font-weight: 500;
+                            ">
+                                📄 View
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            this.pastExamsContainer.innerHTML = `
+                <div style="margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 16px;">
+                    <h4 style="font-size: 14px; color: #1e3a5f; margin-bottom: 12px;">
+                        📚 Past Exam Records
+                    </h4>
+                    <div style="overflow-x: auto;">
+                        <table style="
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 12px;
+                            background: white;
+                            border-radius: 8px;
+                            overflow: hidden;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                        ">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #cbd5e1;">#</th>
+                                    <th style="padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Exam Period</th>
+                                    <th style="padding: 8px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Units</th>
+                                    <th style="padding: 8px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Credits</th>
+                                    <th style="padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Date</th>
+                                    <th style="padding: 8px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Status</th>
+                                    <th style="padding: 8px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            // Add click handlers for View buttons
+            this.pastExamsContainer.querySelectorAll('.view-exam-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const examId = btn.dataset.examId;
+                    this.viewPastExam(examId);
+                });
+            });
+        }
+        
+        // NEW: View past exam card
+        viewPastExam(examId) {
+            const record = this.pastExamRecords.find(r => r.id == examId);
+            if (!record) return;
+            
+            // Show a preview/modal with the past exam card
+            alert(`📄 Past Exam Record\n\nPeriod: ${record.period}\nUnits: ${record.units}\nCredits: ${record.credits}\nDate: ${record.date}\nStatus: ${record.status}\n\n(This would open the PDF of the past exam card)`);
+            
+            // In production, this would generate/download the past exam PDF
+            // this.generatePastExamPDF(record);
+        }
+        
+        // NEW: Generate past exam PDF
+        async generatePastExamPDF(record) {
+            // Similar to downloadExamCardDirect but with past data
+            // Would show historical record with "COMPLETED" status
         }
         
         async downloadExamCardDirect() {
@@ -257,28 +432,25 @@
                 const allButtons = cloneCard.querySelectorAll('button');
                 allButtons.forEach(btn => btn.style.display = 'none');
                 
-                // FIX 1: Add margins to push content down
                 const tempContainer = document.createElement('div');
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
                 tempContainer.style.top = '-9999px';
                 tempContainer.style.width = '794px';
                 tempContainer.style.backgroundColor = 'white';
-                tempContainer.style.padding = '50px 40px'; // Top margin to push content down
+                tempContainer.style.padding = '50px 40px';
                 tempContainer.style.boxSizing = 'border-box';
                 tempContainer.appendChild(cloneCard);
                 document.body.appendChild(tempContainer);
                 
-                // FIX 2: Make signature lines shorter
                 const signatureLines = cloneCard.querySelectorAll('.signature-line, .sign-line, .signature-line-inline');
                 signatureLines.forEach(line => {
-                    line.style.width = '80%'; // Shorter lines
-                    line.style.margin = '8px auto'; // Centered
+                    line.style.width = '80%';
+                    line.style.margin = '8px auto';
                     line.style.borderTop = '2px solid #000';
                     line.style.height = '2px';
                 });
                 
-                // Fix: Lecturer signature lines shorter
                 const lecturerSig = cloneCard.querySelectorAll('.signature-cell .signature-line');
                 lecturerSig.forEach(line => {
                     line.style.width = '90%';
@@ -302,8 +474,7 @@
                 const { jsPDF } = window.jspdf;
                 const imgData = canvas.toDataURL('image/png', 1.0);
                 
-                // FIX 3: Add PDF margins
-                const margin = 20; // 20mm margins all around
+                const margin = 20;
                 const imgWidth = 210 - (margin * 2);
                 const pageHeight = 297;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -323,10 +494,17 @@
                     }
                 }
                 
+                if (this.isExamOver()) {
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text('This is a historical record of units registered for this exam period', margin + 5, pageHeight - 10);
+                }
+                
                 const studentName = this.userProfile?.full_name || 'Student';
                 const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 const date = this.formatDate().replace(/[, ]/g, '_');
-                pdf.save(`Exam_Card_${safeName}_${date}.pdf`);
+                const suffix = this.isExamOver() ? '_historical_record' : '';
+                pdf.save(`Exam_Card_${safeName}_${date}${suffix}.pdf`);
                 
                 if (downloadBtn) {
                     downloadBtn.innerHTML = '✅ Downloaded!';
@@ -393,7 +571,6 @@
                             max-width: 800px;
                             margin: 0 auto;
                         }
-                        /* Shorter signature lines */
                         .signature-line, .sign-line, .signature-line-inline {
                             width: 80% !important;
                             margin: 8px auto !important;
@@ -408,6 +585,7 @@
                             body { padding: 0; margin: 0; }
                             .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            .status-badge.completed { background: #059669 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             .signature-line, .sign-line, .signature-line-inline {
                                 width: 80% !important;
                                 margin: 8px auto !important;
@@ -441,6 +619,7 @@
             const student = this.userProfile;
             const approvedUnits = this.approvedUnits;
             const isEligible = approvedUnits.length > 0;
+            const examOver = this.isExamOver();
             const currentBlock = this.userBlock || student?.block || 'Current Block';
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
@@ -466,6 +645,15 @@
                 `;
             }).join('');
             
+            let statusBadge = '';
+            if (examOver) {
+                statusBadge = `<div class="status-badge completed">✅ COMPLETED</div>`;
+            } else {
+                statusBadge = `<div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
+                    ${isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}
+                </div>`;
+            }
+            
             const html = `
                 <div class="exam-card-wrapper" id="exam-card-print-area">
                     <div class="exam-card-compact">
@@ -474,11 +662,9 @@
                             <div class="header-text">
                                 <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                                 <div class="card-title">EXAMINATION CARD</div>
-                                <div class="card-subtitle">(Exam Entry Permit)</div>
+                                <div class="card-subtitle">${examOver ? '(Historical Record)' : '(Exam Entry Permit)'}</div>
                             </div>
-                            <div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
-                                ${isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}
-                            </div>
+                            ${statusBadge}
                         </div>
                         
                         <div class="info-grid">
@@ -490,7 +676,7 @@
                             <div class="info-item"><span class="info-label">Total Credits:</span> ${totalCredits}</div>
                             <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
                             <div class="info-item"><span class="info-label">Date Issued:</span> ${this.formatDate()}</div>
-                            <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
+                            <div class="info-item"><span class="info-label">Valid Until:</span> ${examOver ? 'Completed' : 'End of Exam Period'}</div>
                         </div>
                         
                         ${approvedUnits.length > 0 ? `
@@ -553,10 +739,16 @@
                         </div>
                     </div>
                     
-                    ${isEligible ? `
+                    ${!examOver && isEligible ? `
                         <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn">Download PDF</button>
-                            <button class="print-btn" id="printExamCardBtn">Print Card</button>
+                            <button class="download-btn" id="downloadExamCardBtn">📥 Download PDF</button>
+                            <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
+                        </div>
+                    ` : ''}
+                    
+                    ${examOver ? `
+                        <div style="text-align: center; margin-top: 12px; font-size: 11px; color: #64748b;">
+                            📜 This is a historical record from the ${this.getExamPeriod()}
                         </div>
                     ` : ''}
                 </div>
@@ -581,6 +773,9 @@
                     this.printExamCard();
                 });
             }
+            
+            // Display past exams below
+            this.displayPastExams();
         }
         
         addCompactStyles() {
@@ -602,6 +797,7 @@
                 .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
                 .status-badge.eligible { background: #10b981; }
                 .status-badge.ineligible { background: #dc2626; }
+                .status-badge.completed { background: #059669; }
                 
                 .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
                 .info-item { color: #334155; }
@@ -640,6 +836,11 @@
                 .print-btn { background: #1e3a5f; color: white; }
                 .print-btn:hover { background: #2c5a8c; transform: scale(1.02); }
                 
+                .view-exam-btn:hover {
+                    background: #2c5a8c !important;
+                    transform: scale(1.02);
+                }
+                
                 @media print {
                     body * { visibility: hidden; }
                     .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
@@ -647,6 +848,7 @@
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .status-badge.completed { background: #059669 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .signature-line, .sign-line, .signature-line-inline { 
                         width: 80% !important;
                         margin: 8px auto !important;
@@ -705,5 +907,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('Exam Card module ready - Clean version!');
+    console.log('Exam Card module ready - With Past Records!');
 })();
