@@ -19,7 +19,8 @@ class DashboardModule {
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
-            xp: { current: 0, max: 100, level: 1, percent: 0 }
+            xp: { current: 0, max: 100, level: 1, percent: 0 },
+            nextExam: null
         };
         
         this.cacheElements();
@@ -53,7 +54,10 @@ class DashboardModule {
             userXp: document.getElementById('user-xp'),
             userXpMax: document.getElementById('user-xp-max'),
             xpProgressFill: document.getElementById('xp-progress-fill'),
-            announcementText: document.getElementById('student-announcement')
+            announcementText: document.getElementById('student-announcement'),
+            // ✅ Added next exam widget elements
+            nextExamWidget: document.querySelector('.next-exam-widget'),
+            nextExamDetails: document.getElementById('next-exam-details')
         };
     }
     
@@ -171,6 +175,7 @@ class DashboardModule {
         console.log('📊 Loading fresh dashboard data...');
         
         try {
+            // Try RPC first
             const { data, error } = await this.sb.rpc('get_student_dashboard', {
                 p_user_id: this.userId
             });
@@ -225,7 +230,9 @@ class DashboardModule {
             }
             if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-            if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = this.metrics.exams;
+            
+            // ✅ Updated: Call the standalone exam update
+            await this.updateExamsMetric();
             
             console.log('✅ Dashboard loaded from DATABASE');
             
@@ -380,37 +387,308 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 🆕 UPDATED: EXAM METRICS WITH WIDGET SUPPORT
+    // ============================================================
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
         try {
             if (!this.userProfile) return;
             
-            const today = new Date().toISOString().split('T')[0];
+            const kenyaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+            const todayStr = kenyaNow.toISOString().split('T')[0];
             
+            console.log('📅 Checking upcoming exams for:', {
+                program: this.userProfile.program,
+                block: this.userProfile.block,
+                intake: this.userProfile.intake_year,
+                today: todayStr,
+                now: kenyaNow.toISOString()
+            });
+            
+            // ✅ Get ALL exams for this student
             const { data: exams, error } = await this.sb
                 .from('exams')
-                .select('title, exam_name, exam_date')
+                .select('*')
                 .eq('program_type', this.userProfile.program)
                 .eq('block', this.userProfile.block)
-                .gte('exam_date', today)
+                .eq('intake_year', this.userProfile.intake_year)
                 .order('exam_date', { ascending: true })
-                .limit(1);
+                .order('exam_start_time', { ascending: true });
             
-            if (error) throw error;
-            
-            if (exams && exams.length > 0) {
-                const examDate = new Date(exams[0].exam_date).toLocaleDateString();
-                const examTitle = exams[0].exam_name || exams[0].title;
-                upcomingText = `${examTitle} - ${examDate}`;
+            if (error) {
+                console.error('Exams query error:', error);
+                throw error;
             }
+            
+            console.log(`📊 Found ${exams?.length || 0} exams for this student`);
+            
+            if (!exams || exams.length === 0) {
+                upcomingText = 'No exams scheduled';
+                if (this.elements.upcomingExam) {
+                    this.elements.upcomingExam.innerText = upcomingText;
+                }
+                // ✅ Update widget with no exams
+                this.updateNextExamWidget(null);
+                return;
+            }
+            
+            // ✅ Process exams to find upcoming ones
+            let upcomingExams = [];
+            let currentExams = [];
+            let completedExams = [];
+            
+            exams.forEach(exam => {
+                try {
+                    const examDate = new Date(exam.exam_date);
+                    const examTime = exam.exam_start_time || '00:00:00';
+                    const [hours, minutes] = examTime.split(':').map(Number);
+                    examDate.setHours(hours || 0, minutes || 0, 0, 0);
+                    
+                    // Compare with current Kenya time
+                    const examDateTime = examDate;
+                    const isUpcoming = examDateTime > kenyaNow;
+                    const isToday = examDateTime.toDateString() === kenyaNow.toDateString();
+                    const isPast = examDateTime < kenyaNow;
+                    
+                    const examDisplayName = exam.exam_name || exam.title || 'Exam';
+                    
+                    console.log(`📝 ${examDisplayName}:`, {
+                        date: examDateTime.toISOString(),
+                        now: kenyaNow.toISOString(),
+                        isUpcoming,
+                        isToday,
+                        isPast,
+                        status: exam.status
+                    });
+                    
+                    if (isUpcoming || (isToday && !isPast)) {
+                        upcomingExams.push(exam);
+                    } else if (isPast && exam.status !== 'Completed') {
+                        if (isToday) {
+                            currentExams.push(exam);
+                        } else {
+                            completedExams.push(exam);
+                        }
+                    } else {
+                        completedExams.push(exam);
+                    }
+                    
+                } catch (e) {
+                    console.error('Error processing exam:', exam.id, e);
+                }
+            });
+            
+            // ✅ Sort upcoming by date (closest first)
+            upcomingExams.sort((a, b) => {
+                const dateA = new Date(`${a.exam_date}T${a.exam_start_time || '00:00:00'}`);
+                const dateB = new Date(`${b.exam_date}T${b.exam_start_time || '00:00:00'}`);
+                return dateA - dateB;
+            });
+            
+            console.log(`📊 Upcoming: ${upcomingExams.length}, Current: ${currentExams.length}, Completed: ${completedExams.length}`);
+            
+            // ✅ UPDATE THE WIDGET AND DISPLAY
+            if (upcomingExams.length > 0) {
+                const nextExam = upcomingExams[0];
+                const examDate = new Date(nextExam.exam_date);
+                const formattedDate = examDate.toLocaleDateString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const examTitle = nextExam.exam_name || nextExam.title || 'Exam';
+                upcomingText = `${examTitle} - ${formattedDate}`;
+                
+                // ✅ Store next exam for widget
+                this.metrics.nextExam = nextExam;
+                
+                // ✅ Update the widget
+                this.updateNextExamWidget(nextExam);
+                
+            } else if (currentExams.length > 0) {
+                const todayExam = currentExams[0];
+                const examTitle = todayExam.exam_name || todayExam.title || 'Exam';
+                upcomingText = `📅 ${examTitle} - Today`;
+                this.metrics.nextExam = todayExam;
+                this.updateNextExamWidget(todayExam);
+                
+            } else if (completedExams.length > 0) {
+                const lastExam = completedExams[completedExams.length - 1];
+                const examTitle = lastExam.exam_name || lastExam.title || 'Exam';
+                upcomingText = `✅ ${examTitle} (Completed)`;
+                this.metrics.nextExam = null;
+                this.updateNextExamWidget(null);
+                
+            } else {
+                upcomingText = 'No upcoming exams';
+                this.metrics.nextExam = null;
+                this.updateNextExamWidget(null);
+            }
+            
+            // ✅ Update the UI
+            this.metrics.exams = upcomingText;
+            if (this.elements.upcomingExam) {
+                this.elements.upcomingExam.innerText = upcomingText;
+            }
+            
+            // ✅ Dispatch event for other components
+            document.dispatchEvent(new CustomEvent('examsUpdated', {
+                detail: { 
+                    upcoming: upcomingExams, 
+                    current: currentExams, 
+                    completed: completedExams,
+                    nextExam: this.metrics.nextExam
+                }
+            }));
             
         } catch (error) {
             console.error('Exams error:', error);
+            if (this.elements.upcomingExam) {
+                this.elements.upcomingExam.innerText = 'Error loading exams';
+            }
+            this.updateNextExamWidget(null);
+        }
+    }
+    
+    // ============================================================
+    // 🆕 NEXT EXAM WIDGET
+    // ============================================================
+    updateNextExamWidget(exam) {
+        const container = document.querySelector('.next-exam-widget');
+        if (!container) {
+            console.warn('⚠️ Next exam widget container not found');
+            return;
         }
         
-        this.metrics.exams = upcomingText;
-        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
+        const detailsContainer = document.getElementById('next-exam-details');
+        const statusContainer = document.getElementById('dashboard-exam-status');
+        
+        if (!exam) {
+            if (detailsContainer) {
+                detailsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 10px;">
+                        <p style="font-size: 0.8rem; color: #64748B;">No upcoming exams</p>
+                        <p style="font-size: 0.7rem; color: #94A3B8; margin-top: 4px;">Check back later for new assessments</p>
+                    </div>
+                `;
+            }
+            if (statusContainer) {
+                statusContainer.innerText = 'No Exams';
+                statusContainer.style.color = '#64748B';
+            }
+            return;
+        }
+        
+        // Determine exam type
+        const isCatExam = exam.exam_type?.toUpperCase().includes('CAT') || false;
+        const isFinalExam = exam.exam_type?.toUpperCase() === 'EXAM' || 
+                           exam.exam_type?.toUpperCase() === 'FINAL' || 
+                           exam.exam_type?.toUpperCase() === 'END_TERM';
+        
+        // Calculate total marks
+        let totalMarks = 30;
+        if (isCatExam) {
+            totalMarks = 30;
+        } else if (isFinalExam) {
+            totalMarks = 70;
+        } else {
+            totalMarks = exam.total_marks || exam.marks_out_of || 100;
+        }
+        
+        const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
+        const examDate = new Date(exam.exam_date);
+        const formattedDate = examDate.toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+        
+        // Determine badge style
+        let badgeClass = 'exam-badge';
+        let badgeText = 'EXAM';
+        let badgeBg = '#DBEAFE';
+        let badgeColor = '#1E40AF';
+        
+        if (isCatExam) {
+            badgeText = 'CAT';
+            badgeBg = '#FEF3C7';
+            badgeColor = '#92400E';
+        } else if (isFinalExam) {
+            badgeText = 'FINAL';
+            badgeBg = '#D1FAE5';
+            badgeColor = '#065F46';
+        }
+        
+        // Format time
+        const examTime = exam.exam_start_time || '00:00:00';
+        const formattedTime = examTime.substring(0, 5);
+        
+        if (detailsContainer) {
+            detailsContainer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
+                    <div style="background: ${badgeBg}; padding: 6px 12px; border-radius: 8px; flex-shrink: 0;">
+                        <span style="font-weight: 700; font-size: 0.75rem; color: ${badgeColor};">
+                            ${badgeText}
+                        </span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 0.9rem; color: #0A3D62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${this.escapeHtml(exam.exam_name || exam.title)}
+                        </div>
+                        <div style="font-size: 0.7rem; color: #64748B; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px;">
+                            <span>📅 ${formattedDate}</span>
+                            <span>⏰ ${formattedTime}</span>
+                            <span>📊 ${totalMarks} marks</span>
+                            <span>🎯 ${passMark} marks (60%)</span>
+                            <span>⏳ ${exam.duration_minutes || 30} min</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (statusContainer) {
+            const timeUntil = this.getTimeUntilExam(examDate);
+            statusContainer.innerText = `⏳ ${timeUntil}`;
+            statusContainer.style.color = '#F59E0B';
+        }
+        
+        // Make the whole widget clickable to go to exams tab
+        container.style.cursor = 'pointer';
+        container.onclick = () => {
+            const examsTab = document.querySelector('[data-tab="exams"]');
+            if (examsTab) examsTab.click();
+        };
+    }
+    
+    // ============================================================
+    // 🕐 GET TIME UNTIL EXAM
+    // ============================================================
+    getTimeUntilExam(examDate) {
+        const now = new Date();
+        const diffMs = examDate - now;
+        
+        if (diffMs < 0) {
+            return 'Expired';
+        }
+        
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (diffDays > 0) {
+            return `${diffDays}d ${diffHours}h`;
+        } else if (diffHours > 0) {
+            return `${diffHours}h ${diffMinutes}m`;
+        } else if (diffMinutes > 0) {
+            return `${diffMinutes}m`;
+        } else {
+            return 'Starting soon!';
+        }
     }
     
     async loadAnnouncement() {
