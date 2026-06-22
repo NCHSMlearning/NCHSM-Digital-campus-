@@ -669,11 +669,12 @@ async function loadSectionData(tabId) {
             renderFullCalendar(); 
             break;
         case 'unit-management': 
-            loadAllUnits(); 
-            loadUnitBlocks();
-            loadUnitRegistrationStats();
-            loadApprovedRegistrations();
-            break;
+    loadAllUnits(); 
+    loadUnitBlocks();
+    loadUnitRegistrationStats();
+    loadUnitPendingRegistrations(); 
+    loadApprovedRegistrations();
+    break;
         case 'fee-accounts': 
             loadStudentAccounts();
             loadFeeStructure();
