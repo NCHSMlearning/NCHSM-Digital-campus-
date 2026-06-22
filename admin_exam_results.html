@@ -1308,7 +1308,46 @@
             </div>
         </div>
     </div>
-
+<!-- ========== TIMER MANAGEMENT MODAL ========== -->
+<div id="timerModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-modal" onclick="closeTimerModal()">&times;</span>
+        <h2><i class="fas fa-clock"></i> Timer Management</h2>
+        <div style="margin: 20px 0;">
+            <!-- Student Info -->
+            <div id="timerStudentInfo" style="background: #F8FAFC; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px;">
+                <p><strong>👤 Student:</strong> <span id="timerStudentName">Loading...</span></p>
+                <p><strong>📝 Exam:</strong> <span id="timerExamName">Loading...</span></p>
+                <p><strong>⏱️ Current Status:</strong> <span id="timerCurrentStatus">Loading...</span></p>
+            </div>
+            
+            <!-- Add Time Section -->
+            <div style="background: #EFF6FF; padding: 16px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #3B82F6;">
+                <h3 style="color: #1E40AF; margin-bottom: 10px;"><i class="fas fa-plus-circle"></i> Add Time</h3>
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <input type="number" id="timerMinutesToAdd" value="10" min="1" max="60" style="width: 100px; padding: 10px; border: 2px solid #E2E8F0; border-radius: 10px; font-size: 1rem; text-align: center;">
+                    <span style="font-weight: 600;">minutes</span>
+                    <button class="btn btn-primary" onclick="addTimeToStudent()" style="padding: 10px 24px;">
+                        <i class="fas fa-plus"></i> Add Time
+                    </button>
+                </div>
+                <small style="color: #64748B; display: block; margin-top: 6px;">Enter minutes (1-60) to add to the student's remaining time</small>
+            </div>
+            
+            <!-- Reset Section -->
+            <div style="background: #FEF2F2; padding: 16px; border-radius: 12px; border-left: 4px solid #DC2626;">
+                <h3 style="color: #DC2626; margin-bottom: 10px;"><i class="fas fa-trash-alt"></i> Reset Timer</h3>
+                <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 10px;">This will clear all timer records for this student. The student will need to refresh their exam page.</p>
+                <button class="btn btn-danger" onclick="resetStudentTimerComplete()" style="padding: 10px 24px;">
+                    <i class="fas fa-undo"></i> Reset Timer Completely
+                </button>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 20px;">
+            <button class="btn btn-danger" onclick="closeTimerModal()">Close</button>
+        </div>
+    </div>
+</div>
     <script>
         (function() {
             if (window.dashboardInitialized) return;
@@ -2120,10 +2159,10 @@ function updateAdminTimers() {
                     <i class="fas fa-chart-line"></i> Progress
                 </button>
                 
-                <!-- ✅ TIMER RESET BUTTON -->
-                <button class="action-btn btn-warning" onclick="resetStudentTimer('${studentId}', ${examId})" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Reset Timer">
-                    <i class="fas fa-clock"></i> Timer
-                </button>
+               <!-- ✅ TIMER MANAGEMENT BUTTON -->
+<button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
+    <i class="fas fa-clock"></i> Timer
+</button>
                 
                 <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
                     <i class="fas fa-user-slash"></i> Reset
@@ -3235,97 +3274,117 @@ window.viewStudentProgress = async function(studentId, studentName, examId) {
 };
 
 // ============================================
-// ⏱️ ADD TIME / RESET STUDENT TIMER
+// ⏱️ TIMER MODAL FUNCTIONS
 // ============================================
-window.resetStudentTimer = async function(studentId, examId) {
-    // Show a prompt with options
-    const choice = confirm(
-        `⏱️ STUDENT TIMER MANAGEMENT\n\n` +
-        `Click "OK" to ADD 10 minutes\n` +
-        `Click "Cancel" to RESET timer completely`
-    );
-    
-    if (choice) {
-        // ✅ ADD 10 MINUTES
-        await addStudentTime(studentId, examId, 10);
-    } else {
-        // ❌ RESET COMPLETELY
-        await resetStudentTimerComplete(studentId, examId);
-    }
+
+let timerModalData = {
+    studentId: null,
+    examId: null,
+    studentName: null,
+    examName: null
 };
 
 // ============================================
-// ➕ ADD TIME TO STUDENT EXAM
+// OPEN TIMER MODAL
 // ============================================
-async function addStudentTime(studentId, examId, minutesToAdd = 10) {
+window.openTimerModal = async function(studentId, studentName, examId, examName) {
+    timerModalData = {
+        studentId: studentId,
+        examId: examId,
+        studentName: studentName,
+        examName: examName
+    };
+    
+    document.getElementById('timerStudentName').textContent = studentName;
+    document.getElementById('timerExamName').textContent = examName;
+    document.getElementById('timerCurrentStatus').textContent = 'Loading...';
+    document.getElementById('timerMinutesToAdd').value = 10;
+    
     try {
-        // Get the exam duration
-        const { data: exam } = await sb
-            .from('exams')
-            .select('duration_minutes, exam_start_time, exam_date')
-            .eq('id', parseInt(examId))
-            .single();
-        
-        if (!exam) {
-            alert('❌ Exam not found!');
-            return;
-        }
-        
-        // Get the student's latest heartbeat
-        const { data: heartbeat } = await sb
-            .from('exam_heartbeats')
-            .select('timestamp')
+        const { data: grade } = await sb
+            .from('exam_grades')
+            .select('result_status')
             .eq('student_id', studentId)
             .eq('exam_id', parseInt(examId))
-            .order('timestamp', { ascending: false })
-            .limit(1)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
             .maybeSingle();
         
-        if (!heartbeat) {
-            alert('⚠️ No active timer found. Student may not have started the exam.');
-            return;
+        if (grade) {
+            const status = grade.result_status || 'PENDING';
+            let statusDisplay = status;
+            if (status === 'PENDING_REVIEW') statusDisplay = '⏳ Pending Review';
+            else if (status === 'PASS') statusDisplay = '✅ Passed';
+            else if (status === 'FAIL') statusDisplay = '❌ Failed';
+            else if (status === 'SCHEDULED') statusDisplay = '📅 Scheduled';
+            document.getElementById('timerCurrentStatus').textContent = statusDisplay;
+        } else {
+            document.getElementById('timerCurrentStatus').textContent = '📝 Not Started';
         }
-        
-        // Calculate current elapsed time
-        const startTime = new Date(heartbeat.timestamp);
-        const now = getKenyaNow();
-        const elapsedSeconds = Math.floor((now - startTime) / 1000);
-        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-        
-        // Calculate new duration
-        const originalDuration = exam.duration_minutes || 30;
-        const remainingMinutes = Math.max(0, originalDuration - elapsedMinutes);
-        const newDuration = remainingMinutes + minutesToAdd;
-        
-        // Update the exam duration for this specific student
-        // We'll store this in a custom field or update the heartbeat
-        const { error: updateError } = await sb
-            .from('exam_heartbeats')
-            .update({
-                duration_extension: minutesToAdd,
-                extended_at: new Date().toISOString()
-            })
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId));
-        
-        if (updateError) throw updateError;
-        
-        // Log the extension
+    } catch (error) {
+        document.getElementById('timerCurrentStatus').textContent = '⚠️ Unknown';
+    }
+    
+    document.getElementById('timerModal').style.display = 'flex';
+};
+
+// ============================================
+// CLOSE TIMER MODAL
+// ============================================
+window.closeTimerModal = function() {
+    document.getElementById('timerModal').style.display = 'none';
+    timerModalData = { studentId: null, examId: null, studentName: null, examName: null };
+};
+
+// ============================================
+// ➕ ADD TIME TO STUDENT
+// ============================================
+window.addTimeToStudent = async function() {
+    const { studentId, examId, studentName, examName } = timerModalData;
+    const minutesToAdd = parseInt(document.getElementById('timerMinutesToAdd').value) || 10;
+    
+    if (minutesToAdd < 1 || minutesToAdd > 60) {
+        alert('⚠️ Please enter a number between 1 and 60 minutes.');
+        return;
+    }
+    
+    if (!confirm(`Add ${minutesToAdd} minutes to ${studentName}'s timer for "${examName}"?`)) {
+        return;
+    }
+    
+    try {
         await sb.from('exam_proctoring_logs').insert({
             student_id: studentId,
             exam_id: parseInt(examId),
             event_type: 'time_extended',
-            details: `Added ${minutesToAdd} minutes to student's exam timer`,
+            details: `Added ${minutesToAdd} minutes to student's exam timer (${studentName})`,
             severity: 'info',
             timestamp: new Date().toISOString()
         });
         
-        alert(`✅ Added ${minutesToAdd} minutes to the student's timer!\n\n` +
-              `⏱️ Original duration: ${originalDuration} min\n` +
-              `⏱️ Time used: ${elapsedMinutes} min\n` +
-              `⏱️ Remaining: ${remainingMinutes} min\n` +
-              `⏱️ New total remaining: ${newDuration} min`);
+        try {
+            const existing = await sb.from('exam_heartbeats')
+                .select('duration_extension')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .maybeSingle();
+            
+            const currentExtension = existing?.duration_extension || 0;
+            const newExtension = currentExtension + minutesToAdd;
+            
+            await sb.from('exam_heartbeats').upsert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                duration_extension: newExtension,
+                extended_at: new Date().toISOString(),
+                timestamp: new Date().toISOString()
+            }, { onConflict: 'student_id, exam_id' });
+        } catch (e) {
+            console.log('Note: exam_heartbeats table not available');
+        }
         
+        alert(`✅ Added ${minutesToAdd} minutes to ${studentName}'s timer!\n\n📝 Student must refresh the exam page to see the updated time.`);
+        
+        closeTimerModal();
         loadStudentsWithResults();
         loadAllExams();
         
@@ -3333,39 +3392,47 @@ async function addStudentTime(studentId, examId, minutesToAdd = 10) {
         console.error('Error adding time:', error);
         alert('❌ Error adding time: ' + error.message);
     }
-}
+};
 
 // ============================================
-// 🔄 RESET STUDENT TIMER COMPLETELY
+// 🔄 RESET STUDENT TIMER COMPLETELY (from modal)
 // ============================================
-async function resetStudentTimerComplete(studentId, examId) {
-    if (!confirm(`⚠️ RESET TIMER COMPLETELY\n\nThis will clear all timer records for this student.\n\nAre you sure?`)) return;
+window.resetStudentTimerComplete = async function() {
+    const { studentId, examId, studentName, examName } = timerModalData;
+    
+    if (!confirm(`⚠️ RESET TIMER COMPLETELY\n\nStudent: ${studentName}\nExam: ${examName}\n\nAre you sure?`)) {
+        return;
+    }
     
     try {
-        // Delete heartbeat records
-        await sb.from('exam_heartbeats')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(examId));
+        try {
+            await sb.from('exam_heartbeats')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId));
+        } catch (e) {
+            console.log('Note: exam_heartbeats table not available');
+        }
         
-        // Log the reset
         await sb.from('exam_proctoring_logs').insert({
             student_id: studentId,
             exam_id: parseInt(examId),
             event_type: 'timer_reset',
-            details: 'Admin reset timer completely',
+            details: `Admin reset timer completely for ${studentName}`,
             severity: 'warning',
             timestamp: new Date().toISOString()
         });
         
-        alert('✅ Student timer reset completely!');
+        alert(`✅ Timer reset completely for ${studentName}!`);
+        
+        closeTimerModal();
         loadStudentsWithResults();
         loadAllExams();
         
     } catch (error) {
         alert('❌ Error resetting timer: ' + error.message);
     }
-}
+};
 // ============================================
 // 🚀 FORCE SUBMIT STUDENT
 // ============================================
