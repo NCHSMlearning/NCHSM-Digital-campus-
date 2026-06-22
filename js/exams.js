@@ -2,52 +2,51 @@
     'use strict';
     
     console.log('✅ exams.js - ONE-CALL OPTIMIZED VERSION');
-    
-    // ============================================
-    // 🕐 KENYA TIMEZONE HELPERS
-    // ============================================
-    
-    function getKenyaNow() {
-        const now = new Date();
-        return new Date(now.getTime() + (3 * 60 * 60 * 1000));
-    }
-    
-    function formatKenyaDate(date) {
-        if (!date) return 'N/A';
-        const d = new Date(date);
-        return d.toLocaleDateString('en-US', {
-            timeZone: 'Africa/Nairobi',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    }
-    
-    function formatKenyaTime(date) {
-        if (!date) return 'N/A';
-        const d = new Date(date);
-        return d.toLocaleTimeString('en-US', {
-            timeZone: 'Africa/Nairobi',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-    
-    function formatKenjaDateTime(date) {
-        if (!date) return 'N/A';
-        const d = new Date(date);
-        return d.toLocaleString('en-US', {
-            timeZone: 'Africa/Nairobi',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-    
+   // ============================================
+// 🕐 KENYA TIMEZONE HELPERS - FIXED
+// ============================================
+
+function getKenyaNow() {
+    // ✅ Get current time in Kenya timezone directly
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+}
+
+function formatKenyaDate(date) {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function formatKenyaTime(date) {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleTimeString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function formatKenyaDateTime(date) {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
     class ExamsModule {
         constructor() {
             console.log('🔧 ExamsModule initialized');
@@ -785,28 +784,42 @@
                 let canStart = false;
                 let timeRemainingMs = 0;
                 
-                if (group.exam_date) {
-                    const [year, month, day] = group.exam_date.split('-');
-                    
-                    if (group.exam_start_time) {
-                        const [hours, minutes, seconds] = group.exam_start_time.split(':');
-                        examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds || 0));
-                        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-                    } else {
-                        examStartDateTime = new Date(Date.UTC(year, month-1, day, 0, 0, 0));
-                        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-                    }
-                    
-                    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
-                    
-                    // ✅ FIX: ALWAYS use Kenya timezone for formatting
-                    const dateOptions = { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric',
-                        timeZone: 'Africa/Nairobi'
-                    };
-                    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
+                // ============================================
+// 🕐 EXAM DATE/TIME - FIXED
+// ============================================
+if (group.exam_date) {
+    const [year, month, day] = group.exam_date.split('-');
+    
+    if (group.exam_start_time) {
+        const [hours, minutes, seconds] = group.exam_start_time.split(':');
+        // ✅ CORRECT: Create date directly in Kenya time
+        examStartDateTime = new Date(year, month-1, day, hours, minutes, seconds || 0);
+    } else {
+        examStartDateTime = new Date(year, month-1, day, 0, 0, 0);
+    }
+    
+    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
+    
+    // ✅ Format with Kenya timezone for display
+    const dateOptions = { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        timeZone: 'Africa/Nairobi'
+    };
+    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
+    
+    if (group.exam_start_time) {
+        const timeOptions = {
+            timeZone: 'Africa/Nairobi',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        };
+        const timeString = examStartDateTime.toLocaleTimeString('en-US', timeOptions);
+        formattedExamDateTime += ` at ${timeString}`;
+    }
+}
                     
                     if (group.exam_start_time) {
                         const timeOptions = {
@@ -1048,122 +1061,126 @@
             this.updateEmptyStates();
         }
         
-        displayCurrentTable() {
-            if (!this.currentTable) return;
+      displayCurrentTable() {
+    if (!this.currentTable) return;
+    
+    const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
+    
+    if (activeExams.length === 0) {
+        this.currentTable.innerHTML = '';
+        return;
+    }
+    
+    const userId = this.userId || window.db?.currentUserId || '';
+    const userProgram = this.programCode || 'KRCHN';
+    const userBlock = this.userBlock || 'A';
+    const userIntake = this.intakeYear || 2025;
+    
+    const html = activeExams.map(exam => {
+        const isCatExam = exam.isCatExam;
+
+        let examDisplayName = 'Assessment';
+        if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
+            examDisplayName = exam.exam_name;
+        } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
+            examDisplayName = exam.title;
+        } else if (typeof exam.course === 'string' && exam.course !== '[object Object]' && exam.course !== '') {
+            examDisplayName = exam.course;
+        } else if (typeof exam.exam_type === 'string' && exam.exam_type !== '[object Object]' && exam.exam_type !== '') {
+            examDisplayName = exam.exam_type;
+        } else {
+            examDisplayName = 'Assessment';
+        }
+        
+        let actionHtml = '';
+        let timeRemainingHtml = '';
+        
+        if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
+            let examLink = exam.examLink;
+            const baseUrl = examLink.split('?')[0];
+            const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
             
-            const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
+            const params = new URLSearchParams();
+            params.append('user_id', userId);
+            params.append('exam_id', exam.id);
             
-            if (activeExams.length === 0) {
-                this.currentTable.innerHTML = '';
-                return;
+            if (existingParams) {
+                const existing = new URLSearchParams(existingParams);
+                existing.forEach((value, key) => {
+                    if (!params.has(key)) {
+                        params.append(key, value);
+                    }
+                });
             }
             
-            const userId = this.userId || window.db?.currentUserId || '';
-            const userProgram = this.programCode || 'KRCHN';
-            const userBlock = this.userBlock || 'A';
-            const userIntake = this.intakeYear || 2025;
+            const fullUrl = `${baseUrl}?${params.toString()}`;
             
-            const html = activeExams.map(exam => {
-                const isCatExam = exam.isCatExam;
-    
-let examDisplayName = 'Assessment';
-if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
-    examDisplayName = exam.exam_name;
-} else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
-    examDisplayName = exam.title;
-} else if (typeof exam.course === 'string' && exam.course !== '[object Object]' && exam.course !== '') {
-    examDisplayName = exam.course;
-} else if (typeof exam.exam_type === 'string' && exam.exam_type !== '[object Object]' && exam.exam_type !== '') {
-    examDisplayName = exam.exam_type;
-} else {
-    examDisplayName = 'Assessment';
-}
-                let actionHtml = '';
-                let timeRemainingHtml = '';
-                
-                if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-                    let examLink = exam.examLink;
-                    const baseUrl = examLink.split('?')[0];
-                    const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
-                    
-                    const params = new URLSearchParams();
-                    params.append('user_id', userId);
-                    params.append('exam_id', exam.id);
-                    
-                    if (existingParams) {
-                        const existing = new URLSearchParams(existingParams);
-                        existing.forEach((value, key) => {
-                            if (!params.has(key)) {
-                                params.append(key, value);
-                            }
-                        });
-                    }
-                    
-                    const fullUrl = `${baseUrl}?${params.toString()}`;
-                    
-                    actionHtml = `<a href="${fullUrl}" 
-                                    target="_blank" 
-                                    class="exam-link-btn btn-primary"
-                                    onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');"
-                                    style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                                    <i class="fas fa-external-link-alt"></i> Start Exam
-                                </a>`;
-                    
-                    if (exam.timeRemainingMs > 0) {
-                        const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
-                        const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
-                        timeRemainingHtml = `<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">
-                                                <i class="fas fa-hourglass-half"></i> Time left: ${minutesLeft}m ${secondsLeft}s
-                                            </div>`;
-                    }
-                } 
-                else if (exam.actionState === 'upcoming') {
-                    actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
-                                </span>`;
-                }
-                else {
-                    actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
-                                </span>`;
-                }
-                
-                let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
-                
-                let assessmentCell = `
-                    <div class="assessment-info-box">
-                        <div class="assessment-name">
-                            <strong>${this.escapeHtml(examDisplayName)}</strong>
-                            <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                        </div>
-                        <div class="assessment-details">
-                            <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
-                            <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
-                            <span class="program-badge ${exam.programBadgeClass}">
-                                <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                            </span>
-                        </div>
-                        ${exam.formattedExamDateTime !== 'TBA' ? `<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ${exam.formattedExamDateTime}</div>` : ''}
-                        ${timeRemainingHtml}
-                    </div>
-                `;
-                
-                return `
-                    <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
-                        <td class="assessment-cell">${assessmentCell}</td>
-                        <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
-                        <td class="text-center status-cell">${statusHtml}</td>
-                        <td class="text-center">${exam.cat1Display}</td>
-                        <td class="text-center">${exam.cat2Display}</td>
-                        <td class="text-center">${exam.finalDisplay}</td>
-                        <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
-                        <td class="text-center action-cell">${actionHtml}</td>
-                    </tr>
-                `;
-            }).join('');
+            actionHtml = `<a href="${fullUrl}" 
+                            target="_blank" 
+                            class="exam-link-btn btn-primary"
+                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');"
+                            style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                            <i class="fas fa-external-link-alt"></i> Start Exam
+                        </a>`;
             
-            this.currentTable.innerHTML = html;
+            if (exam.timeRemainingMs > 0) {
+                const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
+                const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
+                timeRemainingHtml = `<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">
+                                        <i class="fas fa-hourglass-half"></i> Time left: ${minutesLeft}m ${secondsLeft}s
+                                    </div>`;
+            }
+        } 
+        else if (exam.actionState === 'upcoming') {
+            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
+                        </span>`;
         }
+        else {
+            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
+                        </span>`;
+        }
+        
+        let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
+        
+        // ✅ FIX: Use course_code first, then fallback to course
+        const courseDisplay = exam.course_code || exam.course || 'General';
+        
+        let assessmentCell = `
+            <div class="assessment-info-box">
+                <div class="assessment-name">
+                    <strong>${this.escapeHtml(examDisplayName)}</strong>
+                    <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                </div>
+                <div class="assessment-details">
+                    <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(courseDisplay)}</span>
+                    <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || exam.block || 'General'}</span>
+                    <span class="program-badge ${exam.programBadgeClass}">
+                        <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                    </span>
+                </div>
+                ${exam.formattedExamDateTime !== 'TBA' ? `<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ${exam.formattedExamDateTime}</div>` : ''}
+                ${timeRemainingHtml}
+            </div>
+        `;
+        
+        return `
+            <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
+                <td class="assessment-cell">${assessmentCell}</td>
+                <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
+                <td class="text-center status-cell">${statusHtml}</td>
+                <td class="text-center">${exam.cat1Display}</td>
+                <td class="text-center">${exam.cat2Display}</td>
+                <td class="text-center">${exam.finalDisplay}</td>
+                <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
+                <td class="text-center action-cell">${actionHtml}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    this.currentTable.innerHTML = html;
+}
         
         displayCompletedTable() {
             if (!this.completedTable) return;
