@@ -1,52 +1,54 @@
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - ONE-CALL OPTIMIZED VERSION');
-   // ============================================
-// 🕐 KENYA TIMEZONE HELPERS - FIXED
-// ============================================
+    console.log('✅ exams.js - ONE-CALL OPTIMIZED WITH EXTERNAL API INTEGRATION');
+    
+    // ============================================
+    // 🕐 KENYA TIMEZONE HELPERS - FIXED
+    // ============================================
 
-function getKenyaNow() {
-    // ✅ Get current time in Kenya timezone directly
-    const now = new Date();
-    return new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
-}
+    function getKenyaNow() {
+        // ✅ Get current time in Kenya timezone directly
+        const now = new Date();
+        return new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    }
 
-function formatKenyaDate(date) {
-    if (!date) return 'N/A';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', {
-        timeZone: 'Africa/Nairobi',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
-}
+    function formatKenyaDate(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleDateString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
 
-function formatKenyaTime(date) {
-    if (!date) return 'N/A';
-    const d = new Date(date);
-    return d.toLocaleTimeString('en-US', {
-        timeZone: 'Africa/Nairobi',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-}
+    function formatKenyaTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleTimeString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
 
-function formatKenyaDateTime(date) {
-    if (!date) return 'N/A';
-    const d = new Date(date);
-    return d.toLocaleString('en-US', {
-        timeZone: 'Africa/Nairobi',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-}
+    function formatKenyaDateTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+
     class ExamsModule {
         constructor() {
             console.log('🔧 ExamsModule initialized');
@@ -517,6 +519,135 @@ function formatKenyaDateTime(date) {
             }
         }
         
+        // ============================================
+        // 🆕 LOAD EXTERNAL MARKS - FROM NURSING SCHOOL SYSTEM API
+        // ============================================
+        
+        async loadExternalMarks() {
+            // ✅ Get admission from student_id (the student's admission number)
+            const admission = this.userProfile?.student_id || 
+                               this.userProfile?.admission || 
+                               window.db?.currentUserProfile?.student_id ||
+                               window.db?.currentUserProfile?.admission;
+            
+            console.log('🔍 Looking for admission number:', admission);
+            
+            if (!admission) {
+                console.log('⚠️ No admission number found for external marks');
+                return;
+            }
+            
+            console.log('📚 Fetching external marks for admission:', admission);
+            
+            try {
+                const encodedAdmission = encodeURIComponent(admission);
+                const response = await fetch(`https://nchsm-marks-proxy.onrender.com/api/student/marks/${encodedAdmission}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Year': this.intakeYear || '2026'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.log('❌ API returned status:', response.status);
+                    return;
+                }
+                
+                const data = await response.json();
+                console.log('📊 API Response:', data);
+                
+                if (!data.marks || data.marks.length === 0) {
+                    console.log('❌ No external marks found for admission:', admission);
+                    return;
+                }
+                
+                console.log(`✅ Found ${data.marks.length} external marks from Nursing School System`);
+                
+                const externalExams = data.marks.map((mark, index) => {
+                    const finalScore = parseFloat(mark.final) || 0;
+                    
+                    // Determine if CAT or Exam
+                    const isCatExam = mark.assessmentType !== 'exam_only';
+                    const totalMarks = isCatExam ? 30 : 100;
+                    const passMark = Math.round(totalMarks * 0.6);
+                    
+                    const isPassed = finalScore >= passMark;
+                    
+                    let gradeText = 'Fail';
+                    let gradeClass = 'fail';
+                    if (isPassed && finalScore >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (isPassed && finalScore >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (isPassed && finalScore >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    }
+                    
+                    return {
+                        id: `external_${mark.block}_${mark.subject}_${index}`,
+                        exam_name: mark.subject,
+                        title: mark.subject,
+                        exam_type: isCatExam ? 'CAT' : 'EXAM',
+                        isCatExam: isCatExam,
+                        isCompleted: true,
+                        isReleased: true,
+                        hasGrade: finalScore > 0,
+                        totalPercentage: finalScore,
+                        gradeText: gradeText,
+                        gradeClass: gradeClass,
+                        cat1Display: mark.cat1 ? `${mark.cat1}` : '--',
+                        cat2Display: mark.cat2 ? `${mark.cat2}` : '--',
+                        finalDisplay: mark.exam ? `${mark.exam}` : '--',
+                        course: mark.subject,
+                        block_term: mark.block?.replace('_', ' ') || 'N/A',
+                        formattedGradedDate: formatKenyaDate(new Date()),
+                        formattedExamDateTime: formatKenyaDate(new Date()),
+                        isFromExternal: true,
+                        programBadgeClass: 'badge-external',
+                        programIcon: 'fa-book-open',
+                        programDisplay: 'Academic System',
+                        examLink: null,
+                        canTakeExam: false,
+                        actionState: 'completed',
+                        buttonText: 'View Results',
+                        marks_out_of: totalMarks,
+                        pass_mark: passMark,
+                        score: finalScore,
+                        cat1Score: mark.cat1 ? parseFloat(mark.cat1) : null,
+                        cat2Score: mark.cat2 ? parseFloat(mark.cat2) : null,
+                        finalScore: mark.exam ? parseFloat(mark.exam) : null,
+                        marks: mark.final ? parseFloat(mark.final) : 0
+                    };
+                });
+                
+                // Check for duplicates before adding
+                const existingIds = new Set(this.completedExams.map(e => e.id));
+                const newExams = externalExams.filter(exam => !existingIds.has(exam.id));
+                
+                if (newExams.length > 0) {
+                    this.completedExams = [...this.completedExams, ...newExams];
+                    console.log(`✅ Added ${newExams.length} external marks to completed section`);
+                    
+                    // ✅ FORCE REFRESH THE TABLE
+                    this.displayCompletedTable();
+                    this.updateCounts();
+                    
+                    // ✅ TRIGGER A CUSTOM EVENT
+                    document.dispatchEvent(new CustomEvent('externalMarksLoaded', {
+                        detail: { count: newExams.length, exams: newExams }
+                    }));
+                } else {
+                    console.log('⚠️ No new external exams to add (duplicates or zero length)');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading external marks:', error);
+            }
+        }
+        
         // ==================== OPTIMIZED MAIN LOAD EXAMS FUNCTION ====================
         async loadExams() {
             console.log('📥 Loading exams with ONE consolidated call...');
@@ -568,8 +699,15 @@ function formatKenyaDateTime(date) {
                 
                 console.log(`✅ Processed ${this.allExams.length} exams: ${this.currentExams.length} current, ${this.completedExams.length} completed`);
                 
-                this.loadNCKMarksFromSystem().catch(e => console.warn('NCK load:', e));
-                this.loadNCKClinicalScore().catch(e => console.warn('NCK score:', e));
+                // ============================================
+                // 🔥 LOAD EXTERNAL MARKS FROM NURSING SCHOOL SYSTEM
+                // ============================================
+                console.log('📚 Loading external marks from Nursing School System...');
+                await this.loadExternalMarks();
+                
+                // Load NCK marks (legacy - also from the same API)
+                await this.loadNCKMarksFromSystem();
+                await this.loadNCKClinicalScore();
                 
                 this.dispatchDashboardEvent();
                 this.hideLoading();
@@ -785,40 +923,38 @@ function formatKenyaDateTime(date) {
                 let timeRemainingMs = 0;
                 
                 if (group.exam_date) {
-    const [year, month, day] = group.exam_date.split('-');
-    
-    if (group.exam_start_time) {
-        const [hours, minutes, seconds] = group.exam_start_time.split(':');
-        // ✅ CORRECT: Create date directly in Kenya time
-        examStartDateTime = new Date(year, month-1, day, hours, minutes, seconds || 0);
-    } else {
-        examStartDateTime = new Date(year, month-1, day, 0, 0, 0);
-    }
-    
-    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
-    
-    // ✅ Format using Kenya timezone
-    const dateOptions = { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        timeZone: 'Africa/Nairobi'
-    };
-    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
-    
-    if (group.exam_start_time) {
-        const timeOptions = {
-            timeZone: 'Africa/Nairobi',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        };
-        const timeString = examStartDateTime.toLocaleTimeString('en-US', timeOptions);
-        formattedExamDateTime += ` at ${timeString}`;
-    }
-}
+                    const [year, month, day] = group.exam_date.split('-');
+                    
+                    if (group.exam_start_time) {
+                        const [hours, minutes, seconds] = group.exam_start_time.split(':');
+                        examStartDateTime = new Date(year, month-1, day, hours, minutes, seconds || 0);
+                    } else {
+                        examStartDateTime = new Date(year, month-1, day, 0, 0, 0);
+                    }
+                    
+                    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
+                    
+                    const dateOptions = { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric',
+                        timeZone: 'Africa/Nairobi'
+                    };
+                    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
+                    
+                    if (group.exam_start_time) {
+                        const timeOptions = {
+                            timeZone: 'Africa/Nairobi',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        };
+                        const timeString = examStartDateTime.toLocaleTimeString('en-US', timeOptions);
+                        formattedExamDateTime += ` at ${timeString}`;
+                    }
+                }
                 
-           // Determine exam status based on current Kenya time
+                // Determine exam status based on current Kenya time
                 if (examStartDateTime && examEndDateTime) {
                     if (kenyaNow < examStartDateTime) {
                         examStatus = 'upcoming';
@@ -972,7 +1108,6 @@ function formatKenyaDateTime(date) {
                     }
                 }
                 
-                // ✅ FIX: Formatted graded date in Kenya time
                 const formattedGradedDate = grade?.graded_at ? 
                     formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : '--';
                 
@@ -1046,121 +1181,120 @@ function formatKenyaDateTime(date) {
             this.updateEmptyStates();
         }
         
-      displayCurrentTable() {
-    if (!this.currentTable) return;
-    
-    const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
-    
-    if (activeExams.length === 0) {
-        this.currentTable.innerHTML = '';
-        return;
-    }
-    
-    const userId = this.userId || window.db?.currentUserId || '';
-    const userProgram = this.programCode || 'KRCHN';
-    const userBlock = this.userBlock || 'A';
-    const userIntake = this.intakeYear || 2025;
-    
-    const html = activeExams.map(exam => {
-        const isCatExam = exam.isCatExam;
+        displayCurrentTable() {
+            if (!this.currentTable) return;
+            
+            const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
+            
+            if (activeExams.length === 0) {
+                this.currentTable.innerHTML = '';
+                return;
+            }
+            
+            const userId = this.userId || window.db?.currentUserId || '';
+            const userProgram = this.programCode || 'KRCHN';
+            const userBlock = this.userBlock || 'A';
+            const userIntake = this.intakeYear || 2025;
+            
+            const html = activeExams.map(exam => {
+                const isCatExam = exam.isCatExam;
 
-        let examDisplayName = 'Assessment';
-        if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
-            examDisplayName = exam.exam_name;
-        } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
-            examDisplayName = exam.title;
-        } else if (typeof exam.course === 'string' && exam.course !== '[object Object]' && exam.course !== '') {
-            examDisplayName = exam.course;
-        } else if (typeof exam.exam_type === 'string' && exam.exam_type !== '[object Object]' && exam.exam_type !== '') {
-            examDisplayName = exam.exam_type;
-        } else {
-            examDisplayName = 'Assessment';
-        }
-        
-        let actionHtml = '';
-        let timeRemainingHtml = '';
-        
-        if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-            let examLink = exam.examLink;
-            const baseUrl = examLink.split('?')[0];
-            const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
-            
-            const params = new URLSearchParams();
-            params.append('user_id', userId);
-            params.append('exam_id', exam.id);
-            
-            if (existingParams) {
-                const existing = new URLSearchParams(existingParams);
-                existing.forEach((value, key) => {
-                    if (!params.has(key)) {
-                        params.append(key, value);
+                let examDisplayName = 'Assessment';
+                if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
+                    examDisplayName = exam.exam_name;
+                } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
+                    examDisplayName = exam.title;
+                } else if (typeof exam.course === 'string' && exam.course !== '[object Object]' && exam.course !== '') {
+                    examDisplayName = exam.course;
+                } else if (typeof exam.exam_type === 'string' && exam.exam_type !== '[object Object]' && exam.exam_type !== '') {
+                    examDisplayName = exam.exam_type;
+                } else {
+                    examDisplayName = 'Assessment';
+                }
+                
+                let actionHtml = '';
+                let timeRemainingHtml = '';
+                
+                if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
+                    let examLink = exam.examLink;
+                    const baseUrl = examLink.split('?')[0];
+                    const existingParams = examLink.includes('?') ? examLink.split('?')[1] : '';
+                    
+                    const params = new URLSearchParams();
+                    params.append('user_id', userId);
+                    params.append('exam_id', exam.id);
+                    
+                    if (existingParams) {
+                        const existing = new URLSearchParams(existingParams);
+                        existing.forEach((value, key) => {
+                            if (!params.has(key)) {
+                                params.append(key, value);
+                            }
+                        });
                     }
-                });
-            }
+                    
+                    const fullUrl = baseUrl + '?' + params.toString();
+                    
+                    actionHtml = '<a href="' + fullUrl + '" target="_blank" class="exam-link-btn btn-primary" onclick="sessionStorage.setItem(\'returningFromExam\', \'true\'); sessionStorage.setItem(\'examUserId\', \'' + userId + '\');" style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">';
+                    actionHtml += '<i class="fas fa-external-link-alt"></i> Start Exam';
+                    actionHtml += '</a>';
+                    
+                    if (exam.timeRemainingMs > 0) {
+                        const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
+                        const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
+                        timeRemainingHtml = '<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">';
+                        timeRemainingHtml += '<i class="fas fa-hourglass-half"></i> Time left: ' + minutesLeft + 'm ' + secondsLeft + 's';
+                        timeRemainingHtml += '</div>';
+                    }
+                } 
+                else if (exam.actionState === 'upcoming') {
+                    actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
+                    actionHtml += '<i class="fas fa-hourglass-half"></i> ' + (exam.countdownText || 'Coming Soon');
+                    actionHtml += '</span>';
+                }
+                else {
+                    actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
+                    actionHtml += '<i class="fas fa-clock"></i> ' + (exam.buttonText || 'Coming Soon');
+                    actionHtml += '</span>';
+                }
+                
+                let statusHtml = '<span class="status-badge ' + exam.gradeClass + '">' + exam.gradeText + '</span>';
+                
+                const courseDisplay = exam.course_code || exam.course || 'General';
+                
+                let assessmentCell = '';
+                assessmentCell += '<div class="assessment-info-box">';
+                assessmentCell += '<div class="assessment-name">';
+                assessmentCell += '<strong>' + this.escapeHtml(examDisplayName) + '</strong>';
+                assessmentCell += '<span class="' + (isCatExam ? 'badge-cat' : 'badge-final') + '">' + (isCatExam ? 'CAT' : 'Exam') + '</span>';
+                assessmentCell += '</div>';
+                assessmentCell += '<div class="assessment-details">';
+                assessmentCell += '<span class="detail-item"><i class="fas fa-book"></i> ' + this.escapeHtml(courseDisplay) + '</span>';
+                assessmentCell += '<span class="detail-item"><i class="fas fa-layer-group"></i> ' + (exam.block_term || exam.block || 'General') + '</span>';
+                assessmentCell += '<span class="program-badge ' + exam.programBadgeClass + '">';
+                assessmentCell += '<i class="fas ' + exam.programIcon + '"></i> ' + this.escapeHtml(exam.programDisplay);
+                assessmentCell += '</span>';
+                assessmentCell += '</div>';
+                if (exam.formattedExamDateTime !== 'TBA') {
+                    assessmentCell += '<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ' + exam.formattedExamDateTime + '</div>';
+                }
+                assessmentCell += timeRemainingHtml;
+                assessmentCell += '</div>';
+                
+                return '<tr class="assessment-row ' + (isCatExam ? 'cat-exam' : 'final-exam') + '" data-exam-id="' + exam.id + '">' +
+                    '<td class="assessment-cell">' + assessmentCell + '</td>' +
+                    '<td class="text-center date-cell">' + exam.formattedExamDateTime + '</td>' +
+                    '<td class="text-center status-cell">' + statusHtml + '</td>' +
+                    '<td class="text-center">' + exam.cat1Display + '</td>' +
+                    '<td class="text-center">' + exam.cat2Display + '</td>' +
+                    '<td class="text-center">' + exam.finalDisplay + '</td>' +
+                    '<td class="text-center total-cell">' + (exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--') + '</td>' +
+                    '<td class="text-center action-cell">' + actionHtml + '</td>' +
+                    '</tr>';
+            }).join('');
             
-            const fullUrl = baseUrl + '?' + params.toString();
-            
-            // ✅ FIXED: Using string concatenation to avoid template literal issues
-            actionHtml = '<a href="' + fullUrl + '" target="_blank" class="exam-link-btn btn-primary" onclick="sessionStorage.setItem(\'returningFromExam\', \'true\'); sessionStorage.setItem(\'examUserId\', \'' + userId + '\');" style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">';
-            actionHtml += '<i class="fas fa-external-link-alt"></i> Start Exam';
-            actionHtml += '</a>';
-            
-            if (exam.timeRemainingMs > 0) {
-                const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
-                const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
-                timeRemainingHtml = '<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">';
-                timeRemainingHtml += '<i class="fas fa-hourglass-half"></i> Time left: ' + minutesLeft + 'm ' + secondsLeft + 's';
-                timeRemainingHtml += '</div>';
-            }
-        } 
-        else if (exam.actionState === 'upcoming') {
-            actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
-            actionHtml += '<i class="fas fa-hourglass-half"></i> ' + (exam.countdownText || 'Coming Soon');
-            actionHtml += '</span>';
+            this.currentTable.innerHTML = html;
         }
-        else {
-            actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
-            actionHtml += '<i class="fas fa-clock"></i> ' + (exam.buttonText || 'Coming Soon');
-            actionHtml += '</span>';
-        }
-        
-        let statusHtml = '<span class="status-badge ' + exam.gradeClass + '">' + exam.gradeText + '</span>';
-        
-        const courseDisplay = exam.course_code || exam.course || 'General';
-        
-        let assessmentCell = '';
-        assessmentCell += '<div class="assessment-info-box">';
-        assessmentCell += '<div class="assessment-name">';
-        assessmentCell += '<strong>' + this.escapeHtml(examDisplayName) + '</strong>';
-        assessmentCell += '<span class="' + (isCatExam ? 'badge-cat' : 'badge-final') + '">' + (isCatExam ? 'CAT' : 'Exam') + '</span>';
-        assessmentCell += '</div>';
-        assessmentCell += '<div class="assessment-details">';
-        assessmentCell += '<span class="detail-item"><i class="fas fa-book"></i> ' + this.escapeHtml(courseDisplay) + '</span>';
-        assessmentCell += '<span class="detail-item"><i class="fas fa-layer-group"></i> ' + (exam.block_term || exam.block || 'General') + '</span>';
-        assessmentCell += '<span class="program-badge ' + exam.programBadgeClass + '">';
-        assessmentCell += '<i class="fas ' + exam.programIcon + '"></i> ' + this.escapeHtml(exam.programDisplay);
-        assessmentCell += '</span>';
-        assessmentCell += '</div>';
-        if (exam.formattedExamDateTime !== 'TBA') {
-            assessmentCell += '<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ' + exam.formattedExamDateTime + '</div>';
-        }
-        assessmentCell += timeRemainingHtml;
-        assessmentCell += '</div>';
-        
-        return '<tr class="assessment-row ' + (isCatExam ? 'cat-exam' : 'final-exam') + '" data-exam-id="' + exam.id + '">' +
-            '<td class="assessment-cell">' + assessmentCell + '</td>' +
-            '<td class="text-center date-cell">' + exam.formattedExamDateTime + '</td>' +
-            '<td class="text-center status-cell">' + statusHtml + '</td>' +
-            '<td class="text-center">' + exam.cat1Display + '</td>' +
-            '<td class="text-center">' + exam.cat2Display + '</td>' +
-            '<td class="text-center">' + exam.finalDisplay + '</td>' +
-            '<td class="text-center total-cell">' + (exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--') + '</td>' +
-            '<td class="text-center action-cell">' + actionHtml + '</td>' +
-            '</tr>';
-    }).join('');
-    
-    this.currentTable.innerHTML = html;
-}
         
         displayCompletedTable() {
             if (!this.completedTable) return;
@@ -1185,41 +1319,35 @@ function formatKenyaDateTime(date) {
                 const isCatExam = exam.isCatExam;
                 let examDisplayName = 'Assessment';
                 
-                // 🔥 REPLACE THIS ENTIRE safeExtractName function
-function safeExtractName(obj) {
-    if (!obj) return null;
-    if (typeof obj === 'string') {
-        if (obj === '[object Object]' || obj === '') return null;
-        return obj;
-    }
-    if (typeof obj === 'object' && obj !== null) {
-        // Try common property names
-        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject', 'exam_type', 'type'];
-        for (const prop of props) {
-            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
-                return obj[prop];
-            }
-        }
-        // Get first string value from object
-        const values = Object.values(obj);
-        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
-        if (stringVal) return stringVal;
-    }
-    return null;
-}
+                function safeExtractName(obj) {
+                    if (!obj) return null;
+                    if (typeof obj === 'string') {
+                        if (obj === '[object Object]' || obj === '') return null;
+                        return obj;
+                    }
+                    if (typeof obj === 'object' && obj !== null) {
+                        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject', 'exam_type', 'type'];
+                        for (const prop of props) {
+                            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
+                                return obj[prop];
+                            }
+                        }
+                        const values = Object.values(obj);
+                        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
+                        if (stringVal) return stringVal;
+                    }
+                    return null;
+                }
                 
-              // 🔥 REPLACE THIS SECTION
-let name = safeExtractName(exam.exam_name);
-if (!name) name = safeExtractName(exam.title);
-if (!name) name = safeExtractName(exam.course);
-// ❌ REMOVE this line - it's causing [object Object]
-// if (!name) name = safeExtractName(exam.exam_info);
-if (!name) name = safeExtractName(exam.course_name);
-// ✅ ADD this to get exam_type if needed
-if (!name && exam.exam_type && typeof exam.exam_type === 'string') {
-    name = exam.exam_type;
-}
-examDisplayName = name || 'Assessment';
+                let name = safeExtractName(exam.exam_name);
+                if (!name) name = safeExtractName(exam.title);
+                if (!name) name = safeExtractName(exam.course);
+                if (!name) name = safeExtractName(exam.course_name);
+                if (!name && exam.exam_type && typeof exam.exam_type === 'string') {
+                    name = exam.exam_type;
+                }
+                examDisplayName = name || 'Assessment';
+                
                 let totalMarks = 0;
                 if (isCatExam) {
                     totalMarks = 30;
@@ -1708,5 +1836,5 @@ examDisplayName = name || 'Assessment';
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready - ONE-CALL OPTIMIZED!');
+    console.log('✅ Exams module ready - ONE-CALL OPTIMIZED WITH EXTERNAL API INTEGRATION!');
 })();
