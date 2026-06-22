@@ -1,4 +1,4 @@
-// js/exam-card.js - v9.0 (A4 SIZED + Mobile PDF Signature Fix)
+// js/exam-card.js - v9.0 (FIXED: A4 margins, shorter signature lines)
 
 (function() {
     'use strict';
@@ -51,7 +51,6 @@
         
         cleanText(str) {
             if (!str) return '';
-            // Convert HTML entities to actual characters
             return str.replace(/&amp;/g, '&')
                       .replace(/&#x27;/g, "'")
                       .replace(/&quot;/g, '"')
@@ -258,67 +257,69 @@
                 const allButtons = cloneCard.querySelectorAll('button');
                 allButtons.forEach(btn => btn.style.display = 'none');
                 
-                // FIX: Set A4 dimensions for rendering
+                // FIX 1: Add margins to push content down
                 const tempContainer = document.createElement('div');
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
                 tempContainer.style.top = '-9999px';
-                tempContainer.style.width = '794px'; // A4 width
+                tempContainer.style.width = '794px';
                 tempContainer.style.backgroundColor = 'white';
-                tempContainer.style.padding = '20px';
+                tempContainer.style.padding = '50px 40px'; // Top margin to push content down
                 tempContainer.style.boxSizing = 'border-box';
                 tempContainer.appendChild(cloneCard);
                 document.body.appendChild(tempContainer);
                 
-                // FIX: Make signatures more visible in PDF
+                // FIX 2: Make signature lines shorter
                 const signatureLines = cloneCard.querySelectorAll('.signature-line, .sign-line, .signature-line-inline');
                 signatureLines.forEach(line => {
+                    line.style.width = '80%'; // Shorter lines
+                    line.style.margin = '8px auto'; // Centered
                     line.style.borderTop = '2px solid #000';
                     line.style.height = '2px';
-                    line.style.margin = '10px 0';
+                });
+                
+                // Fix: Lecturer signature lines shorter
+                const lecturerSig = cloneCard.querySelectorAll('.signature-cell .signature-line');
+                lecturerSig.forEach(line => {
+                    line.style.width = '90%';
+                    line.style.margin = '8px auto';
                 });
                 
                 await new Promise(resolve => setTimeout(resolve, 300));
                 
                 const canvas = await html2canvas(cloneCard, {
-                    scale: 2.5, // Higher quality for mobile
+                    scale: 2.5,
                     backgroundColor: '#ffffff',
                     logging: false,
                     useCORS: true,
                     allowTaint: false,
                     width: 794,
                     height: 1123,
-                    onclone: (document) => {
-                        // Ensure signatures are bold in the clone
-                        const sigs = document.querySelectorAll('.signature-line, .sign-line, .signature-line-inline');
-                        sigs.forEach(sig => {
-                            sig.style.borderTop = '2px solid #000';
-                            sig.style.height = '2px';
-                        });
-                    }
                 });
                 
                 document.body.removeChild(tempContainer);
                 
                 const { jsPDF } = window.jspdf;
                 const imgData = canvas.toDataURL('image/png', 1.0);
-                const imgWidth = 210; // A4 width in mm
-                const pageHeight = 297; // A4 height in mm
+                
+                // FIX 3: Add PDF margins
+                const margin = 20; // 20mm margins all around
+                const imgWidth = 210 - (margin * 2);
+                const pageHeight = 297;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                let position = 0;
                 
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
                 
-                if (imgHeight > pageHeight) {
-                    let heightLeft = imgHeight - pageHeight;
-                    position = -pageHeight;
+                if (imgHeight > (pageHeight - margin * 2)) {
+                    let position = -(pageHeight - margin * 2);
+                    let heightLeft = imgHeight - (pageHeight - margin * 2);
                     while (heightLeft > 0) {
                         pdf.addPage();
-                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                        heightLeft -= pageHeight;
-                        position -= pageHeight;
+                        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+                        position -= (pageHeight - margin * 2);
+                        heightLeft -= (pageHeight - margin * 2);
                     }
                 }
                 
@@ -392,16 +393,24 @@
                             max-width: 800px;
                             margin: 0 auto;
                         }
-                        /* FIX: Bold signatures for print */
+                        /* Shorter signature lines */
                         .signature-line, .sign-line, .signature-line-inline {
+                            width: 80% !important;
+                            margin: 8px auto !important;
                             border-top: 2px solid #000 !important;
                             height: 2px !important;
+                        }
+                        .signature-cell .signature-line {
+                            width: 90% !important;
+                            margin: 8px auto !important;
                         }
                         @media print {
                             body { padding: 0; margin: 0; }
                             .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             .signature-line, .sign-line, .signature-line-inline {
+                                width: 80% !important;
+                                margin: 8px auto !important;
                                 border-top: 2px solid #000 !important;
                                 height: 2px !important;
                                 -webkit-print-color-adjust: exact;
@@ -436,7 +445,6 @@
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            // Clean unit names to remove HTML entities
             const cleanUnitName = (name) => {
                 if (!name) return '';
                 return name.replace(/&amp;/g, '&').replace(/&#x27;/g, "'");
@@ -605,14 +613,14 @@
                 .text-center { text-align: center; }
                 
                 .signature-cell { padding: 5px 0; }
-                .signature-line { width: 100%; border-top: 1px solid #333; margin: 8px 0; }
+                .signature-line { width: 90%; margin: 8px auto; border-top: 1px solid #333; }
                 
                 .total-row { background: #f8fafc; font-weight: 600; border-top: 2px solid #cbd5e1; }
                 .no-units { padding: 30px; text-align: center; color: #ef4444; font-size: 14px; }
                 
                 .signatures-row { display: flex; justify-content: space-between; padding: 15px 20px; gap: 20px; border-top: 1px solid #e2e8f0; background: white; }
                 .signature { flex: 1; text-align: center; font-size: 11px; color: #475569; }
-                .sign-line { border-top: 1px solid #334155; margin-bottom: 8px; padding-top: 12px; width: 100%; }
+                .sign-line { width: 80%; margin: 8px auto; border-top: 1px solid #334155; padding-top: 12px; }
                 
                 .card-footer { padding: 15px 20px; background: #fefce8; border-top: 1px solid #e2e8f0; }
                 .rules-header { font-weight: 700; font-size: 12px; color: #854d0e; margin-bottom: 10px; }
@@ -623,7 +631,7 @@
                 .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; text-align: center; }
                 .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
                 .student-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
-                .signature-line-inline { display: inline-block; flex: 1; border-top: 1px solid #333; }
+                .signature-line-inline { display: inline-block; flex: 1; border-top: 1px solid #333; max-width: 60%; }
                 
                 .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
                 .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; }
@@ -639,7 +647,17 @@
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .signature-line, .sign-line, .signature-line-inline { border-top: 2px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .signature-line, .sign-line, .signature-line-inline { 
+                        width: 80% !important;
+                        margin: 8px auto !important;
+                        border-top: 2px solid #000 !important;
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact; 
+                    }
+                    .signature-cell .signature-line {
+                        width: 90% !important;
+                        margin: 8px auto !important;
+                    }
                 }
                 
                 @media (max-width: 600px) {
