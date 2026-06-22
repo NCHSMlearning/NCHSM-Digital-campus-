@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH ONE-CALL OPTIMIZATION + CACHING
+// dashboard.js - COMPLETE WORKING VERSION WITH ONE-CALL OPTIMIZATION + CACHING + KENYA TIMEZONE + CLICKABLE STATS
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -25,9 +25,79 @@ class DashboardModule {
         
         this.cacheElements();
         this.setupEventListeners();
+        this.setupClickableStats();
         this.startLiveClock();
         
         console.log('✅ DashboardModule initialized');
+    }
+    
+    // ============================================================
+    // 🕐 KENYA TIMEZONE HELPERS
+    // ============================================================
+    getKenyaNow() {
+        return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    }
+    
+    formatKenyaDate(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+    
+    formatKenyaTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleTimeString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    }
+    
+    formatKenyaDateTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    }
+    
+    getTimeAgo(date) {
+        if (!date) return 'First login';
+        try {
+            const kenyaTime = new Date(new Date(date).toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+            const now = this.getKenyaNow();
+            
+            const diffMs = now - kenyaTime;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+            return this.formatKenyaDate(date);
+        } catch (error) {
+            console.error('Error formatting time ago:', error);
+            return 'Unknown';
+        }
     }
     
     cacheElements() {
@@ -57,8 +127,105 @@ class DashboardModule {
             announcementText: document.getElementById('student-announcement'),
             // ✅ Added next exam widget elements
             nextExamWidget: document.querySelector('.next-exam-widget'),
-            nextExamDetails: document.getElementById('next-exam-details')
+            nextExamDetails: document.getElementById('next-exam-details'),
+            // ✅ Added last login element
+            lastLoginTime: document.getElementById('last-login-time'),
+            headerTime: document.getElementById('header-time')
         };
+    }
+    
+    // ============================================================
+    // 🖱️ CLICKABLE STATS NAVIGATION
+    // ============================================================
+    setupClickableStats() {
+        // Attendance stats
+        const attendanceCard = document.querySelector('.attendance-card');
+        if (attendanceCard) {
+            attendanceCard.style.cursor = 'pointer';
+            attendanceCard.title = 'Click to view attendance details';
+            attendanceCard.addEventListener('click', () => this.navigateTo('attendance'));
+        }
+        
+        // Exam status / Exam card
+        const examCard = document.querySelector('.exam-card');
+        if (examCard) {
+            examCard.style.cursor = 'pointer';
+            examCard.title = 'Click to view exam card details';
+            examCard.addEventListener('click', () => this.navigateTo('examCard'));
+        }
+        
+        // NurseIQ card
+        const nurseiqCard = document.querySelector('.nurseiq-card');
+        if (nurseiqCard) {
+            nurseiqCard.style.cursor = 'pointer';
+            nurseiqCard.title = 'Click to view NurseIQ progress';
+            nurseiqCard.addEventListener('click', () => this.navigateTo('nurseiq'));
+        }
+        
+        // Resources card
+        const resourcesCard = document.querySelector('.resources-card');
+        if (resourcesCard) {
+            resourcesCard.style.cursor = 'pointer';
+            resourcesCard.title = 'Click to view resources';
+            resourcesCard.addEventListener('click', () => this.navigateTo('resources'));
+        }
+        
+        // Upcoming exam widget
+        const nextExamWidget = document.querySelector('.next-exam-widget');
+        if (nextExamWidget) {
+            nextExamWidget.style.cursor = 'pointer';
+            nextExamWidget.title = 'Click to view all exams';
+            nextExamWidget.addEventListener('click', () => this.navigateTo('exams'));
+        }
+        
+        // Quick next class
+        const quickNextClass = document.querySelector('.quick-next-class');
+        if (quickNextClass) {
+            quickNextClass.style.cursor = 'pointer';
+            quickNextClass.title = 'Click to view calendar';
+            quickNextClass.addEventListener('click', () => this.navigateTo('calendar'));
+        }
+    }
+    
+    // ============================================================
+    // 🧭 NAVIGATION HELPER
+    // ============================================================
+    navigateTo(section) {
+        console.log(`📍 Navigating to: ${section}`);
+        
+        // Find the tab button
+        let tabMap = {
+            'attendance': 'attendance',
+            'examCard': 'exams',
+            'nurseiq': 'nurseiq',
+            'resources': 'resources',
+            'exams': 'exams',
+            'calendar': 'calendar',
+            'dashboard': 'dashboard'
+        };
+        
+        const tabName = tabMap[section] || section;
+        
+        // Try to find and click the tab
+        const tabElement = document.querySelector(`[data-tab="${tabName}"]`);
+        if (tabElement) {
+            tabElement.click();
+            this.showToast(`📂 Navigating to ${section.charAt(0).toUpperCase() + section.slice(1)}`, 1500);
+        } else {
+            // If no tab found, try to find any element with the section class
+            const sectionElement = document.querySelector(`.${section}-section`);
+            if (sectionElement) {
+                sectionElement.scrollIntoView({ behavior: 'smooth' });
+                sectionElement.style.boxShadow = '0 0 0 3px #4C1D95';
+                setTimeout(() => {
+                    sectionElement.style.boxShadow = '';
+                }, 2000);
+                this.showToast(`📍 Scrolling to ${section}`, 1500);
+            } else {
+                // Fallback: show a toast with the section name
+                this.showToast(`📂 ${section.charAt(0).toUpperCase() + section.slice(1)} section coming soon!`, 2000);
+            }
+        }
     }
     
     setupEventListeners() {
@@ -108,7 +275,9 @@ class DashboardModule {
             this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
         
+        // ✅ Update with Kenya time
         this.updateTimeGreeting();
+        this.updateLastLoginDisplay();
         
         if (this.elements.currentBlock) {
             this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
@@ -126,14 +295,18 @@ class DashboardModule {
         return true;
     }
     
+    // ============================================================
+    // 🕐 UPDATE TIME GREETING (KENYA TIME)
+    // ============================================================
     updateTimeGreeting() {
-        const hour = new Date().getHours();
+        const kenyaNow = this.getKenyaNow();
+        const hour = kenyaNow.getHours();
         let greeting = '';
         
-        if (hour >= 5 && hour < 12) greeting = 'Good Morning';
-        else if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
-        else if (hour >= 17 && hour < 21) greeting = 'Good Evening';
-        else greeting = 'Good Night';
+        if (hour >= 5 && hour < 12) greeting = 'Good Morning ☀️';
+        else if (hour >= 12 && hour < 17) greeting = 'Good Afternoon 🌤️';
+        else if (hour >= 17 && hour < 21) greeting = 'Good Evening 🌅';
+        else greeting = 'Good Night 🌙';
         
         const welcomeH1 = document.querySelector('.welcome h1');
         const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
@@ -143,7 +316,25 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🔥 ONE API CALL WITH CACHING
+    // 🕐 UPDATE LAST LOGIN DISPLAY (KENYA TIME)
+    // ============================================================
+    updateLastLoginDisplay() {
+        const element = this.elements.lastLoginTime;
+        if (!element) return;
+        
+        const lastLogin = this.userProfile?.last_login || this.userProfile?.updated_at;
+        const timeAgo = this.getTimeAgo(lastLogin);
+        element.textContent = timeAgo;
+        
+        // ✅ Set tooltip with full Kenya time
+        if (lastLogin) {
+            const fullTime = this.formatKenyaDateTime(lastLogin);
+            element.title = `Last login: ${fullTime}`;
+        }
+    }
+    
+    // ============================================================
+    // 📊 ONE API CALL WITH CACHING
     // ============================================================
     async loadAllMetrics() {
         console.log('📊 Loading dashboard metrics...');
@@ -396,7 +587,7 @@ class DashboardModule {
         try {
             if (!this.userProfile) return;
             
-            const kenyaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+            const kenyaNow = this.getKenyaNow();
             const todayStr = kenyaNow.toISOString().split('T')[0];
             
             console.log('📅 Checking upcoming exams for:', {
@@ -429,7 +620,6 @@ class DashboardModule {
                 if (this.elements.upcomingExam) {
                     this.elements.upcomingExam.innerText = upcomingText;
                 }
-                // ✅ Update widget with no exams
                 this.updateNextExamWidget(null);
                 return;
             }
@@ -446,7 +636,7 @@ class DashboardModule {
                     const [hours, minutes] = examTime.split(':').map(Number);
                     examDate.setHours(hours || 0, minutes || 0, 0, 0);
                     
-                    // Compare with current Kenya time
+                    // ✅ Compare with current Kenya time
                     const examDateTime = examDate;
                     const isUpcoming = examDateTime > kenyaNow;
                     const isToday = examDateTime.toDateString() === kenyaNow.toDateString();
@@ -493,12 +683,7 @@ class DashboardModule {
             if (upcomingExams.length > 0) {
                 const nextExam = upcomingExams[0];
                 const examDate = new Date(nextExam.exam_date);
-                const formattedDate = examDate.toLocaleDateString('en-KE', {
-                    timeZone: 'Africa/Nairobi',
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                });
+                const formattedDate = this.formatKenyaDate(examDate);
                 const examTitle = nextExam.exam_name || nextExam.title || 'Exam';
                 upcomingText = `${examTitle} - ${formattedDate}`;
                 
@@ -600,12 +785,8 @@ class DashboardModule {
         
         const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
         const examDate = new Date(exam.exam_date);
-        const formattedDate = examDate.toLocaleDateString('en-KE', {
-            timeZone: 'Africa/Nairobi',
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric'
-        });
+        const formattedDate = this.formatKenyaDate(examDate);
+        const formattedTime = this.formatKenyaTime(examDate);
         
         // Determine badge style
         let badgeClass = 'exam-badge';
@@ -623,9 +804,10 @@ class DashboardModule {
             badgeColor = '#065F46';
         }
         
-        // Format time
+        // Get time until exam
+        const timeUntil = this.getTimeUntilExam(examDate);
         const examTime = exam.exam_start_time || '00:00:00';
-        const formattedTime = examTime.substring(0, 5);
+        const displayTime = examTime.substring(0, 5);
         
         if (detailsContainer) {
             detailsContainer.innerHTML = `
@@ -641,7 +823,7 @@ class DashboardModule {
                         </div>
                         <div style="font-size: 0.7rem; color: #64748B; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px;">
                             <span>📅 ${formattedDate}</span>
-                            <span>⏰ ${formattedTime}</span>
+                            <span>⏰ ${displayTime}</span>
                             <span>📊 ${totalMarks} marks</span>
                             <span>🎯 ${passMark} marks (60%)</span>
                             <span>⏳ ${exam.duration_minutes || 30} min</span>
@@ -652,7 +834,6 @@ class DashboardModule {
         }
         
         if (statusContainer) {
-            const timeUntil = this.getTimeUntilExam(examDate);
             statusContainer.innerText = `⏳ ${timeUntil}`;
             statusContainer.style.color = '#F59E0B';
         }
@@ -660,16 +841,15 @@ class DashboardModule {
         // Make the whole widget clickable to go to exams tab
         container.style.cursor = 'pointer';
         container.onclick = () => {
-            const examsTab = document.querySelector('[data-tab="exams"]');
-            if (examsTab) examsTab.click();
+            this.navigateTo('exams');
         };
     }
     
     // ============================================================
-    // 🕐 GET TIME UNTIL EXAM
+    // 🕐 GET TIME UNTIL EXAM (KENYA TIME)
     // ============================================================
     getTimeUntilExam(examDate) {
-        const now = new Date();
+        const now = this.getKenyaNow();
         const diffMs = examDate - now;
         
         if (diffMs < 0) {
@@ -827,11 +1007,11 @@ class DashboardModule {
                 return;
             }
             
-            const now = new Date();
+            const now = this.getKenyaNow();
             const todayDate = now.toISOString().split('T')[0];
             const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:00`;
             
-            console.log(`Current: ${todayDate} at ${currentTime}`);
+            console.log(`Current: ${todayDate} at ${currentTime} (Kenya Time)`);
             
             const { data: futureClasses, error } = await this.sb
                 .from('timetables')
@@ -875,11 +1055,7 @@ class DashboardModule {
             const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
             const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
             
-            const formattedDate = classDate.toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric' 
-            });
+            const formattedDate = this.formatKenyaDate(classDate);
             
             console.log(`✅ NEXT CLASS: ${nextClass.session_name} on ${formattedDate} at ${startTime}`);
             
@@ -921,8 +1097,7 @@ class DashboardModule {
             
             if (card) {
                 card.onclick = () => {
-                    const calendarTab = document.querySelector('[data-tab="calendar"]');
-                    if (calendarTab) calendarTab.click();
+                    this.navigateTo('calendar');
                 };
             }
             
@@ -994,11 +1169,16 @@ class DashboardModule {
     }
     
     startLiveClock() {
-        const headerTime = document.getElementById('header-time');
+        const headerTime = this.elements.headerTime;
         if (headerTime) {
             const updateTime = () => {
-                const now = new Date();
-                headerTime.textContent = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const kenyaNow = this.getKenyaNow();
+                headerTime.textContent = kenyaNow.toLocaleTimeString('en-KE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Africa/Nairobi'
+                });
             };
             updateTime();
             setInterval(updateTime, 60000);
@@ -1077,4 +1257,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with caching');
+console.log('✅ Dashboard module ready with caching, Kenya timezone, and clickable stats!');
