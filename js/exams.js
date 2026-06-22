@@ -1113,70 +1113,65 @@ if (group.exam_date) {
                 });
             }
             
-            const fullUrl = `${baseUrl}?${params.toString()}`;
+            const fullUrl = baseUrl + '?' + params.toString();
             
-            actionHtml = `<a href="${fullUrl}" 
-                            target="_blank" 
-                            class="exam-link-btn btn-primary"
-                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');"
-                            style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                            <i class="fas fa-external-link-alt"></i> Start Exam
-                        </a>`;
+            // ✅ FIXED: Using string concatenation to avoid template literal issues
+            actionHtml = '<a href="' + fullUrl + '" target="_blank" class="exam-link-btn btn-primary" onclick="sessionStorage.setItem(\'returningFromExam\', \'true\'); sessionStorage.setItem(\'examUserId\', \'' + userId + '\');" style="display: inline-block; padding: 8px 16px; background: #38A169; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">';
+            actionHtml += '<i class="fas fa-external-link-alt"></i> Start Exam';
+            actionHtml += '</a>';
             
             if (exam.timeRemainingMs > 0) {
                 const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
                 const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
-                timeRemainingHtml = `<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">
-                                        <i class="fas fa-hourglass-half"></i> Time left: ${minutesLeft}m ${secondsLeft}s
-                                    </div>`;
+                timeRemainingHtml = '<div class="time-remaining" style="font-size: 0.7rem; color: #059669; margin-top: 5px;">';
+                timeRemainingHtml += '<i class="fas fa-hourglass-half"></i> Time left: ' + minutesLeft + 'm ' + secondsLeft + 's';
+                timeRemainingHtml += '</div>';
             }
         } 
         else if (exam.actionState === 'upcoming') {
-            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                            <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
-                        </span>`;
+            actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
+            actionHtml += '<i class="fas fa-hourglass-half"></i> ' + (exam.countdownText || 'Coming Soon');
+            actionHtml += '</span>';
         }
         else {
-            actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                            <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
-                        </span>`;
+            actionHtml = '<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">';
+            actionHtml += '<i class="fas fa-clock"></i> ' + (exam.buttonText || 'Coming Soon');
+            actionHtml += '</span>';
         }
         
-        let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
+        let statusHtml = '<span class="status-badge ' + exam.gradeClass + '">' + exam.gradeText + '</span>';
         
-        // ✅ FIX: Use course_code first, then fallback to course
         const courseDisplay = exam.course_code || exam.course || 'General';
         
-        let assessmentCell = `
-            <div class="assessment-info-box">
-                <div class="assessment-name">
-                    <strong>${this.escapeHtml(examDisplayName)}</strong>
-                    <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                </div>
-                <div class="assessment-details">
-                    <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(courseDisplay)}</span>
-                    <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || exam.block || 'General'}</span>
-                    <span class="program-badge ${exam.programBadgeClass}">
-                        <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                    </span>
-                </div>
-                ${exam.formattedExamDateTime !== 'TBA' ? `<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ${exam.formattedExamDateTime}</div>` : ''}
-                ${timeRemainingHtml}
-            </div>
-        `;
+        let assessmentCell = '';
+        assessmentCell += '<div class="assessment-info-box">';
+        assessmentCell += '<div class="assessment-name">';
+        assessmentCell += '<strong>' + this.escapeHtml(examDisplayName) + '</strong>';
+        assessmentCell += '<span class="' + (isCatExam ? 'badge-cat' : 'badge-final') + '">' + (isCatExam ? 'CAT' : 'Exam') + '</span>';
+        assessmentCell += '</div>';
+        assessmentCell += '<div class="assessment-details">';
+        assessmentCell += '<span class="detail-item"><i class="fas fa-book"></i> ' + this.escapeHtml(courseDisplay) + '</span>';
+        assessmentCell += '<span class="detail-item"><i class="fas fa-layer-group"></i> ' + (exam.block_term || exam.block || 'General') + '</span>';
+        assessmentCell += '<span class="program-badge ' + exam.programBadgeClass + '">';
+        assessmentCell += '<i class="fas ' + exam.programIcon + '"></i> ' + this.escapeHtml(exam.programDisplay);
+        assessmentCell += '</span>';
+        assessmentCell += '</div>';
+        if (exam.formattedExamDateTime !== 'TBA') {
+            assessmentCell += '<div class="exam-datetime"><i class="fas fa-calendar-clock"></i> ' + exam.formattedExamDateTime + '</div>';
+        }
+        assessmentCell += timeRemainingHtml;
+        assessmentCell += '</div>';
         
-        return `
-            <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
-                <td class="assessment-cell">${assessmentCell}</td>
-                <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
-                <td class="text-center status-cell">${statusHtml}</td>
-                <td class="text-center">${exam.cat1Display}</td>
-                <td class="text-center">${exam.cat2Display}</td>
-                <td class="text-center">${exam.finalDisplay}</td>
-                <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
-                <td class="text-center action-cell">${actionHtml}</td>
-            </tr>
-        `;
+        return '<tr class="assessment-row ' + (isCatExam ? 'cat-exam' : 'final-exam') + '" data-exam-id="' + exam.id + '">' +
+            '<td class="assessment-cell">' + assessmentCell + '</td>' +
+            '<td class="text-center date-cell">' + exam.formattedExamDateTime + '</td>' +
+            '<td class="text-center status-cell">' + statusHtml + '</td>' +
+            '<td class="text-center">' + exam.cat1Display + '</td>' +
+            '<td class="text-center">' + exam.cat2Display + '</td>' +
+            '<td class="text-center">' + exam.finalDisplay + '</td>' +
+            '<td class="text-center total-cell">' + (exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--') + '</td>' +
+            '<td class="text-center action-cell">' + actionHtml + '</td>' +
+            '</tr>';
     }).join('');
     
     this.currentTable.innerHTML = html;
