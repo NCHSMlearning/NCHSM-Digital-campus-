@@ -1065,7 +1065,19 @@
             
             const html = activeExams.map(exam => {
                 const isCatExam = exam.isCatExam;
-                const examDisplayName = exam.exam_name || exam.title || 'Assessment';
+    
+let examDisplayName = 'Assessment';
+if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
+    examDisplayName = exam.exam_name;
+} else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
+    examDisplayName = exam.title;
+} else if (typeof exam.course === 'string' && exam.course !== '[object Object]' && exam.course !== '') {
+    examDisplayName = exam.course;
+} else if (typeof exam.exam_type === 'string' && exam.exam_type !== '[object Object]' && exam.exam_type !== '') {
+    examDisplayName = exam.exam_type;
+} else {
+    examDisplayName = 'Assessment';
+}
                 let actionHtml = '';
                 let timeRemainingHtml = '';
                 
@@ -1176,33 +1188,41 @@
                 const isCatExam = exam.isCatExam;
                 let examDisplayName = 'Assessment';
                 
-                function safeExtractName(obj) {
-                    if (!obj) return null;
-                    if (typeof obj === 'string') {
-                        if (obj === '[object Object]') return null;
-                        return obj;
-                    }
-                    if (typeof obj === 'object' && obj !== null) {
-                        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject'];
-                        for (const prop of props) {
-                            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
-                                return obj[prop];
-                            }
-                        }
-                        const values = Object.values(obj);
-                        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
-                        if (stringVal) return stringVal;
-                    }
-                    return null;
-                }
+                // 🔥 REPLACE THIS ENTIRE safeExtractName function
+function safeExtractName(obj) {
+    if (!obj) return null;
+    if (typeof obj === 'string') {
+        if (obj === '[object Object]' || obj === '') return null;
+        return obj;
+    }
+    if (typeof obj === 'object' && obj !== null) {
+        // Try common property names
+        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject', 'exam_type', 'type'];
+        for (const prop of props) {
+            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
+                return obj[prop];
+            }
+        }
+        // Get first string value from object
+        const values = Object.values(obj);
+        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
+        if (stringVal) return stringVal;
+    }
+    return null;
+}
                 
-                let name = safeExtractName(exam.exam_name);
-                if (!name) name = safeExtractName(exam.title);
-                if (!name) name = safeExtractName(exam.course);
-                if (!name) name = safeExtractName(exam.exam_info);
-                if (!name) name = safeExtractName(exam.course_name);
-                examDisplayName = name || 'Assessment';
-                
+              // 🔥 REPLACE THIS SECTION
+let name = safeExtractName(exam.exam_name);
+if (!name) name = safeExtractName(exam.title);
+if (!name) name = safeExtractName(exam.course);
+// ❌ REMOVE this line - it's causing [object Object]
+// if (!name) name = safeExtractName(exam.exam_info);
+if (!name) name = safeExtractName(exam.course_name);
+// ✅ ADD this to get exam_type if needed
+if (!name && exam.exam_type && typeof exam.exam_type === 'string') {
+    name = exam.exam_type;
+}
+examDisplayName = name || 'Assessment';
                 let totalMarks = 0;
                 if (isCatExam) {
                     totalMarks = 30;
