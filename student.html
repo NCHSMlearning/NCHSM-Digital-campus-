@@ -795,9 +795,10 @@
                 </div>
             </section>
             <!-- END HUB LECTURE CARD -->
-
-          <!-- ==================== EXAMS & GRADES TAB ==================== -->
+<!-- ==================== EXAMS & GRADES TAB ==================== -->
 <section id="cats" class="tab-content" hidden>
+
+    <!-- ========== EXAMS HEADER ========== -->
     <div class="exams-header">
         <div class="header-content">
             <h2><i class="fas fa-chart-bar"></i> Assessments & Grades</h2>
@@ -828,26 +829,31 @@
         </div>
     </div>
 
-    <!-- ========== COMPACT 5-BUTTON HORIZONTAL LAYOUT ========== -->
-    <div class="quick-actions">
+    <!-- ========== COMPACT 2x2 GRID LAYOUT ========== -->
+    <div class="quick-actions-grid">
         <button id="view-all-assessments" class="action-btn active">
             <i class="fas fa-list"></i> View All
+            <span class="btn-badge">All</span>
         </button>
         <button id="view-current-only" class="action-btn">
             <i class="fas fa-spinner"></i> Current Only
+            <span class="btn-badge">Pending</span>
         </button>
         <button id="view-completed-only" class="action-btn">
             <i class="fas fa-check-circle"></i> Completed Only
+            <span class="btn-badge">Done</span>
         </button>
         <button id="view-transcript" class="action-btn">
             <i class="fas fa-file-pdf"></i> Transcript
+            <span class="btn-badge">PDF</span>
         </button>
         <button id="refresh-assessments" class="action-btn refresh">
             <i class="fas fa-sync-alt"></i> Refresh
+            <span class="btn-badge">Sync</span>
         </button>
     </div>
 
-    <!-- CURRENT ASSESSMENTS -->
+    <!-- ========== CURRENT ASSESSMENTS ========== -->
     <div class="assessments-section current-section">
         <div class="section-header">
             <h3><i class="fas fa-spinner"></i> Current Assessments</h3>
@@ -889,7 +895,7 @@
         </div>
     </div>
 
-    <!-- COMPLETED ASSESSMENTS -->
+    <!-- ========== COMPLETED ASSESSMENTS ========== -->
     <div class="assessments-section completed-section">
         <div class="section-header">
             <h3><i class="fas fa-check-circle"></i> Completed Assessments</h3>
@@ -934,7 +940,7 @@
         </div>
     </div>
 
-    <!-- PERFORMANCE SUMMARY -->
+    <!-- ========== PERFORMANCE SUMMARY ========== -->
     <div class="performance-summary">
         <div class="summary-card">
             <div class="card-header">
@@ -1016,7 +1022,7 @@
         </div>
     </div>
 
-    <!-- NOTES SECTION -->
+    <!-- ========== NOTES SECTION ========== -->
     <div class="notes-section">
         <div class="notes-header">
             <i class="fas fa-info-circle"></i>
@@ -1052,6 +1058,7 @@
             </div>
         </div>
     </div>
+
 </section>
 <!-- END EXAMS & GRADES -->
 
