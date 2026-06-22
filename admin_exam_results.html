@@ -3235,24 +3235,137 @@ window.viewStudentProgress = async function(studentId, studentName, examId) {
 };
 
 // ============================================
-// ⏱️ RESET STUDENT TIMER
+// ⏱️ ADD TIME / RESET STUDENT TIMER
 // ============================================
 window.resetStudentTimer = async function(studentId, examId) {
-    if (!confirm(`⚠️ Reset timer for this student?\n\nThis will clear their exam timer.`)) return;
+    // Show a prompt with options
+    const choice = confirm(
+        `⏱️ STUDENT TIMER MANAGEMENT\n\n` +
+        `Click "OK" to ADD 10 minutes\n` +
+        `Click "Cancel" to RESET timer completely`
+    );
+    
+    if (choice) {
+        // ✅ ADD 10 MINUTES
+        await addStudentTime(studentId, examId, 10);
+    } else {
+        // ❌ RESET COMPLETELY
+        await resetStudentTimerComplete(studentId, examId);
+    }
+};
+
+// ============================================
+// ➕ ADD TIME TO STUDENT EXAM
+// ============================================
+async function addStudentTime(studentId, examId, minutesToAdd = 10) {
+    try {
+        // Get the exam duration
+        const { data: exam } = await sb
+            .from('exams')
+            .select('duration_minutes, exam_start_time, exam_date')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (!exam) {
+            alert('❌ Exam not found!');
+            return;
+        }
+        
+        // Get the student's latest heartbeat
+        const { data: heartbeat } = await sb
+            .from('exam_heartbeats')
+            .select('timestamp')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        
+        if (!heartbeat) {
+            alert('⚠️ No active timer found. Student may not have started the exam.');
+            return;
+        }
+        
+        // Calculate current elapsed time
+        const startTime = new Date(heartbeat.timestamp);
+        const now = getKenyaNow();
+        const elapsedSeconds = Math.floor((now - startTime) / 1000);
+        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+        
+        // Calculate new duration
+        const originalDuration = exam.duration_minutes || 30;
+        const remainingMinutes = Math.max(0, originalDuration - elapsedMinutes);
+        const newDuration = remainingMinutes + minutesToAdd;
+        
+        // Update the exam duration for this specific student
+        // We'll store this in a custom field or update the heartbeat
+        const { error: updateError } = await sb
+            .from('exam_heartbeats')
+            .update({
+                duration_extension: minutesToAdd,
+                extended_at: new Date().toISOString()
+            })
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId));
+        
+        if (updateError) throw updateError;
+        
+        // Log the extension
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            event_type: 'time_extended',
+            details: `Added ${minutesToAdd} minutes to student's exam timer`,
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+        alert(`✅ Added ${minutesToAdd} minutes to the student's timer!\n\n` +
+              `⏱️ Original duration: ${originalDuration} min\n` +
+              `⏱️ Time used: ${elapsedMinutes} min\n` +
+              `⏱️ Remaining: ${remainingMinutes} min\n` +
+              `⏱️ New total remaining: ${newDuration} min`);
+        
+        loadStudentsWithResults();
+        loadAllExams();
+        
+    } catch (error) {
+        console.error('Error adding time:', error);
+        alert('❌ Error adding time: ' + error.message);
+    }
+}
+
+// ============================================
+// 🔄 RESET STUDENT TIMER COMPLETELY
+// ============================================
+async function resetStudentTimerComplete(studentId, examId) {
+    if (!confirm(`⚠️ RESET TIMER COMPLETELY\n\nThis will clear all timer records for this student.\n\nAre you sure?`)) return;
     
     try {
+        // Delete heartbeat records
         await sb.from('exam_heartbeats')
             .delete()
             .eq('student_id', studentId)
             .eq('exam_id', parseInt(examId));
         
-        alert('✅ Student timer reset successfully!');
+        // Log the reset
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            event_type: 'timer_reset',
+            details: 'Admin reset timer completely',
+            severity: 'warning',
+            timestamp: new Date().toISOString()
+        });
+        
+        alert('✅ Student timer reset completely!');
         loadStudentsWithResults();
+        loadAllExams();
+        
     } catch (error) {
-        alert('❌ Error: ' + error.message);
+        alert('❌ Error resetting timer: ' + error.message);
     }
-};
-
+}
 // ============================================
 // 🚀 FORCE SUBMIT STUDENT
 // ============================================
