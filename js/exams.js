@@ -1,8 +1,52 @@
-
 (function() {
     'use strict';
     
     console.log('✅ exams.js - ONE-CALL OPTIMIZED VERSION');
+    
+    // ============================================
+    // 🕐 KENYA TIMEZONE HELPERS
+    // ============================================
+    
+    function getKenyaNow() {
+        const now = new Date();
+        return new Date(now.getTime() + (3 * 60 * 60 * 1000));
+    }
+    
+    function formatKenyaDate(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleDateString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+    
+    function formatKenyaTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleTimeString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+    
+    function formatKenjaDateTime(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
     
     class ExamsModule {
         constructor() {
@@ -64,8 +108,7 @@
         }
         
         updateDisplayedCountdowns() {
-            const now = new Date();
-            const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            const kenyaNow = getKenyaNow();
             
             this.currentExams.forEach(exam => {
                 if (exam.examStartDateTime && exam.examEndDateTime && exam.actionState === 'available') {
@@ -315,45 +358,41 @@
                     completedSection.style.display = 'block';
             }
         }
-       applyDataFilter() {
-    // 🔥 FIX: Move pending exams with marks to completed
-    // First, identify pending exams that have marks
-    const pendingWithMarks = this.allExams.filter(exam => 
-        exam.hasGrade && 
-        !exam.isReleased && 
-        (exam.marks !== null && exam.marks > 0) &&
-        exam.actionState !== 'available'
-    );
-    
-    // Mark them as completed so they show in Completed section
-    pendingWithMarks.forEach(exam => {
-        exam.isCompleted = true;
-        exam.actionState = 'pending_release';
-    });
-    
-    // Current exams: NOT completed AND NOT expired AND NOT pending_release
-    this.currentExams = this.allExams.filter(exam => 
-        !exam.isCompleted && 
-        exam.actionState !== 'expired' && 
-        exam.actionState !== 'pending_release'
-    );
-    
-    // Completed exams: isCompleted OR expired OR pending_release
-    this.completedExams = this.allExams.filter(exam => 
-        exam.isCompleted || 
-        exam.actionState === 'expired' || 
-        exam.actionState === 'pending_release'
-    );
-    
-    if (this.currentFilter === 'current') {
-        this.completedExams = [];
-    } else if (this.currentFilter === 'completed') {
-        this.currentExams = [];
-    }
-    
-    this.displayTables();
-    this.updateCounts();
-}
+        
+        applyDataFilter() {
+            const pendingWithMarks = this.allExams.filter(exam => 
+                exam.hasGrade && 
+                !exam.isReleased && 
+                (exam.marks !== null && exam.marks > 0) &&
+                exam.actionState !== 'available'
+            );
+            
+            pendingWithMarks.forEach(exam => {
+                exam.isCompleted = true;
+                exam.actionState = 'pending_release';
+            });
+            
+            this.currentExams = this.allExams.filter(exam => 
+                !exam.isCompleted && 
+                exam.actionState !== 'expired' && 
+                exam.actionState !== 'pending_release'
+            );
+            
+            this.completedExams = this.allExams.filter(exam => 
+                exam.isCompleted || 
+                exam.actionState === 'expired' || 
+                exam.actionState === 'pending_release'
+            );
+            
+            if (this.currentFilter === 'current') {
+                this.completedExams = [];
+            } else if (this.currentFilter === 'completed') {
+                this.currentExams = [];
+            }
+            
+            this.displayTables();
+            this.updateCounts();
+        }
         
         // ==================== LOAD NCK MARKS FROM NURSING SCHOOL SYSTEM ====================
         async loadNCKMarksFromSystem() {
@@ -401,7 +440,6 @@
                                 gradeText = 'Fail';
                             }
                             
-                            // ✅ FIX: Determine if this is a CAT exam (assessmentType !== 'exam_only')
                             const isCatExam = mark.assessmentType !== 'exam_only';
                             
                             return {
@@ -420,8 +458,8 @@
                                 finalDisplay: mark.exam ? `${mark.exam}` : '--',
                                 course: mark.subject,
                                 block_term: mark.block?.replace('_', ' ') || 'N/A',
-                                formattedGradedDate: new Date().toLocaleDateString(),
-                                formattedExamDateTime: new Date().toLocaleDateString(),
+                                formattedGradedDate: formatKenyaDate(new Date()),
+                                formattedExamDateTime: formatKenyaDate(new Date()),
                                 isFromNCK: true,
                                 programBadgeClass: 'badge-nck',
                                 programIcon: 'fa-stethoscope',
@@ -481,7 +519,6 @@
         }
         
         // ==================== OPTIMIZED MAIN LOAD EXAMS FUNCTION ====================
-        // 🔥 FIX: ONE CALL FOR ALL EXAM DATA!
         async loadExams() {
             console.log('📥 Loading exams with ONE consolidated call...');
             this.showLoading();
@@ -505,13 +542,11 @@
                     userId: this.userId
                 });
                 
-                // 🔥 ONE CALL: Get all exam data at once via RPC
                 const { data, error } = await supabase.rpc('get_student_exams', {
                     p_user_id: this.userId
                 });
                 
                 if (error) {
-                    // Fallback to individual calls if RPC fails
                     console.warn('⚠️ RPC failed, falling back to individual calls...');
                     await this.loadExamsFallback();
                     return;
@@ -520,26 +555,20 @@
                 console.log(`📊 Loaded ${data?.exams?.length || 0} exams from RPC`);
                 console.log(`📊 Loaded ${data?.grades?.length || 0} grades from RPC`);
                 
-                // Process the data
                 const exams = data.exams || [];
                 const grades = data.grades || [];
                 
-                // Set released results
                 this.releasedResults.clear();
                 if (data.released && data.released.length > 0) {
                     this.releasedResults = new Set(data.released.map(r => String(r)));
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
                 
-                // Process exams data
                 this.processExamsData(exams, grades);
-                
-                // Apply filters and display
                 this.applyDataFilter();
                 
                 console.log(`✅ Processed ${this.allExams.length} exams: ${this.currentExams.length} current, ${this.completedExams.length} completed`);
                 
-                // Load NCK marks in background (don't block)
                 this.loadNCKMarksFromSystem().catch(e => console.warn('NCK load:', e));
                 this.loadNCKClinicalScore().catch(e => console.warn('NCK score:', e));
                 
@@ -548,7 +577,6 @@
                 
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
-                // Try fallback
                 try {
                     await this.loadExamsFallback();
                 } catch (fallbackError) {
@@ -558,7 +586,7 @@
             }
         }
         
-        // ==================== FALLBACK LOAD EXAMS (Individual Calls) ====================
+        // ==================== FALLBACK LOAD EXAMS ====================
         async loadExamsFallback() {
             console.log('📥 Loading exams using fallback (individual calls)...');
             
@@ -566,7 +594,6 @@
                 if (!window.db?.supabase) throw new Error('Database connection not available');
                 const supabase = window.db.supabase;
                 
-                // BATCH LOAD: Get all data in parallel for speed
                 const [examsResult, gradesResult, releasedResult] = await Promise.all([
                     supabase
                         .from('exams')
@@ -614,436 +641,406 @@
             }
         }
         
-      processExamsData(exams, grades) {
-    // 🔥 FIX: Create grade map with ID preserved
-    const gradeMap = new Map();
-    grades.forEach(grade => {
-        // Make sure the grade object has an id
-        // The grade from the database has an 'id' field
-        const gradeWithId = {
-            ...grade,
-            id: grade.id || grade._id || grade.grade_id || null
-        };
-        gradeMap.set(String(grade.exam_id), gradeWithId);
-    });
-    
-    // 🔥 FIX: Get current time (Kenya Time UTC+3)
-    const now = new Date();
-    const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-    
-    // Group exams by name and intake year
-    const examGroups = new Map();
-    
-    exams.forEach(exam => {
-        const groupKey = `${exam.exam_name || exam.title || 'Untitled'}_${exam.intake_year}`;
-        
-        // ✅ Determine total marks based on exam type
-        const examType = (exam.exam_type || '').toUpperCase();
-        const isCatExam = examType.includes('CAT');
-        let marksOutOf = isCatExam ? 30 : (exam.marks_out_of || exam.total_marks || 100);
-        if (exam.total_marks) marksOutOf = exam.total_marks;
-        
-        if (!examGroups.has(groupKey)) {
-            examGroups.set(groupKey, {
-                id: exam.id,
-                exam_name: exam.exam_name || exam.title || 'Untitled Exam',
-                title: exam.title || exam.exam_name || 'Untitled Exam',
-                exam_type: exam.exam_type,
-                intake_year: exam.intake_year,
-                program_type: exam.program_type,
-                block_term: exam.block_term,
-                exam_date: exam.exam_date,
-                exam_start_time: exam.exam_start_time,
-                duration_minutes: exam.duration_minutes || 40,
-                exam_link: exam.exam_link || exam.online_link,
-                course: exam.course_name || exam.course || 'General',
-                marks_out_of: marksOutOf,
-                isCatExam: isCatExam,
-                course_levels: new Set(),
-                blocks: new Set(),
-                programs: new Set(),
-                grade: null,
-                status: exam.status,
-                is_published: exam.is_published || false,
-                released: exam.released || false
+        processExamsData(exams, grades) {
+            const gradeMap = new Map();
+            grades.forEach(grade => {
+                const gradeWithId = {
+                    ...grade,
+                    id: grade.id || grade._id || grade.grade_id || null
+                };
+                gradeMap.set(String(grade.exam_id), gradeWithId);
             });
-        }
-        
-        const group = examGroups.get(groupKey);
-        if (exam.course_name) group.course_levels.add(exam.course_name);
-        if (exam.block_term) group.blocks.add(exam.block_term);
-        if (exam.program_type) group.programs.add(exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program');
-        
-        // 🔥 FIX: Check if grade exists and preserve the ID
-        const grade = gradeMap.get(String(exam.id));
-        if (grade) {
-            // Only set grade if it has valid data
-            if (grade.marks !== null || grade.total_score !== null || grade.result_status) {
-                // 🔥 CRITICAL: Make sure the grade has an ID
-                if (!grade.id) {
-                    grade.id = grade._id || grade.grade_id || grade.uuid || null;
+            
+            const kenyaNow = getKenyaNow();
+            const examGroups = new Map();
+            
+            exams.forEach(exam => {
+                const groupKey = `${exam.exam_name || exam.title || 'Untitled'}_${exam.intake_year}`;
+                
+                const examType = (exam.exam_type || '').toUpperCase();
+                const isCatExam = examType.includes('CAT');
+                let marksOutOf = isCatExam ? 30 : (exam.marks_out_of || exam.total_marks || 100);
+                if (exam.total_marks) marksOutOf = exam.total_marks;
+                
+                if (!examGroups.has(groupKey)) {
+                    examGroups.set(groupKey, {
+                        id: exam.id,
+                        exam_name: exam.exam_name || exam.title || 'Untitled Exam',
+                        title: exam.title || exam.exam_name || 'Untitled Exam',
+                        exam_type: exam.exam_type,
+                        intake_year: exam.intake_year,
+                        program_type: exam.program_type,
+                        block_term: exam.block_term,
+                        exam_date: exam.exam_date,
+                        exam_start_time: exam.exam_start_time,
+                        duration_minutes: exam.duration_minutes || 40,
+                        exam_link: exam.exam_link || exam.online_link,
+                        course: exam.course_name || exam.course || 'General',
+                        marks_out_of: marksOutOf,
+                        isCatExam: isCatExam,
+                        course_levels: new Set(),
+                        blocks: new Set(),
+                        programs: new Set(),
+                        grade: null,
+                        status: exam.status,
+                        is_published: exam.is_published || false,
+                        released: exam.released || false
+                    });
                 }
-                group.grade = grade;
-            }
-        }
-    });
-    
-    // Process each exam group
-    this.allExams = Array.from(examGroups.values()).map(group => {
-        const grade = group.grade;
-        // 🔥 FIX: Get the grade ID from the grade object
-        const gradeId = grade?.id || grade?._id || grade?.grade_id || null;
-        
-        // 🔥 CRITICAL FIX: Check release status from MULTIPLE sources
-        let isReleased = false;
-        let isPendingRelease = false;
-        
-        // 🔥 FIX: If grade has PASS or FAIL status, it's released
-        if (grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
-            isReleased = true;
-            isPendingRelease = false;
-        }
-        
-        if (gradeId) {
-            // 1. Check released_exam_results table via this.releasedResults Set
-            if (this.releasedResults.has(String(gradeId))) {
-                isReleased = true;
-            }
+                
+                const group = examGroups.get(groupKey);
+                if (exam.course_name) group.course_levels.add(exam.course_name);
+                if (exam.block_term) group.blocks.add(exam.block_term);
+                if (exam.program_type) group.programs.add(exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program');
+                
+                const grade = gradeMap.get(String(exam.id));
+                if (grade) {
+                    if (grade.marks !== null || grade.total_score !== null || grade.result_status) {
+                        if (!grade.id) {
+                            grade.id = grade._id || grade.grade_id || grade.uuid || null;
+                        }
+                        group.grade = grade;
+                    }
+                }
+            });
             
-            // 2. Check if grade has result_status = 'RELEASED'
-            if (grade?.result_status === 'RELEASED') {
-                isReleased = true;
-            }
-            
-            // 3. Check if grade has been graded (has marks and is not pending)
-            if (grade?.marks !== null && grade?.marks !== undefined && 
-                (grade?.result_status !== 'PENDING_REVIEW' && grade?.result_status !== 'PENDING')) {
-                if (grade.marks > 0 || grade.total_score > 0) {
+            this.allExams = Array.from(examGroups.values()).map(group => {
+                const grade = group.grade;
+                const gradeId = grade?.id || grade?._id || grade?.grade_id || null;
+                
+                let isReleased = false;
+                let isPendingRelease = false;
+                
+                if (grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
                     isReleased = true;
+                    isPendingRelease = false;
                 }
-            }
-            
-            // 4. Check if exam itself is marked as released/published
-            if (group.is_published || group.released) {
-                isReleased = true;
-            }
-            
-            // 5. Check if result_status is PENDING_REVIEW or PENDING
-            if (grade?.result_status === 'PENDING_REVIEW' || grade?.result_status === 'PENDING') {
-                isPendingRelease = true;
-                isReleased = false;
-            }
-        }
-        
-        // 🔥 FIX: If marks exist and status is PASS or FAIL, force release
-        if (grade && grade.marks !== null && grade.marks !== undefined) {
-            if (grade.result_status === 'PASS' || grade.result_status === 'FAIL') {
-                isReleased = true;
-                isPendingRelease = false;
-            }
-        }
-        
-        // 🔥 FIX: Also check if exam is marked as released in the exams table
-        if (group.status === 'Released' || group.status === 'Completed' || group.status === 'Published') {
-            if (grade && grade.marks !== null) {
-                isReleased = true;
-            }
-        }
-        
-        const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
-        const combinedBlock = Array.from(group.blocks).join(' · ') || group.block_term || 'General';
-        const combinedProgram = Array.from(group.programs).join(' · ') || 'KRCHN Program';
-        
-        // Extract scores from grade
-        const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
-        const cat2Score = grade?.cat_2_score ?? null;
-        const finalScore = grade?.exam_score ?? null;
-        const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
-        const marks = grade?.marks ? parseFloat(grade.marks) : null;
-        
-        // Determine if student has taken this exam
-        const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || 
-                                  grade.result_status === 'RELEASED' || grade.result_status === 'PENDING_REVIEW' || 
-                                  grade.result_status === 'PENDING' || marks !== null || totalPercentage !== null);
-        
-        const examType = (group.exam_type || '').toUpperCase();
-        const isCatExam = examType.includes('CAT');
-        const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
-        
-        // Build exam start datetime
-        let examStartDateTime = null;
-        let examEndDateTime = null;
-        let formattedExamDateTime = 'TBA';
-        let countdownText = '';
-        let examStatus = 'upcoming';
-        let statusMessage = '';
-        let canStart = false;
-        let timeRemainingMs = 0;
-        
-       // ✅ NEW CODE - shows Kenya time (UTC+3)
-if (group.exam_date) {
-    const [year, month, day] = group.exam_date.split('-');
-    
-    if (group.exam_start_time) {
-        const [hours, minutes, seconds] = group.exam_start_time.split(':');
-        examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds || 0));
-        // ✅ Convert to Kenya time (UTC+3)
-        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-    } else {
-        examStartDateTime = new Date(Date.UTC(year, month-1, day, 0, 0, 0));
-        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
-    }
-    
-    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
-    
-    // ✅ FIX: Format using the Kenya time, not UTC
-    const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    // Use examStartDateTime (which is already in Kenya time)
-    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
-    
-    if (group.exam_start_time) {
-        // ✅ FIX: Use the Kenya time for display
-        const kenyaHours = examStartDateTime.getHours();
-        const kenyaMinutes = String(examStartDateTime.getMinutes()).padStart(2, '0');
-        const hour12 = kenyaHours % 12 || 12;
-        const ampm = kenyaHours >= 12 ? 'PM' : 'AM';
-        formattedExamDateTime += ` at ${hour12}:${kenyaMinutes} ${ampm}`;
-    }
-}
-        
-        // Determine exam status based on current time
-        if (examStartDateTime && examEndDateTime) {
-            if (kenyaNow < examStartDateTime) {
-                examStatus = 'upcoming';
-                const diffMs = examStartDateTime - kenyaNow;
-                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                if (diffHours > 24) {
-                    const diffDays = Math.floor(diffHours / 24);
-                    countdownText = `in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
-                } else if (diffHours > 0) {
-                    countdownText = `in ${diffHours}h ${diffMinutes}m`;
-                } else if (diffMinutes > 0) {
-                    countdownText = `in ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+                
+                if (gradeId) {
+                    if (this.releasedResults.has(String(gradeId))) {
+                        isReleased = true;
+                    }
+                    
+                    if (grade?.result_status === 'RELEASED') {
+                        isReleased = true;
+                    }
+                    
+                    if (grade?.marks !== null && grade?.marks !== undefined && 
+                        (grade?.result_status !== 'PENDING_REVIEW' && grade?.result_status !== 'PENDING')) {
+                        if (grade.marks > 0 || grade.total_score > 0) {
+                            isReleased = true;
+                        }
+                    }
+                    
+                    if (group.is_published || group.released) {
+                        isReleased = true;
+                    }
+                    
+                    if (grade?.result_status === 'PENDING_REVIEW' || grade?.result_status === 'PENDING') {
+                        isPendingRelease = true;
+                        isReleased = false;
+                    }
+                }
+                
+                if (grade && grade.marks !== null && grade.marks !== undefined) {
+                    if (grade.result_status === 'PASS' || grade.result_status === 'FAIL') {
+                        isReleased = true;
+                        isPendingRelease = false;
+                    }
+                }
+                
+                if (group.status === 'Released' || group.status === 'Completed' || group.status === 'Published') {
+                    if (grade && grade.marks !== null) {
+                        isReleased = true;
+                    }
+                }
+                
+                const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
+                const combinedBlock = Array.from(group.blocks).join(' · ') || group.block_term || 'General';
+                const combinedProgram = Array.from(group.programs).join(' · ') || 'KRCHN Program';
+                
+                const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
+                const cat2Score = grade?.cat_2_score ?? null;
+                const finalScore = grade?.exam_score ?? null;
+                const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
+                const marks = grade?.marks ? parseFloat(grade.marks) : null;
+                
+                const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || 
+                                          grade.result_status === 'RELEASED' || grade.result_status === 'PENDING_REVIEW' || 
+                                          grade.result_status === 'PENDING' || marks !== null || totalPercentage !== null);
+                
+                const examType = (group.exam_type || '').toUpperCase();
+                const isCatExam = examType.includes('CAT');
+                const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
+                
+                // ============================================
+                // 🕐 EXAM DATE/TIME - ALWAYS KENYA TIME (UTC+3)
+                // ============================================
+                let examStartDateTime = null;
+                let examEndDateTime = null;
+                let formattedExamDateTime = 'TBA';
+                let countdownText = '';
+                let examStatus = 'upcoming';
+                let statusMessage = '';
+                let canStart = false;
+                let timeRemainingMs = 0;
+                
+                if (group.exam_date) {
+                    const [year, month, day] = group.exam_date.split('-');
+                    
+                    if (group.exam_start_time) {
+                        const [hours, minutes, seconds] = group.exam_start_time.split(':');
+                        examStartDateTime = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds || 0));
+                        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
+                    } else {
+                        examStartDateTime = new Date(Date.UTC(year, month-1, day, 0, 0, 0));
+                        examStartDateTime = new Date(examStartDateTime.getTime() + (3 * 60 * 60 * 1000));
+                    }
+                    
+                    examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
+                    
+                    // ✅ FIX: ALWAYS use Kenya timezone for formatting
+                    const dateOptions = { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric',
+                        timeZone: 'Africa/Nairobi'
+                    };
+                    formattedExamDateTime = examStartDateTime.toLocaleDateString('en-US', dateOptions);
+                    
+                    if (group.exam_start_time) {
+                        const timeOptions = {
+                            timeZone: 'Africa/Nairobi',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        };
+                        const timeString = examStartDateTime.toLocaleTimeString('en-US', timeOptions);
+                        formattedExamDateTime += ` at ${timeString}`;
+                    }
+                }
+                
+                // Determine exam status based on current Kenya time
+                if (examStartDateTime && examEndDateTime) {
+                    if (kenyaNow < examStartDateTime) {
+                        examStatus = 'upcoming';
+                        const diffMs = examStartDateTime - kenyaNow;
+                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        if (diffHours > 24) {
+                            const diffDays = Math.floor(diffHours / 24);
+                            countdownText = `in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+                        } else if (diffHours > 0) {
+                            countdownText = `in ${diffHours}h ${diffMinutes}m`;
+                        } else if (diffMinutes > 0) {
+                            countdownText = `in ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+                        } else {
+                            countdownText = `in a few seconds`;
+                        }
+                        statusMessage = `📅 ${countdownText}`;
+                        canStart = false;
+                    } else if (kenyaNow >= examStartDateTime && kenyaNow <= examEndDateTime) {
+                        examStatus = 'available';
+                        const timeLeftMs = examEndDateTime - kenyaNow;
+                        const minutesLeft = Math.floor(timeLeftMs / 60000);
+                        const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                        statusMessage = `🟢 Available Now! Time left: ${minutesLeft}m ${secondsLeft}s`;
+                        canStart = true;
+                        timeRemainingMs = timeLeftMs;
+                    } else if (kenyaNow > examEndDateTime) {
+                        if (group.status === 'Closed' || group.status === 'Completed' || group.status === 'Released') {
+                            examStatus = 'expired';
+                            statusMessage = '🔒 Exam Closed';
+                            canStart = false;
+                        } else {
+                            examStatus = 'available';
+                            statusMessage = '📋 Exam Available - Auto-Grading Active';
+                            canStart = true;
+                        }
+                    }
+                }
+                
+                const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
+                                    (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
+                
+                let finalStatus = examStatus;
+                let finalCanStart = false;
+                let finalMessage = statusMessage;
+                let buttonText = '';
+                let isCompleted = false;
+                let displayPercentage = null;
+                let gradeText = 'Not Started';
+                let gradeClass = 'pending';
+                let displayScore = 0;
+                let totalMarks = group.marks_out_of || 100;
+                
+                if (isReleased && hasTaken) {
+                    isCompleted = true;
+                    finalStatus = 'completed';
+                    finalCanStart = false;
+                    finalMessage = '✅ Results Released';
+                    buttonText = 'View Results';
+                    
+                    if (isCatExam) {
+                        displayScore = cat1Score || cat2Score || marks || 0;
+                        displayScore = Math.min(displayScore, 30);
+                    } else {
+                        displayScore = marks || totalPercentage || 0;
+                        displayScore = Math.min(displayScore, totalMarks);
+                    }
+                    
+                    const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
+                    displayPercentage = Math.round(calcPercentage);
+                    
+                    if (displayPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (displayPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (displayPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    } else if (displayPercentage > 0) {
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
+                    } else {
+                        gradeText = 'Completed';
+                        gradeClass = 'completed';
+                    }
+                    
+                } else if (isPendingRelease) {
+                    finalStatus = 'pending_release';
+                    finalCanStart = false;
+                    finalMessage = '⏳ Pending Release';
+                    buttonText = 'Pending Release';
+                    isCompleted = true;
+                    gradeText = 'Pending Release';
+                    gradeClass = 'pending';
+                    displayPercentage = null;
+                    
+                } else if (hasTaken && !isReleased) {
+                    finalStatus = 'pending_release';
+                    finalCanStart = false;
+                    finalMessage = '⏳ Awaiting Admin Review';
+                    buttonText = 'Pending';
+                    isCompleted = true;
+                    gradeText = 'Pending Review';
+                    gradeClass = 'pending';
+                    
+                } else if (examStatus === 'available' && !hasTaken && hasValidLink) {
+                    finalStatus = 'available';
+                    finalCanStart = true;
+                    finalMessage = statusMessage;
+                    buttonText = 'Start Exam';
+                    isCompleted = false;
+                    
+                } else if (examStatus === 'upcoming' && !hasTaken) {
+                    finalStatus = 'upcoming';
+                    finalCanStart = false;
+                    finalMessage = countdownText || 'Coming Soon';
+                    buttonText = countdownText || 'Coming Soon';
+                    isCompleted = false;
+                    
+                } else if (examStatus === 'expired' && !hasTaken) {
+                    finalStatus = 'expired';
+                    buttonText = 'Missed';
+                    gradeText = 'Missed';
+                    gradeClass = 'missed';
+                    isCompleted = true;
+                    
                 } else {
-                    countdownText = `in a few seconds`;
+                    finalStatus = 'pending';
+                    buttonText = 'Not Available';
+                    isCompleted = false;
                 }
-                statusMessage = `📅 ${countdownText}`;
-                canStart = false;
-            } else if (kenyaNow >= examStartDateTime && kenyaNow <= examEndDateTime) {
-                examStatus = 'available';
-                const timeLeftMs = examEndDateTime - kenyaNow;
-                const minutesLeft = Math.floor(timeLeftMs / 60000);
-                const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
-                statusMessage = `🟢 Available Now! Time left: ${minutesLeft}m ${secondsLeft}s`;
-                canStart = true;
-                timeRemainingMs = timeLeftMs;
-            } else if (kenyaNow > examEndDateTime) {
-                if (group.status === 'Closed' || group.status === 'Completed' || group.status === 'Released') {
-                    examStatus = 'expired';
-                    statusMessage = '🔒 Exam Closed';
-                    canStart = false;
-                } else {
-                    examStatus = 'available';
-                    statusMessage = '📋 Exam Available - Auto-Grading Active';
-                    canStart = true;
+                
+                let cat1Display = '--';
+                let cat2Display = '--';
+                let finalDisplay = '--';
+                
+                if (isReleased || hasTaken) {
+                    if (isCatExam) {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                        if (isReleased && displayScore > 0) {
+                            cat1Display = `${displayScore}/${totalMarks}`;
+                            cat2Display = `${displayScore}/${totalMarks}`;
+                        }
+                    } else {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                        if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
+                    }
                 }
-            }
+                
+                // ✅ FIX: Formatted graded date in Kenya time
+                const formattedGradedDate = grade?.graded_at ? 
+                    formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : '--';
+                
+                return {
+                    ...group,
+                    id: group.id,
+                    exam_name: group.exam_name,
+                    title: group.title,
+                    exam_type: group.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
+                    isCatExam: isCatExam,
+                    isFinalExam: isFinalExam,
+                    isCompleted: isCompleted,
+                    isReleased: isReleased,
+                    isPendingRelease: isPendingRelease,
+                    hasGrade: hasTaken,
+                    isDatePassed: examStatus === 'expired',
+                    completionReason: finalStatus,
+                    totalPercentage: displayPercentage,
+                    gradeText: gradeText,
+                    gradeClass: gradeClass,
+                    hasValidLink: hasValidLink,
+                    canTakeExam: finalCanStart,
+                    actionState: finalStatus,
+                    actionMessage: finalMessage,
+                    buttonText: buttonText,
+                    examLink: group.exam_link,
+                    marks_out_of: totalMarks,
+                    examStartDateTime: examStartDateTime,
+                    examEndDateTime: examEndDateTime,
+                    timeRemainingMs: timeRemainingMs,
+                    countdownText: countdownText,
+                    cat1Score: cat1Score,
+                    cat2Score: cat2Score,
+                    finalScore: finalScore,
+                    marks: marks,
+                    cat1Display: cat1Display,
+                    cat2Display: cat2Display,
+                    finalDisplay: finalDisplay,
+                    displayScore: displayScore,
+                    examDate: group.exam_date,
+                    examStartTime: group.exam_start_time,
+                    formattedExamDateTime: formattedExamDateTime,
+                    formattedGradedDate: formattedGradedDate,
+                    programBadgeClass: group.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
+                    programIcon: group.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
+                    programDisplay: combinedProgram,
+                    course: combinedCourse,
+                    block_term: combinedBlock,
+                    status: group.status,
+                    result_status: grade?.result_status || null,
+                    grade: grade
+                };
+            });
+            
+            const releasedCount = this.allExams.filter(e => e.isReleased).length;
+            const pendingCount = this.allExams.filter(e => e.actionState === 'pending_release').length;
+            const currentCount = this.allExams.filter(e => !e.isCompleted && e.actionState !== 'expired' && e.actionState !== 'pending_release').length;
+            const completedCount = this.allExams.filter(e => e.isCompleted || e.actionState === 'expired' || e.actionState === 'pending_release').length;
+            
+            console.log(`✅ Processed ${this.allExams.length} exams:`);
+            console.log(`   📊 Released: ${releasedCount}`);
+            console.log(`   ⏳ Pending Release: ${pendingCount}`);
+            console.log(`   📝 Current: ${currentCount}`);
+            console.log(`   ✅ Completed: ${completedCount}`);
         }
         
-        const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
-                            (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
-        
-        // Determine final state
-        let finalStatus = examStatus;
-        let finalCanStart = false;
-        let finalMessage = statusMessage;
-        let buttonText = '';
-        let isCompleted = false;
-        let displayPercentage = null;
-        let gradeText = 'Not Started';
-        let gradeClass = 'pending';
-        let displayScore = 0;
-        let totalMarks = group.marks_out_of || 100;
-        
-        // 🔥 CRITICAL FIX: Properly handle RELEASED results
-        if (isReleased && hasTaken) {
-            // ✅ RELEASED - Show in Completed section
-            isCompleted = true;
-            finalStatus = 'completed';
-            finalCanStart = false;
-            finalMessage = '✅ Results Released';
-            buttonText = 'View Results';
-            
-            // Get the score
-            if (isCatExam) {
-                displayScore = cat1Score || cat2Score || marks || 0;
-                displayScore = Math.min(displayScore, 30);
-            } else {
-                displayScore = marks || totalPercentage || 0;
-                displayScore = Math.min(displayScore, totalMarks);
-            }
-            
-            // Calculate percentage
-            const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
-            displayPercentage = Math.round(calcPercentage);
-            
-            // Determine grade
-            if (displayPercentage >= 85) {
-                gradeText = 'Distinction';
-                gradeClass = 'distinction';
-            } else if (displayPercentage >= 75) {
-                gradeText = 'Credit';
-                gradeClass = 'credit';
-            } else if (displayPercentage >= 60) {
-                gradeText = 'Pass';
-                gradeClass = 'pass';
-            } else if (displayPercentage > 0) {
-                gradeText = 'Fail';
-                gradeClass = 'fail';
-            } else {
-                gradeText = 'Completed';
-                gradeClass = 'completed';
-            }
-            
-        } else if (isPendingRelease) {
-            // ⏳ PENDING RELEASE - Show in Completed section with pending badge
-            finalStatus = 'pending_release';
-            finalCanStart = false;
-            finalMessage = '⏳ Pending Release';
-            buttonText = 'Pending Release';
-            isCompleted = true;  // 🔥 FIX: Show in completed section
-            gradeText = 'Pending Release';
-            gradeClass = 'pending';
-            displayPercentage = null;
-            
-        } else if (hasTaken && !isReleased) {
-            // ⏳ Taken but not released - Show in completed section
-            finalStatus = 'pending_release';
-            finalCanStart = false;
-            finalMessage = '⏳ Awaiting Admin Review';
-            buttonText = 'Pending';
-            isCompleted = true;  // 🔥 FIX: Show in completed section
-            gradeText = 'Pending Review';
-            gradeClass = 'pending';
-            
-        } else if (examStatus === 'available' && !hasTaken && hasValidLink) {
-            finalStatus = 'available';
-            finalCanStart = true;
-            finalMessage = statusMessage;
-            buttonText = 'Start Exam';
-            isCompleted = false;
-            
-        } else if (examStatus === 'upcoming' && !hasTaken) {
-            finalStatus = 'upcoming';
-            finalCanStart = false;
-            finalMessage = countdownText || 'Coming Soon';
-            buttonText = countdownText || 'Coming Soon';
-            isCompleted = false;
-            
-        } else if (examStatus === 'expired' && !hasTaken) {
-            finalStatus = 'expired';
-            buttonText = 'Missed';
-            gradeText = 'Missed';
-            gradeClass = 'missed';
-            isCompleted = true;
-            
-        } else {
-            finalStatus = 'pending';
-            buttonText = 'Not Available';
-            isCompleted = false;
-        }
-        
-        // Format score displays
-        let cat1Display = '--';
-        let cat2Display = '--';
-        let finalDisplay = '--';
-        
-        if (isReleased || hasTaken) {
-            if (isCatExam) {
-                if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                // For released CAT, show marks with denominator
-                if (isReleased && displayScore > 0) {
-                    cat1Display = `${displayScore}/${totalMarks}`;
-                    cat2Display = `${displayScore}/${totalMarks}`;
-                }
-            } else {
-                if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
-            }
-        }
-        
-        // For released results, show percentage in total
-        if (isReleased && displayPercentage !== null) {
-            // Already set
-        }
-        
-        return {
-            ...group,
-            id: group.id,
-            exam_name: group.exam_name,
-            title: group.title,
-            exam_type: group.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
-            isCatExam: isCatExam,
-            isFinalExam: isFinalExam,
-            isCompleted: isCompleted,
-            isReleased: isReleased,
-            isPendingRelease: isPendingRelease,
-            hasGrade: hasTaken,
-            isDatePassed: examStatus === 'expired',
-            completionReason: finalStatus,
-            totalPercentage: displayPercentage,
-            gradeText: gradeText,
-            gradeClass: gradeClass,
-            hasValidLink: hasValidLink,
-            canTakeExam: finalCanStart,
-            actionState: finalStatus,
-            actionMessage: finalMessage,
-            buttonText: buttonText,
-            examLink: group.exam_link,
-            marks_out_of: totalMarks,
-            examStartDateTime: examStartDateTime,
-            examEndDateTime: examEndDateTime,
-            timeRemainingMs: timeRemainingMs,
-            countdownText: countdownText,
-            cat1Score: cat1Score,
-            cat2Score: cat2Score,
-            finalScore: finalScore,
-            marks: marks,
-            cat1Display: cat1Display,
-            cat2Display: cat2Display,
-            finalDisplay: finalDisplay,
-            displayScore: displayScore,
-            examDate: group.exam_date,
-            examStartTime: group.exam_start_time,
-            formattedExamDateTime: formattedExamDateTime,
-           formattedGradedDate: grade?.graded_at ? 
-    new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleDateString() : '--',
-            programBadgeClass: group.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
-            programIcon: group.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
-            programDisplay: combinedProgram,
-            course: combinedCourse,
-            block_term: combinedBlock,
-            status: group.status,
-            result_status: grade?.result_status || null,
-            grade: grade // 🔥 FIX: Store the full grade object with ID
-        };
-    });
-    
-    // Log summary
-    const releasedCount = this.allExams.filter(e => e.isReleased).length;
-    const pendingCount = this.allExams.filter(e => e.actionState === 'pending_release').length;
-    const currentCount = this.allExams.filter(e => !e.isCompleted && e.actionState !== 'expired' && e.actionState !== 'pending_release').length;
-    const completedCount = this.allExams.filter(e => e.isCompleted || e.actionState === 'expired' || e.actionState === 'pending_release').length;
-    
-    console.log(`✅ Processed ${this.allExams.length} exams:`);
-    console.log(`   📊 Released: ${releasedCount}`);
-    console.log(`   ⏳ Pending Release: ${pendingCount}`);
-    console.log(`   📝 Current: ${currentCount}`);
-    console.log(`   ✅ Completed: ${completedCount}`);
-}
         displayTables() {
             this.displayCurrentTable();
             this.displayCompletedTable();
@@ -1061,7 +1058,6 @@ if (group.exam_date) {
                 return;
             }
             
-            // Get user details for the link
             const userId = this.userId || window.db?.currentUserId || '';
             const userProgram = this.programCode || 'KRCHN';
             const userBlock = this.userBlock || 'A';
@@ -1156,259 +1152,235 @@ if (group.exam_date) {
             
             this.currentTable.innerHTML = html;
         }
-       displayCompletedTable() {
-    if (!this.completedTable) return;
-    
-    // 🔥 FIX: Show both completed AND released exams
-    const completedReleased = this.completedExams.filter(exam => 
-        exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release'
-    );
-    
-    if (completedReleased.length === 0) {
-        this.completedTable.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center text-muted py-4">
-                    <i class="fas fa-inbox fa-2x d-block mb-2"></i>
-                    No completed assessments yet.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const html = completedReleased.map(exam => {
-        const isCatExam = exam.isCatExam;
-       // 🔥 FIX: Safely get exam name (handle [object Object])
-let examDisplayName = 'Assessment';
-
-// Helper function to safely extract name
-function safeExtractName(obj) {
-    if (!obj) return null;
-    if (typeof obj === 'string') {
-        // Clean up any accidental [object Object] strings
-        if (obj === '[object Object]') return null;
-        return obj;
-    }
-    if (typeof obj === 'object' && obj !== null) {
-        // Try common property names
-        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject'];
-        for (const prop of props) {
-            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
-                return obj[prop];
+        
+        displayCompletedTable() {
+            if (!this.completedTable) return;
+            
+            const completedReleased = this.completedExams.filter(exam => 
+                exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release'
+            );
+            
+            if (completedReleased.length === 0) {
+                this.completedTable.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                            No completed assessments yet.
+                        </td>
+                    </tr>
+                `;
+                return;
             }
+            
+            const html = completedReleased.map(exam => {
+                const isCatExam = exam.isCatExam;
+                let examDisplayName = 'Assessment';
+                
+                function safeExtractName(obj) {
+                    if (!obj) return null;
+                    if (typeof obj === 'string') {
+                        if (obj === '[object Object]') return null;
+                        return obj;
+                    }
+                    if (typeof obj === 'object' && obj !== null) {
+                        const props = ['exam_name', 'title', 'name', 'course', 'course_name', 'subject'];
+                        for (const prop of props) {
+                            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop] !== '[object Object]') {
+                                return obj[prop];
+                            }
+                        }
+                        const values = Object.values(obj);
+                        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
+                        if (stringVal) return stringVal;
+                    }
+                    return null;
+                }
+                
+                let name = safeExtractName(exam.exam_name);
+                if (!name) name = safeExtractName(exam.title);
+                if (!name) name = safeExtractName(exam.course);
+                if (!name) name = safeExtractName(exam.exam_info);
+                if (!name) name = safeExtractName(exam.course_name);
+                examDisplayName = name || 'Assessment';
+                
+                let totalMarks = 0;
+                if (isCatExam) {
+                    totalMarks = 30;
+                } else {
+                    totalMarks = exam.marks_out_of || 100;
+                }
+                
+                let displayScore = 0;
+                let displayPercent = 0;
+                let displayPercentage = '--';
+                let showMarks = false;
+                
+                if (exam.isReleased && exam.hasGrade) {
+                    showMarks = true;
+                    if (isCatExam) {
+                        displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
+                    } else {
+                        displayScore = exam.marks || exam.totalPercentage || 0;
+                    }
+                    displayScore = Math.min(displayScore, totalMarks);
+                    displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
+                    displayPercentage = displayPercent + '%';
+                } else if (exam.actionState === 'pending_release') {
+                    showMarks = false;
+                    displayScore = 0;
+                    displayPercentage = '--';
+                } else {
+                    displayScore = exam.displayScore || exam.marks || 0;
+                    displayScore = Math.min(displayScore, totalMarks);
+                    displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
+                    displayPercentage = displayPercent + '%';
+                }
+                
+                let displayGrade = exam.gradeText || 'Not Started';
+                let displayClass = exam.gradeClass || 'pending';
+                
+                if (exam.isReleased && exam.hasGrade && displayPercent > 0) {
+                    if (displayPercent >= 85) {
+                        displayGrade = 'Distinction';
+                        displayClass = 'distinction';
+                    } else if (displayPercent >= 75) {
+                        displayGrade = 'Credit';
+                        displayClass = 'credit';
+                    } else if (displayPercent >= 60) {
+                        displayGrade = 'Pass';
+                        displayClass = 'pass';
+                    } else {
+                        displayGrade = 'Fail';
+                        displayClass = 'fail';
+                    }
+                }
+                
+                if (exam.actionState === 'pending_release') {
+                    displayGrade = 'Pending Release';
+                    displayClass = 'pending';
+                }
+                
+                if (exam.actionState === 'expired' && !exam.hasGrade) {
+                    displayGrade = 'Missed';
+                    displayClass = 'missed';
+                }
+                
+                let statusBadges = '';
+                if (exam.isReleased) {
+                    statusBadges = '<span class="badge-released">✅ Released</span>';
+                } else if (exam.actionState === 'pending_release') {
+                    statusBadges = '<span class="badge-pending">⏳ Pending</span>';
+                }
+                
+                let assessmentCell = `
+                    <div class="assessment-info-box">
+                        <div class="assessment-name">
+                            <strong>${this.escapeHtml(examDisplayName)}</strong>
+                            <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                            ${statusBadges}
+                        </div>
+                        <div class="assessment-details">
+                            <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
+                            <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
+                            <span class="program-badge ${exam.programBadgeClass}">
+                                <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                            </span>
+                        </div>
+                        ${exam.isReleased ? `<div style="font-size: 0.7rem; color: #10B981; margin-top: 4px;">📊 ${displayScore} / ${totalMarks} marks</div>` : ''}
+                        ${exam.actionState === 'pending_release' ? `<div style="font-size: 0.7rem; color: #F59E0B; margin-top: 4px;">⏳ Results pending release - marks hidden</div>` : ''}
+                    </div>
+                `;
+                
+                let cat1Display = '--';
+                let cat2Display = '--';
+                let finalDisplay = '--';
+                
+                if (exam.isReleased && exam.hasGrade) {
+                    if (isCatExam) {
+                        const examType = (exam.exam_type || '').toUpperCase();
+                        
+                        if (examType === 'CAT_1') {
+                            cat1Display = `${displayScore}/${totalMarks}`;
+                            cat2Display = '--';
+                        } else if (examType === 'CAT_2') {
+                            cat1Display = '--';
+                            cat2Display = `${displayScore}/${totalMarks}`;
+                        } else {
+                            cat1Display = `${displayScore}/${totalMarks}`;
+                            cat2Display = '--';
+                        }
+                        finalDisplay = '--';
+                    } else {
+                        if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
+                            cat1Display = `${exam.cat1Score}`;
+                        }
+                        if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
+                            cat2Display = `${exam.cat2Score}`;
+                        }
+                        if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
+                            finalDisplay = `${exam.finalScore}`;
+                        }
+                        if (cat1Display === '--' && displayScore > 0) {
+                            cat1Display = `${displayScore}/${totalMarks}`;
+                        }
+                    }
+                } else if (exam.actionState === 'pending_release') {
+                    cat1Display = '🔒';
+                    cat2Display = '🔒';
+                    finalDisplay = '🔒';
+                }
+                
+                let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
+                
+                let actionHtml = '';
+                if (exam.isReleased && exam.hasGrade) {
+                    actionHtml = `
+                        <button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
+                            <i class="fas fa-chart-line"></i> View Results
+                        </button>
+                    `;
+                } else if (exam.actionState === 'pending_release') {
+                    actionHtml = `
+                        <span class="exam-link-btn btn-warning" style="padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-clock"></i> Pending Release
+                        </span>
+                    `;
+                } else if (exam.actionState === 'expired') {
+                    actionHtml = `
+                        <span class="exam-link-btn btn-danger" style="padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-calendar-times"></i> Missed
+                        </span>
+                    `;
+                } else {
+                    actionHtml = `
+                        <span class="exam-link-btn btn-secondary" style="padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
+                            <i class="fas fa-check-circle"></i> ${exam.gradeText || 'Completed'}
+                        </span>
+                    `;
+                }
+                
+                let rowClass = 'assessment-row';
+                if (isCatExam) rowClass += ' cat-exam';
+                else rowClass += ' final-exam';
+                if (exam.isReleased) rowClass += ' row-released';
+                if (exam.actionState === 'pending_release') rowClass += ' row-pending';
+                
+                return `
+                    <tr class="${rowClass}" data-exam-id="${exam.id}">
+                        <td class="assessment-cell">${assessmentCell}</td>
+                        <td class="text-center date-cell">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}</td>
+                        <td class="text-center status-cell">${gradeBadge}</td>
+                        <td class="text-center">${cat1Display}</td>
+                        <td class="text-center">${cat2Display}</td>
+                        <td class="text-center">${finalDisplay}</td>
+                        <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
+                        <td class="text-center grade-cell">${actionHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            this.completedTable.innerHTML = html;
         }
-        // Get first string value from object
-        const values = Object.values(obj);
-        const stringVal = values.find(v => typeof v === 'string' && v !== '[object Object]');
-        if (stringVal) return stringVal;
-    }
-    return null;
-}
-
-let name = safeExtractName(exam.exam_name);
-if (!name) name = safeExtractName(exam.title);
-if (!name) name = safeExtractName(exam.course);
-if (!name) name = safeExtractName(exam.exam_info);
-if (!name) name = safeExtractName(exam.course_name);
-examDisplayName = name || 'Assessment';
-        // ✅ Determine total marks based on exam type
-        let totalMarks = 0;
-        if (isCatExam) {
-            totalMarks = 30; // CAT is always 30
-        } else {
-            totalMarks = exam.marks_out_of || 100;
-        }
-        
-        // 🔥 FIX: Only show marks if RELEASED
-        let displayScore = 0;
-        let displayPercent = 0;
-        let displayPercentage = '--';
-        let showMarks = false;
-        
-        if (exam.isReleased && exam.hasGrade) {
-            // ✅ RELEASED - Show marks
-            showMarks = true;
-            if (isCatExam) {
-                displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
-            } else {
-                displayScore = exam.marks || exam.totalPercentage || 0;
-            }
-            displayScore = Math.min(displayScore, totalMarks);
-            displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
-            displayPercentage = displayPercent + '%';
-        } else if (exam.actionState === 'pending_release') {
-            // ❌ PENDING - Hide marks
-            showMarks = false;
-            displayScore = 0;
-            displayPercentage = '--';
-        } else {
-            // Other cases
-            displayScore = exam.displayScore || exam.marks || 0;
-            displayScore = Math.min(displayScore, totalMarks);
-            displayPercent = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
-            displayPercentage = displayPercent + '%';
-        }
-        
-        // ✅ Grade determination - ONLY if released
-        let displayGrade = exam.gradeText || 'Not Started';
-        let displayClass = exam.gradeClass || 'pending';
-        
-        if (exam.isReleased && exam.hasGrade && displayPercent > 0) {
-            if (displayPercent >= 85) {
-                displayGrade = 'Distinction';
-                displayClass = 'distinction';
-            } else if (displayPercent >= 75) {
-                displayGrade = 'Credit';
-                displayClass = 'credit';
-            } else if (displayPercent >= 60) {
-                displayGrade = 'Pass';
-                displayClass = 'pass';
-            } else {
-                displayGrade = 'Fail';
-                displayClass = 'fail';
-            }
-        }
-        
-        // 🔥 If pending release, show pending badge
-        if (exam.actionState === 'pending_release') {
-            displayGrade = 'Pending Release';
-            displayClass = 'pending';
-        }
-        
-        // 🔥 If expired and not taken
-        if (exam.actionState === 'expired' && !exam.hasGrade) {
-            displayGrade = 'Missed';
-            displayClass = 'missed';
-        }
-        
-        // ✅ Build assessment cell with proper badges
-        let statusBadges = '';
-        if (exam.isReleased) {
-            statusBadges = '<span class="badge-released">✅ Released</span>';
-        } else if (exam.actionState === 'pending_release') {
-            statusBadges = '<span class="badge-pending">⏳ Pending</span>';
-        }
-        
-        let assessmentCell = `
-            <div class="assessment-info-box">
-                <div class="assessment-name">
-                    <strong>${this.escapeHtml(examDisplayName)}</strong>
-                    <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                    ${statusBadges}
-                </div>
-                <div class="assessment-details">
-                    <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
-                    <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
-                    <span class="program-badge ${exam.programBadgeClass}">
-                        <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                    </span>
-                </div>
-                ${exam.isReleased ? `<div style="font-size: 0.7rem; color: #10B981; margin-top: 4px;">📊 ${displayScore} / ${totalMarks} marks</div>` : ''}
-                ${exam.actionState === 'pending_release' ? `<div style="font-size: 0.7rem; color: #F59E0B; margin-top: 4px;">⏳ Results pending release - marks hidden</div>` : ''}
-            </div>
-        `;
-        
-        // 🔥 CAT columns - Only show if released
-        let cat1Display = '--';
-        let cat2Display = '--';
-        let finalDisplay = '--';
-        
-        if (exam.isReleased && exam.hasGrade) {
-    // ✅ RELEASED - Show marks
-    if (isCatExam) {
-        // 🔥 FIX: Determine which CAT column based on exam_type
-        const examType = (exam.exam_type || '').toUpperCase();
-        
-        if (examType === 'CAT_1') {
-            // CAT 1: Show in CAT 1 column only
-            cat1Display = `${displayScore}/${totalMarks}`;
-            cat2Display = '--';
-        } else if (examType === 'CAT_2') {
-            // CAT 2: Show in CAT 2 column only
-            cat1Display = '--';
-            cat2Display = `${displayScore}/${totalMarks}`;
-        } else {
-            // Generic CAT: Show in CAT 1 only
-            cat1Display = `${displayScore}/${totalMarks}`;
-            cat2Display = '--';
-        }
-        finalDisplay = '--';
-    } else {
-        // Final Exam: Show individual scores
-        if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
-            cat1Display = `${exam.cat1Score}`;
-        }
-        if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
-            cat2Display = `${exam.cat2Score}`;
-        }
-        if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
-            finalDisplay = `${exam.finalScore}`;
-        }
-        if (cat1Display === '--' && displayScore > 0) {
-            cat1Display = `${displayScore}/${totalMarks}`;
-        }
-    }
-} else if (exam.actionState === 'pending_release') {
-    // ❌ PENDING - Hide all marks
-    cat1Display = '🔒';
-    cat2Display = '🔒';
-    finalDisplay = '🔒';
-}
-        
-        // ✅ Grade badge
-        let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
-        
-        // ✅ Action button
-        let actionHtml = '';
-        if (exam.isReleased && exam.hasGrade) {
-            actionHtml = `
-                <button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
-                    <i class="fas fa-chart-line"></i> View Results
-                </button>
-            `;
-        } else if (exam.actionState === 'pending_release') {
-            actionHtml = `
-                <span class="exam-link-btn btn-warning" style="padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
-                    <i class="fas fa-clock"></i> Pending Release
-                </span>
-            `;
-        } else if (exam.actionState === 'expired') {
-            actionHtml = `
-                <span class="exam-link-btn btn-danger" style="padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
-                    <i class="fas fa-calendar-times"></i> Missed
-                </span>
-            `;
-        } else {
-            actionHtml = `
-                <span class="exam-link-btn btn-secondary" style="padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
-                    <i class="fas fa-check-circle"></i> ${exam.gradeText || 'Completed'}
-                </span>
-            `;
-        }
-        
-        // 🔥 Row class
-        let rowClass = 'assessment-row';
-        if (isCatExam) rowClass += ' cat-exam';
-        else rowClass += ' final-exam';
-        if (exam.isReleased) rowClass += ' row-released';
-        if (exam.actionState === 'pending_release') rowClass += ' row-pending';
-        
-        return `
-            <tr class="${rowClass}" data-exam-id="${exam.id}">
-                <td class="assessment-cell">${assessmentCell}</td>
-                <td class="text-center date-cell">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}</td>
-                <td class="text-center status-cell">${gradeBadge}</td>
-                <td class="text-center">${cat1Display}</td>
-                <td class="text-center">${cat2Display}</td>
-                <td class="text-center">${finalDisplay}</td>
-                <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
-                <td class="text-center grade-cell">${actionHtml}</td>
-            </tr>
-        `;
-    }).join('');
-    
-    this.completedTable.innerHTML = html;
-}
         
         updateCounts() {
             const currentCount = this.currentExams.length;
@@ -1427,7 +1399,6 @@ examDisplayName = name || 'Assessment';
                 this.completedHeaderCount.textContent = completedCount;
             }
             
-            // Calculate average score for completed exams that are released
             const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null && exam.isReleased);
             if (scoredExams.length > 0) {
                 const total = scoredExams.reduce((sum, exam) => sum + exam.totalPercentage, 0);
@@ -1473,9 +1444,8 @@ examDisplayName = name || 'Assessment';
                 
                 const exam = this.allExams.find(e => e.id === examId);
                 
-                // ✅ FIX: Determine total marks based on exam type
                 const isCatExam = exam?.isCatExam || false;
-                let totalMarks = 30; // Default for CAT
+                let totalMarks = 30;
                 if (!isCatExam) {
                     totalMarks = exam?.marks_out_of || 100;
                 }
@@ -1483,7 +1453,6 @@ examDisplayName = name || 'Assessment';
                     totalMarks = exam.marks_out_of;
                 }
                 
-                // ✅ FIX: Get the actual score
                 let displayScore = 0;
                 if (isCatExam) {
                     displayScore = grade?.cat_1_score || grade?.cat_2_score || grade?.marks || 0;
@@ -1493,7 +1462,6 @@ examDisplayName = name || 'Assessment';
                     displayScore = Math.min(displayScore, totalMarks);
                 }
                 
-                // ✅ FIX: Calculate percentage correctly
                 const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
                 const percentage = Math.round(calcPercentage);
                 
@@ -1532,7 +1500,6 @@ examDisplayName = name || 'Assessment';
                     passText = '⏳ Pending';
                 }
                 
-                // Small custom modal
                 const modalHtml = `
                     <div id="resultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
                         <div style="background: white; border-radius: 16px; max-width: 320px; width: 90%; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
@@ -1563,7 +1530,7 @@ examDisplayName = name || 'Assessment';
                                 </div>
                                 <div style="display: flex; justify-content: space-between;">
                                     <span style="font-size: 11px; color: #6B7280;">Released:</span>
-                                    <span style="font-size: 11px;">${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</span>
+                                    <span style="font-size: 11px;">${grade.graded_at ? formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : 'N/A'}</span>
                                 </div>
                             </div>
                             <button onclick="document.getElementById('resultModal').remove()" style="width: 100%; padding: 12px; background: #4C1D95; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">
