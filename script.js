@@ -7312,7 +7312,7 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS
+// PENDING REGISTRATIONS - GROUPED BY STUDENT (ENHANCED)
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -7338,64 +7338,172 @@ async function loadUnitPendingRegistrations() {
                 return;
             }
             
-            // Get student names
+            // Get student names and details
             const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id))];
-            let studentNames = {};
+            let studentInfo = {};
             
             const { data: profiles } = await sb
                 .from('consolidated_user_profiles_table')
-                .select('user_id, full_name')
+                .select('user_id, full_name, student_id, program')
                 .in('user_id', studentIds);
             
             if (profiles) {
                 profiles.forEach(p => {
-                    studentNames[p.user_id] = p.full_name;
+                    studentInfo[p.user_id] = {
+                        full_name: p.full_name || 'Unknown',
+                        student_id: p.student_id || p.user_id,
+                        program: p.program || 'N/A'
+                    };
                 });
             }
             
+            // ⭐ GROUP BY STUDENT
+            const groupedByStudent = {};
+            for (const reg of pendingRegistrationsData) {
+                const studentId = reg.student_id;
+                if (!groupedByStudent[studentId]) {
+                    const info = studentInfo[studentId] || { full_name: 'Unknown', student_id: studentId };
+                    groupedByStudent[studentId] = {
+                        id: studentId,
+                        name: info.full_name,
+                        student_id: info.student_id,
+                        program: info.program,
+                        units: []
+                    };
+                }
+                groupedByStudent[studentId].units.push({
+                    id: reg.id,
+                    unit_code: reg.unit_code,
+                    unit_name: reg.unit_name,
+                    block: reg.block,
+                    submitted_date: reg.submitted_date
+                });
+            }
+            
+            // Build HTML - Grouped by Student
             let html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Select All Units</button>
-                        <button onclick="clearAllUnitSelections()" class="btn-secondary" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Clear Selection</button>
-                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Approve Selected (<span id="selectedUnitsCount">0</span>)</button>
-                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger" style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Reject Selected</button>
+                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-check-double"></i> Select All Units
+                        </button>
+                        <button onclick="clearAllUnitSelections()" class="btn-secondary" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Clear Selection
+                        </button>
+                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-check"></i> Approve Selected (<span id="selectedUnitsCount">0</span>)
+                        </button>
+                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger" style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-trash"></i> Reject Selected
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 13px; color: #6b7280;">
+                        <i class="fas fa-users"></i> ${Object.keys(groupedByStudent).length} students · 
+                        <i class="fas fa-book"></i> ${pendingRegistrationsData.length} units pending
                     </div>
                 </div>
                 <div class="students-pending-list">
             `;
             
-            for (const reg of pendingRegistrationsData) {
-                const studentName = studentNames[reg.student_id] || 'Unknown';
-                const submittedDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleString() : 'Unknown';
+            // Loop through each student
+            for (const [studentId, student] of Object.entries(groupedByStudent)) {
+                const firstUnit = student.units[0];
+                const submittedDate = firstUnit?.submitted_date 
+                    ? new Date(firstUnit.submitted_date).toLocaleString() 
+                    : 'Unknown';
+                
+                // Check if student has multiple units
+                const unitCount = student.units.length;
+                const isMulti = unitCount > 1;
                 
                 html += `
-                    <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px; padding: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                        <!-- Student Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <strong>${escapeHtml(studentName)}</strong><br>
-                                <small>ID: ${reg.student_id?.substring(0, 8)}</small>
+                                <strong style="font-size: 16px; color: #1e3a5f;">
+                                    <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
+                                    ${escapeHtml(student.name)}
+                                </strong>
+                                <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
+                                    <i class="fas fa-id-card"></i> ${escapeHtml(student.student_id?.substring(0, 8))}
+                                </span>
+                                <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
+                                    <i class="fas fa-graduation-cap"></i> ${escapeHtml(student.program)}
+                                </span>
+                                <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
+                                    <i class="fas fa-clock"></i> ${submittedDate}
+                                </span>
                             </div>
-                            <div>
-                                <button onclick="approveStudentAllUnits('${reg.student_id}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Approve All</button>
-                                <button onclick="rejectStudentAllUnits('${reg.student_id}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Reject All</button>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span style="background: ${isMulti ? '#fef3c7' : '#e0e7ff'}; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: ${isMulti ? '#d97706' : '#4C1D95'};">
+                                    ${unitCount} unit${unitCount > 1 ? 's' : ''}
+                                </span>
+                                <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                    <i class="fas fa-check"></i> Approve All
+                                </button>
+                                <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                    <i class="fas fa-times"></i> Reject All
+                                </button>
                             </div>
                         </div>
-                        <div class="unit-item" style="border-top: 1px solid #e5e7eb; padding-top: 10px;">
-                            <input type="checkbox" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${reg.student_id}" onchange="updateSelectedUnitsCount()">
-                            <strong>${escapeHtml(reg.unit_code)}</strong> - ${escapeHtml(reg.unit_name)}<br>
-                            <small>Block: ${escapeHtml(reg.block)} | Submitted: ${submittedDate}</small>
-                            <div style="margin-top: 8px;">
-                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Approve</button>
-                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">Reject</button>
+                        
+                        <!-- Student's Units Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px;">
+                `;
+                
+                for (const unit of student.units) {
+                    const unitSubmitted = unit.submitted_date 
+                        ? new Date(unit.submitted_date).toLocaleString() 
+                        : 'Unknown';
+                    
+                    html += `
+                        <div class="unit-item" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #f59e0b; transition: all 0.2s;">
+                            <input type="checkbox" class="unit-checkbox-item" data-reg-id="${unit.id}" data-student-id="${studentId}" onchange="updateSelectedUnitsCount()">
+                            <div style="flex: 1; min-width: 0;">
+                                <div>
+                                    <strong style="font-size: 13px; color: #1e3a5f;">${escapeHtml(unit.unit_code)}</strong>
+                                    <span style="font-size: 12px; color: #374151; margin-left: 6px;">${escapeHtml(unit.unit_name)}</span>
+                                </div>
+                                <div style="font-size: 11px; color: #6b7280;">
+                                    <i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}
+                                </div>
                             </div>
+                            <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                                <button onclick="approveSingleUnitRecord('${unit.id}')" title="Approve" style="background: #059669; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: all 0.2s;">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="rejectSingleUnitRecord('${unit.id}')" title="Reject" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: all 0.2s;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += `
                         </div>
                     </div>
                 `;
             }
             
-            html += '</div>';
+            html += `
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center;">
+                    <i class="fas fa-info-circle"></i> 
+                    Total: ${pendingRegistrationsData.length} pending unit(s) from ${Object.keys(groupedByStudent).length} student(s)
+                </div>
+            `;
+            
             container.innerHTML = html;
+            
+            // Update stats
+            const pendingCountEl = document.getElementById('pendingRegistrations');
+            if (pendingCountEl) {
+                pendingCountEl.textContent = pendingRegistrationsData.length;
+            }
+            
+            console.log('✅ Display complete - grouped by student!');
             
         } catch (error) {
             console.error('Error loading pending registrations:', error);
