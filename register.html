@@ -32,7 +32,6 @@
             padding: 20px;
         }
 
-        /* FULL SCREEN BACKGROUND IMAGE */
         body::before {
             content: "";
             position: fixed;
@@ -58,14 +57,13 @@
             pointer-events: none;
         }
 
-        /* Modern Glassmorphic Form Container */
         .register-container {
             background: rgba(255, 255, 255, 0.97);
             backdrop-filter: blur(0px);
             border-radius: 32px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.2);
             width: 100%;
-            max-width: 650px;
+            max-width: 700px;
             padding: 2rem 2rem 2.2rem;
             transition: all 0.3s ease;
             animation: fadeSlideUp 0.5s ease-out;
@@ -76,7 +74,6 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        /* Logo & Branding */
         .logo-area {
             text-align: center;
             margin-bottom: 1rem;
@@ -125,7 +122,55 @@
             letter-spacing: 0.5px;
         }
 
-        /* Form styles */
+        /* ============================================ */
+        /* PROGRESS INDICATOR */
+        /* ============================================ */
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding: 10px 0;
+            position: relative;
+        }
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: #e2e8f0;
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+        .progress-step {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #f1f5f9;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 80px;
+            cursor: pointer;
+        }
+        .progress-step.active {
+            background: #0A3D62;
+            color: white;
+            transform: scale(1.05);
+        }
+        .progress-step.done {
+            background: #10b981;
+            color: white;
+        }
+        .progress-step .step-icon {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+        }
+
         .form-group {
             margin-bottom: 1.2rem;
             display: flex;
@@ -204,6 +249,36 @@
             cursor: not-allowed;
             transform: none;
         }
+        
+        .btn-secondary {
+            background: #6b7280;
+            box-shadow: none;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+            box-shadow: none;
+        }
+        .btn-success {
+            background: #10b981;
+            box-shadow: none;
+        }
+        .btn-success:hover {
+            background: #059669;
+            box-shadow: none;
+        }
+        
+        .draft-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 0.6rem;
+        }
+        .draft-actions button {
+            margin-top: 0;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
         .message {
             margin-top: 1rem;
             padding: 12px;
@@ -214,24 +289,305 @@
         }
         .error { background: #FEF2F2; color: #DC2626; border-left: 4px solid #DC2626; }
         .success { background: #ECFDF5; color: #059669; border-left: 4px solid #059669; }
+        .warning { background: #FEF3C7; color: #D97706; border-left: 4px solid #D97706; }
         .help-text { font-size: 0.65rem; color: #5b6e8c; margin-top: 5px; }
         .redirect-countdown { text-align: center; font-size: 0.75rem; margin-top: 14px; color: #2c7a4b; font-weight: 600; background: #e6f7ef; padding: 6px; border-radius: 30px; }
         .login-link { margin-top: 28px; text-align: center; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 20px; }
         .login-link a { color: #0A3D62; text-decoration: none; font-weight: 700; transition: 0.2s; }
         .login-link a:hover { color: #38A169; text-decoration: underline; }
         
-        /* Custom select optgroup styling */
         optgroup { font-weight: 600; color: #0A3D62; background: #fff; }
         option { font-weight: 400; }
         
+        /* ============================================ */
+        /* PASSWORD STRENGTH */
+        /* ============================================ */
+        .password-strength {
+            margin-top: 6px;
+        }
+        .strength-bar {
+            height: 4px;
+            width: 0%;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            margin-top: 4px;
+        }
+        .strength-text {
+            font-size: 0.65rem;
+            margin-top: 2px;
+            transition: all 0.3s ease;
+        }
+        .strength-weak { background: #ef4444; width: 25%; }
+        .strength-fair { background: #f59e0b; width: 50%; }
+        .strength-good { background: #3b82f6; width: 75%; }
+        .strength-strong { background: #10b981; width: 100%; }
+        .text-weak { color: #ef4444; }
+        .text-fair { color: #f59e0b; }
+        .text-good { color: #3b82f6; }
+        .text-strong { color: #10b981; }
+
+        /* ============================================ */
+        /* INTAKE SECTION */
+        /* ============================================ */
+        .intake-section {
+            background: #f0f7ff;
+            padding: 0.8rem 1rem;
+            border-radius: 16px;
+            border-left: 4px solid #0A3D62;
+            margin-top: 0.2rem;
+        }
+        .intake-section label {
+            color: #0A3D62;
+        }
+        .intake-section.hidden {
+            display: none;
+        }
+        .tvet-intake-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .intake-preview {
+            background: #e6f7ef;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #065f46;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* ============================================ */
+        /* PROGRAM DESCRIPTION */
+        /* ============================================ */
+        .program-description {
+            font-size: 0.75rem;
+            color: #475569;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-top: 4px;
+            border-left: 3px solid #38A169;
+            min-height: 36px;
+            transition: all 0.3s;
+        }
+
+        /* ============================================ */
+        /* PHOTO UPLOAD */
+        /* ============================================ */
+        .photo-upload-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 4px;
+        }
+        .photo-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px dashed #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            overflow: hidden;
+            background: #f8fafc;
+            position: relative;
+        }
+        .photo-preview:hover {
+            border-color: #38A169;
+            background: #f0fdf4;
+            transform: scale(1.02);
+        }
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-preview .placeholder-icon {
+            color: #94a3b8;
+            font-size: 2rem;
+        }
+        .photo-preview .placeholder-text {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .photo-preview .upload-hover {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 0.6rem;
+            padding: 4px;
+            text-align: center;
+            opacity: 0;
+            transition: 0.3s;
+        }
+        .photo-preview:hover .upload-hover {
+            opacity: 1;
+        }
+
+        /* ============================================ */
+        /* TERMS & CONDITIONS */
+        /* ============================================ */
+        .terms-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        .terms-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #0A3D62;
+        }
+        .terms-container label {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #475569;
+            margin-bottom: 0;
+            cursor: pointer;
+            line-height: 1.5;
+        }
+        .terms-container a {
+            color: #0A3D62;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .terms-container a:hover {
+            color: #38A169;
+        }
+
+        /* ============================================ */
+        /* CONFETTI ANIMATION */
+        /* ============================================ */
+        @keyframes confettiFall {
+            0% { 
+                transform: translateY(0) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(100vh) rotate(720deg) scale(0);
+                opacity: 0;
+            }
+        }
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            animation: confettiFall 3s ease-in forwards;
+            z-index: 99999;
+            pointer-events: none;
+        }
+
+        /* ============================================ */
+        /* SUCCESS OVERLAY */
+        /* ============================================ */
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99998;
+            animation: fadeIn 0.5s ease;
+        }
+        .success-overlay.show {
+            display: flex;
+        }
+        .success-card {
+            background: white;
+            border-radius: 32px;
+            padding: 40px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            animation: bounceIn 0.6s ease;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        }
+        .success-card .check-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            color: white;
+            animation: pulse 1.5s ease infinite;
+        }
+        .success-card h2 {
+            color: #073450;
+            margin-bottom: 10px;
+        }
+        .success-card p {
+            color: #64748B;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+        .success-card .btn {
+            background: #0A3D62;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+        .success-card .btn:hover {
+            background: #073450;
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
         @media (max-width: 550px) {
             .register-container { padding: 1.5rem; max-width: 100%; }
             .college-title { font-size: 1rem; }
             .role-fields { padding: 0.8rem; }
             .two-columns { grid-template-columns: 1fr; gap: 0; }
+            .tvet-intake-row { grid-template-columns: 1fr; }
+            .progress-step { font-size: 0.5rem; min-width: 50px; padding: 2px 6px; }
+            .progress-step .step-icon { font-size: 0.6rem; }
+            .draft-actions { grid-template-columns: 1fr; }
+            .photo-upload-container { flex-direction: column; align-items: center; }
+            .success-card { padding: 25px; }
         }
         
-        /* Loading animation inside button */
         .btn-loading {
             display: inline-block;
             width: 18px;
@@ -244,6 +600,10 @@
             vertical-align: middle;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -261,212 +621,345 @@
     <h2 style="font-size: 1.5rem; font-weight: 700; color: #073450; margin-bottom: 5px;">Create Your Account</h2>
     <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 1.5rem;">Join the NCHSM digital learning platform</p>
 
-    <form id="register-form">
-        <!-- Role Selection -->
-        <div class="form-group">
-            <label><i data-feather="user"></i> Register As</label>
-            <select id="role" name="role" required>
-                <option value="">-- Select Your Role --</option>
-                <option value="student">Student</option>
-                <option value="lecturer">Lecturer</option>
-            </select>
+    <!-- ============================================ -->
+    <!-- PROGRESS INDICATOR -->
+    <!-- ============================================ -->
+    <div class="progress-bar">
+        <div class="progress-step active" data-step="1">
+            <span class="step-icon">👤</span>
+            Personal
         </div>
-
-        <!-- Full Name -->
-        <div class="form-group">
-            <label><i data-feather="user"></i> Full Name</label>
-            <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
+        <div class="progress-step" data-step="2">
+            <span class="step-icon">🎓</span>
+            Academic
         </div>
-
-        <!-- Email -->
-        <div class="form-group">
-            <label><i data-feather="mail"></i> Email Address</label>
-            <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+        <div class="progress-step" data-step="3">
+            <span class="step-icon">🔐</span>
+            Security
         </div>
+    </div>
 
-        <!-- STUDENT FIELDS -->
-        <div id="student-fields" class="role-fields">
+    <form id="register-form" enctype="multipart/form-data">
+        <!-- ============================================ -->
+        <!-- STEP 1: PERSONAL INFORMATION -->
+        <!-- ============================================ -->
+        <div class="form-section" data-section="1">
+            <!-- Role Selection -->
             <div class="form-group">
-                <label><i data-feather="id"></i> Admission / Student ID</label>
-                <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
-                <div class="help-text">Your unique student identification number</div>
+                <label><i data-feather="user"></i> Register As</label>
+                <select id="role" name="role" required>
+                    <option value="">-- Select Your Role --</option>
+                    <option value="student">Student</option>
+                    <option value="lecturer">Lecturer</option>
+                </select>
             </div>
+
+            <!-- Full Name -->
+            <div class="form-group">
+                <label><i data-feather="user"></i> Full Name</label>
+                <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label><i data-feather="mail"></i> Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+            </div>
+
+            <!-- Phone -->
+            <div class="two-columns">
+                <div class="form-group">
+                    <label><i data-feather="phone"></i> Phone Number</label>
+                    <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
+                </div>
+                <div class="form-group">
+                    <label><i data-feather="phone-call"></i> Alternative Phone</label>
+                    <input type="tel" id="alt_phone" name="alt_phone" placeholder="Alternative contact number">
+                </div>
+            </div>
+
+            <!-- Personal Info -->
+            <div class="two-columns">
+                <div class="form-group">
+                    <label><i data-feather="credit-card"></i> National ID / Passport No.</label>
+                    <input type="text" id="national_id" name="national_id" placeholder="e.g., 12345678">
+                </div>
+                <div class="form-group">
+                    <label><i data-feather="calendar"></i> Date of Birth</label>
+                    <input type="date" id="dob" name="dob">
+                </div>
+            </div>
+
+            <div class="two-columns">
+                <div class="form-group">
+                    <label><i data-feather="users"></i> Gender</label>
+                    <select id="gender" name="gender" required>
+                        <option value="">-- Select Gender --</option>
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i data-feather="map-pin"></i> Physical Address</label>
+                    <input type="text" id="address" name="address" placeholder="Your residential address">
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- PROFILE PHOTO UPLOAD (Feature 11) -->
+            <!-- ============================================ -->
+            <div class="form-group">
+                <label><i data-feather="camera"></i> Profile Photo</label>
+                <div class="photo-upload-container">
+                    <div class="photo-preview" id="photoPreview" onclick="document.getElementById('profile_photo').click()">
+                        <div class="placeholder-icon">📸</div>
+                        <div class="placeholder-text">Upload Photo</div>
+                        <div class="upload-hover">Click to change</div>
+                    </div>
+                    <div>
+                        <input type="file" id="profile_photo" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
+                        <div class="help-text">Optional - Upload a passport photo (JPEG, PNG)</div>
+                        <div class="help-text" id="photoStatus">No photo selected</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <button type="button" class="btn-success" onclick="goToStep(2)" style="margin-top: 0.5rem;">
+                Next Step → Academic Info
+            </button>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STEP 2: ACADEMIC INFORMATION -->
+        <!-- ============================================ -->
+        <div class="form-section" data-section="2" style="display: none;">
+
+            <!-- STUDENT FIELDS -->
+            <div id="student-fields" class="role-fields">
+                <div class="form-group">
+                    <label><i data-feather="id"></i> Admission / Student ID</label>
+                    <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
+                    <div class="help-text">Your unique student identification number</div>
+                </div>
+                
+                <div class="form-group">
+                    <label><i data-feather="book"></i> Program</label>
+                    <select id="program_type" name="program_type">
+                        <option value="">-- Select Your Program --</option>
+                        
+                        <!-- KRCHN PROGRAMS -->
+                        <optgroup label="KRCHN Programs">
+                            <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program leading to registration as a nurse">KRCHN Nursing</option>
+                        </optgroup>
+                        
+                        <!-- TVET - DIPLOMA PROGRAMS -->
+                        <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
+                            <option value="DPOTT" data-desc="Diploma in Perioperative Theatre Technology - 2 years, prepares for operating room careers">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH" data-desc="Diploma in Community Health - 2 years, focuses on public health and community nursing">Diploma in Community Health</option>
+                            <option value="DHRIT" data-desc="Diploma in Health Records and IT - 2 years, health information management">Diploma in Health Records and IT</option>
+                            <option value="DSL" data-desc="Diploma in Science Lab - 2 years, medical laboratory technology">Diploma in Science Lab</option>
+                            <option value="DSW" data-desc="Diploma in Social Work and Community Development - 2 years">Diploma in Social Work</option>
+                            <option value="DCJS" data-desc="Diploma in Criminal Justice - 2 years, law enforcement and justice system">Diploma in Criminal Justice</option>
+                            <option value="DHSS" data-desc="Diploma in Health Support Services - 2 years, healthcare administration">Diploma in Health Support Services</option>
+                            <option value="DICT" data-desc="Diploma in Information & Communication Technology - 2 years">Diploma in ICT</option>
+                            <option value="DME" data-desc="Diploma in Medical Engineering - 2 years, biomedical equipment">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        
+                        <!-- TVET - CERTIFICATE PROGRAMS -->
+                        <optgroup label="📜 TVET Certificate Programs (3-12 months)">
+                            <option value="CPOTT" data-desc="Certificate in Perioperative Theatre Technology - 1 year">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH" data-desc="Certificate in Community Health - 1 year">Certificate in Community Health</option>
+                            <option value="CHRIT" data-desc="Certificate in Health Records and IT - 1 year">Certificate in Health Records and IT</option>
+                            <option value="CPC" data-desc="Certificate in Patient Care - 6 months, basic patient care skills">Certificate in Patient Care</option>
+                            <option value="CSL" data-desc="Certificate in Science Lab - 1 year">Certificate in Science Lab</option>
+                            <option value="CSW" data-desc="Certificate in Social Work - 1 year">Certificate in Social Work</option>
+                            <option value="CCJS" data-desc="Certificate in Criminal Justice - 1 year">Certificate in Criminal Justice</option>
+                            <option value="CAG" data-desc="Certificate in Agriculture - 1 year, agricultural skills">Certificate in Agriculture</option>
+                            <option value="CHSS" data-desc="Certificate in Health Support Services - 1 year">Certificate in Health Support Services</option>
+                            <option value="CICT" data-desc="Certificate in ICT - 1 year, computer applications">Certificate in ICT</option>
+                        </optgroup>
+                        
+                        <!-- TVET - ARTISAN PROGRAMS -->
+                        <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
+                            <option value="ACH" data-desc="Artisan in Community Health - 6 months, entry-level health work">Artisan in Community Health</option>
+                            <option value="AAG" data-desc="Artisan in Agriculture - 6 months, practical farming skills">Artisan in Agriculture</option>
+                            <option value="ASW" data-desc="Artisan in Social Work - 6 months, basic social work skills">Artisan in Social Work</option>
+                        </optgroup>
+                        
+                        <!-- OTHER TVET -->
+                        <optgroup label="📊 Other TVET Programs">
+                            <option value="CCA" data-desc="Certificate in Computer Applications - 3 months, basic computer skills">Certificate in Computer Applications (CCA)</option>
+                            <option value="PTE" data-desc="TVET/CDACC - Professional Teaching Experience">TVET/CDACC (PTE)</option>
+                        </optgroup>
+                    </select>
+                    <!-- Program Description (Feature 4) -->
+                    <div class="program-description" id="programDescription">
+                        Select a program above to see details
+                    </div>
+                </div>
+                
+                <!-- ============================================ -->
+                <!-- INTAKE SECTION -->
+                <!-- ============================================ -->
+                <div id="intake-container">
+                    
+                    <!-- KRCHN Intake -->
+                    <div id="krchn-intake" class="intake-section">
+                        <div class="form-group">
+                            <label><i data-feather="calendar"></i> Intake Year</label>
+                            <select id="krchn_intake_year" name="krchn_intake_year">
+                                <option value="">-- Select Intake Year --</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                            <div class="help-text">KRCHN Nursing intake (March intake each year)</div>
+                            <div class="intake-preview">📅 Will display as: <strong id="krchnDisplay">March 2026</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- TVET Intake -->
+                    <div id="tvet-intake" class="intake-section hidden">
+                        <div class="form-group">
+                            <label><i data-feather="calendar"></i> Intake</label>
+                            <div class="tvet-intake-row">
+                                <select id="tvet_intake_month" name="tvet_intake_month">
+                                    <option value="January">January</option>
+                                    <option value="March" selected>March</option>
+                                    <option value="May">May</option>
+                                    <option value="July">July</option>
+                                    <option value="September">September</option>
+                                </select>
+                                <select id="tvet_intake_year" name="tvet_intake_year">
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                </select>
+                            </div>
+                            <div class="help-text">TVET intake: January, March, May, July, September (stores year only)</div>
+                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">March 2026 Intake</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guardian -->
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label><i data-feather="heart"></i> Parent/Guardian Name</label>
+                        <input type="text" id="guardian_name" name="guardian_name" placeholder="Parent or guardian full name">
+                        <div class="help-text">For emergency contact purposes</div>
+                    </div>
+                    <div class="form-group">
+                        <label><i data-feather="phone"></i> Guardian Phone</label>
+                        <input type="tel" id="guardian_phone" name="guardian_phone" placeholder="e.g., 07XXXXXXXX">
+                        <div class="help-text">Guardian's contact number</div>
+                    </div>
+                </div>
+                
+                <div class="help-text">📌 Block will be set by Admin after approval</div>
+            </div>
+
+            <!-- LECTURER FIELDS -->
+            <div id="lecturer-fields" class="role-fields">
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label><i data-feather="id"></i> Staff ID</label>
+                        <input type="text" id="staff_id" name="staff_id" placeholder="e.g. NCHSM-LECT-001">
+                    </div>
+                    <div class="form-group">
+                        <label><i data-feather="briefcase"></i> Department</label>
+                        <select id="department" name="department">
+                            <option value="">-- Select Department --</option>
+                            <option value="Nursing">Nursing</option>
+                            <option value="TVET">TVET</option>
+                            <option value="Community Health">Community Health</option>
+                            <option value="Health Records">Health Records</option>
+                            <option value="ICT">ICT</option>
+                            <option value="Administration">Administration</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
+                <button type="button" onclick="goToStep(1)" style="flex: 1; background: #6b7280;">
+                    ← Back
+                </button>
+                <button type="button" class="btn-success" onclick="goToStep(3)" style="flex: 1;">
+                    Next Step → Security
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STEP 3: SECURITY & SUBMIT -->
+        <!-- ============================================ -->
+        <div class="form-section" data-section="3" style="display: none;">
+
+            <!-- Password -->
+            <div class="two-columns">
+                <div class="form-group">
+                    <label><i data-feather="lock"></i> Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                    <!-- Password Strength (Feature 1) -->
+                    <div class="password-strength">
+                        <div class="strength-bar" id="strengthBar"></div>
+                        <div class="strength-text" id="strengthText">Enter a password</div>
+                    </div>
+                    <div class="help-text">Minimum 6 characters, use uppercase, numbers, and symbols</div>
+                </div>
+
+                <div class="form-group">
+                    <label><i data-feather="lock"></i> Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                    <div class="help-text" id="passwordMatch"></div>
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- TERMS & CONDITIONS (Feature 5) -->
+            <!-- ============================================ -->
+            <div class="form-group">
+                <div class="terms-container">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">
+                        I agree to the 
+                        <a href="#" onclick="showTermsModal(event)">Terms & Conditions</a> 
+                        and confirm that all information provided is accurate.
+                        I understand that false information may lead to disqualification.
+                    </label>
+                </div>
+            </div>
+
+            <!-- Draft Actions (Features 7 & 8) -->
+            <div class="draft-actions">
+                <button type="button" class="btn-secondary" onclick="saveDraft()">
+                    💾 Save Draft
+                </button>
+                <button type="button" class="btn-secondary" onclick="loadDraft()">
+                    📂 Load Draft
+                </button>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="register-btn">
+                <span id="button-text">✅ Create Account</span>
+            </button>
             
-            <div class="form-group">
-                <label><i data-feather="book"></i> Program</label>
-                <select id="program_type" name="program_type">
-                    <option value="">-- Select Your Program --</option>
-                    
-                    <!-- KRCHN PROGRAMS -->
-                    <optgroup label="KRCHN Programs">
-                        <option value="KRCHN">KRCHN Nursing</option>
-                    </optgroup>
-                    
-                    <!-- TVET - DIPLOMA PROGRAMS -->
-                    <optgroup label="TVET Diploma Programs (6-24 months)">
-                        <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
-                        <option value="DCH">Diploma in Community Health</option>
-                        <option value="DHRIT">Diploma in Health Records and IT</option>
-                        <option value="DSL">Diploma in Science Lab</option>
-                        <option value="DSW">Diploma in Social Work and Community Development</option>
-                        <option value="DCJS">Diploma in Criminal Justice</option>
-                        <option value="DHSS">Diploma in Health Support Services</option>
-                        <option value="DICT">Diploma in Information & Communication Technology</option>
-                        <option value="DME">Diploma in Medical Engineering</option>
-                    </optgroup>
-                    
-                    <!-- TVET - CERTIFICATE PROGRAMS -->
-                    <optgroup label="TVET Certificate Programs (3-12 months)">
-                        <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
-                        <option value="CCH">Certificate in Community Health</option>
-                        <option value="CHRIT">Certificate in Health Records and IT</option>
-                        <option value="CPC">Certificate in Patient Care</option>
-                        <option value="CSL">Certificate in Science Lab</option>
-                        <option value="CSW">Certificate in Social Work and Community Development</option>
-                        <option value="CCJS">Certificate in Criminal Justice</option>
-                        <option value="CAG">Certificate in Agriculture</option>
-                        <option value="CHSS">Certificate in Health Support Services</option>
-                        <option value="CICT">Certificate in Information & Communication Technology</option>
-                    </optgroup>
-                    
-                    <!-- TVET - ARTISAN PROGRAMS -->
-                    <optgroup label="TVET Artisan Programs (2-12 months)">
-                        <option value="ACH">Artisan in Community Health</option>
-                        <option value="AAG">Artisan in Agriculture</option>
-                        <option value="ASW">Artisan in Social Work and Community Development</option>
-                    </optgroup>
-                    
-                    <!-- OTHER TVET -->
-                    <optgroup label="Other TVET Programs">
-                        <option value="CCA">Certificate in Computer Applications (CCA)</option>
-                        <option value="PTE">TVET/CDACC (PTE)</option>
-                    </optgroup>
-                </select>
-            </div>
-            
-            <!-- Intake Year -->
-            <div class="form-group">
-                <label><i data-feather="calendar"></i> Intake Year</label>
-                <select id="intake_year" name="intake_year">
-                    <option value="">-- Select Intake Year --</option>
-                    <option value="2024">March 2024</option>
-                    <option value="2025">March 2025</option>
-                    <option value="2026" selected>March 2026</option>
-                    <option value="2027">March 2027</option>
-                    <option value="2028">March 2028</option>
-                </select>
-                <div class="help-text">Your year of admission to the college</div>
-            </div>
+            <!-- Navigation -->
+            <button type="button" onclick="goToStep(2)" style="margin-top: 0.5rem; background: #6b7280;">
+                ← Back to Academic Info
+            </button>
 
-            <!-- Guardian/Parent Name -->
-            <div class="form-group">
-                <label><i data-feather="heart"></i> Parent/Guardian Name</label>
-                <input type="text" id="guardian_name" name="guardian_name" placeholder="Parent or guardian full name">
-                <div class="help-text">For emergency contact purposes</div>
-            </div>
-
-            <!-- Guardian Phone Number -->
-            <div class="form-group">
-                <label><i data-feather="phone"></i> Guardian Phone Number</label>
-                <input type="tel" id="guardian_phone" name="guardian_phone" placeholder="e.g., 07XXXXXXXX">
-                <div class="help-text">Guardian's contact number for emergencies</div>
-            </div>
-            
-            <div class="help-text">📌 Block will be set by Admin after approval (e.g., Introductory, Main, Final)</div>
+            <div id="message" class="message"></div>
+            <div id="redirect-countdown" class="redirect-countdown" style="display: none;"></div>
         </div>
-
-        <!-- LECTURER FIELDS -->
-        <div id="lecturer-fields" class="role-fields">
-            <div class="form-group">
-                <label><i data-feather="id"></i> Staff ID</label>
-                <input type="text" id="staff_id" name="staff_id" placeholder="e.g. NCHSM-LECT-001">
-            </div>
-            <div class="form-group">
-                <label><i data-feather="briefcase"></i> Department</label>
-                <select id="department" name="department">
-                    <option value="">-- Select Department --</option>
-                    <option value="Nursing">Nursing</option>
-                    <option value="TVET">TVET</option>
-                    <option value="Community Health">Community Health</option>
-                    <option value="Health Records">Health Records</option>
-                    <option value="ICT">ICT</option>
-                    <option value="Administration">Administration</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Contact Information Section -->
-        <div class="two-columns">
-            <!-- Phone Number -->
-            <div class="form-group">
-                <label><i data-feather="phone"></i> Phone Number</label>
-                <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
-            </div>
-
-            <!-- Alternative Phone Number -->
-            <div class="form-group">
-                <label><i data-feather="phone-call"></i> Alternative Phone</label>
-                <input type="tel" id="alt_phone" name="alt_phone" placeholder="Alternative contact number">
-                <div class="help-text">Emergency or alternative contact</div>
-            </div>
-        </div>
-
-        <!-- Personal Information Section -->
-        <div class="two-columns">
-            <!-- National ID / Passport -->
-            <div class="form-group">
-                <label><i data-feather="credit-card"></i> National ID / Passport No.</label>
-                <input type="text" id="national_id" name="national_id" placeholder="e.g., 12345678">
-                <div class="help-text">Your National ID or Passport number</div>
-            </div>
-
-            <!-- Date of Birth -->
-            <div class="form-group">
-                <label><i data-feather="calendar"></i> Date of Birth</label>
-                <input type="date" id="dob" name="dob">
-                <div class="help-text">Your date of birth</div>
-            </div>
-        </div>
-
-        <div class="two-columns">
-            <!-- Gender -->
-            <div class="form-group">
-                <label><i data-feather="users"></i> Gender</label>
-                <select id="gender" name="gender" required>
-                    <option value="">-- Select Gender --</option>
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                </select>
-                <div class="help-text">Select your gender for records</div>
-            </div>
-
-            <!-- Physical Address -->
-            <div class="form-group">
-                <label><i data-feather="map-pin"></i> Physical Address</label>
-                <input type="text" id="address" name="address" placeholder="Your residential address">
-                <div class="help-text">Town/Area where you reside</div>
-            </div>
-        </div>
-
-        <!-- Password Section -->
-        <div class="two-columns">
-            <div class="form-group">
-                <label><i data-feather="lock"></i> Password</label>
-                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-                <div class="help-text">Minimum 6 characters</div>
-            </div>
-
-            <div class="form-group">
-                <label><i data-feather="lock"></i> Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
-            </div>
-        </div>
-
-        <button type="submit" id="register-btn">
-            <span id="button-text">Create Account</span>
-        </button>
-        <div id="message" class="message"></div>
-        <div id="redirect-countdown" class="redirect-countdown" style="display: none;"></div>
     </form>
 
     <div class="login-link">
@@ -474,10 +967,80 @@
     </div>
 </div>
 
+<!-- ============================================ -->
+<!-- TERMS MODAL -->
+<!-- ============================================ -->
+<div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 99999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 24px; max-width: 600px; width: 95%; max-height: 80vh; overflow-y: auto; padding: 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #0A3D62; padding-bottom: 15px;">
+            <h2 style="color: #0A3D62; margin: 0;">📋 Terms & Conditions</h2>
+            <button onclick="closeTermsModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <div style="font-size: 0.9rem; line-height: 1.8; color: #334155;">
+            <h4>1. Account Registration</h4>
+            <p>You must provide accurate and complete information during registration. Any false information may result in account termination.</p>
+            
+            <h4>2. Academic Integrity</h4>
+            <p>Students must maintain academic honesty. Plagiarism, cheating, or any form of academic dishonesty is strictly prohibited.</p>
+            
+            <h4>3. Data Privacy</h4>
+            <p>Your personal data will be stored securely and used only for academic purposes. We do not share your data with third parties.</p>
+            
+            <h4>4. Platform Usage</h4>
+            <p>This platform is for educational purposes only. Any misuse or unauthorized access will lead to account suspension.</p>
+            
+            <h4>5. Fee Payment</h4>
+            <p>Students are required to pay fees as per the fee structure. Non-payment may result in blocked access to academic resources.</p>
+            
+            <h4>6. Attendance</h4>
+            <p>Regular attendance is mandatory. Students must check in using the platform's attendance system.</p>
+            
+            <h4>7. Code of Conduct</h4>
+            <p>All users must adhere to the college's code of conduct. Respectful behavior towards staff and fellow students is required.</p>
+            
+            <h4>8. Account Security</h4>
+            <p>You are responsible for maintaining the confidentiality of your password. Report any unauthorized access immediately.</p>
+            
+            <h4>9. Changes to Terms</h4>
+            <p>The college reserves the right to update these terms. Students will be notified of any changes.</p>
+            
+            <h4>10. Contact</h4>
+            <p>For any questions, contact the administration at: <strong>admin@nchsm.ac.ke</strong></p>
+        </div>
+        <div style="margin-top: 20px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+            <button onclick="closeTermsModal(); document.getElementById('terms').checked = true;" style="background: #0A3D62; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif;">
+                ✅ I Agree
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SUCCESS OVERLAY (Feature 10) -->
+<!-- ============================================ -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-card">
+        <div class="check-circle">✅</div>
+        <h2>🎉 Registration Successful!</h2>
+        <p>Your account has been created and is pending admin approval. You will receive an email once approved.</p>
+        <div id="successIntake" style="background: #f0f7ff; padding: 10px; border-radius: 8px; margin: 15px 0; font-size: 0.9rem;">
+            <strong>Intake:</strong> <span id="successIntakeText">March 2026</span>
+        </div>
+        <div style="margin-top: 15px;">
+            <button class="btn" onclick="window.location.href='login.html'">Go to Login →</button>
+        </div>
+        <div style="margin-top: 10px; font-size: 0.8rem; color: #94a3b8;">
+            Redirecting in <span id="successCountdown">5</span> seconds...
+        </div>
+    </div>
+</div>
+
 <script>
     // Feather Icons
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof feather !== 'undefined') feather.replace();
+        updateIntakePreview();
+        updateProgress();
     });
     
     // URL cleanup
@@ -491,9 +1054,518 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Email notification (image beacon)
+    // ============================================
+    // FEATURE 1: PASSWORD STRENGTH METER
+    // ============================================
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        if (password.length >= 6) strength++;
+        if (password.length >= 10) strength++;
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[a-z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[^A-Za-z0-9]/.test(password)) strength++;
+        
+        const levels = [
+            { text: 'Very Weak', class: 'text-weak', bar: 'strength-weak' },
+            { text: 'Weak', class: 'text-weak', bar: 'strength-weak' },
+            { text: 'Fair', class: 'text-fair', bar: 'strength-fair' },
+            { text: 'Good', class: 'text-good', bar: 'strength-good' },
+            { text: 'Strong', class: 'text-strong', bar: 'strength-strong' },
+            { text: 'Very Strong', class: 'text-strong', bar: 'strength-strong' }
+        ];
+        
+        const level = Math.min(Math.floor(strength / 1), 5);
+        const result = levels[level] || levels[0];
+        
+        document.getElementById('strengthBar').className = `strength-bar ${result.bar}`;
+        const textEl = document.getElementById('strengthText');
+        textEl.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
+        textEl.className = `strength-text ${password.length > 0 ? result.class : ''}`;
+    });
+
+    // Password match checker
+    document.getElementById('confirm_password').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        const confirm = this.value;
+        const matchEl = document.getElementById('passwordMatch');
+        
+        if (confirm.length === 0) {
+            matchEl.textContent = '';
+            matchEl.style.color = '#5b6e8c';
+        } else if (password === confirm) {
+            matchEl.textContent = '✅ Passwords match!';
+            matchEl.style.color = '#10b981';
+        } else {
+            matchEl.textContent = '❌ Passwords do not match';
+            matchEl.style.color = '#DC2626';
+        }
+    });
+
+    // ============================================
+    // FEATURE 3: PROGRESS INDICATOR
+    // ============================================
+    let currentStep = 1;
+
+    function goToStep(step) {
+        // Validate current step before proceeding
+        if (step > currentStep) {
+            const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
+            if (currentSection) {
+                const inputs = currentSection.querySelectorAll('input[required], select[required]');
+                let valid = true;
+                for (const input of inputs) {
+                    if (!input.value.trim()) {
+                        input.style.borderColor = '#DC2626';
+                        valid = false;
+                    } else {
+                        input.style.borderColor = '#e2e8f0';
+                    }
+                }
+                if (!valid) {
+                    showFeedback('Please fill all required fields before proceeding.', 'warning');
+                    return;
+                }
+            }
+        }
+        
+        currentStep = step;
+        
+        // Show/hide sections
+        document.querySelectorAll('.form-section').forEach(section => {
+            section.style.display = section.dataset.section == step ? 'block' : 'none';
+        });
+        
+        updateProgress();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgress() {
+        document.querySelectorAll('.progress-step').forEach(step => {
+            const stepNum = parseInt(step.dataset.step);
+            step.classList.remove('active', 'done');
+            if (stepNum === currentStep) step.classList.add('active');
+            else if (stepNum < currentStep) step.classList.add('done');
+        });
+    }
+
+    // ============================================
+    // FEATURE 4: PROGRAM DESCRIPTIONS
+    // ============================================
+    document.getElementById('program_type').addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        const desc = selected?.dataset?.desc || 'Select a program above to see details';
+        document.getElementById('programDescription').textContent = desc;
+        updateIntakePreview();
+    });
+
+    // ============================================
+    // INTAKE PREVIEW
+    // ============================================
+    function updateIntakePreview() {
+        const program = document.getElementById('program_type').value;
+        const isKRCHN = program === 'KRCHN';
+        const isTVET = program && program !== '' && program !== 'KRCHN';
+        
+        if (isKRCHN) {
+            document.getElementById('krchn-intake').classList.remove('hidden');
+            document.getElementById('tvet-intake').classList.add('hidden');
+            
+            const year = document.getElementById('krchn_intake_year').value || '2026';
+            document.getElementById('krchnDisplay').textContent = `March ${year}`;
+            
+        } else if (isTVET) {
+            document.getElementById('krchn-intake').classList.add('hidden');
+            document.getElementById('tvet-intake').classList.remove('hidden');
+            
+            const month = document.getElementById('tvet_intake_month').value || 'March';
+            const year = document.getElementById('tvet_intake_year').value || '2026';
+            document.getElementById('tvetDisplay').textContent = `${month} ${year} Intake`;
+            
+        } else {
+            document.getElementById('krchn-intake').classList.add('hidden');
+            document.getElementById('tvet-intake').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('krchn_intake_year').addEventListener('change', updateIntakePreview);
+    document.getElementById('tvet_intake_month').addEventListener('change', updateIntakePreview);
+    document.getElementById('tvet_intake_year').addEventListener('change', updateIntakePreview);
+
+    // ============================================
+    // FEATURE 7 & 8: SAVE/LOAD DRAFT
+    // ============================================
+    function saveDraft() {
+        const formData = new FormData(document.getElementById('register-form'));
+        const data = {};
+        for (const [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        // Save photo as base64 if exists
+        const photoInput = document.getElementById('profile_photo');
+        if (photoInput.files && photoInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                data.profile_photo_data = e.target.result;
+                localStorage.setItem('registration_draft', JSON.stringify(data));
+                showFeedback('✅ Draft saved! You can continue later.', 'success');
+            };
+            reader.readAsDataURL(photoInput.files[0]);
+        } else {
+            localStorage.setItem('registration_draft', JSON.stringify(data));
+            showFeedback('✅ Draft saved! You can continue later.', 'success');
+        }
+    }
+
+    function loadDraft() {
+        const saved = localStorage.getItem('registration_draft');
+        if (!saved) {
+            showFeedback('No saved draft found.', 'warning');
+            return;
+        }
+        
+        try {
+            const data = JSON.parse(saved);
+            Object.keys(data).forEach(key => {
+                if (key === 'profile_photo_data') {
+                    // Handle photo separately
+                    const preview = document.getElementById('photoPreview');
+                    const img = preview.querySelector('img');
+                    if (img) img.remove();
+                    const newImg = document.createElement('img');
+                    newImg.src = data[key];
+                    preview.prepend(newImg);
+                    document.getElementById('photoStatus').textContent = '📸 Photo loaded from draft';
+                    return;
+                }
+                const input = document.querySelector(`[name="${key}"]`);
+                if (input) {
+                    input.value = data[key];
+                    // Trigger change events
+                    if (key === 'program_type') {
+                        input.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+            
+            showFeedback('✅ Draft loaded successfully!', 'success');
+            updateIntakePreview();
+            
+        } catch (e) {
+            showFeedback('Error loading draft: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================
+    // FEATURE 5: TERMS & CONDITIONS
+    // ============================================
+    function showTermsModal(e) {
+        if (e) e.preventDefault();
+        document.getElementById('termsModal').style.display = 'flex';
+    }
+
+    function closeTermsModal() {
+        document.getElementById('termsModal').style.display = 'none';
+    }
+
+    // Close modal on outside click
+    document.getElementById('termsModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTermsModal();
+    });
+
+    // ============================================
+    // FEATURE 11: PROFILE PHOTO UPLOAD
+    // ============================================
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const preview = document.getElementById('photoPreview');
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            // Remove existing image
+            const oldImg = preview.querySelector('img');
+            if (oldImg) oldImg.remove();
+            
+            // Remove placeholder elements
+            const placeholderIcon = preview.querySelector('.placeholder-icon');
+            const placeholderText = preview.querySelector('.placeholder-text');
+            if (placeholderIcon) placeholderIcon.style.display = 'none';
+            if (placeholderText) placeholderText.style.display = 'none';
+            
+            // Add new image
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = 'Profile photo';
+            preview.prepend(img);
+            
+            document.getElementById('photoStatus').textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    // ============================================
+    // FEATURE 10: SUCCESS ANIMATION
+    // ============================================
+    function showSuccessAnimation(intakeDisplay) {
+        // Show confetti
+        const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+        for (let i = 0; i < 80; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            piece.style.left = Math.random() * 100 + '%';
+            piece.style.top = '-10px';
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.width = (Math.random() * 8 + 4) + 'px';
+            piece.style.height = (Math.random() * 8 + 4) + 'px';
+            piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            piece.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            piece.style.animationDelay = (Math.random() * 1.5) + 's';
+            document.body.appendChild(piece);
+            setTimeout(() => piece.remove(), 4000);
+        }
+        
+        // Show success overlay
+        document.getElementById('successIntakeText').textContent = intakeDisplay;
+        document.getElementById('successOverlay').classList.add('show');
+        
+        // Countdown
+        let countdown = 5;
+        const countdownEl = document.getElementById('successCountdown');
+        const interval = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                clearInterval(interval);
+                window.location.href = 'login.html';
+            } else {
+                countdownEl.textContent = countdown;
+            }
+        }, 1000);
+    }
+
+    // ============================================
+    // ROLE TOGGLE
+    // ============================================
+    document.getElementById('role').addEventListener('change', function() {
+        const isStudent = this.value === 'student';
+        const isLecturer = this.value === 'lecturer';
+        
+        document.getElementById('student-fields').style.display = isStudent ? 'block' : 'none';
+        document.getElementById('lecturer-fields').style.display = isLecturer ? 'block' : 'none';
+        
+        if (isStudent) document.getElementById('student-fields').classList.add('active');
+        else document.getElementById('student-fields').classList.remove('active');
+        if (isLecturer) document.getElementById('lecturer-fields').classList.add('active');
+        else document.getElementById('lecturer-fields').classList.remove('active');
+    });
+
+    // ============================================
+    // GET INTAKE DATA
+    // ============================================
+    function getIntakeData() {
+        const program = document.getElementById('program_type').value;
+        const isKRCHN = program === 'KRCHN';
+        const isTVET = program && program !== '' && program !== 'KRCHN';
+        
+        let intakeYear = '';
+        let intakeMonth = '';
+        
+        if (isKRCHN) {
+            intakeYear = document.getElementById('krchn_intake_year').value || '';
+            intakeMonth = 'March';
+        } else if (isTVET) {
+            intakeYear = document.getElementById('tvet_intake_year').value || '';
+            intakeMonth = document.getElementById('tvet_intake_month').value || 'March';
+        }
+        
+        return { intake_year: intakeYear, intake_month: intakeMonth };
+    }
+
+    function getDisplayIntake(program, year, month) {
+        if (!year) return 'N/A';
+        if (program === 'KRCHN') {
+            return `March ${year}`;
+        } else {
+            return `${month || 'March'} ${year} Intake`;
+        }
+    }
+
+    // ============================================
+    // FORM SUBMISSION
+    // ============================================
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
+        
+        const btn = document.getElementById('register-btn');
+        btn.disabled = true;
+        document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
+        
+        // Validate terms
+        if (!document.getElementById('terms').checked) {
+            showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        const role = document.getElementById('role').value;
+        const full_name = document.getElementById('full_name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const alt_phone = document.getElementById('alt_phone').value.trim() || '';
+        const national_id = document.getElementById('national_id').value.trim() || '';
+        const dob = document.getElementById('dob').value || '';
+        const gender = document.getElementById('gender').value;
+        const address = document.getElementById('address').value.trim() || '';
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        // Student specific
+        const student_id_number = document.getElementById('student_id_number').value.trim();
+        const program_type = document.getElementById('program_type').value;
+        const intakeData = getIntakeData();
+        const guardian_name = document.getElementById('guardian_name').value.trim() || '';
+        const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
+        
+        // Lecturer specific
+        const staff_id = document.getElementById('staff_id').value.trim();
+        const department = document.getElementById('department').value;
+        
+        // Validations
+        if (!gender) {
+            showFeedback('❌ Please select your gender.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            showFeedback('❌ Passwords do not match.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (password.length < 6) {
+            showFeedback('❌ Password must be at least 6 characters.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (!role) {
+            showFeedback('❌ Please select a role.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (role === 'student' && !program_type) {
+            showFeedback('❌ Please select your program.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (role === 'student' && !intakeData.intake_year) {
+            showFeedback('❌ Please select your intake year.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        const today = new Date();
+        const admissionDate = today.toISOString().split('T')[0];
+        const defaultBlock = 'Introductory';
+        
+        try {
+            // Build metadata
+            let userMetadata = {
+                full_name, role, phone, alt_phone, national_id,
+                date_of_birth: dob, gender, address, status: 'pending'
+            };
+            
+            if (role === 'student') {
+                userMetadata = {
+                    ...userMetadata,
+                    admission_number: student_id_number,
+                    course: program_type,
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month,
+                    current_block: defaultBlock,
+                    guardian_name, guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString()
+                };
+            } else if (role === 'lecturer') {
+                userMetadata = { ...userMetadata, staff_id, department };
+            }
+            
+            // Create user in Supabase Auth
+            const { data: authData, error: authError } = await sb.auth.signUp({
+                email, password,
+                options: { data: userMetadata }
+            });
+            
+            if (authError) throw new Error(authError.message);
+            
+            // Send welcome email
+            await sendRegistrationEmail(email, full_name);
+            
+            // Insert profile
+            let profileData = {
+                email, full_name, role, phone, alt_phone, national_id,
+                date_of_birth: dob, gender, address, status: 'pending',
+                user_id: authData.user.id,
+                created_at: new Date().toISOString()
+            };
+            
+            if (role === 'student') {
+                profileData = {
+                    ...profileData,
+                    student_id: student_id_number,
+                    program: program_type,
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month,
+                    block: defaultBlock,
+                    guardian_name, guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString()
+                };
+            } else if (role === 'lecturer') {
+                profileData = { ...profileData, staff_id, department };
+            }
+            
+            const { error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .insert(profileData);
+            
+            if (profileError) console.error('Profile insert warning:', profileError);
+            
+            // Success!
+            const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
+            
+            // Show success animation
+            showSuccessAnimation(displayIntake);
+            
+            // Clear draft
+            localStorage.removeItem('registration_draft');
+            
+        } catch (error) {
+            console.error('Registration error:', error);
+            showFeedback(`❌ Registration failed: ${error.message}`, 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+        }
+    });
+
+    // ============================================
+    // EMAIL NOTIFICATION
+    // ============================================
     async function sendRegistrationEmail(email, userName) {
-        console.log('📧 Sending welcome email to:', email);
         const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
         const params = new URLSearchParams({
             to: email,
@@ -509,234 +1581,26 @@
         return new Promise(resolve => setTimeout(() => resolve(true), 1000));
     }
 
-    // DOM Elements
-    const roleSelect = document.getElementById('role');
-    const studentFieldsDiv = document.getElementById('student-fields');
-    const lecturerFieldsDiv = document.getElementById('lecturer-fields');
-    const studentInputs = studentFieldsDiv.querySelectorAll('input, select');
-    const lecturerInputs = lecturerFieldsDiv.querySelectorAll('input, select');
-    const form = document.getElementById('register-form');
-    const messageDiv = document.getElementById('message');
-    const registerBtn = document.getElementById('register-btn');
-    const buttonTextSpan = document.getElementById('button-text');
-    const redirectCountdown = document.getElementById('redirect-countdown');
-
-    // Toggle role fields & required attributes
-    function manageRequiredFields(role) {
-        const isStudent = role === 'student';
-        const isLecturer = role === 'lecturer';
+    // ============================================
+    // FEEDBACK HELPER
+    // ============================================
+    function showFeedback(message, type = 'success') {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = message;
+        messageDiv.className = `message ${type}`;
+        messageDiv.style.display = 'block';
         
-        studentFieldsDiv.style.display = isStudent ? 'block' : 'none';
-        lecturerFieldsDiv.style.display = isLecturer ? 'block' : 'none';
-        
-        // Add active class for styling
-        if (isStudent) studentFieldsDiv.classList.add('active');
-        else studentFieldsDiv.classList.remove('active');
-        if (isLecturer) lecturerFieldsDiv.classList.add('active');
-        else lecturerFieldsDiv.classList.remove('active');
-        
-        // Set required attributes
-        studentInputs.forEach(input => {
-            if (isStudent) input.setAttribute('required', '');
-            else input.removeAttribute('required');
-        });
-        lecturerInputs.forEach(input => {
-            if (isLecturer) input.setAttribute('required', '');
-            else input.removeAttribute('required');
-        });
-    }
-    
-    roleSelect.addEventListener('change', () => manageRequiredFields(roleSelect.value));
-    manageRequiredFields(roleSelect.value);
-
-    // Redirect countdown helper
-    function startRedirectCountdown() {
-        let countdown = 5;
-        redirectCountdown.style.display = 'block';
-        const interval = setInterval(() => {
-            redirectCountdown.textContent = `✅ Account pending approval. Redirecting to login page in ${countdown} seconds...`;
-            countdown--;
-            if (countdown < 0) {
-                clearInterval(interval);
-                window.location.href = 'login.html';
-            }
-        }, 1000);
+        // Auto hide after 5 seconds
+        setTimeout(() => {
+            messageDiv.style.opacity = '0';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+                messageDiv.style.opacity = '1';
+            }, 300);
+        }, 5000);
     }
 
-    // Form Submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        messageDiv.textContent = '';
-        messageDiv.className = 'message';
-        registerBtn.disabled = true;
-        buttonTextSpan.innerHTML = '<div class="btn-loading"></div> Creating Account...';
-        
-        const role = roleSelect.value;
-        const full_name = document.getElementById('full_name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const alt_phone = document.getElementById('alt_phone')?.value.trim() || '';
-        const national_id = document.getElementById('national_id')?.value.trim() || '';
-        const dob = document.getElementById('dob')?.value || '';
-        const gender = document.getElementById('gender').value;
-        const address = document.getElementById('address')?.value.trim() || '';
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm_password').value;
-        
-        // Student specific values
-        const student_id_number = document.getElementById('student_id_number').value.trim();
-        const program_type = document.getElementById('program_type').value;
-        const intake_year = document.getElementById('intake_year')?.value || '';
-        const guardian_name = document.getElementById('guardian_name')?.value.trim() || '';
-        const guardian_phone = document.getElementById('guardian_phone')?.value.trim() || '';
-        
-        // Lecturer specific values
-        const staff_id = document.getElementById('staff_id').value.trim();
-        const department = document.getElementById('department').value;
-        
-        // Validations
-        if (!gender) {
-            messageDiv.textContent = '❌ Please select your gender.';
-            messageDiv.classList.add('error');
-            registerBtn.disabled = false;
-            buttonTextSpan.textContent = 'Create Account';
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            messageDiv.textContent = '❌ Passwords do not match.';
-            messageDiv.classList.add('error');
-            registerBtn.disabled = false;
-            buttonTextSpan.textContent = 'Create Account';
-            return;
-        }
-        if (password.length < 6) {
-            messageDiv.textContent = '❌ Password must be at least 6 characters.';
-            messageDiv.classList.add('error');
-            registerBtn.disabled = false;
-            buttonTextSpan.textContent = 'Create Account';
-            return;
-        }
-        if (!role) {
-            messageDiv.textContent = '❌ Please select a role (Student/Lecturer).';
-            messageDiv.classList.add('error');
-            registerBtn.disabled = false;
-            buttonTextSpan.textContent = 'Create Account';
-            return;
-        }
-        
-        const today = new Date();
-        const admissionDate = today.toISOString().split('T')[0];
-        const defaultBlock = 'Introductory';
-        
-        try {
-            // Build metadata for Supabase Auth
-            let userMetadata = {
-                full_name,
-                role,
-                phone,
-                alt_phone,
-                national_id,
-                date_of_birth: dob,
-                gender,
-                address,
-                status: 'pending'
-            };
-            
-            if (role === 'student') {
-                if (!program_type) throw new Error('Please select your program');
-                userMetadata = {
-                    ...userMetadata,
-                    admission_number: student_id_number,
-                    course: program_type,
-                    intake_year: intake_year,
-                    current_block: defaultBlock,
-                    guardian_name: guardian_name,
-                    guardian_phone: guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
-                };
-            } else if (role === 'lecturer') {
-                userMetadata = {
-                    ...userMetadata,
-                    staff_id: staff_id,
-                    department: department
-                };
-            }
-            
-            // 1. Create user in Supabase Auth
-            const { data: authData, error: authError } = await sb.auth.signUp({
-                email,
-                password,
-                options: { data: userMetadata }
-            });
-            
-            if (authError) throw new Error(authError.message);
-            
-            // 2. Send welcome email (non-blocking)
-            await sendRegistrationEmail(email, full_name);
-            
-            // 3. Insert into consolidated_user_profiles_table
-            let profileData = {
-                email: email,
-                full_name: full_name,
-                role: role,
-                phone: phone,
-                alt_phone: alt_phone,
-                national_id: national_id,
-                date_of_birth: dob,
-                gender: gender,
-                address: address,
-                status: 'pending',
-                user_id: authData.user.id,
-                created_at: new Date().toISOString()
-            };
-            
-            if (role === 'student') {
-                profileData = {
-                    ...profileData,
-                    student_id: student_id_number,
-                    program: program_type,
-                    intake_year: intake_year,
-                    block: defaultBlock,
-                    guardian_name: guardian_name,
-                    guardian_phone: guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
-                };
-            } else if (role === 'lecturer') {
-                profileData = {
-                    ...profileData,
-                    staff_id: staff_id,
-                    department: department
-                };
-            }
-            
-            const { error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .insert(profileData);
-            
-            if (profileError) console.error('Profile insert warning:', profileError);
-            
-            // Success message
-            messageDiv.textContent = `✅ Registration successful! Your ${role} account has been created. Please wait for admin approval before logging in.`;
-            messageDiv.classList.add('success');
-            
-            // Start countdown to login page
-            startRedirectCountdown();
-            
-            // Reset form fields
-            form.reset();
-            manageRequiredFields('');
-            
-        } catch (error) {
-            console.error('Registration error:', error);
-            messageDiv.textContent = `❌ Registration failed: ${error.message}`;
-            messageDiv.classList.add('error');
-            registerBtn.disabled = false;
-            buttonTextSpan.textContent = 'Create Account';
-        }
-    });
+    console.log('✅ Registration page loaded with all features!');
 </script>
 </body>
 </html>
