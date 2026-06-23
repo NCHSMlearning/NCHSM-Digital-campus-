@@ -16,7 +16,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        /* ... keep all your existing styles ... */
         * {
             margin: 0;
             padding: 0;
@@ -287,12 +286,16 @@
             text-align: center;
             font-size: 0.8rem;
             font-weight: 600;
+            display: none;
+        }
+        .message.show {
+            display: block;
         }
         .error { background: #FEF2F2; color: #DC2626; border-left: 4px solid #DC2626; }
         .success { background: #ECFDF5; color: #059669; border-left: 4px solid #059669; }
         .warning { background: #FEF3C7; color: #D97706; border-left: 4px solid #D97706; }
         .help-text { font-size: 0.65rem; color: #5b6e8c; margin-top: 5px; }
-        .redirect-countdown { text-align: center; font-size: 0.75rem; margin-top: 14px; color: #2c7a4b; font-weight: 600; background: #e6f7ef; padding: 6px; border-radius: 30px; }
+        .redirect-countdown { text-align: center; font-size: 0.75rem; margin-top: 14px; color: #2c7a4b; font-weight: 600; background: #e6f7ef; padding: 6px; border-radius: 30px; display: none; }
         .login-link { margin-top: 28px; text-align: center; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 20px; }
         .login-link a { color: #0A3D62; text-decoration: none; font-weight: 700; transition: 0.2s; }
         .login-link a:hover { color: #38A169; text-decoration: underline; }
@@ -686,8 +689,9 @@
                     <input type="text" id="national_id" name="national_id" placeholder="e.g., 12345678">
                 </div>
                 <div class="form-group">
-                    <label><i data-feather="calendar"></i> Date of Birth</label>
-                    <input type="date" id="dob" name="dob">
+                    <label><i data-feather="calendar"></i> Date of Birth <span style="color: red;">*</span></label>
+                    <input type="date" id="dob" name="dob" required>
+                    <div class="help-text">Please select your date of birth</div>
                 </div>
             </div>
 
@@ -1163,7 +1167,6 @@
         document.getElementById('programDescription').textContent = desc;
         updateIntakePreview();
         
-        // DEBUG: Log the selected program
         console.log('📋 Program selected:', this.value);
         console.log('📋 Program text:', selected?.text);
     });
@@ -1435,229 +1438,17 @@
     }
 
     // ============================================
-    // FORM SUBMISSION - FIXED PROGRAM CAPTURE
+    // FEEDBACK HELPER
     // ============================================
-    document.getElementById('register-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
+    function showFeedback(message, type = 'success') {
         const messageDiv = document.getElementById('message');
-        messageDiv.textContent = '';
-        messageDiv.className = 'message';
+        messageDiv.textContent = message;
+        messageDiv.className = `message ${type} show`;
         
-        const btn = document.getElementById('register-btn');
-        btn.disabled = true;
-        document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
-        
-        // Validate terms
-        if (!document.getElementById('terms').checked) {
-            showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        
-        // ============================================
-        // GET ALL VALUES - FIXED: Get program correctly
-        // ============================================
-        const role = document.getElementById('role').value;
-        const full_name = document.getElementById('full_name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const alt_phone = document.getElementById('alt_phone').value.trim() || '';
-        const national_id = document.getElementById('national_id').value.trim() || '';
-        const dob = document.getElementById('dob').value || '';
-        const gender = document.getElementById('gender').value;
-        const address = document.getElementById('address').value.trim() || '';
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm_password').value;
-        
-        // ============================================
-        // CRITICAL: Get program value DIRECTLY from dropdown
-        // ============================================
-        const programSelect = document.getElementById('program_type');
-        const program_type = programSelect.value;  // ← This is the key!
-        
-        // DEBUG: Log what was selected
-        console.log('🔍 SELECTED PROGRAM:', program_type);
-        console.log('🔍 SELECTED TEXT:', programSelect.options[programSelect.selectedIndex]?.text);
-        
-        // Student specific
-        const student_id_number = document.getElementById('student_id_number').value.trim();
-        const intakeData = getIntakeData();
-        const guardian_name = document.getElementById('guardian_name').value.trim() || '';
-        const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
-        
-        // Lecturer specific
-        const staff_id = document.getElementById('staff_id').value.trim();
-        const department = document.getElementById('department').value;
-        
-        // ============================================
-        // VALIDATIONS
-        // ============================================
-        if (!gender) {
-            showFeedback('❌ Please select your gender.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            showFeedback('❌ Passwords do not match.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        if (password.length < 6) {
-            showFeedback('❌ Password must be at least 6 characters.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        if (!role) {
-            showFeedback('❌ Please select a role.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        
-        // Role-specific validations
-        if (role === 'student') {
-            if (!program_type) {
-                showFeedback('❌ Please select your program.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
-            }
-            if (!intakeData.intake_year) {
-                showFeedback('❌ Please select your intake year.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
-            }
-        }
-        
-        if (role === 'lecturer') {
-            if (!staff_id) {
-                showFeedback('❌ Please enter your Staff ID.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
-            }
-            if (!department) {
-                showFeedback('❌ Please select your department.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
-            }
-        }
-        
-        const today = new Date();
-        const admissionDate = today.toISOString().split('T')[0];
-        const defaultBlock = 'Introductory';
-        
-        try {
-            // ============================================
-            // BUILD USER METADATA
-            // ============================================
-            let userMetadata = {
-                full_name, role, phone, alt_phone, national_id,
-                date_of_birth: dob, gender, address, status: 'pending'
-            };
-            
-            if (role === 'student') {
-                // CRITICAL: Use program_type variable
-                userMetadata = {
-                    ...userMetadata,
-                    admission_number: student_id_number,
-                    course: program_type,  // ← MUST be the correct program
-                    intake_year: intakeData.intake_year,
-                    intake_month: intakeData.intake_month,
-                    current_block: defaultBlock,
-                    guardian_name, guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
-                };
-                
-                console.log('📊 Student data:', {
-                    program: program_type,
-                    intake_year: intakeData.intake_year,
-                    intake_month: intakeData.intake_month
-                });
-            } else if (role === 'lecturer') {
-                userMetadata = { ...userMetadata, staff_id, department };
-            }
-            
-            // ============================================
-            // CREATE USER IN SUPABASE
-            // ============================================
-            const { data: authData, error: authError } = await sb.auth.signUp({
-                email, password,
-                options: { data: userMetadata }
-            });
-            
-            if (authError) throw new Error(authError.message);
-            
-            // Send welcome email
-            await sendRegistrationEmail(email, full_name);
-            
-            // ============================================
-            // INSERT PROFILE - CRITICAL: Use correct program
-            // ============================================
-            let profileData = {
-                email, full_name, role, phone, alt_phone, national_id,
-                date_of_birth: dob, gender, address, status: 'pending',
-                user_id: authData.user.id,
-                created_at: new Date().toISOString()
-            };
-            
-            if (role === 'student') {
-                profileData = {
-                    ...profileData,
-                    student_id: student_id_number,
-                    program: program_type,  // ← CRITICAL: Use the correct program!
-                    intake_year: intakeData.intake_year,
-                    block: defaultBlock,
-                    guardian_name, guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
-                };
-                
-                console.log('💾 SAVING PROFILE:', {
-                    program: profileData.program,
-                    intake_year: profileData.intake_year,
-                    student_id: profileData.student_id
-                });
-            } else if (role === 'lecturer') {
-                profileData = { ...profileData, staff_id, department };
-            }
-            
-            const { error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .insert(profileData);
-            
-            if (profileError) {
-                console.error('❌ Profile Error:', profileError);
-                throw profileError;
-            }
-            
-            // ============================================
-            // SUCCESS!
-            // ============================================
-            const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
-            
-            // Show success animation
-            showSuccessAnimation(displayIntake);
-            
-            // Clear draft
-            localStorage.removeItem('registration_draft');
-            
-        } catch (error) {
-            console.error('❌ Registration error:', error);
-            showFeedback(`❌ Registration failed: ${error.message}`, 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-        }
-    });
+        setTimeout(() => {
+            messageDiv.classList.remove('show');
+        }, 5000);
+    }
 
     // ============================================
     // EMAIL NOTIFICATION
@@ -1679,22 +1470,293 @@
     }
 
     // ============================================
-    // FEEDBACK HELPER
+    // FORM SUBMISSION - WITH PROPER ERROR HANDLING & ROLLBACK
     // ============================================
-    function showFeedback(message, type = 'success') {
-        const messageDiv = document.getElementById('message');
-        messageDiv.textContent = message;
-        messageDiv.className = `message ${type}`;
-        messageDiv.style.display = 'block';
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
         
-        setTimeout(() => {
-            messageDiv.style.opacity = '0';
-            setTimeout(() => {
-                messageDiv.style.display = 'none';
-                messageDiv.style.opacity = '1';
-            }, 300);
-        }, 5000);
-    }
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
+        
+        const btn = document.getElementById('register-btn');
+        btn.disabled = true;
+        document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
+        
+        // ============================================
+        // GET ALL VALUES
+        // ============================================
+        const role = document.getElementById('role').value;
+        const full_name = document.getElementById('full_name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const alt_phone = document.getElementById('alt_phone').value.trim() || '';
+        const national_id = document.getElementById('national_id').value.trim() || '';
+        const dob = document.getElementById('dob').value;
+        const gender = document.getElementById('gender').value;
+        const address = document.getElementById('address').value.trim() || '';
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        // ============================================
+        // CRITICAL: Get program value DIRECTLY from dropdown
+        // ============================================
+        const programSelect = document.getElementById('program_type');
+        const program_type = programSelect.value;
+        
+        // Student specific
+        const student_id_number = document.getElementById('student_id_number').value.trim();
+        const intakeData = getIntakeData();
+        const guardian_name = document.getElementById('guardian_name').value.trim() || '';
+        const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
+        
+        // Lecturer specific
+        const staff_id = document.getElementById('staff_id').value.trim();
+        const department = document.getElementById('department').value;
+        
+        // ============================================
+        // VALIDATIONS - Check ALL required fields
+        // ============================================
+        let hasError = false;
+        
+        if (!full_name) {
+            showFeedback('❌ Please enter your full name.', 'error');
+            hasError = true;
+        } else if (!email) {
+            showFeedback('❌ Please enter your email address.', 'error');
+            hasError = true;
+        } else if (!phone) {
+            showFeedback('❌ Please enter your phone number.', 'error');
+            hasError = true;
+        } else if (!dob) {
+            showFeedback('❌ Please select your date of birth.', 'error');
+            document.getElementById('dob').style.borderColor = '#DC2626';
+            hasError = true;
+        } else if (!gender) {
+            showFeedback('❌ Please select your gender.', 'error');
+            hasError = true;
+        } else if (!role) {
+            showFeedback('❌ Please select a role.', 'error');
+            hasError = true;
+        } else if (password !== confirmPassword) {
+            showFeedback('❌ Passwords do not match.', 'error');
+            hasError = true;
+        } else if (password.length < 6) {
+            showFeedback('❌ Password must be at least 6 characters.', 'error');
+            hasError = true;
+        } else if (!document.getElementById('terms').checked) {
+            showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
+            hasError = true;
+        }
+        
+        if (role === 'student') {
+            if (!program_type) {
+                showFeedback('❌ Please select your program.', 'error');
+                hasError = true;
+            } else if (!intakeData.intake_year) {
+                showFeedback('❌ Please select your intake year.', 'error');
+                hasError = true;
+            }
+        }
+        
+        if (role === 'lecturer') {
+            if (!staff_id) {
+                showFeedback('❌ Please enter your Staff ID.', 'error');
+                hasError = true;
+            } else if (!department) {
+                showFeedback('❌ Please select your department.', 'error');
+                hasError = true;
+            }
+        }
+        
+        if (hasError) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        // ============================================
+        // LOG WHAT'S BEING SENT
+        // ============================================
+        console.log('🔍 SELECTED PROGRAM:', program_type);
+        console.log('📊 Student data:', {
+            program: program_type,
+            intake_year: intakeData.intake_year,
+            intake_month: intakeData.intake_month,
+            dob: dob
+        });
+        
+        const today = new Date();
+        const admissionDate = today.toISOString().split('T')[0];
+        const defaultBlock = 'Introductory';
+        
+        // ============================================
+        // VARIABLE TO TRACK CREATED AUTH USER FOR ROLLBACK
+        // ============================================
+        let createdAuthUser = null;
+        
+        try {
+            // ============================================
+            // BUILD USER METADATA
+            // ============================================
+            let userMetadata = {
+                full_name, role, phone, alt_phone, national_id,
+                date_of_birth: dob,
+                gender, address, status: 'pending'
+            };
+            
+            if (role === 'student') {
+                userMetadata = {
+                    ...userMetadata,
+                    admission_number: student_id_number,
+                    course: program_type,
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month,
+                    current_block: defaultBlock,
+                    guardian_name, guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString()
+                };
+            } else if (role === 'lecturer') {
+                userMetadata = { ...userMetadata, staff_id, department };
+            }
+            
+            // ============================================
+            // CREATE USER IN SUPABASE AUTH
+            // ============================================
+            const { data: authData, error: authError } = await sb.auth.signUp({
+                email, password,
+                options: { data: userMetadata }
+            });
+            
+            if (authError) {
+                // Check if it's a duplicate email error
+                if (authError.message.includes('User already registered')) {
+                    showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
+                    btn.disabled = false;
+                    document.getElementById('button-text').textContent = '✅ Create Account';
+                    return;
+                }
+                throw authError;
+            }
+            
+            // Store auth user for rollback if needed
+            createdAuthUser = authData.user;
+            
+            // ============================================
+            // INSERT PROFILE
+            // ============================================
+            let profileData = {
+                email, full_name, role, phone, alt_phone, national_id,
+                date_of_birth: dob,
+                gender, address, status: 'pending',
+                user_id: authData.user.id,
+                created_at: new Date().toISOString()
+            };
+            
+            if (role === 'student') {
+                profileData = {
+                    ...profileData,
+                    student_id: student_id_number || authData.user.id.substring(0, 8).toUpperCase(),
+                    program: program_type,
+                    intake_year: intakeData.intake_year,
+                    block: defaultBlock,
+                    guardian_name, guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString()
+                };
+            } else if (role === 'lecturer') {
+                profileData = { ...profileData, staff_id, department };
+            }
+            
+            console.log('💾 SAVING PROFILE:', {
+                program: profileData.program,
+                intake_year: profileData.intake_year,
+                student_id: profileData.student_id,
+                dob: profileData.date_of_birth
+            });
+            
+            const { error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .insert(profileData);
+            
+            // ============================================
+            // IF PROFILE INSERT FAILS, DELETE THE AUTH USER (ROLLBACK)
+            // ============================================
+            if (profileError) {
+                console.error('❌ Profile Error:', profileError);
+                
+                // ROLLBACK: Delete the auth user we just created
+                try {
+                    if (createdAuthUser && createdAuthUser.id) {
+                        await sb.auth.admin.deleteUser(createdAuthUser.id);
+                        console.log('✅ Auth user deleted (rollback)');
+                    }
+                } catch (rollbackError) {
+                    console.error('⚠️ Rollback failed:', rollbackError);
+                }
+                
+                // Show user-friendly error
+                let errorMessage = profileError.message;
+                if (profileError.code === '22007') {
+                    errorMessage = 'Invalid date format. Please select a valid date of birth.';
+                } else if (profileError.code === '23505') {
+                    errorMessage = 'This student ID or email is already registered.';
+                }
+                
+                showFeedback(`❌ Registration failed: ${errorMessage}`, 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            
+            // ============================================
+            // SUCCESS!
+            // ============================================
+            const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
+            
+            showFeedback(`✅ Registration successful! ${program_type} student with ${displayIntake} intake.`, 'success');
+            
+            // Send welcome email (non-blocking)
+            try {
+                await sendRegistrationEmail(email, full_name);
+            } catch (emailError) {
+                console.warn('Email sending failed:', emailError);
+            }
+            
+            // Show success animation
+            showSuccessAnimation(displayIntake);
+            
+            // Clear draft
+            localStorage.removeItem('registration_draft');
+            
+        } catch (error) {
+            console.error('❌ Registration error:', error);
+            
+            // ============================================
+            // ROLLBACK: Delete the auth user if created
+            // ============================================
+            if (createdAuthUser && createdAuthUser.id) {
+                try {
+                    await sb.auth.admin.deleteUser(createdAuthUser.id);
+                    console.log('✅ Auth user deleted (rollback on error)');
+                } catch (rollbackError) {
+                    console.error('⚠️ Rollback failed:', rollbackError);
+                }
+            }
+            
+            let errorMessage = error.message || 'Unknown error';
+            if (error.code === '22007') {
+                errorMessage = 'Invalid date format. Please select a valid date of birth.';
+            } else if (error.code === '23505') {
+                errorMessage = 'This email or student ID is already registered.';
+            }
+            
+            showFeedback(`❌ Registration failed: ${errorMessage}`, 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+        }
+    });
 
     console.log('✅ Registration page loaded with all features!');
 </script>
