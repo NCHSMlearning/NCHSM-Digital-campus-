@@ -7087,6 +7087,10 @@ async function loadAllUnits() {
     }
 }
 
+// =====================================================
+// UNIT CATALOG - ENHANCED DISPLAY
+// =====================================================
+
 function renderUnitsCatalog() {
     const container = document.getElementById('units-list-container');
     if (!container) return;
@@ -7114,49 +7118,226 @@ function renderUnitsCatalog() {
     }
     
     if (filtered.length === 0) {
-        container.innerHTML = '<p>No units found. Add units using the form above.</p>';
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
+                <i class="fas fa-search" style="font-size: 48px; color: #d1d5db;"></i>
+                <p style="margin-top: 16px; font-size: 16px;">No units found</p>
+                <p style="font-size: 13px;">Try adjusting your filters or add a new unit</p>
+            </div>
+        `;
         return;
     }
     
-    let html = '<div class="units-grid">';
+    // Get program display name helper
+    const getProgramName = (code) => {
+        const names = {
+            'KRCHN': '🎓 KRCHN Nursing',
+            'DPOTT': '🎯 Perioperative Theatre',
+            'DCH': '🎯 Community Health',
+            'DHRIT': '🎯 Health Records & IT',
+            'DSL': '🎯 Science Lab',
+            'DSW': '🎯 Social Work',
+            'DCJS': '🎯 Criminal Justice',
+            'DHSS': '🎯 Health Support Services',
+            'DICT': '🎯 ICT',
+            'DME': '🎯 Medical Engineering',
+            'CPOTT': '📜 Perioperative Theatre',
+            'CCH': '📜 Community Health',
+            'CHRIT': '📜 Health Records & IT',
+            'CPC': '📜 Patient Care',
+            'CSL': '📜 Science Lab',
+            'CSW': '📜 Social Work',
+            'CCJS': '📜 Criminal Justice',
+            'CAG': '📜 Agriculture',
+            'CHSS': '📜 Health Support Services',
+            'CICT': '📜 ICT',
+            'ACH': '🔧 Community Health',
+            'AAG': '🔧 Agriculture',
+            'ASW': '🔧 Social Work',
+            'CCA': '📊 Computer Applications',
+            'PTE': '📊 TVET/CDACC'
+        };
+        return names[code] || code || 'N/A';
+    };
+    
+    const getBlockColor = (block) => {
+        const colors = {
+            'Introductory': '#8b5cf6',
+            'Block 1': '#3b82f6',
+            'Block 2': '#06b6d4',
+            'Block 3': '#10b981',
+            'Block 4': '#f59e0b',
+            'Block 5': '#ef4444',
+            'Final': '#8b5cf6'
+        };
+        return colors[block] || '#6b7280';
+    };
+    
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <span style="font-weight: 600; color: #1e3a5f; font-size: 14px;">
+                    <i class="fas fa-list"></i> ${filtered.length} unit${filtered.length > 1 ? 's' : ''}
+                </span>
+                <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
+                    (${allUnits.length} total)
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                ${currentBlockFilter !== 'all' ? `
+                    <span style="background: #4C1D95; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                        <i class="fas fa-filter"></i> ${currentBlockFilter}
+                        <span onclick="filterUnitsByBlock('all')" style="cursor: pointer; margin-left: 6px;">✕</span>
+                    </span>
+                ` : ''}
+                ${programFilter ? `
+                    <span style="background: #4C1D95; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                        <i class="fas fa-filter"></i> ${getProgramName(programFilter)}
+                        <span onclick="document.getElementById('unit_filter_program').value=''; filterUnitsCatalog();" style="cursor: pointer; margin-left: 6px;">✕</span>
+                    </span>
+                ` : ''}
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px;">
+    `;
+    
     filtered.forEach(unit => {
-        const typeClass = unit.unit_type === 'Core' ? 'badge-core' : 'badge-elective';
-        const programName = getProgramDisplayName(unit.program);
+        const blockColor = getBlockColor(unit.block);
+        const programName = getProgramName(unit.program);
+        const typeColor = unit.unit_type === 'Core' ? '#2563eb' : '#d97706';
+        const typeBg = unit.unit_type === 'Core' ? '#dbeafe' : '#fef3c7';
         
         html += `
-            <div class="unit-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-bottom: 12px; transition: all 0.2s;">
-                <div class="unit-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
-                    <div>
-                        <span class="unit-code" style="font-weight: bold; color: #4C1D95; font-size: 16px;">${escapeHtml(unit.unit_code)}</span>
-                        <span class="unit-name" style="font-size: 14px; color: #374151; margin-left: 8px;">${escapeHtml(unit.unit_name)}</span>
+            <div class="unit-card" style="
+                background: white; 
+                border: 1px solid #e5e7eb; 
+                border-radius: 12px; 
+                padding: 16px; 
+                transition: all 0.2s;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                hover: transform: translateY(-2px);
+                hover: box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-weight: 700; color: #4C1D95; font-size: 16px;">${escapeHtml(unit.unit_code)}</span>
+                            <span style="
+                                background: ${typeBg}; 
+                                color: ${typeColor}; 
+                                padding: 2px 10px; 
+                                border-radius: 12px; 
+                                font-size: 10px; 
+                                font-weight: 600;
+                            ">${escapeHtml(unit.unit_type || 'Core')}</span>
+                            <span style="
+                                background: #f3f4f6; 
+                                color: #4b5563; 
+                                padding: 2px 10px; 
+                                border-radius: 12px; 
+                                font-size: 10px;
+                            ">
+                                <i class="fas fa-star"></i> ${unit.credits || 3} cr
+                            </span>
+                        </div>
+                        <div style="font-size: 15px; color: #1f2937; margin-top: 4px; font-weight: 500;">
+                            ${escapeHtml(unit.unit_name)}
+                        </div>
+                        ${unit.prerequisites ? `
+                            <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                                <i class="fas fa-link"></i> Prerequisite: ${escapeHtml(unit.prerequisites)}
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="unit-actions" style="display: flex; gap: 8px;">
-                        <button class="btn-sm btn-edit" onclick="editUnitRecord(${unit.id})" style="padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; background: #3b82f6; color: white; border: none;">
-                            <i class="fas fa-edit"></i> Edit
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                        <button onclick="editUnitRecord(${unit.id})" 
+                            style="
+                                background: #3b82f6; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 6px; 
+                                padding: 5px 10px; 
+                                font-size: 11px; 
+                                cursor: pointer; 
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#2563eb'"
+                            onmouseout="this.style.background='#3b82f6'"
+                        >
+                            <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-sm btn-delete" onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')" style="padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; background: #ef4444; color: white; border: none;">
-                            <i class="fas fa-trash"></i> Delete
+                        <button onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')" 
+                            style="
+                                background: #ef4444; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 6px; 
+                                padding: 5px 10px; 
+                                font-size: 11px; 
+                                cursor: pointer; 
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#dc2626'"
+                            onmouseout="this.style.background='#ef4444'"
+                        >
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
-                <div class="unit-meta" style="display: flex; gap: 15px; margin-top: 8px; font-size: 12px; color: #6b7280; flex-wrap: wrap;">
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-tag"></i> ${escapeHtml(programName)}</span>
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}</span>
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-calendar"></i> Year: ${unit.year || 'N/A'}</span>
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-star"></i> ${unit.credits || 3} Credits</span>
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-clock"></i> ${unit.hours || 0} Hours</span>
-                    <span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px; ${unit.unit_type === 'Core' ? 'background: #dbeafe; color: #2563eb;' : 'background: #fef3c7; color: #d97706;'}">
-                        <i class="fas fa-book"></i> ${unit.unit_type || 'Core'}
+                
+                <!-- Tags -->
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6;">
+                    <span style="
+                        background: #f3f4f6; 
+                        padding: 3px 10px; 
+                        border-radius: 12px; 
+                        font-size: 11px; 
+                        color: #4b5563;
+                    ">
+                        <i class="fas fa-tag"></i> ${escapeHtml(programName)}
                     </span>
-                    ${unit.prerequisites ? `<span style="background: #f3f4f6; padding: 3px 8px; border-radius: 12px;"><i class="fas fa-link"></i> Pre: ${escapeHtml(unit.prerequisites)}</span>` : ''}
+                    <span style="
+                        background: ${blockColor}20; 
+                        padding: 3px 10px; 
+                        border-radius: 12px; 
+                        font-size: 11px; 
+                        color: ${blockColor};
+                        border: 1px solid ${blockColor}30;
+                    ">
+                        <i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}
+                    </span>
+                    <span style="
+                        background: #f3f4f6; 
+                        padding: 3px 10px; 
+                        border-radius: 12px; 
+                        font-size: 11px; 
+                        color: #4b5563;
+                    ">
+                        <i class="fas fa-calendar"></i> ${unit.year || 'N/A'}
+                    </span>
+                    <span style="
+                        background: #f3f4f6; 
+                        padding: 3px 10px; 
+                        border-radius: 12px; 
+                        font-size: 11px; 
+                        color: #4b5563;
+                    ">
+                        <i class="fas fa-clock"></i> ${unit.hours || 0}h
+                    </span>
                 </div>
             </div>
         `;
     });
-    html += '</div>';
+    
+    html += `
+        </div>
+        <div style="text-align: center; margin-top: 16px; font-size: 12px; color: #9ca3af;">
+            Showing ${filtered.length} of ${allUnits.length} units
+        </div>
+    `;
+    
     container.innerHTML = html;
 }
-
 // =====================================================
 // ADD NEW UNIT RECORD
 // =====================================================
