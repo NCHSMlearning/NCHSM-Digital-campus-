@@ -7533,7 +7533,7 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS - GROUPED BY STUDENT (ENHANCED)
+// PENDING REGISTRATIONS - FIXED STUDENT NAMES
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -7584,14 +7584,19 @@ async function loadUnitPendingRegistrations() {
             return;
         }
         
-        // Get student details
+        // Get student details - MATCH BY user_id (UUID)
         const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id))];
         let studentInfo = {};
         
-        const { data: profiles } = await sb
+        // ✅ Query using user_id (matches student_id in registrations)
+        const { data: profiles, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, student_id, program, block')
             .in('user_id', studentIds);
+        
+        if (profileError) {
+            console.error('Error fetching profiles:', profileError);
+        }
         
         if (profiles) {
             profiles.forEach(p => {
@@ -7603,6 +7608,8 @@ async function loadUnitPendingRegistrations() {
                 };
             });
         }
+        
+        console.log(`✅ Found ${Object.keys(studentInfo).length} student names out of ${studentIds.length} students`);
         
         // ⭐ GROUP BY STUDENT
         const groupedByStudent = {};
@@ -8019,18 +8026,27 @@ async function loadApprovedRegistrations() {
             return;
         }
         
-        // Get student names
+        // Get student names - MATCH BY user_id (UUID)
         const studentIds = [...new Set(approvedRegistrationsData.map(r => r.student_id))];
         let studentNames = {};
         
-        const { data: students } = await sb
+        // Query profiles using user_id (which matches the student_id in registrations)
+        const { data: students, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name')
             .in('user_id', studentIds);
         
-        if (students) {
-            students.forEach(s => { studentNames[s.user_id] = s.full_name; });
+        if (profileError) {
+            console.error('Error fetching profiles:', profileError);
         }
+        
+        if (students) {
+            students.forEach(s => {
+                studentNames[s.user_id] = s.full_name;
+            });
+        }
+        
+        console.log(`✅ Found ${Object.keys(studentNames).length} student names out of ${studentIds.length} students`);
         
         let html = '';
         for (const reg of approvedRegistrationsData) {
