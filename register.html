@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
+        /* ... keep all your existing styles ... */
         * {
             margin: 0;
             padding: 0;
@@ -706,7 +707,7 @@
             </div>
 
             <!-- ============================================ -->
-            <!-- PROFILE PHOTO UPLOAD (Feature 11) -->
+            <!-- PROFILE PHOTO UPLOAD -->
             <!-- ============================================ -->
             <div class="form-group">
                 <label><i data-feather="camera"></i> Profile Photo</label>
@@ -743,9 +744,12 @@
                     <div class="help-text">Your unique student identification number</div>
                 </div>
                 
+                <!-- ============================================ -->
+                <!-- PROGRAM SELECTION - FIXED WITH REQUIRED -->
+                <!-- ============================================ -->
                 <div class="form-group">
-                    <label><i data-feather="book"></i> Program</label>
-                    <select id="program_type" name="program_type">
+                    <label><i data-feather="book"></i> Program <span style="color: red;">*</span></label>
+                    <select id="program_type" name="program_type" required>
                         <option value="">-- Select Your Program --</option>
                         
                         <!-- KRCHN PROGRAMS -->
@@ -793,7 +797,6 @@
                             <option value="PTE" data-desc="TVET/CDACC - Professional Teaching Experience">TVET/CDACC (PTE)</option>
                         </optgroup>
                     </select>
-                    <!-- Program Description (Feature 4) -->
                     <div class="program-description" id="programDescription">
                         Select a program above to see details
                     </div>
@@ -907,7 +910,6 @@
                 <div class="form-group">
                     <label><i data-feather="lock"></i> Password</label>
                     <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-                    <!-- Password Strength (Feature 1) -->
                     <div class="password-strength">
                         <div class="strength-bar" id="strengthBar"></div>
                         <div class="strength-text" id="strengthText">Enter a password</div>
@@ -923,7 +925,7 @@
             </div>
 
             <!-- ============================================ -->
-            <!-- TERMS & CONDITIONS (Feature 5) -->
+            <!-- TERMS & CONDITIONS -->
             <!-- ============================================ -->
             <div class="form-group">
                 <div class="terms-container">
@@ -937,7 +939,7 @@
                 </div>
             </div>
 
-            <!-- Draft Actions (Features 7 & 8) -->
+            <!-- Draft Actions -->
             <div class="draft-actions">
                 <button type="button" class="btn-secondary" onclick="saveDraft()">
                     💾 Save Draft
@@ -1016,7 +1018,7 @@
 </div>
 
 <!-- ============================================ -->
-<!-- SUCCESS OVERLAY (Feature 10) -->
+<!-- SUCCESS OVERLAY -->
 <!-- ============================================ -->
 <div class="success-overlay" id="successOverlay">
     <div class="success-card">
@@ -1041,6 +1043,8 @@
         if (typeof feather !== 'undefined') feather.replace();
         updateIntakePreview();
         updateProgress();
+        // Initialize role toggle
+        document.getElementById('role').dispatchEvent(new Event('change'));
     });
     
     // URL cleanup
@@ -1055,7 +1059,7 @@
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ============================================
-    // FEATURE 1: PASSWORD STRENGTH METER
+    // PASSWORD STRENGTH METER
     // ============================================
     document.getElementById('password').addEventListener('input', function() {
         const password = this.value;
@@ -1104,7 +1108,7 @@
     });
 
     // ============================================
-    // FEATURE 3: PROGRESS INDICATOR
+    // PROGRESS INDICATOR
     // ============================================
     let currentStep = 1;
 
@@ -1151,13 +1155,17 @@
     }
 
     // ============================================
-    // FEATURE 4: PROGRAM DESCRIPTIONS
+    // PROGRAM DESCRIPTIONS
     // ============================================
     document.getElementById('program_type').addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         const desc = selected?.dataset?.desc || 'Select a program above to see details';
         document.getElementById('programDescription').textContent = desc;
         updateIntakePreview();
+        
+        // DEBUG: Log the selected program
+        console.log('📋 Program selected:', this.value);
+        console.log('📋 Program text:', selected?.text);
     });
 
     // ============================================
@@ -1194,7 +1202,7 @@
     document.getElementById('tvet_intake_year').addEventListener('change', updateIntakePreview);
 
     // ============================================
-    // FEATURE 7 & 8: SAVE/LOAD DRAFT
+    // SAVE/LOAD DRAFT
     // ============================================
     function saveDraft() {
         const formData = new FormData(document.getElementById('register-form'));
@@ -1258,7 +1266,7 @@
     }
 
     // ============================================
-    // FEATURE 5: TERMS & CONDITIONS
+    // TERMS & CONDITIONS
     // ============================================
     function showTermsModal(e) {
         if (e) e.preventDefault();
@@ -1275,7 +1283,7 @@
     });
 
     // ============================================
-    // FEATURE 11: PROFILE PHOTO UPLOAD
+    // PROFILE PHOTO UPLOAD
     // ============================================
     function handlePhotoUpload(event) {
         const file = event.target.files[0];
@@ -1308,7 +1316,7 @@
     }
 
     // ============================================
-    // FEATURE 10: SUCCESS ANIMATION
+    // SUCCESS ANIMATION
     // ============================================
     function showSuccessAnimation(intakeDisplay) {
         // Show confetti
@@ -1347,19 +1355,52 @@
     }
 
     // ============================================
-    // ROLE TOGGLE
+    // ROLE TOGGLE - FIXED
     // ============================================
     document.getElementById('role').addEventListener('change', function() {
         const isStudent = this.value === 'student';
         const isLecturer = this.value === 'lecturer';
         
-        document.getElementById('student-fields').style.display = isStudent ? 'block' : 'none';
-        document.getElementById('lecturer-fields').style.display = isLecturer ? 'block' : 'none';
+        const studentFields = document.getElementById('student-fields');
+        const lecturerFields = document.getElementById('lecturer-fields');
         
-        if (isStudent) document.getElementById('student-fields').classList.add('active');
-        else document.getElementById('student-fields').classList.remove('active');
-        if (isLecturer) document.getElementById('lecturer-fields').classList.add('active');
-        else document.getElementById('lecturer-fields').classList.remove('active');
+        if (isStudent) {
+            studentFields.style.display = 'block';
+            studentFields.classList.add('active');
+            // Make student fields required
+            studentFields.querySelectorAll('input, select').forEach(input => {
+                if (input.id !== 'student_id_number' && 
+                    input.id !== 'guardian_name' && 
+                    input.id !== 'guardian_phone') {
+                    input.setAttribute('required', '');
+                }
+            });
+        } else {
+            studentFields.style.display = 'none';
+            studentFields.classList.remove('active');
+            // Remove required from student fields
+            studentFields.querySelectorAll('input, select').forEach(input => {
+                input.removeAttribute('required');
+            });
+        }
+        
+        if (isLecturer) {
+            lecturerFields.style.display = 'block';
+            lecturerFields.classList.add('active');
+            // Make lecturer fields required
+            lecturerFields.querySelectorAll('input, select').forEach(input => {
+                input.setAttribute('required', '');
+            });
+        } else {
+            lecturerFields.style.display = 'none';
+            lecturerFields.classList.remove('active');
+            // Remove required from lecturer fields
+            lecturerFields.querySelectorAll('input, select').forEach(input => {
+                input.removeAttribute('required');
+            });
+        }
+        
+        updateProgress();
     });
 
     // ============================================
@@ -1394,7 +1435,7 @@
     }
 
     // ============================================
-    // FORM SUBMISSION
+    // FORM SUBMISSION - FIXED PROGRAM CAPTURE
     // ============================================
     document.getElementById('register-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1415,6 +1456,9 @@
             return;
         }
         
+        // ============================================
+        // GET ALL VALUES - FIXED: Get program correctly
+        // ============================================
         const role = document.getElementById('role').value;
         const full_name = document.getElementById('full_name').value.trim();
         const email = document.getElementById('email').value.trim();
@@ -1427,9 +1471,18 @@
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         
+        // ============================================
+        // CRITICAL: Get program value DIRECTLY from dropdown
+        // ============================================
+        const programSelect = document.getElementById('program_type');
+        const program_type = programSelect.value;  // ← This is the key!
+        
+        // DEBUG: Log what was selected
+        console.log('🔍 SELECTED PROGRAM:', program_type);
+        console.log('🔍 SELECTED TEXT:', programSelect.options[programSelect.selectedIndex]?.text);
+        
         // Student specific
         const student_id_number = document.getElementById('student_id_number').value.trim();
-        const program_type = document.getElementById('program_type').value;
         const intakeData = getIntakeData();
         const guardian_name = document.getElementById('guardian_name').value.trim() || '';
         const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
@@ -1438,7 +1491,9 @@
         const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
         
-        // Validations
+        // ============================================
+        // VALIDATIONS
+        // ============================================
         if (!gender) {
             showFeedback('❌ Please select your gender.', 'error');
             btn.disabled = false;
@@ -1464,17 +1519,36 @@
             document.getElementById('button-text').textContent = '✅ Create Account';
             return;
         }
-        if (role === 'student' && !program_type) {
-            showFeedback('❌ Please select your program.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+        
+        // Role-specific validations
+        if (role === 'student') {
+            if (!program_type) {
+                showFeedback('❌ Please select your program.', 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            if (!intakeData.intake_year) {
+                showFeedback('❌ Please select your intake year.', 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
         }
-        if (role === 'student' && !intakeData.intake_year) {
-            showFeedback('❌ Please select your intake year.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+        
+        if (role === 'lecturer') {
+            if (!staff_id) {
+                showFeedback('❌ Please enter your Staff ID.', 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            if (!department) {
+                showFeedback('❌ Please select your department.', 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
         }
         
         const today = new Date();
@@ -1482,17 +1556,20 @@
         const defaultBlock = 'Introductory';
         
         try {
-            // Build metadata
+            // ============================================
+            // BUILD USER METADATA
+            // ============================================
             let userMetadata = {
                 full_name, role, phone, alt_phone, national_id,
                 date_of_birth: dob, gender, address, status: 'pending'
             };
             
             if (role === 'student') {
+                // CRITICAL: Use program_type variable
                 userMetadata = {
                     ...userMetadata,
                     admission_number: student_id_number,
-                    course: program_type,
+                    course: program_type,  // ← MUST be the correct program
                     intake_year: intakeData.intake_year,
                     intake_month: intakeData.intake_month,
                     current_block: defaultBlock,
@@ -1500,11 +1577,19 @@
                     admission_date: admissionDate,
                     admission_year: today.getFullYear().toString()
                 };
+                
+                console.log('📊 Student data:', {
+                    program: program_type,
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month
+                });
             } else if (role === 'lecturer') {
                 userMetadata = { ...userMetadata, staff_id, department };
             }
             
-            // Create user in Supabase Auth
+            // ============================================
+            // CREATE USER IN SUPABASE
+            // ============================================
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email, password,
                 options: { data: userMetadata }
@@ -1515,7 +1600,9 @@
             // Send welcome email
             await sendRegistrationEmail(email, full_name);
             
-            // Insert profile
+            // ============================================
+            // INSERT PROFILE - CRITICAL: Use correct program
+            // ============================================
             let profileData = {
                 email, full_name, role, phone, alt_phone, national_id,
                 date_of_birth: dob, gender, address, status: 'pending',
@@ -1527,14 +1614,19 @@
                 profileData = {
                     ...profileData,
                     student_id: student_id_number,
-                    program: program_type,
+                    program: program_type,  // ← CRITICAL: Use the correct program!
                     intake_year: intakeData.intake_year,
-                    intake_month: intakeData.intake_month,
                     block: defaultBlock,
                     guardian_name, guardian_phone,
                     admission_date: admissionDate,
                     admission_year: today.getFullYear().toString()
                 };
+                
+                console.log('💾 SAVING PROFILE:', {
+                    program: profileData.program,
+                    intake_year: profileData.intake_year,
+                    student_id: profileData.student_id
+                });
             } else if (role === 'lecturer') {
                 profileData = { ...profileData, staff_id, department };
             }
@@ -1543,9 +1635,14 @@
                 .from('consolidated_user_profiles_table')
                 .insert(profileData);
             
-            if (profileError) console.error('Profile insert warning:', profileError);
+            if (profileError) {
+                console.error('❌ Profile Error:', profileError);
+                throw profileError;
+            }
             
-            // Success!
+            // ============================================
+            // SUCCESS!
+            // ============================================
             const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
             
             // Show success animation
@@ -1555,7 +1652,7 @@
             localStorage.removeItem('registration_draft');
             
         } catch (error) {
-            console.error('Registration error:', error);
+            console.error('❌ Registration error:', error);
             showFeedback(`❌ Registration failed: ${error.message}`, 'error');
             btn.disabled = false;
             document.getElementById('button-text').textContent = '✅ Create Account';
@@ -1590,7 +1687,6 @@
         messageDiv.className = `message ${type}`;
         messageDiv.style.display = 'block';
         
-        // Auto hide after 5 seconds
         setTimeout(() => {
             messageDiv.style.opacity = '0';
             setTimeout(() => {
