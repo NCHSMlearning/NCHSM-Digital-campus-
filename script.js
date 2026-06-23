@@ -6914,7 +6914,7 @@ function updateVisualization() {
 // Add this at the end of your script.js, before the closing of the file
 
 // =====================================================
-// UNIT REGISTRATION MANAGEMENT - COMPLETE MODULE
+// UNIT REGISTRATION MANAGEMENT - COMPLETE ENHANCED
 // =====================================================
 
 // Global variables for unit management
@@ -7059,14 +7059,80 @@ function initUnitForm() {
 }
 
 // =====================================================
-// UNIT CATALOG MANAGEMENT
+// HELPER FUNCTIONS FOR DISPLAY
+// =====================================================
+
+function getProgramName(code) {
+    const names = {
+        'KRCHN': '🎓 KRCHN Nursing',
+        'DPOTT': '🎯 Perioperative Theatre',
+        'DCH': '🎯 Community Health',
+        'DHRIT': '🎯 Health Records & IT',
+        'DSL': '🎯 Science Lab',
+        'DSW': '🎯 Social Work',
+        'DCJS': '🎯 Criminal Justice',
+        'DHSS': '🎯 Health Support Services',
+        'DICT': '🎯 ICT',
+        'DME': '🎯 Medical Engineering',
+        'CPOTT': '📜 Perioperative Theatre',
+        'CCH': '📜 Community Health',
+        'CHRIT': '📜 Health Records & IT',
+        'CPC': '📜 Patient Care',
+        'CSL': '📜 Science Lab',
+        'CSW': '📜 Social Work',
+        'CCJS': '📜 Criminal Justice',
+        'CAG': '📜 Agriculture',
+        'CHSS': '📜 Health Support Services',
+        'CICT': '📜 ICT',
+        'ACH': '🔧 Community Health',
+        'AAG': '🔧 Agriculture',
+        'ASW': '🔧 Social Work',
+        'CCA': '📊 Computer Applications',
+        'PTE': '📊 TVET/CDACC'
+    };
+    return names[code] || code || 'N/A';
+}
+
+function getBlockColor(block) {
+    const colors = {
+        'Introductory': '#8b5cf6',
+        'Block 1': '#3b82f6',
+        'Block 2': '#06b6d4',
+        'Block 3': '#10b981',
+        'Block 4': '#f59e0b',
+        'Block 5': '#ef4444',
+        'Final': '#8b5cf6'
+    };
+    return colors[block] || '#6b7280';
+}
+
+function getBlockEmoji(block) {
+    const emojis = {
+        'Introductory': '🌟',
+        'Block 1': '📘',
+        'Block 2': '📗',
+        'Block 3': '📒',
+        'Block 4': '📙',
+        'Block 5': '📕',
+        'Final': '🏆'
+    };
+    return emojis[block] || '📚';
+}
+
+// =====================================================
+// UNIT CATALOG MANAGEMENT - ENHANCED
 // =====================================================
 
 async function loadAllUnits() {
     const container = document.getElementById('units-list-container');
     if (!container) return;
     
-    container.innerHTML = '<div class="loading-spinner"></div><p>Loading units...</p>';
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 10px; color: #6b7280;">Loading units...</p>
+        </div>
+    `;
     
     try {
         const { data, error } = await sb
@@ -7078,18 +7144,23 @@ async function loadAllUnits() {
         if (error) throw error;
         
         allUnits = data || [];
+        window.allUnits = allUnits;
         renderUnitsCatalog();
         loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error loading units:', error);
-        container.innerHTML = '<p style="color: red;">Error loading units. Please refresh.</p>';
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-circle" style="font-size: 40px;"></i>
+                <p style="margin-top: 10px;">Error loading units: ${error.message}</p>
+                <button onclick="loadAllUnits()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </div>
+        `;
     }
 }
-
-// =====================================================
-// UNIT CATALOG - ENHANCED DISPLAY
-// =====================================================
 
 function renderUnitsCatalog() {
     const container = document.getElementById('units-list-container');
@@ -7128,51 +7199,6 @@ function renderUnitsCatalog() {
         return;
     }
     
-    // Get program display name helper
-    const getProgramName = (code) => {
-        const names = {
-            'KRCHN': '🎓 KRCHN Nursing',
-            'DPOTT': '🎯 Perioperative Theatre',
-            'DCH': '🎯 Community Health',
-            'DHRIT': '🎯 Health Records & IT',
-            'DSL': '🎯 Science Lab',
-            'DSW': '🎯 Social Work',
-            'DCJS': '🎯 Criminal Justice',
-            'DHSS': '🎯 Health Support Services',
-            'DICT': '🎯 ICT',
-            'DME': '🎯 Medical Engineering',
-            'CPOTT': '📜 Perioperative Theatre',
-            'CCH': '📜 Community Health',
-            'CHRIT': '📜 Health Records & IT',
-            'CPC': '📜 Patient Care',
-            'CSL': '📜 Science Lab',
-            'CSW': '📜 Social Work',
-            'CCJS': '📜 Criminal Justice',
-            'CAG': '📜 Agriculture',
-            'CHSS': '📜 Health Support Services',
-            'CICT': '📜 ICT',
-            'ACH': '🔧 Community Health',
-            'AAG': '🔧 Agriculture',
-            'ASW': '🔧 Social Work',
-            'CCA': '📊 Computer Applications',
-            'PTE': '📊 TVET/CDACC'
-        };
-        return names[code] || code || 'N/A';
-    };
-    
-    const getBlockColor = (block) => {
-        const colors = {
-            'Introductory': '#8b5cf6',
-            'Block 1': '#3b82f6',
-            'Block 2': '#06b6d4',
-            'Block 3': '#10b981',
-            'Block 4': '#f59e0b',
-            'Block 5': '#ef4444',
-            'Final': '#8b5cf6'
-        };
-        return colors[block] || '#6b7280';
-    };
-    
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
             <div>
@@ -7203,6 +7229,7 @@ function renderUnitsCatalog() {
     
     filtered.forEach(unit => {
         const blockColor = getBlockColor(unit.block);
+        const blockEmoji = getBlockEmoji(unit.block);
         const programName = getProgramName(unit.program);
         const typeColor = unit.unit_type === 'Core' ? '#2563eb' : '#d97706';
         const typeBg = unit.unit_type === 'Core' ? '#dbeafe' : '#fef3c7';
@@ -7215,9 +7242,10 @@ function renderUnitsCatalog() {
                 padding: 16px; 
                 transition: all 0.2s;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-                hover: transform: translateY(-2px);
-                hover: box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            ">
+                cursor: default;
+            "
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.1)';"
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)';">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -7304,7 +7332,7 @@ function renderUnitsCatalog() {
                         color: ${blockColor};
                         border: 1px solid ${blockColor}30;
                     ">
-                        <i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}
+                        <i class="fas fa-layer-group"></i> ${blockEmoji} ${escapeHtml(unit.block)}
                     </span>
                     <span style="
                         background: #f3f4f6; 
@@ -7324,6 +7352,17 @@ function renderUnitsCatalog() {
                     ">
                         <i class="fas fa-clock"></i> ${unit.hours || 0}h
                     </span>
+                    ${unit.status ? `
+                        <span style="
+                            background: ${unit.status === 'active' ? '#d1fae5' : '#fee2e2'};
+                            color: ${unit.status === 'active' ? '#059669' : '#dc2626'};
+                            padding: 3px 10px;
+                            border-radius: 12px;
+                            font-size: 11px;
+                        ">
+                            ${unit.status === 'active' ? '✅ Active' : '❌ Inactive'}
+                        </span>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -7338,6 +7377,7 @@ function renderUnitsCatalog() {
     
     container.innerHTML = html;
 }
+
 // =====================================================
 // ADD NEW UNIT RECORD
 // =====================================================
@@ -7420,7 +7460,7 @@ async function editUnitRecord(unitId) {
 // =====================================================
 
 async function deleteUnitRecord(unitId, unitCode) {
-    if (!confirm(`Are you sure you want to delete unit "${unitCode}"?`)) return;
+    if (!confirm(`⚠️ Are you sure you want to delete unit "${unitCode}"? This action cannot be undone.`)) return;
     
     try {
         const { error } = await sb
@@ -7493,7 +7533,7 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS - GROUPED BY STUDENT (FINAL VERSION)
+// PENDING REGISTRATIONS - GROUPED BY STUDENT (ENHANCED)
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -7511,7 +7551,12 @@ async function loadUnitPendingRegistrations() {
     }
     
     container.style.display = 'block';
-    container.innerHTML = '<div class="loading-spinner"></div><p>Loading pending registrations...</p>';
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 10px; color: #6b7280;">Loading pending registrations...</p>
+        </div>
+    `;
     
     try {
         // Fetch pending registrations
@@ -7629,7 +7674,18 @@ async function loadUnitPendingRegistrations() {
             const isMulti = unitCount > 1;
             
             html += `
-                <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                <div class="student-group-card" style="
+                    background: white; 
+                    border: 1px solid #e5e7eb; 
+                    border-radius: 12px; 
+                    margin-bottom: 15px; 
+                    padding: 16px; 
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'">
+                    
                     <!-- Student Header -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; flex-wrap: wrap; gap: 10px;">
                         <div>
@@ -7651,13 +7707,42 @@ async function loadUnitPendingRegistrations() {
                             </span>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <span style="background: ${isMulti ? '#fef3c7' : '#e0e7ff'}; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: ${isMulti ? '#d97706' : '#4C1D95'};">
+                            <span style="
+                                background: ${isMulti ? '#fef3c7' : '#e0e7ff'}; 
+                                padding: 4px 12px; 
+                                border-radius: 20px; 
+                                font-size: 12px; 
+                                color: ${isMulti ? '#d97706' : '#4C1D95'};
+                                font-weight: 500;
+                            ">
                                 <i class="fas fa-list"></i> ${unitCount} unit${unitCount > 1 ? 's' : ''}
                             </span>
-                            <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="background: #059669; color: white; padding: 4px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="
+                                background: #059669; 
+                                color: white; 
+                                padding: 4px 14px; 
+                                border: none; 
+                                border-radius: 6px; 
+                                cursor: pointer; 
+                                font-size: 12px;
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#047857'"
+                            onmouseout="this.style.background='#059669'">
                                 <i class="fas fa-check"></i> Approve All
                             </button>
-                            <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="
+                                background: #dc2626; 
+                                color: white; 
+                                padding: 4px 14px; 
+                                border: none; 
+                                border-radius: 6px; 
+                                cursor: pointer; 
+                                font-size: 12px;
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#b91c1c'"
+                            onmouseout="this.style.background='#dc2626'">
                                 <i class="fas fa-times"></i> Reject All
                             </button>
                         </div>
@@ -7673,7 +7758,18 @@ async function loadUnitPendingRegistrations() {
                     : 'Unknown';
                 
                 html += `
-                    <div class="unit-item" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #f59e0b; transition: all 0.2s;">
+                    <div class="unit-item" style="
+                        display: flex; 
+                        align-items: center; 
+                        gap: 10px; 
+                        padding: 8px 12px; 
+                        background: #f8fafc; 
+                        border-radius: 8px; 
+                        border-left: 3px solid #f59e0b; 
+                        transition: all 0.2s;
+                    "
+                    onmouseover="this.style.background='#f1f5f9'"
+                    onmouseout="this.style.background='#f8fafc'">
                         <input type="checkbox" class="unit-checkbox-item" data-reg-id="${unit.id}" data-student-id="${studentId}" onchange="updateSelectedUnitsCount()" style="width: 16px; height: 16px; cursor: pointer;">
                         <div style="flex: 1; min-width: 0;">
                             <div>
@@ -7685,10 +7781,32 @@ async function loadUnitPendingRegistrations() {
                             </div>
                         </div>
                         <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                            <button onclick="approveSingleUnitRecord('${unit.id}')" title="Approve" style="background: #059669; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: all 0.2s;">
+                            <button onclick="approveSingleUnitRecord('${unit.id}')" title="Approve" style="
+                                background: #059669; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 4px; 
+                                padding: 4px 8px; 
+                                font-size: 11px; 
+                                cursor: pointer; 
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#047857'"
+                            onmouseout="this.style.background='#059669'">
                                 <i class="fas fa-check"></i>
                             </button>
-                            <button onclick="rejectSingleUnitRecord('${unit.id}')" title="Reject" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: all 0.2s;">
+                            <button onclick="rejectSingleUnitRecord('${unit.id}')" title="Reject" style="
+                                background: #dc2626; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 4px; 
+                                padding: 4px 8px; 
+                                font-size: 11px; 
+                                cursor: pointer; 
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='#b91c1c'"
+                            onmouseout="this.style.background='#dc2626'">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -7729,12 +7847,16 @@ async function loadUnitPendingRegistrations() {
                 <i class="fas fa-exclamation-circle" style="font-size: 40px;"></i>
                 <p style="margin-top: 10px;">Error: ${error.message}</p>
                 <button onclick="loadUnitPendingRegistrations()" style="margin-top: 10px; padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Retry
+                    <i class="fas fa-sync-alt"></i> Retry
                 </button>
             </div>
         `;
     }
 }
+
+// =====================================================
+// PENDING UNIT SELECTION FUNCTIONS
+// =====================================================
 
 function selectAllPendingUnits() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
@@ -7754,11 +7876,17 @@ function updateSelectedUnitsCount() {
     if (countElement) countElement.textContent = count;
 }
 
+// =====================================================
+// PENDING UNIT ACTION FUNCTIONS
+// =====================================================
+
 async function approveSingleUnitRecord(regId) {
     if (!confirm('Approve this unit?')) return;
     try {
-        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).eq('id', regId);
-        showFeedback('Unit approved!', 'success');
+        await sb.from('student_unit_registrations')
+            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
+            .eq('id', regId);
+        showFeedback('✅ Unit approved!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
@@ -7771,7 +7899,7 @@ async function rejectSingleUnitRecord(regId) {
     if (!confirm('Reject this unit?')) return;
     try {
         await sb.from('student_unit_registrations').delete().eq('id', regId);
-        showFeedback('Unit rejected and removed!', 'success');
+        showFeedback('❌ Unit rejected and removed!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
@@ -7782,12 +7910,14 @@ async function rejectSingleUnitRecord(regId) {
 async function approveStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
-    if (!confirm(`Approve ${studentUnits.length} unit(s)?`)) return;
+    if (!confirm(`Approve ${studentUnits.length} unit(s) for this student?`)) return;
     
     try {
         const ids = studentUnits.map(r => r.id);
-        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', ids);
-        showFeedback(`Approved ${studentUnits.length} unit(s)!`, 'success');
+        await sb.from('student_unit_registrations')
+            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
+            .in('id', ids);
+        showFeedback(`✅ Approved ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
@@ -7799,12 +7929,12 @@ async function approveStudentAllUnits(studentId) {
 async function rejectStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
-    if (!confirm(`Reject ${studentUnits.length} unit(s)?`)) return;
+    if (!confirm(`Reject ${studentUnits.length} unit(s) for this student?`)) return;
     
     try {
         const ids = studentUnits.map(r => r.id);
         await sb.from('student_unit_registrations').delete().in('id', ids);
-        showFeedback(`Rejected ${studentUnits.length} unit(s)!`, 'success');
+        showFeedback(`❌ Rejected ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
@@ -7818,12 +7948,14 @@ async function bulkApproveSelectedUnits() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('No units selected', 'warning'); return; }
+    if (selectedIds.length === 0) { showFeedback('⚠️ No units selected', 'warning'); return; }
     if (!confirm(`Approve ${selectedIds.length} unit(s)?`)) return;
     
     try {
-        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', selectedIds);
-        showFeedback(`Approved ${selectedIds.length} unit(s)!`, 'success');
+        await sb.from('student_unit_registrations')
+            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
+            .in('id', selectedIds);
+        showFeedback(`✅ Approved ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
@@ -7838,12 +7970,12 @@ async function bulkRejectSelectedUnits() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('No units selected', 'warning'); return; }
+    if (selectedIds.length === 0) { showFeedback('⚠️ No units selected', 'warning'); return; }
     if (!confirm(`Reject ${selectedIds.length} unit(s)?`)) return;
     
     try {
         await sb.from('student_unit_registrations').delete().in('id', selectedIds);
-        showFeedback(`Rejected ${selectedIds.length} unit(s)!`, 'success');
+        showFeedback(`❌ Rejected ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
@@ -7852,14 +7984,19 @@ async function bulkRejectSelectedUnits() {
 }
 
 // =====================================================
-// APPROVED REGISTRATIONS
+// APPROVED REGISTRATIONS - ENHANCED
 // =====================================================
 
 async function loadApprovedRegistrations() {
     const tbody = document.getElementById('approved-registrations-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...</td></tr>';
+    tbody.innerHTML = `
+        <tr><td colspan="10" style="padding: 40px; text-align: center;">
+            <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 10px; color: #6b7280;">Loading approved registrations...</p>
+        </td></tr>
+    `;
     
     try {
         const { data: registrations, error } = await sb
@@ -7873,7 +8010,12 @@ async function loadApprovedRegistrations() {
         approvedRegistrationsData = registrations || [];
         
         if (approvedRegistrationsData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10">No approved registrations.</td></tr>';
+            tbody.innerHTML = `
+                <tr><td colspan="10" style="padding: 40px; text-align: center; color: #6b7280;">
+                    <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                    No approved registrations found.
+                </td></tr>
+            `;
             return;
         }
         
@@ -7896,18 +8038,25 @@ async function loadApprovedRegistrations() {
             const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
             
             html += `
-                <tr>
-                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"></td>
-                    <td>${escapeHtml(studentName)}</td>
-                    <td>${reg.student_id?.substring(0, 8)}...</td>
-                    <td><strong>${escapeHtml(reg.unit_code)}</strong></td>
+                <tr style="border-bottom: 1px solid #e5e7eb;"
+                    onmouseover="this.style.background='#f8fafc'"
+                    onmouseout="this.style.background='transparent'">
+                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()" style="cursor: pointer;"></td>
+                    <td><strong style="color: #1e3a5f;">${escapeHtml(studentName)}</strong></td>
+                    <td style="font-family: monospace; font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8)}...</td>
+                    <td><span style="background: #dbeafe; color: #2563eb; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${escapeHtml(reg.unit_code)}</span></td>
                     <td>${escapeHtml(reg.unit_name)}</td>
-                    <td>${escapeHtml(reg.block)}</td>
-                    <td>${escapeHtml(reg.reg_type || 'Normal')}</td>
-                    <td>${approvalDate}</td>
-                    <td>System</td>
+                    <td><span style="background: #f3f4f6; color: #4b5563; padding: 2px 10px; border-radius: 12px; font-size: 12px;">${escapeHtml(reg.block)}</span></td>
+                    <td><span style="background: #f3e8ff; color: #7c3aed; padding: 2px 10px; border-radius: 12px; font-size: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td style="font-size: 12px;">${approvalDate}</td>
+                    <td style="font-size: 12px; color: #6b7280;">System</td>
                     <td>
-                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;">De-approve</button>
+                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                            onmouseover="this.style.background='#d97706'"
+                            onmouseout="this.style.background='#f59e0b'">
+                            <i class="fas fa-undo"></i> De-approve
+                        </button>
                     </td>
                 </tr>
             `;
@@ -7917,7 +8066,7 @@ async function loadApprovedRegistrations() {
         
     } catch (error) {
         console.error('Error loading approved registrations:', error);
-        tbody.innerHTML = `<tr><td colspan="10">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="color: red;">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -7928,7 +8077,7 @@ function updateApprovedSelectedCount() {
     
     const bulkBtn = document.getElementById('bulkDeapproveBtn');
     if (bulkBtn) {
-        bulkBtn.style.display = count > 0 ? 'flex' : 'none';
+        bulkBtn.style.display = count > 0 ? 'inline-block' : 'none';
     }
 }
 
@@ -7967,17 +8116,19 @@ function exportApprovedRegistrations() {
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'approved_registrations.csv';
+    link.download = `approved_registrations_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    showFeedback('Exported!', 'success');
+    showFeedback('📥 Exported successfully!', 'success');
 }
 
 async function deapproveSingleRegistration(regId, unitCode, studentName) {
-    if (!confirm(`De-approve ${unitCode} for ${studentName}?`)) return;
+    if (!confirm(`De-approve ${unitCode} for ${studentName}? This will move it back to pending.`)) return;
     try {
-        await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).eq('id', regId);
-        showFeedback(`Unit ${unitCode} moved to pending!`, 'success');
+        await sb.from('student_unit_registrations')
+            .update({ status: 'pending', approved_by: null, approval_date: null })
+            .eq('id', regId);
+        showFeedback(`🔄 Unit ${unitCode} moved to pending!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
         await loadUnitPendingRegistrations();
@@ -7992,12 +8143,14 @@ async function bulkDeapproveSelected() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('No registrations selected', 'warning'); return; }
+    if (selectedIds.length === 0) { showFeedback('⚠️ No registrations selected', 'warning'); return; }
     if (!confirm(`De-approve ${selectedIds.length} registration(s)?`)) return;
     
     try {
-        await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).in('id', selectedIds);
-        showFeedback(`${selectedIds.length} registration(s) de-approved!`, 'success');
+        await sb.from('student_unit_registrations')
+            .update({ status: 'pending', approved_by: null, approval_date: null })
+            .in('id', selectedIds);
+        showFeedback(`🔄 ${selectedIds.length} registration(s) de-approved!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
         await loadUnitPendingRegistrations();
@@ -8067,9 +8220,54 @@ window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
 window.toggleUnitCourses = toggleUnitCourses;
 window.updateUnitBlockOptions = updateUnitBlockOptions;
 window.initUnitForm = initUnitForm;
+window.getBlockColor = getBlockColor;
+window.getBlockEmoji = getBlockEmoji;
+window.getProgramName = getProgramName;
 
 console.log('✅ Unit Registration Management module loaded');
 
+// =====================================================
+// ADDITIONAL STYLING FOR TABLES
+// =====================================================
+
+// Add this CSS dynamically
+const unitStyles = document.createElement('style');
+unitStyles.textContent = `
+    .unit-card {
+        transition: all 0.2s ease;
+    }
+    .student-group-card {
+        transition: all 0.2s ease;
+    }
+    .unit-item {
+        transition: all 0.2s ease;
+    }
+    .unit-item:hover {
+        background: #f1f5f9 !important;
+    }
+    .btn-sm {
+        transition: all 0.2s ease;
+    }
+    .btn-sm:hover {
+        transform: scale(1.05);
+    }
+    .block-btn {
+        transition: all 0.2s ease;
+    }
+    .block-btn:hover {
+        transform: translateY(-1px);
+    }
+    .card {
+        transition: all 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+`;
+document.head.appendChild(unitStyles);
+
+console.log('✅ Enhanced Unit Registration styles loaded');
 // ============ FEE ACCOUNTS MANAGEMENT - CORRECTED VERSION ============
 
 // Load all student accounts with balances
