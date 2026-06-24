@@ -5863,40 +5863,179 @@ async function handleAccountDeactivation(e) {
 }
 
 /*******************************************************
- * 17. BACKUP & RESTORE
+ * 17. BACKUP & RESTORE - UPDATED WITH REAL DATA
  *******************************************************/
+
 async function loadBackupHistory() {
     const tbody = $('backup-history-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="4">Loading backup history...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading backup history...</td></tr>';
     
-    // Placeholder for actual backup history
-    const history = [
-        { name: 'nchsm_db_20251020_0100.sql', date: '2025-10-20 01:00:00', size: '125 MB' },
-        { name: 'nchsm_db_20251019_0100.sql', date: '2025-10-19 01:00:00', size: '124 MB' },
-        { name: 'nchsm_db_20251018_0100.sql', date: '2025-10-18 01:00:00', size: '123 MB' },
-    ];
-
-    tbody.innerHTML = '';
-    history.forEach(h => {
-        tbody.innerHTML += `<tr>
-            <td>${h.name}</td>
-            <td>${h.date}</td>
-            <td>${h.size}</td>
-            <td>
-                <button class="btn-action" onclick="showFeedback('Download feature is a placeholder. File: ${h.name}')">Download</button>
-                <button class="btn btn-delete" onclick="showFeedback('Delete feature is a placeholder. File: ${h.name}')">Delete</button>
-            </td>
-        </tr>`;
-    });
+    try {
+        // Try to fetch real backup history from your backups table
+        const { data: backups, error } = await sb
+            .from('backup_history')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+        
+        if (error || !backups || backups.length === 0) {
+            // If no real data, show message with link to Supabase
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4">
+                        <div style="text-align: center; padding: 30px; color: #6b7280;">
+                            <i class="fas fa-database" style="font-size: 40px; display: block; margin-bottom: 10px; color: #4C1D95;"></i>
+                            <p style="font-weight: 500; color: #1e293b;">No backup history found</p>
+                            <p style="font-size: 13px;">Your database is automatically backed up daily by Supabase.</p>
+                            <a href="https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups" 
+                               target="_blank" 
+                               style="display: inline-block; margin-top: 10px; color: white; background: #4C1D95; padding: 8px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+                                <i class="fas fa-external-link-alt"></i> View Backups on Supabase
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Display real backup data
+        tbody.innerHTML = '';
+        backups.forEach(b => {
+            const fileName = b.file_name || 'Unknown';
+            const fileSize = b.file_size || 'N/A';
+            const createdDate = b.created_at ? new Date(b.created_at).toLocaleString() : 'N/A';
+            const status = b.status || 'Completed';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${escapeHtml(fileName)}</strong></td>
+                    <td>${createdDate}</td>
+                    <td>${escapeHtml(fileSize)}</td>
+                    <td>
+                        <button class="btn-action" onclick="downloadBackup('${b.id}')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button class="btn btn-delete" onclick="deleteBackup('${b.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+    } catch (error) {
+        console.error('Error loading backup history:', error);
+        tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Error loading backups: ${error.message}</td></tr>`;
+    }
 }
 
+// ============================================
+// TRIGGER BACKUP - UPDATED
+// ============================================
 function triggerBackup() {
-    logAudit('DB_BACKUP', 'Initiated database backup process.', null, 'SUCCESS');
-    showFeedback('Backup initiated! Check your Supabase Console for status.', 'success');
+    // Show a helpful message
+    const message = '📦 To create a backup:\n\n' +
+        '1. Go to Supabase Dashboard\n' +
+        '2. Click on "Database" → "Backups"\n' +
+        '3. Click "Generate Backup"\n\n' +
+        'Or visit: https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups';
+    
+    showFeedback(message, 'info');
+    
+    // Log the action
+    logAudit('DB_BACKUP', 'User clicked generate backup button.', null, 'INFO');
 }
 
+// ============================================
+// DOWNLOAD BACKUP - REAL IMPLEMENTATION
+// ============================================
+async function downloadBackup(backupId) {
+    try {
+        showFeedback('⏳ Preparing download...', 'info');
+        
+        // Get the backup record
+        const { data: backup, error } = await sb
+            .from('backup_history')
+            .select('file_path, file_name')
+            .eq('id', backupId)
+            .single();
+        
+        if (error || !backup) {
+            throw new Error('Backup not found');
+        }
+        
+        // If there's a file path, download it from storage
+        if (backup.file_path) {
+            const { data, error: downloadError } = await sb.storage
+                .from('backups')
+                .download(backup.file_path);
+            
+            if (downloadError) throw downloadError;
+            
+            // Create download link
+            const blob = new Blob([data]);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = backup.file_name || 'backup.sql';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showFeedback(`✅ Downloaded: ${backup.file_name}`, 'success');
+        } else {
+            // No file stored, show Supabase link
+            showFeedback('⚠️ No file stored. Visit Supabase Dashboard to download backups.', 'warning');
+            window.open('https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups', '_blank');
+        }
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        showFeedback(`❌ Download failed: ${error.message}`, 'error');
+    }
+}
+
+// ============================================
+// DELETE BACKUP
+// ============================================
+async function deleteBackup(backupId) {
+    if (!confirm('⚠️ Delete this backup record?')) return;
+    
+    try {
+        // Get the backup record first
+        const { data: backup, error: fetchError } = await sb
+            .from('backup_history')
+            .select('file_path')
+            .eq('id', backupId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Delete from storage if there's a file
+        if (backup?.file_path) {
+            await sb.storage
+                .from('backups')
+                .remove([backup.file_path]);
+        }
+        
+        // Delete the record
+        const { error: deleteError } = await sb
+            .from('backup_history')
+            .delete()
+            .eq('id', backupId);
+        
+        if (deleteError) throw deleteError;
+        
+        showFeedback('✅ Backup record deleted!', 'success');
+        loadBackupHistory(); // Refresh the list
+        
+    } catch (error) {
+        console.error('Delete error:', error);
+        showFeedback(`❌ Delete failed: ${error.message}`, 'error');
+    }
+}
 /*******************************************************
  * 18. CALENDAR & TIMETABLE MANAGEMENT (COMPLETE)
  * Supports: Excel, CSV, Word, PDF uploads
