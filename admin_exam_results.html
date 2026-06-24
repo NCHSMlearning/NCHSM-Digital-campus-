@@ -963,10 +963,11 @@
             <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
             <h2>NCHSM <span>Exam</span></h2>
             <small>Proctoring Center</small>
-        </div>
+       </div>
         <ul class="sidebar-menu">
             <li><a class="active" data-tab="students" onclick="switchTab('students')"><i class="fas fa-graduation-cap"></i> Students Results</a></li>
             <li><a data-tab="allStudents" onclick="switchTab('allStudents')"><i class="fas fa-users"></i> All Students</a></li>
+            <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
             <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
             <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
         </ul>
@@ -1070,6 +1071,50 @@
     </table>
     <div class="pagination" id="allStudentsPagination"></div>
 </div>
+             <!-- ✅ LIVE STUDENTS TABLE - INSERT THIS HERE -->
+    <div class="table-container" id="liveStudentsTableContainer" style="display:none;">
+        <div class="table-header">
+            <h2><i class="fas fa-eye"></i> 🟢 Students Currently Taking Exams</h2>
+            <div class="table-actions">
+                <button class="btn btn-success" onclick="refreshLiveStudents()">
+                    <i class="fas fa-sync"></i> Refresh
+                </button>
+                <button class="btn btn-warning" onclick="toggleAutoRefresh()">
+                    <i class="fas fa-play" id="autoRefreshIcon"></i> 
+                    <span id="autoRefreshText">Auto-Refresh: ON</span>
+                </button>
+                <button class="btn btn-secondary" onclick="exportLiveStudents()">
+                    <i class="fas fa-file-excel"></i> Export
+                </button>
+            </div>
+        </div>
+        <div id="liveStudentsLoading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Scanning for active students...
+        </div>
+        <div id="liveStudentsStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5;">
+            <span id="liveCountDisplay">0</span> students currently taking exams
+        </div>
+        <table id="liveStudentsTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>🟢 Status</th>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Exam</th>
+                    <th>Progress</th>
+                    <th>Time Remaining</th>
+                    <th>Camera</th>
+                    <th>Last Activity</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="liveStudentsBody"></tbody>
+        </table>
+        <div class="pagination" id="liveStudentsPagination"></div>
+    </div>
+
+            
+            
             <!-- Exams Table -->
             <div class="table-container" id="examsTableContainer" style="display:none;">
                 <div class="table-header">
@@ -3537,7 +3582,466 @@ window.forceSubmitStudent = async function(studentId, examId) {
         alert('❌ Error: ' + error.message);
     }
 };
+// ============================================
+// 🟢 LIVE STUDENTS - REAL-TIME MONITORING
+// ============================================
 
+let liveStudentsData = [];
+let autoRefreshInterval = null;
+let autoRefreshEnabled = true;
+
+// Load live students
+window.loadLiveStudents = async function() {
+    const loadingDiv = document.getElementById('liveStudentsLoading');
+    const table = document.getElementById('liveStudentsTable');
+    const statsDiv = document.getElementById('liveStudentsStats');
+    
+    if (!loadingDiv) return;
+    
+    loadingDiv.style.display = 'block';
+    table.style.display = 'none';
+    statsDiv.style.display = 'none';
+    
+    try {
+        // Get students currently in exams (active within last 5 minutes)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        
+        // Get recent proctoring logs (exam_started events)
+        const { data: activeLogs, error: logsError } = await sb
+            .from('exam_proctoring_logs')
+            .select('student_id, exam_id, timestamp, event_type, details')
+            .gte('timestamp', fiveMinutesAgo)
+            .order('timestamp', { ascending: false });
+        
+        if (logsError) throw logsError;
+        
+        // Get unique student-exam pairs
+        const activePairs = new Map();
+        activeLogs?.forEach(log => {
+            const key = `${log.student_id}_${log.exam_id}`;
+            if (!activePairs.has(key) || new Date(log.timestamp) > new Date(activePairs.get(key).timestamp)) {
+                activePairs.set(key, log);
+            }
+        });
+        
+        if (activePairs.size === 0) {
+            loadingDiv.innerHTML = '🟢 No students currently taking exams';
+            loadingDiv.style.color = '#38A169';
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            statsDiv.style.display = 'none';
+            document.getElementById('liveBadge').textContent = '0';
+            return;
+        }
+        
+        // Get student profiles
+        const studentIds = [...activePairs.values()].map(p => p.student_id).filter(id => id);
+        const { data: profiles } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, email, program, block')
+            .in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
+        // Get exam details
+        const examIds = [...activePairs.values()].map(p => p.exam_id).filter(id => id);
+        const { data: exams } = await sb
+            .from('exams')
+            .select('id, exam_name, duration_minutes, total_marks')
+            .in('id', examIds);
+        const examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
+        
+        // Get current progress for each student
+        const progressData = [];
+        for (const [key, log] of activePairs) {
+            const student = profileMap[log.student_id];
+            const exam = examMap[log.exam_id];
+            
+            if (!student || !exam) continue;
+            
+            // Get answers for this student-exam
+            const { data: answers } = await sb
+                .from('exam_grades')
+                .select('id, question_id, marks, selected_answer')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .neq('question_id', '00000000-0000-0000-0000-000000000000');
+            
+            // Get total questions for this exam
+            const { data: questions } = await sb
+                .from('exam_questions')
+                .select('id')
+                .eq('exam_id', log.exam_id);
+            
+            const answeredCount = answers?.length || 0;
+            const totalQuestions = questions?.length || 0;
+            const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+            
+            // Get latest camera status
+            const { data: cameraLogs } = await sb
+                .from('exam_proctoring_logs')
+                .select('event_type, timestamp')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .in('event_type', ['face_detected', 'face_missing', 'multiple_faces_detected'])
+                .order('timestamp', { ascending: false })
+                .limit(1);
+            
+            const cameraStatus = cameraLogs?.[0]?.event_type || 'unknown';
+            const cameraIcon = cameraStatus === 'face_detected' ? '🟢' : 
+                              cameraStatus === 'face_missing' ? '🔴' : 
+                              cameraStatus === 'multiple_faces_detected' ? '🚨' : '⚪';
+            
+            // Calculate time remaining
+            const startedAt = new Date(log.timestamp);
+            const durationMinutes = exam?.duration_minutes || 30;
+            const endTime = new Date(startedAt.getTime() + durationMinutes * 60000);
+            const now = new Date();
+            const timeLeftMs = endTime - now;
+            
+            let timeDisplay = '--';
+            let statusClass = 'status-active';
+            
+            if (timeLeftMs > 0) {
+                const minutes = Math.floor(timeLeftMs / 60000);
+                const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+                timeDisplay = `${minutes}m ${seconds}s`;
+                statusClass = minutes < 5 ? 'status-critical' : 'status-active';
+            } else {
+                timeDisplay = '⏰ Time Up';
+                statusClass = 'status-fail';
+            }
+            
+            // Check for alerts
+            const { data: alerts } = await sb
+                .from('exam_proctoring_logs')
+                .select('event_type')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .in('event_type', ['multiple_faces_detected', 'tab_switched', 'fullscreen_exit_attempt'])
+                .gte('timestamp', new Date(Date.now() - 60000).toISOString());
+            
+            const alertCount = alerts?.length || 0;
+            
+            progressData.push({
+                key: key,
+                student: student,
+                exam: exam,
+                log: log,
+                answeredCount: answeredCount,
+                totalQuestions: totalQuestions,
+                progress: progress,
+                timeDisplay: timeDisplay,
+                statusClass: statusClass,
+                cameraIcon: cameraIcon,
+                cameraStatus: cameraStatus,
+                alertCount: alertCount,
+                lastActivity: log.timestamp,
+                startedAt: startedAt
+            });
+        }
+        
+        // Sort by time remaining (ascending)
+        progressData.sort((a, b) => {
+            const timeA = a.log.timestamp;
+            const timeB = b.log.timestamp;
+            return new Date(timeA) - new Date(timeB);
+        });
+        
+        liveStudentsData = progressData;
+        
+        // Update badge count
+        document.getElementById('liveBadge').textContent = progressData.length;
+        
+        displayLiveStudents();
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+        statsDiv.style.display = 'block';
+        document.getElementById('liveCountDisplay').textContent = progressData.length;
+        
+    } catch (error) {
+        console.error('Error loading live students:', error);
+        loadingDiv.innerHTML = '❌ Error loading live students: ' + error.message;
+        loadingDiv.style.color = '#DC2626';
+        loadingDiv.style.display = 'block';
+    }
+};
+
+// Display live students
+function displayLiveStudents() {
+    const start = (currentPage.liveStudents - 1) * itemsPerPage;
+    const page = liveStudentsData.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('liveStudentsBody');
+    
+    if (!tbody) return;
+    
+    if (!page || page.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;">🟢 No active students</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = page.map(data => {
+        const student = data.student;
+        const exam = data.exam;
+        const log = data.log;
+        
+        // Check if student is still active (within last 5 minutes)
+        const lastActivity = new Date(log.timestamp);
+        const now = new Date();
+        const inactiveMinutes = Math.floor((now - lastActivity) / 60000);
+        const isActive = inactiveMinutes < 5;
+        
+        const statusIcon = isActive ? '🟢' : '🟡';
+        const statusText = isActive ? 'Active' : `Inactive (${inactiveMinutes}m ago)`;
+        
+        // Progress bar
+        const progressBar = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="flex:1; background:#E2E8F0; border-radius:10px; height:8px; overflow:hidden; width:80px;">
+                    <div style="width:${data.progress}%; height:100%; background:${data.progress >= 70 ? '#38A169' : data.progress >= 40 ? '#F59E0B' : '#DC2626'}; transition:width 1s;"></div>
+                </div>
+                <span style="font-size:0.7rem; font-weight:600; min-width:40px;">${data.progress}%</span>
+            </div>
+        `;
+        
+        // Alert indicator
+        const alertIcon = data.alertCount > 0 ? 
+            `<span style="color:#DC2626; font-weight:700; animation:pulseRed 1s infinite;">🚨 ${data.alertCount}</span>` : 
+            '<span style="color:#38A169;">✅</span>';
+        
+        // Action buttons
+        const actions = `
+            <button class="action-btn btn-view" onclick="viewStudentProgress('${student.user_id}', '${student.full_name.replace(/'/g, "\\'")}', ${exam.id})" 
+                    style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                <i class="fas fa-chart-line"></i> Progress
+            </button>
+            <button class="action-btn btn-warning" onclick="openTimerModal('${student.user_id}', '${student.full_name.replace(/'/g, "\\'")}', ${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')" 
+                    style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                <i class="fas fa-clock"></i> Timer
+            </button>
+            <button class="action-btn btn-danger" onclick="forceSubmitStudent('${student.user_id}', ${exam.id})" 
+                    style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                <i class="fas fa-paper-plane"></i> Submit
+            </button>
+        `;
+        
+        return `<tr style="${!isActive ? 'opacity:0.7;' : ''}">
+            <td style="padding:10px 12px;">
+                <span style="font-weight:600;">${statusIcon}</span>
+                <div style="font-size:0.65rem; color:#64748B;">${statusText}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <span class="student-id-badge">${student.student_id || 'N/A'}</span>
+            </td>
+            <td style="padding:10px 12px;">
+                <strong>${student.full_name}</strong>
+                <div style="font-size:0.7rem; color:#64748B;">${student.program || ''}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <strong>${exam.exam_name}</strong>
+                <div style="font-size:0.65rem; color:#64748B;">${data.answeredCount}/${data.totalQuestions} answered</div>
+            </td>
+            <td style="padding:10px 12px;">${progressBar}</td>
+            <td style="padding:10px 12px;">
+                <span class="${data.statusClass}" style="font-weight:600; font-family:monospace; padding:4px 8px; border-radius:6px;">
+                    ${data.timeDisplay}
+                </span>
+            </td>
+            <td style="padding:10px 12px; text-align:center; font-size:1.2rem;">
+                ${data.cameraIcon}
+                <div style="font-size:0.55rem; color:#64748B;">${data.cameraStatus}</div>
+            </td>
+            <td style="padding:10px 12px; font-size:0.7rem; color:#64748B;">
+                ${formatKenyaTime(data.lastActivity)}
+                <div style="font-size:0.6rem;">${alertIcon}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">${actions}</div>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    renderPagination('liveStudents', liveStudentsData.length);
+}
+
+// Refresh live students
+window.refreshLiveStudents = function() {
+    loadLiveStudents();
+};
+
+// Toggle auto-refresh
+window.toggleAutoRefresh = function() {
+    autoRefreshEnabled = !autoRefreshEnabled;
+    const icon = document.getElementById('autoRefreshIcon');
+    const text = document.getElementById('autoRefreshText');
+    
+    if (autoRefreshEnabled) {
+        icon.className = 'fas fa-play';
+        text.textContent = 'Auto-Refresh: ON';
+        startAutoRefresh();
+    } else {
+        icon.className = 'fas fa-pause';
+        text.textContent = 'Auto-Refresh: OFF';
+        stopAutoRefresh();
+    }
+};
+
+// Start auto-refresh
+function startAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(() => {
+        if (autoRefreshEnabled && currentTab === 'liveStudents') {
+            loadLiveStudents();
+        }
+    }, 10000); // Refresh every 10 seconds
+}
+
+// Stop auto-refresh
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
+// Export live students
+window.exportLiveStudents = function() {
+    if (!liveStudentsData || liveStudentsData.length === 0) {
+        alert('No live students to export!');
+        return;
+    }
+    
+    const exportData = liveStudentsData.map(data => ({
+        'Student ID': data.student.student_id || 'N/A',
+        'Student Name': data.student.full_name,
+        'Email': data.student.email || '',
+        'Program': data.student.program || '',
+        'Exam': data.exam.exam_name,
+        'Progress': `${data.progress}% (${data.answeredCount}/${data.totalQuestions})`,
+        'Time Remaining': data.timeDisplay,
+        'Camera Status': data.cameraStatus,
+        'Alerts': data.alertCount,
+        'Last Activity': formatKenyaTime(data.lastActivity)
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Live Students');
+    XLSX.writeFile(wb, `Live_Students_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+// ============================================
+// ⏱️ FORCE SUBMIT STUDENT
+// ============================================
+window.forceSubmitStudent = async function(studentId, examId) {
+    if (!confirm(`⚠️ Force submit this student's exam?`)) return;
+    
+    try {
+        // Get or create grade record
+        const { data: existing } = await sb
+            .from('exam_grades')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .maybeSingle();
+        
+        if (existing) {
+            await sb
+                .from('exam_grades')
+                .update({
+                    result_status: 'PENDING_REVIEW',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existing.id);
+        } else {
+            await sb
+                .from('exam_grades')
+                .insert({
+                    student_id: studentId,
+                    exam_id: parseInt(examId),
+                    question_id: '00000000-0000-0000-0000-000000000000',
+                    result_status: 'PENDING_REVIEW',
+                    marks: 0,
+                    total_score: 0,
+                    graded_at: new Date().toISOString()
+                });
+        }
+        
+        // Log the force submission
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            event_type: 'force_submitted',
+            details: 'Admin force submitted exam',
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+        alert('✅ Exam force submitted for review!');
+        loadLiveStudents();
+        loadStudentsWithResults();
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+// ============================================
+// 🔄 OVERRIDE SWITCH TAB FOR LIVE STUDENTS
+// ============================================
+
+// Save original switchTab function
+const originalSwitchTab = window.switchTab;
+
+// Override switchTab to handle live students
+window.switchTab = function(tab) {
+    // Call original first
+    originalSwitchTab(tab);
+    
+    // Show/hide live students table
+    const liveContainer = document.getElementById('liveStudentsTableContainer');
+    if (liveContainer) {
+        liveContainer.style.display = tab === 'liveStudents' ? 'block' : 'none';
+    }
+    
+    // Start/stop auto-refresh
+    if (tab === 'liveStudents') {
+        loadLiveStudents();
+        if (autoRefreshEnabled) startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+};
+
+// Initialize currentPage for live students
+if (!window.currentPage) window.currentPage = {};
+window.currentPage.liveStudents = 1;
+
+// ============================================
+// 🎯 ADD CSS FOR LIVE STUDENTS
+// ============================================
+
+// Add any additional styles if needed
+const liveStyles = document.createElement('style');
+liveStyles.textContent = `
+    .status-critical {
+        background: #FEE2E2;
+        color: #DC2626;
+        padding: 3px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        animation: pulseRed 1s infinite;
+        font-weight: 600;
+    }
+    .live-student-row {
+        transition: background 0.3s ease;
+    }
+    .live-student-row:hover {
+        background: #F1F5F9;
+    }
+`;
+document.head.appendChild(liveStyles);
+
+console.log('✅ Live Students module loaded successfully!');
 // ============================================
 // 🔄 REFRESH STUDENT PROGRESS
 // ============================================
@@ -3545,6 +4049,9 @@ window.refreshStudentProgress = function() {
     loadStudentsWithResults();
     alert('🔄 Data refreshed!');
 };
+
+
+            
             // ========== MAKE FUNCTIONS GLOBAL ==========
             window.getKenyaNow = getKenyaNow;
             window.getKenyaTime = getKenyaTime;
