@@ -917,96 +917,108 @@ class DashboardModule {
         }
     }
     
-    async loadLeaderboardData(period = 'all') {
-        const container = document.getElementById('leaderboard-container');
-        if (!container) return;
-        
-        container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-        
-        try {
-            let query = this.sb
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, block, program, last_login')
-                .eq('role', 'student');
-            
-            if (period === 'weekly') {
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                query = query.gte('last_login', weekAgo.toISOString());
-            } else if (period === 'monthly') {
-                const monthAgo = new Date();
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                query = query.gte('last_login', monthAgo.toISOString());
-            }
-            
-            const { data: students, error } = await query;
-            if (error) throw error;
-            
-            if (!students || students.length === 0) {
-                container.innerHTML = '<div class="empty-slim">No data yet</div>';
-                return;
-            }
-            
-            const scoredStudents = await Promise.all(students.map(async (student) => {
-                let loginPoints = (student.login_count || 0) * 10;
-                
-                const { data: attendance } = await this.sb
-                    .from('geo_attendance_logs')
-                    .select('is_verified')
-                    .eq('student_id', student.id);
-                
-                const verifiedCount = attendance?.filter(a => a.is_verified === true).length || 0;
-                const attendancePoints = verifiedCount * 10;
-                
-                let nurseIQPoints = 0;
-                const { data: progress } = await this.sb
-                    .from('user_progress')
-                    .select('progress_data')
-                    .eq('user_id', student.id)
-                    .maybeSingle();
-                
-                if (progress?.progress_data?.answers) {
-                    nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
-                }
-                
-                const { data: attempts } = await this.sb
-                    .from('nurseiq_attempts')
-                    .select('score, total_questions')
-                    .eq('student_id', student.id);
-                
-                if (attempts && attempts.length > 0) {
-                    let attemptPoints = 0;
-                    attempts.forEach(a => {
-                        attemptPoints += a.score || 0;
-                    });
-                    if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
-                }
-                
-                const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
-                return { ...student, loginPoints, attendancePoints, nurseIQPoints, totalPoints };
-            }));
-            
-            scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
-            const topStudents = scoredStudents.slice(0, 10);
-            
-            container.innerHTML = topStudents.map((student, index) => {
-                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
-                const name = student.full_name?.split(' ')[0] || 'Student';
-                return `
-                    <div class="leader-slim">
-                        <span class="rank">${rankIcon}</span>
-                        <span class="name">${this.escapeHtml(name)}</span>
-                        <span class="pts">${student.totalPoints} pts</span>
-                    </div>
-                `;
-            }).join('');
-            
-        } catch (error) {
-            console.error('Leaderboard error:', error);
-            container.innerHTML = '<div class="error-slim">Failed to load</div>';
-        }
-    }
+  async loadLeaderboardData(period = 'all') {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
     
+    container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    
+    try {
+        // Get students first (1 request)
+        let query = this.sb
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name, login_count, block, program, last_login')
+            .eq('role', 'student');
+        
+        if (period === 'weekly') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            query = query.gte('last_login', weekAgo.toISOString());
+        } else if (period === 'monthly') {
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            query = query.gte('last_login', monthAgo.toISOString());
+        }
+        
+        const { data: students, error } = await query;
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            container.innerHTML = '<div class="empty-slim">No data yet</div>';
+            return;
+        }
+        
+        // ✅ BATCH ALL REQUESTS - ONLY 3 TOTAL REQUESTS!
+        const studentIds = students.map(s => s.id);
+        
+        // Batch attendance (1 request)
+        const { data: allAttendance } = await this.sb
+            .from('geo_attendance_logs')
+            .select('student_id, is_verified')
+            .in('student_id', studentIds);
+        
+        // Batch user_progress (1 request)
+        const { data: allProgress } = await this.sb
+            .from('user_progress')
+            .select('user_id, progress_data')
+            .in('user_id', studentIds);
+        
+        // Batch nurseiq_attempts (1 request)
+        const { data: allAttempts } = await this.sb
+            .from('nurseiq_attempts')
+            .select('student_id, score, total_questions')
+            .in('student_id', studentIds);
+        
+        // Process in memory (no more database calls!)
+        const scoredStudents = students.map(student => {
+            const loginPoints = (student.login_count || 0) * 10;
+            
+            // Filter attendance for this student
+            const studentAttendance = allAttendance?.filter(a => a.student_id === student.id) || [];
+            const verifiedCount = studentAttendance.filter(a => a.is_verified === true).length || 0;
+            const attendancePoints = verifiedCount * 10;
+            
+            // Get progress for this student
+            const progress = allProgress?.find(p => p.user_id === student.id);
+            let nurseIQPoints = 0;
+            if (progress?.progress_data?.answers) {
+                nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
+            }
+            
+            // Get attempts for this student
+            const attempts = allAttempts?.filter(a => a.student_id === student.id) || [];
+            let attemptPoints = 0;
+            attempts.forEach(a => {
+                attemptPoints += a.score || 0;
+            });
+            if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
+            
+            const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
+            return { ...student, loginPoints, attendancePoints, nurseIQPoints, totalPoints };
+        });
+        
+        scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
+        const topStudents = scoredStudents.slice(0, 10);
+        
+        container.innerHTML = topStudents.map((student, index) => {
+            const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
+            const name = student.full_name?.split(' ')[0] || 'Student';
+            return `
+                <div class="leader-slim">
+                    <span class="rank">${rankIcon}</span>
+                    <span class="name">${this.escapeHtml(name)}</span>
+                    <span class="pts">${student.totalPoints} pts</span>
+                </div>
+            `;
+        }).join('');
+        
+        console.log(`✅ Leaderboard loaded with ${topStudents.length} students using only 3 requests!`);
+        
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        container.innerHTML = '<div class="error-slim">Failed to load</div>';
+    }
+}
     async loadQuickNextClass() {
         console.log('📅 Loading next UNFINISHED class...');
         
