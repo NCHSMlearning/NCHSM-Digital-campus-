@@ -1833,57 +1833,65 @@ function updateAdminTimers() {
             }
 
             window.viewAlertDetails = async function(logId) {
-                let log = proctoringLogs ? proctoringLogs.find(l => String(l.id) === String(logId)) : null;
-                if (!log) {
-                    const { data, error } = await sb.from('exam_proctoring_logs').select('*').eq('id', logId).single();
-                    if (error) { alert('Alert not found'); return; }
-                    log = data;
-                    const { data: student } = await sb.from('consolidated_user_profiles_table').select(
-                        'full_name, student_id, program, email').eq('user_id', log.student_id).single();
-                    log.student_profile = student || {};
-                }
-                const student = log.student_profile || {};
-                const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
-                const snapshotUrl = log.snapshot_url;
-                const snapshotHtml = snapshotUrl ?
-                    `<div style="margin-top:15px;border-top:1px solid #e5e7eb;padding-top:15px;"><h4>📸 Camera Snapshot</h4><div style="background:#000;border-radius:8px;overflow:hidden;max-width:100%;"><img src="${snapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'"></div><a href="${snapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a></div>` :
-                    '<p style="color:#6b7280;margin-top:10px;">📷 No camera snapshot captured</p>';
-                let bgColor = '#F0FDF4';
-                if (log.severity === 'critical') bgColor = '#FEE2E2';
-                else if (log.severity === 'warning') bgColor = '#FEF3C7';
-                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
-                document.getElementById('modalContent').innerHTML =
-                    `<div style="background:${bgColor};padding:20px;border-radius:16px;"><p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p><p><strong>📝 Exam:</strong> ${examName}</p><p><strong>⏰ Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p><p><strong>📹 Alert Type:</strong> ${log.event_type}</p><p><strong>📋 Details:</strong> ${log.details || 'No details'}</p><p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p><p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p><p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p></div>${snapshotHtml}`;
-                document.getElementById('studentModal').style.display = 'flex';
-            };
-
+    let log = proctoringLogs ? proctoringLogs.find(l => String(l.id) === String(logId)) : null;
+    if (!log) {
+        const { data, error } = await sb.from('exam_proctoring_logs').select('*').eq('id', logId).single();
+        if (error) { alert('Alert not found'); return; }
+        log = data;
+        const { data: student } = await sb.from('consolidated_user_profiles_table').select(
+            'full_name, student_id, program, email').eq('user_id', log.student_id).single();
+        log.student_profile = student || {};
+    }
+    const student = log.student_profile || {};
+    const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
+    const snapshotUrl = log.snapshot_url;
+    const snapshotHtml = snapshotUrl ?
+        `<div style="margin-top:15px;border-top:1px solid #e5e7eb;padding-top:15px;"><h4>📸 Camera Snapshot</h4><div style="background:#000;border-radius:8px;overflow:hidden;max-width:100%;"><img src="${snapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'"></div><a href="${snapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a></div>` :
+        '<p style="color:#6b7280;margin-top:10px;">📷 No camera snapshot captured</p>';
+    let bgColor = '#F0FDF4';
+    if (log.severity === 'critical') bgColor = '#FEE2E2';
+    else if (log.severity === 'warning') bgColor = '#FEF3C7';
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
+    document.getElementById('modalContent').innerHTML =
+        `<div style="background:${bgColor};padding:20px;border-radius:16px;"><p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p><p><strong>📝 Exam:</strong> ${examName}</p><p><strong>⏰ Time:</strong> ${formatKenyaTime(log.timestamp)}</p><p><strong>📹 Alert Type:</strong> ${log.event_type}</p><p><strong>📋 Details:</strong> ${log.details || 'No details'}</p><p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p><p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p><p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p></div>${snapshotHtml}`;
+    document.getElementById('studentModal').style.display = 'flex';
+};
             function displayProctoringLogs() {
-                const start = (currentPage.proctoring - 1) * itemsPerPage;
-                const page = proctoringLogs.slice(start, start + itemsPerPage);
-                const tbody = document.getElementById('proctoringBody');
-                if (!tbody) return;
-                if (page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; return; }
-                tbody.innerHTML = page.map(log => {
-                    const student = log.student_profile || {};
-                    const studentName = student.full_name || 'Unknown';
-                    const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-                    const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
-                    let severityClass = 'status-pending';
-                    let severityText = log.severity || 'info';
-                    if (severityText === 'critical') severityClass = 'status-critical';
-                    else if (severityText === 'warning') severityClass = 'status-warning';
-                    let alertIcon = '📹';
-                    if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
-                    else if (log.event_type === 'face_missing') alertIcon = '😞';
-                    else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
-                    const hasSnapshot = log.snapshot_url;
-                    const snapshotHtml = hasSnapshot ?
-                        `<a href="${log.snapshot_url}" target="_blank" style="padding:2px 8px;font-size:0.6rem;margin-left:5px;background:#10B981;color:white;border-radius:4px;text-decoration:none;" title="View Snapshot">📸</a>` :
-                        '';
-                    return `<tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}"><td style="padding:8px;font-size:0.75rem;">${new Date(log.timestamp).toLocaleString()}</td><td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td><td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${student.program || ''}</small></td><td style="padding:8px;">${examName}</td><td style="padding:8px;"><span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">${alertIcon} ${log.event_type}</span></td><td style="padding:8px;font-size:0.75rem;">${log.details || '-'}</td><td style="padding:8px;"><span class="${severityClass}">${severityText}</span></td><td style="padding:8px;"><button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" style="background:#4299E1;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;"><i class="fas fa-eye"></i> View</button>${snapshotHtml}</td></tr>`;
-                }).join('');
-                renderPagination('proctoring', proctoringLogs.length);
-            }
+    const start = (currentPage.proctoring - 1) * itemsPerPage;
+    const page = proctoringLogs.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('proctoringBody');
+    if (!tbody) return;
+    if (page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; return; }
+    tbody.innerHTML = page.map(log => {
+        const student = log.student_profile || {};
+        const studentName = student.full_name || 'Unknown';
+        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
+        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        let severityClass = 'status-pending';
+        let severityText = log.severity || 'info';
+        if (severityText === 'critical') severityClass = 'status-critical';
+        else if (severityText === 'warning') severityClass = 'status-warning';
+        let alertIcon = '📹';
+        if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
+        else if (log.event_type === 'face_missing') alertIcon = '😞';
+        else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
+        const hasSnapshot = log.snapshot_url;
+        const snapshotHtml = hasSnapshot ?
+            `<a href="${log.snapshot_url}" target="_blank" style="padding:2px 8px;font-size:0.6rem;margin-left:5px;background:#10B981;color:white;border-radius:4px;text-decoration:none;" title="View Snapshot">📸</a>` :
+            '';
+        return `<tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}">
+            <td style="padding:8px;font-size:0.75rem;">${formatKenyaTime(log.timestamp)}</td>
+            <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
+            <td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${student.program || ''}</small></td>
+            <td style="padding:8px;">${examName}</td>
+            <td style="padding:8px;"><span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">${alertIcon} ${log.event_type}</span></td>
+            <td style="padding:8px;font-size:0.75rem;">${log.details || '-'}</td>
+            <td style="padding:8px;"><span class="${severityClass}">${severityText}</span></td>
+            <td style="padding:8px;"><button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" style="background:#4299E1;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;"><i class="fas fa-eye"></i> View</button>${snapshotHtml}</td>
+        </tr>`;
+    }).join('');
+    renderPagination('proctoring', proctoringLogs.length);
+}
 
             async function setupRealtimeNotifications() {
                 const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read',
@@ -1902,22 +1910,28 @@ function updateAdminTimers() {
                 }).subscribe();
             }
 
-            async function loadNotifications() {
-                const { data: logs } = await sb.from('exam_proctoring_logs').select('*').eq('is_read', false).order(
-                    'timestamp', { ascending: false }).limit(20);
-                const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
-                const { data: profiles } = await sb.from('consolidated_user_profiles_table').select(
-                    'user_id, full_name, student_id').in('user_id', studentIds);
-                const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-                const container = document.getElementById('notificationList');
-                if (!logs || logs.length === 0) { container.innerHTML =
-                        '<div style="padding:20px;text-align:center;">No new alerts</div>'; return; }
-                container.innerHTML = logs.map(log =>
-                    `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead('${log.id}')"><div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div><div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div><div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div><div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div><button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead('${log.id}')">Mark read</button></div>`
-                ).join('');
-                document.getElementById('notificationCount').innerText = logs.length;
-                document.getElementById('sidebarAlertCount').innerText = logs.length;
-            }
+           async function loadNotifications() {
+    const { data: logs } = await sb.from('exam_proctoring_logs').select('*').eq('is_read', false).order(
+        'timestamp', { ascending: false }).limit(20);
+    const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
+    const { data: profiles } = await sb.from('consolidated_user_profiles_table').select(
+        'user_id, full_name, student_id').in('user_id', studentIds);
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    const container = document.getElementById('notificationList');
+    if (!logs || logs.length === 0) { container.innerHTML =
+            '<div style="padding:20px;text-align:center;">No new alerts</div>'; return; }
+    container.innerHTML = logs.map(log =>
+        `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead('${log.id}')">
+            <div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div>
+            <div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div>
+            <div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div>
+            <div class="notification-time">${formatKenyaTime(log.timestamp)}</div>
+            <button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead('${log.id}')">Mark read</button>
+        </div>`
+    ).join('');
+    document.getElementById('notificationCount').innerText = logs.length;
+    document.getElementById('sidebarAlertCount').innerText = logs.length;
+}
 
             window.markNotificationRead = async function(logId) {
                 await sb.from('exam_proctoring_logs').update({ is_read: true }).eq('id', logId);
@@ -3010,7 +3024,7 @@ window.saveEditedMarks = async function() {
             window.exportToExcel = function(type) {
                 let data = [];
                 if (type === 'students') data = studentsResults.map(r => {
-                    const totalMarks = r.exam_info?.total_marks || getExamTotalMarks(r.exam_info?.exam_type);
+                    const totalMarks = r.exam_info?.total_marks ||  getExamTotalMarks(r.exam_info?.exam_type);
                     const score = r.marks || 0;
                     const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
                     return { 'Student ID': r.student_profile?.student_id, 'Name': r.student_profile?.full_name,
@@ -3024,15 +3038,16 @@ window.saveEditedMarks = async function() {
                     return { 'Exam Name': e.exam_name, 'Type': e.exam_type, 'Total Marks': totalMarks,
                         'Duration': e.duration_minutes };
                 });
-                if (type === 'proctoring') data = proctoringLogs.map(l => ({ 'Time': new Date(l.timestamp)
-                        .toLocaleString(), 'Student': l.student_profile?.full_name, 'Alert': l.event_type,
-                        'Details': l.details }));
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Data');
-                XLSX.writeFile(wb, `${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
-            };
-
+                if (type === 'proctoring') data = proctoringLogs.map(l => ({ 
+    'Time': formatKenyaTime(l.timestamp), 
+    'Student': l.student_profile?.full_name, 
+    'Alert': l.event_type,
+    'Details': l.details 
+}));
+const ws = XLSX.utils.json_to_sheet(data);
+const wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, 'Data');
+XLSX.writeFile(wb, `${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
             window.printTable = function(type) {
                 const tableHtml = document.getElementById(type === 'students' ? 'studentsTable' : type ===
                     'allStudents' ? 'allStudentsTable' : type === 'exams' ? 'examsTable' : 'proctoringTable')
