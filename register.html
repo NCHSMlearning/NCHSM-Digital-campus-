@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
+        /* ... keep all your existing styles ... */
         * {
             margin: 0;
             padding: 0;
@@ -454,7 +455,6 @@
             color: #38A169;
         }
 
-        /* Email Status */
         #email-status {
             font-size: 0.7rem;
             font-weight: 600;
@@ -621,7 +621,6 @@
     <form id="register-form" enctype="multipart/form-data">
         <!-- STEP 1: PERSONAL INFORMATION -->
         <div class="form-section" data-section="1">
-            <!-- Role Selection -->
             <div class="form-group">
                 <label><i data-feather="user"></i> Register As</label>
                 <select id="role" name="role" required>
@@ -631,13 +630,11 @@
                 </select>
             </div>
 
-            <!-- Full Name -->
             <div class="form-group">
                 <label><i data-feather="user"></i> Full Name</label>
                 <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
             </div>
 
-            <!-- Email with Real-time Validation -->
             <div class="form-group">
                 <label><i data-feather="mail"></i> Email Address <span style="color: red;">*</span></label>
                 <input type="email" id="email" name="email" placeholder="Enter your email address" required>
@@ -645,7 +642,6 @@
                 <div class="help-text">We will check if this email is already registered</div>
             </div>
 
-            <!-- Phone -->
             <div class="two-columns">
                 <div class="form-group">
                     <label><i data-feather="phone"></i> Phone Number</label>
@@ -657,7 +653,6 @@
                 </div>
             </div>
 
-            <!-- Personal Info -->
             <div class="two-columns">
                 <div class="form-group">
                     <label><i data-feather="credit-card"></i> National ID / Passport No.</label>
@@ -684,7 +679,6 @@
                 </div>
             </div>
 
-            <!-- Profile Photo Upload -->
             <div class="form-group">
                 <label><i data-feather="camera"></i> Profile Photo</label>
                 <div class="photo-upload-container">
@@ -709,7 +703,6 @@
         <!-- STEP 2: ACADEMIC INFORMATION -->
         <div class="form-section" data-section="2" style="display: none;">
 
-            <!-- STUDENT FIELDS -->
             <div id="student-fields" class="role-fields">
                 <div class="form-group">
                     <label><i data-feather="id"></i> Admission / Student ID</label>
@@ -717,16 +710,13 @@
                     <div class="help-text">Your unique student identification number</div>
                 </div>
                 
-                <!-- Program Selection -->
                 <div class="form-group">
                     <label><i data-feather="book"></i> Program <span style="color: red;">*</span></label>
                     <select id="program_type" name="program_type" required>
                         <option value="">-- Select Your Program --</option>
-                        
                         <optgroup label="KRCHN Programs">
                             <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program">KRCHN Nursing</option>
                         </optgroup>
-                        
                         <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
                             <option value="DPOTT" data-desc="Diploma in Perioperative Theatre Technology - 2 years">Diploma in Perioperative Theatre Technology</option>
                             <option value="DCH" data-desc="Diploma in Community Health - 2 years">Diploma in Community Health</option>
@@ -738,7 +728,6 @@
                             <option value="DICT" data-desc="Diploma in ICT - 2 years">Diploma in ICT</option>
                             <option value="DME" data-desc="Diploma in Medical Engineering - 2 years">Diploma in Medical Engineering</option>
                         </optgroup>
-                        
                         <optgroup label="📜 TVET Certificate Programs (3-12 months)">
                             <option value="CPOTT" data-desc="Certificate in Perioperative Theatre Technology - 1 year">Certificate in Perioperative Theatre Technology</option>
                             <option value="CCH" data-desc="Certificate in Community Health - 1 year">Certificate in Community Health</option>
@@ -751,13 +740,11 @@
                             <option value="CHSS" data-desc="Certificate in Health Support Services - 1 year">Certificate in Health Support Services</option>
                             <option value="CICT" data-desc="Certificate in ICT - 1 year">Certificate in ICT</option>
                         </optgroup>
-                        
                         <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
                             <option value="ACH" data-desc="Artisan in Community Health - 6 months">Artisan in Community Health</option>
                             <option value="AAG" data-desc="Artisan in Agriculture - 6 months">Artisan in Agriculture</option>
                             <option value="ASW" data-desc="Artisan in Social Work - 6 months">Artisan in Social Work</option>
                         </optgroup>
-                        
                         <optgroup label="📊 Other TVET Programs">
                             <option value="CCA" data-desc="Certificate in Computer Applications - 3 months">Certificate in Computer Applications (CCA)</option>
                             <option value="PTE" data-desc="TVET/CDACC - Professional Teaching Experience">TVET/CDACC (PTE)</option>
@@ -768,9 +755,7 @@
                     </div>
                 </div>
                 
-                <!-- Intake Section -->
                 <div id="intake-container">
-                    <!-- KRCHN Intake -->
                     <div id="krchn-intake" class="intake-section">
                         <div class="form-group">
                             <label><i data-feather="calendar"></i> Intake Year</label>
@@ -787,7 +772,6 @@
                         </div>
                     </div>
 
-                    <!-- TVET Intake -->
                     <div id="tvet-intake" class="intake-section hidden">
                         <div class="form-group">
                             <label><i data-feather="calendar"></i> Intake</label>
@@ -813,7 +797,6 @@
                     </div>
                 </div>
 
-                <!-- Guardian -->
                 <div class="two-columns">
                     <div class="form-group">
                         <label><i data-feather="heart"></i> Parent/Guardian Name</label>
@@ -828,7 +811,6 @@
                 <div class="help-text">📌 Block will be set by Admin after approval</div>
             </div>
 
-            <!-- LECTURER FIELDS -->
             <div id="lecturer-fields" class="role-fields">
                 <div class="two-columns">
                     <div class="form-group">
@@ -850,7 +832,6 @@
                 </div>
             </div>
 
-            <!-- Navigation -->
             <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
                 <button type="button" onclick="goToStep(1)" style="flex: 1; background: #6b7280;">
                     ← Back
@@ -864,7 +845,6 @@
         <!-- STEP 3: SECURITY & SUBMIT -->
         <div class="form-section" data-section="3" style="display: none;">
 
-            <!-- Password -->
             <div class="two-columns">
                 <div class="form-group">
                     <label><i data-feather="lock"></i> Password</label>
@@ -883,7 +863,6 @@
                 </div>
             </div>
 
-            <!-- Terms & Conditions -->
             <div class="form-group">
                 <div class="terms-container">
                     <input type="checkbox" id="terms" required>
@@ -895,7 +874,6 @@
                 </div>
             </div>
 
-            <!-- Draft Actions -->
             <div class="draft-actions">
                 <button type="button" class="btn-secondary" onclick="saveDraft()">
                     💾 Save Draft
@@ -905,12 +883,10 @@
                 </button>
             </div>
 
-            <!-- Submit -->
             <button type="submit" id="register-btn">
                 <span id="button-text">✅ Create Account</span>
             </button>
             
-            <!-- Navigation -->
             <button type="button" onclick="goToStep(2)" style="margin-top: 0.5rem; background: #6b7280;">
                 ← Back to Academic Info
             </button>
@@ -987,7 +963,6 @@
         document.getElementById('role').dispatchEvent(new Event('change'));
     });
     
-    // URL cleanup
     if (window.location.pathname.endsWith('.html')) {
         const cleanPath = window.location.pathname.replace(/\.html$/, '');
         window.history.replaceState({}, '', cleanPath);
@@ -1005,8 +980,6 @@
     // ============================================
     let emailCheckTimeout = null;
     let emailCheckInProgress = false;
-    let emailIsValid = false;
-    let emailExists = false;
 
     function isValidEmail(email) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -1016,73 +989,56 @@
         if (!email || email.length < 5) return false;
         
         try {
-            // Check in profile table
+            // Only check the profile table (the trigger handles auth.users)
             const { data: profileData, error: profileError } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('email')
                 .eq('email', email)
                 .maybeSingle();
             
-            if (profileData) return true;
-            
-            // Check in auth.users (for partial registrations)
-            try {
-                const { data: authData, error: authError } = await sb
-                    .from('auth.users')
-                    .select('email')
-                    .eq('email', email)
-                    .maybeSingle();
-                
-                if (authData) return true;
-            } catch (e) {
-                // Auth table might not be accessible
+            if (profileError) {
+                console.error('Profile check error:', profileError);
+                return false;
             }
             
-            return false;
+            return !!profileData;
         } catch (error) {
             console.error('Error checking email:', error);
             return false;
         }
     }
 
-    // Real-time email validation as user types
     document.getElementById('email').addEventListener('input', function() {
         const email = this.value.trim();
         const emailStatus = document.getElementById('email-status');
         
         if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
         
-        // Validate format
         if (email && !isValidEmail(email)) {
             emailStatus.textContent = '❌ Invalid email format';
             emailStatus.style.color = '#DC2626';
             this.style.borderColor = '#DC2626';
-            emailIsValid = false;
             return;
         }
         
         if (email.length < 5) {
             emailStatus.textContent = '';
             this.style.borderColor = '#e2e8f0';
-            emailIsValid = false;
             return;
         }
         
-        // Show checking status
         emailStatus.textContent = '⏳ Checking...';
         emailStatus.style.color = '#f59e0b';
         this.style.borderColor = '#f59e0b';
-        emailIsValid = true;
         
-        // Debounce check
         emailCheckTimeout = setTimeout(async () => {
             if (emailCheckInProgress) return;
             emailCheckInProgress = true;
             
             try {
-                emailExists = await checkEmailExists(email);
+                const exists = await checkEmailExists(email);
                 
-                if (emailExists) {
+                if (exists) {
                     emailStatus.textContent = '❌ Email already registered. Please use a different email.';
                     emailStatus.style.color = '#DC2626';
                     this.style.borderColor = '#DC2626';
@@ -1132,7 +1088,6 @@
         textEl.className = `strength-text ${password.length > 0 ? result.class : ''}`;
     });
 
-    // Password match checker
     document.getElementById('confirm_password').addEventListener('input', function() {
         const password = document.getElementById('password').value;
         const confirm = this.value;
@@ -1201,7 +1156,6 @@
         const desc = selected?.dataset?.desc || 'Select a program above to see details';
         document.getElementById('programDescription').textContent = desc;
         updateIntakePreview();
-        console.log('📋 Program selected:', this.value);
     });
 
     function updateIntakePreview() {
@@ -1444,7 +1398,7 @@
     }
 
     // ============================================
-    // FORM SUBMISSION - WITH EMAIL VALIDATION FIRST
+    // FORM SUBMISSION - TRIGGER HANDLES PROFILE
     // ============================================
     document.getElementById('register-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1457,9 +1411,7 @@
         btn.disabled = true;
         document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
         
-        // ============================================
-        // CHECK TERMS FIRST
-        // ============================================
+        // Check terms
         if (!document.getElementById('terms').checked) {
             showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
             btn.disabled = false;
@@ -1467,9 +1419,7 @@
             return;
         }
         
-        // ============================================
-        // GET EMAIL AND VALIDATE
-        // ============================================
+        // Get email and validate
         const email = document.getElementById('email').value.trim();
         
         if (!isValidEmail(email)) {
@@ -1479,9 +1429,7 @@
             return;
         }
         
-        // ============================================
-        // CHECK IF EMAIL EXISTS (FINAL VERIFICATION)
-        // ============================================
+        // Final email check
         try {
             const emailExistsFinal = await checkEmailExists(email);
             if (emailExistsFinal) {
@@ -1492,12 +1440,9 @@
             }
         } catch (error) {
             console.error('Final email check failed:', error);
-            // Continue anyway - let Supabase handle it if there's an error
         }
         
-        // ============================================
-        // GET ALL OTHER VALUES
-        // ============================================
+        // Get all values
         const role = document.getElementById('role').value;
         const full_name = document.getElementById('full_name').value.trim();
         const phone = document.getElementById('phone').value.trim();
@@ -1520,9 +1465,7 @@
         const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
         
-        // ============================================
-        // VALIDATIONS
-        // ============================================
+        // Validations
         if (!full_name) {
             showFeedback('❌ Please enter your full name.', 'error');
             btn.disabled = false;
@@ -1600,11 +1543,10 @@
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
         const defaultBlock = 'Introductory';
-        let createdAuthUser = null;
         
         try {
             // ============================================
-            // BUILD USER METADATA WITH PROGRAM AND COURSE
+            // BUILD USER METADATA
             // ============================================
             let userMetadata = {
                 full_name, role, phone, alt_phone, national_id,
@@ -1618,8 +1560,8 @@
                 userMetadata = {
                     ...userMetadata,
                     admission_number: student_id_number,
-                    program: programValue,    // ← For your app to read
-                    course: programValue,     // ← For backwards compatibility
+                    program: programValue,
+                    course: programValue,
                     intake_year: intakeData.intake_year,
                     intake_month: intakeData.intake_month,
                     current_block: defaultBlock,
@@ -1639,6 +1581,7 @@
             
             // ============================================
             // CREATE USER IN SUPABASE AUTH
+            // The trigger will automatically create the profile!
             // ============================================
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email, password,
@@ -1655,66 +1598,68 @@
                 throw authError;
             }
             
-            createdAuthUser = authData.user;
+            console.log('✅ Auth user created:', authData.user.id);
+            console.log('⏳ Waiting for trigger to create profile...');
             
-            // ============================================
-            // INSERT PROFILE
-            // ============================================
-            let profileData = {
-                email, full_name, role, phone, alt_phone, national_id,
-                date_of_birth: dob, gender, address, status: 'pending',
-                user_id: authData.user.id,
-                created_at: new Date().toISOString()
-            };
+            // Wait for the trigger to create the profile
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
-            if (role === 'student') {
-                profileData = {
-                    ...profileData,
-                    student_id: student_id_number || authData.user.id.substring(0, 8).toUpperCase(),
-                    program: program_type,
-                    intake_year: intakeData.intake_year,
-                    block: defaultBlock,
-                    guardian_name, guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
-                };
-            } else if (role === 'lecturer') {
-                profileData = { ...profileData, staff_id, department };
+            // Verify profile was created
+            const { data: profileCheck, error: checkError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authData.user.id)
+                .maybeSingle();
+            
+            if (checkError) {
+                console.error('⚠️ Error checking profile:', checkError);
             }
             
-            console.log('💾 SAVING PROFILE:', {
-                program: profileData.program,
-                intake_year: profileData.intake_year,
-                student_id: profileData.student_id
-            });
-            
-            const { error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .insert(profileData);
-            
-            if (profileError) {
-                console.error('❌ Profile Error:', profileError);
-                // Rollback: Delete auth user
-                try {
-                    if (createdAuthUser && createdAuthUser.id) {
-                        await sb.auth.admin.deleteUser(createdAuthUser.id);
-                        console.log('✅ Auth user deleted (rollback)');
+            if (profileCheck) {
+                console.log('✅ Profile created by trigger:', profileCheck);
+            } else {
+                console.warn('⚠️ Profile not found after trigger. Creating manually...');
+                
+                // Fallback: Manually create profile if trigger didn't work
+                let fallbackData = {
+                    user_id: authData.user.id,
+                    email: email,
+                    full_name: full_name,
+                    role: role,
+                    phone: phone,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                };
+                
+                if (role === 'student') {
+                    fallbackData = {
+                        ...fallbackData,
+                        student_id: student_id_number || authData.user.id.substring(0, 8).toUpperCase(),
+                        program: program_type,
+                        intake_year: intakeData.intake_year,
+                        block: defaultBlock,
+                        guardian_name, guardian_phone,
+                        admission_date: admissionDate,
+                        admission_year: today.getFullYear().toString()
+                    };
+                } else if (role === 'lecturer') {
+                    fallbackData = { ...fallbackData, staff_id, department };
+                }
+                
+                const { error: fallbackError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .insert(fallbackData);
+                
+                if (fallbackError) {
+                    console.error('❌ Fallback insert failed:', fallbackError);
+                    try {
+                        await sb.auth.admin.deleteUser(authData.user.id);
+                    } catch (deleteError) {
+                        console.error('❌ Could not delete auth user:', deleteError);
                     }
-                } catch (rollbackError) {
-                    console.error('⚠️ Rollback failed:', rollbackError);
+                    throw fallbackError;
                 }
-                
-                let errorMessage = profileError.message;
-                if (profileError.code === '22007') {
-                    errorMessage = 'Invalid date format. Please select a valid date of birth.';
-                } else if (profileError.code === '23505') {
-                    errorMessage = 'This student ID or email is already registered.';
-                }
-                
-                showFeedback(`❌ Registration failed: ${errorMessage}`, 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
+                console.log('✅ Profile created manually (fallback)');
             }
             
             // ============================================
@@ -1734,15 +1679,6 @@
             
         } catch (error) {
             console.error('❌ Registration error:', error);
-            
-            if (createdAuthUser && createdAuthUser.id) {
-                try {
-                    await sb.auth.admin.deleteUser(createdAuthUser.id);
-                    console.log('✅ Auth user deleted (rollback on error)');
-                } catch (rollbackError) {
-                    console.error('⚠️ Rollback failed:', rollbackError);
-                }
-            }
             
             let errorMessage = error.message || 'Unknown error';
             if (error.code === '22007') {
