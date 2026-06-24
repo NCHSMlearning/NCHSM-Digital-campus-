@@ -122,9 +122,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* ============================================ */
-        /* PROGRESS INDICATOR */
-        /* ============================================ */
         .progress-bar {
             display: flex;
             justify-content: space-between;
@@ -213,8 +210,10 @@
             margin-bottom: 0.8rem;
             border: 1px solid #eef2f6;
             transition: all 0.2s;
+            display: none;
         }
         .role-fields.active {
+            display: block;
             background: rgba(56, 161, 105, 0.05);
             border-color: rgba(56, 161, 105, 0.3);
         }
@@ -303,9 +302,6 @@
         optgroup { font-weight: 600; color: #0A3D62; background: #fff; }
         option { font-weight: 400; }
         
-        /* ============================================ */
-        /* PASSWORD STRENGTH */
-        /* ============================================ */
         .password-strength {
             margin-top: 6px;
         }
@@ -330,18 +326,12 @@
         .text-good { color: #3b82f6; }
         .text-strong { color: #10b981; }
 
-        /* ============================================ */
-        /* INTAKE SECTION */
-        /* ============================================ */
         .intake-section {
             background: #f0f7ff;
             padding: 0.8rem 1rem;
             border-radius: 16px;
             border-left: 4px solid #0A3D62;
             margin-top: 0.2rem;
-        }
-        .intake-section label {
-            color: #0A3D62;
         }
         .intake-section.hidden {
             display: none;
@@ -361,9 +351,6 @@
             text-align: center;
         }
 
-        /* ============================================ */
-        /* PROGRAM DESCRIPTION */
-        /* ============================================ */
         .program-description {
             font-size: 0.75rem;
             color: #475569;
@@ -373,12 +360,8 @@
             margin-top: 4px;
             border-left: 3px solid #38A169;
             min-height: 36px;
-            transition: all 0.3s;
         }
 
-        /* ============================================ */
-        /* PHOTO UPLOAD */
-        /* ============================================ */
         .photo-upload-container {
             display: flex;
             align-items: center;
@@ -436,9 +419,6 @@
             opacity: 1;
         }
 
-        /* ============================================ */
-        /* TERMS & CONDITIONS */
-        /* ============================================ */
         .terms-container {
             display: flex;
             align-items: flex-start;
@@ -474,18 +454,18 @@
             color: #38A169;
         }
 
-        /* ============================================ */
-        /* CONFETTI ANIMATION */
-        /* ============================================ */
+        /* Email Status */
+        #email-status {
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 4px;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+
         @keyframes confettiFall {
-            0% { 
-                transform: translateY(0) rotate(0deg) scale(1);
-                opacity: 1;
-            }
-            100% { 
-                transform: translateY(100vh) rotate(720deg) scale(0);
-                opacity: 0;
-            }
+            0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg) scale(0); opacity: 0; }
         }
         .confetti-piece {
             position: fixed;
@@ -497,9 +477,6 @@
             pointer-events: none;
         }
 
-        /* ============================================ */
-        /* SUCCESS OVERLAY */
-        /* ============================================ */
         .success-overlay {
             position: fixed;
             top: 0;
@@ -625,9 +602,7 @@
     <h2 style="font-size: 1.5rem; font-weight: 700; color: #073450; margin-bottom: 5px;">Create Your Account</h2>
     <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 1.5rem;">Join the NCHSM digital learning platform</p>
 
-    <!-- ============================================ -->
-    <!-- PROGRESS INDICATOR -->
-    <!-- ============================================ -->
+    <!-- Progress Indicator -->
     <div class="progress-bar">
         <div class="progress-step active" data-step="1">
             <span class="step-icon">👤</span>
@@ -644,9 +619,7 @@
     </div>
 
     <form id="register-form" enctype="multipart/form-data">
-        <!-- ============================================ -->
         <!-- STEP 1: PERSONAL INFORMATION -->
-        <!-- ============================================ -->
         <div class="form-section" data-section="1">
             <!-- Role Selection -->
             <div class="form-group">
@@ -664,10 +637,12 @@
                 <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
             </div>
 
-            <!-- Email -->
+            <!-- Email with Real-time Validation -->
             <div class="form-group">
-                <label><i data-feather="mail"></i> Email Address</label>
+                <label><i data-feather="mail"></i> Email Address <span style="color: red;">*</span></label>
                 <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+                <div id="email-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
+                <div class="help-text">We will check if this email is already registered</div>
             </div>
 
             <!-- Phone -->
@@ -691,7 +666,6 @@
                 <div class="form-group">
                     <label><i data-feather="calendar"></i> Date of Birth <span style="color: red;">*</span></label>
                     <input type="date" id="dob" name="dob" required>
-                    <div class="help-text">Please select your date of birth</div>
                 </div>
             </div>
 
@@ -710,9 +684,7 @@
                 </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- PROFILE PHOTO UPLOAD -->
-            <!-- ============================================ -->
+            <!-- Profile Photo Upload -->
             <div class="form-group">
                 <label><i data-feather="camera"></i> Profile Photo</label>
                 <div class="photo-upload-container">
@@ -729,15 +701,12 @@
                 </div>
             </div>
 
-            <!-- Navigation -->
             <button type="button" class="btn-success" onclick="goToStep(2)" style="margin-top: 0.5rem;">
                 Next Step → Academic Info
             </button>
         </div>
 
-        <!-- ============================================ -->
         <!-- STEP 2: ACADEMIC INFORMATION -->
-        <!-- ============================================ -->
         <div class="form-section" data-section="2" style="display: none;">
 
             <!-- STUDENT FIELDS -->
@@ -748,56 +717,49 @@
                     <div class="help-text">Your unique student identification number</div>
                 </div>
                 
-                <!-- ============================================ -->
-                <!-- PROGRAM SELECTION - FIXED WITH REQUIRED -->
-                <!-- ============================================ -->
+                <!-- Program Selection -->
                 <div class="form-group">
                     <label><i data-feather="book"></i> Program <span style="color: red;">*</span></label>
                     <select id="program_type" name="program_type" required>
                         <option value="">-- Select Your Program --</option>
                         
-                        <!-- KRCHN PROGRAMS -->
                         <optgroup label="KRCHN Programs">
-                            <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program leading to registration as a nurse">KRCHN Nursing</option>
+                            <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program">KRCHN Nursing</option>
                         </optgroup>
                         
-                        <!-- TVET - DIPLOMA PROGRAMS -->
                         <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
-                            <option value="DPOTT" data-desc="Diploma in Perioperative Theatre Technology - 2 years, prepares for operating room careers">Diploma in Perioperative Theatre Technology</option>
-                            <option value="DCH" data-desc="Diploma in Community Health - 2 years, focuses on public health and community nursing">Diploma in Community Health</option>
-                            <option value="DHRIT" data-desc="Diploma in Health Records and IT - 2 years, health information management">Diploma in Health Records and IT</option>
-                            <option value="DSL" data-desc="Diploma in Science Lab - 2 years, medical laboratory technology">Diploma in Science Lab</option>
-                            <option value="DSW" data-desc="Diploma in Social Work and Community Development - 2 years">Diploma in Social Work</option>
-                            <option value="DCJS" data-desc="Diploma in Criminal Justice - 2 years, law enforcement and justice system">Diploma in Criminal Justice</option>
-                            <option value="DHSS" data-desc="Diploma in Health Support Services - 2 years, healthcare administration">Diploma in Health Support Services</option>
-                            <option value="DICT" data-desc="Diploma in Information & Communication Technology - 2 years">Diploma in ICT</option>
-                            <option value="DME" data-desc="Diploma in Medical Engineering - 2 years, biomedical equipment">Diploma in Medical Engineering</option>
+                            <option value="DPOTT" data-desc="Diploma in Perioperative Theatre Technology - 2 years">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH" data-desc="Diploma in Community Health - 2 years">Diploma in Community Health</option>
+                            <option value="DHRIT" data-desc="Diploma in Health Records and IT - 2 years">Diploma in Health Records and IT</option>
+                            <option value="DSL" data-desc="Diploma in Science Lab - 2 years">Diploma in Science Lab</option>
+                            <option value="DSW" data-desc="Diploma in Social Work - 2 years">Diploma in Social Work</option>
+                            <option value="DCJS" data-desc="Diploma in Criminal Justice - 2 years">Diploma in Criminal Justice</option>
+                            <option value="DHSS" data-desc="Diploma in Health Support Services - 2 years">Diploma in Health Support Services</option>
+                            <option value="DICT" data-desc="Diploma in ICT - 2 years">Diploma in ICT</option>
+                            <option value="DME" data-desc="Diploma in Medical Engineering - 2 years">Diploma in Medical Engineering</option>
                         </optgroup>
                         
-                        <!-- TVET - CERTIFICATE PROGRAMS -->
                         <optgroup label="📜 TVET Certificate Programs (3-12 months)">
                             <option value="CPOTT" data-desc="Certificate in Perioperative Theatre Technology - 1 year">Certificate in Perioperative Theatre Technology</option>
                             <option value="CCH" data-desc="Certificate in Community Health - 1 year">Certificate in Community Health</option>
                             <option value="CHRIT" data-desc="Certificate in Health Records and IT - 1 year">Certificate in Health Records and IT</option>
-                            <option value="CPC" data-desc="Certificate in Patient Care - 6 months, basic patient care skills">Certificate in Patient Care</option>
+                            <option value="CPC" data-desc="Certificate in Patient Care - 6 months">Certificate in Patient Care</option>
                             <option value="CSL" data-desc="Certificate in Science Lab - 1 year">Certificate in Science Lab</option>
                             <option value="CSW" data-desc="Certificate in Social Work - 1 year">Certificate in Social Work</option>
                             <option value="CCJS" data-desc="Certificate in Criminal Justice - 1 year">Certificate in Criminal Justice</option>
-                            <option value="CAG" data-desc="Certificate in Agriculture - 1 year, agricultural skills">Certificate in Agriculture</option>
+                            <option value="CAG" data-desc="Certificate in Agriculture - 1 year">Certificate in Agriculture</option>
                             <option value="CHSS" data-desc="Certificate in Health Support Services - 1 year">Certificate in Health Support Services</option>
-                            <option value="CICT" data-desc="Certificate in ICT - 1 year, computer applications">Certificate in ICT</option>
+                            <option value="CICT" data-desc="Certificate in ICT - 1 year">Certificate in ICT</option>
                         </optgroup>
                         
-                        <!-- TVET - ARTISAN PROGRAMS -->
                         <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
-                            <option value="ACH" data-desc="Artisan in Community Health - 6 months, entry-level health work">Artisan in Community Health</option>
-                            <option value="AAG" data-desc="Artisan in Agriculture - 6 months, practical farming skills">Artisan in Agriculture</option>
-                            <option value="ASW" data-desc="Artisan in Social Work - 6 months, basic social work skills">Artisan in Social Work</option>
+                            <option value="ACH" data-desc="Artisan in Community Health - 6 months">Artisan in Community Health</option>
+                            <option value="AAG" data-desc="Artisan in Agriculture - 6 months">Artisan in Agriculture</option>
+                            <option value="ASW" data-desc="Artisan in Social Work - 6 months">Artisan in Social Work</option>
                         </optgroup>
                         
-                        <!-- OTHER TVET -->
                         <optgroup label="📊 Other TVET Programs">
-                            <option value="CCA" data-desc="Certificate in Computer Applications - 3 months, basic computer skills">Certificate in Computer Applications (CCA)</option>
+                            <option value="CCA" data-desc="Certificate in Computer Applications - 3 months">Certificate in Computer Applications (CCA)</option>
                             <option value="PTE" data-desc="TVET/CDACC - Professional Teaching Experience">TVET/CDACC (PTE)</option>
                         </optgroup>
                     </select>
@@ -806,11 +768,8 @@
                     </div>
                 </div>
                 
-                <!-- ============================================ -->
-                <!-- INTAKE SECTION -->
-                <!-- ============================================ -->
+                <!-- Intake Section -->
                 <div id="intake-container">
-                    
                     <!-- KRCHN Intake -->
                     <div id="krchn-intake" class="intake-section">
                         <div class="form-group">
@@ -848,7 +807,7 @@
                                     <option value="2028">2028</option>
                                 </select>
                             </div>
-                            <div class="help-text">TVET intake: January, March, May, July, September (stores year only)</div>
+                            <div class="help-text">TVET intake: January, March, May, July, September</div>
                             <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">March 2026 Intake</strong></div>
                         </div>
                     </div>
@@ -859,12 +818,10 @@
                     <div class="form-group">
                         <label><i data-feather="heart"></i> Parent/Guardian Name</label>
                         <input type="text" id="guardian_name" name="guardian_name" placeholder="Parent or guardian full name">
-                        <div class="help-text">For emergency contact purposes</div>
                     </div>
                     <div class="form-group">
                         <label><i data-feather="phone"></i> Guardian Phone</label>
                         <input type="tel" id="guardian_phone" name="guardian_phone" placeholder="e.g., 07XXXXXXXX">
-                        <div class="help-text">Guardian's contact number</div>
                     </div>
                 </div>
                 
@@ -904,9 +861,7 @@
             </div>
         </div>
 
-        <!-- ============================================ -->
         <!-- STEP 3: SECURITY & SUBMIT -->
-        <!-- ============================================ -->
         <div class="form-section" data-section="3" style="display: none;">
 
             <!-- Password -->
@@ -928,9 +883,7 @@
                 </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- TERMS & CONDITIONS -->
-            <!-- ============================================ -->
+            <!-- Terms & Conditions -->
             <div class="form-group">
                 <div class="terms-container">
                     <input type="checkbox" id="terms" required>
@@ -938,7 +891,6 @@
                         I agree to the 
                         <a href="#" onclick="showTermsModal(event)">Terms & Conditions</a> 
                         and confirm that all information provided is accurate.
-                        I understand that false information may lead to disqualification.
                     </label>
                 </div>
             </div>
@@ -964,7 +916,7 @@
             </button>
 
             <div id="message" class="message"></div>
-            <div id="redirect-countdown" class="redirect-countdown" style="display: none;"></div>
+            <div id="redirect-countdown" class="redirect-countdown"></div>
         </div>
     </form>
 
@@ -973,9 +925,7 @@
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- TERMS MODAL -->
-<!-- ============================================ -->
+<!-- Terms Modal -->
 <div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 99999; align-items: center; justify-content: center;">
     <div style="background: white; border-radius: 24px; max-width: 600px; width: 95%; max-height: 80vh; overflow-y: auto; padding: 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.3);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #0A3D62; padding-bottom: 15px;">
@@ -984,36 +934,23 @@
         </div>
         <div style="font-size: 0.9rem; line-height: 1.8; color: #334155;">
             <h4>1. Account Registration</h4>
-            <p>You must provide accurate and complete information during registration. Any false information may result in account termination.</p>
-            
+            <p>You must provide accurate and complete information during registration.</p>
             <h4>2. Academic Integrity</h4>
-            <p>Students must maintain academic honesty. Plagiarism, cheating, or any form of academic dishonesty is strictly prohibited.</p>
-            
+            <p>Students must maintain academic honesty.</p>
             <h4>3. Data Privacy</h4>
-            <p>Your personal data will be stored securely and used only for academic purposes. We do not share your data with third parties.</p>
-            
+            <p>Your personal data will be stored securely.</p>
             <h4>4. Platform Usage</h4>
-            <p>This platform is for educational purposes only. Any misuse or unauthorized access will lead to account suspension.</p>
-            
+            <p>This platform is for educational purposes only.</p>
             <h4>5. Fee Payment</h4>
-            <p>Students are required to pay fees as per the fee structure. Non-payment may result in blocked access to academic resources.</p>
-            
-            <h4>6. Attendance</h4>
-            <p>Regular attendance is mandatory. Students must check in using the platform's attendance system.</p>
-            
-            <h4>7. Code of Conduct</h4>
-            <p>All users must adhere to the college's code of conduct. Respectful behavior towards staff and fellow students is required.</p>
-            
-            <h4>8. Account Security</h4>
-            <p>You are responsible for maintaining the confidentiality of your password. Report any unauthorized access immediately.</p>
-            
-            <h4>9. Changes to Terms</h4>
-            <p>The college reserves the right to update these terms. Students will be notified of any changes.</p>
-            
-            <h4>10. Contact</h4>
-            <p>For any questions, contact the administration at: <strong>admin@nchsm.ac.ke</strong></p>
+            <p>Students are required to pay fees as per the fee structure.</p>
+            <h4>6. Code of Conduct</h4>
+            <p>All users must adhere to the college's code of conduct.</p>
+            <h4>7. Account Security</h4>
+            <p>You are responsible for maintaining your password confidentiality.</p>
+            <h4>8. Contact</h4>
+            <p>For questions: <strong>admin@nchsm.ac.ke</strong></p>
         </div>
-        <div style="margin-top: 20px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        <div style="margin-top: 20px; text-align: center;">
             <button onclick="closeTermsModal(); document.getElementById('terms').checked = true;" style="background: #0A3D62; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif;">
                 ✅ I Agree
             </button>
@@ -1021,14 +958,12 @@
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- SUCCESS OVERLAY -->
-<!-- ============================================ -->
+<!-- Success Overlay -->
 <div class="success-overlay" id="successOverlay">
     <div class="success-card">
         <div class="check-circle">✅</div>
         <h2>🎉 Registration Successful!</h2>
-        <p>Your account has been created and is pending admin approval. You will receive an email once approved.</p>
+        <p>Your account has been created and is pending admin approval.</p>
         <div id="successIntake" style="background: #f0f7ff; padding: 10px; border-radius: 8px; margin: 15px 0; font-size: 0.9rem;">
             <strong>Intake:</strong> <span id="successIntakeText">March 2026</span>
         </div>
@@ -1042,12 +977,13 @@
 </div>
 
 <script>
-    // Feather Icons
+    // ============================================
+    // INITIALIZATION
+    // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof feather !== 'undefined') feather.replace();
         updateIntakePreview();
         updateProgress();
-        // Initialize role toggle
         document.getElementById('role').dispatchEvent(new Event('change'));
     });
     
@@ -1057,10 +993,113 @@
         window.history.replaceState({}, '', cleanPath);
     }
 
-    // Supabase Configuration
+    // ============================================
+    // SUPABASE CONFIGURATION
+    // ============================================
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ============================================
+    // EMAIL VALIDATION - REAL-TIME CHECK
+    // ============================================
+    let emailCheckTimeout = null;
+    let emailCheckInProgress = false;
+    let emailIsValid = false;
+    let emailExists = false;
+
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    async function checkEmailExists(email) {
+        if (!email || email.length < 5) return false;
+        
+        try {
+            // Check in profile table
+            const { data: profileData, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('email')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (profileData) return true;
+            
+            // Check in auth.users (for partial registrations)
+            try {
+                const { data: authData, error: authError } = await sb
+                    .from('auth.users')
+                    .select('email')
+                    .eq('email', email)
+                    .maybeSingle();
+                
+                if (authData) return true;
+            } catch (e) {
+                // Auth table might not be accessible
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking email:', error);
+            return false;
+        }
+    }
+
+    // Real-time email validation as user types
+    document.getElementById('email').addEventListener('input', function() {
+        const email = this.value.trim();
+        const emailStatus = document.getElementById('email-status');
+        
+        if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+        
+        // Validate format
+        if (email && !isValidEmail(email)) {
+            emailStatus.textContent = '❌ Invalid email format';
+            emailStatus.style.color = '#DC2626';
+            this.style.borderColor = '#DC2626';
+            emailIsValid = false;
+            return;
+        }
+        
+        if (email.length < 5) {
+            emailStatus.textContent = '';
+            this.style.borderColor = '#e2e8f0';
+            emailIsValid = false;
+            return;
+        }
+        
+        // Show checking status
+        emailStatus.textContent = '⏳ Checking...';
+        emailStatus.style.color = '#f59e0b';
+        this.style.borderColor = '#f59e0b';
+        emailIsValid = true;
+        
+        // Debounce check
+        emailCheckTimeout = setTimeout(async () => {
+            if (emailCheckInProgress) return;
+            emailCheckInProgress = true;
+            
+            try {
+                emailExists = await checkEmailExists(email);
+                
+                if (emailExists) {
+                    emailStatus.textContent = '❌ Email already registered. Please use a different email.';
+                    emailStatus.style.color = '#DC2626';
+                    this.style.borderColor = '#DC2626';
+                } else {
+                    emailStatus.textContent = '✅ Email available';
+                    emailStatus.style.color = '#10b981';
+                    this.style.borderColor = '#10b981';
+                }
+            } catch (error) {
+                console.error('Email check failed:', error);
+                emailStatus.textContent = '⚠️ Could not verify email';
+                emailStatus.style.color = '#f59e0b';
+            } finally {
+                emailCheckInProgress = false;
+            }
+        }, 500);
+    });
 
     // ============================================
     // PASSWORD STRENGTH METER
@@ -1117,7 +1156,6 @@
     let currentStep = 1;
 
     function goToStep(step) {
-        // Validate current step before proceeding
         if (step > currentStep) {
             const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
             if (currentSection) {
@@ -1139,12 +1177,9 @@
         }
         
         currentStep = step;
-        
-        // Show/hide sections
         document.querySelectorAll('.form-section').forEach(section => {
             section.style.display = section.dataset.section == step ? 'block' : 'none';
         });
-        
         updateProgress();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1159,21 +1194,16 @@
     }
 
     // ============================================
-    // PROGRAM DESCRIPTIONS
+    // PROGRAM DESCRIPTIONS & INTAKE
     // ============================================
     document.getElementById('program_type').addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         const desc = selected?.dataset?.desc || 'Select a program above to see details';
         document.getElementById('programDescription').textContent = desc;
         updateIntakePreview();
-        
         console.log('📋 Program selected:', this.value);
-        console.log('📋 Program text:', selected?.text);
     });
 
-    // ============================================
-    // INTAKE PREVIEW
-    // ============================================
     function updateIntakePreview() {
         const program = document.getElementById('program_type').value;
         const isKRCHN = program === 'KRCHN';
@@ -1182,18 +1212,14 @@
         if (isKRCHN) {
             document.getElementById('krchn-intake').classList.remove('hidden');
             document.getElementById('tvet-intake').classList.add('hidden');
-            
             const year = document.getElementById('krchn_intake_year').value || '2026';
             document.getElementById('krchnDisplay').textContent = `March ${year}`;
-            
         } else if (isTVET) {
             document.getElementById('krchn-intake').classList.add('hidden');
             document.getElementById('tvet-intake').classList.remove('hidden');
-            
             const month = document.getElementById('tvet_intake_month').value || 'March';
             const year = document.getElementById('tvet_intake_year').value || '2026';
             document.getElementById('tvetDisplay').textContent = `${month} ${year} Intake`;
-            
         } else {
             document.getElementById('krchn-intake').classList.add('hidden');
             document.getElementById('tvet-intake').classList.add('hidden');
@@ -1205,6 +1231,49 @@
     document.getElementById('tvet_intake_year').addEventListener('change', updateIntakePreview);
 
     // ============================================
+    // ROLE TOGGLE
+    // ============================================
+    document.getElementById('role').addEventListener('change', function() {
+        const isStudent = this.value === 'student';
+        const isLecturer = this.value === 'lecturer';
+        const studentFields = document.getElementById('student-fields');
+        const lecturerFields = document.getElementById('lecturer-fields');
+        
+        if (isStudent) {
+            studentFields.style.display = 'block';
+            studentFields.classList.add('active');
+            studentFields.querySelectorAll('input, select').forEach(input => {
+                if (input.id !== 'student_id_number' && 
+                    input.id !== 'guardian_name' && 
+                    input.id !== 'guardian_phone') {
+                    input.setAttribute('required', '');
+                }
+            });
+        } else {
+            studentFields.style.display = 'none';
+            studentFields.classList.remove('active');
+            studentFields.querySelectorAll('input, select').forEach(input => {
+                input.removeAttribute('required');
+            });
+        }
+        
+        if (isLecturer) {
+            lecturerFields.style.display = 'block';
+            lecturerFields.classList.add('active');
+            lecturerFields.querySelectorAll('input, select').forEach(input => {
+                input.setAttribute('required', '');
+            });
+        } else {
+            lecturerFields.style.display = 'none';
+            lecturerFields.classList.remove('active');
+            lecturerFields.querySelectorAll('input, select').forEach(input => {
+                input.removeAttribute('required');
+            });
+        }
+        updateProgress();
+    });
+
+    // ============================================
     // SAVE/LOAD DRAFT
     // ============================================
     function saveDraft() {
@@ -1213,20 +1282,8 @@
         for (const [key, value] of formData.entries()) {
             data[key] = value;
         }
-        // Save photo as base64 if exists
-        const photoInput = document.getElementById('profile_photo');
-        if (photoInput.files && photoInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                data.profile_photo_data = e.target.result;
-                localStorage.setItem('registration_draft', JSON.stringify(data));
-                showFeedback('✅ Draft saved! You can continue later.', 'success');
-            };
-            reader.readAsDataURL(photoInput.files[0]);
-        } else {
-            localStorage.setItem('registration_draft', JSON.stringify(data));
-            showFeedback('✅ Draft saved! You can continue later.', 'success');
-        }
+        localStorage.setItem('registration_draft', JSON.stringify(data));
+        showFeedback('✅ Draft saved! You can continue later.', 'success');
     }
 
     function loadDraft() {
@@ -1235,34 +1292,19 @@
             showFeedback('No saved draft found.', 'warning');
             return;
         }
-        
         try {
             const data = JSON.parse(saved);
             Object.keys(data).forEach(key => {
-                if (key === 'profile_photo_data') {
-                    // Handle photo separately
-                    const preview = document.getElementById('photoPreview');
-                    const img = preview.querySelector('img');
-                    if (img) img.remove();
-                    const newImg = document.createElement('img');
-                    newImg.src = data[key];
-                    preview.prepend(newImg);
-                    document.getElementById('photoStatus').textContent = '📸 Photo loaded from draft';
-                    return;
-                }
                 const input = document.querySelector(`[name="${key}"]`);
                 if (input) {
                     input.value = data[key];
-                    // Trigger change events
                     if (key === 'program_type') {
                         input.dispatchEvent(new Event('change'));
                     }
                 }
             });
-            
             showFeedback('✅ Draft loaded successfully!', 'success');
             updateIntakePreview();
-            
         } catch (e) {
             showFeedback('Error loading draft: ' + e.message, 'error');
         }
@@ -1280,7 +1322,6 @@
         document.getElementById('termsModal').style.display = 'none';
     }
 
-    // Close modal on outside click
     document.getElementById('termsModal').addEventListener('click', function(e) {
         if (e.target === this) closeTermsModal();
     });
@@ -1291,38 +1332,56 @@
     function handlePhotoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-        
         const preview = document.getElementById('photoPreview');
         const reader = new FileReader();
-        
         reader.onload = function(e) {
-            // Remove existing image
             const oldImg = preview.querySelector('img');
             if (oldImg) oldImg.remove();
-            
-            // Remove placeholder elements
             const placeholderIcon = preview.querySelector('.placeholder-icon');
             const placeholderText = preview.querySelector('.placeholder-text');
             if (placeholderIcon) placeholderIcon.style.display = 'none';
             if (placeholderText) placeholderText.style.display = 'none';
-            
-            // Add new image
             const img = document.createElement('img');
             img.src = e.target.result;
             img.alt = 'Profile photo';
             preview.prepend(img);
-            
             document.getElementById('photoStatus').textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
         };
-        
         reader.readAsDataURL(file);
+    }
+
+    // ============================================
+    // GET INTAKE DATA
+    // ============================================
+    function getIntakeData() {
+        const program = document.getElementById('program_type').value;
+        const isKRCHN = program === 'KRCHN';
+        const isTVET = program && program !== '' && program !== 'KRCHN';
+        let intakeYear = '';
+        let intakeMonth = '';
+        if (isKRCHN) {
+            intakeYear = document.getElementById('krchn_intake_year').value || '';
+            intakeMonth = 'March';
+        } else if (isTVET) {
+            intakeYear = document.getElementById('tvet_intake_year').value || '';
+            intakeMonth = document.getElementById('tvet_intake_month').value || 'March';
+        }
+        return { intake_year: intakeYear, intake_month: intakeMonth };
+    }
+
+    function getDisplayIntake(program, year, month) {
+        if (!year) return 'N/A';
+        if (program === 'KRCHN') {
+            return `March ${year}`;
+        } else {
+            return `${month || 'March'} ${year} Intake`;
+        }
     }
 
     // ============================================
     // SUCCESS ANIMATION
     // ============================================
     function showSuccessAnimation(intakeDisplay) {
-        // Show confetti
         const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
         for (let i = 0; i < 80; i++) {
             const piece = document.createElement('div');
@@ -1338,12 +1397,8 @@
             document.body.appendChild(piece);
             setTimeout(() => piece.remove(), 4000);
         }
-        
-        // Show success overlay
         document.getElementById('successIntakeText').textContent = intakeDisplay;
         document.getElementById('successOverlay').classList.add('show');
-        
-        // Countdown
         let countdown = 5;
         const countdownEl = document.getElementById('successCountdown');
         const interval = setInterval(() => {
@@ -1355,99 +1410,6 @@
                 countdownEl.textContent = countdown;
             }
         }, 1000);
-    }
-
-    // ============================================
-    // ROLE TOGGLE - FIXED
-    // ============================================
-    document.getElementById('role').addEventListener('change', function() {
-        const isStudent = this.value === 'student';
-        const isLecturer = this.value === 'lecturer';
-        
-        const studentFields = document.getElementById('student-fields');
-        const lecturerFields = document.getElementById('lecturer-fields');
-        
-        if (isStudent) {
-            studentFields.style.display = 'block';
-            studentFields.classList.add('active');
-            // Make student fields required
-            studentFields.querySelectorAll('input, select').forEach(input => {
-                if (input.id !== 'student_id_number' && 
-                    input.id !== 'guardian_name' && 
-                    input.id !== 'guardian_phone') {
-                    input.setAttribute('required', '');
-                }
-            });
-        } else {
-            studentFields.style.display = 'none';
-            studentFields.classList.remove('active');
-            // Remove required from student fields
-            studentFields.querySelectorAll('input, select').forEach(input => {
-                input.removeAttribute('required');
-            });
-        }
-        
-        if (isLecturer) {
-            lecturerFields.style.display = 'block';
-            lecturerFields.classList.add('active');
-            // Make lecturer fields required
-            lecturerFields.querySelectorAll('input, select').forEach(input => {
-                input.setAttribute('required', '');
-            });
-        } else {
-            lecturerFields.style.display = 'none';
-            lecturerFields.classList.remove('active');
-            // Remove required from lecturer fields
-            lecturerFields.querySelectorAll('input, select').forEach(input => {
-                input.removeAttribute('required');
-            });
-        }
-        
-        updateProgress();
-    });
-
-    // ============================================
-    // GET INTAKE DATA
-    // ============================================
-    function getIntakeData() {
-        const program = document.getElementById('program_type').value;
-        const isKRCHN = program === 'KRCHN';
-        const isTVET = program && program !== '' && program !== 'KRCHN';
-        
-        let intakeYear = '';
-        let intakeMonth = '';
-        
-        if (isKRCHN) {
-            intakeYear = document.getElementById('krchn_intake_year').value || '';
-            intakeMonth = 'March';
-        } else if (isTVET) {
-            intakeYear = document.getElementById('tvet_intake_year').value || '';
-            intakeMonth = document.getElementById('tvet_intake_month').value || 'March';
-        }
-        
-        return { intake_year: intakeYear, intake_month: intakeMonth };
-    }
-
-    function getDisplayIntake(program, year, month) {
-        if (!year) return 'N/A';
-        if (program === 'KRCHN') {
-            return `March ${year}`;
-        } else {
-            return `${month || 'March'} ${year} Intake`;
-        }
-    }
-
-    // ============================================
-    // FEEDBACK HELPER
-    // ============================================
-    function showFeedback(message, type = 'success') {
-        const messageDiv = document.getElementById('message');
-        messageDiv.textContent = message;
-        messageDiv.className = `message ${type} show`;
-        
-        setTimeout(() => {
-            messageDiv.classList.remove('show');
-        }, 5000);
     }
 
     // ============================================
@@ -1470,7 +1432,19 @@
     }
 
     // ============================================
-    // FORM SUBMISSION - WITH PROPER ERROR HANDLING & ROLLBACK
+    // FEEDBACK HELPER
+    // ============================================
+    function showFeedback(message, type = 'success') {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = message;
+        messageDiv.className = `message ${type} show`;
+        setTimeout(() => {
+            messageDiv.classList.remove('show');
+        }, 5000);
+    }
+
+    // ============================================
+    // FORM SUBMISSION - WITH EMAIL VALIDATION FIRST
     // ============================================
     document.getElementById('register-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1484,11 +1458,48 @@
         document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
         
         // ============================================
-        // GET ALL VALUES
+        // CHECK TERMS FIRST
+        // ============================================
+        if (!document.getElementById('terms').checked) {
+            showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        // ============================================
+        // GET EMAIL AND VALIDATE
+        // ============================================
+        const email = document.getElementById('email').value.trim();
+        
+        if (!isValidEmail(email)) {
+            showFeedback('❌ Please enter a valid email address.', 'error');
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        
+        // ============================================
+        // CHECK IF EMAIL EXISTS (FINAL VERIFICATION)
+        // ============================================
+        try {
+            const emailExistsFinal = await checkEmailExists(email);
+            if (emailExistsFinal) {
+                showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+        } catch (error) {
+            console.error('Final email check failed:', error);
+            // Continue anyway - let Supabase handle it if there's an error
+        }
+        
+        // ============================================
+        // GET ALL OTHER VALUES
         // ============================================
         const role = document.getElementById('role').value;
         const full_name = document.getElementById('full_name').value.trim();
-        const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
         const alt_phone = document.getElementById('alt_phone').value.trim() || '';
         const national_id = document.getElementById('national_id').value.trim() || '';
@@ -1498,141 +1509,134 @@
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         
-        // ============================================
-        // CRITICAL: Get program value DIRECTLY from dropdown
-        // ============================================
         const programSelect = document.getElementById('program_type');
         const program_type = programSelect.value;
         
-        // Student specific
         const student_id_number = document.getElementById('student_id_number').value.trim();
         const intakeData = getIntakeData();
         const guardian_name = document.getElementById('guardian_name').value.trim() || '';
         const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
         
-        // Lecturer specific
         const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
         
         // ============================================
-        // VALIDATIONS - Check ALL required fields
+        // VALIDATIONS
         // ============================================
-        let hasError = false;
-        
         if (!full_name) {
             showFeedback('❌ Please enter your full name.', 'error');
-            hasError = true;
-        } else if (!email) {
-            showFeedback('❌ Please enter your email address.', 'error');
-            hasError = true;
-        } else if (!phone) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (!phone) {
             showFeedback('❌ Please enter your phone number.', 'error');
-            hasError = true;
-        } else if (!dob) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (!dob) {
             showFeedback('❌ Please select your date of birth.', 'error');
             document.getElementById('dob').style.borderColor = '#DC2626';
-            hasError = true;
-        } else if (!gender) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (!gender) {
             showFeedback('❌ Please select your gender.', 'error');
-            hasError = true;
-        } else if (!role) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (!role) {
             showFeedback('❌ Please select a role.', 'error');
-            hasError = true;
-        } else if (password !== confirmPassword) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (password !== confirmPassword) {
             showFeedback('❌ Passwords do not match.', 'error');
-            hasError = true;
-        } else if (password.length < 6) {
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
+        }
+        if (password.length < 6) {
             showFeedback('❌ Password must be at least 6 characters.', 'error');
-            hasError = true;
-        } else if (!document.getElementById('terms').checked) {
-            showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
-            hasError = true;
+            btn.disabled = false;
+            document.getElementById('button-text').textContent = '✅ Create Account';
+            return;
         }
         
         if (role === 'student') {
             if (!program_type) {
                 showFeedback('❌ Please select your program.', 'error');
-                hasError = true;
-            } else if (!intakeData.intake_year) {
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            if (!intakeData.intake_year) {
                 showFeedback('❌ Please select your intake year.', 'error');
-                hasError = true;
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
             }
         }
         
         if (role === 'lecturer') {
             if (!staff_id) {
                 showFeedback('❌ Please enter your Staff ID.', 'error');
-                hasError = true;
-            } else if (!department) {
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            if (!department) {
                 showFeedback('❌ Please select your department.', 'error');
-                hasError = true;
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
             }
         }
-        
-        if (hasError) {
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        
-        // ============================================
-        // LOG WHAT'S BEING SENT
-        // ============================================
-        console.log('🔍 SELECTED PROGRAM:', program_type);
-        console.log('📊 Student data:', {
-            program: program_type,
-            intake_year: intakeData.intake_year,
-            intake_month: intakeData.intake_month,
-            dob: dob
-        });
         
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
         const defaultBlock = 'Introductory';
-        
-        // ============================================
-        // VARIABLE TO TRACK CREATED AUTH USER FOR ROLLBACK
-        // ============================================
         let createdAuthUser = null;
         
         try {
-           // ============================================
-// BUILD USER METADATA - FIXED
-// ============================================
-let userMetadata = {
-    full_name, role, phone, alt_phone, national_id,
-    date_of_birth: dob,
-    gender, address, status: 'pending'
-};
-
-if (role === 'student') {
-    // Get the program value
-    const programValue = document.getElementById('program_type').value;
-    
-    userMetadata = {
-        ...userMetadata,
-        admission_number: student_id_number,
-        // ============================================
-        // CRITICAL FIX: Include BOTH program AND course
-        // ============================================
-        program: programValue,    // ← ADD THIS - for your app to read
-        course: programValue,     // ← KEEP THIS - for backwards compatibility
-        intake_year: intakeData.intake_year,
-        intake_month: intakeData.intake_month,
-        current_block: defaultBlock,
-        guardian_name, guardian_phone,
-        admission_date: admissionDate,
-        admission_year: today.getFullYear().toString()
-    };
-    
-    console.log('📤 USER METADATA:', {
-        program: userMetadata.program,  // Should be "DPOTT"
-        course: userMetadata.course,    // Should be "DPOTT"
-        intake_year: userMetadata.intake_year
-    });
-} else if (role === 'lecturer') {
-    userMetadata = { ...userMetadata, staff_id, department };
-}
+            // ============================================
+            // BUILD USER METADATA WITH PROGRAM AND COURSE
+            // ============================================
+            let userMetadata = {
+                full_name, role, phone, alt_phone, national_id,
+                date_of_birth: dob, gender, address, status: 'pending'
+            };
+            
+            if (role === 'student') {
+                const programValue = document.getElementById('program_type').value;
+                console.log('🔍 Program value for auth:', programValue);
+                
+                userMetadata = {
+                    ...userMetadata,
+                    admission_number: student_id_number,
+                    program: programValue,    // ← For your app to read
+                    course: programValue,     // ← For backwards compatibility
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month,
+                    current_block: defaultBlock,
+                    guardian_name, guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString()
+                };
+                
+                console.log('📤 USER METADATA:', {
+                    program: userMetadata.program,
+                    course: userMetadata.course,
+                    intake_year: userMetadata.intake_year
+                });
+            } else if (role === 'lecturer') {
+                userMetadata = { ...userMetadata, staff_id, department };
+            }
+            
             // ============================================
             // CREATE USER IN SUPABASE AUTH
             // ============================================
@@ -1642,7 +1646,6 @@ if (role === 'student') {
             });
             
             if (authError) {
-                // Check if it's a duplicate email error
                 if (authError.message.includes('User already registered')) {
                     showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
                     btn.disabled = false;
@@ -1652,7 +1655,6 @@ if (role === 'student') {
                 throw authError;
             }
             
-            // Store auth user for rollback if needed
             createdAuthUser = authData.user;
             
             // ============================================
@@ -1660,8 +1662,7 @@ if (role === 'student') {
             // ============================================
             let profileData = {
                 email, full_name, role, phone, alt_phone, national_id,
-                date_of_birth: dob,
-                gender, address, status: 'pending',
+                date_of_birth: dob, gender, address, status: 'pending',
                 user_id: authData.user.id,
                 created_at: new Date().toISOString()
             };
@@ -1684,21 +1685,16 @@ if (role === 'student') {
             console.log('💾 SAVING PROFILE:', {
                 program: profileData.program,
                 intake_year: profileData.intake_year,
-                student_id: profileData.student_id,
-                dob: profileData.date_of_birth
+                student_id: profileData.student_id
             });
             
             const { error: profileError } = await sb
                 .from('consolidated_user_profiles_table')
                 .insert(profileData);
             
-            // ============================================
-            // IF PROFILE INSERT FAILS, DELETE THE AUTH USER (ROLLBACK)
-            // ============================================
             if (profileError) {
                 console.error('❌ Profile Error:', profileError);
-                
-                // ROLLBACK: Delete the auth user we just created
+                // Rollback: Delete auth user
                 try {
                     if (createdAuthUser && createdAuthUser.id) {
                         await sb.auth.admin.deleteUser(createdAuthUser.id);
@@ -1708,7 +1704,6 @@ if (role === 'student') {
                     console.error('⚠️ Rollback failed:', rollbackError);
                 }
                 
-                // Show user-friendly error
                 let errorMessage = profileError.message;
                 if (profileError.code === '22007') {
                     errorMessage = 'Invalid date format. Please select a valid date of birth.';
@@ -1726,28 +1721,20 @@ if (role === 'student') {
             // SUCCESS!
             // ============================================
             const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
-            
             showFeedback(`✅ Registration successful! ${program_type} student with ${displayIntake} intake.`, 'success');
             
-            // Send welcome email (non-blocking)
             try {
                 await sendRegistrationEmail(email, full_name);
             } catch (emailError) {
                 console.warn('Email sending failed:', emailError);
             }
             
-            // Show success animation
             showSuccessAnimation(displayIntake);
-            
-            // Clear draft
             localStorage.removeItem('registration_draft');
             
         } catch (error) {
             console.error('❌ Registration error:', error);
             
-            // ============================================
-            // ROLLBACK: Delete the auth user if created
-            // ============================================
             if (createdAuthUser && createdAuthUser.id) {
                 try {
                     await sb.auth.admin.deleteUser(createdAuthUser.id);
