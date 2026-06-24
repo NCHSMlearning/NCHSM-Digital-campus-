@@ -1903,27 +1903,52 @@
                 </div>
             </section>
 
-            <!-- Users Section -->
-            <section id="users" class="tab-content">
-                <h2>System Users</h2>
-                <div class="toolbar">
-                    <input type="text" id="user-search" placeholder="Search by Name or Email..." onkeyup="filterTable('user-search', 'users-table', [1, 2, 4])">
-                    <button onclick="exportTableToCSV('users-table', 'System_Users_Export.csv')" class="btn-action export-btn">Export Users (CSV)</button>
-                </div>
-                <table>
-                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody id="users-table"><tr><td colspan="7">Loading users...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
-
-            <!-- Pending Approvals Section -->
-            <section id="pending" class="tab-content">
-                <h2>Pending Approvals</h2>
-                <table>
-                    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Student ID</th><th>Registered</th><th>Actions</th></tr></thead>
-                    <tbody id="pending-table"><tr><td colspan="7">Loading pending users...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+           <!-- Users Section -->
+<section id="users" class="tab-content">
+    <h2>System Users</h2>
+    <div class="toolbar">
+        <input type="text" id="user-search" placeholder="Search by Name or Email..." onkeyup="filterTable('user-search', 'users-table', [1, 2, 4])">
+        <button onclick="exportTableToCSV('users-table', 'System_Users_Export.csv')" class="btn-action export-btn">Export Users (CSV)</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Program</th>
+                <th>Intake</th>      <!-- ← NEW COLUMN -->
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="users-table">
+            <tr><td colspan="8">Loading users...</td></tr>
+        </tbody>
+    </table>
+</section>
+          <!-- Pending Approvals Section -->
+<section id="pending" class="tab-content">
+    <h2>Pending Approvals</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Program</th>
+                <th>Intake</th>      <!-- ← NEW COLUMN -->
+                <th>Student ID</th>
+                <th>Registered</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="pending-table">
+            <tr><td colspan="8">Loading pending users...</td></tr>
+        </tbody>
+    </table>
+</section>
 
             <!-- Enroll Accounts Section -->
             <section id="enroll" class="tab-content">
