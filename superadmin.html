@@ -1935,8 +1935,46 @@
                     <select id="account-role" required><option value="student">Student</option><option value="admin">Admin</option><option value="lecturer">Lecturer</option></select>
                     <input type="text" id="account-phone" placeholder="Phone" required>
                     <select id="account-program" required><option value="">-- Select Program --</option><option value="KRCHN">KRCHN Students</option><option value="TVET">TVET Students</option></select>
-                    <select id="account-intake" required><option value="">-- Select Intake Year --</option><option value="2024">March 2024</option><option value="2025">March 2025</option><option value="2026">March 2026</option><option value="2027">March 2027</option><option value="2028">March 2028</option></select>
-                    <select id="account-block-term" required><option value="">-- Select Block/Term --</option></select>
+<!-- Replace the current account-intake select with this -->
+<select id="account-intake" required>
+    <option value="">-- Select Intake --</option>
+    <!-- KRCHN Intakes -->
+    <optgroup label="KRCHN Intakes">
+        <option value="March 2024">March 2024</option>
+        <option value="March 2025">March 2025</option>
+        <option value="March 2026" selected>March 2026</option>
+        <option value="March 2027">March 2027</option>
+        <option value="March 2028">March 2028</option>
+    </optgroup>
+    <!-- TVET Intakes -->
+    <optgroup label="TVET Intakes">
+        <option value="January 2024 Intake">January 2024</option>
+        <option value="March 2024 Intake">March 2024</option>
+        <option value="May 2024 Intake">May 2024</option>
+        <option value="July 2024 Intake">July 2024</option>
+        <option value="September 2024 Intake">September 2024</option>
+        <option value="January 2025 Intake">January 2025</option>
+        <option value="March 2025 Intake">March 2025</option>
+        <option value="May 2025 Intake">May 2025</option>
+        <option value="July 2025 Intake">July 2025</option>
+        <option value="September 2025 Intake">September 2025</option>
+        <option value="January 2026 Intake">January 2026</option>
+        <option value="March 2026 Intake" selected>March 2026</option>
+        <option value="May 2026 Intake">May 2026</option>
+        <option value="July 2026 Intake">July 2026</option>
+        <option value="September 2026 Intake">September 2026</option>
+        <option value="January 2027 Intake">January 2027</option>
+        <option value="March 2027 Intake">March 2027</option>
+        <option value="May 2027 Intake">May 2027</option>
+        <option value="July 2027 Intake">July 2027</option>
+        <option value="September 2027 Intake">September 2027</option>
+        <option value="January 2028 Intake">January 2028</option>
+        <option value="March 2028 Intake">March 2028</option>
+        <option value="May 2028 Intake">May 2028</option>
+        <option value="July 2028 Intake">July 2028</option>
+        <option value="September 2028 Intake">September 2028</option>
+    </optgroup>
+</select>                    <select id="account-block-term" required><option value="">-- Select Block/Term --</option></select>
                     <button type="submit">Enroll Account</button>
                 </form>
                 
@@ -1947,15 +1985,45 @@
 <h3>Mass Student Block/Term Promotion</h3>
 <form id="mass-promotion-form" class="inline-form">
     <!-- Intake Year -->
-    <select id="promote_intake" required>
-        <option value="">-- Select Intake Year --</option>
-        <option value="2024">2024 Intake</option>
-        <option value="2025">2025 Intake</option>
-        <option value="2026">2026 Intake</option>
-        <option value="2027">2027 Intake</option>
-        <option value="2028">2028 Intake</option>
-    </select>
-    
+   <select id="promote_intake" required>
+    <option value="">-- Select Intake --</option>
+    <!-- KRCHN Intakes -->
+    <optgroup label="KRCHN Intakes">
+        <option value="March 2024">March 2024</option>
+        <option value="March 2025">March 2025</option>
+        <option value="March 2026">March 2026</option>
+        <option value="March 2027">March 2027</option>
+        <option value="March 2028">March 2028</option>
+    </optgroup>
+    <!-- TVET Intakes -->
+    <optgroup label="TVET Intakes">
+        <option value="January 2024 Intake">January 2024</option>
+        <option value="March 2024 Intake">March 2024</option>
+        <option value="May 2024 Intake">May 2024</option>
+        <option value="July 2024 Intake">July 2024</option>
+        <option value="September 2024 Intake">September 2024</option>
+        <option value="January 2025 Intake">January 2025</option>
+        <option value="March 2025 Intake">March 2025</option>
+        <option value="May 2025 Intake">May 2025</option>
+        <option value="July 2025 Intake">July 2025</option>
+        <option value="September 2025 Intake">September 2025</option>
+        <option value="January 2026 Intake">January 2026</option>
+        <option value="March 2026 Intake">March 2026</option>
+        <option value="May 2026 Intake">May 2026</option>
+        <option value="July 2026 Intake">July 2026</option>
+        <option value="September 2026 Intake">September 2026</option>
+        <option value="January 2027 Intake">January 2027</option>
+        <option value="March 2027 Intake">March 2027</option>
+        <option value="May 2027 Intake">May 2027</option>
+        <option value="July 2027 Intake">July 2027</option>
+        <option value="September 2027 Intake">September 2027</option>
+        <option value="January 2028 Intake">January 2028</option>
+        <option value="March 2028 Intake">March 2028</option>
+        <option value="May 2028 Intake">May 2028</option>
+        <option value="July 2028 Intake">July 2028</option>
+        <option value="September 2028 Intake">September 2028</option>
+    </optgroup>
+</select>
     <!-- Program - ALL PROGRAMS -->
     <select id="promote_program" required>
         <option value="">-- Select Program --</option>
