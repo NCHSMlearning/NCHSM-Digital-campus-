@@ -1941,6 +1941,7 @@
 
                     // Start heartbeat
                     heartbeatInterval = setInterval(sendHeartbeat, 15000);
+                    startProctoringServices();
 
                     // Setup event listeners
                     setupExamEventListeners();
@@ -2016,7 +2017,7 @@
             }
         }
 
-        async function startExamFaceDetection() {
+               async function startExamFaceDetection() {
             try {
                 const video = faceVideo;
                 const canvas = faceCanvas;
@@ -2040,16 +2041,37 @@
                         const detections = await faceapi.detectAllFaces(video, options);
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+                        // ✅ CAPTURE SNAPSHOT EVERY TIME
+                        let snapshotUrl = null;
+                        
                         if (detections && detections.length > 0) {
                             faceMissingCount = 0;
+                            
+                            // ✅ Capture snapshot based on face count
+                            if (detections.length > 1) {
+                                snapshotUrl = await captureAndUploadSnapshot(
+                                    'multiple_faces_detected',
+                                    'critical',
+                                    `Detected ${detections.length} faces in camera`
+                                );
+                            } else {
+                                snapshotUrl = await captureAndUploadSnapshot(
+                                    'face_detected',
+                                    'info',
+                                    `Face detected (${detections.length} face)`
+                                );
+                            }
+                            
+                            // Draw bounding boxes
                             detections.forEach(det => {
                                 const box = det.box;
-                                ctx.strokeStyle = '#16A34A';
+                                ctx.strokeStyle = detections.length > 1 ? '#DC2626' : '#16A34A';
                                 ctx.lineWidth = 3;
                                 ctx.strokeRect(box.x, box.y, box.width, box.height);
-                                ctx.fillStyle = 'rgba(22, 163, 74, 0.1)';
+                                ctx.fillStyle = detections.length > 1 ? 'rgba(220, 38, 38, 0.1)' : 'rgba(22, 163, 74, 0.1)';
                                 ctx.fillRect(box.x, box.y, box.width, box.height);
                             });
+                            
                             const faceCount = detections.length;
                             if (faceCount === 1) {
                                 statusEl.textContent = '✅ Face detected';
@@ -2065,7 +2087,7 @@
                                 examCameraStatusBadge.className = 'camera-status-badge warning';
                                 if (Date.now() - lastMultipleFacesLogTime > 30000) {
                                     await logProctoringEvent('multiple_faces_detected',
-                                        `Detected ${faceCount} faces in camera`, 'critical');
+                                        `Detected ${faceCount} faces in camera`, 'critical', snapshotUrl);
                                     lastMultipleFacesLogTime = Date.now();
                                     showToast('⚠️ Multiple faces detected! Please ensure only you are in frame.',
                                         'warning');
@@ -2078,14 +2100,25 @@
                             faceDetectionOverlay.className = 'face-status-danger';
                             examCameraStatusBadge.textContent = '⚠️ No Face';
                             examCameraStatusBadge.className = 'camera-status-badge danger';
-                            if (faceMissingCount >= FACE_MISSING_THRESHOLD && Date.now() - lastFaceLogTime > 30000) {
-                                await logProctoringEvent('face_missing',
-                                    `No face detected for ${faceMissingCount} consecutive checks`, 'warning');
-                                lastFaceLogTime = Date.now();
-                                showToast('⚠️ Face not detected! Please look at the camera.', 'warning');
+                            
+                            // ✅ Capture snapshot when face missing
+                            if (faceMissingCount >= FACE_MISSING_THRESHOLD) {
+                                snapshotUrl = await captureAndUploadSnapshot(
+                                    'face_missing',
+                                    'warning',
+                                    `No face detected for ${faceMissingCount} checks`
+                                );
+                                if (Date.now() - lastFaceLogTime > 30000) {
+                                    await logProctoringEvent('face_missing',
+                                        `No face detected for ${faceMissingCount} consecutive checks`, 'warning', snapshotUrl);
+                                    lastFaceLogTime = Date.now();
+                                    showToast('⚠️ Face not detected! Please look at the camera.', 'warning');
+                                }
                             }
                         }
-                    } catch (detectionError) {}
+                    } catch (detectionError) {
+                        console.warn('Detection error:', detectionError);
+                    }
                 }, 2000);
 
             } catch (modelError) {
@@ -2094,7 +2127,6 @@
                 faceStatus.style.color = '#D97706';
             }
         }
-
         function renderQuestion(index) {
             if (questions.length === 0) return;
 
@@ -2314,9 +2346,9 @@
             }
         }
 
-        async function logProctoringEvent(eventType, details, severity = 'info') {
+               async function logProctoringEvent(eventType, details, severity = 'info', snapshotUrl = null) {
             try {
-                await sb.from('exam_proctoring_logs').insert({
+                const logData = {
                     student_id: studentId,
                     exam_id: parseInt(EXAM_ID),
                     event_type: eventType,
@@ -2325,10 +2357,110 @@
                     ip_address: await getIPAddress(),
                     device_info: navigator.userAgent,
                     timestamp: new Date().toISOString()
-                });
-            } catch (e) { /* silent fail */ }
+                };
+                
+                // ✅ ADD THIS - Include snapshot URL if provided
+                if (snapshotUrl) {
+                    logData.snapshot_url = snapshotUrl;
+                }
+                
+                await sb.from('exam_proctoring_logs').insert(logData);
+            } catch (e) { 
+                console.warn('Log error:', e);
+            }
+        }
+        // ============================================================
+        // SNAPSHOT HELPER FUNCTIONS - ADD THIS ENTIRE BLOCK
+        // ============================================================
+
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], { type: mimeString });
         }
 
+        async function captureAndUploadSnapshot(eventType, severity = 'info', details = '') {
+            try {
+                // Use the face video if available, otherwise lobby camera
+                const video = document.getElementById('face-video') || document.getElementById('cameraVideo');
+                if (!video || !video.srcObject) {
+                    console.warn('No video stream available for snapshot');
+                    return null;
+                }
+                
+                // Create canvas and capture frame
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                // Convert to JPEG
+                const snapshotData = canvas.toDataURL('image/jpeg', 0.7);
+                const fileName = `proctoring/${studentId}_${Date.now()}.jpg`;
+                const blob = dataURItoBlob(snapshotData);
+                
+                // Upload to Supabase Storage
+                const { data, error } = await sb.storage
+                    .from('exam-snapshots')
+                    .upload(fileName, blob, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                
+                if (error) {
+                    console.error('Upload error:', error);
+                    return null;
+                }
+                
+                // Get public URL
+                const { data: urlData } = await sb.storage
+                    .from('exam-snapshots')
+                    .getPublicUrl(fileName);
+                
+                // Log with snapshot URL (using the updated function)
+                await logProctoringEvent(
+                    eventType || 'snapshot',
+                    details || `Snapshot captured at ${new Date().toLocaleTimeString()}`,
+                    severity || 'info',
+                    urlData.publicUrl  // Pass snapshot URL
+                );
+                
+                console.log('✅ Snapshot uploaded:', urlData.publicUrl);
+                return urlData.publicUrl;
+                
+            } catch (error) {
+                console.error('Snapshot error:', error);
+                return null;
+            }
+        }
+                // ============================================================
+        // CAMERA HEALTH CHECK - ADD THIS FUNCTION
+        // ============================================================
+
+        async function checkCameraHealth() {
+            if (!isExamActive) return;
+            try {
+                const track = videoStream?.getVideoTracks()[0];
+                if (!track || track.readyState === 'ended') {
+                    await logProctoringEvent('camera_ended', 'Camera track ended unexpectedly', 'critical');
+                    showToast('⚠️ Camera error! Reconnecting...', 'warning');
+                    try {
+                        await startExamCamera();
+                    } catch (e) {
+                        showToast('❌ Camera failed! Auto-submitting...', 'error');
+                        setTimeout(executeSubmission, 3000);
+                    }
+                }
+            } catch (e) { 
+                console.warn('Camera health check error:', e);
+            }
+        }
         async function sendHeartbeat() {
             if (!isExamActive) return;
             try {
@@ -2558,9 +2690,13 @@ function setupNetworkMonitoring() {
             });
         }
 
-        function showFullscreenExitWarning() {
+                function showFullscreenExitWarning() {
             if (fullscreenWarningActive) return;
             fullscreenWarningActive = true;
+            
+            // ✅ ADD THIS - Capture snapshot on violation
+            captureAndUploadSnapshot('fullscreen_exit_attempt', 'critical', 'Student exited fullscreen mode');
+            
             logProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode', 'critical');
             const warningOverlay = document.getElementById('fullscreen-exit-warning');
             const countdownEl = document.getElementById('exit-countdown');
@@ -2587,7 +2723,6 @@ function setupNetworkMonitoring() {
                 }
             }, 1000);
         }
-
         async function enterSecureFullscreen() {
             try {
                 await document.documentElement.requestFullscreen();
@@ -2656,9 +2791,13 @@ function setupNetworkMonitoring() {
             document.removeEventListener('drop', preventDefault);
         }
 
-        function handleWindowBlur() {
+               function handleWindowBlur() {
             if (!isExamActive) return;
             blurCount++;
+            
+            // ✅ ADD THIS - Capture snapshot on window blur
+            captureAndUploadSnapshot('window_blur', 'warning', `Window lost focus (${blurCount})`);
+            
             document.getElementById('app-block-overlay').style.display = 'flex';
             logProctoringEvent('window_blur', `Window lost focus (${blurCount})`, 'warning');
             showToast(`⚠️ Please stay on the exam window! (${blurCount}/${MAX_BLUR_COUNT})`, 'warning');
@@ -2687,9 +2826,13 @@ function setupNetworkMonitoring() {
             blurCount = 0;
         }
 
-        function handleVisibilityChange() {
+                function handleVisibilityChange() {
             if (document.hidden && isExamActive) {
                 tabSwitchCount++;
+                
+                // ✅ ADD THIS - Capture snapshot on tab switch
+                captureAndUploadSnapshot('tab_switch', 'warning', `Tab switch attempt (${tabSwitchCount})`);
+                
                 document.getElementById('app-block-overlay').style.display = 'flex';
                 logProctoringEvent('tab_switch', `Student switched tabs (${tabSwitchCount})`, 'warning');
                 showToast(`⚠️ Tab switch detected! (${tabSwitchCount}/3)`, 'warning');
