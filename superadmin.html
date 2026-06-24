@@ -1950,7 +1950,7 @@
     </table>
 </section>
 
-          <!-- Enroll Accounts Section -->
+         <!-- Enroll Accounts Section -->
 <section id="enroll" class="tab-content">
     <h2>Enroll Accounts</h2>
     <form id="add-account-form" class="inline-form">
@@ -1966,8 +1966,8 @@
         
         <input type="text" id="account-phone" placeholder="Phone" required>
         
-        <!-- Program Selection -->
-        <select id="account-program" required>
+        <!-- Program Selection with onchange -->
+        <select id="account-program" required onchange="updateBlockTermOptions('account-program', 'account-block-term')">
             <option value="">-- Select Program --</option>
             <option value="KRCHN">🎓 KRCHN Nursing</option>
             <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
@@ -2114,8 +2114,8 @@
             </optgroup>
         </select>
         
-        <!-- Program -->
-        <select id="promote_program" required>
+        <!-- Program with onchange to update BOTH FROM and TO blocks -->
+        <select id="promote_program" required onchange="updateBlockTermOptions('promote_program', 'promote_from_block'); updateBlockTermOptions('promote_program', 'promote_to_block');">
             <option value="">-- Select Program --</option>
             <option value="KRCHN">🎓 KRCHN Nursing</option>
             <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
@@ -2180,7 +2180,7 @@
                 <th>Name</th>
                 <th>Email</th>
                 <th>Program</th>
-                <th>Intake</th>      <!-- ← Shows "March 2026" or "March 2026 Intake" -->
+                <th>Intake</th>
                 <th>Block/Term</th>
                 <th>Phone</th>
                 <th>Status</th>
