@@ -4,7 +4,7 @@
 * TVET/KRCHN integration complete
 **********************************************************************************/
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-// Hides the .html extension in the URL
+// Hides the .html extension in the URL 
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
     window.history.replaceState({}, '', cleanPath);
