@@ -2611,9 +2611,8 @@ async function updateUserRole(userId, newRole, fullName) {
 }
 
 // ============================================
-// LOAD ALL USERS
+// UPDATED loadAllUsers() - WITH DISPLAY INTAKE
 // ============================================
-
 async function loadAllUsers() {
     const tbody = $('users-table');
     if (!tbody) return;
@@ -2645,6 +2644,11 @@ async function loadAllUsers() {
         const programType = getProgramType(u.program);
         const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
         const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        // ============================================
+        // FIX: Use display intake function
+        // ============================================
+        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
         // Escape for security
         const escapedUserId = escapeHtml(u.user_id);
@@ -2669,6 +2673,7 @@ async function loadAllUsers() {
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
+                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ← FIXED: Shows full intake string -->
                 <td class="${statusClass}">${statusText}</td>
                 <td>
                     <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
@@ -2680,73 +2685,82 @@ async function loadAllUsers() {
 
     filterTable('user-search', 'users-table', [1, 2, 4]);
 }
-
 // ============================================
-// LOAD STUDENTS
+// UPDATED loadPendingApprovals() - WITH DISPLAY INTAKE
 // ============================================
+async function loadPendingApprovals() {
+    const tbody = $('pending-table');
+    if (!tbody) {
+        console.error("Missing <tbody id='pending-table'> element in your HTML.");
+        return;
+    }
 
-async function loadStudents() {
-    const tbody = $('students-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="9">Loading students...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
 
-    const { data: students, error } = await sb.from(USER_PROFILE_TABLE)
+    const { data: pending, error } = await sb
+        .from(USER_PROFILE_TABLE)
         .select('*')
-        .eq('role', 'student')
-        .order('full_name', { ascending: true });
-    
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if (!pending || pending.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
         return;
     }
 
     tbody.innerHTML = '';
-    
-    students.forEach(s => {
-        const isBlocked = s.block_program_year === true;
-        const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
+
+    pending.forEach(u => {
+        // Escape HTML for security
+        const escapedName = escapeHtml(u.full_name);
+        const escapedUserId = escapeHtml(u.user_id);
+        const escapedStudentId = escapeHtml(u.student_id || '');
+        const escapedEmail = escapeHtml(u.email || '');
+        const escapedRole = escapeHtml(u.role || 'student');
+        const escapedProgram = escapeHtml(u.program || 'N/A');
         
-        // Get program info
-        const programName = getProgramDisplayName(s.program);
-        const programType = getProgramType(s.program);
-        const programLevel = getProgramLevel(s.program);
+        // Get program info for display
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
         const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
         const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
         
-        // Format block/term display
-        const blockTermDisplay = s.block || 'Not Assigned';
-        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
-
-        // Escape for security
-        const escapedUserId = escapeHtml(s.user_id);
-        const escapedName = escapeHtml(s.full_name);
-
+        // ============================================
+        // FIX: Use display intake function
+        // ============================================
+        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+        
         tbody.innerHTML += `
             <tr>
-                <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(s.full_name)}</td>
-                <td>${escapeHtml(s.email)}</td>
+                <td>${escapedName}</td>
+                <td>${escapedEmail}</td>
+                <td>${escapedRole}</td>
                 <td>
-                    <strong>${escapeHtml(programName)}</strong>
-                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
+                    ${escapeHtml(programName)}
                     <div class="program-badge ${programBadgeClass}">
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
-                <td>${escapeHtml(s.intake_year || 'N/A')}</td>
-                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
-                <td>${escapeHtml(s.phone)}</td>
-                <td class="${statusClass}">${statusText}</td>
+                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ← FIXED: Shows full intake string -->
+                <td>${escapedStudentId || 'N/A'}</td>
+                <td>${new Date(u.created_at).toLocaleDateString()}</td>
                 <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
-                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                    <button class="btn btn-approve" 
+                            onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                        <i class="fas fa-eye"></i> Review & Approve
+                    </button>
+                    <button class="btn btn-delete" 
+                            onclick="deleteProfile('${escapedUserId}', '${escapedName}')">
+                        Reject
+                    </button>
                 </td>
             </tr>`;
     });
-
-    filterTable('student-search', 'students-table', [1, 3, 5]);
 }
 
 // ============================================
