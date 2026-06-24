@@ -703,11 +703,9 @@
                 // 🔥 LOAD EXTERNAL MARKS FROM NURSING SCHOOL SYSTEM
                 // ============================================
                 console.log('📚 Loading external marks from Nursing School System...');
-                await this.loadExternalMarks();
-                
-                // Load NCK marks (legacy - also from the same API)
-                await this.loadNCKMarksFromSystem();
-                await this.loadNCKClinicalScore();
+              // await this.loadExternalMarks();
+// await this.loadNCKMarksFromSystem();
+// await this.loadNCKClinicalScore();
                 
                 this.dispatchDashboardEvent();
                 this.hideLoading();
