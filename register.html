@@ -985,28 +985,32 @@
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    async function checkEmailExists(email) {
-        if (!email || email.length < 5) return false;
+   // ============================================
+// EMAIL VALIDATION - FIXED (Only check profile table)
+// ============================================
+async function checkEmailExists(email) {
+    if (!email || email.length < 5) return false;
+    
+    try {
+        // ONLY check the profile table - we don't have access to auth.users
+        const { data: profileData, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('email')
+            .eq('email', email)
+            .maybeSingle();
         
-        try {
-            // Only check the profile table (the trigger handles auth.users)
-            const { data: profileData, error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('email')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (profileError) {
-                console.error('Profile check error:', profileError);
-                return false;
-            }
-            
-            return !!profileData;
-        } catch (error) {
-            console.error('Error checking email:', error);
+        if (profileError) {
+            console.error('Profile check error:', profileError);
             return false;
         }
+        
+        return !!profileData;
+        
+    } catch (error) {
+        console.error('Error checking email:', error);
+        return false;
     }
+}
 
     document.getElementById('email').addEventListener('input', function() {
         const email = this.value.trim();
