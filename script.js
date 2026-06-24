@@ -8008,13 +8008,17 @@ async function bulkRejectSelectedUnits() {
 // APPROVED REGISTRATIONS - ENHANCED
 // =====================================================
 
+// =====================================================
+// APPROVED REGISTRATIONS - COMPLETE FIX
+// =====================================================
+
 async function loadApprovedRegistrations() {
     const tbody = document.getElementById('approved-registrations-body');
     if (!tbody) return;
     
     tbody.innerHTML = `
         <tr><td colspan="10" style="padding: 40px; text-align: center;">
-            <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div class="loading-spinner"></div>
             <p style="margin-top: 10px; color: #6b7280;">Loading approved registrations...</p>
         </td></tr>
     `;
@@ -8028,9 +8032,7 @@ async function loadApprovedRegistrations() {
         
         if (error) throw error;
         
-        approvedRegistrationsData = registrations || [];
-        
-        if (approvedRegistrationsData.length === 0) {
+        if (!registrations || registrations.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="10" style="padding: 40px; text-align: center; color: #6b7280;">
                     <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
@@ -8040,51 +8042,115 @@ async function loadApprovedRegistrations() {
             return;
         }
         
-        // Get student names - MATCH BY user_id (UUID)
-        const studentIds = [...new Set(approvedRegistrationsData.map(r => r.student_id))];
-        let studentNames = {};
+        // ============================================
+        // FIX: Clean student IDs (remove spaces, trim)
+        // ============================================
+        const studentIds = [...new Set(registrations.map(r => r.student_id?.trim()).filter(id => id))];
+        console.log('🔍 Looking up student IDs:', studentIds);
         
-        // Query profiles using user_id (which matches the student_id in registrations)
-        const { data: students, error: profileError } = await sb
+        // ============================================
+        // FIX: Query profiles with exact matching
+        // ============================================
+        let studentMap = {};
+        
+        // Method 1: Query by user_id (UUID)
+        const { data: studentsByUserId, error: err1 } = await sb
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name')
+            .select('user_id, full_name, student_id')
             .in('user_id', studentIds);
         
-        if (profileError) {
-            console.error('Error fetching profiles:', profileError);
-        }
-        
-        if (students) {
-            students.forEach(s => {
-                studentNames[s.user_id] = s.full_name;
+        if (!err1 && studentsByUserId) {
+            studentsByUserId.forEach(s => {
+                studentMap[s.user_id] = s.full_name;
+                // Also map by student_id (text) for fallback
+                if (s.student_id) {
+                    studentMap[s.student_id] = s.full_name;
+                }
             });
+            console.log(`✅ Found ${studentsByUserId.length} by user_id`);
         }
         
-        console.log(`✅ Found ${Object.keys(studentNames).length} student names out of ${studentIds.length} students`);
+        // Method 2: For any missing, try a case-insensitive approach
+        const missingIds = studentIds.filter(id => !studentMap[id]);
+        if (missingIds.length > 0) {
+            console.log(`🔍 Missing ${missingIds.length}, trying individual lookups...`);
+            
+            for (const id of missingIds) {
+                // Try exact match on user_id
+                const { data: exactMatch } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, student_id')
+                    .eq('user_id', id)
+                    .maybeSingle();
+                
+                if (exactMatch) {
+                    studentMap[exactMatch.user_id] = exactMatch.full_name;
+                    if (exactMatch.student_id) {
+                        studentMap[exactMatch.student_id] = exactMatch.full_name;
+                    }
+                    console.log(`✅ Found by exact user_id: ${id} → ${exactMatch.full_name}`);
+                    continue;
+                }
+                
+                // Try by student_id (text column)
+                const { data: studentMatch } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, student_id')
+                    .eq('student_id', id)
+                    .maybeSingle();
+                
+                if (studentMatch) {
+                    studentMap[studentMatch.user_id] = studentMatch.full_name;
+                    if (studentMatch.student_id) {
+                        studentMap[studentMatch.student_id] = studentMatch.full_name;
+                    }
+                    console.log(`✅ Found by student_id: ${id} → ${studentMatch.full_name}`);
+                    continue;
+                }
+                
+                // Try ilike (case-insensitive) as last resort
+                const { data: ilikeMatch } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, student_id')
+                    .ilike('user_id', `%${id.substring(0, 8)}%`)
+                    .maybeSingle();
+                
+                if (ilikeMatch) {
+                    studentMap[ilikeMatch.user_id] = ilikeMatch.full_name;
+                    if (ilikeMatch.student_id) {
+                        studentMap[ilikeMatch.student_id] = ilikeMatch.full_name;
+                    }
+                    console.log(`✅ Found by ilike: ${id} → ${ilikeMatch.full_name}`);
+                }
+            }
+        }
         
+        console.log(`✅ Total names found: ${Object.keys(studentMap).length} out of ${studentIds.length}`);
+        
+        // Build HTML
         let html = '';
-        for (const reg of approvedRegistrationsData) {
-            const studentName = studentNames[reg.student_id] || 'Unknown';
+        let unknownCount = 0;
+        
+        for (const reg of registrations) {
+            const studentName = studentMap[reg.student_id?.trim()] || 'Unknown';
+            if (studentName === 'Unknown') unknownCount++;
+            
             const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
             
             html += `
-                <tr style="border-bottom: 1px solid #e5e7eb;"
-                    onmouseover="this.style.background='#f8fafc'"
-                    onmouseout="this.style.background='transparent'">
-                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()" style="cursor: pointer;"></td>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"></td>
                     <td><strong style="color: #1e3a5f;">${escapeHtml(studentName)}</strong></td>
-                    <td style="font-family: monospace; font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8)}...</td>
-                    <td><span style="background: #dbeafe; color: #2563eb; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${escapeHtml(reg.unit_code)}</span></td>
+                    <td style="font-family: monospace; font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8) || 'N/A'}...</td>
+                    <td><span class="badge badge-info">${escapeHtml(reg.unit_code)}</span></td>
                     <td>${escapeHtml(reg.unit_name)}</td>
-                    <td><span style="background: #f3f4f6; color: #4b5563; padding: 2px 10px; border-radius: 12px; font-size: 12px;">${escapeHtml(reg.block)}</span></td>
-                    <td><span style="background: #f3e8ff; color: #7c3aed; padding: 2px 10px; border-radius: 12px; font-size: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
-                    <td style="font-size: 12px;">${approvalDate}</td>
+                    <td><span class="badge badge-secondary">${escapeHtml(reg.block)}</span></td>
+                    <td><span class="badge badge-success">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td>${approvalDate}</td>
                     <td style="font-size: 12px; color: #6b7280;">System</td>
                     <td>
                         <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" 
-                            style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
-                            onmouseover="this.style.background='#d97706'"
-                            onmouseout="this.style.background='#f59e0b'">
+                            class="btn-sm btn-warning">
                             <i class="fas fa-undo"></i> De-approve
                         </button>
                     </td>
@@ -8092,10 +8158,14 @@ async function loadApprovedRegistrations() {
             `;
         }
         
+        if (unknownCount > 0) {
+            console.log(`⚠️ ${unknownCount} registrations have unknown student names`);
+        }
+        
         tbody.innerHTML = html;
         
     } catch (error) {
-        console.error('Error loading approved registrations:', error);
+        console.error('❌ Error loading approved registrations:', error);
         tbody.innerHTML = `<tr><td colspan="10" style="color: red;">Error: ${error.message}</td></tr>`;
     }
 }
