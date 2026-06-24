@@ -1,7 +1,7 @@
 /**********************************************************************************
 * COMPLETE SuperAdmin Dashboard JavaScript - ALL SECTIONS WORKING
 * Program dropdowns synchronized across ALL sections
-* TVET/KRCHN integration complete
+* TVET/KRCHN integration complete 
 **********************************************************************************/
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 // Hides the .html extension in the URL 
