@@ -3020,44 +3020,65 @@ window.saveEditedMarks = async function() {
         alert('❌ Error saving marks: ' + error.message);
     }
 };
-            // ========== EXPORT FUNCTIONS ==========
-            window.exportToExcel = function(type) {
-                let data = [];
-                if (type === 'students') data = studentsResults.map(r => {
-                    const totalMarks = r.exam_info?.total_marks ||  getExamTotalMarks(r.exam_info?.exam_type);
-                    const score = r.marks || 0;
-                    const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-                    return { 'Student ID': r.student_profile?.student_id, 'Name': r.student_profile?.full_name,
-                        'Exam': r.exam_info?.exam_name, 'Score': `${score}/${totalMarks}`,
-                        'Percent': percentage + '%', 'Status': r.result_status };
-                });
-                if (type === 'allStudents') data = allStudents.map(s => ({ 'Student ID': s.student_id,
-                    'Name': s.full_name, 'Email': s.email, 'Program': s.program }));
-                if (type === 'exams') data = allExams.map(e => {
-                    const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
-                    return { 'Exam Name': e.exam_name, 'Type': e.exam_type, 'Total Marks': totalMarks,
-                        'Duration': e.duration_minutes };
-                });
-                if (type === 'proctoring') data = proctoringLogs.map(l => ({ 
-    'Time': formatKenyaTime(l.timestamp), 
-    'Student': l.student_profile?.full_name, 
-    'Alert': l.event_type,
-    'Details': l.details 
-}));
-const ws = XLSX.utils.json_to_sheet(data);
-const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, ws, 'Data');
-XLSX.writeFile(wb, `${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
-            window.printTable = function(type) {
-                const tableHtml = document.getElementById(type === 'students' ? 'studentsTable' : type ===
-                    'allStudents' ? 'allStudentsTable' : type === 'exams' ? 'examsTable' : 'proctoringTable')
-                    .outerHTML;
-                const win = window.open();
-                win.document.write(
-                    `<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`
-                    );
-                win.print();
+// ========== EXPORT FUNCTIONS ==========
+window.exportToExcel = function(type) {
+    let data = [];
+    if (type === 'students') {
+        data = studentsResults.map(r => {
+            const totalMarks = r.exam_info?.total_marks || getExamTotalMarks(r.exam_info?.exam_type);
+            const score = r.marks || 0;
+            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+            return { 
+                'Student ID': r.student_profile?.student_id, 
+                'Name': r.student_profile?.full_name,
+                'Exam': r.exam_info?.exam_name, 
+                'Score': `${score}/${totalMarks}`,
+                'Percent': percentage + '%', 
+                'Status': r.result_status 
             };
+        });
+    } else if (type === 'allStudents') {
+        data = allStudents.map(s => ({ 
+            'Student ID': s.student_id,
+            'Name': s.full_name, 
+            'Email': s.email, 
+            'Program': s.program 
+        }));
+    } else if (type === 'exams') {
+        data = allExams.map(e => {
+            const totalMarks = e.total_marks || getExamTotalMarks(e.exam_type);
+            return { 
+                'Exam Name': e.exam_name, 
+                'Type': e.exam_type, 
+                'Total Marks': totalMarks,
+                'Duration': e.duration_minutes 
+            };
+        });
+    } else if (type === 'proctoring') {
+        data = proctoringLogs.map(l => ({ 
+            'Time': formatKenyaTime(l.timestamp), 
+            'Student': l.student_profile?.full_name, 
+            'Alert': l.event_type,
+            'Details': l.details 
+        }));
+    }
+    
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    XLSX.writeFile(wb, `${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+window.printTable = function(type) {
+    const tableHtml = document.getElementById(type === 'students' ? 'studentsTable' : type ===
+        'allStudents' ? 'allStudentsTable' : type === 'exams' ? 'examsTable' : 'proctoringTable')
+        .outerHTML;
+    const win = window.open();
+    win.document.write(
+        `<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`
+        );
+    win.print();
+};
 
       window.exportMarksOnly = function() {
     if (!studentsResults || studentsResults.length === 0) { 
