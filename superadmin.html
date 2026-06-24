@@ -2985,23 +2985,38 @@
                 <div id="live-preview"><p>Loading live preview...</p></div>
             </section>
 
-            <!-- Audit Logs Section -->
-            <section id="audit" class="tab-content">
-                <h2>Audit & Security Logs</h2>
-                <div class="toolbar">
-                    <select id="log-filter-user"><option value="">-- Filter by User --</option></select>
-                    <select id="log-filter-action"><option value="">-- Filter by Action --</option></select>
-                    <input type="date" id="log-filter-date-start">
-                    <input type="date" id="log-filter-date-end">
-                    <button onclick="fetchAuditLogs()" class="btn-action">Apply Filters</button>
-                    <button onclick="exportTableToCSV('audit-table', 'Audit_Log_Export.csv')" class="btn-action export-btn">Export All (CSV)</button>
-                </div>
-                
+           <!-- Audit Logs Section -->
+<section id="audit" class="tab-content">
+    <h2>Audit & Security Logs</h2>
+    <div class="toolbar">
+        <select id="log-filter-user"><option value="">-- Filter by User --</option></select>
+        <select id="log-filter-action"><option value="">-- Filter by Action --</option></select>
+        <input type="date" id="log-filter-date-start">
+        <input type="date" id="log-filter-date-end">
+        <button onclick="applyAuditFilters()" class="btn-action">Apply Filters</button>
+        <button onclick="exportAuditLogsToCSV()" class="btn-action export-btn">Export All (CSV)</button>
+        <button onclick="manualCleanAuditLogs()" class="btn-danger" style="background:#dc2626;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">
+            <i class="fas fa-broom"></i> Clean Malicious Entries
+        </button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <thead><tr><th>Timestamp</th><th>User/Role</th><th>Action Type</th><th>Details</th><th>Status</th></tr></thead>
-                    <tbody id="audit-table"><tr><td colspan="5">Loading recent critical events...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+                    <th>Timestamp</th>
+                    <th>User/Role</th>
+                    <th>Action Type</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="audit-table">
+                <!-- SAFELY rendered by JavaScript using textContent -->
+            </tbody>
+        </table>
+    </div>
+</section>
 
             <!-- Security Settings Section -->
             <section id="security" class="tab-content">
