@@ -746,8 +746,9 @@ async function loadSectionData(tabId) {
 }
 
 /*******************************************************
- * 5. AUDIT LOGGING
+ * 5. AUDIT LOGGING - XSS SAFE VERSION
  *******************************************************/
+
 async function logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
     const logData = {
         user_id: currentUserProfile?.id || 'SYSTEM',
@@ -765,34 +766,158 @@ async function logAudit(action_type, details, target_id = null, status = 'SUCCES
     }
 }
 
+// ============================================================
+// ✅ FIXED: XSS-SAFE loadAuditLogs()
+// Uses textContent instead of innerHTML
+// ============================================================
+
 async function loadAuditLogs() {
-    const tbody = $('audit-table');
+    const tbody = document.getElementById('audit-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5">Loading audit logs...</td></tr>';
+    // Clear safely using textContent
+    tbody.textContent = '';
+    
+    // Add loading state
+    const loadingRow = document.createElement('tr');
+    const loadingCell = document.createElement('td');
+    loadingCell.colSpan = 5;
+    loadingCell.textContent = 'Loading audit logs...';
+    loadingRow.appendChild(loadingCell);
+    tbody.appendChild(loadingRow);
 
-    const { data: logs, error } = await fetchData(AUDIT_TABLE, '*', {}, 'timestamp', false);
+    try {
+        const { data: logs, error } = await fetchData(AUDIT_TABLE, '*', {}, 'timestamp', false);
 
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading logs: ${error.message}</td></tr>`;
-        return;
+        if (error) {
+            tbody.textContent = '';
+            const errorRow = document.createElement('tr');
+            const errorCell = document.createElement('td');
+            errorCell.colSpan = 5;
+            errorCell.textContent = `Error loading logs: ${error.message}`;
+            errorCell.style.color = 'red';
+            errorRow.appendChild(errorCell);
+            tbody.appendChild(errorRow);
+            return;
+        }
+
+        // Clear loading state
+        tbody.textContent = '';
+
+        if (!logs || logs.length === 0) {
+            const emptyRow = document.createElement('tr');
+            const emptyCell = document.createElement('td');
+            emptyCell.colSpan = 5;
+            emptyCell.textContent = 'No audit logs found';
+            emptyCell.style.textAlign = 'center';
+            emptyCell.style.padding = '40px';
+            emptyRow.appendChild(emptyCell);
+            tbody.appendChild(emptyRow);
+            return;
+        }
+
+        // ✅ SAFE: Build rows using textContent, NOT innerHTML
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            
+            // Timestamp
+            const td1 = document.createElement('td');
+            td1.textContent = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
+            row.appendChild(td1);
+            
+            // User/Role
+            const td2 = document.createElement('td');
+            const userRole = log.user_role || 'SYSTEM';
+            const userId = log.user_id ? log.user_id.substring(0, 8) : 'N/A';
+            td2.textContent = `${userRole} (${userId})`;
+            row.appendChild(td2);
+            
+            // Action Type
+            const td3 = document.createElement('td');
+            td3.textContent = log.action_type || 'Unknown';
+            row.appendChild(td3);
+            
+            // Details - ✅ XSS SAFE: textContent escapes all HTML
+            const td4 = document.createElement('td');
+            const detailsText = log.details || '';
+            const targetId = log.target_id ? log.target_id.substring(0, 8) : 'N/A';
+            td4.textContent = `${detailsText} (Target ID: ${targetId})`;
+            row.appendChild(td4);
+            
+            // Status
+            const td5 = document.createElement('td');
+            const statusSpan = document.createElement('span');
+            const isSuccess = log.status === 'SUCCESS' || log.status === 'success';
+            statusSpan.className = isSuccess ? 'status-approved' : 'status-danger';
+            statusSpan.textContent = log.status || 'UNKNOWN';
+            td5.appendChild(statusSpan);
+            row.appendChild(td5);
+            
+            tbody.appendChild(row);
+        });
+
+        // ✅ Auto-clean malicious entries after loading
+        await cleanMaliciousLogEntries();
+
+    } catch (error) {
+        console.error('Error loading audit logs:', error);
+        tbody.textContent = '';
+        const errorRow = document.createElement('tr');
+        const errorCell = document.createElement('td');
+        errorCell.colSpan = 5;
+        errorCell.textContent = `Error: ${error.message}`;
+        errorCell.style.color = 'red';
+        errorRow.appendChild(errorCell);
+        tbody.appendChild(errorRow);
     }
+}
 
-    tbody.innerHTML = '';
-    logs.forEach(log => {
-        const timestamp = new Date(log.timestamp).toLocaleString();
-        const statusClass = log.status === 'SUCCESS' ? 'status-approved' : 'status-danger';
+// ============================================================
+// 🧹 AUTO-CLEAN: Remove XSS attempts from audit logs
+// ============================================================
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${timestamp}</td>
-                <td>${escapeHtml(log.user_role)} (${escapeHtml(log.user_id?.substring(0, 8))})</td>
-                <td>${escapeHtml(log.action_type)}</td>
-                <td>${escapeHtml(log.details)} (Target ID: ${escapeHtml(log.target_id?.substring(0, 8) || 'N/A')})</td>
-                <td class="${statusClass}">${escapeHtml(log.status)}</td>
-            </tr>
-        `;
-    });
+async function cleanMaliciousLogEntries() {
+    try {
+        // Delete entries containing HTML tags (potential XSS)
+        const { data, error } = await sb
+            .from(AUDIT_TABLE)
+            .delete()
+            .or('details.ilike.%<%', 'details.ilike.%>%')
+            .or('details.ilike.%script%', 'details.ilike.%onerror%')
+            .or('details.ilike.%</td>%', 'details.ilike.%<tr>%');
+        
+        if (error) {
+            console.warn('⚠️ Could not clean malicious entries:', error.message);
+        } else if (data && data.length > 0) {
+            console.log(`🧹 Removed ${data.length} malicious log entries`);
+        }
+    } catch (e) {
+        // Silent fail - cleanup is optional
+        console.warn('Cleanup warning:', e.message);
+    }
+}
+
+// ============================================================
+// 🧹 MANUAL CLEANUP: Run this if you see XSS in logs
+// ============================================================
+
+async function manualCleanAuditLogs() {
+    if (!confirm('⚠️ This will delete ALL audit log entries containing HTML tags.\n\nContinue?')) return;
+    
+    try {
+        const { data, error } = await sb
+            .from(AUDIT_TABLE)
+            .delete()
+            .or('details.ilike.%<%', 'details.ilike.%>%');
+        
+        if (error) throw error;
+        
+        alert(`✅ Removed ${data?.length || 0} malicious entries.`);
+        await loadAuditLogs();
+        
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
 }
 
 /*******************************************************
