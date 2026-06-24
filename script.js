@@ -2537,7 +2537,25 @@ async function updateUserRole(userId, newRole, fullName) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
-
+// ============================================
+// DISPLAY INTAKE FUNCTION
+// ============================================
+function getDisplayIntake(program, year) {
+    if (!year) return 'N/A';
+    
+    // Check if year is already a full string (like "March 2026" or "March 2026 Intake")
+    if (typeof year === 'string' && year.includes(' ')) {
+        return year;
+    }
+    
+    // Determine display format based on program
+    if (program === 'KRCHN') {
+        return `March ${year}`;
+    } else {
+        // TVET programs
+        return `March ${year} Intake`;
+    }
+}
 // ============================================
 // UPDATED loadAllUsers() - WITH DISPLAY INTAKE
 // ============================================
