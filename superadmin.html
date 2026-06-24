@@ -3035,26 +3035,54 @@
                 </form>
             </section>
 
-            <!-- Backup Section -->
-            <section id="backup" class="tab-content">
-                <h2>Database Backup & Restore</h2>
-                <button onclick="triggerBackup()" class="btn-action">Generate New Backup (.sql)</button>
-                <hr>
-                <h3>Restore Database</h3>
-                <form id="restore-form">
-                    <input type="file" id="restore-file" accept=".sql" required>
-                    <button type="submit" class="btn-danger">Restore from File</button>
-                </form>
-                <hr>
-                <h3>Recent Backups</h3>
-                <div class="toolbar">
-                    <button onclick="exportTableToCSV('backup-history-table', 'Backup_History_Index_Export.csv')" class="btn-action export-btn">Export Backup Index (CSV)</button>
-                </div>
-                <tr>
-                    <thead><tr><th>File Name</th><th>Date</th><th>Size</th><th>Actions</th></tr></thead>
-                    <tbody id="backup-history-table"><tr><td colspan="4">Loading backup history...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+           <section id="backup" class="tab-content">
+    <h2>Database Backup & Restore</h2>
+    
+    <!-- Link to Supabase Backups -->
+    <div style="background: #f0f7ff; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <h3><i class="fas fa-info-circle"></i> Supabase Backups</h3>
+        <p>Your database is automatically backed up daily by Supabase.</p>
+        <a href="https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups" 
+           target="_blank" 
+           class="btn-action" 
+           style="display: inline-block; background: #4C1D95; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
+            <i class="fas fa-external-link-alt"></i> View Backups on Supabase
+        </a>
+    </div>
+    
+    <hr>
+    
+    <h3>Recent Backup History</h3>
+    <div class="toolbar">
+        <button onclick="exportTableToCSV('backup-history-table', 'Backup_History_Export.csv')" class="btn-action export-btn">Export Backup Index (CSV)</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Date</th>
+                <th>Size</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="backup-history-table">
+            <tr>
+                <td colspan="4">
+                    <div style="text-align: center; padding: 20px; color: #6b7280;">
+                        <i class="fas fa-database" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                        <p>Backups are managed by Supabase</p>
+                        <p style="font-size: 12px;">Visit the Supabase Dashboard → Database → Backups</p>
+                        <a href="https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups" 
+                           target="_blank" 
+                           style="color: #4C1D95; text-decoration: underline;">
+                            Click here to view real backups
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
                         <!-- ============ ADMIN APPROVALS SECTION - SUPER ADMIN ONLY ============ -->
 <section id="admin-approvals" class="tab-content">
     <h2><i class="fas fa-check-double"></i> Pending Admin Actions</h2>
