@@ -1950,167 +1950,248 @@
     </table>
 </section>
 
-            <!-- Enroll Accounts Section -->
-            <section id="enroll" class="tab-content">
-                <h2>Enroll Accounts</h2>
-                <form id="add-account-form" class="inline-form">
-                    <input type="text" id="account-name" placeholder="Full Name" required>
-                    <input type="email" id="account-email" placeholder="Email" required>
-                    <input type="password" id="account-password" placeholder="Password" required autocomplete="new-password">
-                    <select id="account-role" required><option value="student">Student</option><option value="admin">Admin</option><option value="lecturer">Lecturer</option></select>
-                    <input type="text" id="account-phone" placeholder="Phone" required>
-                    <select id="account-program" required><option value="">-- Select Program --</option><option value="KRCHN">KRCHN Students</option><option value="TVET">TVET Students</option></select>
-<!-- Replace the current account-intake select with this -->
-<select id="account-intake" required>
-    <option value="">-- Select Intake --</option>
-    <!-- KRCHN Intakes -->
-    <optgroup label="KRCHN Intakes">
-        <option value="March 2024">March 2024</option>
-        <option value="March 2025">March 2025</option>
-        <option value="March 2026" selected>March 2026</option>
-        <option value="March 2027">March 2027</option>
-        <option value="March 2028">March 2028</option>
-    </optgroup>
-    <!-- TVET Intakes -->
-    <optgroup label="TVET Intakes">
-        <option value="January 2024 Intake">January 2024</option>
-        <option value="March 2024 Intake">March 2024</option>
-        <option value="May 2024 Intake">May 2024</option>
-        <option value="July 2024 Intake">July 2024</option>
-        <option value="September 2024 Intake">September 2024</option>
-        <option value="January 2025 Intake">January 2025</option>
-        <option value="March 2025 Intake">March 2025</option>
-        <option value="May 2025 Intake">May 2025</option>
-        <option value="July 2025 Intake">July 2025</option>
-        <option value="September 2025 Intake">September 2025</option>
-        <option value="January 2026 Intake">January 2026</option>
-        <option value="March 2026 Intake" selected>March 2026</option>
-        <option value="May 2026 Intake">May 2026</option>
-        <option value="July 2026 Intake">July 2026</option>
-        <option value="September 2026 Intake">September 2026</option>
-        <option value="January 2027 Intake">January 2027</option>
-        <option value="March 2027 Intake">March 2027</option>
-        <option value="May 2027 Intake">May 2027</option>
-        <option value="July 2027 Intake">July 2027</option>
-        <option value="September 2027 Intake">September 2027</option>
-        <option value="January 2028 Intake">January 2028</option>
-        <option value="March 2028 Intake">March 2028</option>
-        <option value="May 2028 Intake">May 2028</option>
-        <option value="July 2028 Intake">July 2028</option>
-        <option value="September 2028 Intake">September 2028</option>
-    </optgroup>
-</select>                    <select id="account-block-term" required><option value="">-- Select Block/Term --</option></select>
-                    <button type="submit">Enroll Account</button>
-                </form>
+          <!-- Enroll Accounts Section -->
+<section id="enroll" class="tab-content">
+    <h2>Enroll Accounts</h2>
+    <form id="add-account-form" class="inline-form">
+        <input type="text" id="account-name" placeholder="Full Name" required>
+        <input type="email" id="account-email" placeholder="Email" required>
+        <input type="password" id="account-password" placeholder="Password" required autocomplete="new-password">
+        
+        <select id="account-role" required>
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+            <option value="lecturer">Lecturer</option>
+        </select>
+        
+        <input type="text" id="account-phone" placeholder="Phone" required>
+        
+        <!-- Program Selection -->
+        <select id="account-program" required>
+            <option value="">-- Select Program --</option>
+            <option value="KRCHN">🎓 KRCHN Nursing</option>
+            <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
+                <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                <option value="DCH">Diploma in Community Health</option>
+                <option value="DHRIT">Diploma in Health Records and IT</option>
+                <option value="DSL">Diploma in Science Lab</option>
+                <option value="DSW">Diploma in Social Work & Community Development</option>
+                <option value="DCJS">Diploma in Criminal Justice</option>
+                <option value="DHSS">Diploma in Health Support Services</option>
+                <option value="DICT">Diploma in ICT</option>
+                <option value="DME">Diploma in Medical Engineering</option>
+            </optgroup>
+            <optgroup label="📜 TVET Certificate Programs (3-12 months)">
+                <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                <option value="CCH">Certificate in Community Health</option>
+                <option value="CHRIT">Certificate in Health Records and IT</option>
+                <option value="CPC">Certificate in Patient Care</option>
+                <option value="CSL">Certificate in Science Lab</option>
+                <option value="CSW">Certificate in Social Work & Community Development</option>
+                <option value="CCJS">Certificate in Criminal Justice</option>
+                <option value="CAG">Certificate in Agriculture</option>
+                <option value="CHSS">Certificate in Health Support Services</option>
+                <option value="CICT">Certificate in ICT</option>
+            </optgroup>
+            <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
+                <option value="ACH">Artisan in Community Health</option>
+                <option value="AAG">Artisan in Agriculture</option>
+                <option value="ASW">Artisan in Social Work & Community Development</option>
+            </optgroup>
+            <optgroup label="📊 Other TVET Programs">
+                <option value="CCA">Certificate in Computer Applications</option>
+                <option value="PTE">TVET/CDACC (PTE)</option>
+            </optgroup>
+        </select>
+        
+        <!-- Intake Selection -->
+        <select id="account-intake" required>
+            <option value="">-- Select Intake --</option>
+            
+            <!-- KRCHN Intakes -->
+            <optgroup label="KRCHN Intakes">
+                <option value="March 2024">March 2024</option>
+                <option value="March 2025">March 2025</option>
+                <option value="March 2026" selected>March 2026</option>
+                <option value="March 2027">March 2027</option>
+                <option value="March 2028">March 2028</option>
+            </optgroup>
+            
+            <!-- TVET Intakes -->
+            <optgroup label="TVET Intakes">
+                <option value="January 2024 Intake">January 2024</option>
+                <option value="March 2024 Intake">March 2024</option>
+                <option value="May 2024 Intake">May 2024</option>
+                <option value="July 2024 Intake">July 2024</option>
+                <option value="September 2024 Intake">September 2024</option>
                 
-                <hr>
-               <hr>
-<hr>
-<hr>
-<h3>Mass Student Block/Term Promotion</h3>
-<form id="mass-promotion-form" class="inline-form">
-    <!-- Intake Year -->
-   <select id="promote_intake" required>
-    <option value="">-- Select Intake --</option>
-    <!-- KRCHN Intakes -->
-    <optgroup label="KRCHN Intakes">
-        <option value="March 2024">March 2024</option>
-        <option value="March 2025">March 2025</option>
-        <option value="March 2026">March 2026</option>
-        <option value="March 2027">March 2027</option>
-        <option value="March 2028">March 2028</option>
-    </optgroup>
-    <!-- TVET Intakes -->
-    <optgroup label="TVET Intakes">
-        <option value="January 2024 Intake">January 2024</option>
-        <option value="March 2024 Intake">March 2024</option>
-        <option value="May 2024 Intake">May 2024</option>
-        <option value="July 2024 Intake">July 2024</option>
-        <option value="September 2024 Intake">September 2024</option>
-        <option value="January 2025 Intake">January 2025</option>
-        <option value="March 2025 Intake">March 2025</option>
-        <option value="May 2025 Intake">May 2025</option>
-        <option value="July 2025 Intake">July 2025</option>
-        <option value="September 2025 Intake">September 2025</option>
-        <option value="January 2026 Intake">January 2026</option>
-        <option value="March 2026 Intake">March 2026</option>
-        <option value="May 2026 Intake">May 2026</option>
-        <option value="July 2026 Intake">July 2026</option>
-        <option value="September 2026 Intake">September 2026</option>
-        <option value="January 2027 Intake">January 2027</option>
-        <option value="March 2027 Intake">March 2027</option>
-        <option value="May 2027 Intake">May 2027</option>
-        <option value="July 2027 Intake">July 2027</option>
-        <option value="September 2027 Intake">September 2027</option>
-        <option value="January 2028 Intake">January 2028</option>
-        <option value="March 2028 Intake">March 2028</option>
-        <option value="May 2028 Intake">May 2028</option>
-        <option value="July 2028 Intake">July 2028</option>
-        <option value="September 2028 Intake">September 2028</option>
-    </optgroup>
-</select>
-    <!-- Program - ALL PROGRAMS -->
-    <select id="promote_program" required>
-        <option value="">-- Select Program --</option>
-        <option value="KRCHN">🎓 KRCHN Nursing</option>
-        <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
-            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
-            <option value="DCH">Diploma in Community Health</option>
-            <option value="DHRIT">Diploma in Health Records and IT</option>
-            <option value="DSL">Diploma in Science Lab</option>
-            <option value="DSW">Diploma in Social Work & Community Development</option>
-            <option value="DCJS">Diploma in Criminal Justice</option>
-            <option value="DHSS">Diploma in Health Support Services</option>
-            <option value="DICT">Diploma in ICT</option>
-            <option value="DME">Diploma in Medical Engineering</option>
-        </optgroup>
-        <optgroup label="📜 TVET Certificate Programs (3-12 months)">
-            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
-            <option value="CCH">Certificate in Community Health</option>
-            <option value="CHRIT">Certificate in Health Records and IT</option>
-            <option value="CPC">Certificate in Patient Care</option>
-            <option value="CSL">Certificate in Science Lab</option>
-            <option value="CSW">Certificate in Social Work & Community Development</option>
-            <option value="CCJS">Certificate in Criminal Justice</option>
-            <option value="CAG">Certificate in Agriculture</option>
-            <option value="CHSS">Certificate in Health Support Services</option>
-            <option value="CICT">Certificate in ICT</option>
-        </optgroup>
-        <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
-            <option value="ACH">Artisan in Community Health</option>
-            <option value="AAG">Artisan in Agriculture</option>
-            <option value="ASW">Artisan in Social Work & Community Development</option>
-        </optgroup>
-        <optgroup label="📊 Other TVET Programs">
-            <option value="CCA">Certificate in Computer Applications</option>
-            <option value="PTE">TVET/CDACC (PTE)</option>
-        </optgroup>
-    </select>
-    
-    <!-- FROM Block -->
-    <select id="promote_from_block" required>
-        <option value="">-- Promote Students FROM --</option>
-    </select>
-    
-    <!-- TO Block -->
-    <select id="promote_to_block" required>
-        <option value="">-- Promote Students TO --</option>
-    </select>
-    
-    <button type="submit" class="btn-danger">Execute Mass Promotion</button>
-</form>
+                <option value="January 2025 Intake">January 2025</option>
+                <option value="March 2025 Intake">March 2025</option>
+                <option value="May 2025 Intake">May 2025</option>
+                <option value="July 2025 Intake">July 2025</option>
+                <option value="September 2025 Intake">September 2025</option>
                 
-                <hr>
-                <h3>Enrolled Students</h3>
-                <div class="toolbar">
-                    <button onclick="exportTableToCSV('students-table', 'Enrolled_Students_Export.csv')" class="btn-action export-btn">Export Student List (CSV)</button>
-                </div>
-                <input type="text" id="student-search" placeholder="Search Students..." onkeyup="filterTable('student-search', 'students-table', [1, 3, 5])">
-                <table>
-                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Intake</th><th>Block/Term</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody id="students-table"><tr><td colspan="9">Loading students...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+                <option value="January 2026 Intake">January 2026</option>
+                <option value="March 2026 Intake" selected>March 2026</option>
+                <option value="May 2026 Intake">May 2026</option>
+                <option value="July 2026 Intake">July 2026</option>
+                <option value="September 2026 Intake">September 2026</option>
+                
+                <option value="January 2027 Intake">January 2027</option>
+                <option value="March 2027 Intake">March 2027</option>
+                <option value="May 2027 Intake">May 2027</option>
+                <option value="July 2027 Intake">July 2027</option>
+                <option value="September 2027 Intake">September 2027</option>
+                
+                <option value="January 2028 Intake">January 2028</option>
+                <option value="March 2028 Intake">March 2028</option>
+                <option value="May 2028 Intake">May 2028</option>
+                <option value="July 2028 Intake">July 2028</option>
+                <option value="September 2028 Intake">September 2028</option>
+            </optgroup>
+        </select>
+        
+        <!-- Block/Term Selection -->
+        <select id="account-block-term" required>
+            <option value="">-- Select Block/Term --</option>
+        </select>
+        
+        <button type="submit">Enroll Account</button>
+    </form>
+    
+    <hr>
+    <hr>
+    <hr>
+    <hr>
+    
+    <!-- Mass Student Block/Term Promotion -->
+    <h3>Mass Student Block/Term Promotion</h3>
+    <form id="mass-promotion-form" class="inline-form">
+        <!-- Intake Selection -->
+        <select id="promote_intake" required>
+            <option value="">-- Select Intake --</option>
+            
+            <!-- KRCHN Intakes -->
+            <optgroup label="KRCHN Intakes">
+                <option value="March 2024">March 2024</option>
+                <option value="March 2025">March 2025</option>
+                <option value="March 2026">March 2026</option>
+                <option value="March 2027">March 2027</option>
+                <option value="March 2028">March 2028</option>
+            </optgroup>
+            
+            <!-- TVET Intakes -->
+            <optgroup label="TVET Intakes">
+                <option value="January 2024 Intake">January 2024</option>
+                <option value="March 2024 Intake">March 2024</option>
+                <option value="May 2024 Intake">May 2024</option>
+                <option value="July 2024 Intake">July 2024</option>
+                <option value="September 2024 Intake">September 2024</option>
+                
+                <option value="January 2025 Intake">January 2025</option>
+                <option value="March 2025 Intake">March 2025</option>
+                <option value="May 2025 Intake">May 2025</option>
+                <option value="July 2025 Intake">July 2025</option>
+                <option value="September 2025 Intake">September 2025</option>
+                
+                <option value="January 2026 Intake">January 2026</option>
+                <option value="March 2026 Intake">March 2026</option>
+                <option value="May 2026 Intake">May 2026</option>
+                <option value="July 2026 Intake">July 2026</option>
+                <option value="September 2026 Intake">September 2026</option>
+                
+                <option value="January 2027 Intake">January 2027</option>
+                <option value="March 2027 Intake">March 2027</option>
+                <option value="May 2027 Intake">May 2027</option>
+                <option value="July 2027 Intake">July 2027</option>
+                <option value="September 2027 Intake">September 2027</option>
+                
+                <option value="January 2028 Intake">January 2028</option>
+                <option value="March 2028 Intake">March 2028</option>
+                <option value="May 2028 Intake">May 2028</option>
+                <option value="July 2028 Intake">July 2028</option>
+                <option value="September 2028 Intake">September 2028</option>
+            </optgroup>
+        </select>
+        
+        <!-- Program -->
+        <select id="promote_program" required>
+            <option value="">-- Select Program --</option>
+            <option value="KRCHN">🎓 KRCHN Nursing</option>
+            <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
+                <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                <option value="DCH">Diploma in Community Health</option>
+                <option value="DHRIT">Diploma in Health Records and IT</option>
+                <option value="DSL">Diploma in Science Lab</option>
+                <option value="DSW">Diploma in Social Work & Community Development</option>
+                <option value="DCJS">Diploma in Criminal Justice</option>
+                <option value="DHSS">Diploma in Health Support Services</option>
+                <option value="DICT">Diploma in ICT</option>
+                <option value="DME">Diploma in Medical Engineering</option>
+            </optgroup>
+            <optgroup label="📜 TVET Certificate Programs (3-12 months)">
+                <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                <option value="CCH">Certificate in Community Health</option>
+                <option value="CHRIT">Certificate in Health Records and IT</option>
+                <option value="CPC">Certificate in Patient Care</option>
+                <option value="CSL">Certificate in Science Lab</option>
+                <option value="CSW">Certificate in Social Work & Community Development</option>
+                <option value="CCJS">Certificate in Criminal Justice</option>
+                <option value="CAG">Certificate in Agriculture</option>
+                <option value="CHSS">Certificate in Health Support Services</option>
+                <option value="CICT">Certificate in ICT</option>
+            </optgroup>
+            <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
+                <option value="ACH">Artisan in Community Health</option>
+                <option value="AAG">Artisan in Agriculture</option>
+                <option value="ASW">Artisan in Social Work & Community Development</option>
+            </optgroup>
+            <optgroup label="📊 Other TVET Programs">
+                <option value="CCA">Certificate in Computer Applications</option>
+                <option value="PTE">TVET/CDACC (PTE)</option>
+            </optgroup>
+        </select>
+        
+        <!-- FROM Block -->
+        <select id="promote_from_block" required>
+            <option value="">-- Promote Students FROM --</option>
+        </select>
+        
+        <!-- TO Block -->
+        <select id="promote_to_block" required>
+            <option value="">-- Promote Students TO --</option>
+        </select>
+        
+        <button type="submit" class="btn-danger">Execute Mass Promotion</button>
+    </form>
+    
+    <hr>
+    
+    <!-- Enrolled Students -->
+    <h3>Enrolled Students</h3>
+    <div class="toolbar">
+        <button onclick="exportTableToCSV('students-table', 'Enrolled_Students_Export.csv')" class="btn-action export-btn">Export Student List (CSV)</button>
+    </div>
+    <input type="text" id="student-search" placeholder="Search Students..." onkeyup="filterTable('student-search', 'students-table', [1, 3, 5])">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Program</th>
+                <th>Intake</th>      <!-- ← Shows "March 2026" or "March 2026 Intake" -->
+                <th>Block/Term</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="students-table">
+            <tr><td colspan="9">Loading students...</td></tr>
+        </tbody>
+    </table>
+</section>
 
             <!-- Courses Section -->
             <section id="courses" class="tab-content">
