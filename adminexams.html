@@ -168,27 +168,84 @@
                 <div class="pagination" id="liveStudentsPagination"></div>
             </div>
 
-            <!-- Live Feed Table -->
-            <div class="table-container" id="livefeedTableContainer" style="display:none;">
-                <div class="table-header">
-                    <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
-                    <div class="table-actions">
-                        <button class="btn btn-success" onclick="refreshLiveFeed()"><i class="fas fa-sync"></i> Refresh All</button>
-                        <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()"><i class="fas fa-play" id="liveFeedAutoIcon"></i> <span id="liveFeedAutoText">Auto: ON</span></button>
-                        <button class="btn btn-danger" onclick="clearAllCameraFeeds()"><i class="fas fa-times"></i> Clear All</button>
-                        <button class="btn btn-secondary" onclick="exportLiveFeed()"><i class="fas fa-file-excel"></i> Export</button>
-                    </div>
-                </div>
-                <div id="liveFeedLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading camera feeds...</div>
-                <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5;">
-                    <span id="liveFeedCount">0</span> students currently active
-                    <span style="margin-left:20px;">🟢 <span id="liveFeedWithCamera">0</span> with camera</span>
-                    <span style="margin-left:20px;">🔴 <span id="liveFeedNoCamera">0</span> no camera</span>
-                    <span style="margin-left:20px;">🚨 <span id="liveFeedViolations">0</span> violations</span>
-                </div>
-                <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;"></div>
-                <div class="pagination" id="liveFeedPagination"></div>
+           <!-- ========== 📹 LIVE FEED TABLE ========== -->
+<div class="table-container" id="livefeedTableContainer" style="display:none;">
+    <div class="table-header">
+        <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
+        <div class="table-actions">
+            <!-- ✅ View Toggle -->
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" onclick="setLiveFeedView('live')" id="liveViewBtn">
+                    <i class="fas fa-broadcast"></i> Live
+                </button>
+                <button class="view-toggle-btn" onclick="setLiveFeedView('past')" id="pastViewBtn">
+                    <i class="fas fa-history"></i> Past
+                </button>
             </div>
+            <button class="btn btn-success" onclick="refreshLiveFeed()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+            <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
+                <i class="fas fa-play" id="liveFeedAutoIcon"></i> 
+                <span id="liveFeedAutoText">Auto: ON</span>
+            </button>
+            <button class="btn btn-secondary" onclick="exportLiveFeed()">
+                <i class="fas fa-file-excel"></i> Export
+            </button>
+        </div>
+    </div>
+    
+    <!-- ✅ FILTERS & SEARCH -->
+    <div style="padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <div style="flex: 1; min-width: 200px; display: flex; gap: 8px; align-items: center;">
+            <i class="fas fa-search" style="color: #94A3B8;"></i>
+            <input type="text" id="liveFeedSearch" placeholder="Search by name or reg number..." 
+                   style="flex:1; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.85rem; min-width: 150px;"
+                   oninput="filterLiveFeed()">
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Exam:</label>
+            <select id="liveFeedExamFilter" onchange="filterLiveFeed()" 
+                    style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 150px;">
+                <option value="">All Exams</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Status:</label>
+            <select id="liveFeedStatusFilter" onchange="filterLiveFeed()" 
+                    style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;">
+                <option value="">All</option>
+                <option value="active">🟢 Active</option>
+                <option value="violation">🚨 Violation</option>
+                <option value="warning">⚠️ Warning</option>
+                <option value="no-camera">📷 No Camera</option>
+            </select>
+        </div>
+        <button class="btn btn-danger" onclick="clearLiveFeedFilters()" style="padding: 6px 14px; font-size: 0.75rem;">
+            <i class="fas fa-times"></i> Clear
+        </button>
+    </div>
+    
+    <div id="liveFeedLoading" class="loading">
+        <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+    </div>
+    
+    <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5; flex-wrap:wrap; gap:12px;">
+        <span><strong id="liveFeedCount">0</strong> students <span id="liveFeedViewLabel">active</span></span>
+        <span>🟢 <strong id="liveFeedWithCamera">0</strong> with camera</span>
+        <span>🔴 <strong id="liveFeedNoCamera">0</strong> no camera</span>
+        <span>🚨 <strong id="liveFeedViolations">0</strong> violations</span>
+        <span style="margin-left:auto; font-size:0.8rem; color:#64748B;">
+            <i class="fas fa-sync"></i> Auto-refresh: <span id="liveFeedRefreshStatus">active</span>
+        </span>
+    </div>
+    
+    <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
+        <!-- Camera cards will be dynamically inserted here -->
+    </div>
+    
+    <div class="pagination" id="liveFeedPagination"></div>
+</div>
 
             <!-- Exams Table -->
             <div class="table-container" id="examsTableContainer" style="display:none;">
