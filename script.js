@@ -750,19 +750,56 @@ async function loadSectionData(tabId) {
  *******************************************************/
 
 async function logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
-    const logData = {
-        user_id: currentUserProfile?.id || 'SYSTEM',
-        user_role: currentUserProfile?.role || 'SYSTEM',
-        action_type: action_type,
-        details: details,
-        target_id: target_id,
-        status: status,
-        ip_address: await getIPAddress()
-    };
+    try {
+        // Get current user
+        const { data: { user }, error: userError } = await sb.auth.getUser();
+        
+        let userId = null;
+        let userRole = 'SYSTEM';
+        
+        if (user && !userError) {
+            // Try to get profile
+            const { data: profile } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, role')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            
+            if (profile) {
+                userId = profile.user_id;
+                userRole = profile.role || 'SYSTEM';
+            } else {
+                userId = user.id;
+                userRole = 'SYSTEM';
+            }
+        }
+        
+        const logData = {
+            user_id: userId,
+            user_role: userRole,
+            action_type: action_type,
+            details: details,
+            target_id: target_id,
+            status: status,
+            ip_address: await getIPAddress(),
+            created_at: new Date().toISOString()
+        };
 
-    const { error } = await sb.from(AUDIT_TABLE).insert([logData]);
-    if (error) {
-        console.error('Audit logging failed:', error);
+        // Try to insert, but don't fail if it doesn't work
+        const { error } = await sb.from('audit_logs').insert([logData]);
+        if (error) {
+            console.warn('⚠️ Audit logging failed:', error.message);
+            // Try without user_id if foreign key fails
+            if (error.code === '23503') { // Foreign key violation
+                delete logData.user_id;
+                const { error: retryError } = await sb.from('audit_logs').insert([logData]);
+                if (retryError) {
+                    console.warn('⚠️ Audit logging retry failed:', retryError.message);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('⚠️ Audit logging error:', err.message);
     }
 }
 
@@ -2833,7 +2870,77 @@ async function loadPendingApprovals() {
             </tr>`;
     });
 }
+// ============================================
+// 👥 LOAD STUDENTS FOR ENROLLMENT TAB
+// ============================================
 
+async function loadStudents() {
+    console.log('📋 Loading students...');
+    
+    const tbody = document.getElementById('students-table');
+    if (!tbody) {
+        console.warn('students-table not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading students...</td></tr>';
+    
+    try {
+        const { data: students, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('role', 'student')
+            .order('full_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No students found.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        students.forEach((student, index) => {
+            const programName = getProgramDisplayName(student.program);
+            const programType = getProgramType(student.program);
+            const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+            const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+            
+            const intakeDisplay = student.intake_year ? getDisplayIntake(student.program, student.intake_year) : 'N/A';
+            const statusClass = student.status === 'approved' ? 'status-approved' : 'status-pending';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(student.student_id || 'N/A')}</td>
+                    <td><strong>${escapeHtml(student.full_name)}</strong></td>
+                    <td>${escapeHtml(student.email || '')}</td>
+                    <td>
+                        ${escapeHtml(programName)}
+                        <div class="program-badge ${programBadgeClass}">
+                            <i class="fas ${programIcon}"></i> ${programType}
+                        </div>
+                    </td>
+                    <td>${escapeHtml(intakeDisplay)}</td>
+                    <td>${escapeHtml(student.block || 'N/A')}</td>
+                    <td class="${statusClass}">${escapeHtml(student.status || 'Pending')}</td>
+                    <td>
+                        <button class="btn-action" onclick="openEditUserModal('${escapeHtml(student.user_id)}')">Edit</button>
+                        <button class="btn btn-delete" onclick="deleteProfile('${escapeHtml(student.user_id)}', '${escapeHtml(student.full_name)}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+    } catch (error) {
+        console.error('Error loading students:', error);
+        tbody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+// Make globally accessible
+window.loadStudents = loadStudents;
 // ============================================
 // OPEN EDIT USER MODAL
 // ============================================
