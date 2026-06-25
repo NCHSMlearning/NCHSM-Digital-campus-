@@ -2354,196 +2354,228 @@
     // ============================================
     // 📹 LIVE FEED
     // ============================================
-    window.loadLiveFeed = async function() {
-        const loadingDiv = document.getElementById('liveFeedLoading');
-        const gridDiv = document.getElementById('liveFeedGrid');
-        const statsDiv = document.getElementById('liveFeedStats');
+   window.loadLiveFeed = async function() {
+    const loadingDiv = document.getElementById('liveFeedLoading');
+    const gridDiv = document.getElementById('liveFeedGrid');
+    const statsDiv = document.getElementById('liveFeedStats');
+    
+    if (!loadingDiv) return;
+    
+    loadingDiv.style.display = 'block';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
+    gridDiv.innerHTML = '';
+    statsDiv.style.display = 'none';
+    
+    try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         
-        if (!loadingDiv) return;
+        // Get active students with snapshots
+        const { data: activeLogs, error } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .gte('timestamp', fiveMinutesAgo)
+            .order('timestamp', { ascending: false });
         
-        loadingDiv.style.display = 'block';
-        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
-        gridDiv.innerHTML = '';
-        statsDiv.style.display = 'none';
+        if (error) throw error;
         
-        try {
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-            
-            const { data: activeLogs, error } = await sb
-                .from('exam_proctoring_logs')
-                .select('student_id, exam_id, timestamp, event_type, details, snapshot_url')
-                .gte('timestamp', fiveMinutesAgo)
-                .order('timestamp', { ascending: false });
-            
-            if (error) throw error;
-            
-            if (!activeLogs || activeLogs.length === 0) {
-                loadingDiv.innerHTML = '🟢 No students currently active';
-                loadingDiv.style.color = '#38A169';
-                loadingDiv.style.display = 'block';
-                gridDiv.innerHTML = `
-                    <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
-                        <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
-                        <p>No students are currently taking exams</p>
-                        <p style="font-size:0.85rem;">Check back later or refresh</p>
-                    </div>
-                `;
-                document.getElementById('liveFeedBadge').textContent = '0';
-                return;
-            }
-            
-            const uniqueStudents = new Map();
-            activeLogs.forEach(log => {
-                const key = `${log.student_id}_${log.exam_id}`;
-                if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
-                    uniqueStudents.set(key, log);
-                }
-            });
-            
-            const students = Array.from(uniqueStudents.values());
-            
-            const studentIds = students.map(s => s.student_id).filter(id => id);
+        if (!activeLogs || activeLogs.length === 0) {
+            loadingDiv.innerHTML = '🟢 No students currently active';
+            loadingDiv.style.color = '#38A169';
+            loadingDiv.style.display = 'block';
+            gridDiv.innerHTML = `
+                <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+                    <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+                    <p>No students are currently taking exams</p>
+                </div>
+            `;
+            document.getElementById('liveFeedBadge').textContent = '0';
+            return;
+        }
+        
+        // Get unique student IDs and exam IDs
+        const studentIds = [...new Set(activeLogs.map(l => l.student_id).filter(id => id))];
+        const examIds = [...new Set(activeLogs.map(l => l.exam_id).filter(id => id))];
+        
+        // 🔥 FETCH STUDENT PROFILES
+        let profileMap = {};
+        if (studentIds.length > 0) {
             const { data: profiles } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, full_name, student_id, email, program, block')
                 .in('user_id', studentIds);
-            const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
             
-            const examIds = students.map(s => s.exam_id).filter(id => id);
+            profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+            console.log('📋 Profiles found:', profiles?.length || 0);
+        }
+        
+        // 🔥 FETCH EXAM DETAILS
+        let examMap = {};
+        if (examIds.length > 0) {
             const { data: exams } = await sb
                 .from('exams')
-                .select('id, exam_name, duration_minutes')
+                .select('id, exam_name, duration_minutes, total_marks')
                 .in('id', examIds);
-            const examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
             
-            liveFeedData = [];
-            let withCamera = 0;
-            let noCamera = 0;
-            let violations = 0;
+            examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
+            console.log('📋 Exams found:', exams?.length || 0);
+        }
+        
+        // Get unique student-exam pairs (most recent per pair)
+        const uniqueStudents = new Map();
+        activeLogs.forEach(log => {
+            const key = `${log.student_id}_${log.exam_id}`;
+            if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
+                uniqueStudents.set(key, log);
+            }
+        });
+        
+        const students = Array.from(uniqueStudents.values());
+        console.log('📹 Found', students.length, 'active students');
+        
+        // Build feed data
+        liveFeedData = [];
+        let withCamera = 0;
+        let noCamera = 0;
+        let violations = 0;
+        
+        for (const log of students) {
+            // 🔥 GET STUDENT INFO FROM PROFILE
+            const profile = profileMap[log.student_id] || {};
+            const studentName = profile.full_name || 'Unknown Student';
+            const studentRegNumber = profile.student_id || log.student_reg_number || 'N/A';
+            const program = profile.program || '';
             
-            for (const log of students) {
-                const profile = profileMap[log.student_id];
-                const exam = examMap[log.exam_id];
-                
-                if (!profile || !exam) continue;
-                
-                const { data: snapshots } = await sb
-                    .from('exam_proctoring_logs')
-                    .select('snapshot_url, timestamp, event_type')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .not('snapshot_url', 'is', null)
-                    .order('timestamp', { ascending: false })
-                    .limit(1);
-                
-                const hasCamera = snapshots && snapshots.length > 0 && snapshots[0].snapshot_url;
-                if (hasCamera) withCamera++;
-                else noCamera++;
-                
-                const { data: alertLogs } = await sb
-                    .from('exam_proctoring_logs')
-                    .select('event_type')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .in('event_type', ['multiple_faces_detected', 'face_missing', 'tab_switched'])
-                    .gte('timestamp', new Date(Date.now() - 120000).toISOString());
-                
-                const hasViolations = alertLogs && alertLogs.length > 0;
-                if (hasViolations) violations++;
-                
-                const { data: answers } = await sb
-                    .from('exam_grades')
-                    .select('id')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
-                
-                const { data: questions } = await sb
-                    .from('exam_questions')
-                    .select('id')
-                    .eq('exam_id', log.exam_id);
-                
-                const answered = answers?.length || 0;
-                const total = questions?.length || 0;
-                const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
-                
-                const startedAt = new Date(log.timestamp);
-                const duration = exam?.duration_minutes || 30;
-                const endTime = new Date(startedAt.getTime() + duration * 60000);
-                const now = new Date();
-                const timeLeftMs = endTime - now;
-                
-                let timeDisplay = '--';
-                if (timeLeftMs > 0) {
-                    const mins = Math.floor(timeLeftMs / 60000);
-                    const secs = Math.floor((timeLeftMs % 60000) / 1000);
-                    timeDisplay = `${mins}m ${secs}s`;
-                } else {
-                    timeDisplay = '⏰ Time Up';
+            // 🔥 GET EXAM INFO FROM EXAM MAP
+            const exam = examMap[log.exam_id] || {};
+            const examName = exam.exam_name || log.exam_name || 'Exam ' + log.exam_id;
+            
+            // Check if student has camera snapshot
+            const hasCamera = !!(log.snapshot_url || log.screenshot_data);
+            if (hasCamera) withCamera++;
+            else noCamera++;
+            
+            // Check for violations
+            const isViolation = log.event_type === 'multiple_faces_detected' || 
+                                log.event_type === 'face_missing' ||
+                                log.event_type === 'tab_switched';
+            if (isViolation) violations++;
+            
+            // Get progress
+            let progress = 0;
+            let answered = 0;
+            let total = 0;
+            
+            if (log.student_id && log.exam_id) {
+                try {
+                    const { data: answers } = await sb
+                        .from('exam_grades')
+                        .select('id')
+                        .eq('student_id', log.student_id)
+                        .eq('exam_id', log.exam_id)
+                        .neq('question_id', '00000000-0000-0000-0000-000000000000');
+                    
+                    const { data: questions } = await sb
+                        .from('exam_questions')
+                        .select('id')
+                        .eq('exam_id', log.exam_id);
+                    
+                    answered = answers?.length || 0;
+                    total = questions?.length || 0;
+                    progress = total > 0 ? Math.round((answered / total) * 100) : 0;
+                } catch (e) {
+                    console.warn('Could not get progress for student:', log.student_id);
                 }
-                
-                let status = 'active';
-                let statusLabel = '🟢 Active';
-                let statusClass = 'status-active';
-                
-                if (hasViolations) {
-                    status = 'violation';
-                    statusLabel = '🚨 Violation';
-                    statusClass = 'status-critical';
-                } else if (!hasCamera) {
-                    status = 'no-camera';
-                    statusLabel = '📷 No Camera';
-                    statusClass = 'status-pending';
-                } else if (timeLeftMs < 0) {
-                    status = 'expired';
-                    statusLabel = '⏰ Expired';
-                    statusClass = 'status-fail';
-                }
-                
-                liveFeedData.push({
-                    log: log,
-                    profile: profile,
-                    exam: exam,
-                    hasCamera: hasCamera,
-                    snapshot: hasCamera ? snapshots[0] : null,
-                    violations: alertLogs || [],
-                    hasViolations: hasViolations,
-                    progress: progress,
-                    answered: answered,
-                    total: total,
-                    timeDisplay: timeDisplay,
-                    timeLeftMs: timeLeftMs,
-                    status: status,
-                    statusLabel: statusLabel,
-                    statusClass: statusClass,
-                    startedAt: startedAt
-                });
             }
             
-            liveFeedData.sort((a, b) => {
-                const order = { violation: 0, 'no-camera': 1, expired: 2, active: 3 };
-                return (order[a.status] || 4) - (order[b.status] || 4);
+            // Calculate time remaining
+            const startedAt = new Date(log.timestamp);
+            const duration = exam.duration_minutes || 30;
+            const endTime = new Date(startedAt.getTime() + duration * 60000);
+            const now = new Date();
+            const timeLeftMs = endTime - now;
+            
+            let timeDisplay = '--';
+            if (timeLeftMs > 0) {
+                const mins = Math.floor(timeLeftMs / 60000);
+                const secs = Math.floor((timeLeftMs % 60000) / 1000);
+                timeDisplay = `${mins}m ${secs}s`;
+            } else {
+                timeDisplay = '⏰ Time Up';
+            }
+            
+            // Determine status
+            let status = 'active';
+            let statusLabel = '🟢 Active';
+            let statusClass = 'status-active';
+            
+            if (log.event_type === 'multiple_faces_detected') {
+                status = 'violation';
+                statusLabel = '🚨 Violation';
+                statusClass = 'status-critical';
+            } else if (log.event_type === 'face_missing') {
+                status = 'warning';
+                statusLabel = '😞 No Face';
+                statusClass = 'status-pending';
+            } else if (!hasCamera) {
+                status = 'no-camera';
+                statusLabel = '📷 No Camera';
+                statusClass = 'status-pending';
+            }
+            
+            liveFeedData.push({
+                log: log,
+                profile: profile,
+                exam: exam,
+                studentName: studentName,
+                studentRegNumber: studentRegNumber,
+                program: program,
+                examName: examName,
+                hasCamera: hasCamera,
+                snapshot: hasCamera ? log : null,
+                hasViolations: isViolation,
+                progress: progress,
+                answered: answered,
+                total: total,
+                timeDisplay: timeDisplay,
+                timeLeftMs: timeLeftMs,
+                status: status,
+                statusLabel: statusLabel,
+                statusClass: statusClass,
+                startedAt: startedAt,
+                user_id: log.student_id,
+                exam_id: log.exam_id
             });
-            
-            document.getElementById('liveFeedCount').textContent = liveFeedData.length;
-            document.getElementById('liveFeedWithCamera').textContent = withCamera;
-            document.getElementById('liveFeedNoCamera').textContent = noCamera;
-            document.getElementById('liveFeedViolations').textContent = violations;
-            document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
-            
-            displayLiveFeed();
-            
-            loadingDiv.style.display = 'none';
-            statsDiv.style.display = 'block';
-            
-        } catch (error) {
-            console.error('❌ Error loading live feed:', error);
-            loadingDiv.innerHTML = '❌ Error loading camera feeds: ' + error.message;
-            loadingDiv.style.color = '#DC2626';
         }
-    };
+        
+        // Sort by status (violations first)
+        liveFeedData.sort((a, b) => {
+            const order = { violation: 0, warning: 1, 'no-camera': 2, active: 3 };
+            return (order[a.status] || 4) - (order[b.status] || 4);
+        });
+        
+        // Update stats
+        document.getElementById('liveFeedCount').textContent = liveFeedData.length;
+        document.getElementById('liveFeedWithCamera').textContent = withCamera;
+        document.getElementById('liveFeedNoCamera').textContent = noCamera;
+        document.getElementById('liveFeedViolations').textContent = violations;
+        document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
+        
+        // Render
+        displayLiveFeed();
+        
+        loadingDiv.style.display = 'none';
+        statsDiv.style.display = 'block';
+        
+        console.log('📹 Live Feed loaded:', liveFeedData.length, 'students');
+        
+    } catch (error) {
+        console.error('❌ Error loading live feed:', error);
+        loadingDiv.innerHTML = '❌ Error loading camera feeds: ' + error.message;
+        loadingDiv.style.color = '#DC2626';
+    }
+};
 
-   window.displayLiveFeed = function() {
+  window.displayLiveFeed = function() {
     const grid = document.getElementById('liveFeedGrid');
     if (!grid) return;
     
@@ -2565,21 +2597,21 @@
         const log = item.log || {};
         const hasCamera = item.hasCamera;
         
-        // ✅ FIX: Check both snapshot_url and screenshot_data
+        // Get snapshot URL
         let snapshotUrl = null;
         if (log.snapshot_url) {
             snapshotUrl = log.snapshot_url + '?t=' + Date.now();
         } else if (log.screenshot_data) {
-            // If screenshot_data is base64, use it directly
             snapshotUrl = log.screenshot_data.startsWith('data:') ? 
                 log.screenshot_data : 
                 'data:image/jpeg;base64,' + log.screenshot_data;
         }
         
-        // Use the fields from your database
-        const studentName = log.student_name || log.student_name || 'Unknown';
-        const studentId = log.student_reg_number || log.student_id || 'N/A';
-        const examName = log.exam_name || 'Exam ' + log.exam_id;
+        // Use looked-up values
+        const studentName = item.studentName || 'Unknown';
+        const studentId = item.studentRegNumber || 'N/A';
+        const examName = item.examName || 'Exam';
+        const program = item.program || '';
         
         // Status color for progress bar
         let progressColor = '#38A169';
@@ -2636,7 +2668,7 @@
                         <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
                         <div>
                             <div class="name">${studentName}</div>
-                            <div class="details">${studentId} • ${log.student_program || ''}</div>
+                            <div class="details">${studentId} • ${program}</div>
                         </div>
                     </div>
                     <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
@@ -2676,7 +2708,6 @@
     
     renderLiveFeedPagination();
 };
-
     window.refreshLiveFeed = function() {
         loadLiveFeed();
         showToast('Refreshing camera feeds...', 'info');
