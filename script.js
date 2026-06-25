@@ -1,7 +1,7 @@
 /**********************************************************************************
 * COMPLETE SuperAdmin Dashboard JavaScript - ALL SECTIONS WORKING
 * Program dropdowns synchronized across ALL sections
-* TVET/KRCHN integration complete 
+* TVET/KRCHN integration complete  
 **********************************************************************************/
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 // Hides the .html extension in the URL  
@@ -10634,15 +10634,23 @@ async function initSession() {
     }
 
     const user = session.user;
-    const { data: profile, error: profileError } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    
+    // ✅ FIX: Use consolidated_user_profiles_table instead of profiles
+    const { data: profile, error: profileError } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('*')
+        .eq('user_id', user.id)  // Use user_id, not id
+        .single();
     
     if (profile && !profileError) {
         currentUserProfile = profile;
         currentUserId = user.id;
         
-        if (currentUserProfile.role !== 'superadmin') {
-            console.warn(`User ${user.email} is not a Super Admin. Redirecting.`);
-            window.location.href = "admin.html"; 
+        // Check if user has admin/superadmin role
+        const adminRoles = ['superadmin', 'admin', 'super_admin'];
+        if (!adminRoles.includes(profile.role)) {
+            console.warn(`User ${user.email} is not an admin. Redirecting.`);
+            window.location.href = "login.html"; 
             return;
         }
         
