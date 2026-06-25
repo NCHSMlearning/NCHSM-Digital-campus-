@@ -4211,20 +4211,11 @@ window.batchResendReleaseEmails = async function(examId) {
         showToast('❌ Error: ' + error.message, 'error');
     }
 };
-    // ============================================
-    // 📧 EMAIL INTEGRATION - RESULTS NOTIFICATION (NO SCORES)
-    // ============================================
+  
 
-    /**
-     * Send email notification to a student when their results are released
-     * ⚠️ DOES NOT show scores - directs to portal
-     */
-       // ============================================
-    // 📧 SEND RESULT RELEASE EMAIL (FROM exam@)
-    // ============================================
-
-   // ============================================
-// 📧 SEND RESULT RELEASE EMAIL
+  // ============================================
+// 📧 SEND RESULT RELEASE EMAIL (NO SCORES!)
+// PROFESSIONAL TEMPLATE WITH NCHSM BRANDING
 // ============================================
 
 async function sendResultReleaseEmail(studentId, examId, grade) {
@@ -4255,64 +4246,341 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         
         const isCatExam = (exam.exam_type || '').toUpperCase().includes('CAT');
         const examTypeLabel = isCatExam ? 'CAT' : 'Exam';
-        const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A';
+        const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('en-KE', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }) : 'N/A';
         
-        // ✅ USING admin@ (working)
+        // ✅ FROM ADDRESS
         const fromAddress = 'NCHSM <admin@nakurucollegeofhealthelearning.site>';
         
+        // ✅ PROFESSIONAL EMAIL HTML
         const html = `
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8fafc;">
-    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 20px;">
-            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="width: 80px; border-radius: 50%;">
-            <h2 style="color: #0A3D62; margin: 10px 0 0;">📊 Exam Results Released</h2>
-            <p style="color: #64748B;">Your results are now available on the student portal</p>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Results Released</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 580px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(10, 61, 98, 0.12);
+        }
+        .header {
+            background: linear-gradient(135deg, #0A3D62 0%, #1a5276 100%);
+            padding: 35px 35px 30px;
+            text-align: center;
+            position: relative;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f1c40f, #f39c12, #f1c40f);
+        }
+        .header-logo {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: white;
+            padding: 6px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .header-title {
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0 0 4px;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 14px;
+            margin: 0;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+        .body {
+            padding: 32px 35px 28px;
+        }
+        .greeting {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0A3D62;
+            margin: 0 0 4px;
+        }
+        .greeting-sub {
+            color: #5a6c7d;
+            font-size: 15px;
+            margin: 0 0 22px;
+        }
+        .divider {
+            border: none;
+            border-top: 2px solid #eef2f7;
+            margin: 18px 0 22px;
+        }
+        .info-grid {
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            border-left: 4px solid #0A3D62;
+        }
+        .info-grid p {
+            margin: 6px 0;
+            font-size: 14px;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+        .info-grid .label {
+            color: #5a6c7d;
+            font-weight: 500;
+        }
+        .info-grid .value {
+            color: #0A3D62;
+            font-weight: 600;
+            text-align: right;
+        }
+        .info-grid .value-name {
+            color: #0A3D62;
+            font-weight: 700;
+        }
+        .badge-exam {
+            display: inline-block;
+            background: #eaf4ea;
+            color: #1a7a3a;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-cat {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .callout {
+            background: linear-gradient(135deg, #eaf4ff, #dbeafe);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin: 24px 0;
+            text-align: center;
+            border: 1px solid #bfdbfe;
+        }
+        .callout-icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .callout-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0A3D62;
+            margin: 0 0 4px;
+        }
+        .callout-text {
+            font-size: 14px;
+            color: #2c3e50;
+            margin: 0;
+        }
+        .btn-primary {
+            display: inline-block;
+            background: linear-gradient(135deg, #0A3D62, #1a5276);
+            color: white !important;
+            padding: 15px 36px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 8px 0 4px;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3);
+            text-align: center;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(10, 61, 98, 0.4);
+        }
+        .btn-secondary {
+            display: inline-block;
+            color: #0A3D62 !important;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+        .btn-secondary:hover {
+            text-decoration: underline;
+        }
+        .tip-box {
+            background: #fef9e7;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 18px 0 6px;
+            border-left: 4px solid #f39c12;
+        }
+        .tip-box p {
+            margin: 0;
+            font-size: 13px;
+            color: #7d6608;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 22px 35px;
+            text-align: center;
+            border-top: 1px solid #eef2f7;
+        }
+        .footer-text {
+            font-size: 12px;
+            color: #8a9aa8;
+            margin: 4px 0;
+            line-height: 1.6;
+        }
+        .footer-text strong {
+            color: #5a6c7d;
+        }
+        .footer-links {
+            margin-top: 10px;
+        }
+        .footer-links a {
+            color: #0A3D62;
+            text-decoration: none;
+            font-size: 12px;
+            margin: 0 12px;
+            font-weight: 500;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        .secure-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            font-size: 11px;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        @media (max-width: 480px) {
+            .header { padding: 20px; }
+            .body { padding: 20px; }
+            .footer { padding: 15px 20px; }
+            .info-grid { padding: 14px 16px; }
+            .info-grid p { flex-direction: column; align-items: flex-start; }
+            .info-grid .value { text-align: left; margin-top: 2px; }
+            .btn-primary { padding: 12px 24px; font-size: 14px; display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <!-- Header -->
+            <div class="header">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                     alt="NCHSM Logo" class="header-logo">
+                <h1 class="header-title">📊 Results Released</h1>
+                <p class="header-subtitle">Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <!-- Body -->
+            <div class="body">
+                <p class="greeting">Dear ${student.full_name},</p>
+                <p class="greeting-sub">We are pleased to inform you that your exam results have been released.</p>
+                
+                <hr class="divider">
+                
+                <!-- Exam Details -->
+                <div class="info-grid">
+                    <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
+                    <p><span class="label">📅 Date</span> <span class="value">${examDate}</span></p>
+                    <p><span class="label">📊 Type</span> 
+                        <span class="value"><span class="${isCatExam ? 'badge-cat' : 'badge-exam'}">${examTypeLabel}</span></span>
+                    </p>
+                    <p><span class="label">👤 Student</span> <span class="value value-name">${student.full_name}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">📌 Block</span> <span class="value">${student.block || 'N/A'}</span></p>
+                </div>
+                
+                <!-- Call to Action -->
+                <div class="callout">
+                    <span class="callout-icon">🔐</span>
+                    <p class="callout-title">Your Results Are Ready</p>
+                    <p class="callout-text">Log in to the student portal to view your grades securely.</p>
+                    <p style="font-size: 12px; color: #5a6c7d; margin: 8px 0 0;">
+                        <span style="background: #d1fae5; padding: 3px 12px; border-radius: 20px; font-size: 11px; color: #065f46; font-weight: 600;">🔒 Secure & Private</span>
+                    </p>
+                </div>
+                
+                <!-- Button -->
+                <div style="text-align: center; margin: 24px 0 16px;">
+                    <a href="https://nakurucollegeofhealthelearning.site/exams" class="btn-primary">
+                        🔑 Go to Exam Portal
+                    </a>
+                    <br>
+                    <a href="https://nakurucollegeofhealthelearning.site" class="btn-secondary">
+                        🌐 Visit NCHSM Digital Campus
+                    </a>
+                </div>
+                
+                <!-- Tip Box -->
+                <div class="tip-box">
+                    <p>💡 <strong>Tip:</strong> If you have any questions about your results, please contact your lecturer or the academic office.</p>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="footer">
+                <p class="footer-text">
+                    <strong>Nakuru College of Health Sciences and Management</strong>
+                </p>
+                <p class="footer-text">
+                    📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nakurucollegeofhealthelearning.site
+                </p>
+                <p class="footer-text" style="font-size: 11px; color: #aab7c5;">
+                    This is an automated notification. Please do not reply to this email.
+                </p>
+                <div class="footer-links">
+                    <a href="https://nakurucollegeofhealthelearning.site">🏠 Home</a>
+                    <a href="https://nakurucollegeofhealthelearning.site/exams">📝 Exams</a>
+                    <a href="https://nakurucollegeofhealthelearning.site/contact">📞 Contact</a>
+                </div>
+                <span class="secure-badge">🔒 Secure Notification</span>
+            </div>
         </div>
-        
-        <div style="background: #f1f5f9; border-radius: 12px; padding: 16px; margin: 20px 0;">
-            <p style="margin: 4px 0;"><strong>📋 Exam:</strong> ${exam.exam_name}</p>
-            <p style="margin: 4px 0;"><strong>📅 Date:</strong> ${examDate}</p>
-            <p style="margin: 4px 0;"><strong>📊 Type:</strong> ${examTypeLabel}</p>
-            <p style="margin: 4px 0;"><strong>👤 Student:</strong> ${student.full_name}</p>
-            <p style="margin: 4px 0;"><strong>🆔 Student ID:</strong> ${student.student_id || 'N/A'}</p>
-            <p style="margin: 4px 0;"><strong>📚 Program:</strong> ${student.program || 'N/A'}</p>
-            <p style="margin: 4px 0;"><strong>📌 Block:</strong> ${student.block || 'N/A'}</p>
-        </div>
-        
-        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin: 20px 0; text-align: center;">
-            <h3 style="margin: 0; color: #1E40AF;">📱 Check Your Results</h3>
-            <p style="margin: 8px 0 0; color: #64748B;">Login to the NCHSM Digital Campus to view your grades</p>
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="https://nakurucollegeofhealthelearning.site/exams" style="background: #0A3D62; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600;">
-                🔑 Go to Exam Portal
-            </a>
-            <br>
-            <a href="https://nakurucollegeofhealthelearning.site" style="display: inline-block; margin-top: 10px; color: #64748B; font-size: 0.8rem; text-decoration: none;">
-                🌐 NCHSM Digital Campus
-            </a>
-        </div>
-        
-        <div style="background: #fef3c7; border-radius: 12px; padding: 12px; margin: 20px 0; border-left: 4px solid #F59E0B;">
-            <p style="margin: 0; font-size: 0.8rem; color: #92400E;">
-                💡 <strong>Tip:</strong> If you have any questions about your results, please contact your lecturer or the academic office.
-            </p>
-        </div>
-        
-        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #64748B; text-align: center;">
-            Nakuru College of Health Sciences and Management<br>
-            📞 +254 700 000 000 | 📧 admin@nakurucollegeofhealthelearning.site
-        </p>
     </div>
 </body>
 </html>`;
         
-        // ✅ Send via Edge Function using admin@
+        // Send via Edge Function
         const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
@@ -4330,7 +4598,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         const data = await result.json();
         
         if (data.success) {
-            console.log(`✅ Email sent to ${student.email} from admin@`);
+            console.log(`✅ Email sent to ${student.email} (NO SCORES shown)`);
             return true;
         } else {
             console.error('❌ Email failed:', data.error);
@@ -4342,40 +4610,6 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         return false;
     }
 }
-    /**
-     * Send bulk release emails to multiple students
-     */
-    async function sendBulkReleaseEmails(releasedResults) {
-        let sent = 0;
-        let failed = 0;
-        let errors = [];
-        
-        for (const result of releasedResults) {
-            try {
-                const success = await sendResultReleaseEmail(
-                    result.student_id,
-                    result.exam_id,
-                    result.grade
-                );
-                
-                if (success) {
-                    sent++;
-                } else {
-                    failed++;
-                    errors.push(`Failed for student ${result.student_id}`);
-                }
-                
-                // Small delay to avoid rate limits
-                await new Promise(r => setTimeout(r, 200));
-                
-            } catch (e) {
-                failed++;
-                errors.push(`Error: ${e.message}`);
-            }
-        }
-        
-        return { sent, failed, errors };
-    }
 
     /**
      * Send bulk emails from the release modal
