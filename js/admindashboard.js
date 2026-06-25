@@ -2543,120 +2543,139 @@
         }
     };
 
-    window.displayLiveFeed = function() {
-        const grid = document.getElementById('liveFeedGrid');
-        if (!grid) return;
+   window.displayLiveFeed = function() {
+    const grid = document.getElementById('liveFeedGrid');
+    if (!grid) return;
+    
+    const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
+    const pageData = liveFeedData.slice(start, start + LIVE_FEED_PER_PAGE);
+    
+    if (pageData.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+                <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+                <p>No active students to display</p>
+            </div>
+        `;
+        renderLiveFeedPagination();
+        return;
+    }
+    
+    grid.innerHTML = pageData.map(item => {
+        const log = item.log || {};
+        const hasCamera = item.hasCamera;
         
-        const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
-        const pageData = liveFeedData.slice(start, start + LIVE_FEED_PER_PAGE);
-        
-        if (pageData.length === 0) {
-            grid.innerHTML = `
-                <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
-                    <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
-                    <p>No active students to display</p>
-                </div>
-            `;
-            renderLiveFeedPagination();
-            return;
+        // ✅ FIX: Check both snapshot_url and screenshot_data
+        let snapshotUrl = null;
+        if (log.snapshot_url) {
+            snapshotUrl = log.snapshot_url + '?t=' + Date.now();
+        } else if (log.screenshot_data) {
+            // If screenshot_data is base64, use it directly
+            snapshotUrl = log.screenshot_data.startsWith('data:') ? 
+                log.screenshot_data : 
+                'data:image/jpeg;base64,' + log.screenshot_data;
         }
         
-        grid.innerHTML = pageData.map(item => {
-            const profile = item.profile || {};
-            const exam = item.exam || {};
-            const snapshot = item.snapshot || {};
-            
-            const hasCamera = item.hasCamera;
-            const snapshotUrl = hasCamera ? snapshot.snapshot_url + '?t=' + Date.now() : null;
-            const studentName = profile.full_name || 'Unknown';
-            const studentId = profile.student_id || 'N/A';
-            const examName = exam.exam_name || 'Unknown Exam';
-            const program = profile.program || '';
-            
-            let progressColor = '#38A169';
-            if (item.progress < 30) progressColor = '#DC2626';
-            else if (item.progress < 60) progressColor = '#F59E0B';
-            
-            let cardClass = 'live-feed-card';
-            if (item.status === 'violation') cardClass += ' violation';
-            else if (item.status === 'no-camera') cardClass += ' warning';
-            
-            let cameraBadge = '';
-            if (hasCamera) {
-                cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
-            } else {
-                cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
-            }
-            
-            let violationBadge = '';
-            if (item.hasViolations) {
-                const critical = item.violations.some(v => v.event_type === 'multiple_faces_detected');
-                violationBadge = `<span class="overlay-badge violation">${critical ? '🚨 CRITICAL' : '⚠️ Alert'}</span>`;
-            }
-            
-            let cameraContent = '';
-            if (snapshotUrl) {
-                cameraContent = `
-                    <img src="${snapshotUrl}" alt="Camera feed" 
-                         onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\'><i class=\\'fas fa-camera-slash\\'></i><p>Camera offline</p></div>'">
-                `;
-            } else {
-                cameraContent = `
-                    <div class="no-camera">
-                        <i class="fas fa-user-slash"></i>
-                        <p>No camera feed</p>
-                        <p style="font-size:0.8rem; opacity:0.6;">Student hasn't shared camera</p>
-                    </div>
-                `;
-            }
-            
-            const safeName = studentName.replace(/'/g, "\\'");
-            const safeExam = examName.replace(/'/g, "\\'");
-            
-            return `
-                <div class="${cardClass}">
-                    <div class="card-header">
-                        <div class="student-info">
-                            <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
-                            <div>
-                                <div class="name">${studentName}</div>
-                                <div class="details">${studentId} • ${program}</div>
-                            </div>
-                        </div>
-                        <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
-                    </div>
-                    <div class="card-body">
-                        ${cameraContent}
-                        ${cameraBadge}
-                        ${violationBadge}
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-track">
-                            <div class="progress-fill" style="width:${item.progress}%; background:${progressColor};"></div>
-                        </div>
-                        <div class="progress-label">
-                            <span>Progress: ${item.progress}%</span>
-                            <span>${item.answered}/${item.total} answered</span>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <div>
-                            <span class="info-item"><i class="fas fa-clock"></i> ${item.timeDisplay}</span>
-                            <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
-                        </div>
-                        <div class="actions">
-                            <button class="btn-view-cam" onclick="openCameraView('${profile.user_id || ''}', ${exam.id || 0}, '${safeName}', '${safeExam}')">
-                                <i class="fas fa-expand"></i> View
-                            </button>
-                            ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${profile.user_id || ''}', ${exam.id || 0})">🚨</button>` : ''}
-                        </div>
-                    </div>
+        // Use the fields from your database
+        const studentName = log.student_name || log.student_name || 'Unknown';
+        const studentId = log.student_reg_number || log.student_id || 'N/A';
+        const examName = log.exam_name || 'Exam ' + log.exam_id;
+        
+        // Status color for progress bar
+        let progressColor = '#38A169';
+        if (item.progress < 30) progressColor = '#DC2626';
+        else if (item.progress < 60) progressColor = '#F59E0B';
+        
+        // Card class
+        let cardClass = 'live-feed-card';
+        if (item.status === 'violation') cardClass += ' violation';
+        else if (item.status === 'warning') cardClass += ' warning';
+        
+        // Camera status badge
+        let cameraBadge = '';
+        if (hasCamera) {
+            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
+        } else {
+            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
+        }
+        
+        // Violation badge
+        let violationBadge = '';
+        if (item.hasViolations) {
+            const critical = log.event_type === 'multiple_faces_detected';
+            violationBadge = `<span class="overlay-badge violation">${critical ? '🚨 CRITICAL' : '⚠️ Alert'}</span>`;
+        }
+        
+        // Camera image or placeholder
+        let cameraContent = '';
+        if (snapshotUrl) {
+            cameraContent = `
+                <img src="${snapshotUrl}" alt="Camera feed" 
+                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\'><i class=\\'fas fa-camera-slash\\'></i><p>Camera offline</p></div>'">
+            `;
+        } else {
+            cameraContent = `
+                <div class="no-camera">
+                    <i class="fas fa-user-slash"></i>
+                    <p>No camera feed</p>
+                    <p style="font-size:0.8rem; opacity:0.6;">Student hasn't shared camera</p>
                 </div>
             `;
-        }).join('');
+        }
         
-        renderLiveFeedPagination();
-    };
+        // Actions
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
+        const userId = log.student_id || '';
+        const examId = log.exam_id || 0;
+        
+        return `
+            <div class="${cardClass}">
+                <div class="card-header">
+                    <div class="student-info">
+                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <div class="name">${studentName}</div>
+                            <div class="details">${studentId} • ${log.student_program || ''}</div>
+                        </div>
+                    </div>
+                    <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
+                </div>
+                
+                <div class="card-body">
+                    ${cameraContent}
+                    ${cameraBadge}
+                    ${violationBadge}
+                </div>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width:${item.progress}%; background:${progressColor};"></div>
+                    </div>
+                    <div class="progress-label">
+                        <span>Progress: ${item.progress}%</span>
+                        <span>${item.answered}/${item.total} answered</span>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div>
+                        <span class="info-item"><i class="fas fa-clock"></i> ${item.timeDisplay}</span>
+                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')">
+                            <i class="fas fa-expand"></i> View
+                        </button>
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    renderLiveFeedPagination();
+};
 
     window.refreshLiveFeed = function() {
         loadLiveFeed();
