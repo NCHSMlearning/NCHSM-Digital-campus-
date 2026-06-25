@@ -3900,123 +3900,179 @@ window.displayLiveFeed = function() {
     };
 
     window.confirmReleaseResults = async function() {
-        const ids = Array.from(selectedStudentIds);
-        if (ids.length === 0) { 
-            alert('Please select at least one student to release results.'); 
-            return; 
-        }
+    const ids = Array.from(selectedStudentIds);
+    if (ids.length === 0) { 
+        alert('Please select at least one student to release results.'); 
+        return; 
+    }
+    
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) return;
+    
+    if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
+    
+    try {
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('pass_mark, total_marks, exam_type, exam_name')
+            .eq('id', parseInt(examId))
+            .single();
         
-        const examId = document.getElementById('releaseExamFilter').value;
-        if (!examId) return;
+        if (examError) throw examError;
         
-        if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
+        const passMark = exam?.pass_mark || 18;
+        const totalMarks = exam?.total_marks || 30;
+        const isCatExam = (exam?.exam_type || '').toUpperCase().includes('CAT');
+        const examName = exam?.exam_name || 'Exam';
         
-        try {
-            const { data: exam, error: examError } = await sb
-                .from('exams')
-                .select('pass_mark, total_marks, exam_type, exam_name')
-                .eq('id', parseInt(examId))
+        let releasedCount = 0;
+        let failedCount = 0;
+        let errorMessages = [];
+        let releaseData = []; // ✅ Store for email sending
+        
+        for (const gradeId of ids) {
+            const { data: grade, error: gradeError } = await sb
+                .from('exam_grades')
+                .select('id, student_id, marks, total_score, result_status')
+                .eq('id', gradeId)
                 .single();
             
-            if (examError) throw examError;
-            
-            const passMark = exam?.pass_mark || 18;
-            const totalMarks = exam?.total_marks || 30;
-            const isCatExam = (exam?.exam_type || '').toUpperCase().includes('CAT');
-            const examName = exam?.exam_name || 'Exam';
-            
-            let releasedCount = 0;
-            let failedCount = 0;
-            let errorMessages = [];
-            
-            for (const gradeId of ids) {
-                const { data: grade, error: gradeError } = await sb
-                    .from('exam_grades')
-                    .select('id, student_id, marks, total_score, result_status')
-                    .eq('id', gradeId)
-                    .single();
-                
-                if (gradeError || !grade) {
-                    console.error('Grade not found:', gradeId);
-                    failedCount++;
-                    errorMessages.push(`Grade ID ${gradeId} not found`);
-                    continue;
-                }
-                
-                if (!grade.student_id) {
-                    console.error('Missing student_id for grade:', gradeId);
-                    failedCount++;
-                    errorMessages.push(`Missing student_id for grade ${gradeId}`);
-                    continue;
-                }
-                
-                let score = 0;
-                if (isCatExam) {
-                    score = grade.marks || parseFloat(grade.total_score) || 0;
-                    score = Math.min(score, 30);
-                } else {
-                    score = parseFloat(grade.total_score) || grade.marks || 0;
-                    score = Math.min(score, totalMarks || 70);
-                }
-                
-                const isPassed = score >= passMark;
-                const resultStatus = isPassed ? 'PASS' : 'FAIL';
-                
-                const { error: releaseError } = await sb
-                    .from('released_exam_results')
-                    .insert({
-                        result_id: gradeId,
-                        student_id: grade.student_id,
-                        exam_id: parseInt(examId)
-                    });
-                
-                if (releaseError) {
-                    console.error('Release error for grade', gradeId, ':', releaseError);
-                    failedCount++;
-                    errorMessages.push(`Release error for grade ${gradeId}: ${releaseError.message}`);
-                    continue;
-                }
-                
-                const { error: updateError } = await sb
-                    .from('exam_grades')
-                    .update({
-                        result_status: resultStatus,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', gradeId);
-                
-                if (updateError) {
-                    console.error('Update error for grade', gradeId, ':', updateError);
-                    failedCount++;
-                    errorMessages.push(`Update error for grade ${gradeId}: ${updateError.message}`);
-                    continue;
-                }
-                
-                releasedCount++;
-                console.log(`✅ Released: ${gradeId} -> ${resultStatus} (${score}/${totalMarks})`);
+            if (gradeError || !grade) {
+                console.error('Grade not found:', gradeId);
+                failedCount++;
+                errorMessages.push(`Grade ID ${gradeId} not found`);
+                continue;
             }
             
-            let message = `✅ Released ${releasedCount} result(s) for "${examName}"`;
-            if (failedCount > 0) {
-                message += `\n❌ Failed: ${failedCount}`;
-                if (errorMessages.length > 0) {
-                    message += `\n\nErrors:\n${errorMessages.slice(0, 5).join('\n')}`;
-                    if (errorMessages.length > 5) {
-                        message += `\n... and ${errorMessages.length - 5} more`;
+            if (!grade.student_id) {
+                console.error('Missing student_id for grade:', gradeId);
+                failedCount++;
+                errorMessages.push(`Missing student_id for grade ${gradeId}`);
+                continue;
+            }
+            
+            let score = 0;
+            if (isCatExam) {
+                score = grade.marks || parseFloat(grade.total_score) || 0;
+                score = Math.min(score, 30);
+            } else {
+                score = parseFloat(grade.total_score) || grade.marks || 0;
+                score = Math.min(score, totalMarks || 70);
+            }
+            
+            const isPassed = score >= passMark;
+            const resultStatus = isPassed ? 'PASS' : 'FAIL';
+            
+            const { error: releaseError } = await sb
+                .from('released_exam_results')
+                .insert({
+                    result_id: gradeId,
+                    student_id: grade.student_id,
+                    exam_id: parseInt(examId)
+                });
+            
+            if (releaseError) {
+                console.error('Release error for grade', gradeId, ':', releaseError);
+                failedCount++;
+                errorMessages.push(`Release error for grade ${gradeId}: ${releaseError.message}`);
+                continue;
+            }
+            
+            const { error: updateError } = await sb
+                .from('exam_grades')
+                .update({
+                    result_status: resultStatus,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', gradeId);
+            
+            if (updateError) {
+                console.error('Update error for grade', gradeId, ':', updateError);
+                failedCount++;
+                errorMessages.push(`Update error for grade ${gradeId}: ${updateError.message}`);
+                continue;
+            }
+            
+            releasedCount++;
+            
+            // ✅ Store for email sending
+            releaseData.push({
+                student_id: grade.student_id,
+                exam_id: parseInt(examId),
+                grade: grade
+            });
+        }
+        
+        let message = `✅ Released ${releasedCount} result(s) for "${examName}"`;
+        if (failedCount > 0) {
+            message += `\n❌ Failed: ${failedCount}`;
+            if (errorMessages.length > 0) {
+                message += `\n\nErrors:\n${errorMessages.slice(0, 5).join('\n')}`;
+                if (errorMessages.length > 5) {
+                    message += `\n... and ${errorMessages.length - 5} more`;
+                }
+            }
+        }
+        alert(message);
+        
+        // ============================================
+        // 📧 SEND EMAIL NOTIFICATIONS
+        // ============================================
+        if (releasedCount > 0 && releaseData.length > 0) {
+            const sendEmail = document.getElementById('sendEmailOnRelease')?.checked !== false;
+            
+            if (sendEmail) {
+                showToast('📧 Sending email notifications...', 'info');
+                
+                console.log(`📧 Sending ${releaseData.length} emails...`);
+                let sent = 0;
+                let failed = 0;
+                
+                for (const data of releaseData) {
+                    try {
+                        const success = await sendResultReleaseEmail(
+                            data.student_id,
+                            data.exam_id,
+                            data.grade
+                        );
+                        
+                        if (success) {
+                            sent++;
+                            console.log(`✅ Email sent to student ${data.student_id}`);
+                        } else {
+                            failed++;
+                            console.log(`❌ Email failed for student ${data.student_id}`);
+                        }
+                        
+                        // Small delay to avoid rate limits
+                        await new Promise(r => setTimeout(r, 300));
+                        
+                    } catch (e) {
+                        failed++;
+                        console.error('Email error:', e);
                     }
                 }
+                
+                if (sent > 0) {
+                    showToast(`✅ ${sent} email notification(s) sent successfully!`, 'success');
+                }
+                if (failed > 0) {
+                    showToast(`⚠️ ${failed} email(s) failed to send`, 'warning');
+                }
+                
+                console.log(`📧 Email summary: ${sent} sent, ${failed} failed`);
             }
-            alert(message);
-            
-            closeReleaseModal();
-            loadStudentsWithResults();
-            loadAllExams();
-            
-        } catch (err) { 
-            alert('❌ Error: ' + err.message); 
-            console.error(err);
         }
-    };
+        
+        closeReleaseModal();
+        loadStudentsWithResults();
+        loadAllExams();
+        
+    } catch (err) { 
+        alert('❌ Error: ' + err.message); 
+        console.error(err);
+    }
+};
 
     // ============================================
 // 📧 RESEND RELEASE EMAIL (Single Student)
