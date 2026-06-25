@@ -3690,7 +3690,7 @@ window.displayLiveFeed = function() {
         document.getElementById('releaseModal').style.display = 'flex';
     };
 
-   window.loadReleasePreview = async function() {
+  window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) { 
         document.getElementById('releasePreview').style.display = 'none'; 
@@ -3729,11 +3729,14 @@ window.displayLiveFeed = function() {
     const totalMarks = exam?.total_marks || 30;
     const isCatExam = examType.toUpperCase().includes('CAT');
     
-    // Get released results with timestamps
-    const { data: released } = await sb.from('released_exam_results').select('result_id, created_at');
+    // ✅ FIX: Use released_at instead of created_at
+    const { data: released } = await sb
+        .from('released_exam_results')
+        .select('result_id, released_at');
+    
     const releasedMap = {};
     released?.forEach(r => {
-        releasedMap[String(r.result_id)] = r.created_at;
+        releasedMap[String(r.result_id)] = r.released_at;
     });
     
     // Get student profiles
@@ -3767,14 +3770,13 @@ window.displayLiveFeed = function() {
         const safeName = studentName.replace(/'/g, "\\'");
         const safeExam = examName.replace(/'/g, "\\'");
         
-        // Released status display with Resend button for released students
         let releasedDisplay = '';
         let actionButtons = '';
         
         if (isReleased) {
             releasedCount++;
-            releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${formatKenyaTime(releasedAt)}</small></span>`;
-            // ✅ RESEND BUTTON for already released students
+            const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
+            releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedTime}</small></span>`;
             actionButtons = `
                 <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')" 
                         style="background:#10B981; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
@@ -3790,7 +3792,6 @@ window.displayLiveFeed = function() {
         } else {
             pendingCount++;
             releasedDisplay = `<span class="status-pending">🔒 Not Released</span>`;
-            // ✅ CHECKBOX for pending students
             actionButtons = `
                 <input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()" style="margin-right:8px;">
                 <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
@@ -3840,7 +3841,6 @@ window.displayLiveFeed = function() {
         summaryHTML += `<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
         summaryHTML += ` <span style="font-size:0.7rem; color:#64748B;">(click <strong>Resend</strong> to send email again)</span>`;
         
-        // Add "Resend All" button if there are released students
         if (releasedCount > 0) {
             summaryHTML += ` <button class="btn btn-success" onclick="batchResendReleaseEmails(${parseInt(examId)})" 
                     style="background:#10B981; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.7rem; margin-left:8px;">
@@ -3856,7 +3856,6 @@ window.displayLiveFeed = function() {
     document.getElementById('selectAllCheckbox').checked = false;
     document.getElementById('confirmReleaseBtn').disabled = (pendingCount === 0);
     
-    // Enable/disable release button
     const releaseBtn = document.getElementById('confirmReleaseBtn');
     if (pendingCount === 0) {
         releaseBtn.disabled = true;
@@ -3868,7 +3867,6 @@ window.displayLiveFeed = function() {
     
     updateSelectedCount();
 };
-
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
         checkboxes.forEach(cb => { 
