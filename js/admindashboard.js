@@ -3962,40 +3962,44 @@ window.displayLiveFeed = function() {
     // 📧 SEND RESULT RELEASE EMAIL (FROM exam@)
     // ============================================
 
-    async function sendResultReleaseEmail(studentId, examId, grade) {
-        try {
-            // Get student details
-            const { data: student, error: studentError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('full_name, email, student_id, program, block')
-                .eq('user_id', studentId)
-                .single();
-            
-            if (studentError || !student || !student.email) {
-                console.log('⚠️ No email found for student:', studentId);
-                return false;
-            }
-            
-            // Get exam details
-            const { data: exam, error: examError } = await sb
-                .from('exams')
-                .select('exam_name, exam_type, exam_date')
-                .eq('id', parseInt(examId))
-                .single();
-            
-            if (examError || !exam) {
-                console.log('⚠️ Exam not found:', examId);
-                return false;
-            }
-            
-            const isCatExam = (exam.exam_type || '').toUpperCase().includes('CAT');
-            const examTypeLabel = isCatExam ? 'CAT' : 'Exam';
-            const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A';
-            
-            // ✅ FROM: exam@nakurucollegeofhealthelearning.site
-            const fromAddress = 'NCHSM Exam Center <exam@nakurucollegeofhealthelearning.site>';
-            
-            const html = `
+   // ============================================
+// 📧 SEND RESULT RELEASE EMAIL
+// ============================================
+
+async function sendResultReleaseEmail(studentId, examId, grade) {
+    try {
+        // Get student details
+        const { data: student, error: studentError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, email, student_id, program, block')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (studentError || !student || !student.email) {
+            console.log('⚠️ No email found for student:', studentId);
+            return false;
+        }
+        
+        // Get exam details
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('exam_name, exam_type, exam_date')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError || !exam) {
+            console.log('⚠️ Exam not found:', examId);
+            return false;
+        }
+        
+        const isCatExam = (exam.exam_type || '').toUpperCase().includes('CAT');
+        const examTypeLabel = isCatExam ? 'CAT' : 'Exam';
+        const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A';
+        
+        // ✅ USING admin@ (working)
+        const fromAddress = 'NCHSM <admin@nakurucollegeofhealthelearning.site>';
+        
+        const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
@@ -4041,42 +4045,42 @@ window.displayLiveFeed = function() {
         <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
         <p style="font-size: 12px; color: #64748B; text-align: center;">
             Nakuru College of Health Sciences and Management<br>
-            📞 +254 700 000 000 | 📧 exam@nakurucollegeofhealthelearning.site
+            📞 +254 700 000 000 | 📧 admin@nakurucollegeofhealthelearning.site
         </p>
     </div>
 </body>
 </html>`;
-            
-            // ✅ Send via Edge Function
-            const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    to: student.email,
-                    subject: `📊 Exam Results Released - ${exam.exam_name}`,
-                    html: html,
-                    from: fromAddress  // ✅ exam@nakurucollegeofhealthelearning.site
-                })
-            });
-            
-            const data = await result.json();
-            
-            if (data.success) {
-                console.log(`✅ Email sent to ${student.email} from exam@`);
-                return true;
-            } else {
-                console.error('❌ Email failed:', data.error);
-                return false;
-            }
-            
-        } catch (error) {
-            console.error('❌ Email error:', error);
+        
+        // ✅ Send via Edge Function using admin@
+        const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: student.email,
+                subject: `📊 Exam Results Released - ${exam.exam_name}`,
+                html: html,
+                from: fromAddress
+            })
+        });
+        
+        const data = await result.json();
+        
+        if (data.success) {
+            console.log(`✅ Email sent to ${student.email} from admin@`);
+            return true;
+        } else {
+            console.error('❌ Email failed:', data.error);
             return false;
         }
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        return false;
     }
+}
     /**
      * Send bulk release emails to multiple students
      */
