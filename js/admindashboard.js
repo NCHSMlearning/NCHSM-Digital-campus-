@@ -4253,7 +4253,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         }) : 'N/A';
         
         // ✅ FROM ADDRESS
-        const fromAddress = 'NCHSM <admin@nakurucollegeofhealthelearning.site>';
+        const fromAddress = 'NCHSM Exam Office <admin@nakurucollegeofhealthelearning.site>';
         
         // ✅ PROFESSIONAL EMAIL HTML
         const html = `
