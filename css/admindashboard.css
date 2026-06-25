@@ -1001,3 +1001,47 @@ td {
     .stat-value { font-size: 1.3rem; }
     .stat-card { padding: 12px; }
 }
+/* ========== VIEW TOGGLE ========== */
+.view-toggle {
+    display: flex;
+    gap: 4px;
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 30px;
+}
+
+.view-toggle-btn {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    color: #64748B;
+}
+
+.view-toggle-btn.active {
+    background: #0A3D62;
+    color: white;
+}
+
+.view-toggle-btn:hover:not(.active) {
+    background: #E2E8F0;
+}
+
+/* ========== NO RESULTS ========== */
+.no-results {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 60px;
+    color: #94A3B8;
+}
+
+.no-results i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
