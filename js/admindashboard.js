@@ -2354,7 +2354,7 @@
     // ============================================
     // 📹 LIVE FEED
     // ============================================
-   window.loadLiveFeed = async function() {
+  window.loadLiveFeed = async function() {
     const loadingDiv = document.getElementById('liveFeedLoading');
     const gridDiv = document.getElementById('liveFeedGrid');
     const statsDiv = document.getElementById('liveFeedStats');
@@ -2392,9 +2392,8 @@
             return;
         }
         
-        // Get unique student IDs and exam IDs
+        // Get unique student IDs for profile lookup
         const studentIds = [...new Set(activeLogs.map(l => l.student_id).filter(id => id))];
-        const examIds = [...new Set(activeLogs.map(l => l.exam_id).filter(id => id))];
         
         // 🔥 FETCH STUDENT PROFILES
         let profileMap = {};
@@ -2409,6 +2408,7 @@
         }
         
         // 🔥 FETCH EXAM DETAILS
+        const examIds = [...new Set(activeLogs.map(l => l.exam_id).filter(id => id))];
         let examMap = {};
         if (examIds.length > 0) {
             const { data: exams } = await sb
@@ -2439,13 +2439,15 @@
         let violations = 0;
         
         for (const log of students) {
-            // 🔥 GET STUDENT INFO FROM PROFILE
+            // 🔥 GET STUDENT INFO - Use log data as fallback
             const profile = profileMap[log.student_id] || {};
-            const studentName = profile.full_name || 'Unknown Student';
+            
+            // Priority: profile data > log data > default
+            const studentName = profile.full_name || log.student_name || 'Unknown Student';
             const studentRegNumber = profile.student_id || log.student_reg_number || 'N/A';
             const program = profile.program || '';
             
-            // 🔥 GET EXAM INFO FROM EXAM MAP
+            // 🔥 GET EXAM INFO
             const exam = examMap[log.exam_id] || {};
             const examName = exam.exam_name || log.exam_name || 'Exam ' + log.exam_id;
             
@@ -2574,8 +2576,16 @@
         loadingDiv.style.color = '#DC2626';
     }
 };
+    window.refreshLiveFeed = function() {
+        loadLiveFeed();
+        showToast('Refreshing camera feeds...', 'info');
+    };
 
-  window.displayLiveFeed = function() {
+
+    // ============================================
+// 📹 DISPLAY LIVE FEED
+// ============================================
+window.displayLiveFeed = function() {
     const grid = document.getElementById('liveFeedGrid');
     if (!grid) return;
     
@@ -2597,18 +2607,18 @@
         const log = item.log || {};
         const hasCamera = item.hasCamera;
         
-        // Get snapshot URL
-        let snapshotUrl = null;
+        // Get image URL
+        let imageUrl = null;
         if (log.snapshot_url) {
-            snapshotUrl = log.snapshot_url + '?t=' + Date.now();
+            imageUrl = log.snapshot_url;
         } else if (log.screenshot_data) {
-            snapshotUrl = log.screenshot_data.startsWith('data:') ? 
+            imageUrl = log.screenshot_data.startsWith('data:') ? 
                 log.screenshot_data : 
                 'data:image/jpeg;base64,' + log.screenshot_data;
         }
         
-        // Use looked-up values
-        const studentName = item.studentName || 'Unknown';
+        // Use the data from the item object
+        const studentName = item.studentName || 'Unknown Student';
         const studentId = item.studentRegNumber || 'N/A';
         const examName = item.examName || 'Exam';
         const program = item.program || '';
@@ -2625,7 +2635,7 @@
         
         // Camera status badge
         let cameraBadge = '';
-        if (hasCamera) {
+        if (imageUrl) {
             cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
         } else {
             cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
@@ -2640,10 +2650,12 @@
         
         // Camera image or placeholder
         let cameraContent = '';
-        if (snapshotUrl) {
+        if (imageUrl) {
             cameraContent = `
-                <img src="${snapshotUrl}" alt="Camera feed" 
-                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\'><i class=\\'fas fa-camera-slash\\'></i><p>Camera offline</p></div>'">
+                <img src="${imageUrl}" 
+                     alt="Camera feed for ${studentName}" 
+                     style="width:100%; height:250px; object-fit:cover;"
+                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p><p style=\\'font-size:0.8rem; opacity:0.6;\\'>Please check the URL</p></div>'">
             `;
         } else {
             cameraContent = `
@@ -2708,11 +2720,6 @@
     
     renderLiveFeedPagination();
 };
-    window.refreshLiveFeed = function() {
-        loadLiveFeed();
-        showToast('Refreshing camera feeds...', 'info');
-    };
-
     window.toggleLiveFeedAutoRefresh = function() {
         liveFeedAutoRefresh = !liveFeedAutoRefresh;
         const icon = document.getElementById('liveFeedAutoIcon');
