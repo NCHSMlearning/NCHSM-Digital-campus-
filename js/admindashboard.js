@@ -1,5 +1,5 @@
 // ============================================
-// 📁 js/dashboard.js
+// 📁 js/admindashboard.js
 // NCHSM Exam Dashboard - Complete JavaScript
 // ============================================
 
@@ -2354,7 +2354,7 @@
     // ============================================
     // 📹 LIVE FEED
     // ============================================
-  window.loadLiveFeed = async function() {
+ window.loadLiveFeed = async function() {
     const loadingDiv = document.getElementById('liveFeedLoading');
     const gridDiv = document.getElementById('liveFeedGrid');
     const statsDiv = document.getElementById('liveFeedStats');
@@ -2395,7 +2395,7 @@
         // Get unique student IDs for profile lookup
         const studentIds = [...new Set(activeLogs.map(l => l.student_id).filter(id => id))];
         
-        // 🔥 FETCH STUDENT PROFILES
+        // FETCH STUDENT PROFILES
         let profileMap = {};
         if (studentIds.length > 0) {
             const { data: profiles } = await sb
@@ -2407,7 +2407,7 @@
             console.log('📋 Profiles found:', profiles?.length || 0);
         }
         
-        // 🔥 FETCH EXAM DETAILS
+        // FETCH EXAM DETAILS
         const examIds = [...new Set(activeLogs.map(l => l.exam_id).filter(id => id))];
         let examMap = {};
         if (examIds.length > 0) {
@@ -2439,27 +2439,23 @@
         let violations = 0;
         
         for (const log of students) {
-            // 🔥 GET STUDENT INFO - Use log data as fallback
             const profile = profileMap[log.student_id] || {};
             
-            // Priority: profile data > log data > default
             const studentName = profile.full_name || log.student_name || 'Unknown Student';
             const studentRegNumber = profile.student_id || log.student_reg_number || 'N/A';
             const program = profile.program || '';
             
-            // 🔥 GET EXAM INFO
             const exam = examMap[log.exam_id] || {};
             const examName = exam.exam_name || log.exam_name || 'Exam ' + log.exam_id;
             
-            // Check if student has camera snapshot
             const hasCamera = !!(log.snapshot_url || log.screenshot_data);
             if (hasCamera) withCamera++;
             else noCamera++;
             
-            // Check for violations
             const isViolation = log.event_type === 'multiple_faces_detected' || 
                                 log.event_type === 'face_missing' ||
-                                log.event_type === 'tab_switched';
+                                log.event_type === 'tab_switched' ||
+                                log.event_type === 'fullscreen_exit_attempt';
             if (isViolation) violations++;
             
             // Get progress
@@ -2545,7 +2541,8 @@
                 statusClass: statusClass,
                 startedAt: startedAt,
                 user_id: log.student_id,
-                exam_id: log.exam_id
+                exam_id: log.exam_id,
+                isPast: false
             });
         }
         
@@ -2561,6 +2558,9 @@
         document.getElementById('liveFeedNoCamera').textContent = noCamera;
         document.getElementById('liveFeedViolations').textContent = violations;
         document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
+        
+        // Populate exam filter
+        populateExamFilter();
         
         // Render
         displayLiveFeed();
@@ -2789,7 +2789,521 @@ window.displayLiveFeed = function() {
         XLSX.writeFile(wb, `Live_Feed_${new Date().toISOString().split('T')[0]}.xlsx`);
         showToast(`Exported ${exportData.length} students`, 'success');
     };
+// ============================================
+// 🔍 LIVE FEED SEARCH & FILTERS
+// ============================================
 
+let liveFeedViewMode = 'live'; // 'live' or 'past'
+let filteredLiveFeedData = [];
+
+// ========== SET VIEW MODE ==========
+window.setLiveFeedView = function(mode) {
+    liveFeedViewMode = mode;
+    
+    // Update toggle buttons
+    const liveBtn = document.getElementById('liveViewBtn');
+    const pastBtn = document.getElementById('pastViewBtn');
+    if (liveBtn) liveBtn.classList.toggle('active', mode === 'live');
+    if (pastBtn) pastBtn.classList.toggle('active', mode === 'past');
+    
+    // Update label
+    const label = document.getElementById('liveFeedViewLabel');
+    if (label) label.textContent = mode === 'live' ? 'active' : 'past';
+    
+    // Reload data
+    if (mode === 'live') {
+        loadLiveFeed();
+    } else {
+        loadPastStudents();
+    }
+};
+
+// ========== LOAD PAST STUDENTS ==========
+window.loadPastStudents = async function() {
+    const loadingDiv = document.getElementById('liveFeedLoading');
+    const gridDiv = document.getElementById('liveFeedGrid');
+    const statsDiv = document.getElementById('liveFeedStats');
+    
+    if (!loadingDiv) return;
+    
+    loadingDiv.style.display = 'block';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading past students...';
+    gridDiv.innerHTML = '';
+    statsDiv.style.display = 'none';
+    
+    try {
+        // Get students who completed exams in the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        // Get logs with exam_completed or exam_submitted events
+        const { data: pastLogs, error } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .in('event_type', ['exam_submitted', 'exam_auto_submitted', 'exam_completed'])
+            .gte('timestamp', twentyFourHoursAgo)
+            .order('timestamp', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!pastLogs || pastLogs.length === 0) {
+            loadingDiv.innerHTML = '📭 No students have completed exams in the last 24 hours';
+            loadingDiv.style.color = '#64748B';
+            loadingDiv.style.display = 'block';
+            gridDiv.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-history"></i>
+                    <p>No past exam records found</p>
+                    <p style="font-size:0.85rem;">Students who completed exams will appear here</p>
+                </div>
+            `;
+            document.getElementById('liveFeedBadge').textContent = '0';
+            return;
+        }
+        
+        // Get unique students
+        const uniqueStudents = new Map();
+        pastLogs.forEach(log => {
+            const key = `${log.student_id}_${log.exam_id}`;
+            if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
+                uniqueStudents.set(key, log);
+            }
+        });
+        
+        const students = Array.from(uniqueStudents.values());
+        
+        // Get student profiles
+        const studentIds = students.map(s => s.student_id).filter(id => id);
+        let profileMap = {};
+        if (studentIds.length > 0) {
+            const { data: profiles } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, email, program, block')
+                .in('user_id', studentIds);
+            profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        }
+        
+        // Get exam details
+        const examIds = students.map(s => s.exam_id).filter(id => id);
+        let examMap = {};
+        if (examIds.length > 0) {
+            const { data: exams } = await sb
+                .from('exams')
+                .select('id, exam_name')
+                .in('id', examIds);
+            examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
+        }
+        
+        // Build past data
+        const pastData = [];
+        let withCamera = 0;
+        let noCamera = 0;
+        
+        for (const log of students) {
+            const profile = profileMap[log.student_id] || {};
+            const exam = examMap[log.exam_id] || {};
+            
+            const studentName = profile.full_name || log.student_name || 'Unknown';
+            const studentReg = profile.student_id || log.student_reg_number || 'N/A';
+            const program = profile.program || '';
+            const examName = exam.exam_name || log.exam_name || 'Exam';
+            
+            const hasCamera = !!(log.snapshot_url || log.screenshot_data);
+            if (hasCamera) withCamera++;
+            else noCamera++;
+            
+            // Get the last snapshot for this student
+            let lastSnapshot = null;
+            if (log.snapshot_url || log.screenshot_data) {
+                lastSnapshot = log;
+            } else {
+                // Try to get a snapshot from their logs
+                const { data: snapshots } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('snapshot_url, screenshot_data, timestamp')
+                    .eq('student_id', log.student_id)
+                    .eq('exam_id', log.exam_id)
+                    .or('snapshot_url.not.is.null,screenshot_data.not.is.null')
+                    .order('timestamp', { ascending: false })
+                    .limit(1);
+                
+                if (snapshots && snapshots.length > 0) {
+                    lastSnapshot = snapshots[0];
+                }
+            }
+            
+            // Get exam result
+            let result = null;
+            try {
+                const { data: grade } = await sb
+                    .from('exam_grades')
+                    .select('marks, total_score, percentage, result_status')
+                    .eq('student_id', log.student_id)
+                    .eq('exam_id', log.exam_id)
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .maybeSingle();
+                result = grade;
+            } catch (e) { /* ignore */ }
+            
+            pastData.push({
+                log: log,
+                profile: profile,
+                exam: exam,
+                studentName: studentName,
+                studentRegNumber: studentReg,
+                program: program,
+                examName: examName,
+                hasCamera: hasCamera,
+                snapshot: lastSnapshot || log,
+                isPast: true,
+                timestamp: log.timestamp,
+                result: result
+            });
+        }
+        
+        // Sort by most recent
+        pastData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Store in liveFeedData for display
+        liveFeedData = pastData;
+        
+        // Update stats
+        document.getElementById('liveFeedCount').textContent = liveFeedData.length;
+        document.getElementById('liveFeedWithCamera').textContent = withCamera;
+        document.getElementById('liveFeedNoCamera').textContent = noCamera;
+        document.getElementById('liveFeedViolations').textContent = 0;
+        document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
+        
+        // Populate exam filter
+        populateExamFilter();
+        
+        // Render
+        displayLiveFeed();
+        
+        loadingDiv.style.display = 'none';
+        statsDiv.style.display = 'block';
+        
+        console.log('📹 Past students loaded:', liveFeedData.length);
+        
+    } catch (error) {
+        console.error('❌ Error loading past students:', error);
+        loadingDiv.innerHTML = '❌ Error loading past students: ' + error.message;
+        loadingDiv.style.color = '#DC2626';
+    }
+};
+
+// ========== POPULATE EXAM FILTER ==========
+function populateExamFilter() {
+    const select = document.getElementById('liveFeedExamFilter');
+    if (!select) return;
+    
+    // Get unique exam names from current data
+    const exams = [...new Set(liveFeedData.map(item => item.examName).filter(Boolean))];
+    
+    // Keep "All Exams" option
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">All Exams</option>';
+    
+    exams.forEach(exam => {
+        const option = document.createElement('option');
+        option.value = exam;
+        option.textContent = exam;
+        select.appendChild(option);
+    });
+    
+    // Restore selected value if it still exists
+    if (currentValue && exams.includes(currentValue)) {
+        select.value = currentValue;
+    }
+}
+
+// ========== FILTER LIVE FEED ==========
+window.filterLiveFeed = function() {
+    const searchTerm = document.getElementById('liveFeedSearch')?.value?.toLowerCase() || '';
+    const examFilter = document.getElementById('liveFeedExamFilter')?.value || '';
+    const statusFilter = document.getElementById('liveFeedStatusFilter')?.value || '';
+    
+    // Store filtered data
+    filteredLiveFeedData = liveFeedData.filter(item => {
+        // Search filter
+        if (searchTerm) {
+            const nameMatch = item.studentName?.toLowerCase().includes(searchTerm);
+            const regMatch = item.studentRegNumber?.toLowerCase().includes(searchTerm);
+            if (!nameMatch && !regMatch) return false;
+        }
+        
+        // Exam filter
+        if (examFilter && item.examName !== examFilter) return false;
+        
+        // Status filter
+        if (statusFilter) {
+            const status = item.status || 'active';
+            if (statusFilter === 'active' && status !== 'active') return false;
+            if (statusFilter === 'violation' && status !== 'violation') return false;
+            if (statusFilter === 'warning' && status !== 'warning') return false;
+            if (statusFilter === 'no-camera' && status !== 'no-camera') return false;
+        }
+        
+        return true;
+    });
+    
+    // Re-render with filtered data
+    displayFilteredLiveFeed();
+};
+
+// ========== DISPLAY FILTERED LIVE FEED ==========
+function displayFilteredLiveFeed() {
+    const grid = document.getElementById('liveFeedGrid');
+    if (!grid) return;
+    
+    const data = filteredLiveFeedData.length > 0 ? filteredLiveFeedData : liveFeedData;
+    const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
+    const pageData = data.slice(start, start + LIVE_FEED_PER_PAGE);
+    
+    if (pageData.length === 0) {
+        grid.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <p>No students match your filters</p>
+                <p style="font-size:0.85rem;">Try adjusting your search or filters</p>
+            </div>
+        `;
+        renderLiveFeedPagination();
+        return;
+    }
+    
+    // Use existing display function with filtered data
+    renderLiveFeedCards(grid, pageData);
+}
+
+// ========== RENDER LIVE FEED CARDS ==========
+function renderLiveFeedCards(grid, pageData) {
+    grid.innerHTML = pageData.map(item => {
+        const log = item.log || {};
+        const hasCamera = item.hasCamera;
+        
+        // Get image URL
+        let imageUrl = null;
+        const snapshot = item.snapshot || log;
+        
+        if (snapshot.snapshot_url) {
+            imageUrl = snapshot.snapshot_url + '?t=' + Date.now();
+        } else if (snapshot.screenshot_data) {
+            imageUrl = snapshot.screenshot_data.startsWith('data:') ? 
+                snapshot.screenshot_data : 
+                'data:image/jpeg;base64,' + snapshot.screenshot_data;
+        }
+        
+        const studentName = item.studentName || 'Unknown';
+        const studentId = item.studentRegNumber || 'N/A';
+        const examName = item.examName || 'Exam';
+        const program = item.program || '';
+        
+        // Status
+        let statusClass = 'status-active';
+        let statusLabel = '🟢 Active';
+        
+        if (item.isPast) {
+            statusClass = 'status-completed';
+            statusLabel = '✅ Completed';
+        } else if (item.status === 'violation') {
+            statusClass = 'status-critical';
+            statusLabel = '🚨 Violation';
+        } else if (item.status === 'warning') {
+            statusClass = 'status-pending';
+            statusLabel = '⚠️ Warning';
+        } else if (!hasCamera) {
+            statusClass = 'status-pending';
+            statusLabel = '📷 No Camera';
+        }
+        
+        // Card class
+        let cardClass = 'live-feed-card';
+        if (item.status === 'violation') cardClass += ' violation';
+        else if (item.status === 'warning') cardClass += ' warning';
+        if (item.isPast) cardClass += ' past-record';
+        
+        // Camera badge
+        let cameraBadge = '';
+        if (imageUrl) {
+            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
+        } else {
+            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
+        }
+        
+        // Progress
+        const progress = item.progress || 0;
+        const progressColor = progress < 30 ? '#DC2626' : progress < 60 ? '#F59E0B' : '#38A169';
+        
+        // Camera content
+        let cameraContent = '';
+        if (imageUrl) {
+            cameraContent = `
+                <img src="${imageUrl}" 
+                     alt="Camera feed for ${studentName}" 
+                     style="width:100%; height:250px; object-fit:cover;"
+                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p></div>'">
+            `;
+        } else {
+            cameraContent = `
+                <div class="no-camera">
+                    <i class="fas fa-user-slash"></i>
+                    <p>${item.isPast ? 'No snapshot available' : 'No camera feed'}</p>
+                </div>
+            `;
+        }
+        
+        // Time display
+        let timeDisplay = item.timeDisplay || '--';
+        if (item.isPast) {
+            timeDisplay = '✅ Completed';
+        }
+        
+        // Result badge for past students
+        let resultBadge = '';
+        if (item.isPast && item.result) {
+            const status = item.result.result_status || 'PENDING';
+            const percentage = item.result.percentage || 0;
+            resultBadge = `
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="${status === 'PASS' ? 'status-pass' : 'status-fail'}">${status}</span>
+                    <span style="font-size:0.7rem; font-weight:600; color:#0A3D62;">${percentage.toFixed(0)}%</span>
+                </div>
+            `;
+        }
+        
+        // Actions
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
+        const userId = log.student_id || '';
+        const examId = log.exam_id || 0;
+        
+        return `
+            <div class="${cardClass}">
+                <div class="card-header">
+                    <div class="student-info">
+                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <div class="name">${studentName}</div>
+                            <div class="details">${studentId} • ${program}</div>
+                        </div>
+                    </div>
+                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                </div>
+                
+                <div class="card-body">
+                    ${cameraContent}
+                    ${cameraBadge}
+                    ${item.isPast ? `<span class="overlay-badge" style="background:rgba(56,161,105,0.9); color:white;">✅ Done</span>` : ''}
+                </div>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width:${progress}%; background:${progressColor};"></div>
+                    </div>
+                    <div class="progress-label">
+                        <span>Progress: ${progress}%</span>
+                        <span>${item.answered || 0}/${item.total || 0} answered</span>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div>
+                        <span class="info-item"><i class="fas fa-clock"></i> ${timeDisplay}</span>
+                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
+                        ${resultBadge}
+                    </div>
+                    <div class="actions">
+                        ${!item.isPast ? `
+                            <button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')">
+                                <i class="fas fa-expand"></i> View
+                            </button>
+                        ` : `
+                            <button class="btn-view-cam" onclick="viewPastResult('${userId}', ${examId})" style="background:#38A169;">
+                                <i class="fas fa-chart-bar"></i> Results
+                            </button>
+                        `}
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    renderLiveFeedPagination();
+}
+
+// ========== VIEW PAST RESULT ==========
+window.viewPastResult = async function(studentId, examId) {
+    try {
+        const { data: result } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (!result) {
+            showToast('No results found for this student', 'warning');
+            return;
+        }
+        
+        const { data: profile } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, student_id')
+            .eq('user_id', studentId)
+            .single();
+        
+        const { data: exam } = await sb
+            .from('exams')
+            .select('exam_name, total_marks')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${profile?.full_name || 'Student'}`;
+        document.getElementById('modalContent').innerHTML = `
+            <div style="background:#F8FAFC; padding:20px; border-radius:16px;">
+                <p><strong>📝 Exam:</strong> ${exam?.exam_name || 'Exam ' + examId}</p>
+                <p><strong>📊 Score:</strong> ${result.marks || 0} / ${exam?.total_marks || result.total_score || 0}</p>
+                <p><strong>📈 Percentage:</strong> ${result.percentage || 0}%</p>
+                <p><strong>📋 Status:</strong> <span class="${result.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${result.result_status || 'PENDING'}</span></p>
+                <p><strong>📅 Completed:</strong> ${formatKenyaTime(result.graded_at)}</p>
+                ${result.released_at ? `<p><strong>📤 Released:</strong> ${formatKenyaTime(result.released_at)}</p>` : ''}
+            </div>
+        `;
+        document.getElementById('studentModal').style.display = 'flex';
+        
+    } catch (error) {
+        showToast('Error loading results: ' + error.message, 'error');
+    }
+};
+
+// ========== CLEAR FILTERS ==========
+window.clearLiveFeedFilters = function() {
+    const search = document.getElementById('liveFeedSearch');
+    const exam = document.getElementById('liveFeedExamFilter');
+    const status = document.getElementById('liveFeedStatusFilter');
+    
+    if (search) search.value = '';
+    if (exam) exam.value = '';
+    if (status) status.value = '';
+    
+    filterLiveFeed();
+    showToast('Filters cleared', 'info');
+};
+
+// ========== OVERRIDE DISPLAY LIVE FEED ==========
+// Replace the existing displayLiveFeed with this updated version
+window.displayLiveFeed = function() {
+    // Store original data for filtering
+    filteredLiveFeedData = liveFeedData;
+    
+    // Populate exam filter
+    populateExamFilter();
+    
+    // Apply current filters
+    filterLiveFeed();
+};
     function renderLiveFeedPagination() {
         const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
         const container = document.getElementById('liveFeedPagination');
