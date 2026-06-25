@@ -2354,22 +2354,27 @@
     // ============================================
     // 📹 LIVE FEED
     // ============================================
- window.loadLiveFeed = async function() {
+window.loadLiveFeed = async function() {
     const loadingDiv = document.getElementById('liveFeedLoading');
     const gridDiv = document.getElementById('liveFeedGrid');
     const statsDiv = document.getElementById('liveFeedStats');
     
     if (!loadingDiv) return;
     
-    loadingDiv.style.display = 'block';
-    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
-    gridDiv.innerHTML = '';
-    statsDiv.style.display = 'none';
+    // ✅ Check if this is an auto-refresh (data already exists)
+    const isAutoRefresh = liveFeedData.length > 0;
+    
+    // ✅ Only show loading on manual refresh
+    if (!isAutoRefresh) {
+        loadingDiv.style.display = 'block';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
+        gridDiv.innerHTML = '';
+        statsDiv.style.display = 'none';
+    }
     
     try {
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         
-        // Get active students with snapshots
         const { data: activeLogs, error } = await sb
             .from('exam_proctoring_logs')
             .select('*')
@@ -2379,16 +2384,19 @@
         if (error) throw error;
         
         if (!activeLogs || activeLogs.length === 0) {
-            loadingDiv.innerHTML = '🟢 No students currently active';
-            loadingDiv.style.color = '#38A169';
-            loadingDiv.style.display = 'block';
-            gridDiv.innerHTML = `
-                <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
-                    <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
-                    <p>No students are currently taking exams</p>
-                </div>
-            `;
-            document.getElementById('liveFeedBadge').textContent = '0';
+            // ✅ On auto-refresh, keep existing data
+            if (!isAutoRefresh) {
+                loadingDiv.innerHTML = '🟢 No students currently active';
+                loadingDiv.style.color = '#38A169';
+                loadingDiv.style.display = 'block';
+                gridDiv.innerHTML = `
+                    <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+                        <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+                        <p>No students are currently taking exams</p>
+                    </div>
+                `;
+                document.getElementById('liveFeedBadge').textContent = '0';
+            }
             return;
         }
         
@@ -2740,15 +2748,43 @@ window.displayLiveFeed = function() {
             showToast('Auto-refresh disabled', 'info');
         }
     };
-
-    function startLiveFeedAutoRefresh() {
-        if (liveFeedInterval) clearInterval(liveFeedInterval);
-        liveFeedInterval = setInterval(() => {
-            if (liveFeedAutoRefresh && document.getElementById('livefeedTableContainer').style.display !== 'none') {
-                loadLiveFeed();
+function startLiveFeedAutoRefresh() {
+    if (liveFeedInterval) clearInterval(liveFeedInterval);
+    liveFeedInterval = setInterval(() => {
+        if (liveFeedAutoRefresh && document.getElementById('livefeedTableContainer').style.display !== 'none') {
+            // ✅ Save current filter values
+            const searchValue = document.getElementById('liveFeedSearch')?.value || '';
+            const examValue = document.getElementById('liveFeedExamFilter')?.value || '';
+            const statusValue = document.getElementById('liveFeedStatusFilter')?.value || '';
+            const currentView = liveFeedViewMode || 'live';
+            
+            // ✅ Reload based on current view
+            if (currentView === 'live') {
+                loadLiveFeed().then(() => {
+                    restoreFilters(searchValue, examValue, statusValue);
+                });
+            } else {
+                loadPastStudents().then(() => {
+                    restoreFilters(searchValue, examValue, statusValue);
+                });
             }
-        }, 10000);
-    }
+        }
+    }, 10000);
+}
+
+// ========== RESTORE FILTERS ==========
+function restoreFilters(searchValue, examValue, statusValue) {
+    const searchInput = document.getElementById('liveFeedSearch');
+    if (searchInput) searchInput.value = searchValue;
+    
+    const examFilter = document.getElementById('liveFeedExamFilter');
+    if (examFilter) examFilter.value = examValue;
+    
+    const statusFilter = document.getElementById('liveFeedStatusFilter');
+    if (statusFilter) statusFilter.value = statusValue;
+    
+    filterLiveFeed();
+}
 
     window.clearAllCameraFeeds = function() {
         if (!confirm('Clear all camera feeds from view?')) return;
