@@ -3690,117 +3690,184 @@ window.displayLiveFeed = function() {
         document.getElementById('releaseModal').style.display = 'flex';
     };
 
-    window.loadReleasePreview = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        if (!examId) { 
-            document.getElementById('releasePreview').style.display = 'none'; 
-            return; 
+   window.loadReleasePreview = async function() {
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) { 
+        document.getElementById('releasePreview').style.display = 'none'; 
+        return; 
+    }
+    
+    document.getElementById('releasePreview').style.display = 'block';
+    selectedStudentIds.clear();
+    
+    const { data: results, error } = await sb
+        .from('exam_grades')
+        .select('id, student_id, marks, total_score, result_status')
+        .eq('exam_id', parseInt(examId))
+        .eq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    if (error) { 
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; 
+        return; 
+    }
+    
+    if (!results || results.length === 0) { 
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">No students have taken this exam yet</td></tr>';
+        document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
+        return; 
+    }
+    
+    const { data: exam } = await sb
+        .from('exams')
+        .select('pass_mark, total_marks, exam_name, exam_type')
+        .eq('id', parseInt(examId))
+        .single();
+    
+    const passMark = exam?.pass_mark || 18;
+    const examName = exam?.exam_name || 'Exam';
+    const examType = exam?.exam_type || 'EXAM';
+    const totalMarks = exam?.total_marks || 30;
+    const isCatExam = examType.toUpperCase().includes('CAT');
+    
+    // Get released results with timestamps
+    const { data: released } = await sb.from('released_exam_results').select('result_id, created_at');
+    const releasedMap = {};
+    released?.forEach(r => {
+        releasedMap[String(r.result_id)] = r.created_at;
+    });
+    
+    // Get student profiles
+    const studentIds = results.map(r => r.student_id).filter(id => id);
+    const { data: profiles } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('user_id, full_name, student_id, email')
+        .in('user_id', studentIds);
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    
+    let html = '';
+    let pendingCount = 0;
+    let releasedCount = 0;
+    
+    results.forEach(r => {
+        const student = profileMap[r.student_id];
+        const isReleased = releasedMap.hasOwnProperty(String(r.id));
+        const releasedAt = isReleased ? releasedMap[String(r.id)] : null;
+        
+        const studentName = (student?.full_name || 'Unknown').replace(/'/g, "\\'");
+        const studentId = r.student_id || '';
+        const studentIdDisplay = student?.student_id || 'N/A';
+        const studentEmail = student?.email || '';
+        
+        const score = parseFloat(r.total_score) || r.marks || 0;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const isPassed = score >= passMark;
+        const statusClass = isPassed ? 'status-pass' : 'status-fail';
+        const statusText = isPassed ? 'PASS' : 'FAIL';
+        
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
+        
+        // Released status display with Resend button for released students
+        let releasedDisplay = '';
+        let actionButtons = '';
+        
+        if (isReleased) {
+            releasedCount++;
+            releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${formatKenyaTime(releasedAt)}</small></span>`;
+            // ✅ RESEND BUTTON for already released students
+            actionButtons = `
+                <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')" 
+                        style="background:#10B981; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
+                        title="Resend email notification">
+                    <i class="fas fa-envelope"></i> Resend
+                </button>
+                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
+                        style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
+                        title="View Live Progress">
+                    <i class="fas fa-chart-line"></i>
+                </button>
+            `;
+        } else {
+            pendingCount++;
+            releasedDisplay = `<span class="status-pending">🔒 Not Released</span>`;
+            // ✅ CHECKBOX for pending students
+            actionButtons = `
+                <input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()" style="margin-right:8px;">
+                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
+                        style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
+                        title="View Live Progress">
+                    <i class="fas fa-chart-line"></i>
+                </button>
+                <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${safeName}', ${parseInt(examId)}, '${safeExam}')" 
+                        style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
+                        title="Manage Timer">
+                    <i class="fas fa-clock"></i>
+                </button>
+            `;
         }
         
-        document.getElementById('releasePreview').style.display = 'block';
-        selectedStudentIds.clear();
+        html += `<tr>
+            <td style="padding:8px;">
+                ${!isReleased ? `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()">` : ''}
+            </td>
+            <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
+            <td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
+            <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')">
+                ${score} ✏️
+            </td>
+            <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')">
+                ${percentage}% ✏️
+            </td>
+            <td style="padding:8px;"><span class="${statusClass}">${statusText}</span></td>
+            <td style="padding:8px;">${releasedDisplay}</td>
+            <td style="padding:8px;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                    ${actionButtons}
+                </div>
+            </td>
+        </tr>`;
+    });
+    
+    document.getElementById('releasePreviewBody').innerHTML = html;
+    
+    // Update summary
+    let summaryHTML = '';
+    if (pendingCount > 0) {
+        summaryHTML += `<strong>📋 Pending Results: ${pendingCount} student(s) ready for release</strong>`;
+    }
+    if (releasedCount > 0) {
+        if (summaryHTML) summaryHTML += ' | ';
+        summaryHTML += `<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
+        summaryHTML += ` <span style="font-size:0.7rem; color:#64748B;">(click <strong>Resend</strong> to send email again)</span>`;
         
-        const { data: results, error } = await sb
-            .from('exam_grades')
-            .select('id, student_id, marks, total_score, result_status')
-            .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        if (error) { 
-            document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; 
-            return; 
+        // Add "Resend All" button if there are released students
+        if (releasedCount > 0) {
+            summaryHTML += ` <button class="btn btn-success" onclick="batchResendReleaseEmails(${parseInt(examId)})" 
+                    style="background:#10B981; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.7rem; margin-left:8px;">
+                    <i class="fas fa-envelope"></i> Resend All (${releasedCount})
+                </button>`;
         }
-        
-        if (!results || results.length === 0) { 
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">No students have taken this exam yet</td></tr>';
-            document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
-            return; 
-        }
-        
-        const { data: exam } = await sb
-            .from('exams')
-            .select('pass_mark, total_marks, exam_name, exam_type')
-            .eq('id', parseInt(examId))
-            .single();
-        
-        const passMark = exam?.pass_mark || 18;
-        const examName = exam?.exam_name || 'Exam';
-        const examType = exam?.exam_type || 'EXAM';
-        const totalMarks = exam?.total_marks || 30;
-        const isCatExam = examType.toUpperCase().includes('CAT');
-        
-        const { data: released } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-        
-        const eligibleResults = results.filter(r => {
-            const isAlreadyReleased = releasedSet.has(String(r.id));
-            const hasStudentId = !!r.student_id;
-            if (!hasStudentId) {
-                console.warn('⚠️ Missing student_id for grade:', r.id);
-            }
-            return !isAlreadyReleased && hasStudentId;
-        });
-        
-        if (eligibleResults.length === 0) { 
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">✅ All results have already been released!</td></tr>';
-            document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
-            document.getElementById('confirmReleaseBtn').disabled = true; 
-            return; 
-        }
-        
-        currentReleaseResults = eligibleResults;
-        
-        const studentIds = eligibleResults.map(r => r.student_id).filter(id => id);
-        const { data: profiles } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, email')
-            .in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        let html = '';
-        eligibleResults.forEach(r => {
-            const student = profileMap[r.student_id];
-            const percentage = parseFloat(r.total_score || 0).toFixed(1);
-            
-            const score = parseFloat(r.total_score) || 0;
-            const correctStatus = score >= passMark ? 'PASS' : 'FAIL';
-            const statusClass = correctStatus === 'PASS' ? 'status-pass' : 'status-fail';
-            
-            const studentName = (student?.full_name || 'Unknown').replace(/'/g, "\\'");
-            const studentId = r.student_id || '';
-            const studentIdDisplay = student?.student_id || 'N/A';
-            const studentEmail = student?.email || '';
-            const marks = r.marks || 0;
-            
-            html += `<tr>
-                <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
-                <td><span class="student-id-badge">${studentIdDisplay}</span></td>
-                <td><strong>${studentName}</strong><br><small>${studentEmail}</small></td>
-                <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                    ${marks} ✏️
-                </td>
-                <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                    ${percentage}% ✏️
-                </td>
-                <td><span class="${statusClass}">${correctStatus}</span></td>
-                <td><span class="status-pending">🔒 Not Released</span></td>
-                <td>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
-                        <i class="fas fa-chart-line"></i> Progress
-                    </button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
-                        <i class="fas fa-clock"></i> Timer
-                    </button>
-                </td>
-            </tr>`;
-        });
-        
-        document.getElementById('releasePreviewBody').innerHTML = html;
-        document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
-        document.getElementById('selectAllCheckbox').checked = false;
-        document.getElementById('confirmReleaseBtn').disabled = false;
-        updateSelectedCount();
-    };
+    }
+    if (!summaryHTML) {
+        summaryHTML = '<strong>No results found</strong>';
+    }
+    document.getElementById('releaseSummary').innerHTML = summaryHTML;
+    
+    document.getElementById('selectAllCheckbox').checked = false;
+    document.getElementById('confirmReleaseBtn').disabled = (pendingCount === 0);
+    
+    // Enable/disable release button
+    const releaseBtn = document.getElementById('confirmReleaseBtn');
+    if (pendingCount === 0) {
+        releaseBtn.disabled = true;
+        releaseBtn.innerHTML = '✅ All Released';
+    } else {
+        releaseBtn.disabled = false;
+        releaseBtn.innerHTML = `<i class="fas fa-share-alt"></i> Release Selected (${pendingCount} pending)`;
+    }
+    
+    updateSelectedCount();
+};
 
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
@@ -3950,6 +4017,146 @@ window.displayLiveFeed = function() {
             console.error(err);
         }
     };
+
+    // ============================================
+// 📧 RESEND RELEASE EMAIL (Single Student)
+// ============================================
+
+window.resendReleaseEmail = async function(studentId, examId, studentName, examName) {
+    try {
+        // Check if this student has been released
+        const { data: grade, error: gradeError } = await sb
+            .from('exam_grades')
+            .select('id, student_id, marks, total_score, result_status, exam_id')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (gradeError || !grade) {
+            showToast('❌ Student grade not found', 'error');
+            return;
+        }
+        
+        // Check if released
+        const { data: released, error: releasedError } = await sb
+            .from('released_exam_results')
+            .select('result_id')
+            .eq('result_id', grade.id)
+            .maybeSingle();
+        
+        if (!released) {
+            showToast('⚠️ This student\'s results have not been released yet. Please release first.', 'warning');
+            return;
+        }
+        
+        if (!confirm(`📧 Resend release email to ${studentName} for "${examName}"?`)) {
+            return;
+        }
+        
+        showToast(`📧 Sending email to ${studentName}...`, 'info');
+        
+        // Send the email
+        const success = await sendResultReleaseEmail(studentId, parseInt(examId), grade);
+        
+        if (success) {
+            showToast(`✅ Email resent successfully to ${studentName}`, 'success');
+            
+            // Log the resend action
+            await sb.from('exam_proctoring_logs').insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                event_type: 'email_resent',
+                details: `Admin resent release email to ${studentName} for ${examName}`,
+                severity: 'info',
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            showToast(`❌ Failed to send email to ${studentName}`, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error resending email:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// 📧 BATCH RESEND RELEASE EMAILS
+// ============================================
+
+window.batchResendReleaseEmails = async function(examId) {
+    if (!examId) {
+        examId = document.getElementById('releaseExamFilter')?.value;
+        if (!examId) {
+            showToast('Please select an exam first', 'warning');
+            return;
+        }
+    }
+    
+    try {
+        // Get all released results for this exam
+        const { data: releasedResults, error } = await sb
+            .from('released_exam_results')
+            .select('result_id, student_id, exam_id')
+            .eq('exam_id', parseInt(examId));
+        
+        if (error) throw error;
+        
+        if (!releasedResults || releasedResults.length === 0) {
+            showToast('No released results found for this exam', 'info');
+            return;
+        }
+        
+        if (!confirm(`📧 Resend emails to ${releasedResults.length} students for this exam?`)) {
+            return;
+        }
+        
+        showToast(`📧 Sending ${releasedResults.length} emails...`, 'info');
+        
+        let sent = 0;
+        let failed = 0;
+        
+        for (const result of releasedResults) {
+            try {
+                const { data: grade } = await sb
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('id', result.result_id)
+                    .single();
+                
+                if (grade) {
+                    const success = await sendResultReleaseEmail(result.student_id, parseInt(examId), grade);
+                    if (success) sent++;
+                    else failed++;
+                } else {
+                    failed++;
+                }
+                
+                // Small delay to avoid rate limits
+                await new Promise(r => setTimeout(r, 200));
+                
+            } catch (e) {
+                failed++;
+            }
+        }
+        
+        showToast(`📧 Sent: ${sent}, Failed: ${failed}`, sent > 0 ? 'success' : 'error');
+        
+        // Log the batch action
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: 'admin',
+            exam_id: parseInt(examId),
+            event_type: 'batch_email_resent',
+            details: `Admin resent ${sent} emails for exam ID ${examId}`,
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+};
     // ============================================
     // 📧 EMAIL INTEGRATION - RESULTS NOTIFICATION (NO SCORES)
     // ============================================
