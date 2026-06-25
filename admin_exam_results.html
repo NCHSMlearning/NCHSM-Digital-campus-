@@ -950,6 +950,212 @@
         .sidebar-overlay.show {
             display: block;
         }
+        /* ========== LIVE FEED CARDS ========== */
+.live-feed-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.live-feed-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+}
+
+.live-feed-card.violation {
+    border-color: #DC2626;
+    animation: pulseRed 1.5s infinite;
+}
+
+.live-feed-card.warning {
+    border-color: #F59E0B;
+}
+
+.live-feed-card .card-header {
+    padding: 12px 16px;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.live-feed-card .card-header .student-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.live-feed-card .card-header .student-info .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #0A3D62;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.live-feed-card .card-header .student-info .name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #0A3D62;
+}
+
+.live-feed-card .card-header .student-info .details {
+    font-size: 0.7rem;
+    color: #64748B;
+}
+
+.live-feed-card .card-header .status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.live-feed-card .card-body {
+    padding: 0;
+    background: #000;
+    min-height: 200px;
+    position: relative;
+}
+
+.live-feed-card .card-body img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    display: block;
+}
+
+.live-feed-card .card-body .no-camera {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+    color: white;
+    flex-direction: column;
+    gap: 12px;
+    background: #1a1a2e;
+}
+
+.live-feed-card .card-body .no-camera i {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+.live-feed-card .card-footer {
+    padding: 10px 16px;
+    background: #F8FAFC;
+    border-top: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.live-feed-card .card-footer .info-item {
+    font-size: 0.7rem;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.live-feed-card .card-footer .actions {
+    display: flex;
+    gap: 6px;
+}
+
+.live-feed-card .card-footer .actions button {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.live-feed-card .card-footer .actions .btn-view-cam {
+    background: #8B5CF6;
+    color: white;
+}
+
+.live-feed-card .card-footer .actions .btn-view-cam:hover {
+    background: #7C3AED;
+}
+
+.live-feed-card .card-footer .actions .btn-alert {
+    background: #EF4444;
+    color: white;
+}
+
+.live-feed-card .card-footer .actions .btn-alert:hover {
+    background: #DC2626;
+}
+
+.live-feed-card .overlay-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    z-index: 5;
+}
+
+.live-feed-card .overlay-badge.camera-on {
+    background: rgba(16, 185, 129, 0.9);
+    color: white;
+}
+
+.live-feed-card .overlay-badge.camera-off {
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+}
+
+.live-feed-card .overlay-badge.violation {
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+.live-feed-card .progress-bar-container {
+    padding: 8px 16px;
+    background: white;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.live-feed-card .progress-bar-container .progress-track {
+    background: #E2E8F0;
+    border-radius: 10px;
+    height: 6px;
+    overflow: hidden;
+}
+
+.live-feed-card .progress-bar-container .progress-track .progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.live-feed-card .progress-bar-container .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: #64748B;
+    margin-top: 4px;
+}
     </style>
 </head>
 <body>
@@ -964,13 +1170,15 @@
             <h2>NCHSM <span>Exam</span></h2>
             <small>Proctoring Center</small>
        </div>
-        <ul class="sidebar-menu">
-            <li><a class="active" data-tab="students" onclick="switchTab('students')"><i class="fas fa-graduation-cap"></i> Students Results</a></li>
-            <li><a data-tab="allStudents" onclick="switchTab('allStudents')"><i class="fas fa-users"></i> All Students</a></li>
-            <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
-            <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
-            <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
-        </ul>
+       <ul class="sidebar-menu">
+    <li><a class="active" data-tab="students" onclick="switchTab('students')"><i class="fas fa-graduation-cap"></i> Students Results</a></li>
+    <li><a data-tab="allStudents" onclick="switchTab('allStudents')"><i class="fas fa-users"></i> All Students</a></li>
+    <li><a data-tab="livefeed" onclick="switchTab('livefeed')"><i class="fas fa-video"></i> Live Feed <span class="badge-sidebar" id="liveFeedBadge">0</span></a></li>
+    
+    <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
+    <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
+    <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
+</ul>
         <div class="sidebar-footer">
             <button class="logout-btn-sidebar" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
@@ -1113,7 +1321,44 @@
         <div class="pagination" id="liveStudentsPagination"></div>
     </div>
 
-            
+            <!-- ========== 📹 LIVE FEED TABLE ========== -->
+<div class="table-container" id="livefeedTableContainer" style="display:none;">
+    <div class="table-header">
+        <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
+        <div class="table-actions">
+            <button class="btn btn-success" onclick="refreshLiveFeed()">
+                <i class="fas fa-sync"></i> Refresh All
+            </button>
+            <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
+                <i class="fas fa-play" id="liveFeedAutoIcon"></i> 
+                <span id="liveFeedAutoText">Auto: ON</span>
+            </button>
+            <button class="btn btn-danger" onclick="clearAllCameraFeeds()">
+                <i class="fas fa-times"></i> Clear All
+            </button>
+            <button class="btn btn-secondary" onclick="exportLiveFeed()">
+                <i class="fas fa-file-excel"></i> Export
+            </button>
+        </div>
+    </div>
+    
+    <div id="liveFeedLoading" class="loading">
+        <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+    </div>
+    
+    <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5;">
+        <span id="liveFeedCount">0</span> students currently active
+        <span style="margin-left:20px;">🟢 <span id="liveFeedWithCamera">0</span> with camera</span>
+        <span style="margin-left:20px;">🔴 <span id="liveFeedNoCamera">0</span> no camera</span>
+        <span style="margin-left:20px;">🚨 <span id="liveFeedViolations">0</span> violations</span>
+    </div>
+    
+    <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
+        <!-- Camera cards will be dynamically inserted here -->
+    </div>
+    
+    <div class="pagination" id="liveFeedPagination"></div>
+</div>
             
             <!-- Exams Table -->
             <div class="table-container" id="examsTableContainer" style="display:none;">
@@ -1353,6 +1598,64 @@
             </div>
         </div>
     </div>
+    <!-- ========== 🎥 CAMERA VIEW MODAL ========== -->
+<div id="cameraModal" class="modal">
+    <div class="modal-content" style="max-width: 950px;">
+        <span class="close-modal" onclick="closeCameraModal()">&times;</span>
+        <h2 id="cameraModalTitle"><i class="fas fa-video"></i> Live Camera Feed</h2>
+        
+        <div style="background:#F8FAFC; padding:12px 16px; border-radius:12px; margin:12px 0; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+            <div><strong>👤 Student:</strong> <span id="cameraStudentName">Loading...</span></div>
+            <div><strong>📝 Exam:</strong> <span id="cameraExamName">Loading...</span></div>
+            <div><strong>🟢 Status:</strong> <span id="cameraStatus" class="status-active">Active</span></div>
+        </div>
+        
+        <div style="background:#000; border-radius:12px; overflow:hidden; min-height:400px; position:relative;">
+            <div id="cameraLoading" style="display:flex; align-items:center; justify-content:center; height:400px; color:white; flex-direction:column; gap:16px; background:#1a1a2e;">
+                <i class="fas fa-spinner fa-spin fa-3x"></i>
+                <p>Loading camera feed...</p>
+            </div>
+            <img id="cameraFeed" src="" alt="Camera Feed" style="width:100%; display:none; max-height:600px; object-fit:contain; background:#000;">
+            
+            <div id="cameraOverlay" style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.8)); padding:20px; display:none; color:white;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <span><i class="fas fa-clock"></i> <span id="cameraTimestamp">--</span></span>
+                    <span><i class="fas fa-wifi"></i> <span id="cameraSignal">Live</span></span>
+                    <span><i class="fas fa-camera"></i> <span id="cameraFPS">--</span></span>
+                </div>
+            </div>
+            
+            <div style="position:absolute; bottom:80px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; flex-wrap:wrap; justify-content:center;">
+                <button class="btn btn-success" onclick="captureSnapshot()" style="padding:10px 20px; font-size:0.8rem;">
+                    <i class="fas fa-camera"></i> Capture
+                </button>
+                <button class="btn btn-primary" onclick="refreshCameraFeed()" style="padding:10px 20px; font-size:0.8rem;">
+                    <i class="fas fa-sync"></i> Refresh
+                </button>
+                <button class="btn btn-warning" onclick="toggleAutoRefreshCamera()" id="cameraRefreshBtn" style="padding:10px 20px; font-size:0.8rem;">
+                    <i class="fas fa-play"></i> Auto: ON
+                </button>
+                <button class="btn btn-danger" onclick="requestCameraSnapshot()" style="padding:10px 20px; font-size:0.8rem;">
+                    <i class="fas fa-camera-retro"></i> Request
+                </button>
+            </div>
+        </div>
+        
+        <div id="snapshotGallery" style="margin-top:16px; display:none;">
+            <h4 style="margin-bottom:8px;"><i class="fas fa-images"></i> Recent Snapshots</h4>
+            <div id="snapshotList" style="display:flex; gap:10px; overflow-x:auto; padding:10px 0;"></div>
+        </div>
+        
+        <div style="margin-top:16px; max-height:150px; overflow-y:auto; background:#F8FAFC; border-radius:12px; padding:12px;">
+            <h4 style="margin-bottom:8px; font-size:0.9rem;"><i class="fas fa-exclamation-triangle"></i> Recent Alerts</h4>
+            <div id="cameraAlertsList" style="font-size:0.8rem;"></div>
+        </div>
+        
+        <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
+            <button class="btn btn-danger" onclick="closeCameraModal()">Close</button>
+        </div>
+    </div>
+</div>
 <!-- ========== TIMER MANAGEMENT MODAL ========== -->
 <div id="timerModal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
@@ -1573,40 +1876,50 @@ function updateAdminTimers() {
                 overlay.classList.toggle('show');
             };
 
-            window.switchTab = function(tab) {
-                currentTab = tab;
-                document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
-                document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`)?.classList.add('active');
+           window.switchTab = function(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+    document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`)?.classList.add('active');
 
-                const titles = {
-                    'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
-                    'allStudents': ['All Students', 'View all registered students', 'fa-users'],
-                    'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
-                    'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video']
-                };
-                const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
-                document.getElementById('pageTitle').innerHTML = `<i class="fas ${icon}"></i> ${title}`;
-                document.getElementById('pageSubtitle').textContent = subtitle;
+    const titles = {
+        'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
+        'allStudents': ['All Students', 'View all registered students', 'fa-users'],
+        'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
+        'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
+        'liveStudents': ['Live Students', 'Students currently taking exams', 'fa-eye'],
+        'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video']
+    };
+    
+    const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
+    document.getElementById('pageTitle').innerHTML = `<i class="fas ${icon}"></i> ${title}`;
+    document.getElementById('pageSubtitle').textContent = subtitle;
 
-                document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
-                document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' :
-                'none';
-                document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
-                document.getElementById('proctoringTableContainer').style.display = tab === 'proctoring' ? 'block' :
-                'none';
+    // Show/hide containers
+    document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
+    document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' : 'none';
+    document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
+    document.getElementById('proctoringTableContainer').style.display = tab === 'proctoring' ? 'block' : 'none';
+    document.getElementById('liveStudentsTableContainer').style.display = tab === 'liveStudents' ? 'block' : 'none';
+    document.getElementById('livefeedTableContainer').style.display = tab === 'livefeed' ? 'block' : 'none';
 
-                if (tab === 'students') loadStudentsWithResults();
-                if (tab === 'allStudents') loadAllStudents();
-                if (tab === 'exams') loadAllExams();
-                if (tab === 'proctoring') loadProctoringLogs();
-                renderFilters();
+    // Load data
+    if (tab === 'students') loadStudentsWithResults();
+    if (tab === 'allStudents') loadAllStudents();
+    if (tab === 'exams') loadAllExams();
+    if (tab === 'proctoring') loadProctoringLogs();
+    if (tab === 'liveStudents') loadLiveStudents();
+    if (tab === 'livefeed') {
+        loadLiveFeed();
+        startLiveFeedAutoRefresh();
+    }
+    
+    renderFilters();
 
-                if (window.innerWidth <= 768) {
-                    document.getElementById('sidebar').classList.remove('open');
-                    document.getElementById('sidebarOverlay').classList.remove('show');
-                }
-            };
-
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('show');
+    }
+};
             // ========== DETERMINE TOTAL MARKS BASED ON EXAM TYPE ==========
             function getExamTotalMarks(examType) {
                 const type = (examType || '').toUpperCase();
@@ -3233,50 +3546,109 @@ window.printTable = function(type) {
                 document.getElementById('notificationPanel').classList.remove('show');
             });
 
-            // ✅ 👇 PASTE THE DOM READY LISTENER HERE 👇
-            // ========== DOM READY ==========
-            document.addEventListener('DOMContentLoaded', function() {
-                if (!checkAdminAuth()) return;
+           // ============================================
+// 🚀 DOM READY - COMPLETE FIXED VERSION
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication
+    if (!checkAdminAuth()) return;
 
-                // Set admin info
-                const session = JSON.parse(localStorage.getItem('adminSession') || '{}');
-                document.getElementById('adminName').textContent = session.name || 'Admin';
-                document.getElementById('adminEmail').textContent = session.email || 'admin@nchsm.ac.ke';
-                document.getElementById('adminInitial').textContent = (session.name || 'A')[0].toUpperCase();
+    // Set admin info
+    const session = JSON.parse(localStorage.getItem('adminSession') || '{}');
+    document.getElementById('adminName').textContent = session.name || 'Admin';
+    document.getElementById('adminEmail').textContent = session.email || 'admin@nchsm.ac.ke';
+    document.getElementById('adminInitial').textContent = (session.name || 'A')[0].toUpperCase();
 
-                // Switch to default tab
-                window.switchTab('students');
-                setupRealtimeNotifications();
-                updateTotalMarksHint();
+    // Switch to default tab
+    window.switchTab('students');
+    setupRealtimeNotifications();
+    updateTotalMarksHint();
 
-                // Start timer updates
-                setInterval(updateAdminTimers, 1000);
+    // Start timer updates (every second)
+    setInterval(updateAdminTimers, 1000);
 
-                document.addEventListener('visibilitychange', function() {
-                    if (!document.hidden) updateAdminTimers();
-                });
+    // Handle visibility change for timers
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) updateAdminTimers();
+    });
 
-                // Close sidebar on outside click (mobile)
-                document.addEventListener('click', function(e) {
-                    const sidebar = document.getElementById('sidebar');
-                    const overlay = document.getElementById('sidebarOverlay');
-                    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-                        if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
-                            sidebar.classList.remove('open');
-                            overlay.classList.remove('show');
-                        }
-                    }
-                });
-            });
+    // Close sidebar on outside click (mobile)
+    document.addEventListener('click', function(e) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+            if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            }
+        }
+    });
 
-            // ✅ MOVE THESE INSIDE THE IIFE
-            // ============================================
-            // 🖱️ CLICK OUTSIDE MODAL TO CLOSE
-            // ============================================
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('modal')) {
-                    e.target.style.display = 'none';
-                    if (e.target.id === 'releaseModal') {
+    // ============================================
+    // ✅ LIVE FEED INITIALIZATION
+    // ============================================
+    
+    // Load live feed in background after 2 seconds
+    setTimeout(function() {
+        if (typeof loadLiveFeed === 'function') {
+            loadLiveFeed();
+            startLiveFeedAutoRefresh();
+            console.log('📹 Live Feed initialized');
+        }
+    }, 2000);
+
+    // Auto-refresh live data every 30 seconds
+    setInterval(function() {
+        if (currentTab === 'liveStudents' && typeof loadLiveStudents === 'function') {
+            loadLiveStudents();
+        }
+        if (currentTab === 'livefeed' && typeof loadLiveFeed === 'function') {
+            loadLiveFeed();
+        }
+    }, 30000);
+
+    // ============================================
+    // ✅ KEYBOARD SHORTCUTS
+    // ============================================
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + Shift + L = Open Live Feed
+        if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+            e.preventDefault();
+            if (typeof switchTab === 'function') {
+                switchTab('livefeed');
+                if (typeof showToast === 'function') {
+                    showToast('📹 Opening Live Feed', 'info');
+                }
+            }
+        }
+        
+        // Ctrl + Shift + S = Refresh Live Feed
+        if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+            e.preventDefault();
+            if (currentTab === 'livefeed' && typeof refreshLiveFeed === 'function') {
+                refreshLiveFeed();
+            }
+        }
+        
+        // Ctrl + Shift + V = Open Camera View for first student
+        if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+            e.preventDefault();
+            if (typeof liveFeedData !== 'undefined' && liveFeedData && liveFeedData.length > 0) {
+                const first = liveFeedData[0];
+                const profile = first.profile || {};
+                const exam = first.exam || {};
+                if (profile.user_id && exam.id && typeof openCameraView === 'function') {
+                    openCameraView(profile.user_id, exam.id, profile.full_name || 'Student', exam.exam_name || 'Exam');
+                }
+            }
+        }
+        
+        // Escape key - close modals
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(function(modal) {
+                if (modal.style.display === 'flex') {
+                    modal.style.display = 'none';
+                    if (modal.id === 'releaseModal') {
                         selectedStudentIds = new Set();
                         const checkbox = document.getElementById('selectAllCheckbox');
                         if (checkbox) checkbox.checked = false;
@@ -3285,27 +3657,38 @@ window.printTable = function(type) {
                         const confirmBtn = document.getElementById('confirmReleaseBtn');
                         if (confirmBtn) confirmBtn.disabled = true;
                     }
+                    if (modal.id === 'cameraModal' && typeof closeCameraModal === 'function') {
+                        closeCameraModal();
+                    }
                 }
             });
+        }
+    });
 
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    document.querySelectorAll('.modal').forEach(modal => {
-                        if (modal.style.display === 'flex') {
-                            modal.style.display = 'none';
-                            if (modal.id === 'releaseModal') {
-                                selectedStudentIds = new Set();
-                                const checkbox = document.getElementById('selectAllCheckbox');
-                                if (checkbox) checkbox.checked = false;
-                                const countEl = document.getElementById('selectedCount');
-                                if (countEl) countEl.innerHTML = '0 selected';
-                                const confirmBtn = document.getElementById('confirmReleaseBtn');
-                                if (confirmBtn) confirmBtn.disabled = true;
-                            }
-                        }
-                    });
-                }
-            });
+    // ============================================
+    // ✅ CLICK OUTSIDE MODAL TO CLOSE
+    // ============================================
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+            if (e.target.id === 'releaseModal') {
+                selectedStudentIds = new Set();
+                const checkbox = document.getElementById('selectAllCheckbox');
+                if (checkbox) checkbox.checked = false;
+                const countEl = document.getElementById('selectedCount');
+                if (countEl) countEl.innerHTML = '0 selected';
+                const confirmBtn = document.getElementById('confirmReleaseBtn');
+                if (confirmBtn) confirmBtn.disabled = true;
+            }
+            if (e.target.id === 'cameraModal' && typeof closeCameraModal === 'function') {
+                closeCameraModal();
+            }
+        }
+    });
+
+    console.log('✅ Dashboard fully initialized');
+    console.log('📹 Press Ctrl+Shift+L to open Live Feed');
+});
             // ============================================
 // 📊 STUDENT PROGRESS - VIEW ANSWERS
 // ============================================
@@ -4026,6 +4409,788 @@ window.exportLiveStudents = function() {
 };
 
 console.log('✅ Live Students module loaded successfully!');
+
+            // ============================================
+// 📹 LIVE FEED FUNCTIONS
+// ============================================
+
+let liveFeedInterval = null;
+let liveFeedAutoRefresh = true;
+let liveFeedData = [];
+let liveFeedPage = 1;
+const LIVE_FEED_PER_PAGE = 12;
+
+// ========== LOAD LIVE FEED ==========
+window.loadLiveFeed = async function() {
+    const loadingDiv = document.getElementById('liveFeedLoading');
+    const gridDiv = document.getElementById('liveFeedGrid');
+    const statsDiv = document.getElementById('liveFeedStats');
+    
+    if (!loadingDiv) return;
+    
+    loadingDiv.style.display = 'block';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
+    gridDiv.innerHTML = '';
+    statsDiv.style.display = 'none';
+    
+    try {
+        // Get all active students (last 5 minutes)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        
+        const { data: activeLogs, error } = await sb
+            .from('exam_proctoring_logs')
+            .select('student_id, exam_id, timestamp, event_type, details, snapshot_url')
+            .gte('timestamp', fiveMinutesAgo)
+            .order('timestamp', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!activeLogs || activeLogs.length === 0) {
+            loadingDiv.innerHTML = '🟢 No students currently active';
+            loadingDiv.style.color = '#38A169';
+            loadingDiv.style.display = 'block';
+            gridDiv.innerHTML = `
+                <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+                    <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+                    <p>No students are currently taking exams</p>
+                    <p style="font-size:0.85rem;">Check back later or refresh</p>
+                </div>
+            `;
+            document.getElementById('liveFeedBadge').textContent = '0';
+            return;
+        }
+        
+        // Get unique students
+        const uniqueStudents = new Map();
+        activeLogs.forEach(log => {
+            const key = `${log.student_id}_${log.exam_id}`;
+            if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
+                uniqueStudents.set(key, log);
+            }
+        });
+        
+        const students = Array.from(uniqueStudents.values());
+        console.log('📹 Found', students.length, 'active students');
+        
+        // Get student profiles
+        const studentIds = students.map(s => s.student_id).filter(id => id);
+        const { data: profiles } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, email, program, block')
+            .in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
+        // Get exam details
+        const examIds = students.map(s => s.exam_id).filter(id => id);
+        const { data: exams } = await sb
+            .from('exams')
+            .select('id, exam_name, duration_minutes')
+            .in('id', examIds);
+        const examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
+        
+        // Build feed data
+        liveFeedData = [];
+        let withCamera = 0;
+        let noCamera = 0;
+        let violations = 0;
+        
+        for (const log of students) {
+            const profile = profileMap[log.student_id];
+            const exam = examMap[log.exam_id];
+            
+            if (!profile || !exam) continue;
+            
+            // Get latest snapshot for this student
+            const { data: snapshots } = await sb
+                .from('exam_proctoring_logs')
+                .select('snapshot_url, timestamp, event_type')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .not('snapshot_url', 'is', null)
+                .order('timestamp', { ascending: false })
+                .limit(1);
+            
+            const hasCamera = snapshots && snapshots.length > 0 && snapshots[0].snapshot_url;
+            if (hasCamera) withCamera++;
+            else noCamera++;
+            
+            // Get violations in last 2 minutes
+            const { data: alertLogs } = await sb
+                .from('exam_proctoring_logs')
+                .select('event_type')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .in('event_type', ['multiple_faces_detected', 'face_missing', 'tab_switched'])
+                .gte('timestamp', new Date(Date.now() - 120000).toISOString());
+            
+            const hasViolations = alertLogs && alertLogs.length > 0;
+            if (hasViolations) violations++;
+            
+            // Get progress
+            const { data: answers } = await sb
+                .from('exam_grades')
+                .select('id')
+                .eq('student_id', log.student_id)
+                .eq('exam_id', log.exam_id)
+                .neq('question_id', '00000000-0000-0000-0000-000000000000');
+            
+            const { data: questions } = await sb
+                .from('exam_questions')
+                .select('id')
+                .eq('exam_id', log.exam_id);
+            
+            const answered = answers?.length || 0;
+            const total = questions?.length || 0;
+            const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
+            
+            // Calculate time remaining
+            const startedAt = new Date(log.timestamp);
+            const duration = exam?.duration_minutes || 30;
+            const endTime = new Date(startedAt.getTime() + duration * 60000);
+            const now = new Date();
+            const timeLeftMs = endTime - now;
+            
+            let timeDisplay = '--';
+            if (timeLeftMs > 0) {
+                const mins = Math.floor(timeLeftMs / 60000);
+                const secs = Math.floor((timeLeftMs % 60000) / 1000);
+                timeDisplay = `${mins}m ${secs}s`;
+            } else {
+                timeDisplay = '⏰ Time Up';
+            }
+            
+            // Determine status
+            let status = 'active';
+            let statusLabel = '🟢 Active';
+            let statusClass = 'status-active';
+            
+            if (hasViolations) {
+                status = 'violation';
+                statusLabel = '🚨 Violation';
+                statusClass = 'status-critical';
+            } else if (!hasCamera) {
+                status = 'no-camera';
+                statusLabel = '📷 No Camera';
+                statusClass = 'status-pending';
+            } else if (timeLeftMs < 0) {
+                status = 'expired';
+                statusLabel = '⏰ Expired';
+                statusClass = 'status-fail';
+            }
+            
+            liveFeedData.push({
+                log: log,
+                profile: profile,
+                exam: exam,
+                hasCamera: hasCamera,
+                snapshot: hasCamera ? snapshots[0] : null,
+                violations: alertLogs || [],
+                hasViolations: hasViolations,
+                progress: progress,
+                answered: answered,
+                total: total,
+                timeDisplay: timeDisplay,
+                timeLeftMs: timeLeftMs,
+                status: status,
+                statusLabel: statusLabel,
+                statusClass: statusClass,
+                startedAt: startedAt
+            });
+        }
+        
+        // Sort by status (violations first, then no camera, then active)
+        liveFeedData.sort((a, b) => {
+            const order = { violation: 0, 'no-camera': 1, expired: 2, active: 3 };
+            return (order[a.status] || 4) - (order[b.status] || 4);
+        });
+        
+        // Update stats
+        document.getElementById('liveFeedCount').textContent = liveFeedData.length;
+        document.getElementById('liveFeedWithCamera').textContent = withCamera;
+        document.getElementById('liveFeedNoCamera').textContent = noCamera;
+        document.getElementById('liveFeedViolations').textContent = violations;
+        document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
+        
+        // Render
+        displayLiveFeed();
+        
+        loadingDiv.style.display = 'none';
+        statsDiv.style.display = 'block';
+        
+        console.log('📹 Live Feed loaded:', liveFeedData.length, 'students');
+        
+    } catch (error) {
+        console.error('❌ Error loading live feed:', error);
+        loadingDiv.innerHTML = '❌ Error loading camera feeds: ' + error.message;
+        loadingDiv.style.color = '#DC2626';
+    }
+};
+
+// ========== DISPLAY LIVE FEED ==========
+window.displayLiveFeed = function() {
+    const grid = document.getElementById('liveFeedGrid');
+    if (!grid) return;
+    
+    const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
+    const pageData = liveFeedData.slice(start, start + LIVE_FEED_PER_PAGE);
+    
+    if (pageData.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+                <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+                <p>No active students to display</p>
+            </div>
+        `;
+        renderLiveFeedPagination();
+        return;
+    }
+    
+    grid.innerHTML = pageData.map(item => {
+        const profile = item.profile || {};
+        const exam = item.exam || {};
+        const snapshot = item.snapshot || {};
+        
+        const hasCamera = item.hasCamera;
+        const snapshotUrl = hasCamera ? snapshot.snapshot_url + '?t=' + Date.now() : null;
+        const studentName = profile.full_name || 'Unknown';
+        const studentId = profile.student_id || 'N/A';
+        const examName = exam.exam_name || 'Unknown Exam';
+        const program = profile.program || '';
+        
+        // Status color for progress bar
+        let progressColor = '#38A169';
+        if (item.progress < 30) progressColor = '#DC2626';
+        else if (item.progress < 60) progressColor = '#F59E0B';
+        
+        // Card class
+        let cardClass = 'live-feed-card';
+        if (item.status === 'violation') cardClass += ' violation';
+        else if (item.status === 'no-camera') cardClass += ' warning';
+        
+        // Camera status badge
+        let cameraBadge = '';
+        if (hasCamera) {
+            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
+        } else {
+            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
+        }
+        
+        // Violation badge
+        let violationBadge = '';
+        if (item.hasViolations) {
+            const critical = item.violations.some(v => v.event_type === 'multiple_faces_detected');
+            violationBadge = `<span class="overlay-badge violation">${critical ? '🚨 CRITICAL' : '⚠️ Alert'}</span>`;
+        }
+        
+        // Camera image or placeholder
+        let cameraContent = '';
+        if (snapshotUrl) {
+            cameraContent = `
+                <img src="${snapshotUrl}" alt="Camera feed" 
+                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\'><i class=\\'fas fa-camera-slash\\'></i><p>Camera offline</p></div>'">
+            `;
+        } else {
+            cameraContent = `
+                <div class="no-camera">
+                    <i class="fas fa-user-slash"></i>
+                    <p>No camera feed</p>
+                    <p style="font-size:0.8rem; opacity:0.6;">Student hasn't shared camera</p>
+                </div>
+            `;
+        }
+        
+        // Actions
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
+        
+        return `
+            <div class="${cardClass}">
+                <div class="card-header">
+                    <div class="student-info">
+                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <div class="name">${studentName}</div>
+                            <div class="details">${studentId} • ${program}</div>
+                        </div>
+                    </div>
+                    <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
+                </div>
+                
+                <div class="card-body">
+                    ${cameraContent}
+                    ${cameraBadge}
+                    ${violationBadge}
+                </div>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width:${item.progress}%; background:${progressColor};"></div>
+                    </div>
+                    <div class="progress-label">
+                        <span>Progress: ${item.progress}%</span>
+                        <span>${item.answered}/${item.total} answered</span>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div>
+                        <span class="info-item"><i class="fas fa-clock"></i> ${item.timeDisplay}</span>
+                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-view-cam" onclick="openCameraView('${profile.user_id || ''}', ${exam.id || 0}, '${safeName}', '${safeExam}')">
+                            <i class="fas fa-expand"></i> View
+                        </button>
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${profile.user_id || ''}', ${exam.id || 0})">🚨</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    renderLiveFeedPagination();
+};
+
+// ========== VIEW VIOLATIONS ==========
+window.viewViolations = async function(studentId, examId) {
+    try {
+        const { data: violations } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .in('event_type', ['multiple_faces_detected', 'face_missing', 'tab_switched', 'fullscreen_exit_attempt'])
+            .order('timestamp', { ascending: false })
+            .limit(20);
+        
+        if (!violations || violations.length === 0) {
+            showToast('No violations found', 'info');
+            return;
+        }
+        
+        const { data: profile } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, student_id')
+            .eq('user_id', studentId)
+            .single();
+        
+        document.getElementById('modalTitle').innerHTML = `🚨 Violations - ${profile?.full_name || 'Student'}`;
+        document.getElementById('modalContent').innerHTML = `
+            <div style="max-height:400px; overflow-y:auto;">
+                ${violations.map(v => `
+                    <div style="padding:10px; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:600;">${v.event_type}</span>
+                            <div style="font-size:0.8rem; color:#64748B;">${v.details || ''}</div>
+                        </div>
+                        <span style="font-size:0.7rem; color:#64748B;">${formatKenyaTime(v.timestamp)}</span>
+                    </div>
+                `).join('')}
+            </div>
+            ${violations[0]?.snapshot_url ? `
+                <div style="margin-top:16px; border-top:1px solid #E2E8F0; padding-top:16px;">
+                    <h4>Latest Snapshot</h4>
+                    <img src="${violations[0].snapshot_url}" style="max-width:100%; max-height:300px; border-radius:8px;">
+                </div>
+            ` : ''}
+        `;
+        document.getElementById('studentModal').style.display = 'flex';
+        
+    } catch (error) {
+        showToast('Error loading violations: ' + error.message, 'error');
+    }
+};
+
+// ========== REFRESH LIVE FEED ==========
+window.refreshLiveFeed = function() {
+    loadLiveFeed();
+    showToast('Refreshing camera feeds...', 'info');
+};
+
+// ========== TOGGLE AUTO REFRESH ==========
+window.toggleLiveFeedAutoRefresh = function() {
+    liveFeedAutoRefresh = !liveFeedAutoRefresh;
+    const icon = document.getElementById('liveFeedAutoIcon');
+    const text = document.getElementById('liveFeedAutoText');
+    
+    if (liveFeedAutoRefresh) {
+        icon.className = 'fas fa-play';
+        text.textContent = 'Auto: ON';
+        startLiveFeedAutoRefresh();
+        showToast('Auto-refresh enabled', 'success');
+    } else {
+        icon.className = 'fas fa-pause';
+        text.textContent = 'Auto: OFF';
+        if (liveFeedInterval) {
+            clearInterval(liveFeedInterval);
+            liveFeedInterval = null;
+        }
+        showToast('Auto-refresh disabled', 'info');
+    }
+};
+
+// ========== START AUTO REFRESH ==========
+function startLiveFeedAutoRefresh() {
+    if (liveFeedInterval) clearInterval(liveFeedInterval);
+    liveFeedInterval = setInterval(() => {
+        if (liveFeedAutoRefresh && document.getElementById('livefeedTableContainer').style.display !== 'none') {
+            loadLiveFeed();
+        }
+    }, 10000); // Refresh every 10 seconds
+};
+
+// ========== CLEAR ALL CAMERA FEEDS ==========
+window.clearAllCameraFeeds = function() {
+    if (!confirm('Clear all camera feeds from view?')) return;
+    liveFeedData = [];
+    document.getElementById('liveFeedGrid').innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
+            <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
+            <p>Camera feeds cleared</p>
+        </div>
+    `;
+    document.getElementById('liveFeedStats').style.display = 'none';
+    document.getElementById('liveFeedBadge').textContent = '0';
+    showToast('Camera feeds cleared', 'info');
+};
+
+// ========== EXPORT LIVE FEED ==========
+window.exportLiveFeed = function() {
+    if (!liveFeedData || liveFeedData.length === 0) {
+        showToast('No data to export', 'warning');
+        return;
+    }
+    
+    const exportData = liveFeedData.map(item => ({
+        'Student ID': item.profile?.student_id || 'N/A',
+        'Student Name': item.profile?.full_name || 'Unknown',
+        'Program': item.profile?.program || '',
+        'Exam': item.exam?.exam_name || 'Unknown',
+        'Progress': `${item.progress}% (${item.answered}/${item.total})`,
+        'Time Remaining': item.timeDisplay,
+        'Status': item.statusLabel,
+        'Has Camera': item.hasCamera ? 'Yes' : 'No',
+        'Violations': item.violations?.length || 0,
+        'Last Activity': formatKenyaTime(item.log?.timestamp)
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Live Feed');
+    XLSX.writeFile(wb, `Live_Feed_${new Date().toISOString().split('T')[0]}.xlsx`);
+    showToast(`Exported ${exportData.length} students`, 'success');
+};
+
+// ========== LIVE FEED PAGINATION ==========
+function renderLiveFeedPagination() {
+    const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
+    const container = document.getElementById('liveFeedPagination');
+    if (!container) return;
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = `
+        <button class="page-btn" onclick="changeLiveFeedPage(${liveFeedPage - 1})" ${liveFeedPage === 1 ? 'disabled' : ''}>‹</button>
+    `;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= liveFeedPage - 2 && i <= liveFeedPage + 2)) {
+            html += `<button class="page-btn ${i === liveFeedPage ? 'active' : ''}" onclick="changeLiveFeedPage(${i})">${i}</button>`;
+        }
+    }
+    
+    html += `
+        <button class="page-btn" onclick="changeLiveFeedPage(${liveFeedPage + 1})" ${liveFeedPage === totalPages ? 'disabled' : ''}>›</button>
+    `;
+    
+    container.innerHTML = html;
+}
+
+window.changeLiveFeedPage = function(page) {
+    const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
+    if (page < 1 || page > totalPages) return;
+    liveFeedPage = page;
+    displayLiveFeed();
+    document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// ============================================
+// 🎥 CAMERA VIEW FUNCTIONS
+// ============================================
+
+let cameraInterval = null;
+let cameraAutoRefresh = true;
+let currentCameraStudent = null;
+let currentCameraExam = null;
+let currentCameraStudentName = '';
+let currentCameraExamName = '';
+
+// ========== OPEN CAMERA VIEW ==========
+window.openCameraView = async function(studentId, examId, studentName, examName) {
+    currentCameraStudent = studentId;
+    currentCameraExam = examId;
+    currentCameraStudentName = studentName;
+    currentCameraExamName = examName;
+    
+    document.getElementById('cameraModalTitle').innerHTML = `<i class="fas fa-video"></i> Live Camera - ${studentName}`;
+    document.getElementById('cameraStudentName').textContent = studentName;
+    document.getElementById('cameraExamName').textContent = examName;
+    document.getElementById('cameraStatus').textContent = '🟢 Connecting...';
+    document.getElementById('cameraStatus').className = 'status-active';
+    document.getElementById('cameraFeed').style.display = 'none';
+    document.getElementById('cameraLoading').style.display = 'flex';
+    document.getElementById('cameraLoading').innerHTML = `<i class="fas fa-spinner fa-spin fa-3x"></i><p>Loading camera feed...</p>`;
+    document.getElementById('cameraOverlay').style.display = 'none';
+    document.getElementById('snapshotGallery').style.display = 'none';
+    document.getElementById('cameraAlertsList').innerHTML = '<p style="color:#94A3B8;">Loading alerts...</p>';
+    
+    document.getElementById('cameraModal').style.display = 'flex';
+    
+    try {
+        await Promise.all([
+            refreshCameraFeed(studentId, examId),
+            loadCameraAlerts(studentId, examId),
+            loadSnapshots(studentId, examId)
+        ]);
+        startCameraAutoRefresh(studentId, examId);
+    } catch (error) {
+        console.error('Error opening camera:', error);
+        showToast('Error loading camera: ' + error.message, 'error');
+    }
+};
+
+// ========== REFRESH CAMERA FEED ==========
+window.refreshCameraFeed = async function(studentId, examId) {
+    const sid = studentId || currentCameraStudent;
+    const eid = examId || currentCameraExam;
+    if (!sid || !eid) return;
+    
+    try {
+        const { data: logs, error } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .eq('student_id', sid)
+            .eq('exam_id', parseInt(eid))
+            .not('snapshot_url', 'is', null)
+            .order('timestamp', { ascending: false })
+            .limit(1);
+        
+        if (error) throw error;
+        
+        const feed = document.getElementById('cameraFeed');
+        const loading = document.getElementById('cameraLoading');
+        const overlay = document.getElementById('cameraOverlay');
+        
+        if (logs && logs.length > 0 && logs[0].snapshot_url) {
+            feed.src = logs[0].snapshot_url + '?t=' + Date.now();
+            feed.style.display = 'block';
+            loading.style.display = 'none';
+            overlay.style.display = 'block';
+            document.getElementById('cameraTimestamp').textContent = formatKenyaTime(logs[0].timestamp);
+            document.getElementById('cameraSignal').textContent = '🟢 Live';
+            document.getElementById('cameraStatus').textContent = '🟢 Active';
+            document.getElementById('cameraStatus').className = 'status-active';
+            
+            // Check for violations
+            const { data: violations } = await sb
+                .from('exam_proctoring_logs')
+                .select('event_type')
+                .eq('student_id', sid)
+                .eq('exam_id', parseInt(eid))
+                .in('event_type', ['multiple_faces_detected', 'face_missing'])
+                .gte('timestamp', new Date(Date.now() - 120000).toISOString());
+            
+            if (violations && violations.length > 0) {
+                document.getElementById('cameraStatus').textContent = '🔴 Violation!';
+                document.getElementById('cameraStatus').className = 'status-critical';
+                document.getElementById('cameraSignal').textContent = '🚨 Alert';
+            }
+        } else {
+            feed.style.display = 'none';
+            loading.innerHTML = `
+                <div style="text-align:center;">
+                    <i class="fas fa-user-clock fa-3x" style="color:#F59E0B;"></i>
+                    <p style="margin-top:16px;">No camera snapshot available</p>
+                    <button class="btn btn-primary" onclick="requestCameraSnapshot()" style="margin-top:12px;">
+                        <i class="fas fa-camera"></i> Request Snapshot
+                    </button>
+                </div>
+            `;
+            loading.style.display = 'flex';
+            overlay.style.display = 'none';
+            document.getElementById('cameraStatus').textContent = '📷 No Feed';
+            document.getElementById('cameraStatus').className = 'status-pending';
+        }
+    } catch (error) {
+        console.error('Error refreshing camera:', error);
+        document.getElementById('cameraLoading').innerHTML = `
+            <div style="text-align:center; color:#DC2626;">
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                <p style="margin-top:16px;">Error: ${error.message}</p>
+                <button class="btn btn-primary" onclick="refreshCameraFeed()" style="margin-top:12px;">
+                    <i class="fas fa-sync"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+};
+
+// ========== REQUEST CAMERA SNAPSHOT ==========
+window.requestCameraSnapshot = async function() {
+    if (!currentCameraStudent || !currentCameraExam) {
+        showToast('No student selected', 'warning');
+        return;
+    }
+    try {
+        showToast('Requesting camera snapshot...', 'info');
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: currentCameraStudent,
+            exam_id: parseInt(currentCameraExam),
+            event_type: 'snapshot_requested',
+            details: `Admin requested camera snapshot`,
+            timestamp: new Date().toISOString(),
+            severity: 'info'
+        });
+        showToast('Snapshot requested. Waiting for camera...', 'info');
+        setTimeout(() => refreshCameraFeed(), 3000);
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+};
+
+// ========== CAPTURE SNAPSHOT ==========
+window.captureSnapshot = async function() {
+    const feed = document.getElementById('cameraFeed');
+    if (feed.style.display === 'none') {
+        showToast('No camera feed to capture', 'warning');
+        return;
+    }
+    try {
+        const { data: logs } = await sb
+            .from('exam_proctoring_logs')
+            .select('snapshot_url')
+            .eq('student_id', currentCameraStudent)
+            .eq('exam_id', parseInt(currentCameraExam))
+            .not('snapshot_url', 'is', null)
+            .order('timestamp', { ascending: false })
+            .limit(1);
+        
+        if (logs && logs.length > 0 && logs[0].snapshot_url) {
+            window.open(logs[0].snapshot_url, '_blank');
+            showToast('📸 Snapshot opened', 'success');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+};
+
+// ========== LOAD CAMERA ALERTS ==========
+window.loadCameraAlerts = async function(studentId, examId) {
+    const sid = studentId || currentCameraStudent;
+    const eid = examId || currentCameraExam;
+    if (!sid || !eid) return;
+    
+    try {
+        const { data: alerts } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .eq('student_id', sid)
+            .eq('exam_id', parseInt(eid))
+            .in('event_type', ['multiple_faces_detected', 'face_missing', 'tab_switched'])
+            .order('timestamp', { ascending: false })
+            .limit(10);
+        
+        const list = document.getElementById('cameraAlertsList');
+        if (!alerts || alerts.length === 0) {
+            list.innerHTML = '<p style="color:#94A3B8;">✅ No recent alerts</p>';
+            return;
+        }
+        list.innerHTML = alerts.map(a => `
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #E2E8F0;">
+                <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${a.event_type}</span>
+                <span style="color:#64748B; font-size:0.7rem;">${formatKenyaTime(a.timestamp)}</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+    }
+};
+
+// ========== LOAD SNAPSHOTS ==========
+window.loadSnapshots = async function(studentId, examId) {
+    const sid = studentId || currentCameraStudent;
+    const eid = examId || currentCameraExam;
+    if (!sid || !eid) return;
+    
+    try {
+        const { data: snapshots } = await sb
+            .from('exam_proctoring_logs')
+            .select('snapshot_url, timestamp')
+            .eq('student_id', sid)
+            .eq('exam_id', parseInt(eid))
+            .not('snapshot_url', 'is', null)
+            .order('timestamp', { ascending: false })
+            .limit(6);
+        
+        const gallery = document.getElementById('snapshotGallery');
+        const list = document.getElementById('snapshotList');
+        
+        if (!snapshots || snapshots.length === 0) {
+            gallery.style.display = 'none';
+            return;
+        }
+        gallery.style.display = 'block';
+        list.innerHTML = snapshots.map(s => `
+            <div style="min-width:120px; max-width:150px; border-radius:8px; overflow:hidden; cursor:pointer;" onclick="window.open('${s.snapshot_url}', '_blank')">
+                <img src="${s.snapshot_url}" style="width:100%; height:80px; object-fit:cover;">
+                <div style="font-size:0.55rem; color:#64748B; padding:4px; text-align:center;">${formatKenyaTime(s.timestamp)}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading snapshots:', error);
+    }
+};
+
+// ========== AUTO REFRESH CAMERA ==========
+function startCameraAutoRefresh(studentId, examId) {
+    if (cameraInterval) clearInterval(cameraInterval);
+    cameraInterval = setInterval(() => {
+        if (cameraAutoRefresh && document.getElementById('cameraModal').style.display === 'flex') {
+            refreshCameraFeed(studentId || currentCameraStudent, examId || currentCameraExam);
+            loadCameraAlerts(studentId || currentCameraStudent, examId || currentCameraExam);
+        }
+    }, 5000);
+}
+
+window.toggleAutoRefreshCamera = function() {
+    cameraAutoRefresh = !cameraAutoRefresh;
+    const btn = document.getElementById('cameraRefreshBtn');
+    if (cameraAutoRefresh) {
+        btn.innerHTML = '<i class="fas fa-play"></i> Auto: ON';
+        btn.className = 'btn btn-warning';
+        startCameraAutoRefresh();
+        showToast('Auto-refresh enabled', 'success');
+    } else {
+        btn.innerHTML = '<i class="fas fa-pause"></i> Auto: OFF';
+        btn.className = 'btn btn-secondary';
+        if (cameraInterval) clearInterval(cameraInterval);
+        showToast('Auto-refresh disabled', 'info');
+    }
+};
+
+// ========== CLOSE CAMERA MODAL ==========
+window.closeCameraModal = function() {
+    document.getElementById('cameraModal').style.display = 'none';
+    if (cameraInterval) {
+        clearInterval(cameraInterval);
+        cameraInterval = null;
+    }
+    cameraAutoRefresh = true;
+};
+
 // ============================================
 // 🔄 REFRESH STUDENT PROGRESS
 // ============================================
