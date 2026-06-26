@@ -196,7 +196,7 @@
   
   async function getConfig() { if(configCache) return configCache; configCache=await apiCall('/api/units',{}); return configCache; }
   function exportToCSV(data,filename) { if(!data||!data.length){ showNotification('No data to export',true); return; } const headers=Object.keys(data[0]); let csv=[headers.join(',')]; data.forEach(row=>{ const values=headers.map(h=>`"${String(row[h]||'').replace(/"/g,'""')}"`); csv.push(values.join(',')); }); const blob=new Blob([csv.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${filename}_${currentYear}_${new Date().toISOString().slice(0,19)}.csv`; a.click(); URL.revokeObjectURL(a.href); showNotification('Export completed!'); }
-  // ======================= IMPORT MARKS FROM CSV =======================
+// ======================= IMPORT MARKS FROM CSV =======================
 window.importMarks = function() {
     // Create file input
     const fileInput = document.createElement('input');
@@ -212,26 +212,34 @@ window.importMarks = function() {
         const reader = new FileReader();
         reader.onload = async function(event) {
             try {
-                const csvText = event.target.result;
-                const lines = csvText.split('\n').filter(line => line.trim());
+                let csvText = event.target.result;
+                
+                // Handle BOM
+                if (csvText.charCodeAt(0) === 0xFEFF) {
+                    csvText = csvText.slice(1);
+                }
+                
+                const lines = csvText.split(/\r?\n/).filter(line => line.trim());
                 
                 if (lines.length < 2) {
                     showNotification('CSV file is empty or invalid', true);
                     return;
                 }
                 
-                // Parse headers
-                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                // Parse headers with support for quoted fields
+                const headerLine = lines[0];
+                const headers = parseCSVLine(headerLine);
                 
                 // Find column indices
-                const nameIdx = headers.findIndex(h => h.toLowerCase().includes('name'));
-                const admissionIdx = headers.findIndex(h => h.toLowerCase().includes('admission') || h.toLowerCase().includes('id'));
-                const cat1Idx = headers.findIndex(h => h.toLowerCase().includes('cat 1') || h.toLowerCase().includes('cat1'));
-                const cat2Idx = headers.findIndex(h => h.toLowerCase().includes('cat 2') || h.toLowerCase().includes('cat2'));
-                const examIdx = headers.findIndex(h => h.toLowerCase().includes('exam score') || h.toLowerCase().includes('exam'));
-                const totalIdx = headers.findIndex(h => h.toLowerCase().includes('total'));
-                const gradeIdx = headers.findIndex(h => h.toLowerCase().includes('grade'));
-                const examNameIdx = headers.findIndex(h => h.toLowerCase().includes('exam'));
+                const nameIdx = findColumnIndex(headers, ['name', 'student name', 'student', 'full name', 'candidate name']);
+                const admissionIdx = findColumnIndex(headers, ['admission', 'admission no', 'registration', 'reg no', 'student id', 'id', 'student_id']);
+                const cat1Idx = findColumnIndex(headers, ['cat 1', 'cat1', 'cat1 score', 'cat 1 score', 'assignment 1']);
+                const cat2Idx = findColumnIndex(headers, ['cat 2', 'cat2', 'cat2 score', 'cat 2 score', 'assignment 2']);
+                const examIdx = findColumnIndex(headers, ['exam', 'exam score', 'final exam', 'theory exam', 'exam_score']);
+                const totalIdx = findColumnIndex(headers, ['total', 'total score', 'final score', 'average', 'total_score']);
+                const gradeIdx = findColumnIndex(headers, ['grade', 'status', 'result', 'result_status']);
+                const blockIdx = findColumnIndex(headers, ['block', 'year', 'semester', 'block_term']);
+                const subjectIdx = findColumnIndex(headers, ['subject', 'unit', 'course', 'module', 'exam_name']);
                 
                 if (admissionIdx === -1 || nameIdx === -1) {
                     showNotification('CSV must contain "Admission Number" and "Student Name" columns', true);
@@ -240,24 +248,82 @@ window.importMarks = function() {
                 
                 // Parse data rows
                 const importData = [];
+                let warnings = [];
+                let hasValidScores = false;
+                
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                    const values = parseCSVLine(lines[i]);
                     
-                    // Skip empty rows
-                    if (values.length < 2 || !values[nameIdx] || !values[admissionIdx]) continue;
+                    if (values.length < 2 || !values[nameIdx]?.trim() || !values[admissionIdx]?.trim()) continue;
                     
-                    const row = {
-                        name: values[nameIdx] || '',
-                        admission: values[admissionIdx] || '',
-                        cat1: cat1Idx !== -1 ? parseFloat(values[cat1Idx]) || 0 : 0,
-                        cat2: cat2Idx !== -1 ? parseFloat(values[cat2Idx]) || 0 : 0,
-                        exam: examIdx !== -1 ? parseFloat(values[examIdx]) || 0 : 0,
-                        total: totalIdx !== -1 ? parseFloat(values[totalIdx]) || 0 : 0,
-                        grade: gradeIdx !== -1 ? values[gradeIdx] || '' : '',
-                        examName: examNameIdx !== -1 ? values[examNameIdx] || '' : ''
-                    };
+                    const name = values[nameIdx]?.trim() || '';
+                    const admission = values[admissionIdx]?.trim() || '';
                     
-                    importData.push(row);
+                    let cat1 = parseFloat(values[cat1Idx]) || 0;
+                    let cat2 = parseFloat(values[cat2Idx]) || 0;
+                    let exam = parseFloat(values[examIdx]) || 0;
+                    
+                    if (cat1 > 0 || cat2 > 0 || exam > 0) hasValidScores = true;
+                    
+                    if (cat1 > 30) {
+                        warnings.push(`${name}: CAT1 (${cat1}) exceeds max 30, will be capped`);
+                        cat1 = Math.min(cat1, 30);
+                    }
+                    if (cat2 > 30) {
+                        warnings.push(`${name}: CAT2 (${cat2}) exceeds max 30, will be capped`);
+                        cat2 = Math.min(cat2, 30);
+                    }
+                    if (exam > 70) {
+                        const isHundredMark = headers.some(h => 
+                            h.toLowerCase().includes('100') || 
+                            h.toLowerCase().includes('final') ||
+                            h.toLowerCase().includes('theory') ||
+                            h.toLowerCase().includes('marks_out_of')
+                        );
+                        if (!isHundredMark && exam > 70) {
+                            warnings.push(`${name}: Exam (${exam}) exceeds max 70, will be capped`);
+                            exam = Math.min(exam, 70);
+                        }
+                    }
+                    
+                    let total = 0;
+                    if (totalIdx !== -1) {
+                        total = parseFloat(values[totalIdx]) || 0;
+                    } else if (exam > 0 && cat1 > 0 && cat2 > 0) {
+                        const cappedCat1 = Math.min(cat1, 30);
+                        const cappedCat2 = Math.min(cat2, 30);
+                        const cappedExam = Math.min(exam, 70);
+                        total = ((cappedCat1 + cappedCat2) / 60 * 30) + cappedExam;
+                        total = Math.round(total * 10) / 10;
+                    } else if (exam > 0 && cat1 > 0) {
+                        const cappedCat1 = Math.min(cat1, 30);
+                        const cappedExam = Math.min(exam, 70);
+                        total = cappedCat1 + cappedExam;
+                        total = Math.round(total * 10) / 10;
+                    } else if (exam > 0) {
+                        total = Math.min(exam, 100);
+                        total = Math.round(total * 10) / 10;
+                    }
+                    
+                    let grade = gradeIdx !== -1 ? (values[gradeIdx]?.trim() || '') : '';
+                    if (!grade && total > 0) {
+                        grade = total >= 60 ? 'PASS' : 'FAIL';
+                    }
+                    
+                    const block = blockIdx !== -1 ? (values[blockIdx]?.trim() || '') : '';
+                    const subjectName = subjectIdx !== -1 ? (values[subjectIdx]?.trim() || '') : '';
+                    
+                    importData.push({
+                        name: name,
+                        admission: admission,
+                        cat1: cat1,
+                        cat2: cat2,
+                        exam: exam,
+                        total: total,
+                        grade: grade,
+                        block: block,
+                        subject: subjectName
+                    });
                 }
                 
                 if (importData.length === 0) {
@@ -265,8 +331,23 @@ window.importMarks = function() {
                     return;
                 }
                 
-                // Show preview and import options
-                showImportPreview(importData);
+                if (warnings.length > 0) {
+                    console.warn('Import warnings:', warnings);
+                    const warningMsg = warnings.slice(0, 3).join('\n') + 
+                                      (warnings.length > 3 ? `\n... and ${warnings.length - 3} more` : '');
+                    if (!confirm(`⚠️ ${warnings.length} warnings found:\n${warningMsg}\n\nContinue with import?`)) {
+                        return;
+                    }
+                }
+                
+                // Auto-detect assessment type
+                let detectedType = 'full';
+                const sample = importData[0];
+                if (sample.exam > 0 && sample.cat1 > 0 && sample.cat2 > 0) detectedType = 'full';
+                else if (sample.exam > 0 && (sample.cat1 > 0 || sample.cat2 > 0)) detectedType = 'single_cat';
+                else if (sample.exam > 0) detectedType = 'exam_only';
+                
+                showEnhancedImportPreview(importData, detectedType);
                 
             } catch (err) {
                 console.error('Import error:', err);
@@ -280,55 +361,141 @@ window.importMarks = function() {
     fileInput.click();
 };
 
-// ======================= SHOW IMPORT PREVIEW =======================
-function showImportPreview(importData) {
-    // Create modal
+// ======================= HELPER: Parse CSV Line =======================
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+// ======================= HELPER: Find Column Index =======================
+function findColumnIndex(headers, keywords) {
+    for (let i = 0; i < headers.length; i++) {
+        const header = headers[i].toLowerCase().trim();
+        for (const keyword of keywords) {
+            if (header.includes(keyword.toLowerCase())) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+// ======================= ENHANCED IMPORT PREVIEW =======================
+function showEnhancedImportPreview(importData, detectedType) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    
+    const hasScores = importData.filter(d => d.cat1 > 0 || d.cat2 > 0 || d.exam > 0).length;
+    const passing = importData.filter(d => d.total >= 60).length;
+    const failing = importData.filter(d => d.total > 0 && d.total < 60).length;
+    
+    const detectedBlock = importData.find(d => d.block)?.block || 'BLOCK_0';
+    const detectedSubject = importData.find(d => d.subject)?.subject || '';
+    
+    const typeOptions = {
+        'full': 'Full (CAT1+CAT2+Exam)',
+        'single_cat': 'Single CAT (CAT+Exam)',
+        'exam_only': 'Exam Only'
+    };
     
     modal.innerHTML = `
-        <div style="background:white;border-radius:24px;width:90%;max-width:1100px;max-height:90vh;overflow-y:auto;padding:0;">
-            <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;">
+        <div style="background:white;border-radius:24px;width:95%;max-width:1100px;max-height:92vh;overflow-y:auto;padding:0;">
+            <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:10px;">
                 <h3 style="margin:0;"><i class="fas fa-file-import"></i> Import Marks Preview</h3>
                 <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 16px;border-radius:40px;cursor:pointer;font-weight:600;">
                     <i class="fas fa-times"></i> Close
                 </button>
             </div>
             <div style="padding:24px;">
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px;">
                     <div style="background:#f0fdf4;padding:16px;border-radius:12px;text-align:center;">
                         <div style="font-size:28px;font-weight:800;color:#10b981;">${importData.length}</div>
-                        <div style="font-size:12px;color:#64748b;">Records Found</div>
+                        <div style="font-size:12px;color:#64748b;">Records</div>
                     </div>
-                    <div style="background:#fef3c7;padding:16px;border-radius:12px;text-align:center;">
-                        <div style="font-size:28px;font-weight:800;color:#f59e0b;">${importData.filter(d => d.cat1 > 0 || d.cat2 > 0 || d.exam > 0).length}</div>
+                    <div style="background:#dbeafe;padding:16px;border-radius:12px;text-align:center;">
+                        <div style="font-size:28px;font-weight:800;color:#3b82f6;">${hasScores}</div>
                         <div style="font-size:12px;color:#64748b;">With Scores</div>
                     </div>
                     <div style="background:#d1fae5;padding:16px;border-radius:12px;text-align:center;">
-                        <div style="font-size:28px;font-weight:800;color:#065f46;">${importData.filter(d => d.grade && d.grade.toUpperCase() === 'PASS').length}</div>
+                        <div style="font-size:28px;font-weight:800;color:#065f46;">${passing}</div>
                         <div style="font-size:12px;color:#64748b;">Passing</div>
                     </div>
                     <div style="background:#fee2e2;padding:16px;border-radius:12px;text-align:center;">
-                        <div style="font-size:28px;font-weight:800;color:#991b1b;">${importData.filter(d => d.grade && d.grade.toUpperCase() === 'FAIL').length}</div>
+                        <div style="font-size:28px;font-weight:800;color:#991b1b;">${failing}</div>
                         <div style="font-size:12px;color:#64748b;">Failing</div>
                     </div>
                 </div>
                 
+                <div style="background:#f8fafc;padding:20px;border-radius:16px;margin-bottom:20px;">
+                    <h4 style="margin-bottom:16px;"><i class="fas fa-cog"></i> Import Settings</h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+                        <div>
+                            <label style="font-weight:600;display:block;margin-bottom:4px;font-size:13px;">Block</label>
+                            <select id="importBlockSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                                <option value="BLOCK_0" ${detectedBlock === 'BLOCK_0' ? 'selected' : ''}>BLOCK 0</option>
+                                <option value="BLOCK_1" ${detectedBlock === 'BLOCK_1' ? 'selected' : ''}>BLOCK 1</option>
+                                <option value="BLOCK_2" ${detectedBlock === 'BLOCK_2' ? 'selected' : ''}>BLOCK 2</option>
+                                <option value="BLOCK_3" ${detectedBlock === 'BLOCK_3' ? 'selected' : ''}>BLOCK 3</option>
+                                <option value="BLOCK_4" ${detectedBlock === 'BLOCK_4' ? 'selected' : ''}>BLOCK 4</option>
+                                <option value="BLOCK_5" ${detectedBlock === 'BLOCK_5' ? 'selected' : ''}>BLOCK 5</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight:600;display:block;margin-bottom:4px;font-size:13px;">Subject Name</label>
+                            <input type="text" id="importSubjectName" value="${detectedSubject}" placeholder="e.g., ANATOMY" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                        </div>
+                        <div>
+                            <label style="font-weight:600;display:block;margin-bottom:4px;font-size:13px;">Assessment Type</label>
+                            <select id="importExamType" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                                <option value="full" ${detectedType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
+                                <option value="single_cat" ${detectedType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
+                                <option value="exam_only" ${detectedType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;padding:10px;background:#fef3c7;border-radius:8px;font-size:13px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Detected format:</strong> ${typeOptions[detectedType] || 'Auto-detected'}
+                        ${detectedSubject ? ` | <strong>Subject:</strong> ${detectedSubject}` : ''}
+                        ${detectedBlock ? ` | <strong>Block:</strong> ${detectedBlock}` : ''}
+                    </div>
+                </div>
+                
                 <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                    <label style="font-weight:600;"><i class="fas fa-filter"></i> Filter:</label>
                     <input type="text" id="importSearchInput" placeholder="Search name or admission..." onkeyup="filterImportTable()" style="flex:1;padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
                     <select id="importStatusFilter" onchange="filterImportTable()" style="padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
                         <option value="all">All Status</option>
                         <option value="PASS">PASS</option>
                         <option value="FAIL">FAIL</option>
+                        <option value="PENDING">PENDING</option>
                     </select>
                 </div>
                 
                 <div style="overflow-x:auto;max-height:350px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:12px;">
                     <table style="width:100%;border-collapse:collapse;">
-                        <thead style="position:sticky;top:0;z-index:5;">
-                            <tr style="background:#f1f5f9;">
+                        <thead style="position:sticky;top:0;z-index:5;background:#f1f5f9;">
+                            <tr>
                                 <th style="padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;width:40px;">
                                     <input type="checkbox" id="selectAllImport" onchange="toggleAllImportRows()">
                                 </th>
@@ -342,45 +509,37 @@ function showImportPreview(importData) {
                             </tr>
                         </thead>
                         <tbody id="importTableBody">
-                            ${importData.map((row, idx) => `
-                                <tr data-index="${idx}" data-name="${row.name.toLowerCase()}" data-admission="${row.admission}" data-status="${row.grade}" style="border-bottom:1px solid #e2e8f0;">
-                                    <td style="padding:8px;"><input type="checkbox" class="import-row-checkbox" data-idx="${idx}" checked onchange="updateImportCount()"></td>
-                                    <td style="padding:8px;"><span class="student-id-badge">${row.admission}</span></td>
-                                    <td style="padding:8px;"><strong>${row.name}</strong></td>
-                                    <td style="padding:8px;text-align:center;">${row.cat1 > 0 ? row.cat1 : '--'}</td>
-                                    <td style="padding:8px;text-align:center;">${row.cat2 > 0 ? row.cat2 : '--'}</td>
-                                    <td style="padding:8px;text-align:center;">${row.exam > 0 ? row.exam : '--'}</td>
-                                    <td style="padding:8px;text-align:center;font-weight:bold;">${row.total > 0 ? row.total : '--'}</td>
-                                    <td style="padding:8px;text-align:center;">
-                                        ${row.grade ? `<span class="badge ${row.grade.toUpperCase() === 'PASS' ? 'badge-pass' : 'badge-fail'}">${row.grade}</span>` : '--'}
-                                    </td>
-                                </tr>
-                            `).join('')}
+                            ${importData.map((row, idx) => {
+                                const statusClass = row.grade === 'PASS' ? 'badge-pass' : (row.grade === 'FAIL' ? 'badge-fail' : 'badge-pending');
+                                return `
+                                    <tr data-index="${idx}" data-name="${row.name.toLowerCase()}" data-admission="${row.admission}" data-status="${row.grade}" style="border-bottom:1px solid #e2e8f0;">
+                                        <td style="padding:8px;"><input type="checkbox" class="import-row-checkbox" data-idx="${idx}" checked onchange="updateImportCount()"></td>
+                                        <td style="padding:8px;"><span class="student-id-badge">${row.admission}</span></td>
+                                        <td style="padding:8px;"><strong>${row.name}</strong></td>
+                                        <td style="padding:8px;text-align:center;">${row.cat1 > 0 ? row.cat1 : '--'}</td>
+                                        <td style="padding:8px;text-align:center;">${row.cat2 > 0 ? row.cat2 : '--'}</td>
+                                        <td style="padding:8px;text-align:center;">${row.exam > 0 ? row.exam : '--'}</td>
+                                        <td style="padding:8px;text-align:center;font-weight:bold;">${row.total > 0 ? row.total : '--'}</td>
+                                        <td style="padding:8px;text-align:center;">
+                                            ${row.grade ? `<span class="badge ${statusClass}">${row.grade}</span>` : '--'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
                 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:2px solid #e2e8f0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:2px solid #e2e8f0;flex-wrap:wrap;gap:10px;">
                     <div>
                         <span id="selectedImportCount" style="font-weight:600;">${importData.length}</span> records selected
                     </div>
-                    <div style="display:flex;gap:10px;">
-                        <select id="importBlockSelect" style="padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
-                            <option value="BLOCK_0">BLOCK 0</option>
-                            <option value="BLOCK_1">BLOCK 1</option>
-                            <option value="BLOCK_2">BLOCK 2</option>
-                            <option value="BLOCK_3">BLOCK 3</option>
-                            <option value="BLOCK_4">BLOCK 4</option>
-                            <option value="BLOCK_5">BLOCK 5</option>
-                        </select>
-                        <input type="text" id="importSubjectName" placeholder="Subject name (e.g., ANATOMY)" style="padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
-                        <select id="importExamType" style="padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
-                            <option value="full">Full (CAT1+CAT2+Exam)</option>
-                            <option value="single_cat">Single CAT (CAT+Exam)</option>
-                            <option value="exam_only">Exam Only</option>
-                        </select>
-                        <button class="save-btn" onclick="confirmImport()" style="padding:10px 24px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="save-btn" onclick="confirmEnhancedImport()" style="padding:10px 24px;">
                             <i class="fas fa-upload"></i> Import Selected
+                        </button>
+                        <button class="back-btn" onclick="this.closest('.modal').remove()" style="padding:10px 20px;">
+                            <i class="fas fa-times"></i> Cancel
                         </button>
                     </div>
                 </div>
@@ -389,11 +548,187 @@ function showImportPreview(importData) {
     `;
     
     document.body.appendChild(modal);
-    
-    // Store import data globally for the confirmation function
     window._importData = importData;
 }
 
+// ======================= CONFIRM ENHANCED IMPORT =======================
+window.confirmEnhancedImport = async function() {
+    const checkedBoxes = document.querySelectorAll('.import-row-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        showNotification('Please select at least one record to import', true);
+        return;
+    }
+    
+    const block = document.getElementById('importBlockSelect')?.value || 'BLOCK_0';
+    const subject = document.getElementById('importSubjectName')?.value.trim().toUpperCase();
+    const examType = document.getElementById('importExamType')?.value || 'full';
+    
+    if (!subject) {
+        showNotification('Please enter a subject name', true);
+        return;
+    }
+    
+    if (!confirm(`Import ${checkedBoxes.length} records to ${block} - ${subject} (${examType})?`)) {
+        return;
+    }
+    
+    showLoading(`Importing ${checkedBoxes.length} records...`);
+    
+    try {
+        const existingMarks = await apiCall(`/api/marks/${block}/${encodeURIComponent(subject)}`, {});
+        const existingMap = {};
+        if (existingMarks && !existingMarks.error) {
+            existingMarks.forEach(m => {
+                existingMap[m.admission] = true;
+            });
+        }
+        
+        const importData = [];
+        let skipped = 0;
+        let imported = 0;
+        
+        checkedBoxes.forEach(cb => {
+            const idx = parseInt(cb.dataset.idx);
+            const row = window._importData[idx];
+            if (!row) return;
+            
+            if (existingMap[row.admission]) {
+                skipped++;
+                return;
+            }
+            
+            importData.push({
+                row: importData.length + 2,
+                admission: row.admission,
+                name: row.name,
+                cat1: row.cat1 || 0,
+                cat2: row.cat2 || 0,
+                exam: row.exam || 0
+            });
+            imported++;
+        });
+        
+        if (importData.length === 0) {
+            hideLoading();
+            if (skipped > 0) {
+                showNotification(`All ${skipped} records already exist in this subject`, true);
+            } else {
+                showNotification('No valid records to import', true);
+            }
+            return;
+        }
+        
+        const result = await apiCall('/api/marks', {
+            method: 'POST',
+            body: JSON.stringify({
+                block: block,
+                subject: subject,
+                marksData: importData,
+                lecturerName: currentUser?.name || 'System Import',
+                examType: 'internal',
+                userRole: currentUser?.role || 'admin'
+            })
+        });
+        
+        hideLoading();
+        
+        if (result.success) {
+            let msg = `✅ Imported ${importData.length} records to ${block} - ${subject}`;
+            if (skipped > 0) msg += ` (${skipped} skipped - already exist)`;
+            showNotification(msg, false);
+            const modal = document.querySelector('.modal');
+            if (modal) modal.remove();
+            if (currentTab === 'marks') showAdminMarks();
+            else if (currentTab === 'nck') loadNCKMarks();
+        } else {
+            showNotification('Import failed: ' + (result.message || 'Unknown error'), true);
+        }
+        
+    } catch (err) {
+        hideLoading();
+        showNotification('Import error: ' + err.message, true);
+    }
+};
+
+// ======================= EXPORT MARKS (Compatible with Import) =======================
+window.exportMarksForImport = function(marks, block, subject, examType) {
+    if (!marks || marks.length === 0) {
+        showNotification('No data to export', true);
+        return;
+    }
+    
+    const headers = ['Admission Number', 'Student Name', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Grade', 'Block', 'Subject'];
+    let csv = headers.join(',') + '\n';
+    
+    const isFull = examType === 'full';
+    const isSingleCat = examType === 'single_cat';
+    const isExamOnly = examType === 'exam_only';
+    
+    marks.forEach(m => {
+        const cat1 = m.cat1 || 0;
+        const cat2 = m.cat2 || 0;
+        const exam = m.exam || 0;
+        
+        let total = 0;
+        if (isFull) {
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        } else if (isSingleCat) {
+            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        } else {
+            total = Math.round(Math.min(exam,100) * 10) / 10;
+        }
+        
+        const grade = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
+        
+        const row = [
+            `"${m.admission}"`,
+            `"${m.name}"`,
+            cat1,
+            isExamOnly ? '' : cat2,
+            exam,
+            total,
+            `"${grade}"`,
+            `"${block}"`,
+            `"${subject}"`
+        ];
+        
+        csv += row.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${subject}_${block}_marks_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`✅ Exported ${marks.length} records for ${subject}`, false);
+};
+
+// ======================= ADD IMPORT BUTTON TO UI =======================
+function addImportButtonToUI() {
+    setTimeout(() => {
+        const exportBar = document.querySelector('.export-bar');
+        if (exportBar && !exportBar.querySelector('.import-btn')) {
+            const importBtn = document.createElement('button');
+            importBtn.className = 'btn-warning';
+            importBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;margin-left:10px;background:linear-gradient(135deg,#f59e0b,#d97706);';
+            importBtn.innerHTML = '<i class="fas fa-file-import"></i> Import CSV';
+            importBtn.onclick = window.importMarks;
+            exportBar.appendChild(importBtn);
+        }
+        
+        const adminMenu = document.querySelector('.admin-menu-grid');
+        if (adminMenu && !adminMenu.querySelector('.quick-import-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'menu-btn btn-warning quick-import-btn';
+            btn.style.cssText = 'background:linear-gradient(135deg,#f59e0b,#d97706);';
+            btn.innerHTML = '<i class="fas fa-file-import"></i> Import Marks';
+            btn.onclick = window.importMarks;
+            adminMenu.appendChild(btn);
+        }
+    }, 500);
+}
 // ======================= FILTER IMPORT TABLE =======================
 window.filterImportTable = function() {
     const search = document.getElementById('importSearchInput')?.value.toLowerCase() || '';
