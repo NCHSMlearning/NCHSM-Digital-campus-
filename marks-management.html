@@ -454,14 +454,29 @@ function detectColumns(headers, sampleRow) {
     console.log('📊 Detection:', result);
     return result;
 }
-function showEnhancedImportPreview(importData, detectedType, detectedInfo, autoSubject) {
+function showEnhancedImportPreview(importData, detectedType, detectedInfo, autoSubject, detection) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
     
+    // If detection is not passed, create a default one
+    if (!detection) {
+        detection = {
+            cat1Idx: -1,
+            cat2Idx: -1,
+            hasValidExamScores: false
+        };
+        // Try to detect from data
+        if (importData.length > 0) {
+            const sample = importData[0];
+            if (sample.cat1 !== undefined) detection.cat1Idx = 0;
+            if (sample.cat2 !== undefined) detection.cat2Idx = 1;
+            if (sample.exam !== undefined) detection.hasValidExamScores = true;
+        }
+    }
+    
     const hasScores = importData.filter(d => d.cat1 > 0 || d.cat2 > 0 || d.exam > 0).length;
     const passing = importData.filter(d => {
-        // Calculate percentage based on available scores
         let total = 0;
         let max = 0;
         if (detectedType === 'full') {
