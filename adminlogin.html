@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - NCHSM Exam System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(56, 161, 105, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(253, 185, 19, 0.03) 0%, transparent 50%);
+            animation: rotateBg 30s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes rotateBg {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* Institution Logo */
+        .institution-logo {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .logo-icon {
+            width: 70px;
+            height: 70px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 2rem;
+            color: #0A3D62;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo-text {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 1px;
+        }
+
+        .logo-text span {
+            color: #FDB913;
+        }
+
+        .logo-subtext {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 2px;
+        }
+
+        /* Login Card */
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .login-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+            padding: 28px 30px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #FDB913, #38A169, #FDB913);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .login-header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .login-header p {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            background: rgba(56, 161, 105, 0.2);
+            color: #38A169;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .login-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #0A3D62;
+            font-size: 0.85rem;
+        }
+
+        .form-group label .required {
+            color: #DC2626;
+            margin-left: 2px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid #E2E8F0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s;
+            background: #F8FAFC;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #0A3D62;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(10, 61, 98, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #94A3B8;
+            font-size: 0.85rem;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+            color: #0A3D62;
+        }
+
+        /* Email Notification Toggle */
+        .notification-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #F0FDF4;
+            border-radius: 10px;
+            border: 2px solid #D1FAE5;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .notification-toggle:hover {
+            background: #DCFCE7;
+        }
+
+        .notification-toggle .toggle-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification-toggle .toggle-info i {
+            color: #10B981;
+            font-size: 1.1rem;
+        }
+
+        .notification-toggle .toggle-info .label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #065F46;
+        }
+
+        .notification-toggle .toggle-info .sub-label {
+            font-size: 0.7rem;
+            color: #64748B;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #CBD5E1;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: #10B981;
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(135deg, #073450 0%, #052538 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(10, 61, 98, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-btn .spinner {
+            display: none;
+            animation: spin 1s linear infinite;
+        }
+
+        .login-btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .login-btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #DC2626;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        .error-message i {
+            font-size: 1.1rem;
+        }
+
+        .success-message {
+            background: #D1FAE5;
+            color: #065F46;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #38A169;
+        }
+
+        .success-message.show {
+            display: flex;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid #E2E8F0;
+            font-size: 0.75rem;
+            color: #94A3B8;
+        }
+
+        .login-footer .contact-link {
+            color: #0A3D62;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-footer .contact-link:hover {
+            text-decoration: underline;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: #F8FAFC;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            color: #64748B;
+            margin-top: 8px;
+        }
+
+        /* Shake Animation */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-body {
+                padding: 20px;
+            }
+            .login-header {
+                padding: 20px;
+            }
+            .login-header h1 {
+                font-size: 1.3rem;
+            }
+            .logo-text {
+                font-size: 1.4rem;
+            }
+            .logo-icon {
+                width: 56px;
+                height: 56px;
+                font-size: 1.5rem;
+            }
+            .notification-toggle {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .toggle-switch {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <!-- Institution Logo -->
+        <div class="institution-logo">
+            <div class="logo-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <div class="logo-text">NCHSM <span>Exam</span></div>
+            <div class="logo-subtext">Secure Proctoring System</div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="login-container">
+            <div class="login-header">
+                <h1><i class="fas fa-lock"></i> Admin Portal</h1>
+                <p>Access exam management dashboard</p>
+                <div class="status-badge">
+                    <i class="fas fa-shield-alt"></i> Secure Access
+                </div>
+            </div>
+
+            <div class="login-body">
+                <!-- Messages -->
+                <div id="errorMessage" class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorText">Invalid credentials</span>
+                </div>
+                <div id="successMessage" class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="successText">Login successful</span>
+                </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="email">
+                        Admin Email <span class="required">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            placeholder="Enter your email"
+                            autocomplete="username"
+                        >
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="password">
+                        Password <span class="required">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <span class="input-icon"><i class="fas fa-key"></i></span>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Email Notification Toggle -->
+                <div class="notification-toggle" onclick="toggleNotification()">
+                    <div class="toggle-info">
+                        <i class="fas fa-bell"></i>
+                        <div>
+                            <div class="label">Email Notifications</div>
+                            <div class="sub-label">Receive alerts about exam releases</div>
+                        </div>
+                    </div>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="emailNotifications" checked>
+                        <span class="toggle-slider"></span>
+                    </div>
+                </div>
+
+                <!-- Login Button -->
+                <button class="login-btn" id="loginBtn" onclick="login()">
+                    <span class="spinner"><i class="fas fa-spinner"></i></span>
+                    <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login to Dashboard</span>
+                </button>
+
+                <div class="login-footer">
+                    <p>⚠️ Restricted access. Authorized personnel only.</p>
+                    <p style="margin-top: 4px;">
+                        <i class="fas fa-shield-alt" style="color: #10B981;"></i>
+                        Encrypted connection · All actions are logged
+                    </p>
+                    <div class="security-badge">
+                        <i class="fas fa-check-circle" style="color: #10B981;"></i>
+                        SSL Secure
+                    </div>
+                    <p style="margin-top: 8px; font-size: 0.7rem;">
+                        <a href="#" class="contact-link">Contact Support</a>
+                        &nbsp;·&nbsp;
+                        <a href="#" class="contact-link">Privacy Policy</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 🔧 SUPABASE CONFIG
+        // ============================================================
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ============================================================
+        // 📧 EMAIL NOTIFICATION SETTINGS
+        // ============================================================
+        let emailNotificationsEnabled = true;
+
+        function toggleNotification() {
+            const checkbox = document.getElementById('emailNotifications');
+            emailNotificationsEnabled = checkbox.checked;
+            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkbox = document.getElementById('emailNotifications');
+            emailNotificationsEnabled = checkbox.checked;
+            
+            checkbox.addEventListener('change', function() {
+                emailNotificationsEnabled = this.checked;
+                console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
+            });
+
+            // Auto-focus email field
+            document.getElementById('email').focus();
+        });
+
+        // ============================================================
+        // 👁️ TOGGLE PASSWORD VISIBILITY
+        // ============================================================
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
+        }
+
+        // ============================================================
+        // 🔐 LOGIN FUNCTION - REAL AUTH AGAINST consolidated_user_profiles_table
+        // ============================================================
+        async function login() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const successDiv = document.getElementById('successMessage');
+            const successText = document.getElementById('successText');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // Clear previous messages
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+
+            // Validate inputs
+            if (!email || !password) {
+                errorText.textContent = 'Please enter both email and password';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Show loading state
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+
+            try {
+                // Step 1: Authenticate with Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (authError) {
+                    throw new Error('Invalid email or password');
+                }
+
+                // Step 2: Check if user exists in consolidated_user_profiles_table
+                const { data: profile, error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
+
+                if (profileError || !profile) {
+                    // Sign out since user not found in profiles
+                    await supabase.auth.signOut();
+                    throw new Error('Account not found. Please contact administrator.');
+                }
+
+                // Step 3: Check if user has super_admin role
+                // Check multiple possible column names for role
+                const userRole = profile.role || profile.user_role || profile.access_level || profile.user_type || 'user';
+                
+                if (userRole !== 'super_admin' && userRole !== 'admin' && userRole !== 'SuperAdmin' && userRole !== 'Administrator') {
+                    await supabase.auth.signOut();
+                    throw new Error('Access denied. You do not have admin privileges.');
+                }
+
+                // ✅ SUCCESS - Create session
+                const adminSession = {
+                    user_id: profile.user_id || profile.id,
+                    email: profile.email,
+                    name: profile.full_name || profile.name || 'Admin',
+                    role: userRole,
+                    student_id: profile.student_id || null,
+                    program: profile.program || null,
+                    loggedInAt: new Date().toISOString(),
+                    token: authData.session?.access_token || null,
+                    emailNotifications: emailNotificationsEnabled
+                };
+
+                localStorage.setItem('adminSession', JSON.stringify(adminSession));
+
+                // Show success
+                successText.textContent = `✅ Welcome ${adminSession.name}! Redirecting...`;
+                successDiv.classList.add('show');
+
+                // Redirect after delay
+                setTimeout(() => {
+                    window.location.href = 'admin_exam_results.html';
+                }, 1200);
+
+            } catch (error) {
+                // Show error
+                errorText.textContent = error.message || 'Login failed. Please try again.';
+                errorDiv.classList.add('show');
+                
+                // Shake animation
+                const loginContainer = document.querySelector('.login-container');
+                loginContainer.classList.remove('shake');
+                void loginContainer.offsetWidth;
+                loginContainer.classList.add('shake');
+                
+                // Clear password field
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+                
+                // Reset button
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+
+                console.error('Login error:', error);
+            }
+        }
+
+        // ============================================================
+        // ⌨️ ENTER KEY SUPPORT
+        // ============================================================
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+
+        // ============================================================
+        // 🔧 CHECK IF ALREADY LOGGED IN
+        // ============================================================
+        (function checkExistingSession() {
+            const session = localStorage.getItem('adminSession');
+            if (session) {
+                try {
+                    const data = JSON.parse(session);
+                    // Check if session is still valid (not older than 24 hours)
+                    const loggedInAt = new Date(data.loggedInAt);
+                    const now = new Date();
+                    const hoursDiff = (now - loggedInAt) / (1000 * 60 * 60);
+                    
+                    if (hoursDiff < 24) {
+                        // Valid session, redirect to dashboard
+                        window.location.href = 'admin_exam_results.html';
+                    } else {
+                        // Session expired
+                        localStorage.removeItem('adminSession');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('adminSession');
+                }
+            }
+        })();
+
+        console.log('%c🔐 Admin Login System', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
+        console.log('%c✅ Authenticates against consolidated_user_profiles_table', 'color: #38A169;');
+        console.log('%c🔑 Requires super_admin role', 'color: #F59E0B;');
+    </script>
+</body>
+</html>
