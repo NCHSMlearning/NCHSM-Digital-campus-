@@ -1014,14 +1014,15 @@ async function startExamFaceDetection() {
                     faceDetectionLostCount = 0;
                     isExamPaused = false;
 
-                    // Clear multiple faces warning if active
-                    if (window.multipleFacesInterval) {
-                        clearInterval(window.multipleFacesInterval);
-                        window.multipleFacesInterval = null;
-                    }
-                    if (window.multipleFacesTimeout) {
-                        clearTimeout(window.multipleFacesTimeout);
-                        window.multipleFacesTimeout = null;
+                  // Clear multiple faces warning if active
+if (multipleFacesInterval) {
+    clearInterval(multipleFacesInterval);
+    multipleFacesInterval = null;
+}
+if (multipleFacesTimeout) {
+    clearTimeout(multipleFacesTimeout);
+    multipleFacesTimeout = null;
+}
                     }
                     var warningEl = document.getElementById('multiple-faces-warning');
                     if (warningEl) warningEl.classList.remove('active');
@@ -1139,13 +1140,34 @@ function showMultipleFacesWarning(duration) {
     var countdown = duration;
     var countdownEl = document.getElementById('multiple-faces-countdown');
     var progressEl = document.getElementById('multiple-faces-progress');
+function showMultipleFacesWarning(duration) {
+    if (typeof duration === 'undefined') duration = 10;
+    var warning = document.getElementById('multiple-faces-warning');
+    if (!warning) return;
+
+    warning.classList.add('active');
+    warning.innerHTML =
+        '<div style="font-size:2rem;margin-bottom:10px;">🚨</div>' +
+        '<h3 style="margin-bottom:5px;">Multiple Faces Detected!</h3>' +
+        '<p style="font-size:0.9rem;opacity:0.9;">Please ensure only you are in the camera frame.</p>' +
+        '<p style="font-size:1.2rem;margin-top:10px;color:#FDB913;font-weight:bold;">' +
+        '⏳ Auto-submit in <span id="multiple-faces-countdown">' + duration + '</span> seconds...' +
+        '</p>' +
+        '<div style="margin-top:15px;width:100%;max-width:300px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden;margin-left:auto;margin-right:auto;">' +
+        '<div id="multiple-faces-progress" style="width:100%;height:100%;background:#FDB913;border-radius:2px;transition:width 1s linear;"></div>' +
+        '</div>';
+
+    // Start countdown
+    var countdown = duration;
+    var countdownEl = document.getElementById('multiple-faces-countdown');
+    var progressEl = document.getElementById('multiple-faces-progress');
 
     // Clear any existing interval
-    if (window.multipleFacesInterval) {
-        clearInterval(window.multipleFacesInterval);
+    if (multipleFacesInterval) {
+        clearInterval(multipleFacesInterval);
     }
 
-    window.multipleFacesInterval = setInterval(function() {
+    multipleFacesInterval = setInterval(function() {
         countdown--;
         if (countdownEl) countdownEl.textContent = countdown;
         if (progressEl) progressEl.style.width = (countdown / duration * 100) + '%';
@@ -1160,8 +1182,8 @@ function showMultipleFacesWarning(duration) {
         }
 
         if (countdown <= 0) {
-            clearInterval(window.multipleFacesInterval);
-            window.multipleFacesInterval = null;
+            clearInterval(multipleFacesInterval);
+            multipleFacesInterval = null;
         }
     }, 1000);
 }
@@ -1856,13 +1878,13 @@ async function executeSubmissionWithLoading() {
             clearInterval(faceDetectionRecoveryTimer);
             faceDetectionRecoveryTimer = null;
         }
-        if (window.multipleFacesInterval) {
-            clearInterval(window.multipleFacesInterval);
-            window.multipleFacesInterval = null;
+        if (multipleFacesInterval) {
+            clearInterval(multipleFacesInterval);
+            multipleFacesInterval = null;
         }
-        if (window.multipleFacesTimeout) {
-            clearTimeout(window.multipleFacesTimeout);
-            window.multipleFacesTimeout = null;
+        if (multipleFacesTimeout) {
+            clearTimeout(multipleFacesTimeout);
+            multipleFacesTimeout = null;
         }
 
         unblockApplications();
@@ -1907,7 +1929,6 @@ async function executeSubmissionWithLoading() {
         isSubmitting = false;
     }
 }
-
 async function saveAllAnswersToDatabase() {
     var saved = 0;
     var total = Object.keys(answers).length;
