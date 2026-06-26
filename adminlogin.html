@@ -26,7 +26,6 @@
             position: relative;
         }
 
-        /* Animated Background */
         body::before {
             content: '';
             position: fixed;
@@ -52,7 +51,6 @@
             max-width: 420px;
         }
 
-        /* Institution Logo */
         .institution-logo {
             text-align: center;
             margin-bottom: 25px;
@@ -89,7 +87,6 @@
             margin-top: 2px;
         }
 
-        /* Login Card */
         .login-container {
             background: white;
             border-radius: 20px;
@@ -226,7 +223,6 @@
             color: #0A3D62;
         }
 
-        /* Email Notification Toggle */
         .notification-toggle {
             display: flex;
             align-items: center;
@@ -436,7 +432,6 @@
             margin-top: 8px;
         }
 
-        /* Shake Animation */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
@@ -447,7 +442,6 @@
             animation: shake 0.5s;
         }
 
-        /* Responsive */
         @media (max-width: 480px) {
             .login-body {
                 padding: 20px;
@@ -480,7 +474,6 @@
 <body>
 
     <div class="login-wrapper">
-        <!-- Institution Logo -->
         <div class="institution-logo">
             <div class="logo-icon">
                 <i class="fas fa-graduation-cap"></i>
@@ -489,7 +482,6 @@
             <div class="logo-subtext">Secure Proctoring System</div>
         </div>
 
-        <!-- Login Card -->
         <div class="login-container">
             <div class="login-header">
                 <h1><i class="fas fa-lock"></i> Admin Portal</h1>
@@ -500,7 +492,6 @@
             </div>
 
             <div class="login-body">
-                <!-- Messages -->
                 <div id="errorMessage" class="error-message">
                     <i class="fas fa-exclamation-circle"></i>
                     <span id="errorText">Invalid credentials</span>
@@ -510,7 +501,6 @@
                     <span id="successText">Login successful</span>
                 </div>
 
-                <!-- Email -->
                 <div class="form-group">
                     <label for="email">
                         Admin Email <span class="required">*</span>
@@ -526,7 +516,6 @@
                     </div>
                 </div>
 
-                <!-- Password -->
                 <div class="form-group">
                     <label for="password">
                         Password <span class="required">*</span>
@@ -539,14 +528,13 @@
                             placeholder="Enter your password"
                             autocomplete="current-password"
                         >
-                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Toggle password visibility">
-                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        <button type="button" class="password-toggle" id="togglePasswordBtn">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Email Notification Toggle -->
-                <div class="notification-toggle" onclick="toggleNotification()">
+                <div class="notification-toggle" id="notificationToggle">
                     <div class="toggle-info">
                         <i class="fas fa-bell"></i>
                         <div>
@@ -560,8 +548,7 @@
                     </div>
                 </div>
 
-                <!-- Login Button -->
-                <button class="login-btn" id="loginBtn" onclick="login()">
+                <button class="login-btn" id="loginBtn">
                     <span class="spinner"><i class="fas fa-spinner"></i></span>
                     <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login to Dashboard</span>
                 </button>
@@ -588,114 +575,123 @@
 
     <script>
         // ============================================================
-        // 🔧 SUPABASE CONFIG
+        // 🔧 SUPABASE CONFIG (Using window to avoid duplicate declaration)
         // ============================================================
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // ✅ Use a different variable name to avoid conflict
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ============================================================
         // 📧 EMAIL NOTIFICATION SETTINGS
         // ============================================================
         let emailNotificationsEnabled = true;
 
-        function toggleNotification() {
-            const checkbox = document.getElementById('emailNotifications');
-            emailNotificationsEnabled = checkbox.checked;
-            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const checkbox = document.getElementById('emailNotifications');
-            emailNotificationsEnabled = checkbox.checked;
-            
-            checkbox.addEventListener('change', function() {
-                emailNotificationsEnabled = this.checked;
-                console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
-            });
-
-            // Auto-focus email field
-            document.getElementById('email').focus();
-        });
+        // ============================================================
+        // DOM ELEMENTS
+        // ============================================================
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorDiv = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const successDiv = document.getElementById('successMessage');
+        const successText = document.getElementById('successText');
+        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+        const notificationToggle = document.getElementById('notificationToggle');
+        const emailNotificationsCheckbox = document.getElementById('emailNotifications');
 
         // ============================================================
         // 👁️ TOGGLE PASSWORD VISIBILITY
         // ============================================================
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleIcon = document.getElementById('toggleIcon');
-            
+        togglePasswordBtn.addEventListener('click', function() {
+            const icon = this.querySelector('i');
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                toggleIcon.className = 'fas fa-eye-slash';
+                icon.className = 'fas fa-eye-slash';
             } else {
                 passwordInput.type = 'password';
-                toggleIcon.className = 'fas fa-eye';
+                icon.className = 'fas fa-eye';
             }
-        }
+        });
 
         // ============================================================
-        // 🔐 LOGIN FUNCTION - REAL AUTH AGAINST consolidated_user_profiles_table
+        // 📧 NOTIFICATION TOGGLE
+        // ============================================================
+        notificationToggle.addEventListener('click', function(e) {
+            if (e.target.type === 'checkbox') return;
+            emailNotificationsCheckbox.checked = !emailNotificationsCheckbox.checked;
+            emailNotificationsEnabled = emailNotificationsCheckbox.checked;
+            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
+        });
+
+        emailNotificationsCheckbox.addEventListener('change', function() {
+            emailNotificationsEnabled = this.checked;
+            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
+        });
+
+        // ============================================================
+        // 🔐 LOGIN FUNCTION
         // ============================================================
         async function login() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            const successDiv = document.getElementById('successMessage');
-            const successText = document.getElementById('successText');
-            const loginBtn = document.getElementById('loginBtn');
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
 
-            // Clear previous messages
             errorDiv.classList.remove('show');
             successDiv.classList.remove('show');
 
-            // Validate inputs
             if (!email || !password) {
                 errorText.textContent = 'Please enter both email and password';
                 errorDiv.classList.add('show');
                 return;
             }
 
-            // Show loading state
             loginBtn.classList.add('loading');
             loginBtn.disabled = true;
 
             try {
-                // Step 1: Authenticate with Supabase Auth
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                console.log('🔐 Attempting login for:', email);
+
+                // ✅ Use supabaseClient instead of supabase
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
                 if (authError) {
+                    console.error('❌ Auth error:', authError);
                     throw new Error('Invalid email or password');
                 }
 
-                // Step 2: Check if user exists in consolidated_user_profiles_table
-                const { data: profile, error: profileError } = await supabase
+                console.log('✅ Auth successful');
+
+                const { data: profile, error: profileError } = await supabaseClient
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('email', email)
                     .single();
 
                 if (profileError || !profile) {
-                    // Sign out since user not found in profiles
-                    await supabase.auth.signOut();
+                    console.error('❌ Profile error:', profileError);
+                    await supabaseClient.auth.signOut();
                     throw new Error('Account not found. Please contact administrator.');
                 }
 
-                // Step 3: Check if user has super_admin role
-                // Check multiple possible column names for role
-                const userRole = profile.role || profile.user_role || profile.access_level || profile.user_type || 'user';
-                
-                if (userRole !== 'super_admin' && userRole !== 'admin' && userRole !== 'SuperAdmin' && userRole !== 'Administrator') {
-                    await supabase.auth.signOut();
+                console.log('📋 Profile found:', profile.full_name);
+                console.log('🔑 Role:', profile.role);
+
+                const userRole = (profile.role || profile.user_role || profile.access_level || profile.user_type || 'user').toLowerCase();
+                const adminRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user'];
+
+                if (!adminRoles.includes(userRole)) {
+                    console.error('❌ Invalid role:', userRole);
+                    await supabaseClient.auth.signOut();
                     throw new Error('Access denied. You do not have admin privileges.');
                 }
 
-                // ✅ SUCCESS - Create session
+                console.log('✅ Admin access granted!');
+
                 const adminSession = {
                     user_id: profile.user_id || profile.id,
                     email: profile.email,
@@ -710,75 +706,69 @@
 
                 localStorage.setItem('adminSession', JSON.stringify(adminSession));
 
-                // Show success
                 successText.textContent = `✅ Welcome ${adminSession.name}! Redirecting...`;
                 successDiv.classList.add('show');
 
-                // Redirect after delay
                 setTimeout(() => {
                     window.location.href = 'admin_exam_results.html';
                 }, 1200);
 
             } catch (error) {
-                // Show error
+                console.error('❌ Login error:', error);
                 errorText.textContent = error.message || 'Login failed. Please try again.';
                 errorDiv.classList.add('show');
                 
-                // Shake animation
                 const loginContainer = document.querySelector('.login-container');
                 loginContainer.classList.remove('shake');
                 void loginContainer.offsetWidth;
                 loginContainer.classList.add('shake');
                 
-                // Clear password field
-                document.getElementById('password').value = '';
-                document.getElementById('password').focus();
+                passwordInput.value = '';
+                passwordInput.focus();
                 
-                // Reset button
                 loginBtn.classList.remove('loading');
                 loginBtn.disabled = false;
-
-                console.error('Login error:', error);
             }
         }
 
         // ============================================================
-        // ⌨️ ENTER KEY SUPPORT
+        // 🔗 EVENT LISTENERS
         // ============================================================
-        document.addEventListener('keypress', (e) => {
+        loginBtn.addEventListener('click', login);
+
+        document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 login();
             }
         });
 
         // ============================================================
-        // 🔧 CHECK IF ALREADY LOGGED IN
+        // 🚀 DOM READY
         // ============================================================
-        (function checkExistingSession() {
+        document.addEventListener('DOMContentLoaded', function() {
+            emailInput.focus();
+
             const session = localStorage.getItem('adminSession');
             if (session) {
                 try {
                     const data = JSON.parse(session);
-                    // Check if session is still valid (not older than 24 hours)
                     const loggedInAt = new Date(data.loggedInAt);
                     const now = new Date();
                     const hoursDiff = (now - loggedInAt) / (1000 * 60 * 60);
                     
                     if (hoursDiff < 24) {
-                        // Valid session, redirect to dashboard
                         window.location.href = 'admin_exam_results.html';
                     } else {
-                        // Session expired
                         localStorage.removeItem('adminSession');
                     }
                 } catch (e) {
                     localStorage.removeItem('adminSession');
                 }
             }
-        })();
+        });
 
         console.log('%c🔐 Admin Login System', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
-        console.log('%c✅ Authenticates against consolidated_user_profiles_table', 'color: #38A169;');
+        console.log('%c✅ Using supabaseClient to avoid conflicts', 'color: #38A169;');
         console.log('%c🔑 Requires super_admin role', 'color: #F59E0B;');
     </script>
 </body>
