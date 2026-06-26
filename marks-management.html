@@ -197,8 +197,8 @@
   async function getConfig() { if(configCache) return configCache; configCache=await apiCall('/api/units',{}); return configCache; }
   function exportToCSV(data,filename) { if(!data||!data.length){ showNotification('No data to export',true); return; } const headers=Object.keys(data[0]); let csv=[headers.join(',')]; data.forEach(row=>{ const values=headers.map(h=>`"${String(row[h]||'').replace(/"/g,'""')}"`); csv.push(values.join(',')); }); const blob=new Blob([csv.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${filename}_${currentYear}_${new Date().toISOString().slice(0,19)}.csv`; a.click(); URL.revokeObjectURL(a.href); showNotification('Export completed!'); }
 // ======================= IMPORT MARKS FROM CSV =======================
+// ======================= FIXED: IMPORT MARKS FROM CSV =======================
 window.importMarks = function() {
-    // Create file input
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.csv';
@@ -213,105 +213,76 @@ window.importMarks = function() {
         reader.onload = async function(event) {
             try {
                 let csvText = event.target.result;
-                
-                // Handle BOM
-                if (csvText.charCodeAt(0) === 0xFEFF) {
-                    csvText = csvText.slice(1);
-                }
+                if (csvText.charCodeAt(0) === 0xFEFF) csvText = csvText.slice(1);
                 
                 const lines = csvText.split(/\r?\n/).filter(line => line.trim());
-                
                 if (lines.length < 2) {
                     showNotification('CSV file is empty or invalid', true);
                     return;
                 }
                 
-                // Parse headers with support for quoted fields
-                const headerLine = lines[0];
-                const headers = parseCSVLine(headerLine);
+                const headers = parseCSVLine(lines[0]);
                 
-                // Find column indices
-                const nameIdx = findColumnIndex(headers, ['name', 'student name', 'student', 'full name', 'candidate name']);
-                const admissionIdx = findColumnIndex(headers, ['admission', 'admission no', 'registration', 'reg no', 'student id', 'id', 'student_id']);
-                const cat1Idx = findColumnIndex(headers, ['cat 1', 'cat1', 'cat1 score', 'cat 1 score', 'assignment 1']);
-                const cat2Idx = findColumnIndex(headers, ['cat 2', 'cat2', 'cat2 score', 'cat 2 score', 'assignment 2']);
-                const examIdx = findColumnIndex(headers, ['exam', 'exam score', 'final exam', 'theory exam', 'exam_score']);
-                const totalIdx = findColumnIndex(headers, ['total', 'total score', 'final score', 'average', 'total_score']);
-                const gradeIdx = findColumnIndex(headers, ['grade', 'status', 'result', 'result_status']);
-                const blockIdx = findColumnIndex(headers, ['block', 'year', 'semester', 'block_term']);
-                const subjectIdx = findColumnIndex(headers, ['subject', 'unit', 'course', 'module', 'exam_name']);
+                // Get sample row to check values
+                const sampleRow = parseCSVLine(lines[1]);
                 
-                if (admissionIdx === -1 || nameIdx === -1) {
-                    showNotification('CSV must contain "Admission Number" and "Student Name" columns', true);
-                    return;
+                // ============ USE SMART DETECTION ============
+                const detection = detectColumns(headers, sampleRow);
+                
+                console.log('📊 Detection:', detection);
+                
+                // Show what was detected
+                let detectedInfo = '';
+                if (detection.detectedType === 'cat_only') {
+                    detectedInfo = '🔍 Detected: Only CAT 1 scores (no exam yet)';
+                } else if (detection.detectedType === 'full') {
+                    detectedInfo = '🔍 Detected: Full format (CAT1 + CAT2 + Exam)';
+                } else if (detection.detectedType === 'single_cat') {
+                    detectedInfo = '🔍 Detected: Single CAT + Exam';
+                } else if (detection.detectedType === 'exam_only') {
+                    detectedInfo = '🔍 Detected: Exam only';
+                } else if (detection.detectedType === 'cats_only') {
+                    detectedInfo = '🔍 Detected: CAT1 + CAT2 only (no exam)';
+                }
+                
+                // Auto-detect subject from "Exam" column
+                let autoSubject = '';
+                if (detection.subjectIdx !== -1 && sampleRow) {
+                    const subjectValue = sampleRow[detection.subjectIdx]?.trim() || '';
+                    if (subjectValue && isNaN(parseFloat(subjectValue))) {
+                        autoSubject = subjectValue;
+                    }
                 }
                 
                 // Parse data rows
                 const importData = [];
-                let warnings = [];
-                let hasValidScores = false;
-                
                 for (let i = 1; i < lines.length; i++) {
                     const values = parseCSVLine(lines[i]);
-                    
-                    if (values.length < 2 || !values[nameIdx]?.trim() || !values[admissionIdx]?.trim()) continue;
-                    
-                    const name = values[nameIdx]?.trim() || '';
-                    const admission = values[admissionIdx]?.trim() || '';
-                    
-                    let cat1 = parseFloat(values[cat1Idx]) || 0;
-                    let cat2 = parseFloat(values[cat2Idx]) || 0;
-                    let exam = parseFloat(values[examIdx]) || 0;
-                    
-                    if (cat1 > 0 || cat2 > 0 || exam > 0) hasValidScores = true;
-                    
-                    if (cat1 > 30) {
-                        warnings.push(`${name}: CAT1 (${cat1}) exceeds max 30, will be capped`);
-                        cat1 = Math.min(cat1, 30);
-                    }
-                    if (cat2 > 30) {
-                        warnings.push(`${name}: CAT2 (${cat2}) exceeds max 30, will be capped`);
-                        cat2 = Math.min(cat2, 30);
-                    }
-                    if (exam > 70) {
-                        const isHundredMark = headers.some(h => 
-                            h.toLowerCase().includes('100') || 
-                            h.toLowerCase().includes('final') ||
-                            h.toLowerCase().includes('theory') ||
-                            h.toLowerCase().includes('marks_out_of')
-                        );
-                        if (!isHundredMark && exam > 70) {
-                            warnings.push(`${name}: Exam (${exam}) exceeds max 70, will be capped`);
-                            exam = Math.min(exam, 70);
-                        }
+                    if (values.length < 2 || !values[detection.nameIdx]?.trim() || !values[detection.admissionIdx]?.trim()) {
+                        continue;
                     }
                     
-                    let total = 0;
-                    if (totalIdx !== -1) {
-                        total = parseFloat(values[totalIdx]) || 0;
-                    } else if (exam > 0 && cat1 > 0 && cat2 > 0) {
-                        const cappedCat1 = Math.min(cat1, 30);
-                        const cappedCat2 = Math.min(cat2, 30);
-                        const cappedExam = Math.min(exam, 70);
-                        total = ((cappedCat1 + cappedCat2) / 60 * 30) + cappedExam;
-                        total = Math.round(total * 10) / 10;
-                    } else if (exam > 0 && cat1 > 0) {
-                        const cappedCat1 = Math.min(cat1, 30);
-                        const cappedExam = Math.min(exam, 70);
-                        total = cappedCat1 + cappedExam;
-                        total = Math.round(total * 10) / 10;
-                    } else if (exam > 0) {
-                        total = Math.min(exam, 100);
-                        total = Math.round(total * 10) / 10;
+                    const name = values[detection.nameIdx]?.trim() || '';
+                    const admission = values[detection.admissionIdx]?.trim() || '';
+                    
+                    let cat1 = 0;
+                    let cat2 = 0;
+                    let exam = 0;
+                    
+                    if (detection.cat1Idx !== -1) {
+                        const val = parseFloat(values[detection.cat1Idx]);
+                        cat1 = !isNaN(val) ? val : 0;
                     }
                     
-                    let grade = gradeIdx !== -1 ? (values[gradeIdx]?.trim() || '') : '';
-                    if (!grade && total > 0) {
-                        grade = total >= 60 ? 'PASS' : 'FAIL';
+                    if (detection.cat2Idx !== -1) {
+                        const val = parseFloat(values[detection.cat2Idx]);
+                        cat2 = !isNaN(val) ? val : 0;
                     }
                     
-                    const block = blockIdx !== -1 ? (values[blockIdx]?.trim() || '') : '';
-                    const subjectName = subjectIdx !== -1 ? (values[subjectIdx]?.trim() || '') : '';
+                    if (detection.examIdx !== -1 && detection.hasValidExamScores) {
+                        const val = parseFloat(values[detection.examIdx]);
+                        exam = !isNaN(val) ? val : 0;
+                    }
                     
                     importData.push({
                         name: name,
@@ -319,10 +290,10 @@ window.importMarks = function() {
                         cat1: cat1,
                         cat2: cat2,
                         exam: exam,
-                        total: total,
-                        grade: grade,
-                        block: block,
-                        subject: subjectName
+                        total: 0,
+                        grade: '',
+                        block: '',
+                        subject: autoSubject  // Auto-detect subject
                     });
                 }
                 
@@ -331,23 +302,8 @@ window.importMarks = function() {
                     return;
                 }
                 
-                if (warnings.length > 0) {
-                    console.warn('Import warnings:', warnings);
-                    const warningMsg = warnings.slice(0, 3).join('\n') + 
-                                      (warnings.length > 3 ? `\n... and ${warnings.length - 3} more` : '');
-                    if (!confirm(`⚠️ ${warnings.length} warnings found:\n${warningMsg}\n\nContinue with import?`)) {
-                        return;
-                    }
-                }
-                
-                // Auto-detect assessment type
-                let detectedType = 'full';
-                const sample = importData[0];
-                if (sample.exam > 0 && sample.cat1 > 0 && sample.cat2 > 0) detectedType = 'full';
-                else if (sample.exam > 0 && (sample.cat1 > 0 || sample.cat2 > 0)) detectedType = 'single_cat';
-                else if (sample.exam > 0) detectedType = 'exam_only';
-                
-                showEnhancedImportPreview(importData, detectedType);
+                // Show preview with detected info
+                showEnhancedImportPreview(importData, detection.detectedType, detectedInfo, autoSubject);
                 
             } catch (err) {
                 console.error('Import error:', err);
@@ -400,34 +356,88 @@ function findColumnIndex(headers, keywords) {
     return -1;
 }
 
-// ======================= ENHANCED IMPORT PREVIEW =======================
-function showEnhancedImportPreview(importData, detectedType) {
+function showEnhancedImportPreview(importData, detectedType, detectedInfo, autoSubject) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
     
     const hasScores = importData.filter(d => d.cat1 > 0 || d.cat2 > 0 || d.exam > 0).length;
-    const passing = importData.filter(d => d.total >= 60).length;
-    const failing = importData.filter(d => d.total > 0 && d.total < 60).length;
+    const passing = importData.filter(d => {
+        // Calculate percentage based on available scores
+        let total = 0;
+        let max = 0;
+        if (detectedType === 'full') {
+            total = Math.min(d.cat1, 30) + Math.min(d.cat2, 30) + Math.min(d.exam, 70);
+            max = 100;
+        } else if (detectedType === 'single_cat') {
+            total = Math.min(d.cat1, 30) + Math.min(d.exam, 70);
+            max = 100;
+        } else if (detectedType === 'exam_only') {
+            total = Math.min(d.exam, 100);
+            max = 100;
+        } else if (detectedType === 'cats_only') {
+            total = Math.min(d.cat1, 30) + Math.min(d.cat2, 30);
+            max = 60;
+        } else { // cat_only
+            total = Math.min(d.cat1, 30);
+            max = 30;
+        }
+        const percentage = max > 0 ? (total / max) * 100 : 0;
+        return percentage >= 60 && total > 0;
+    }).length;
+    
+    const failing = importData.filter(d => {
+        let total = 0;
+        let max = 0;
+        if (detectedType === 'full') {
+            total = Math.min(d.cat1, 30) + Math.min(d.cat2, 30) + Math.min(d.exam, 70);
+            max = 100;
+        } else if (detectedType === 'single_cat') {
+            total = Math.min(d.cat1, 30) + Math.min(d.exam, 70);
+            max = 100;
+        } else if (detectedType === 'exam_only') {
+            total = Math.min(d.exam, 100);
+            max = 100;
+        } else if (detectedType === 'cats_only') {
+            total = Math.min(d.cat1, 30) + Math.min(d.cat2, 30);
+            max = 60;
+        } else { // cat_only
+            total = Math.min(d.cat1, 30);
+            max = 30;
+        }
+        const percentage = max > 0 ? (total / max) * 100 : 0;
+        return percentage < 60 && total > 0;
+    }).length;
     
     const detectedBlock = importData.find(d => d.block)?.block || 'BLOCK_0';
-    const detectedSubject = importData.find(d => d.subject)?.subject || '';
+    const detectedSubject = autoSubject || importData.find(d => d.subject)?.subject || '';
     
     const typeOptions = {
         'full': 'Full (CAT1+CAT2+Exam)',
         'single_cat': 'Single CAT (CAT+Exam)',
-        'exam_only': 'Exam Only'
+        'exam_only': 'Exam Only',
+        'cats_only': 'CAT1 + CAT2 Only (No Exam)',
+        'cat_only': 'CAT1 Only (No Exam)'
     };
     
     modal.innerHTML = `
         <div style="background:white;border-radius:24px;width:95%;max-width:1100px;max-height:92vh;overflow-y:auto;padding:0;">
             <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:10px;">
                 <h3 style="margin:0;"><i class="fas fa-file-import"></i> Import Marks Preview</h3>
-                <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 16px;border-radius:40px;cursor:pointer;font-weight:600;">
-                    <i class="fas fa-times"></i> Close
-                </button>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:12px;">
+                        ${importData.length} records
+                    </span>
+                    <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:12px;">
+                        ${detectedInfo || typeOptions[detectedType] || 'Auto-detected'}
+                    </span>
+                    <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 16px;border-radius:40px;cursor:pointer;font-weight:600;">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
             </div>
             <div style="padding:24px;">
+                <!-- Stats -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px;">
                     <div style="background:#f0fdf4;padding:16px;border-radius:12px;text-align:center;">
                         <div style="font-size:28px;font-weight:800;color:#10b981;">${importData.length}</div>
@@ -439,14 +449,22 @@ function showEnhancedImportPreview(importData, detectedType) {
                     </div>
                     <div style="background:#d1fae5;padding:16px;border-radius:12px;text-align:center;">
                         <div style="font-size:28px;font-weight:800;color:#065f46;">${passing}</div>
-                        <div style="font-size:12px;color:#64748b;">Passing</div>
+                        <div style="font-size:12px;color:#64748b;">Passing (≥60%)</div>
                     </div>
                     <div style="background:#fee2e2;padding:16px;border-radius:12px;text-align:center;">
                         <div style="font-size:28px;font-weight:800;color:#991b1b;">${failing}</div>
-                        <div style="font-size:12px;color:#64748b;">Failing</div>
+                        <div style="font-size:12px;color:#64748b;">Failing (&lt;60%)</div>
                     </div>
                 </div>
                 
+                <!-- Detection Info -->
+                <div style="background:#fef3c7;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px;">
+                    <i class="fas fa-info-circle" style="color:#f59e0b;"></i>
+                    <strong>Auto-detected:</strong> ${detectedInfo || typeOptions[detectedType] || 'Unknown format'}
+                    ${detectedSubject ? ` | <strong>Subject:</strong> ${detectedSubject}` : ''}
+                </div>
+                
+                <!-- Import Settings -->
                 <div style="background:#f8fafc;padding:20px;border-radius:16px;margin-bottom:20px;">
                     <h4 style="margin-bottom:16px;"><i class="fas fa-cog"></i> Import Settings</h4>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
@@ -471,17 +489,14 @@ function showEnhancedImportPreview(importData, detectedType) {
                                 <option value="full" ${detectedType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
                                 <option value="single_cat" ${detectedType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
                                 <option value="exam_only" ${detectedType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+                                <option value="cat_only" ${detectedType === 'cat_only' ? 'selected' : ''}>CAT Only (No Exam)</option>
+                                <option value="cats_only" ${detectedType === 'cats_only' ? 'selected' : ''}>CAT1 + CAT2 Only</option>
                             </select>
                         </div>
                     </div>
-                    <div style="margin-top:12px;padding:10px;background:#fef3c7;border-radius:8px;font-size:13px;">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Detected format:</strong> ${typeOptions[detectedType] || 'Auto-detected'}
-                        ${detectedSubject ? ` | <strong>Subject:</strong> ${detectedSubject}` : ''}
-                        ${detectedBlock ? ` | <strong>Block:</strong> ${detectedBlock}` : ''}
-                    </div>
                 </div>
                 
+                <!-- Search/Filter -->
                 <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                     <input type="text" id="importSearchInput" placeholder="Search name or admission..." onkeyup="filterImportTable()" style="flex:1;padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
                     <select id="importStatusFilter" onchange="filterImportTable()" style="padding:8px 16px;border-radius:40px;border:1px solid #e2e8f0;">
@@ -492,6 +507,7 @@ function showEnhancedImportPreview(importData, detectedType) {
                     </select>
                 </div>
                 
+                <!-- Table -->
                 <div style="overflow-x:auto;max-height:350px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:12px;">
                     <table style="width:100%;border-collapse:collapse;">
                         <thead style="position:sticky;top:0;z-index:5;background:#f1f5f9;">
@@ -501,27 +517,57 @@ function showEnhancedImportPreview(importData, detectedType) {
                                 </th>
                                 <th style="padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;">Admission</th>
                                 <th style="padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;">Student Name</th>
-                                <th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">CAT 1</th>
-                                <th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">CAT 2</th>
-                                <th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">Exam</th>
+                                ${detection.cat1Idx !== -1 ? '<th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">CAT 1</th>' : ''}
+                                ${detection.cat2Idx !== -1 ? '<th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">CAT 2</th>' : ''}
+                                ${detection.hasValidExamScores ? '<th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">Exam</th>' : ''}
                                 <th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">Total</th>
                                 <th style="padding:10px;text-align:center;border-bottom:2px solid #e2e8f0;">Grade</th>
                             </tr>
                         </thead>
                         <tbody id="importTableBody">
                             ${importData.map((row, idx) => {
-                                const statusClass = row.grade === 'PASS' ? 'badge-pass' : (row.grade === 'FAIL' ? 'badge-fail' : 'badge-pending');
+                                // Calculate percentage based on detected type
+                                let total = 0;
+                                let max = 0;
+                                let displayTotal = '--';
+                                let grade = 'PENDING';
+                                
+                                if (detectedType === 'full') {
+                                    total = Math.min(row.cat1, 30) + Math.min(row.cat2, 30) + Math.min(row.exam, 70);
+                                    max = 100;
+                                } else if (detectedType === 'single_cat') {
+                                    total = Math.min(row.cat1, 30) + Math.min(row.exam, 70);
+                                    max = 100;
+                                } else if (detectedType === 'exam_only') {
+                                    total = Math.min(row.exam, 100);
+                                    max = 100;
+                                } else if (detectedType === 'cats_only') {
+                                    total = Math.min(row.cat1, 30) + Math.min(row.cat2, 30);
+                                    max = 60;
+                                } else { // cat_only
+                                    total = Math.min(row.cat1, 30);
+                                    max = 30;
+                                }
+                                
+                                if (total > 0) {
+                                    const percentage = (total / max) * 100;
+                                    displayTotal = `${Math.round(percentage)}%`;
+                                    grade = percentage >= 60 ? 'PASS' : 'FAIL';
+                                }
+                                
+                                const statusClass = grade === 'PASS' ? 'badge-pass' : (grade === 'FAIL' ? 'badge-fail' : 'badge-pending');
+                                
                                 return `
-                                    <tr data-index="${idx}" data-name="${row.name.toLowerCase()}" data-admission="${row.admission}" data-status="${row.grade}" style="border-bottom:1px solid #e2e8f0;">
+                                    <tr data-index="${idx}" data-name="${row.name.toLowerCase()}" data-admission="${row.admission}" data-status="${grade}" style="border-bottom:1px solid #e2e8f0;">
                                         <td style="padding:8px;"><input type="checkbox" class="import-row-checkbox" data-idx="${idx}" checked onchange="updateImportCount()"></td>
                                         <td style="padding:8px;"><span class="student-id-badge">${row.admission}</span></td>
                                         <td style="padding:8px;"><strong>${row.name}</strong></td>
-                                        <td style="padding:8px;text-align:center;">${row.cat1 > 0 ? row.cat1 : '--'}</td>
-                                        <td style="padding:8px;text-align:center;">${row.cat2 > 0 ? row.cat2 : '--'}</td>
-                                        <td style="padding:8px;text-align:center;">${row.exam > 0 ? row.exam : '--'}</td>
-                                        <td style="padding:8px;text-align:center;font-weight:bold;">${row.total > 0 ? row.total : '--'}</td>
+                                        ${detection.cat1Idx !== -1 ? `<td style="padding:8px;text-align:center;">${row.cat1 > 0 ? row.cat1 : '--'}</td>` : ''}
+                                        ${detection.cat2Idx !== -1 ? `<td style="padding:8px;text-align:center;">${row.cat2 > 0 ? row.cat2 : '--'}</td>` : ''}
+                                        ${detection.hasValidExamScores ? `<td style="padding:8px;text-align:center;">${row.exam > 0 ? row.exam : '--'}</td>` : ''}
+                                        <td style="padding:8px;text-align:center;font-weight:bold;">${displayTotal}</td>
                                         <td style="padding:8px;text-align:center;">
-                                            ${row.grade ? `<span class="badge ${statusClass}">${row.grade}</span>` : '--'}
+                                            ${grade ? `<span class="badge ${statusClass}">${grade}</span>` : '--'}
                                         </td>
                                     </tr>
                                 `;
@@ -530,6 +576,7 @@ function showEnhancedImportPreview(importData, detectedType) {
                     </table>
                 </div>
                 
+                <!-- Actions -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:2px solid #e2e8f0;flex-wrap:wrap;gap:10px;">
                     <div>
                         <span id="selectedImportCount" style="font-weight:600;">${importData.length}</span> records selected
@@ -549,6 +596,8 @@ function showEnhancedImportPreview(importData, detectedType) {
     
     document.body.appendChild(modal);
     window._importData = importData;
+    window._detectedType = detectedType;
+    window._detection = detection;
 }
 
 // ======================= CONFIRM ENHANCED IMPORT =======================
