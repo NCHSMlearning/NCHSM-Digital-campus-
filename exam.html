@@ -744,92 +744,82 @@ async function startExam() {
     examInterface.classList.add('active');
     initExam();
 }
-
-// ============================================================
-// SNAPSHOT CAPTURE
-// ============================================================
-
 async function captureSnapshot() {
-    try {
-        var video = faceVideo;
-        if (!video || !video.srcObject || video.paused || video.ended) {
-            return;
-        }
-
-        var canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, 640, 480);
-
-        var base64Image = canvas.toDataURL('image/jpeg', 0.8);
-
-        var currentQ = questions[currentIndex] || {};
-        var currentQuestionNum = currentIndex + 1;
-        var totalQuestions = questions.length;
-
-        var faceStatusText = faceStatus ? faceStatus.textContent : '';
-        var eventType = 'face_detected';
-        var details = 'Question ' + currentQuestionNum + '/' + totalQuestions;
-
-        if (faceStatusText.indexOf('Multiple faces') !== -1) {
-            eventType = 'multiple_faces_detected';
-            details = 'Multiple faces detected on question ' + currentQuestionNum;
-        } else if (faceStatusText.indexOf('No face') !== -1 || faceStatusText.indexOf('Face lost') !== -1) {
-            eventType = 'face_missing';
-            details = 'No face detected on question ' + currentQuestionNum;
-        }
-
-        var studentName = studentProfile ? studentProfile.full_name || 'Unknown' : 'Unknown';
-        var studentReg = studentProfile ? studentProfile.student_id || 'N/A' : 'N/A';
-        var examName = examData ? examData.exam_name || examData.title || 'Exam' : 'Exam';
-
-        var snapshotUrl = null;
-        try {
-            var response = await fetch(base64Image);
-            var blob = await response.blob();
-            var fileName = 'proctoring/' + studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
-
-            var uploadResult = await sb.storage
-                .from('proctoring')
-                .upload(fileName, blob, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '3600'
-                });
-
-            if (!uploadResult.error) {
-                var urlData = sb.storage
-                    .from('proctoring')
-                    .getPublicUrl(fileName);
-                snapshotUrl = urlData.publicUrl;
-            }
-        } catch (uploadError) {
-            // Silent fail
-        }
-
-        var logData = {
-            student_id: studentId,
-            exam_id: parseInt(EXAM_ID),
-            student_name: studentName,
-            student_reg_number: studentReg,
-            exam_name: examName,
-            event_type: eventType,
-            details: details,
-            severity: eventType === 'multiple_faces_detected' ? 'critical' :
-                eventType === 'face_missing' ? 'warning' : 'info',
-            snapshot_url: snapshotUrl,
-            screenshot_data: snapshotUrl ? null : base64Image,
-            timestamp: new Date().toISOString(),
-            is_read: false,
-            device_info: navigator.userAgent,
-            ip_address: await getIPAddress()
-        };
-
-        await sb.from('exam_proctoring_logs').insert(logData);
-
-    } catch (error) {
-        // Silent fail
+    var video = faceVideo;
+    if (!video || !video.srcObject || video.paused || video.ended) {
+        return;
     }
+
+    var canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 640, 480);
+
+    var base64Image = canvas.toDataURL('image/jpeg', 0.8);
+
+    var currentQ = questions[currentIndex] || {};
+    var currentQuestionNum = currentIndex + 1;
+    var totalQuestions = questions.length;
+
+    var faceStatusText = faceStatus ? faceStatus.textContent : '';
+    var eventType = 'face_detected';
+    var details = 'Question ' + currentQuestionNum + '/' + totalQuestions;
+
+    if (faceStatusText.indexOf('Multiple faces') !== -1) {
+        eventType = 'multiple_faces_detected';
+        details = 'Multiple faces detected on question ' + currentQuestionNum;
+    } else if (faceStatusText.indexOf('No face') !== -1 || faceStatusText.indexOf('Face lost') !== -1) {
+        eventType = 'face_missing';
+        details = 'No face detected on question ' + currentQuestionNum;
+    }
+
+    var studentName = studentProfile ? studentProfile.full_name || 'Unknown' : 'Unknown';
+    var studentReg = studentProfile ? studentProfile.student_id || 'N/A' : 'N/A';
+    var examName = examData ? examData.exam_name || examData.title || 'Exam' : 'Exam';
+
+    var snapshotUrl = null;
+    try {
+        var response = await fetch(base64Image);
+        var blob = await response.blob();
+        var fileName = 'proctoring/' + studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
+
+        var uploadResult = await sb.storage
+            .from('proctoring')
+            .upload(fileName, blob, {
+                contentType: 'image/jpeg',
+                cacheControl: '3600'
+            });
+
+        if (!uploadResult.error) {
+            var urlData = sb.storage
+                .from('proctoring')
+                .getPublicUrl(fileName);
+            snapshotUrl = urlData.publicUrl;
+        }
+    } catch (uploadError) {
+        // Silent fail - just continue without snapshot URL
+    }
+
+    var logData = {
+        student_id: studentId,
+        exam_id: parseInt(EXAM_ID),
+        student_name: studentName,
+        student_reg_number: studentReg,
+        exam_name: examName,
+        event_type: eventType,
+        details: details,
+        severity: eventType === 'multiple_faces_detected' ? 'critical' :
+            eventType === 'face_missing' ? 'warning' : 'info',
+        snapshot_url: snapshotUrl,
+        screenshot_data: snapshotUrl ? null : base64Image,
+        timestamp: new Date().toISOString(),
+        is_read: false,
+        device_info: navigator.userAgent,
+        ip_address: await getIPAddress()
+    };
+
+    await sb.from('exam_proctoring_logs').insert(logData);
 }
 
 function startSnapshotCapture() {
@@ -1014,16 +1004,16 @@ async function startExamFaceDetection() {
                     faceDetectionLostCount = 0;
                     isExamPaused = false;
 
-                  // Clear multiple faces warning if active
-if (multipleFacesInterval) {
-    clearInterval(multipleFacesInterval);
-    multipleFacesInterval = null;
-}
-if (multipleFacesTimeout) {
-    clearTimeout(multipleFacesTimeout);
-    multipleFacesTimeout = null;
-}
+                    // Clear multiple faces warning if active
+                    if (multipleFacesInterval) {
+                        clearInterval(multipleFacesInterval);
+                        multipleFacesInterval = null;
                     }
+                    if (multipleFacesTimeout) {
+                        clearTimeout(multipleFacesTimeout);
+                        multipleFacesTimeout = null;
+                    }
+
                     var warningEl = document.getElementById('multiple-faces-warning');
                     if (warningEl) warningEl.classList.remove('active');
 
@@ -1083,12 +1073,12 @@ if (multipleFacesTimeout) {
                             showMultipleFacesWarning(10);
 
                             // Clear any existing timeout
-                            if (window.multipleFacesTimeout) {
-                                clearTimeout(window.multipleFacesTimeout);
+                            if (multipleFacesTimeout) {
+                                clearTimeout(multipleFacesTimeout);
                             }
 
                             // Auto-submit after 10 seconds
-                            window.multipleFacesTimeout = setTimeout(function() {
+                            multipleFacesTimeout = setTimeout(function() {
                                 var warningEl2 = document.getElementById('multiple-faces-warning');
                                 if (warningEl2) warningEl2.classList.remove('active');
                                 if (isExamActive && !isSubmitting) {
@@ -1119,27 +1109,6 @@ if (multipleFacesTimeout) {
 }
 
 // Show multiple faces warning with countdown
-function showMultipleFacesWarning(duration) {
-    if (typeof duration === 'undefined') duration = 10;
-    var warning = document.getElementById('multiple-faces-warning');
-    if (!warning) return;
-
-    warning.classList.add('active');
-    warning.innerHTML =
-        '<div style="font-size:2rem;margin-bottom:10px;">🚨</div>' +
-        '<h3 style="margin-bottom:5px;">Multiple Faces Detected!</h3>' +
-        '<p style="font-size:0.9rem;opacity:0.9;">Please ensure only you are in the camera frame.</p>' +
-        '<p style="font-size:1.2rem;margin-top:10px;color:#FDB913;font-weight:bold;">' +
-        '⏳ Auto-submit in <span id="multiple-faces-countdown">' + duration + '</span> seconds...' +
-        '</p>' +
-        '<div style="margin-top:15px;width:100%;max-width:300px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden;margin-left:auto;margin-right:auto;">' +
-        '<div id="multiple-faces-progress" style="width:100%;height:100%;background:#FDB913;border-radius:2px;transition:width 1s linear;"></div>' +
-        '</div>';
-
-    // Start countdown
-    var countdown = duration;
-    var countdownEl = document.getElementById('multiple-faces-countdown');
-    var progressEl = document.getElementById('multiple-faces-progress');
 function showMultipleFacesWarning(duration) {
     if (typeof duration === 'undefined') duration = 10;
     var warning = document.getElementById('multiple-faces-warning');
@@ -1929,6 +1898,7 @@ async function executeSubmissionWithLoading() {
         isSubmitting = false;
     }
 }
+
 async function saveAllAnswersToDatabase() {
     var saved = 0;
     var total = Object.keys(answers).length;
