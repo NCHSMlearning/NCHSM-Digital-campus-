@@ -355,7 +355,105 @@ function findColumnIndex(headers, keywords) {
     }
     return -1;
 }
-
+// ======================= SMART COLUMN DETECTION =======================
+function detectColumns(headers, sampleRow) {
+    const headerLower = headers.map(h => h.toLowerCase().trim());
+    const result = {
+        admissionIdx: -1,
+        nameIdx: -1,
+        cat1Idx: -1,
+        cat2Idx: -1,
+        examIdx: -1,
+        totalIdx: -1,
+        gradeIdx: -1,
+        subjectIdx: -1,
+        hasValidExamScores: false,
+        detectedType: 'unknown'
+    };
+    
+    // 1. Find admission and name
+    for (let i = 0; i < headers.length; i++) {
+        const h = headerLower[i];
+        if (h.includes('admission') || h.includes('registration') || h.includes('reg no') || h === 'student id') {
+            result.admissionIdx = i;
+        }
+        if (h.includes('student name') || h.includes('full name') || h === 'name' || h === 'student') {
+            result.nameIdx = i;
+        }
+    }
+    
+    // 2. Find CAT columns
+    for (let i = 0; i < headers.length; i++) {
+        const h = headerLower[i];
+        if (h === 'cat 1' || h === 'cat1' || h.includes('cat 1 score')) {
+            if (result.cat1Idx === -1) result.cat1Idx = i;
+        }
+        if (h === 'cat 2' || h === 'cat2' || h.includes('cat 2 score')) {
+            result.cat2Idx = i;
+        }
+    }
+    
+    // 3. Find Exam - check if it has actual scores
+    let possibleExamIdx = -1;
+    for (let i = 0; i < headers.length; i++) {
+        const h = headerLower[i];
+        if (h.includes('exam score') || h.includes('exam marks') || h.includes('final exam')) {
+            possibleExamIdx = i;
+            break;
+        }
+        if (h === 'exam' || (h.includes('exam') && possibleExamIdx === -1)) {
+            possibleExamIdx = i;
+        }
+    }
+    
+    // Check if exam column has numbers
+    if (possibleExamIdx !== -1 && sampleRow && sampleRow[possibleExamIdx]) {
+        const examValue = sampleRow[possibleExamIdx].trim();
+        if (!isNaN(parseFloat(examValue)) && examValue !== '--' && examValue !== '') {
+            result.examIdx = possibleExamIdx;
+            result.hasValidExamScores = true;
+        }
+    }
+    
+    // 4. Check if "Exam" column is subject name
+    if (possibleExamIdx !== -1 && sampleRow) {
+        const examValue = sampleRow[possibleExamIdx].trim();
+        if (isNaN(parseFloat(examValue)) || examValue === '--') {
+            result.subjectIdx = possibleExamIdx;
+        }
+    }
+    
+    // 5. Find Total and Grade
+    for (let i = 0; i < headers.length; i++) {
+        const h = headerLower[i];
+        if (h.includes('total') || h.includes('total score')) {
+            result.totalIdx = i;
+        }
+        if (h.includes('grade') || h.includes('status')) {
+            result.gradeIdx = i;
+        }
+    }
+    
+    // 6. Determine assessment type
+    const hasCat1 = result.cat1Idx !== -1;
+    const hasCat2 = result.cat2Idx !== -1;
+    const hasValidExam = result.hasValidExamScores;
+    
+    if (hasCat1 && hasCat2 && hasValidExam) {
+        result.detectedType = 'full';
+    } else if (hasCat1 && hasValidExam) {
+        result.detectedType = 'single_cat';
+    } else if (hasCat1 && hasCat2) {
+        result.detectedType = 'cats_only';
+    } else if (hasValidExam) {
+        result.detectedType = 'exam_only';
+    } else if (hasCat1) {
+        result.detectedType = 'cat_only';
+    }
+    
+    console.log('📊 Detection:', result);
+    return result;
+}
 function showEnhancedImportPreview(importData, detectedType, detectedInfo, autoSubject) {
     const modal = document.createElement('div');
     modal.className = 'modal';
