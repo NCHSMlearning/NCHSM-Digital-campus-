@@ -303,7 +303,7 @@ window.importMarks = function() {
                 }
                 
                 // Show preview with detected info
-                showEnhancedImportPreview(importData, detection.detectedType, detectedInfo, autoSubject);
+showEnhancedImportPreview(importData, detection.detectedType, detectedInfo, autoSubject, detection);
                 
             } catch (err) {
                 console.error('Import error:', err);
