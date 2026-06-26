@@ -2713,7 +2713,8 @@
                                 clearTimeout(window.multipleFacesTimeout);
                                 window.multipleFacesTimeout = null;
                             }
-                            document.getElementById('multiple-faces-warning')?.classList.remove('active');
+                           const warningEl = document.getElementById('multiple-faces-warning');
+if (warningEl) warningEl.classList.remove('active');
 
                             if (faceDetectionRecoveryTimer) {
                                 clearInterval(faceDetectionRecoveryTimer);
@@ -2777,7 +2778,8 @@
                                     
                                     // Auto-submit after 10 seconds
                                     window.multipleFacesTimeout = setTimeout(() => {
-                                        document.getElementById('multiple-faces-warning')?.classList.remove('active');
+                                        const warningEl = document.getElementById('multiple-faces-warning');
+if (warningEl) warningEl.classList.remove('active');
                                         if (isExamActive && !isSubmitting) {
                                             showToast('🚨 Multiple faces detected for 10 seconds! Auto-submitting exam...', 'error');
                                             logProctoringEvent('auto_submit', 'Auto-submitted due to multiple faces for 10 seconds', 'critical');
