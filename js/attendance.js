@@ -1,4 +1,6 @@
 // COMPLETE ATTENDANCE SYSTEM - WITH DEVICE FINGERPRINTING
+// FULLY FIXED: History loading, table columns, error handling
+
 (function() {
     'use strict';
     
@@ -19,6 +21,7 @@
     let selectedTarget = null;
     let currentStudent = null;
     let deviceTableExists = null;
+    window.locationWatchId = null;
     
     // ============================================
     // HELPER FUNCTIONS
@@ -44,16 +47,20 @@
             return { program: 'KRCHN', intake_year: '2026' };
         }
         
-        const { data, error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('program, intake_year, full_name')
-            .eq('user_id', studentId)
-            .maybeSingle();
-        
-        if (!error && data && data.program) {
-            currentStudent = data;
-            console.log(`👨‍🎓 Student: ${data.program} ${data.intake_year}`);
-            return currentStudent;
+        try {
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('program, intake_year, full_name')
+                .eq('user_id', studentId)
+                .maybeSingle();
+            
+            if (!error && data && data.program) {
+                currentStudent = data;
+                console.log(`👨‍🎓 Student: ${data.program} ${data.intake_year}`);
+                return currentStudent;
+            }
+        } catch(e) {
+            console.warn('Profile load error:', e);
         }
         
         return { program: 'KRCHN', intake_year: '2026' };
@@ -66,6 +73,26 @@
         const dLon = toRad(lon2 - lon1);
         const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    // ============================================
+    // TABLE EXISTENCE CHECK
+    // ============================================
+    
+    async function tableExists(tableName) {
+        try {
+            const supabase = window.db?.supabase;
+            if (!supabase) return false;
+            
+            const { error } = await supabase
+                .from(tableName)
+                .select('count', { count: 'exact', head: true })
+                .limit(1);
+            
+            return !error;
+        } catch(e) {
+            return false;
+        }
     }
     
     // ============================================
@@ -99,16 +126,8 @@
     async function checkDeviceTableExists() {
         if (deviceTableExists !== null) return deviceTableExists;
         
-        const supabase = window.db?.supabase;
-        if (!supabase) return false;
-        
         try {
-            const { error } = await supabase
-                .from('device_registrations')
-                .select('count', { count: 'exact', head: true })
-                .limit(1);
-            
-            deviceTableExists = !error;
+            deviceTableExists = await tableExists('device_registrations');
             if (!deviceTableExists) {
                 console.log('⚠️ device_registrations table not found. Device fingerprinting disabled.');
             } else {
@@ -163,7 +182,7 @@
                     device_hash: deviceFingerprint.hash,
                     student_id: studentId,
                     student_name: student?.full_name || 'Unknown',
-                    device_name: `${navigator.platform} - ${deviceFingerprint.details.touchSupport ? 'Mobile' : 'Desktop'}`,
+                    device_name: `${navigator.platform} - ${fingerprint.touchSupport ? 'Mobile' : 'Desktop'}`,
                     device_details: deviceFingerprint.details,
                     last_used: new Date().toISOString()
                 }, { onConflict: 'device_hash' });
@@ -201,110 +220,98 @@
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }
     }
-  // ============================================
-// FORCED FRESH GPS WITH RETRY FOR BETTER ACCURACY
-// ============================================
-
-function getRealLocation() {
-    console.log('📍 FORCING FRESH GPS (will retry for better accuracy)...');
     
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
-            return;
-        }
+    // ============================================
+    // FORCED FRESH GPS WITH RETRY
+    // ============================================
+    
+    function getRealLocation() {
+        console.log('📍 FORCING FRESH GPS...');
         
-        const options = {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 15000
-        };
-        
-        // Clear any existing watchers
-        if (navigator.geolocation.clearWatch && window.locationWatchId) {
-            navigator.geolocation.clearWatch(window.locationWatchId);
-            window.locationWatchId = null;
-        }
-        
-        let attempts = 0;
-        const maxAttempts = 5;
-        let bestLocation = null;
-        
-        function tryGetLocation() {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const timestamp = position.coords.timestamp;
-                    const age = Date.now() - timestamp;
-                    const accuracy = position.coords.accuracy;
-                    attempts++;
-                    
-                    console.log(`📍 Attempt ${attempts}: Accuracy ±${accuracy}m, Age: ${age}ms`);
-                    
-                    // Check for cached data
-                    if (age > 3000) {
-                        console.warn('⚠️ Cached GPS! Retrying...');
-                        if (attempts < maxAttempts) {
-                            setTimeout(tryGetLocation, 1000);
-                        } else {
-                            // Use it anyway if max attempts reached
-                            console.log('📌 Using cached location (max attempts reached)');
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocation not supported'));
+                return;
+            }
+            
+            const options = {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 15000
+            };
+            
+            if (navigator.geolocation.clearWatch && window.locationWatchId) {
+                navigator.geolocation.clearWatch(window.locationWatchId);
+                window.locationWatchId = null;
+            }
+            
+            let attempts = 0;
+            const maxAttempts = 5;
+            let bestLocation = null;
+            
+            function tryGetLocation() {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const timestamp = position.coords.timestamp;
+                        const age = Date.now() - timestamp;
+                        const accuracy = position.coords.accuracy;
+                        attempts++;
+                        
+                        console.log(`📍 Attempt ${attempts}: Accuracy ±${accuracy}m, Age: ${age}ms`);
+                        
+                        if (age > 3000) {
+                            console.warn('⚠️ Cached GPS! Retrying...');
+                            if (attempts < maxAttempts) {
+                                setTimeout(tryGetLocation, 1000);
+                            }
+                            return;
                         }
-                        return;
-                    }
-                    
-                    // Keep best accuracy location
-                    if (!bestLocation || accuracy < bestLocation.accuracy) {
-                        bestLocation = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: accuracy
-                        };
-                    }
-                    
-                    // Check if accuracy is good enough
-                    if (accuracy <= 50) {
-                        // EXCELLENT - accept immediately
-                        console.log('✅ EXCELLENT GPS!');
-                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                        resolve({ ...bestLocation, address });
-                    } 
-                    else if (accuracy <= 100 && attempts >= 2) {
-                        // GOOD - accept after at least 2 attempts
-                        console.log('✅ GOOD GPS (within 100m)');
-                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                        resolve({ ...bestLocation, address });
-                    }
-                    else if (attempts < maxAttempts) {
-                        // POOR - try again for better
-                        console.log(`🔄 Accuracy ${accuracy}m too low, retrying (${attempts}/${maxAttempts})...`);
-                        setTimeout(tryGetLocation, 2000);
-                    }
-                    else {
-                        // MAX attempts reached - use best we have
-                        console.warn(`⚠️ Using best available accuracy: ${bestLocation.accuracy}m after ${maxAttempts} attempts`);
-                        const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                        resolve({ ...bestLocation, address });
-                    }
-                },
-                (error) => {
-                    attempts++;
-                    console.error(`GPS Error attempt ${attempts}:`, error.message);
-                    
-                    if (attempts < maxAttempts) {
-                        console.log(`🔄 Retrying GPS (${attempts}/${maxAttempts})...`);
-                        setTimeout(tryGetLocation, 2000);
-                    } else {
-                        reject(error);
-                    }
-                },
-                options
-            );
-        }
-        
-        // Start the process
-        tryGetLocation();
-    });
-}
+                        
+                        if (!bestLocation || accuracy < bestLocation.accuracy) {
+                            bestLocation = {
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                accuracy: accuracy
+                            };
+                        }
+                        
+                        if (accuracy <= 50) {
+                            console.log('✅ EXCELLENT GPS!');
+                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                            resolve({ ...bestLocation, address });
+                        } 
+                        else if (accuracy <= 100 && attempts >= 2) {
+                            console.log('✅ GOOD GPS');
+                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                            resolve({ ...bestLocation, address });
+                        }
+                        else if (attempts < maxAttempts) {
+                            console.log(`🔄 Retrying (${attempts}/${maxAttempts})...`);
+                            setTimeout(tryGetLocation, 2000);
+                        }
+                        else {
+                            console.warn(`⚠️ Using best available: ${bestLocation.accuracy}m`);
+                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
+                            resolve({ ...bestLocation, address });
+                        }
+                    },
+                    (error) => {
+                        attempts++;
+                        console.error(`GPS Error ${attempts}:`, error.message);
+                        
+                        if (attempts < maxAttempts) {
+                            setTimeout(tryGetLocation, 2000);
+                        } else {
+                            reject(error);
+                        }
+                    },
+                    options
+                );
+            }
+            
+            tryGetLocation();
+        });
+    }
     
     // ============================================
     // UPDATE LOCATION DISPLAY
@@ -394,13 +401,19 @@ function getRealLocation() {
                 .eq('status', 'approved')
                 .order('unit_code');
             
-            if (error || !data) return [];
+            if (error) {
+                console.error('Error loading units:', error);
+                return [];
+            }
             
             approvedUnits = data.map(u => ({
                 id: u.id,
                 unit_code: u.unit_code,
                 unit_name: u.unit_name,
-                block: u.block
+                block: u.block,
+                latitude: u.latitude || CAMPUS_COORDINATES.latitude,
+                longitude: u.longitude || CAMPUS_COORDINATES.longitude,
+                radius: u.radius || 50
             }));
             
             console.log(`📚 Loaded ${approvedUnits.length} classroom units`);
@@ -419,6 +432,12 @@ function getRealLocation() {
         try {
             const supabase = window.db?.supabase;
             if (!supabase) return [];
+            
+            const exists = await tableExists('clinical_names');
+            if (!exists) {
+                console.warn('⚠️ clinical_names table not found');
+                return [];
+            }
             
             const student = await getCurrentStudentProfile();
             const program = student?.program || 'KRCHN';
@@ -466,9 +485,9 @@ function getRealLocation() {
                 id: `unit_${unit.id}`,
                 name: `${unit.unit_code} - ${unit.unit_name}`,
                 type: 'class',
-                latitude: CAMPUS_COORDINATES.latitude,
-                longitude: CAMPUS_COORDINATES.longitude,
-                radius: 50
+                latitude: unit.latitude || CAMPUS_COORDINATES.latitude,
+                longitude: unit.longitude || CAMPUS_COORDINATES.longitude,
+                radius: unit.radius || 50
             }));
         } 
         else if (sessionType === 'clinical') {
@@ -511,7 +530,6 @@ function getRealLocation() {
         const targetSelect = document.getElementById('attendance-target');
         const sessionTypeSelect = document.getElementById('session-type');
         
-        // DEVICE CHECK FIRST
         const deviceAllowed = await verifyAndRegisterDevice();
         if (!deviceAllowed) return;
         
@@ -623,6 +641,10 @@ function getRealLocation() {
             await updateStatsData();
             await loadHistory();
             
+            document.dispatchEvent(new CustomEvent('attendanceRecorded', {
+                detail: { isVerified: status === 'Present' }
+            }));
+            
         } catch(error) {
             console.error('Check-in error:', error);
             alert('Check-in failed: ' + error.message);
@@ -633,52 +655,97 @@ function getRealLocation() {
     }
     
     // ============================================
-    // LOAD HISTORY
+    // LOAD HISTORY - FIXED FOR 6 COLUMNS
     // ============================================
     
     async function loadHistory() {
         const table = document.getElementById('geo-attendance-history');
-        if (!table) return;
+        if (!table) {
+            console.warn('History table not found');
+            return;
+        }
         
         const supabase = window.db?.supabase;
         const studentId = getCurrentStudentId();
         
         if (!supabase || !studentId) {
-            table.innerHTML = '<tr><td colspan="7">Unable to load history...</td></tr>';
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+                <i class="fas fa-exclamation-circle"></i> Please log in to view history
+            </td></tr>`;
             return;
         }
         
-        const { data, error } = await supabase
-            .from('geo_attendance_logs')
-            .select('*')
-            .eq('student_id', studentId)
-            .order('check_in_time', { ascending: false })
-            .limit(20);
-        
-        if (error || !data || data.length === 0) {
-            table.innerHTML = '<tr><td colspan="7">No history records found</td></tr>';
-            return;
-        }
-        
-        table.innerHTML = data.map(log => {
-            const dist = log.distance_meters >= 1000 ? 
-                (log.distance_meters/1000).toFixed(2) + ' km' : 
-                log.distance_meters.toFixed(0) + ' m';
-            const time = new Date(log.check_in_time).toLocaleString();
-            const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
-                               (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
-            const locationDisplay = log.location_address || `${log.latitude?.toFixed(4) || '--'}, ${log.longitude?.toFixed(4) || '--'}`;
+        try {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('check_in_time', { ascending: false })
+                .limit(20);
             
-            return `<tr>
-                <td>${time}</td>
-                <td>${log.session_type === 'class' ? '📚 Class' : '🏥 Clinical'}</td>
-                <td>${log.target_name || 'Unknown'}</td>
-                <td style="color: ${statusColor}">${log.attendance_status || 'Unknown'}</td>
-                <td>${dist}</td>
-                <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
-                <td style="font-size: 11px; max-width: 150px; overflow: hidden;">${locationDisplay}</td>
-            </tr>`;
-        }).join('');
+            if (error) {
+                console.error('History query error:', error);
+                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+                    <i class="fas fa-exclamation-triangle"></i> Error loading history: ${error.message}
+                </td></tr>`;
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                    No attendance records found
+                    <div style="font-size:12px; margin-top:4px;">Check in to start tracking your attendance!</div>
+                </td></tr>`;
+                return;
+            }
+            
+            // ✅ FIX: Only 6 columns to match table header
+            table.innerHTML = data.map(log => {
+                const dist = log.distance_meters >= 1000 ? 
+                    (log.distance_meters/1000).toFixed(2) + ' km' : 
+                    log.distance_meters.toFixed(0) + ' m';
+                
+                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
+                                   (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
+                
+                const statusIcon = log.attendance_status === 'Present' ? '✅' : 
+                                   (log.attendance_status === 'Pending' ? '⏳' : '❌');
+                
+                const sessionIcon = log.session_type === 'class' ? '📚' : 
+                                    (log.session_type === 'clinical' ? '🏥' : '📖');
+                
+                return `<tr>
+                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
+                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
+                    <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.target_name || 'Unknown'}">
+                        ${log.target_name || 'Unknown'}
+                    </td>
+                    <td style="color: ${statusColor}; font-weight: 600;">
+                        ${statusIcon} ${log.attendance_status || 'Unknown'}
+                    </td>
+                    <td>${dist}</td>
+                    <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
+                </tr>`;
+            }).join('');
+            
+            console.log(`✅ Loaded ${data.length} history records`);
+            
+        } catch(e) {
+            console.error('History error:', e);
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> Error loading history. Please refresh.
+            </td></tr>`;
+        }
     }
     
     // ============================================
@@ -698,15 +765,20 @@ function getRealLocation() {
                 display: flex; gap: 20px; margin: 20px 0; padding: 15px 20px;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                flex-wrap: wrap;
             `;
             statsContainer.innerHTML = `
-                <div style="flex:1; text-align:center;">
+                <div style="flex:1; text-align:center; min-width: 100px;">
                     <div style="font-size:12px; opacity:0.8;">📅 PRESENT TODAY</div>
                     <div id="stats-present-count" style="font-size:36px; font-weight:bold; color:#4ade80;">0</div>
                 </div>
-                <div style="flex:1; text-align:center;">
+                <div style="flex:1; text-align:center; min-width: 100px;">
                     <div style="font-size:12px; opacity:0.8;">⏰ CURRENT TIME</div>
                     <div id="stats-current-time" style="font-size:24px; font-weight:bold; font-family:monospace;">--:--:--</div>
+                </div>
+                <div style="flex:1; text-align:center; min-width: 100px;">
+                    <div style="font-size:12px; opacity:0.8;">📍 GPS STATUS</div>
+                    <div id="stats-gps-status" style="font-size:16px; font-weight:bold; color:#93c5fd;">Ready</div>
                 </div>
             `;
             heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
@@ -715,23 +787,38 @@ function getRealLocation() {
     
     async function updateStatsData() {
         const presentEl = document.getElementById('stats-present-count');
-        if (presentEl) {
-            const supabase = window.db?.supabase;
-            const studentId = getCurrentStudentId();
-            if (supabase && studentId) {
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const { data } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('id', { count: 'exact' })
-                    .eq('student_id', studentId)
-                    .eq('attendance_status', 'Present')
-                    .gte('check_in_time', today.toISOString());
-                presentEl.textContent = data?.length || 0;
-            }
+        if (!presentEl) {
+            createStatsDisplayIfNeeded();
+            return;
         }
-        const timeEl = document.getElementById('stats-current-time');
-        if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+        
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (!supabase || !studentId) {
+            presentEl.textContent = '0';
+            return;
+        }
+        
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = today.toISOString();
+            
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('id', { count: 'exact' })
+                .eq('student_id', studentId)
+                .eq('attendance_status', 'Present')
+                .gte('check_in_time', todayStr);
+            
+            if (error) throw error;
+            presentEl.textContent = data?.length || 0;
+            
+        } catch(e) {
+            console.error('Stats error:', e);
+            presentEl.textContent = '?';
+        }
     }
     
     function startTimeUpdates() {
@@ -762,18 +849,131 @@ function getRealLocation() {
                 cursor: pointer;
                 font-size: 14px;
                 width: 100%;
+                transition: all 0.3s ease;
             `;
+            btn.onmouseover = () => { btn.style.background = '#d97706'; };
+            btn.onmouseout = () => { btn.style.background = '#f59e0b'; };
             btn.onclick = async () => {
                 console.log('🔄 Force refreshing GPS...');
+                const statusEl = document.getElementById('stats-gps-status');
+                if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
+                
                 try {
                     const location = await getRealLocation();
-                    alert(`📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m`);
+                    const msg = `📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m`;
+                    alert(msg);
                     await updateLocationDisplay(location);
+                    if (statusEl) statusEl.textContent = '✅ GPS Locked';
                 } catch(e) {
                     alert('GPS failed: ' + e.message);
+                    if (statusEl) statusEl.textContent = '❌ GPS Failed';
                 }
             };
             container.insertBefore(btn, container.firstChild);
+        }
+    }
+    
+    // ============================================
+    // FILTER FUNCTION
+    // ============================================
+    
+    async function filterHistory() {
+        const filter = document.getElementById('history-filter');
+        if (!filter) return;
+        
+        const value = filter.value;
+        const table = document.getElementById('geo-attendance-history');
+        if (!table) return;
+        
+        const supabase = window.db?.supabase;
+        const studentId = getCurrentStudentId();
+        
+        if (!supabase || !studentId) {
+            table.innerHTML = '<tr><td colspan="6">Please log in</td></tr>';
+            return;
+        }
+        
+        try {
+            let query = supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('check_in_time', { ascending: false });
+            
+            const now = new Date();
+            
+            if (value === 'today') {
+                const today = new Date(now);
+                today.setHours(0, 0, 0, 0);
+                query = query.gte('check_in_time', today.toISOString());
+            } else if (value === 'week') {
+                const weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                query = query.gte('check_in_time', weekAgo.toISOString());
+            } else if (value === 'month') {
+                const monthAgo = new Date(now);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                query = query.gte('check_in_time', monthAgo.toISOString());
+            }
+            // 'all' - no filter
+            
+            const { data, error } = await query.limit(50);
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                    No records for this period
+                </td></tr>`;
+                return;
+            }
+            
+            // Render rows (same as loadHistory)
+            table.innerHTML = data.map(log => {
+                const dist = log.distance_meters >= 1000 ? 
+                    (log.distance_meters/1000).toFixed(2) + ' km' : 
+                    log.distance_meters.toFixed(0) + ' m';
+                
+                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
+                                   (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
+                
+                const statusIcon = log.attendance_status === 'Present' ? '✅' : 
+                                   (log.attendance_status === 'Pending' ? '⏳' : '❌');
+                
+                const sessionIcon = log.session_type === 'class' ? '📚' : 
+                                    (log.session_type === 'clinical' ? '🏥' : '📖');
+                
+                return `<tr>
+                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
+                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
+                    <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.target_name || 'Unknown'}">
+                        ${log.target_name || 'Unknown'}
+                    </td>
+                    <td style="color: ${statusColor}; font-weight: 600;">
+                        ${statusIcon} ${log.attendance_status || 'Unknown'}
+                    </td>
+                    <td>${dist}</td>
+                    <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
+                </tr>`;
+            }).join('');
+            
+            console.log(`✅ Filtered ${data.length} records`);
+            
+        } catch(e) {
+            console.error('Filter error:', e);
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> Error filtering
+            </td></tr>`;
         }
     }
     
@@ -784,63 +984,99 @@ function getRealLocation() {
     async function init() {
         console.log('🚀 Initializing attendance system...');
         
-        await getCurrentStudentProfile();
-        await loadApprovedUnits();
-        await loadClinicalLocations();
-        
-        createStatsDisplayIfNeeded();
-        await updateStatsData();
-        startTimeUpdates();
-        
-        fixDropdown();
-        addForceGPSButton();
-        
-        // Check device table exists (just logs, doesn't block)
-        await checkDeviceTableExists();
-        
-        const sessionType = document.getElementById('session-type');
-        if (sessionType) {
-            sessionType.addEventListener('change', async () => {
-                const targetGroup = document.getElementById('target-control-group');
-                const targetLabel = document.getElementById('target-text');
+        try {
+            await getCurrentStudentProfile();
+            await loadApprovedUnits();
+            await loadClinicalLocations();
+            
+            createStatsDisplayIfNeeded();
+            await updateStatsData();
+            startTimeUpdates();
+            
+            fixDropdown();
+            addForceGPSButton();
+            
+            await checkDeviceTableExists();
+            
+            const sessionType = document.getElementById('session-type');
+            if (sessionType) {
+                sessionType.addEventListener('change', async () => {
+                    const targetGroup = document.getElementById('target-control-group');
+                    const targetLabel = document.getElementById('target-text');
+                    
+                    if (sessionType.value === 'class') {
+                        if (targetGroup) targetGroup.style.display = 'flex';
+                        if (targetLabel) targetLabel.textContent = 'Select Course:';
+                        await populateTargetOptions('class');
+                    } else if (sessionType.value === 'clinical') {
+                        if (targetGroup) targetGroup.style.display = 'flex';
+                        if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
+                        await populateTargetOptions('clinical');
+                    } else {
+                        if (targetGroup) targetGroup.style.display = 'none';
+                    }
+                });
                 
                 if (sessionType.value === 'class') {
-                    if (targetGroup) targetGroup.style.display = 'flex';
-                    if (targetLabel) targetLabel.textContent = 'Select Course:';
                     await populateTargetOptions('class');
                 } else if (sessionType.value === 'clinical') {
-                    if (targetGroup) targetGroup.style.display = 'flex';
-                    if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
                     await populateTargetOptions('clinical');
-                } else {
-                    if (targetGroup) targetGroup.style.display = 'none';
                 }
-            });
+            }
             
-            if (sessionType.value === 'class') {
-                await populateTargetOptions('class');
-            } else if (sessionType.value === 'clinical') {
-                await populateTargetOptions('clinical');
+            // ✅ Setup filter listener
+            const filterSelect = document.getElementById('history-filter');
+            if (filterSelect) {
+                filterSelect.addEventListener('change', filterHistory);
+            }
+            
+            // ✅ Setup refresh button
+            const refreshBtn = document.getElementById('refresh-history');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    loadHistory();
+                    updateStatsData();
+                });
+            }
+            
+            const checkBtn = document.getElementById('check-in-button');
+            if (checkBtn) {
+                checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
+            }
+            
+            await loadHistory();
+            console.log('✅ Attendance system ready!');
+        } catch(e) {
+            console.error('❌ Attendance init error:', e);
+            const btn = document.getElementById('check-in-button');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⚠️ System Error - Refresh';
+                btn.style.background = '#ef4444';
             }
         }
-        
-        const checkBtn = document.getElementById('check-in-button');
-        if (checkBtn) {
-            checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
-        }
-        
-        await loadHistory();
-        console.log('✅ Attendance system ready!');
     }
     
-    // Start
+    // ============================================
+    // EXPOSE FUNCTIONS
+    // ============================================
+    
+    window.refreshStats = updateStatsData;
+    window.refreshHistory = loadHistory;
+    window.filterHistory = filterHistory;
+    window.getRealLocation = getRealLocation;
+    window.attendanceSystemReady = true;
+    
+    // ============================================
+    // START
+    // ============================================
+    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
     
-    window.refreshStats = updateStatsData;
-    window.refreshHistory = loadHistory;
+    console.log('✅ Attendance system module loaded!');
     
 })();
