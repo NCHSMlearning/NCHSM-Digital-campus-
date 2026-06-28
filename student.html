@@ -199,6 +199,15 @@
             </div>
         </div>
 
+        <!-- ✅ FIX 1: NEXT EXAM WIDGET (ADD THIS) -->
+        <div class="next-exam-widget" style="display: none;">
+            <div class="widget-header">
+                <i class="fas fa-graduation-cap" style="color: white;"></i>
+                <h4 style="margin: 0; color: white; font-weight: 600;">📝 Next Exam</h4>
+            </div>
+            <div id="next-exam-details" style="color: white;"></div>
+        </div>
+
         <!-- STATS ROW (XP, NurseIQ, Attendance) -->
         <div class="stats-row">
             <div class="xp-area">
@@ -269,7 +278,11 @@
             <div class="mini-card" data-tab="nurseiq">
                 <i class="fas fa-brain"></i>
                 <div class="mini-card-value" id="dashboard-nurseiq-progress">--%</div>
-                <div class="mini-sub">Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>%</div>
+                <!-- ✅ FIX 2: ADD QUESTIONS COUNT -->
+                <div class="mini-sub">
+                    Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · 
+                    Questions: <span id="dashboard-nurseiq-questions">0</span>
+                </div>
             </div>
             <div class="mini-card" data-tab="hub-exam-card">
                 <i class="fas fa-id-card"></i>
@@ -297,7 +310,7 @@
             <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
         </div>
 
-        <!-- ========== ACTION REQUIRED SECTION========== -->
+        <!-- ========== ACTION REQUIRED SECTION ========== -->
         <div class="section-title">⚠️ Action Required</div>
         <div class="action-card warning">
             <i class="fas fa-book-medical"></i>
@@ -308,6 +321,18 @@
             <i class="fas fa-id-card"></i>
             <div class="action-content"><strong>Missing Passport Photo</strong><p>Your profile is incomplete. Please upload your passport photo.</p></div>
             <button class="action-btn" data-tab="profile">Upload →</button>
+        </div>
+        
+        <!-- ✅ FIX 3: LAST UPDATED TIMESTAMP -->
+        <div class="dashboard-footer" style="margin-top: 20px; padding: 10px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6b7280;">
+            <span>
+                <i class="fas fa-clock"></i> 
+                Last updated: <span id="dashboard-last-updated">Just now</span>
+            </span>
+            <span>
+                <i class="fas fa-user"></i> 
+                <span id="dashboard-student-id">Loading...</span>
+            </span>
         </div>
         
     </div>
