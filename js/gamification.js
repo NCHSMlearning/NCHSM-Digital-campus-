@@ -144,7 +144,6 @@
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                // Load NurseIQ attempts
                 const { data: attempts, error } = await window.db.supabase
                     .from('nurseiq_attempts')
                     .select('*')
@@ -155,13 +154,11 @@
                 
                 this.nurseiqAttempts = attempts || [];
                 
-                // Calculate NurseIQ points
                 let totalNurseIQPoints = 0;
                 let totalQuestions = 0;
                 let perfectScores = 0;
                 
                 for (const attempt of this.nurseiqAttempts) {
-                    // Points based on score percentage
                     const scorePercent = (attempt.score / attempt.total_questions) * 100;
                     
                     if (scorePercent >= 90) {
@@ -181,13 +178,11 @@
                     }
                 }
                 
-                // Add bonus for total questions
                 if (totalQuestions >= 50) {
                     await this.unlockBadge('nurseiq_master');
                     totalNurseIQPoints += 100;
                 }
                 
-                // Add bonus for perfect scores
                 if (perfectScores >= 3) {
                     await this.unlockBadge('nurseiq_perfect');
                     totalNurseIQPoints += 75;
@@ -195,7 +190,6 @@
                 
                 this.nurseiqPoints = totalNurseIQPoints;
                 
-                // Update total points (attendance + nurseiq)
                 const attendancePoints = this.points;
                 this.totalPoints = attendancePoints + this.nurseiqPoints;
                 
@@ -322,46 +316,86 @@
             }
         }
         
+        // ============================================================
+        // 🆕 UPDATED: Widget goes to DASHBOARD BODY, not header!
+        // ============================================================
         injectGamificationUI() {
-            this.addGamificationWidget();
+            // this.addGamificationWidget();  // ← OLD: Added to header
+            this.addGamificationWidgetToDashboard();  // ← NEW: Dashboard widget
             this.addLevelProgressBar();
             this.addBadgesSection();
             this.addLeaderboardSection();
         }
         
-        addGamificationWidget() {
-            const headerRight = document.querySelector('.header-right');
-            if (!headerRight) return;
+        // 🆕 NEW: Widget in Dashboard Body (Styled to match)
+        addGamificationWidgetToDashboard() {
+            const dashboardContainer = document.querySelector('.dashboard-container');
+            if (!dashboardContainer) return;
             if (document.querySelector('.gamification-widget')) return;
             
             const totalDisplayPoints = this.points + this.nurseiqPoints;
             
             const widget = document.createElement('div');
             widget.className = 'gamification-widget';
+            widget.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                padding: 16px 20px;
+                background: white;
+                border-radius: 12px;
+                margin: 12px 0 16px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+                border: 1px solid #e5e7eb;
+            `;
+            
             widget.innerHTML = `
-                <div class="streak-indicator" id="streak-indicator" title="Current Streak">
-                    <i class="fas fa-fire"></i>
-                    <span id="streak-count">${this.streak}</span>
-                    <span class="streak-label">Day Streak</span>
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-fire" style="color: #f59e0b; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="streak-count">${this.streak}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Day Streak</div>
                 </div>
-                <div class="points-indicator" id="points-indicator" title="Total Points (Attendance + NurseIQ)">
-                    <i class="fas fa-star"></i>
-                    <span id="points-count">${totalDisplayPoints}</span>
-                    <span class="points-label">Points</span>
+                
+                <div class="stat-item" style="text-align: center; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-star" style="color: #fcd34d; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="points-count">${totalDisplayPoints}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Total Points</div>
                 </div>
-                <div class="level-indicator" id="level-indicator" title="Current Level">
-                    <i class="fas fa-trophy"></i>
-                    <span id="level-number">${this.level}</span>
-                    <span class="level-label">Level</span>
+                
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-trophy" style="color: #f59e0b; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="level-number">${this.level}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Level</div>
+                </div>
+                
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-brain" style="color: #8b5cf6; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;">${this.nurseiqAttempts.length}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">NurseIQ Tests</div>
                 </div>
             `;
             
-            const mobileToggle = headerRight.querySelector('#mobile-menu-toggle');
-            if (mobileToggle) {
-                headerRight.insertBefore(widget, mobileToggle);
+            // Insert after the welcome section
+            const welcome = dashboardContainer.querySelector('.welcome');
+            if (welcome) {
+                welcome.insertAdjacentElement('afterend', widget);
             } else {
-                headerRight.insertBefore(widget, headerRight.firstChild);
+                dashboardContainer.prepend(widget);
             }
+        }
+        
+        // ⚠️ OLD METHOD - KEPT FOR REFERENCE (but not called)
+        addGamificationWidget() {
+            // This method is no longer used - widget goes to dashboard now
+            console.log('ℹ️ addGamificationWidget() is deprecated. Using addGamificationWidgetToDashboard() instead.');
         }
         
         addLevelProgressBar() {
@@ -473,7 +507,6 @@
                 this.addPoints(5, 'Registered for a unit');
             });
             
-            // Listen for NurseIQ test completion
             document.addEventListener('nurseiqTestCompleted', async (e) => {
                 console.log('📚 NurseIQ test completed, updating points...');
                 await this.loadNurseIQData();
@@ -643,156 +676,148 @@
         }
         
         async loadLeaderboard() {
-    const leaderboardList = document.getElementById('leaderboard-list');
-    if (!leaderboardList) return;
-    
-    leaderboardList.innerHTML = `
-        <div class="gamification-empty">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading student leaderboard...</p>
-        </div>
-    `;
-    
-    if (!window.db?.supabase) return;
-    
-    try {
-        // Query ONLY students with points > 0
-        const { data, error } = await window.db.supabase
-            .from('consolidated_user_profiles_table')
-            .select(`
-                user_id, 
-                full_name, 
-                gamification_points, 
-                attendance_streak, 
-                gamification_level,
-                nurseiq_points,
-                total_nurseiq_attempts,
-                role,
-                program,
-                block
-            `)
-            .eq('role', 'student')                    // ONLY students
-            .gt('gamification_points', 0)              // Only with points > 0
-            .not('full_name', 'is', null)
-            .neq('full_name', '')
-            .order('gamification_points', { ascending: false })
-            .limit(10);
-        
-        if (error) throw error;
-        
-        // Check if no students with points
-        if (!data || data.length === 0) {
-            // Show helpful message explaining how to earn points
+            const leaderboardList = document.getElementById('leaderboard-list');
+            if (!leaderboardList) return;
+            
             leaderboardList.innerHTML = `
                 <div class="gamification-empty">
-                    <i class="fas fa-chart-line" style="font-size: 40px; color: #cbd5e1;"></i>
-                    <p style="font-weight: 600; margin-top: 12px;">Leaderboard Coming Soon!</p>
-                    <p style="font-size: 13px;">No students have earned points yet.</p>
-                    <div style="margin-top: 15px; text-align: left; background: #f8fafc; padding: 12px; border-radius: 12px;">
-                        <p style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">📊 How to earn points:</p>
-                        <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 20px;">
-                            <li>✅ Complete daily attendance check-in (+5-10 points)</li>
-                            <li>✅ Take NurseIQ practice tests (+5-30 points per test)</li>
-                            <li>✅ Maintain daily streaks (+50-500 bonus points)</li>
-                            <li>✅ Unlock achievement badges (+10-200 points)</li>
-                        </ul>
-                    </div>
-                    <p style="font-size: 11px; margin-top: 12px; color: #f59e0b;">
-                        <i class="fas fa-info-circle"></i> Start using the system to see your name here!
-                    </p>
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading student leaderboard...</p>
                 </div>
             `;
-            return;
-        }
-        
-        // Display leaderboard with students who have points
-        leaderboardList.innerHTML = data.map((item, index) => {
-            let rankClass = '';
-            let rankIcon = '';
-            if (index === 0) {
-                rankClass = 'gold';
-                rankIcon = '👑';
-            } else if (index === 1) {
-                rankClass = 'silver';
-                rankIcon = '🥈';
-            } else if (index === 2) {
-                rankClass = 'bronze';
-                rankIcon = '🥉';
-            } else {
-                rankIcon = `${index + 1}`;
-            }
             
-            const name = item.full_name || 'Student';
-            // Get initials for avatar
-            const nameParts = name.split(' ');
-            let avatar = '';
-            if (nameParts.length >= 2) {
-                avatar = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-            } else {
-                avatar = name.substring(0, 2).toUpperCase();
-            }
+            if (!window.db?.supabase) return;
             
-            const totalPoints = (item.gamification_points || 0) + (item.nurseiq_points || 0);
-            
-            // Determine badge icon based on top contributor type
-            let specialBadge = '';
-            if (index === 0) {
-                if ((item.nurseiq_points || 0) > (item.gamification_points || 0)) {
-                    specialBadge = '<span class="special-badge nurseiq-leader" title="NurseIQ Leader"><i class="fas fa-stethoscope"></i></span>';
-                } else if ((item.attendance_streak || 0) > 5) {
-                    specialBadge = '<span class="special-badge streak-leader" title="Streak Leader"><i class="fas fa-fire"></i></span>';
+            try {
+                const { data, error } = await window.db.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select(`
+                        user_id, 
+                        full_name, 
+                        gamification_points, 
+                        attendance_streak, 
+                        gamification_level,
+                        nurseiq_points,
+                        total_nurseiq_attempts,
+                        role,
+                        program,
+                        block
+                    `)
+                    .eq('role', 'student')
+                    .gt('gamification_points', 0)
+                    .not('full_name', 'is', null)
+                    .neq('full_name', '')
+                    .order('gamification_points', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                if (!data || data.length === 0) {
+                    leaderboardList.innerHTML = `
+                        <div class="gamification-empty">
+                            <i class="fas fa-chart-line" style="font-size: 40px; color: #cbd5e1;"></i>
+                            <p style="font-weight: 600; margin-top: 12px;">Leaderboard Coming Soon!</p>
+                            <p style="font-size: 13px;">No students have earned points yet.</p>
+                            <div style="margin-top: 15px; text-align: left; background: #f8fafc; padding: 12px; border-radius: 12px;">
+                                <p style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">📊 How to earn points:</p>
+                                <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 20px;">
+                                    <li>✅ Complete daily attendance check-in (+5-10 points)</li>
+                                    <li>✅ Take NurseIQ practice tests (+5-30 points per test)</li>
+                                    <li>✅ Maintain daily streaks (+50-500 bonus points)</li>
+                                    <li>✅ Unlock achievement badges (+10-200 points)</li>
+                                </ul>
+                            </div>
+                            <p style="font-size: 11px; margin-top: 12px; color: #f59e0b;">
+                                <i class="fas fa-info-circle"></i> Start using the system to see your name here!
+                            </p>
+                        </div>
+                    `;
+                    return;
                 }
+                
+                leaderboardList.innerHTML = data.map((item, index) => {
+                    let rankClass = '';
+                    let rankIcon = '';
+                    if (index === 0) {
+                        rankClass = 'gold';
+                        rankIcon = '👑';
+                    } else if (index === 1) {
+                        rankClass = 'silver';
+                        rankIcon = '🥈';
+                    } else if (index === 2) {
+                        rankClass = 'bronze';
+                        rankIcon = '🥉';
+                    } else {
+                        rankIcon = `${index + 1}`;
+                    }
+                    
+                    const name = item.full_name || 'Student';
+                    const nameParts = name.split(' ');
+                    let avatar = '';
+                    if (nameParts.length >= 2) {
+                        avatar = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+                    } else {
+                        avatar = name.substring(0, 2).toUpperCase();
+                    }
+                    
+                    const totalPoints = (item.gamification_points || 0) + (item.nurseiq_points || 0);
+                    
+                    let specialBadge = '';
+                    if (index === 0) {
+                        if ((item.nurseiq_points || 0) > (item.gamification_points || 0)) {
+                            specialBadge = '<span class="special-badge nurseiq-leader" title="NurseIQ Leader"><i class="fas fa-stethoscope"></i></span>';
+                        } else if ((item.attendance_streak || 0) > 5) {
+                            specialBadge = '<span class="special-badge streak-leader" title="Streak Leader"><i class="fas fa-fire"></i></span>';
+                        }
+                    }
+                    
+                    const programDisplay = item.program ? item.program.substring(0, 3) : '';
+                    const blockDisplay = item.block ? `Block ${item.block}` : '';
+                    
+                    return `
+                        <div class="leaderboard-item">
+                            <div class="leaderboard-rank ${rankClass}">${rankIcon}</div>
+                            <div class="leaderboard-avatar">${avatar}</div>
+                            <div class="leaderboard-info">
+                                <div class="leaderboard-name">
+                                    ${this.escapeHtml(name)} ${specialBadge}
+                                    ${programDisplay ? `<span class="program-badge">${programDisplay}</span>` : ''}
+                                </div>
+                                <div class="leaderboard-stats">
+                                    <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
+                                    <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
+                                    ${item.total_nurseiq_attempts > 0 ? `<i class="fas fa-stethoscope" style="margin-left: 8px;"></i> ${item.total_nurseiq_attempts} tests` : ''}
+                                    ${blockDisplay ? `<i class="fas fa-layer-group" style="margin-left: 8px;"></i> ${blockDisplay}` : ''}
+                                </div>
+                            </div>
+                            <div class="leaderboard-points">
+                                ${totalPoints} pts
+                                <small style="display: block; font-size: 9px; color: #6b7280;">
+                                    🎓 ${item.gamification_points || 0} + 🩺 ${item.nurseiq_points || 0}
+                                </small>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                leaderboardList.innerHTML = `
+                    <div class="gamification-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error loading student leaderboard</p>
+                        <small>Please refresh the page</small>
+                    </div>
+                `;
             }
-            
-            // Get program info
-            const programDisplay = item.program ? item.program.substring(0, 3) : '';
-            const blockDisplay = item.block ? `Block ${item.block}` : '';
-            
-            return `
-                <div class="leaderboard-item">
-                    <div class="leaderboard-rank ${rankClass}">${rankIcon}</div>
-                    <div class="leaderboard-avatar">${avatar}</div>
-                    <div class="leaderboard-info">
-                        <div class="leaderboard-name">
-                            ${this.escapeHtml(name)} ${specialBadge}
-                            ${programDisplay ? `<span class="program-badge">${programDisplay}</span>` : ''}
-                        </div>
-                        <div class="leaderboard-stats">
-                            <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
-                            <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
-                            ${item.total_nurseiq_attempts > 0 ? `<i class="fas fa-stethoscope" style="margin-left: 8px;"></i> ${item.total_nurseiq_attempts} tests` : ''}
-                            ${blockDisplay ? `<i class="fas fa-layer-group" style="margin-left: 8px;"></i> ${blockDisplay}` : ''}
-                        </div>
-                    </div>
-                    <div class="leaderboard-points">
-                        ${totalPoints} pts
-                        <small style="display: block; font-size: 9px; color: #6b7280;">
-                            🎓 ${item.gamification_points || 0} + 🩺 ${item.nurseiq_points || 0}
-                        </small>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-    } catch (error) {
-        console.error('Error loading leaderboard:', error);
-        leaderboardList.innerHTML = `
-            <div class="gamification-empty">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Error loading student leaderboard</p>
-                <small>Please refresh the page</small>
-            </div>
-        `;
-    }
-}
+        }
 
-// Helper function to escape HTML (add this to your class)
-escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
+        escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
         
         updateDashboardStats() {
             const totalPoints = this.points + this.nurseiqPoints;
