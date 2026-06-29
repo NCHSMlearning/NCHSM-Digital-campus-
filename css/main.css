@@ -989,8 +989,8 @@ p {
 .tab-content {
     display: none;
     width: 100%;
-    max-width: var(--container-2xl);
-    margin: 0 auto;
+    max-width: none;    /* Remove the width limit */
+    margin: 0;          /* Remove auto centering */
     background: white;
     padding: var(--space-6);
     border-radius: var(--radius-2xl);
@@ -998,7 +998,6 @@ p {
     box-shadow: var(--shadow-xl);
     animation: fadeIn var(--transition-base);
 }
-
 .tab-content.active {
     display: block;
 }
