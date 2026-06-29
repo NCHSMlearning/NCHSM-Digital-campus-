@@ -776,41 +776,83 @@ app.post('/api/add-unit', async (req, res) => {
 });
 
 // Helper function to create marksheet with students
+// ======================= FIXED: CREATE MARKSHEET WITH STUDENTS =======================
 async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType) {
   try {
-    // Get students from STUDENTS sheet
+    console.log(`📝 Creating marksheet for ${block} - ${subject}`);
+    
+    // 1. Get students from STUDENTS sheet
     const studentsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
       range: 'STUDENTS!A:D',
     });
     const students = studentsResponse.data.values || [];
+    console.log(`📊 Found ${students.length - 1} students in STUDENTS sheet`);
     
     // Clean subject name for sheet title
     let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
     const sheetName = `${block}_${cleanSubject}`;
     
-    // Prepare rows
+    // 2. Prepare rows with HEADERS + ALL ACTIVE STUDENTS
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE']];
     
-    // Add all active students
+    let studentCount = 0;
     for (let i = 1; i < students.length; i++) {
       const row = students[i];
-      if (row && row[0] && row[3] !== 'INACTIVE') {
-        rows.push([row[0], row[1] || '', '', '', '', '', '', '', assessmentType]);
+      // ✅ FIX: Check if student has admission number and is ACTIVE
+      if (row && row[0] && row[0].trim() !== '' && row[3] !== 'INACTIVE') {
+        rows.push([
+          row[0].trim(),           // ADMISSION
+          row[1] || '',            // NAME
+          '',                      // CAT1
+          '',                      // CAT2
+          '',                      // EXAM
+          '',                      // FINAL
+          '',                      // GRADE
+          '',                      // GRADED BY
+          assessmentType || 'full' // ASSESSMENT_TYPE
+        ]);
+        studentCount++;
       }
     }
     
-    // Check if sheet already exists
+    console.log(`👥 Adding ${studentCount} students to ${sheetName}`);
+    
+    // 3. ✅ FIX: Check if sheet exists and DELETE it first
     try {
-      await sheets.spreadsheets.batchUpdate({
+      const existingSheet = await sheets.spreadsheets.get({
         spreadsheetId: spreadsheetId,
-        requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
       });
+      const sheetsList = existingSheet.data.sheets || [];
+      for (const sheet of sheetsList) {
+        if (sheet.properties.title === sheetName) {
+          console.log(`🗑️ Deleting existing sheet: ${sheetName}`);
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: spreadsheetId,
+            requestBody: {
+              requests: [
+                { deleteSheet: { sheetId: sheet.properties.sheetId } }
+              ]
+            }
+          });
+          break;
+        }
+      }
     } catch (e) {
-      console.log('Sheet may already exist:', e.message);
+      console.log('No existing sheet to delete or error:', e.message);
     }
     
-    // Write data to sheet
+    // 4. Create new sheet
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetId,
+      requestBody: {
+        requests: [
+          { addSheet: { properties: { title: sheetName } } }
+        ]
+      }
+    });
+    
+    // 5. Write data to sheet
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
       range: `${sheetName}!A1:I${rows.length}`,
@@ -818,12 +860,14 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       requestBody: { values: rows }
     });
     
-    console.log(`Created marksheet for ${subject} with ${rows.length - 1} students`);
+    console.log(`✅ Created marksheet ${sheetName} with ${studentCount} students`);
+    return { success: true, studentCount };
+    
   } catch (error) {
-    console.error('Error creating marksheet:', error);
+    console.error('❌ Error creating marksheet:', error);
+    return { success: false, error: error.message };
   }
 }
-
 app.post('/api/update-unit', async (req, res) => {
   try {
     const { block, oldName, newName, assessmentType } = req.body;
