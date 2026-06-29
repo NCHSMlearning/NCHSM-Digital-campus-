@@ -1273,12 +1273,19 @@ window.renderWithSidebar = function(contentHtml) {
   }
   
   // Modified showMain to use sidebar layout
+// ======================= FIXED: showMain() =======================
 async function showMain() { 
   showLoading('Loading Dashboard...'); 
   const isAdmin=(currentUser.role==='admin'); 
   const yearOptions=INTAKE_YEARS.map(y=>`<option value="${y}" ${y===currentYear?'selected':''}>🎓 March ${y} Class</option>`).join(''); 
   const examTypeOptions=`<option value="internal" ${currentExamType==='internal'?'selected':''}>📝 Internal Exams (CAT1+CAT2+Exam)</option><option value="nck" ${currentExamType==='nck'?'selected':''}>🏥 NCK Score Sheet (Clinical Assessment)</option>`; 
-  const statsHtml=`<div class="selector-group"><div><label><i class="fas fa-calendar-alt"></i> Class Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div><div><label><i class="fas fa-file-alt"></i> Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div></div><div class="stats-grid"><div class="stat-card"><div class="stat-number" id="totalStudents">-</div><div class="stat-label"><i class="fas fa-users"></i> Total Students</div></div><div class="stat-card"><div class="stat-number">6</div><div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div></div><div class="stat-card"><div class="stat-number" id="totalSubjects">-</div><div class="stat-label"><i class="fas fa-book"></i> Active Units</div></div><div class="stat-card"><div class="stat-number">60%</div><div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div></div></div>`; 
+  
+  // ✅ FIX: Fetch stats BEFORE rendering
+  const stats = await apiCall('/api/stats', {}); 
+  console.log(`📊 Stats for ${currentYear}:`, stats);
+  
+  const statsHtml=`<div class="selector-group"><div><label><i class="fas fa-calendar-alt"></i> Class Year:</label> <select id="yearSelectMain" onchange="changeYear()">${yearOptions}</select></div><div><label><i class="fas fa-file-alt"></i> Exam Type:</label> <select id="examTypeSelect" onchange="changeExamType()">${examTypeOptions}</select></div></div><div class="stats-grid"><div class="stat-card"><div class="stat-number">${stats.totalStudents||0}</div><div class="stat-label"><i class="fas fa-users"></i> Total Students</div></div><div class="stat-card"><div class="stat-number">6</div><div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div></div><div class="stat-card"><div class="stat-number">${isAdmin?(stats.totalSubjects||0):(currentUser.subjects||[]).length}</div><div class="stat-label"><i class="fas fa-book"></i> Active Units</div></div><div class="stat-card"><div class="stat-number">60%</div><div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div></div></div>`; 
+  
   let menuHtml=''; 
   if(isAdmin){ 
     menuHtml=`<div class="admin-menu-grid">
@@ -1300,6 +1307,7 @@ async function showMain() {
       <button class="menu-btn btn-export" id="lecturerReportsBtn"><i class="fas fa-download"></i> Reports</button>
     </div>`; 
   } 
+  
   const contentHtml = `<div class="container"><div class="header"><h1><i class="fas fa-hospital-user"></i> Nakuru College of Health Sciences</h1><p style="margin-top:8px;">${currentUser.name} (${currentUser.role}) | March ${currentYear} Class | Pass Mark: 60%</p></div><div class="user-info"><span><i class="fas fa-user-circle"></i> Welcome, ${currentUser.name}</span><div><button onclick="toggleDarkMode()" class="menu-btn btn-dark" style="padding:8px 20px;margin-right:12px;"><i class="fas fa-moon"></i> Dark Mode</button><button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div></div>${statsHtml}${menuHtml}<div id="contentArea"></div></div>`;
   
   renderWithSidebar(contentHtml);
@@ -1330,17 +1338,20 @@ async function showMain() {
       }
   });
   
-  const stats=await apiCall('/api/stats',{}); 
-  const totalStudentsEl = document.getElementById('totalStudents');
-  const totalSubjectsEl = document.getElementById('totalSubjects');
-  if(totalStudentsEl) totalStudentsEl.innerHTML = stats.totalStudents||0; 
-  if(totalSubjectsEl) totalSubjectsEl.innerHTML = isAdmin?(stats.totalSubjects||0):(currentUser.subjects||[]).length; 
   hideLoading(); 
 }
-
   
-  window.changeYear=function(){ currentYear=document.getElementById('yearSelectMain').value; localStorage.setItem('selectedYear',currentYear); configCache=null; showMain(); };
-  window.changeExamType=function(){ currentExamType=document.getElementById('examTypeSelect').value; localStorage.setItem('selectedExamType',currentExamType); showMain(); };
+// ======================= FIXED: changeYear() =======================
+window.changeYear = function() { 
+  const newYear = document.getElementById('yearSelectMain').value;
+  if (newYear !== currentYear) {
+    currentYear = newYear; 
+    localStorage.setItem('selectedYear', currentYear);
+    configCache = null; // ✅ Clear cache
+    showMain(); // ✅ Refresh
+    showNotification(`📅 Switched to March ${currentYear} Class`, false);
+  }
+};  window.changeExamType=function(){ currentExamType=document.getElementById('examTypeSelect').value; localStorage.setItem('selectedExamType',currentExamType); showMain(); };
   
   // ======================= ALL YOUR ORIGINAL FUNCTIONS CONTINUE BELOW =======================
   
