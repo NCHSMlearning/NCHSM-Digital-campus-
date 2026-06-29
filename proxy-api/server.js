@@ -777,6 +777,7 @@ app.post('/api/add-unit', async (req, res) => {
 
 // Helper function to create marksheet with students
 // ======================= FIXED: CREATE MARKSHEET WITH STUDENTS =======================
+// ======================= FIXED: CREATE MARKSHEET WITH STUDENTS (NO DUPLICATES) =======================
 async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType) {
   try {
     console.log(`📝 Creating marksheet for ${block} - ${subject}`);
@@ -793,14 +794,63 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
     const sheetName = `${block}_${cleanSubject}`;
     
-    // 2. Prepare rows with HEADERS + ALL ACTIVE STUDENTS
+    // 2. ✅ CHECK: Does the sheet already exist?
+    let existingAdmissions = new Set();
+    let sheetExists = false;
+    
+    try {
+      const existingResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: spreadsheetId,
+        range: `${sheetName}!A:A`,
+      });
+      const existingData = existingResponse.data.values || [];
+      sheetExists = true;
+      
+      // Normalize existing admissions for comparison
+      for (let i = 1; i < existingData.length; i++) {
+        if (existingData[i] && existingData[i][0]) {
+          let admission = existingData[i][0].trim().toUpperCase();
+          admission = admission.replace(/\/24(?![0-9])/g, '/2024');
+          admission = admission.replace(/\/25(?![0-9])/g, '/2025');
+          admission = admission.replace(/\/26(?![0-9])/g, '/2026');
+          admission = admission.replace(/MAR\/24(?![0-9])/g, 'MAR/2024');
+          admission = admission.replace(/MAR\/25(?![0-9])/g, 'MAR/2025');
+          admission = admission.replace(/MAR\/26(?![0-9])/g, 'MAR/2026');
+          existingAdmissions.add(admission);
+        }
+      }
+      console.log(`📋 Found ${existingAdmissions.size} existing students in marksheet`);
+    } catch (e) {
+      console.log('📋 Sheet does not exist, will create new');
+      sheetExists = false;
+    }
+    
+    // 3. Prepare rows - HEADERS FIRST
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE']];
     
-    let studentCount = 0;
+    let addedCount = 0;
+    let skippedCount = 0;
+    
+    // 4. ✅ ADD ONLY STUDENTS THAT DON'T ALREADY EXIST
     for (let i = 1; i < students.length; i++) {
       const row = students[i];
-      // ✅ FIX: Check if student has admission number and is ACTIVE
       if (row && row[0] && row[0].trim() !== '' && row[3] !== 'INACTIVE') {
+        // Normalize admission for comparison
+        let admission = row[0].trim().toUpperCase();
+        admission = admission.replace(/\/24(?![0-9])/g, '/2024');
+        admission = admission.replace(/\/25(?![0-9])/g, '/2025');
+        admission = admission.replace(/\/26(?![0-9])/g, '/2026');
+        admission = admission.replace(/MAR\/24(?![0-9])/g, 'MAR/2024');
+        admission = admission.replace(/MAR\/25(?![0-9])/g, 'MAR/2025');
+        admission = admission.replace(/MAR\/26(?![0-9])/g, 'MAR/2026');
+        
+        // ✅ SKIP if student already exists
+        if (existingAdmissions.has(admission)) {
+          skippedCount++;
+          console.log(`⏭️ Skipping existing: ${row[0]}`);
+          continue;
+        }
+        
         rows.push([
           row[0].trim(),           // ADMISSION
           row[1] || '',            // NAME
@@ -812,37 +862,43 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
           '',                      // GRADED BY
           assessmentType || 'full' // ASSESSMENT_TYPE
         ]);
-        studentCount++;
+        addedCount++;
+        existingAdmissions.add(admission);
       }
     }
     
-    console.log(`👥 Adding ${studentCount} students to ${sheetName}`);
+    console.log(`👥 Adding ${addedCount} new students, skipping ${skippedCount} existing`);
     
-    // 3. ✅ FIX: Check if sheet exists and DELETE it first
-    try {
-      const existingSheet = await sheets.spreadsheets.get({
+    // 5. If sheet exists and no new students, return
+    if (sheetExists && addedCount === 0) {
+      console.log(`✅ No new students to add. Sheet already has ${existingAdmissions.size} students.`);
+      return { success: true, studentCount: existingAdmissions.size, newStudents: 0 };
+    }
+    
+    // 6. If sheet exists, append new rows instead of deleting everything
+    if (sheetExists) {
+      // Get current data to find last row
+      const currentResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
+        range: `${sheetName}!A:I`,
       });
-      const sheetsList = existingSheet.data.sheets || [];
-      for (const sheet of sheetsList) {
-        if (sheet.properties.title === sheetName) {
-          console.log(`🗑️ Deleting existing sheet: ${sheetName}`);
-          await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: spreadsheetId,
-            requestBody: {
-              requests: [
-                { deleteSheet: { sheetId: sheet.properties.sheetId } }
-              ]
-            }
-          });
-          break;
-        }
+      const currentData = currentResponse.data.values || [];
+      const lastRow = currentData.length;
+      
+      // Append new students starting from next row
+      if (rows.length > 1) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: spreadsheetId,
+          range: `${sheetName}!A${lastRow + 1}:I${lastRow + rows.length - 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: rows.slice(1) }
+        });
+        console.log(`✅ Added ${addedCount} new students to existing sheet`);
       }
-    } catch (e) {
-      console.log('No existing sheet to delete or error:', e.message);
+      return { success: true, studentCount: existingAdmissions.size + addedCount, newStudents: addedCount };
     }
     
-    // 4. Create new sheet
+    // 7. Create new sheet (only if it doesn't exist)
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
       requestBody: {
@@ -852,7 +908,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       }
     });
     
-    // 5. Write data to sheet
+    // 8. Write data to new sheet
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
       range: `${sheetName}!A1:I${rows.length}`,
@@ -860,8 +916,8 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       requestBody: { values: rows }
     });
     
-    console.log(`✅ Created marksheet ${sheetName} with ${studentCount} students`);
-    return { success: true, studentCount };
+    console.log(`✅ Created new marksheet ${sheetName} with ${rows.length - 1} students (${addedCount} new)`);
+    return { success: true, studentCount: rows.length - 1, newStudents: addedCount };
     
   } catch (error) {
     console.error('❌ Error creating marksheet:', error);
