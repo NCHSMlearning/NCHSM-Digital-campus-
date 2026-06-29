@@ -714,6 +714,7 @@ function showEnhancedImportPreview(importData, detectedType, detectedInfo, autoS
 }
 
 // ======================= CONFIRM ENHANCED IMPORT =======================
+// ======================= CONFIRM ENHANCED IMPORT =======================
 window.confirmEnhancedImport = async function() {
     const checkedBoxes = document.querySelectorAll('.import-row-checkbox:checked');
     if (checkedBoxes.length === 0) {
@@ -737,15 +738,37 @@ window.confirmEnhancedImport = async function() {
     showLoading(`Importing ${checkedBoxes.length} records...`);
     
     try {
+        // Get existing marks to check for duplicates
         const existingMarks = await apiCall(`/api/marks/${block}/${encodeURIComponent(subject)}`, {});
         const existingMap = {};
-        if (existingMarks && !existingMarks.error) {
+        if (existingMarks && !existingMarks.error && Array.isArray(existingMarks)) {
             existingMarks.forEach(m => {
                 existingMap[m.admission] = true;
             });
         }
         
-        const importData = [];
+        // Get existing data to find the next available row
+        let currentData = [];
+        try {
+            const currentResponse = await apiCall(`/api/marks/${block}/${encodeURIComponent(subject)}`, {});
+            if (currentResponse && !currentResponse.error && Array.isArray(currentResponse)) {
+                currentData = currentResponse;
+            }
+        } catch (e) {
+            console.log('No existing data, starting fresh');
+        }
+        
+        // Find the highest row number
+        let maxRow = 1;
+        if (currentData.length > 0) {
+            currentData.forEach(m => {
+                if (m.row && m.row > maxRow) maxRow = m.row;
+            });
+        }
+        let rowCounter = maxRow + 1;
+        
+        // Build import data in the format the server expects
+        const marksData = [];
         let skipped = 0;
         let imported = 0;
         
@@ -754,15 +777,15 @@ window.confirmEnhancedImport = async function() {
             const row = window._importData[idx];
             if (!row) return;
             
+            // Check if already exists
             if (existingMap[row.admission]) {
                 skipped++;
                 return;
             }
             
-            importData.push({
-                row: importData.length + 2,
-                admission: row.admission,
-                name: row.name,
+            // ✅ Server only needs: row, cat1, cat2, exam
+            marksData.push({
+                row: rowCounter++,
                 cat1: row.cat1 || 0,
                 cat2: row.cat2 || 0,
                 exam: row.exam || 0
@@ -770,7 +793,7 @@ window.confirmEnhancedImport = async function() {
             imported++;
         });
         
-        if (importData.length === 0) {
+        if (marksData.length === 0) {
             hideLoading();
             if (skipped > 0) {
                 showNotification(`All ${skipped} records already exist in this subject`, true);
@@ -780,12 +803,13 @@ window.confirmEnhancedImport = async function() {
             return;
         }
         
+        // Send to server
         const result = await apiCall('/api/marks', {
             method: 'POST',
             body: JSON.stringify({
                 block: block,
                 subject: subject,
-                marksData: importData,
+                marksData: marksData,
                 lecturerName: currentUser?.name || 'System Import',
                 examType: 'internal',
                 userRole: currentUser?.role || 'admin'
@@ -794,20 +818,24 @@ window.confirmEnhancedImport = async function() {
         
         hideLoading();
         
-        if (result.success) {
-            let msg = `✅ Imported ${importData.length} records to ${block} - ${subject}`;
+        if (result && result.success) {
+            let msg = `✅ Imported ${marksData.length} records to ${block} - ${subject}`;
             if (skipped > 0) msg += ` (${skipped} skipped - already exist)`;
             showNotification(msg, false);
             const modal = document.querySelector('.modal');
             if (modal) modal.remove();
-            if (currentTab === 'marks') showAdminMarks();
-            else if (currentTab === 'nck') loadNCKMarks();
+            // Refresh the view
+            if (typeof showAdminMarks === 'function') showAdminMarks();
+            else if (typeof loadNCKMarks === 'function') loadNCKMarks();
         } else {
-            showNotification('Import failed: ' + (result.message || 'Unknown error'), true);
+            const errorMsg = result?.message || result?.error || 'Unknown error';
+            console.error('❌ Import failed:', errorMsg);
+            showNotification(`Import failed: ${errorMsg}`, true);
         }
         
     } catch (err) {
         hideLoading();
+        console.error('❌ Import error:', err);
         showNotification('Import error: ' + err.message, true);
     }
 };
