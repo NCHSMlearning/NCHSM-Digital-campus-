@@ -710,7 +710,7 @@
                 successDiv.classList.add('show');
 
                 setTimeout(() => {
-                    window.location.href = 'admin_exam_results.html';
+                    window.location.href = 'adminexams.html';
                 }, 1200);
 
             } catch (error) {
@@ -757,7 +757,7 @@
                     const hoursDiff = (now - loggedInAt) / (1000 * 60 * 60);
                     
                     if (hoursDiff < 24) {
-                        window.location.href = 'admin_exam_results.html';
+                        window.location.href = 'adminexams.html';
                     } else {
                         localStorage.removeItem('adminSession');
                     }
