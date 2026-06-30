@@ -302,28 +302,59 @@
     function getPassMark(totalMarks) {
         return Math.round(totalMarks * 0.6);
     }
+window.updateTotalMarksHint = function() {
+    const examType = document.getElementById('examType').value;
+    const totalMarksInput = document.getElementById('examTotalMarks');
+    const hintEl = document.getElementById('totalMarksHint');
+    const passMarkInput = document.getElementById('examPassMark');
+    
+    // Get the current value or use default
+    let currentTotal = parseInt(totalMarksInput.value) || 0;
+    let defaultMarks = 30;
+    let defaultPass = 18;
+    
+    if (examType && examType.toUpperCase().includes('CAT')) {
+        defaultMarks = 30;
+        defaultPass = 18;
+        hintEl.innerHTML = '📊 CAT exams: <strong>30 marks</strong> (you can change this) | Pass mark: <strong>60%</strong>';
+    } else if (examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM') {
+        defaultMarks = 70;
+        defaultPass = 42;
+        hintEl.innerHTML = '📊 Final exams: <strong>70 marks</strong> (you can change this) | Pass mark: <strong>60%</strong>';
+    } else {
+        defaultMarks = 100;
+        defaultPass = 60;
+        hintEl.innerHTML = '📊 Standard exams: <strong>100 marks</strong> (you can change this) | Pass mark: <strong>60%</strong>';
+    }
+    
+    // Only set if empty or zero
+    if (!currentTotal || currentTotal === 0) {
+        totalMarksInput.value = defaultMarks;
+        passMarkInput.value = defaultPass;
+    } else {
+        // Auto-calculate pass mark based on current total
+        passMarkInput.value = Math.round(currentTotal * 0.6);
+        hintEl.innerHTML = `📊 Total marks: <strong>${currentTotal}</strong> | Pass mark (60%): <strong>${Math.round(currentTotal * 0.6)}</strong>`;
+    }
+};
 
-    window.updateTotalMarksHint = function() {
-        const examType = document.getElementById('examType').value;
-        const totalMarksInput = document.getElementById('examTotalMarks');
-        const hintEl = document.getElementById('totalMarksHint');
-        const passMarkInput = document.getElementById('examPassMark');
-
-        if (examType && examType.toUpperCase().includes('CAT')) {
-            totalMarksInput.value = 30;
-            hintEl.innerHTML = '📊 CAT exams: <strong>30 marks</strong> | Pass mark: <strong>18 marks (60%)</strong>';
-            if (passMarkInput) passMarkInput.value = 60;
-        } else if (examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM') {
-            totalMarksInput.value = 70;
-            hintEl.innerHTML = '📊 Final exams: <strong>70 marks</strong> | Pass mark: <strong>42 marks (60%)</strong>';
-            if (passMarkInput) passMarkInput.value = 60;
-        } else {
-            totalMarksInput.value = 100;
-            hintEl.innerHTML = '📊 Standard exams: <strong>100 marks</strong> | Pass mark: <strong>60 marks (60%)</strong>';
-            if (passMarkInput) passMarkInput.value = 60;
-        }
-    };
-
+// Add real-time update when total marks changes
+document.addEventListener('DOMContentLoaded', function() {
+    const totalMarksInput = document.getElementById('examTotalMarks');
+    if (totalMarksInput) {
+        totalMarksInput.addEventListener('input', function() {
+            const total = parseInt(this.value) || 0;
+            const passMarkInput = document.getElementById('examPassMark');
+            if (passMarkInput && total > 0) {
+                passMarkInput.value = Math.round(total * 0.6);
+            }
+            const hintEl = document.getElementById('totalMarksHint');
+            if (hintEl && total > 0) {
+                hintEl.innerHTML = `📊 Total marks: <strong>${total}</strong> | Pass mark (60%): <strong>${Math.round(total * 0.6)}</strong>`;
+            }
+        });
+    }
+});
     // ============================================
     // 🔐 AUTHENTICATION
     // ============================================
@@ -515,65 +546,66 @@
     // ============================================
     // 📊 DISPLAY STUDENTS RESULTS
     // ============================================
-    function displayStudentsResults() {
-        const start = (currentPage.students - 1) * itemsPerPage;
-        const page = studentsResults.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('studentsBody');
-        
-        if (page.length === 0) { 
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center">No results found</td></tr>'; 
-            return; 
-        }
-        
-        tbody.innerHTML = page.map(r => {
-            const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
-            const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
-            const examType = r.exam_info?.exam_type || 'EXAM';
-            const totalMarks = getExamTotalMarks(examType);
-            const passMark = getPassMark(totalMarks);
-            const score = r.marks || 0;
-            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-            const status = r.result_status || 'PENDING';
-            const isPassed = status === 'PASS' || score >= passMark;
-            const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
-            const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
-            const typeLabel = examType.includes('CAT') ? 'CAT' : 'Exam';
-            const totalDisplay = totalMarks;
-            
-            const studentId = r.student_id || r.student_profile?.user_id || '';
-            const examId = r.exam_id || '';
-            
-            return `<tr>
-                <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
-                <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-                <td>${r.student_profile?.email || '-'}</td>
-                <td>${r.student_profile?.program || '-'}</td>
-                <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${examType.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td>
-                <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                    ${score} / ${totalDisplay} ✏️
-                </td>
-                <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                    ${percentage}% ✏️
-                </td>
-                <td><span class="${statusClass}">${displayStatus}</span></td>
-                <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
-                <td>
-                    <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
-                        <i class="fas fa-chart-line"></i> Progress
-                    </button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
-                        <i class="fas fa-clock"></i> Timer
-                    </button>
-                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
-                        <i class="fas fa-user-slash"></i> Reset
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
-        
-        renderPagination('students', studentsResults.length);
+   function displayStudentsResults() {
+    const start = (currentPage.students - 1) * itemsPerPage;
+    const page = studentsResults.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('studentsBody');
+    
+    if (page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center">No results found</td></tr>'; 
+        return; 
     }
+    
+    tbody.innerHTML = page.map(r => {
+        const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
+        const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
+        
+        // ✅ FIX: Use the actual total_marks from the exam record
+        const totalMarks = r.exam_info?.total_marks || 100;
+        const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
+        const score = r.marks || 0;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const status = r.result_status || 'PENDING';
+        const isPassed = status === 'PASS' || score >= passMark;
+        const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
+        const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
+        const typeLabel = r.exam_info?.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+        const totalDisplay = totalMarks;
+        
+        const studentId = r.student_id || r.student_profile?.user_id || '';
+        const examId = r.exam_id || '';
+        
+        return `<tr>
+            <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
+            <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
+            <td>${r.student_profile?.email || '-'}</td>
+            <td>${r.student_profile?.program || '-'}</td>
+            <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${r.exam_info?.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td>
+            <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${score} / ${totalDisplay} ✏️
+            </td>
+            <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
+                ${percentage}% ✏️
+            </td>
+            <td><span class="${statusClass}">${displayStatus}</span></td>
+            <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
+            <td>
+                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
+                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
+                    <i class="fas fa-chart-line"></i> Progress
+                </button>
+                <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
+                    <i class="fas fa-clock"></i> Timer
+                </button>
+                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
+                    <i class="fas fa-user-slash"></i> Reset
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    renderPagination('students', studentsResults.length);
+}
 
     // ============================================
     // 👥 LOAD ALL STUDENTS
@@ -3553,102 +3585,104 @@ window.displayLiveFeed = function() {
         win.print();
     };
 
-    window.exportMarksOnly = function() {
-        if (!studentsResults || studentsResults.length === 0) { 
-            alert('No results to export!'); 
-            return; 
+   window.exportMarksOnly = function() {
+    if (!studentsResults || studentsResults.length === 0) { 
+        alert('No results to export!'); 
+        return; 
+    }
+    
+    const exportData = studentsResults.map(r => {
+        const student = r.student_profile || {};
+        const exam = r.exam_info || {};
+        
+        // ✅ FIX: Use the actual total_marks from the exam record
+        const totalMarks = exam.total_marks || 100;
+        const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
+        
+        const examType = (exam.exam_type || '').toUpperCase();
+        const isCatExam = examType.includes('CAT');
+        
+        let score = 0;
+        // ✅ FIX: Use totalMarks instead of hardcoded 30
+        if (isCatExam) {
+            score = r.marks || parseFloat(r.total_score) || 0;
+            score = Math.min(score, totalMarks);
+        } else {
+            score = parseFloat(r.total_score) || r.marks || 0;
+            score = Math.min(score, totalMarks);
         }
         
-        const exportData = studentsResults.map(r => {
-            const student = r.student_profile || {};
-            const exam = r.exam_info || {};
-            const totalMarks = exam.total_marks || getExamTotalMarks(exam.exam_type) || 30;
-            const passMark = exam.pass_mark || getPassMark(totalMarks) || 18;
-            
-            const examType = (exam.exam_type || '').toUpperCase();
-            const isCatExam = examType.includes('CAT');
-            
-            let score = 0;
-            if (isCatExam) {
-                score = r.marks || parseFloat(r.total_score) || 0;
-                score = Math.min(score, 30);
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const percentNum = parseFloat(percentage);
+        
+        let grade = 'PENDING';
+        if (r.isReleased) {
+            if (percentNum >= passMark) {
+                grade = 'PASS';
             } else {
-                score = parseFloat(r.total_score) || r.marks || 0;
-                score = Math.min(score, totalMarks);
-            }
-            
-            const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-            const percentNum = parseFloat(percentage);
-            
-            let grade = 'PENDING';
-            if (r.isReleased) {
-                if (percentNum >= passMark) {
-                    grade = 'PASS';
-                } else {
-                    grade = 'FAIL';
-                }
-            } else if (r.result_status === 'PASS' || r.result_status === 'FAIL') {
-                grade = r.result_status;
-            } else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') {
-                grade = 'PENDING REVIEW';
-            } else if (score === 0) {
                 grade = 'FAIL';
             }
-            
-            let cat1Display = '--';
-            let cat2Display = '--';
-            let examScoreDisplay = '--';
-            
-            if (isCatExam) {
-                cat1Display = score > 0 ? score : '--';
-            } else {
-                cat1Display = r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--';
-                cat2Display = r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--';
-                examScoreDisplay = r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--';
+        } else if (r.result_status === 'PASS' || r.result_status === 'FAIL') {
+            grade = r.result_status;
+        } else if (r.result_status === 'PENDING_REVIEW' || r.result_status === 'PENDING') {
+            grade = 'PENDING REVIEW';
+        } else if (score === 0) {
+            grade = 'FAIL';
+        }
+        
+        let cat1Display = '--';
+        let cat2Display = '--';
+        let examScoreDisplay = '--';
+        
+        if (isCatExam) {
+            cat1Display = score > 0 ? score : '--';
+        } else {
+            cat1Display = r.cat_1_score !== undefined && r.cat_1_score !== null ? r.cat_1_score : '--';
+            cat2Display = r.cat_2_score !== undefined && r.cat_2_score !== null ? r.cat_2_score : '--';
+            examScoreDisplay = r.exam_score !== undefined && r.exam_score !== null ? r.exam_score : '--';
+        }
+        
+        return {
+            'Admission Number': student.student_id || 'N/A',
+            'Student Name': student.full_name || 'Unknown',
+            'Exam': exam.exam_name || 'Exam ' + r.exam_id,
+            'CAT 1': cat1Display,
+            'CAT 2': cat2Display,
+            'Exam Score': examScoreDisplay,
+            'Total': `${score} / ${totalMarks}`,
+            'Percentage': percentage + '%',
+            'Grade': grade,
+            'Released': r.isReleased ? '✅ Yes' : '❌ No'
+        };
+    });
+    
+    const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade', 'Released'];
+    let csv = headers.join(',') + '\n';
+    
+    exportData.forEach(row => {
+        const values = headers.map(header => {
+            let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                value = '"' + value.replace(/"/g, '""') + '"';
             }
-            
-            return {
-                'Admission Number': student.student_id || 'N/A',
-                'Student Name': student.full_name || 'Unknown',
-                'Exam': exam.exam_name || 'Exam ' + r.exam_id,
-                'CAT 1': cat1Display,
-                'CAT 2': cat2Display,
-                'Exam Score': examScoreDisplay,
-                'Total': `${score} / ${totalMarks}`,
-                'Percentage': percentage + '%',
-                'Grade': grade,
-                'Released': r.isReleased ? '✅ Yes' : '❌ No'
-            };
+            return value;
         });
-        
-        const headers = ['Admission Number', 'Student Name', 'Exam', 'CAT 1', 'CAT 2', 'Exam Score', 'Total', 'Percentage', 'Grade', 'Released'];
-        let csv = headers.join(',') + '\n';
-        
-        exportData.forEach(row => {
-            const values = headers.map(header => {
-                let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                    value = '"' + value.replace(/"/g, '""') + '"';
-                }
-                return value;
-            });
-            csv += values.join(',') + '\n';
-        });
-        
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        alert(`✅ Exported ${exportData.length} results with correct grades!`);
-    };
-
+        csv += values.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Exam_Marks_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ Exported ${exportData.length} results with correct grades!`);
+};
     // ============================================
     // 📋 MODAL FUNCTIONS
     // ============================================
@@ -4953,73 +4987,111 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
     };
 
     window.openCreateExamModal = function(examId = null) {
-        document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
-        document.getElementById('editingExamId').value = examId || '';
-        if (examId && examsMap[examId]) {
-            const exam = examsMap[examId];
-            document.getElementById('examName').value = exam.title || exam.exam_name || '';
-            document.getElementById('examType').value = exam.exam_type || 'EXAM';
-            document.getElementById('examCourse').value = exam.course_code || exam.course || '';
-            document.getElementById('examDuration').value = exam.duration_minutes || 30;
-            document.getElementById('examTotalMarks').value = exam.total_marks || exam.marks_out_of || getExamTotalMarks(exam.exam_type) || 100;
-            document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
-            document.getElementById('examProgram').value = exam.program_type || '';
-            document.getElementById('examBlock').value = exam.block || exam.block_term || '';
-            document.getElementById('examIntakeYear').value = exam.intake_year || '';
-            document.getElementById('examPassMark').value = exam.pass_mark || 60;
-        } else {
-            document.getElementById('examName').value = '';
-            document.getElementById('examType').value = 'EXAM';
-            document.getElementById('examCourse').value = '';
-            document.getElementById('examDuration').value = 30;
-            document.getElementById('examTotalMarks').value = 70;
-            document.getElementById('examLink').value = '';
-            document.getElementById('examProgram').value = '';
-            document.getElementById('examBlock').value = '';
-            document.getElementById('examIntakeYear').value = '';
-            document.getElementById('examPassMark').value = 60;
-        }
-        updateTotalMarksHint();
-        document.getElementById('examModal').style.display = 'flex';
-    };
+    document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
+    document.getElementById('editingExamId').value = examId || '';
+    
+    if (examId && examsMap[examId]) {
+        const exam = examsMap[examId];
+        document.getElementById('examName').value = exam.title || exam.exam_name || '';
+        document.getElementById('examType').value = exam.exam_type || 'EXAM';
+        document.getElementById('examCourse').value = exam.course_code || exam.course || '';
+        document.getElementById('examDuration').value = exam.duration_minutes || 30;
+        
+        // ✅ FIX: Load the actual total_marks from the exam
+        document.getElementById('examTotalMarks').value = exam.total_marks || exam.marks_out_of || 100;
+        document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
+        document.getElementById('examProgram').value = exam.program_type || '';
+        document.getElementById('examBlock').value = exam.block || exam.block_term || '';
+        document.getElementById('examIntakeYear').value = exam.intake_year || '';
+        
+        // ✅ FIX: Load the actual pass_mark from the exam
+        document.getElementById('examPassMark').value = exam.pass_mark || Math.round((exam.total_marks || 100) * 0.6);
+        
+        // ✅ Set status if the field exists
+        const statusSelect = document.getElementById('examStatus');
+        if (statusSelect) statusSelect.value = exam.status || 'draft';
+        
+    } else {
+        // New exam defaults
+        document.getElementById('examName').value = '';
+        document.getElementById('examType').value = 'EXAM';
+        document.getElementById('examCourse').value = '';
+        document.getElementById('examDuration').value = 30;
+        document.getElementById('examTotalMarks').value = 70;
+        document.getElementById('examLink').value = '';
+        document.getElementById('examProgram').value = '';
+        document.getElementById('examBlock').value = '';
+        document.getElementById('examIntakeYear').value = '';
+        document.getElementById('examPassMark').value = 42;
+        const statusSelect = document.getElementById('examStatus');
+        if (statusSelect) statusSelect.value = 'draft';
+    }
+    
+    updateTotalMarksHint();
+    document.getElementById('examModal').style.display = 'flex';
+};
 
-    document.getElementById('examForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const examId = document.getElementById('editingExamId').value;
-        const examType = document.getElementById('examType').value;
-        const totalMarks = getExamTotalMarks(examType);
-        const passMark = getPassMark(totalMarks);
-        
-        const examData = {
-            title: document.getElementById('examName').value,
-            exam_name: document.getElementById('examName').value,
-            exam_type: examType,
-            course_code: document.getElementById('examCourse').value,
-            duration_minutes: parseInt(document.getElementById('examDuration').value),
-            total_marks: totalMarks,
-            marks_out_of: totalMarks,
-            pass_mark: passMark,
-            online_link: document.getElementById('examLink').value,
-            program_type: document.getElementById('examProgram').value || null,
-            block: document.getElementById('examBlock').value || null,
-            intake_year: document.getElementById('examIntakeYear').value || null,
-            status: 'draft'
-        };
-        
-        let result;
-        if (examId) {
-            result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
-        } else {
-            result = await sb.from('exams').insert([examData]);
-        }
-        if (result.error) { 
-            alert('Error: ' + result.error.message); 
-        } else { 
-            alert(examId ? 'Exam updated!' : 'Exam created!'); 
-            closeExamModal(); 
-            loadAllExams(); 
-        }
-    });
+   document.getElementById('examForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const examId = document.getElementById('editingExamId').value;
+    const examType = document.getElementById('examType').value;
+    
+    // ✅ FIX: Get values from the form inputs, not hardcoded defaults
+    const totalMarks = parseInt(document.getElementById('examTotalMarks').value) || 100;
+    const passMark = parseInt(document.getElementById('examPassMark').value) || Math.round(totalMarks * 0.6);
+    const duration = parseInt(document.getElementById('examDuration').value) || 30;
+    
+    const examData = {
+        title: document.getElementById('examName').value,
+        exam_name: document.getElementById('examName').value,
+        exam_type: examType,
+        course_code: document.getElementById('examCourse').value,
+        duration_minutes: duration,
+        total_marks: totalMarks,      // ✅ Uses user input
+        marks_out_of: totalMarks,     // ✅ Uses user input
+        pass_mark: passMark,          // ✅ Uses user input
+        online_link: document.getElementById('examLink').value,
+        program_type: document.getElementById('examProgram').value || null,
+        block: document.getElementById('examBlock').value || null,
+        intake_year: document.getElementById('examIntakeYear').value || null,
+        status: document.getElementById('examStatus')?.value || 'draft',
+        updated_at: new Date().toISOString()
+    };
+    
+    // ✅ Add validation
+    if (!examData.title || examData.title.trim() === '') {
+        alert('Please enter an exam name.');
+        return;
+    }
+    if (!examData.online_link || examData.online_link.trim() === '') {
+        alert('Please enter an exam link.');
+        return;
+    }
+    if (examData.duration_minutes < 1) {
+        alert('Duration must be at least 1 minute.');
+        return;
+    }
+    if (examData.total_marks < 1) {
+        alert('Total marks must be at least 1.');
+        return;
+    }
+    
+    let result;
+    if (examId) {
+        result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
+    } else {
+        result = await sb.from('exams').insert([examData]);
+    }
+    
+    if (result.error) { 
+        alert('❌ Error: ' + result.error.message); 
+    } else { 
+        alert(examId ? '✅ Exam updated successfully!' : '✅ Exam created successfully!'); 
+        closeExamModal(); 
+        loadAllExams(); 
+        loadStudentsWithResults();
+    }
+});
 
     window.deleteExam = async function(examId, examName) {
         if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
