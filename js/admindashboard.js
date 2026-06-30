@@ -2172,126 +2172,152 @@
         }
     };
 
-    window.displayLiveStudents = function() {
-        const tbody = document.getElementById('liveStudentsBody');
-        if (!tbody) return;
-        
-        const data = window.liveStudentsData || [];
-        
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;">🟢 No active students</td></tr>';
+   // ✅ FIXED: Display live students with proper null checks
+window.displayLiveStudents = function() {
+    const tbody = document.getElementById('liveStudentsBody');
+    
+    if (!tbody) {
+        console.error('❌ liveStudentsBody not found!');
+        return;
+    }
+    
+    const data = window.liveStudentsData || [];
+    console.log('📊 Displaying', data.length, 'students');
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;">🟢 No active students</td></tr>';
+        // ✅ Check if renderPagination exists before calling
+        if (typeof window.renderPagination === 'function') {
             window.renderPagination('liveStudents', 0);
-            return;
+        }
+        return;
+    }
+    
+    // ✅ FIX: Safely access currentPage
+    const currentPage = window.currentPage || {};
+    const livePage = currentPage.liveStudents || 1;
+    const itemsPerPage = window.itemsPerPage || 15;
+    
+    const start = (livePage - 1) * itemsPerPage;
+    const page = data.slice(start, start + itemsPerPage);
+    
+    tbody.innerHTML = page.map(item => {
+        const student = item.student || {};
+        const exam = item.exam || {};
+        const log = item.log || {};
+        
+        // Check if active
+        const lastActivity = log.timestamp ? new Date(log.timestamp) : new Date();
+        const now = new Date();
+        const inactiveMinutes = Math.floor((now - lastActivity) / 60000);
+        const isActive = inactiveMinutes < 5;
+        
+        const statusIcon = isActive ? '🟢' : '🟡';
+        const statusText = isActive ? 'Active' : `Inactive (${inactiveMinutes}m ago)`;
+        
+        // Progress bar
+        const progress = item.progress || 0;
+        const progressBar = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="flex:1; background:#E2E8F0; border-radius:10px; height:8px; overflow:hidden; width:80px;">
+                    <div style="width:${progress}%; height:100%; background:${progress >= 70 ? '#38A169' : progress >= 40 ? '#F59E0B' : '#DC2626'};"></div>
+                </div>
+                <span style="font-size:0.7rem; font-weight:600; min-width:40px;">${progress}%</span>
+            </div>
+        `;
+        
+        // Alert indicator
+        const alertCount = item.alertCount || 0;
+        const alertIcon = alertCount > 0 ? 
+            `<span style="color:#DC2626; font-weight:700;">🚨 ${alertCount}</span>` : 
+            '<span style="color:#38A169;">✅</span>';
+        
+        // Format time
+        let formattedTime = 'N/A';
+        try {
+            if (item.lastActivity) {
+                if (typeof window.formatKenyaTime === 'function') {
+                    formattedTime = window.formatKenyaTime(item.lastActivity);
+                } else {
+                    formattedTime = new Date(item.lastActivity).toLocaleString();
+                }
+            }
+        } catch (e) {
+            formattedTime = new Date(item.lastActivity).toLocaleString();
         }
         
-        const start = (window.currentPage.liveStudents - 1) * ITEMS_PER_PAGE;
-        const page = data.slice(start, start + ITEMS_PER_PAGE);
+        // Student info
+        const studentName = student.full_name || 'Unknown';
+        const studentId = student.student_id || 'N/A';
+        const studentUserId = student.user_id || '';
+        const examName = exam.exam_name || 'Unknown Exam';
+        const examId = exam.id || 0;
+        const program = student.program || '';
         
-        tbody.innerHTML = page.map(item => {
-            const student = item.student || {};
-            const exam = item.exam || {};
-            const log = item.log || {};
-            
-            const lastActivity = log.timestamp ? new Date(log.timestamp) : new Date();
-            const now = new Date();
-            const inactiveMinutes = Math.floor((now - lastActivity) / 60000);
-            const isActive = inactiveMinutes < 5;
-            
-            const statusIcon = isActive ? '🟢' : '🟡';
-            const statusText = isActive ? 'Active' : `Inactive (${inactiveMinutes}m ago)`;
-            
-            const progress = item.progress || 0;
-            const progressBar = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <div style="flex:1; background:#E2E8F0; border-radius:10px; height:8px; overflow:hidden; width:80px;">
-                        <div style="width:${progress}%; height:100%; background:${progress >= 70 ? '#38A169' : progress >= 40 ? '#F59E0B' : '#DC2626'};"></div>
-                    </div>
-                    <span style="font-size:0.7rem; font-weight:600; min-width:40px;">${progress}%</span>
-                </div>
+        // Escape for onclick
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
+        
+        // Actions
+        let actions = '';
+        if (studentUserId && examId) {
+            actions = `
+                <button class="action-btn btn-view" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" 
+                        style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                    <i class="fas fa-chart-line"></i> Progress
+                </button>
+                <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" 
+                        style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                    <i class="fas fa-clock"></i> Timer
+                </button>
+                <button class="action-btn btn-danger" onclick="forceSubmitStudent('${studentUserId}', ${examId})" 
+                        style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
+                    <i class="fas fa-paper-plane"></i> Submit
+                </button>
             `;
-            
-            const alertCount = item.alertCount || 0;
-            const alertIcon = alertCount > 0 ? 
-                `<span style="color:#DC2626; font-weight:700;">🚨 ${alertCount}</span>` : 
-                '<span style="color:#38A169;">✅</span>';
-            
-            let formattedTime = 'N/A';
-            try {
-                if (item.lastActivity) {
-                    formattedTime = formatKenyaTime(item.lastActivity);
-                }
-            } catch (e) {
-                formattedTime = new Date(item.lastActivity).toLocaleString();
-            }
-            
-            const studentName = student.full_name || 'Unknown';
-            const studentId = student.student_id || 'N/A';
-            const studentUserId = student.user_id || '';
-            const examName = exam.exam_name || 'Unknown Exam';
-            const examId = exam.id || 0;
-            const program = student.program || '';
-            
-            const safeName = studentName.replace(/'/g, "\\'");
-            const safeExam = examName.replace(/'/g, "\\'");
-            
-            let actions = '';
-            if (studentUserId && examId) {
-                actions = `
-                    <button class="action-btn btn-view" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" 
-                            style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
-                        <i class="fas fa-chart-line"></i> Progress
-                    </button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" 
-                            style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
-                        <i class="fas fa-clock"></i> Timer
-                    </button>
-                    <button class="action-btn btn-danger" onclick="forceSubmitStudent('${studentUserId}', ${examId})" 
-                            style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
-                        <i class="fas fa-paper-plane"></i> Submit
-                    </button>
-                `;
-            }
-            
-            return `<tr>
-                <td style="padding:10px 12px;">
-                    <span style="font-weight:600;">${statusIcon}</span>
-                    <div style="font-size:0.65rem; color:#64748B;">${statusText}</div>
-                </td>
-                <td style="padding:10px 12px;"><span class="student-id-badge">${studentId}</span></td>
-                <td style="padding:10px 12px;">
-                    <strong>${studentName}</strong>
-                    <div style="font-size:0.7rem; color:#64748B;">${program}</div>
-                </td>
-                <td style="padding:10px 12px;">
-                    <strong>${examName}</strong>
-                    <div style="font-size:0.65rem; color:#64748B;">${item.answeredCount || 0}/${item.totalQuestions || 0} answered</div>
-                </td>
-                <td style="padding:10px 12px;">${progressBar}</td>
-                <td style="padding:10px 12px;">
-                    <span class="${item.statusClass || 'status-active'}" style="font-weight:600; font-family:monospace; padding:4px 8px; border-radius:6px;">
-                        ${item.timeDisplay || '--'}
-                    </span>
-                </td>
-                <td style="padding:10px 12px; text-align:center; font-size:1.2rem;">
-                    ${item.cameraIcon || '⚪'}
-                    <div style="font-size:0.55rem; color:#64748B;">${item.cameraStatus || 'unknown'}</div>
-                </td>
-                <td style="padding:10px 12px; font-size:0.7rem; color:#64748B;">
-                    ${formattedTime}
-                    <div style="font-size:0.6rem;">${alertIcon}</div>
-                </td>
-                <td style="padding:10px 12px;">
-                    <div style="display:flex; gap:4px; flex-wrap:wrap;">${actions}</div>
-                </td>
-            </tr>`;
-        }).join('');
+        }
         
+        return `<tr>
+            <td style="padding:10px 12px;">
+                <span style="font-weight:600;">${statusIcon}</span>
+                <div style="font-size:0.65rem; color:#64748B;">${statusText}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <span class="student-id-badge">${studentId}</span>
+            </td>
+            <td style="padding:10px 12px;">
+                <strong>${studentName}</strong>
+                <div style="font-size:0.7rem; color:#64748B;">${program}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <strong>${examName}</strong>
+                <div style="font-size:0.65rem; color:#64748B;">${item.answeredCount || 0}/${item.totalQuestions || 0} answered</div>
+            </td>
+            <td style="padding:10px 12px;">${progressBar}</td>
+            <td style="padding:10px 12px;">
+                <span class="${item.statusClass || 'status-active'}" style="font-weight:600; font-family:monospace; padding:4px 8px; border-radius:6px;">
+                    ${item.timeDisplay || '--'}
+                </span>
+            </td>
+            <td style="padding:10px 12px; text-align:center; font-size:1.2rem;">
+                ${item.cameraIcon || '⚪'}
+                <div style="font-size:0.55rem; color:#64748B;">${item.cameraStatus || 'unknown'}</div>
+            </td>
+            <td style="padding:10px 12px; font-size:0.7rem; color:#64748B;">
+                ${formattedTime}
+                <div style="font-size:0.6rem;">${alertIcon}</div>
+            </td>
+            <td style="padding:10px 12px;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">${actions}</div>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    // ✅ Check if renderPagination exists
+    if (typeof window.renderPagination === 'function') {
         window.renderPagination('liveStudents', data.length);
-    };
-
-    window.refreshLiveStudents = function() {
-        window.loadLiveStudents();
-    };
+    }
+};
 
     window.toggleAutoRefresh = function() {
         autoRefreshEnabled = !autoRefreshEnabled;
