@@ -268,9 +268,9 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       
       try {
         const response = await sheets.spreadsheets.values.get({
-          spreadsheetId: req.spreadsheetId,
-          range: `${sheetName}!A:Z`,
-        });
+           spreadsheetId: req.spreadsheetId,
+  range: `${sheetName}!A:AB`,  // ✅ Includes YEAR column
+});
         
         const data = response.data.values || [];
         console.log(`[GET NCK] Raw data rows: ${data.length}`);
