@@ -1,4 +1,19 @@
 // ============================================
+// FIX: Get Supabase client from window
+// ============================================
+
+// Use the global supabase from window
+const sb = window.supabase || window.sb;
+
+if (!sb) {
+    console.error('❌ Supabase client not found!');
+    alert('Supabase client not found! Make sure supabase-config.js loads first.');
+} else {
+    console.log('✅ Supabase client ready:', typeof sb);
+}
+
+
+// ============================================
 // NURSING MARKS SYSTEM - COMPLETE APPLICATION
 // All JavaScript Logic with Supabase
 // ============================================
