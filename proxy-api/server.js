@@ -222,96 +222,178 @@ app.get('/api/subjects/:block', async (req, res) => {
     const { block } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
     
-    if (examType === 'nck') {
-      res.json([
-        { name: 'XY FORMS', assessmentType: 'nck' },
-        { name: 'ASSESSMENT AND CASE', assessmentType: 'nck' }
-      ]);
-    } else {
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: req.spreadsheetId,
-        range: 'CONFIG!A:D',
+   if (examType === 'nck') {
+  res.json([
+    { name: 'NCK_XY_FORMS', assessmentType: 'nck' },
+    { name: 'NCK_ASSESSMENT_AND_CASE', assessmentType: 'nck' }
+  ]);
+} else {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: req.spreadsheetId,
+    range: 'CONFIG!A:D',
+  });
+  const config = response.data.values || [];
+  const subjects = [];
+  for (let i = 1; i < config.length; i++) {
+    if (config[i] && config[i][0] === block && config[i][2] === 'YES') {
+      subjects.push({
+        name: config[i][1],
+        assessmentType: config[i][3] || 'full'
       });
-      const config = response.data.values || [];
-      const subjects = [];
-      for (let i = 1; i < config.length; i++) {
-        if (config[i] && config[i][0] === block && config[i][2] === 'YES') {
-          subjects.push({
-            name: config[i][1],
-            assessmentType: config[i][3] || 'full'
-          });
-        }
-      }
-      res.json(subjects);
     }
-  } catch (error) {
-    console.error('Error in /api/subjects:', error);
-    res.json([]);
   }
-});
+  res.json(subjects);
+}
 
-// ========== GET MARKS ENDPOINT ==========
+// ========== GET MARKS ENDPOINT - HANDLES BOTH INTERNAL AND NCK ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
+    const examType = req.headers['x-exam-type'] || 'internal';
     const year = req.headers['x-year'] || '2024';
     
-    console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}`);
+    console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
     
-    // Get all marks from master
-    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-    const sheetName = `${block}_${cleanSubject}`;
-    
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: `${sheetName}!A:I`,
-    });
-    
-    const data = response.data.values || [];
-    const allMarks = [];
-    
-    // ✅ Get student-year mapping from STUDENTS sheet
-    const studentsResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:E',
-    });
-    const studentsData = studentsResponse.data.values || [];
-    
-    // Create map: admission → year
-    const studentYearMap = {};
-    for (let i = 1; i < studentsData.length; i++) {
-      const row = studentsData[i];
-      if (row && row[0]) {
-        studentYearMap[row[0].trim()] = row[3] || '2024'; // Column D = YEAR
-      }
-    }
-    
-    // ✅ Filter marks by year
-    for (let i = 1; i < data.length; i++) {
-      if (data[i] && data[i][0]) {
-        const admission = data[i][0].trim();
-        const studentYear = studentYearMap[admission] || '2024';
+    // ===== NCK MARKS =====
+    if (examType === 'nck') {
+      // Use the subject name as the sheet name (e.g., 'NCK_XY_FORMS' or 'NCK_ASSESSMENT_AND_CASE')
+      const sheetName = subject;
+      
+      console.log(`[GET NCK] Reading sheet: ${sheetName}`);
+      
+      try {
+        const response = await sheets.spreadsheets.values.get({
+          spreadsheetId: req.spreadsheetId,
+          range: `${sheetName}!A:Z`,
+        });
         
-        // ✅ ONLY include students from the selected year
-        if (studentYear === year) {
-          allMarks.push({ 
-            row: i + 1, 
-            admission: admission, 
-            name: data[i][1], 
-            cat1: data[i][2] || '', 
-            cat2: data[i][3] || '', 
-            exam: data[i][4] || '', 
-            final: data[i][5] || '', 
-            grade: data[i][6] || '',
-            gradedBy: data[i][7] || '', 
-            assessmentType: data[i][8] || 'full' 
-          });
+        const data = response.data.values || [];
+        const marks = [];
+        
+        // Check if we're reading XY FORMS or ASSESSMENT AND CASE
+        if (sheetName === 'NCK_XY_FORMS') {
+          // XY FORMS: Column A = Admission, Column B = Name, Columns C-X = Scores (22 columns), Column Y = Average, Column Z = Grade, Column AA = Graded By
+          for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || !row[1]) continue; // Skip if no name
+            
+            const scores = [];
+            // Extract scores from columns C-X (indices 2 to 23)
+            for (let j = 2; j <= 23 && j < row.length; j++) {
+              const val = parseFloat(row[j]);
+              scores.push(isNaN(val) ? 0 : val);
+            }
+            while (scores.length < 22) scores.push(0);
+            
+            // Calculate average from scores
+            const validScores = scores.filter(s => s > 0);
+            const avg = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+            
+            marks.push({
+              row: i + 1,
+              admission: row[0] || '',
+              name: row[1] || '',
+              scores: scores,
+              final: Math.round(avg * 100) / 100,
+              gradedBy: row[26] || row[25] || ''
+            });
+          }
+        } else if (sheetName === 'NCK_ASSESSMENT_AND_CASE') {
+          // ASSESSMENT AND CASE: Column A = Admission, Column B = Name, Columns C-N = 12 Assessments, Column O = Total, Column P = Average, Column Q = Status, Column R = Graded By
+          for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || !row[1]) continue; // Skip if no name
+            
+            const scores = [];
+            // Extract scores from columns C-N (indices 2 to 13)
+            for (let j = 2; j <= 13 && j < row.length; j++) {
+              const val = parseFloat(row[j]);
+              scores.push(isNaN(val) ? 0 : val);
+            }
+            while (scores.length < 12) scores.push(0);
+            
+            // Calculate total and average
+            const validScores = scores.filter(s => s > 0);
+            const total = validScores.reduce((a, b) => a + b, 0);
+            const avg = validScores.length > 0 ? total / validScores.length : 0;
+            
+            marks.push({
+              row: i + 1,
+              admission: row[0] || '',
+              name: row[1] || '',
+              scores: scores,
+              total: Math.round(total * 100) / 100,
+              final: Math.round(avg * 100) / 100,
+              gradedBy: row[17] || row[16] || ''
+            });
+          }
+        }
+        
+        console.log(`[GET NCK] Found ${marks.length} records from ${sheetName}`);
+        res.json(marks);
+        
+      } catch (error) {
+        console.error(`[GET NCK] Error reading ${sheetName}:`, error);
+        res.json([]);
+      }
+      
+    } else {
+      // ===== INTERNAL MARKS =====
+      let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+      const sheetName = `${block}_${cleanSubject}`;
+      
+      console.log(`[GET INTERNAL] Reading sheet: ${sheetName}`);
+      
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!A:I`,
+      });
+      
+      const data = response.data.values || [];
+      const allMarks = [];
+      
+      // Get student-year mapping from STUDENTS sheet
+      const studentsResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: 'STUDENTS!A:E',
+      });
+      const studentsData = studentsResponse.data.values || [];
+      
+      // Create map: admission → year
+      const studentYearMap = {};
+      for (let i = 1; i < studentsData.length; i++) {
+        const row = studentsData[i];
+        if (row && row[0]) {
+          studentYearMap[row[0].trim()] = row[3] || '2024';
         }
       }
+      
+      // Filter marks by year
+      for (let i = 1; i < data.length; i++) {
+        if (data[i] && data[i][0]) {
+          const admission = data[i][0].trim();
+          const studentYear = studentYearMap[admission] || '2024';
+          
+          if (studentYear === year) {
+            allMarks.push({ 
+              row: i + 1, 
+              admission: admission, 
+              name: data[i][1], 
+              cat1: data[i][2] || '', 
+              cat2: data[i][3] || '', 
+              exam: data[i][4] || '', 
+              final: data[i][5] || '', 
+              grade: data[i][6] || '',
+              gradedBy: data[i][7] || '', 
+              assessmentType: data[i][8] || 'full' 
+            });
+          }
+        }
+      }
+      
+      console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
+      res.json(allMarks);
     }
-    
-    console.log(`[GET MARKS] Found ${allMarks.length} marks for ${year}`);
-    res.json(allMarks);
     
   } catch (error) {
     console.error('Error in /api/marks:', error);
