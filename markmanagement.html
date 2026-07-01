@@ -1,31 +1,744 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Nursing School System | NCK & Internal Marks | Nakuru College</title>
     
-    <!-- Fonts & Icons -->
+    <!-- ===== FONTS & ICONS ===== -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- External Styles -->
+    <!-- ===== EXTERNAL CSS ===== -->
     <link rel="stylesheet" href="marksstyles.css">
     
-    <!-- Chart.js & PDF -->
+    <!-- ===== CHART.JS & PDF ===== -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
-    <!-- Supabase SDK -->
+    <!-- ===== SUPABASE SDK ===== -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div id="app"></div>
-
-    <!-- ===== SUPABASE CONFIG ===== -->
-    <script src="supabase-client.js"></script>
     
-    <!-- ===== MAIN APPLICATION ===== -->
+    <!-- ============================================================ -->
+    <!-- APP                                                           -->
+    <!-- ============================================================ -->
+    <div id="app">
+        
+        <!-- ========================================================== -->
+        <!-- SIDEBAR                                                     -->
+        <!-- ========================================================== -->
+        <aside id="sidebar">
+            
+            <!-- Logo -->
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Nakuru Health</span>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="nav-menu">
+                <div class="nav-item active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-tab="marks">
+                    <i class="fas fa-pen-alt"></i>
+                    <span id="marksTabLabel">Internal Marks</span>
+                </div>
+                <div class="nav-item" data-tab="nck">
+                    <i class="fas fa-file-medical"></i>
+                    <span>NCK Scores</span>
+                </div>
+                <div class="nav-item admin-only" data-tab="students">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>Students</span>
+                </div>
+                <div class="nav-item admin-only" data-tab="lecturers">
+                    <i class="fas fa-chalkboard-user"></i>
+                    <span>Lecturers</span>
+                </div>
+                <div class="nav-item admin-only" data-tab="units">
+                    <i class="fas fa-book-open"></i>
+                    <span>Units</span>
+                </div>
+                <div class="nav-item" data-tab="reports">
+                    <i class="fas fa-download"></i>
+                    <span>Reports</span>
+                </div>
+                <div class="nav-item admin-only" data-tab="entryControl">
+                    <i class="fas fa-lock"></i>
+                    <span>Entry Control</span>
+                </div>
+                <div class="nav-item" data-tab="analytics">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </div>
+                <div class="nav-item admin-only" data-tab="scorePublish">
+                    <i class="fas fa-eye-slash"></i>
+                    <span>Score Publishing</span>
+                </div>
+                <div class="nav-item logout" data-tab="logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+            </nav>
+
+            <!-- User Section -->
+            <div class="user-section">
+                <div class="user-avatar">U</div>
+                <div class="user-details">
+                    <div class="user-name">Username</div>
+                    <div class="user-role">Role</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========================================================== -->
+        <!-- MAIN CONTENT                                                -->
+        <!-- ========================================================== -->
+        <main id="main-content">
+
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <button id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="top-bar-right">
+                    <select id="yearSelect" class="admin-only">
+                        <option value="2024">2024 Class</option>
+                        <option value="2025">2025 Class</option>
+                        <option value="2026" selected>2026 Class</option>
+                    </select>
+                    <select id="examTypeSelect" class="admin-only">
+                        <option value="internal" selected>Internal</option>
+                        <option value="nck">NCK</option>
+                    </select>
+                    <button id="themeToggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- DYNAMIC CONTENT AREA                                       -->
+            <!-- ========================================================== -->
+            <div id="dynamic-content">
+
+                <!-- ======================================================== -->
+                <!-- TAB: DASHBOARD                                           -->
+                <!-- ======================================================== -->
+                <div id="tab-dashboard" class="tab-content active">
+
+                    <div class="header">
+                        <h1><i class="fas fa-hospital-user"></i> Nakuru College of Health Sciences</h1>
+                        <p>Welcome, Administrator | March 2026 Class | Pass Mark: 60%</p>
+                    </div>
+
+                    <div class="user-info">
+                        <span><i class="fas fa-user-circle"></i> Welcome, Admin</span>
+                        <div>
+                            <button id="darkModeBtn">🌙 Dark Mode</button>
+                            <button id="logoutBtn">🚪 Logout</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">150</div>
+                            <div class="stat-label"><i class="fas fa-users"></i> Total Students</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">6</div>
+                            <div class="stat-label"><i class="fas fa-layer-group"></i> Academic Blocks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">28</div>
+                            <div class="stat-label"><i class="fas fa-book"></i> Active Units</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">60%</div>
+                            <div class="stat-label"><i class="fas fa-flag-checkered"></i> Pass Mark</div>
+                        </div>
+                    </div>
+
+                    <div class="admin-menu-grid">
+                        <button class="menu-btn btn-primary" data-tab="marks"><i class="fas fa-pen-alt"></i> Internal Marks</button>
+                        <button class="menu-btn btn-info" data-tab="nck"><i class="fas fa-file-medical"></i> NCK Scores</button>
+                        <button class="menu-btn btn-success" data-tab="analytics"><i class="fas fa-chart-line"></i> Analytics</button>
+                        <button class="menu-btn btn-warning" data-tab="students"><i class="fas fa-user-graduate"></i> Students</button>
+                        <button class="menu-btn btn-danger" data-tab="lecturers"><i class="fas fa-chalkboard-user"></i> Lecturers</button>
+                        <button class="menu-btn btn-export" data-tab="units"><i class="fas fa-book-open"></i> Units</button>
+                        <button class="menu-btn btn-secondary" data-tab="reports"><i class="fas fa-download"></i> Reports</button>
+                        <button class="menu-btn btn-lock" data-tab="entryControl"><i class="fas fa-lock"></i> Entry Control</button>
+                        <button class="menu-btn btn-import" data-tab="import"><i class="fas fa-file-import"></i> Import Marks</button>
+                        <button class="menu-btn btn-publish" data-tab="scorePublish"><i class="fas fa-eye-slash"></i> Score Publishing</button>
+                    </div>
+
+                    <div id="content-area"></div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: MARKS                                               -->
+                <!-- ======================================================== -->
+                <div id="tab-marks" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3>
+                        <p>Select a block and subject to enter marks</p>
+                    </div>
+                    <select id="blockSelect" class="full-width">
+                        <option value="">-- Select Block --</option>
+                        <option value="BLOCK_0">BLOCK 0 - Introductory</option>
+                        <option value="BLOCK_1">BLOCK 1 - Foundations</option>
+                        <option value="BLOCK_2">BLOCK 2 - Medical Nursing</option>
+                        <option value="BLOCK_3">BLOCK 3 - Surgical Nursing</option>
+                        <option value="BLOCK_4">BLOCK 4 - Community Health</option>
+                        <option value="BLOCK_5">BLOCK 5 - Leadership</option>
+                    </select>
+                    <select id="subjectSelect" class="full-width" style="display:none;">
+                        <option value="">-- Select Subject --</option>
+                    </select>
+                    <div id="marks-table-container">
+                        <div class="card text-center">
+                            <p>Select a block and subject to view marks</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: NCK                                                 -->
+                <!-- ======================================================== -->
+                <div id="tab-nck" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3>
+                        <p>Clinical evaluation (XY FORMS) & Assessment & Case</p>
+                    </div>
+                    <div class="selector-group">
+                        <label><i class="fas fa-table-list"></i> Select Sheet:</label>
+                        <select id="nckSheetSelect">
+                            <option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option>
+                            <option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option>
+                        </select>
+                        <button class="export-btn" id="loadNckBtn"><i class="fas fa-sync-alt"></i> Load Data</button>
+                    </div>
+                    <div id="nck-marks-container">
+                        <div class="card text-center">
+                            <p>Select a sheet and click "Load Data"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: STUDENTS                                            -->
+                <!-- ======================================================== -->
+                <div id="tab-students" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-user-graduate"></i> Manage Students</h3>
+                        <div class="header-actions">
+                            <button class="save-btn" id="addStudentBtn"><i class="fas fa-plus"></i> Add Student</button>
+                            <button class="export-btn" id="exportStudentsBtn"><i class="fas fa-download"></i> Export</button>
+                        </div>
+                    </div>
+                    <div id="students-table-container">
+                        <div class="card">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Admission</th>
+                                        <th>Name</th>
+                                        <th>Block</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentsTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center">Loading students...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: LECTURERS                                           -->
+                <!-- ======================================================== -->
+                <div id="tab-lecturers" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-chalkboard-user"></i> Manage Lecturers</h3>
+                        <div class="header-actions">
+                            <button class="save-btn" id="addLecturerBtn"><i class="fas fa-plus"></i> Add Lecturer</button>
+                        </div>
+                    </div>
+                    <div id="lecturers-container">
+                        <div class="card text-center">
+                            <p>Loading lecturers...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: UNITS                                               -->
+                <!-- ======================================================== -->
+                <div id="tab-units" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-book-open"></i> Manage Units</h3>
+                    </div>
+                    <div class="card">
+                        <h4><i class="fas fa-plus-circle"></i> Add New Unit</h4>
+                        <div class="form-grid">
+                            <div>
+                                <label>Block</label>
+                                <select id="newUnitBlock">
+                                    <option value="BLOCK_0">BLOCK 0</option>
+                                    <option value="BLOCK_1">BLOCK 1</option>
+                                    <option value="BLOCK_2">BLOCK 2</option>
+                                    <option value="BLOCK_3">BLOCK 3</option>
+                                    <option value="BLOCK_4">BLOCK 4</option>
+                                    <option value="BLOCK_5">BLOCK 5</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Subject Name</label>
+                                <input type="text" id="newUnitName" placeholder="Subject Name">
+                            </div>
+                            <div>
+                                <label>Assessment Type</label>
+                                <select id="newUnitType">
+                                    <option value="full">Full (CAT1+CAT2+Exam)</option>
+                                    <option value="single_cat">Single CAT (CAT+Exam)</option>
+                                    <option value="exam_only">Exam Only</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button class="save-btn" id="addUnitBtn">Add Unit</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="units-container"></div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: REPORTS                                             -->
+                <!-- ======================================================== -->
+                <div id="tab-reports" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-file-pdf"></i> PDF Reports Generator</h3>
+                        <p>Generate professional PDF documents for academic records</p>
+                    </div>
+                    <div class="report-grid">
+                        <div class="report-card" data-report="student_transcript">
+                            <i class="fas fa-user-graduate"></i>
+                            <h3>Student Transcripts</h3>
+                            <p>Individual student performance reports</p>
+                        </div>
+                        <div class="report-card" data-report="class_performance">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>Class Performance Report</h3>
+                            <p>Overall class statistics and pass rates</p>
+                        </div>
+                        <div class="report-card" data-report="subject_analysis">
+                            <i class="fas fa-book-open"></i>
+                            <h3>Subject Analysis Report</h3>
+                            <p>Mean scores and performance by subject</p>
+                        </div>
+                        <div class="report-card" data-report="clinical_report">
+                            <i class="fas fa-hospital-user"></i>
+                            <h3>Clinical Performance Report</h3>
+                            <p>NCK clinical evaluation scores</p>
+                        </div>
+                        <div class="report-card" data-report="honor_roll">
+                            <i class="fas fa-trophy"></i>
+                            <h3>Honor Roll Report</h3>
+                            <p>Top performing students</p>
+                        </div>
+                        <div class="report-card" data-report="intervention_list">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Intervention List</h3>
+                            <p>Students requiring academic support</p>
+                        </div>
+                    </div>
+                    <div class="card" id="reportPreview">
+                        <div class="text-center" style="padding: 40px;">
+                            <i class="fas fa-file-pdf" style="font-size: 64px; color: #ef4444;"></i>
+                            <h4>Click on any report card above</h4>
+                            <p style="color: var(--gray);">Generate professional PDF reports</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: ENTRY CONTROL                                      -->
+                <!-- ======================================================== -->
+                <div id="tab-entryControl" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-lock"></i> Mark Entry Control Panel</h3>
+                        <p>Control mark entry access for lecturers</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-globe"></i> Global Entry Settings</div>
+                        <div class="setting-card">
+                            <div class="setting-row">
+                                <div>
+                                    <strong>🔓 All Mark Entry</strong>
+                                    <br><small>Master control for all mark entry</small>
+                                </div>
+                                <button class="btn-danger" id="toggleGlobalBtn">
+                                    <i class="fas fa-lock"></i> Close All Entry
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-calendar-alt"></i> By Class Year</div>
+                        <div id="classSettingsContainer">
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>🎓 March 2024 Class</strong></div>
+                                    <button class="btn-danger">Close Entry</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>🎓 March 2025 Class</strong></div>
+                                    <button class="btn-danger">Close Entry</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>🎓 March 2026 Class</strong></div>
+                                    <button class="btn-danger">Close Entry</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-layer-group"></i> By Block</div>
+                        <div id="blockSettingsContainer">
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 0</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 1</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 2</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 3</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 4</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                            <div class="setting-card">
+                                <div class="setting-row">
+                                    <div><strong>📚 BLOCK 5</strong></div>
+                                    <button class="btn-info">Manage Subjects</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-history"></i> Mark Entry Logs</div>
+                        <div id="logsContainer">
+                            <div class="text-center" style="padding: 20px;">No logs yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: ANALYTICS                                           -->
+                <!-- ======================================================== -->
+                <div id="tab-analytics" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-chart-line"></i> Advanced Academic Analytics Dashboard</h3>
+                        <p>March 2026 Class | Real-time Performance Intelligence</p>
+                    </div>
+                    <div class="tabs-container">
+                        <button class="tab-btn active" data-analytics-tab="overview">Overview</button>
+                        <button class="tab-btn" data-analytics-tab="units">All Units & Means</button>
+                        <button class="tab-btn" data-analytics-tab="students">Students</button>
+                        <button class="tab-btn" data-analytics-tab="clinical">Clinical Scores</button>
+                    </div>
+                    <div id="analytics-overview" class="analytics-tab active">
+                        <div class="analytics-grid">
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-users"></i> Total Enrollment</h4>
+                                <div class="value">150</div>
+                                <small>Active Students</small>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-chalkboard"></i> Subjects Offered</h4>
+                                <div class="value">28</div>
+                                <small>Across 6 Academic Blocks</small>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-flag-checkered"></i> Overall Pass Rate</h4>
+                                <div class="value">72%</div>
+                                <small>Passing / Assessed</small>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-chart-simple"></i> Class Average</h4>
+                                <div class="value">68.5%</div>
+                                <small>Mean performance score</small>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-hospital-user"></i> Clinical Average</h4>
+                                <div class="value">74.2%</div>
+                                <small>NCK XY Forms Assessment</small>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-trophy"></i> Top Student Score</h4>
+                                <div class="value">92%</div>
+                                <small>Student Name</small>
+                            </div>
+                        </div>
+                        <div class="analytics-grid">
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-chart-pie"></i> Performance Distribution</h4>
+                                <canvas id="performanceChart" height="200"></canvas>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-chart-bar"></i> Grade Distribution</h4>
+                                <canvas id="gradeChart" height="200"></canvas>
+                            </div>
+                            <div class="analytics-card">
+                                <h4><i class="fas fa-chart-line"></i> Block Performance</h4>
+                                <canvas id="blockChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title"><i class="fas fa-trophy"></i> 🏆 Honor Roll - Top 10 Students</div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Student Name</th>
+                                        <th>Admission</th>
+                                        <th>Subjects</th>
+                                        <th>Overall Avg</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="honorRollBody">
+                                    <tr>
+                                        <td>1</td>
+                                        <td><strong>Student Name</strong></td>
+                                        <td>KRCHN/001/26</td>
+                                        <td>12</td>
+                                        <td><span class="stat-badge high">92%</span></td>
+                                        <td><span class="badge badge-pass">PASS</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>2</td>
+                                        <td><strong>Student Name</strong></td>
+                                        <td>KRCHN/002/26</td>
+                                        <td>12</td>
+                                        <td><span class="stat-badge high">88%</span></td>
+                                        <td><span class="badge badge-pass">PASS</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>3</td>
+                                        <td><strong>Student Name</strong></td>
+                                        <td>KRCHN/003/26</td>
+                                        <td>12</td>
+                                        <td><span class="stat-badge high">85%</span></td>
+                                        <td><span class="badge badge-pass">PASS</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="analytics-units" class="analytics-tab">
+                        <div class="card text-center" style="padding: 40px;">
+                            <i class="fas fa-book-open" style="font-size: 48px; color: var(--primary);"></i>
+                            <h4>Unit Performance Analysis</h4>
+                            <p>Loading unit data...</p>
+                        </div>
+                    </div>
+                    <div id="analytics-students" class="analytics-tab">
+                        <div class="card text-center" style="padding: 40px;">
+                            <i class="fas fa-users" style="font-size: 48px; color: var(--primary);"></i>
+                            <h4>Student Performance Analysis</h4>
+                            <p>Loading student data...</p>
+                        </div>
+                    </div>
+                    <div id="analytics-clinical" class="analytics-tab">
+                        <div class="card text-center" style="padding: 40px;">
+                            <i class="fas fa-hospital-user" style="font-size: 48px; color: var(--primary);"></i>
+                            <h4>Clinical Performance Analysis</h4>
+                            <p>Loading clinical data...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- TAB: SCORE PUBLISHING                                   -->
+                <!-- ======================================================== -->
+                <div id="tab-scorePublish" class="tab-content">
+                    <button class="back-btn" onclick="switchTab('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="header">
+                        <h3><i class="fas fa-eye-slash"></i> Score Publishing Control Panel</h3>
+                        <p>Control which exam results students can see</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">450</div>
+                            <div class="stat-label">Total Scores Entered</div>
+                        </div>
+                        <div class="stat-card" style="background: #d1fae5;">
+                            <div class="stat-number" style="color: #065f46;">320</div>
+                            <div class="stat-label">Published to Students</div>
+                        </div>
+                        <div class="stat-card" style="background: #fee2e2;">
+                            <div class="stat-number" style="color: #991b1b;">130</div>
+                            <div class="stat-label">Hidden from Students</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">71%</div>
+                            <div class="stat-label">Publication Rate</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i> Exam Scores - Manage Publication
+                            <button class="save-btn" style="margin-left: auto;">Refresh</button>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Exam / Assessment</th>
+                                    <th>Block</th>
+                                    <th>Students</th>
+                                    <th>Published</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>ANATOMY</strong><br><small>Full (CAT1+CAT2+Exam)</small></td>
+                                    <td>BLOCK 0</td>
+                                    <td>45</td>
+                                    <td>
+                                        <strong>45</strong> / 45
+                                        <div class="progress-bar" style="margin-top: 5px; width: 100px;">
+                                            <div class="progress-fill" style="width: 100%; background: #10b981;"></div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-pass">Fully Published</span></td>
+                                    <td>
+                                        <button class="save-btn" style="padding: 4px 12px; font-size: 11px;">Manage</button>
+                                        <button class="btn-warning" style="padding: 4px 12px; font-size: 11px;">Unpublish All</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>PHYSIOLOGY</strong><br><small>Full (CAT1+CAT2+Exam)</small></td>
+                                    <td>BLOCK 0</td>
+                                    <td>44</td>
+                                    <td>
+                                        <strong>30</strong> / 44
+                                        <div class="progress-bar" style="margin-top: 5px; width: 100px;">
+                                            <div class="progress-fill" style="width: 68%; background: #f59e0b;"></div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-warning">Partially Published</span></td>
+                                    <td>
+                                        <button class="save-btn" style="padding: 4px 12px; font-size: 11px;">Manage</button>
+                                        <button class="btn-success" style="padding: 4px 12px; font-size: 11px;">Publish All</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>XY FORMS</strong><br><small>Clinical Evaluation</small></td>
+                                    <td>NCK</td>
+                                    <td>48</td>
+                                    <td>
+                                        <strong>0</strong> / 48
+                                        <div class="progress-bar" style="margin-top: 5px; width: 100px;">
+                                            <div class="progress-fill" style="width: 0%; background: #ef4444;"></div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-fail">Not Published</span></td>
+                                    <td>
+                                        <button class="save-btn" style="padding: 4px 12px; font-size: 11px;">Manage</button>
+                                        <button class="btn-success" style="padding: 4px 12px; font-size: 11px;">Publish All</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-history"></i> Publication Logs</div>
+                        <div id="publishLogsContainer">
+                            <div class="text-center" style="padding: 20px;">No publication logs yet</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- End Dynamic Content -->
+
+        </main>
+        <!-- End Main Content -->
+
+    </div>
+    <!-- End App -->
+
+    <!-- ============================================================ -->
+    <!-- EXTERNAL JAVASCRIPT FILES                                    -->
+    <!-- ============================================================ -->
+    
+    <!-- Supabase Configuration -->
+    <script src="supabase-config.js"></script>
+    
+    <!-- Main Application Logic -->
     <script src="marksapp.js"></script>
+
 </body>
 </html>
