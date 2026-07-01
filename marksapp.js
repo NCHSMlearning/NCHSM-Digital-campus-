@@ -30,9 +30,35 @@ function startApp() {
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     
-    // Create Supabase client
-    const supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ===== CREATE OR GET SUPABASE CLIENT =====
+    let supabaseClient;
+    
+    if (typeof supabaseJs !== 'undefined') {
+        // Supabase SDK loaded via CDN
+        supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client created via supabaseJs');
+    } else if (typeof supabase !== 'undefined') {
+        // Supabase already exists (maybe from another script)
+        supabaseClient = supabase;
+        console.log('✅ Using existing supabase client');
+    } else if (typeof window.supabase !== 'undefined') {
+        // Supabase exists on window
+        supabaseClient = window.supabase;
+        console.log('✅ Using window.supabase client');
+    } else if (typeof window.sb !== 'undefined') {
+        // Supabase exists as sb on window
+        supabaseClient = window.sb;
+        console.log('✅ Using window.sb client');
+    } else {
+        // ❌ No Supabase client found
+        console.error('❌ Supabase SDK not available!');
+        alert('❌ Supabase SDK failed to load. Please refresh the page.');
+        return;
+    }
+    
+    // Make it globally available
     window.sb = supabaseClient;
+    window.supabase = supabaseClient;
     
     console.log('✅ Supabase client ready');
     console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
