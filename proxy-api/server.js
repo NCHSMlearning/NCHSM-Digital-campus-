@@ -374,8 +374,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== SAVE MARKS ENDPOINT WITH ENTRY CHECK ==========
-// ========== SAVE MARKS ENDPOINT WITH ENTRY CHECK ==========
+// ========== FIXED: SAVE MARKS ENDPOINT (Supports Import) ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
@@ -384,7 +383,8 @@ app.post('/api/marks', async (req, res) => {
     const year = req.headers['x-year'] || '2024';
     const userRole = req.headers['x-user-role'] || req.body.userRole;
     
-    console.log(`[SAVE ATTEMPT] User: ${lecturerName}, Role: ${userRole}, Subject: ${subject}`);
+    console.log(`[SAVE] User: ${lecturerName}, Role: ${userRole}, Subject: ${subject}`);
+    console.log(`[SAVE] Records: ${marksData?.length || 0}`);
     
     // ===== ENTRY CHECK =====
     const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
@@ -419,79 +419,196 @@ app.post('/api/marks', async (req, res) => {
     
     // ===== SAVE LOGIC =====
     if (examType === 'nck') {
-      // ... NCK saving code (keep as is) ...
+      // NCK saving code (keep as is)
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${sheetName}!A:I`,
-      });
-      const currentData = response.data.values || [];
+      // ===== FIX 1: Check if sheet exists =====
+      let sheetExists = true;
+      let currentData = [];
+      try {
+        const response = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${sheetName}!A:I`,
+        });
+        currentData = response.data.values || [];
+        console.log(`[SAVE] Sheet ${sheetName} exists with ${currentData.length} rows`);
+      } catch (error) {
+        sheetExists = false;
+        console.log(`[SAVE] Sheet ${sheetName} does not exist, creating...`);
+        
+        // Create the sheet with headers
+        try {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: spreadsheetId,
+            requestBody: {
+              requests: [
+                { addSheet: { properties: { title: sheetName } } }
+              ]
+            }
+          });
+          
+          // Add headers
+          const headers = ['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE'];
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!A1:I1`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [headers] }
+          });
+          
+          currentData = [headers];
+          console.log(`[SAVE] Created new sheet: ${sheetName}`);
+        } catch (createError) {
+          console.error('[SAVE] Error creating sheet:', createError);
+          return res.status(500).json({ 
+            success: false, 
+            error: `Could not create sheet: ${createError.message}` 
+          });
+        }
+      }
+      
+      // ===== FIX 2: Build map of existing admissions =====
+      const existingAdmissions = new Map();
+      let maxRow = 1;
+      
+      for (let i = 1; i < currentData.length; i++) {
+        const row = currentData[i];
+        if (row && row[0]) {
+          const admission = row[0].toString().trim();
+          existingAdmissions.set(admission, i + 1); // row number (1-indexed)
+          if (i + 1 > maxRow) maxRow = i + 1;
+        }
+      }
+      
+      console.log(`[SAVE] Found ${existingAdmissions.size} existing students, max row: ${maxRow}`);
+      
+      // ===== FIX 3: Process marks - separate updates from inserts =====
+      const rowsToUpdate = [];
+      const rowsToInsert = [];
+      let skippedCount = 0;
       
       for (const mark of marksData) {
-        const row = mark.row;
-        const existingRow = (currentData[row - 1]) || [];
-        const assessmentType = existingRow[8] || 'full';
+        const admission = mark.admission ? mark.admission.toString().trim() : '';
+        if (!admission) {
+          skippedCount++;
+          continue;
+        }
         
+        // Get scores
         let cat1 = parseFloat(mark.cat1) || 0;
         let cat2 = parseFloat(mark.cat2) || 0;
         let exam = parseFloat(mark.exam) || 0;
-        let finalScore = 0;
         
-        // ===== ✅ FIXED: Handle ALL assessment types correctly =====
+        // Determine assessment type from existing data or use full
+        let assessmentType = 'full';
+        if (existingAdmissions.has(admission)) {
+          const rowNum = existingAdmissions.get(admission);
+          if (currentData[rowNum - 1] && currentData[rowNum - 1][8]) {
+            assessmentType = currentData[rowNum - 1][8];
+          }
+        }
+        
+        // Calculate final score
+        let finalScore = 0;
         const hasCat1 = cat1 > 0;
         const hasCat2 = cat2 > 0;
         const hasExam = exam > 0;
         
         if (hasExam && hasCat1 && hasCat2) {
-          // FULL: CAT1(30%) + CAT2(30%) + Exam(70%) = 100%
           const cappedCat1 = Math.min(cat1, 30);
           const cappedCat2 = Math.min(cat2, 30);
           const cappedExam = Math.min(exam, 70);
           finalScore = ((cappedCat1 + cappedCat2) / 60 * 30) + cappedExam;
         } else if (hasExam && hasCat1) {
-          // SINGLE CAT: CAT(30%) + Exam(70%) = 100%
-          const cappedCat1 = Math.min(cat1, 30);
-          const cappedExam = Math.min(exam, 70);
-          finalScore = cappedCat1 + cappedExam;
+          finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
         } else if (hasExam) {
-          // EXAM ONLY: Exam(100%)
           finalScore = Math.min(exam, 100);
         } else if (hasCat1 && hasCat2) {
-          // TWO CATS ONLY: (CAT1+CAT2)/60 * 100
-          const cappedCat1 = Math.min(cat1, 30);
-          const cappedCat2 = Math.min(cat2, 30);
-          finalScore = ((cappedCat1 + cappedCat2) / 60) * 100;
+          finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
         } else if (hasCat1) {
-          // ✅ CAT ONLY: (CAT/30) * 100
           finalScore = (Math.min(cat1, 30) / 30) * 100;
-        } else {
-          finalScore = 0;
         }
-        
         finalScore = Math.round(finalScore * 10) / 10;
         const grade = await calculateGrade(finalScore);
         
+        const rowData = {
+          admission,
+          name: mark.name || '',
+          cat1,
+          cat2,
+          exam,
+          finalScore,
+          grade,
+          gradedBy: lecturerName || '',
+          assessmentType
+        };
+        
+        // Check if student exists
+        if (existingAdmissions.has(admission)) {
+          rowsToUpdate.push(rowData);
+        } else {
+          rowsToInsert.push(rowData);
+        }
+      }
+      
+      // ===== FIX 4: Update existing rows =====
+      for (const mark of rowsToUpdate) {
+        const rowNum = existingAdmissions.get(mark.admission);
         await sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `${sheetName}!C${row}:H${row}`,
+          range: `${sheetName}!C${rowNum}:H${rowNum}`,
           valueInputOption: 'RAW',
           requestBody: { 
-            values: [[mark.cat1 || '', mark.cat2 || '', mark.exam || '', finalScore, grade, lecturerName || existingRow[7] || '']] 
+            values: [[mark.cat1, mark.cat2, mark.exam, mark.finalScore, mark.grade, mark.gradedBy]] 
           }
         });
       }
-      res.json({ success: true, message: 'Marks saved successfully' });
+      
+      // ===== FIX 5: Insert new rows =====
+      if (rowsToInsert.length > 0) {
+        const valuesToInsert = rowsToInsert.map(mark => [
+          mark.admission,
+          mark.name,
+          mark.cat1,
+          mark.cat2,
+          mark.exam,
+          mark.finalScore,
+          mark.grade,
+          mark.gradedBy,
+          mark.assessmentType
+        ]);
+        
+        const startRow = maxRow + 1;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheetName}!A${startRow}:I${startRow + valuesToInsert.length - 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: valuesToInsert }
+        });
+      }
+      
+      console.log(`[SAVE] Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Saved ${rowsToUpdate.length} updated + ${rowsToInsert.length} new marks`,
+        updated: rowsToUpdate.length,
+        inserted: rowsToInsert.length,
+        skipped: skippedCount
+      });
     }
   } catch (error) {
-    console.error('Error saving marks:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Error saving marks:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: error.stack 
+    });
   }
 });
-
 // ========== STUDENT ENDPOINTS (Simplified) ==========
 app.get('/api/students', async (req, res) => {
   try {
