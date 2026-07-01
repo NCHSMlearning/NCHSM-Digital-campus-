@@ -3605,22 +3605,50 @@ async function showNCKMarks() {
     if(row) row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row'); 
   };
   
-  // ======================= FAST ENTRY WITH INSTANT DATABASE SAVE (FIX 1) =======================
-  async function saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedBy) {
-    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedBy }];
-    showLoading(`Saving ${currentNCKMarks[studentIdx]?.name} to database...`);
+ // ======================= FAST ENTRY WITH INSTANT DATABASE SAVE =======================
+async function saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedBy) {
+    // ✅ Get the student name for logging
+    const studentName = currentNCKMarks[studentIdx]?.name || 'Unknown';
+    
+    // ✅ Build marksData with year
+    const marksData = [{ 
+        row: studentIdx + 2,
+        name: studentName,
+        scores: scores, 
+        gradedBy: gradedBy,
+        year: currentYear  // ✅ ADD YEAR!
+    }];
+    
+    showLoading(`Saving ${studentName} to database...`);
+    
     const result = await apiCall('/api/marks', {
-      method: 'POST',
-      body: JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role })
+        method: 'POST',
+        body: JSON.stringify({ 
+            block: 'BLOCK_0', 
+            subject: sheetName, 
+            marksData: marksData, 
+            lecturerName: currentUser.name, 
+            examType: 'nck', 
+            userRole: currentUser?.role || 'admin'
+        })
     });
+    
     hideLoading();
-    if(result.success){
-      if(currentNCKMarks[studentIdx]) currentNCKMarks[studentIdx].scores = scores;
-      showNotification(`✅ ${currentNCKMarks[studentIdx]?.name} saved to database!`, false);
-      return true;
-    } else { showNotification(`Save failed: ${result.message}`, true); return false; }
-  }
-  
+    
+    if (result && (result.success === true || result.message === 'NCK marks saved successfully')) {
+        // ✅ Update local data
+        if (currentNCKMarks[studentIdx]) {
+            currentNCKMarks[studentIdx].scores = scores;
+            currentNCKMarks[studentIdx].gradedBy = gradedBy;
+            currentNCKMarks[studentIdx].year = currentYear;
+        }
+        showNotification(`✅ ${studentName} saved to database!`, false);
+        return true;
+    } else { 
+        showNotification(`Save failed: ${result?.message || result?.error || 'Unknown error'}`, true); 
+        return false; 
+    }
+}
 window.saveNCKMarks = async function() { 
   const sheetName = document.getElementById('nckSheetSelect').value; 
   if (!sheetName) {
@@ -3924,51 +3952,75 @@ window.saveNCKMarks = async function() {
     } 
   }
   
-  async function applyFastEntry() { 
+ async function applyFastEntry() { 
     const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'NCK_XY_FORMS';
+    
+    // ✅ Get student name
+    const studentName = currentNCKMarks[studentIdx]?.name || 'Unknown';
+    
     let scores = [];
     for(let c = 0; c < 22; c++){ 
-      const fastVal = document.getElementById(`fast_${c}`)?.value;
-      if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
-      else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
+        const fastVal = document.getElementById(`fast_${c}`)?.value;
+        if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
+        else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
     }
     const gradedVal = document.getElementById('fast_graded')?.value || currentUser.name;
     
+    // ✅ Save to database (includes year)
     const saved = await saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedVal);
+    
     if(saved){
-      for(let c=0;c<22;c++){ let mi=document.getElementById(`xy_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
-      let gi=document.getElementById(`xyGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
-      if(window.updateXYAverage) updateXYAverage(studentIdx);
-      const nextIdx = studentIdx+1;
-      if(nextIdx < currentNCKMarks.length){ 
-        document.getElementById('fastStudentSelect').value = nextIdx; 
-        loadFastEntryFields(nextIdx); 
-        showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
-      } else { 
-        closeFastEntryModal(); 
-        showNotification('🎉 All students saved to database!', false);
-      }
+        // ✅ Update the main table display
+        for(let c=0; c<22; c++){ 
+            let mi = document.getElementById(`xy_${studentIdx}_${c}`); 
+            if(mi) mi.value = scores[c]; 
+        }
+        let gi = document.getElementById(`xyGraded_${studentIdx}`); 
+        if(gi) gi.value = gradedVal;
+        if(window.updateXYAverage) updateXYAverage(studentIdx);
+        
+        // ✅ Move to next student
+        const nextIdx = studentIdx + 1;
+        if(nextIdx < currentNCKMarks.length){ 
+            document.getElementById('fastStudentSelect').value = nextIdx; 
+            loadFastEntryFields(nextIdx); 
+            showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+        } else { 
+            closeFastEntryModal(); 
+            showNotification('🎉 All students saved to database!', false);
+            // ✅ Reload data to refresh the table
+            setTimeout(() => loadNCKMarks(), 500);
+        }
     }
-  }
+}
   
   async function applyFastEntryAndStay() { 
     const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'XY FORMS';
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'NCK_XY_FORMS';
+    
     let scores = [];
     for(let c = 0; c < 22; c++){ 
-      const fastVal = document.getElementById(`fast_${c}`)?.value;
-      if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
-      else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
+        const fastVal = document.getElementById(`fast_${c}`)?.value;
+        if(fastVal !== undefined) scores.push(parseFloat(fastVal)||0);
+        else scores.push(parseFloat(document.getElementById(`xy_${studentIdx}_${c}`)?.value)||0);
     }
     const gradedVal = document.getElementById('fast_graded')?.value || currentUser.name;
+    
+    // ✅ Save to database (includes year)
     await saveCurrentStudentToDB(studentIdx, sheetName, scores, gradedVal);
-    for(let c=0;c<22;c++){ let mi=document.getElementById(`xy_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
-    let gi=document.getElementById(`xyGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+    
+    // ✅ Update the main table display
+    for(let c=0; c<22; c++){ 
+        let mi = document.getElementById(`xy_${studentIdx}_${c}`); 
+        if(mi) mi.value = scores[c]; 
+    }
+    let gi = document.getElementById(`xyGraded_${studentIdx}`); 
+    if(gi) gi.value = gradedVal;
     if(window.updateXYAverage) updateXYAverage(studentIdx);
+    
     showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
-  }
-  
+}
   function openFastAssessmentPanel() { 
     if(!currentNCKMarks || currentNCKMarks.length === 0){ 
       showNotification('No data loaded', true); 
@@ -4159,49 +4211,110 @@ window.saveNCKMarks = async function() {
     } 
   }
   
-  async function applyFastAssessmentEntry() { 
+ async function applyFastAssessmentEntry() { 
     const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE';
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'NCK_ASSESSMENT_AND_CASE';
+    const studentName = currentNCKMarks[studentIdx]?.name || 'Unknown';
+    
     let scores = [];
     for(let c = 0; c < 12; c++){ 
-      const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
-      scores.push(fastVal !== undefined ? (fastVal===''?'':parseFloat(fastVal)) : '');
+        const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
+        scores.push(fastVal !== undefined ? (fastVal==='' ? 0 : parseFloat(fastVal)) : 0);
     }
     const gradedVal = document.getElementById('fast_ac_graded')?.value || currentUser.name;
-    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedVal }];
-    showLoading(`Saving ${currentNCKMarks[studentIdx]?.name} to database...`);
-    const result = await apiCall('/api/marks', { method:'POST', body:JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role }) });
+    
+    // ✅ Build marksData with year
+    const marksData = [{ 
+        row: studentIdx + 2,
+        name: studentName,
+        scores: scores, 
+        gradedBy: gradedVal,
+        year: currentYear  // ✅ ADD YEAR!
+    }];
+    
+    showLoading(`Saving ${studentName} to database...`);
+    const result = await apiCall('/api/marks', { 
+        method:'POST', 
+        body:JSON.stringify({ 
+            block:'BLOCK_0', 
+            subject:sheetName, 
+            marksData, 
+            lecturerName:currentUser.name, 
+            examType:'nck', 
+            userRole:currentUser?.role || 'admin'
+        }) 
+    });
     hideLoading();
-    if(result.success){
-      for(let c=0;c<12;c++){ let mi=document.getElementById(`ac_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
-      let gi=document.getElementById(`acGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
-      if(window.updateACTotal) updateACTotal(studentIdx);
-      const nextIdx = studentIdx+1;
-      if(nextIdx < currentNCKMarks.length){ 
-        document.getElementById('fastStudentSelect').value = nextIdx; 
-        loadFastAssessmentFields(nextIdx); 
-        showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
-      } else { closeFastEntryModal(); showNotification('🎉 All assessments saved to database!', false); }
-    } else showNotification('Save failed', true);
-  }
-  
+    
+    if (result && (result.success === true || result.message === 'NCK marks saved successfully')) {
+        // ✅ Update the main table
+        for(let c=0; c<12; c++){ 
+            let mi = document.getElementById(`ac_${studentIdx}_${c}`); 
+            if(mi) mi.value = scores[c]; 
+        }
+        let gi = document.getElementById(`acGraded_${studentIdx}`); 
+        if(gi) gi.value = gradedVal;
+        if(window.updateACTotal) updateACTotal(studentIdx);
+        
+        // ✅ Move to next student or finish
+        const nextIdx = studentIdx + 1;
+        if(nextIdx < currentNCKMarks.length){ 
+            document.getElementById('fastStudentSelect').value = nextIdx; 
+            loadFastAssessmentFields(nextIdx); 
+            showNotification(`Now entering ${currentNCKMarks[nextIdx]?.name}`, false);
+        } else { 
+            closeFastEntryModal(); 
+            showNotification('🎉 All assessments saved to database!', false);
+            setTimeout(() => loadNCKMarks(), 500);
+        }
+    } else {
+        showNotification('Save failed: ' + (result?.message || result?.error || 'Unknown error'), true);
+    }
+}
   async function applyFastAssessmentEntryAndStay() { 
     const studentIdx = parseInt(document.getElementById('fastStudentSelect').value);
-    const sheetName = document.getElementById('nckSheetSelect')?.value || 'ASSESSMENT AND CASE';
+    const sheetName = document.getElementById('nckSheetSelect')?.value || 'NCK_ASSESSMENT_AND_CASE';
+    const studentName = currentNCKMarks[studentIdx]?.name || 'Unknown';
+    
     let scores = [];
     for(let c = 0; c < 12; c++){ 
-      const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
-      scores.push(fastVal !== undefined ? (fastVal===''?'':parseFloat(fastVal)) : '');
+        const fastVal = document.getElementById(`fast_ac_${c}`)?.value;
+        scores.push(fastVal !== undefined ? (fastVal==='' ? 0 : parseFloat(fastVal)) : 0);
     }
     const gradedVal = document.getElementById('fast_ac_graded')?.value || currentUser.name;
-    const marksData = [{ row: studentIdx+2, scores: scores, gradedBy: gradedVal }];
-    await apiCall('/api/marks', { method:'POST', body:JSON.stringify({ block:'BLOCK_0', subject:sheetName, marksData, lecturerName:currentUser.name, examType:'nck', userRole:currentUser?.role }) });
-    for(let c=0;c<12;c++){ let mi=document.getElementById(`ac_${studentIdx}_${c}`); if(mi) mi.value=scores[c]; }
-    let gi=document.getElementById(`acGraded_${studentIdx}`); if(gi) gi.value=gradedVal;
+    
+    // ✅ Build marksData with year
+    const marksData = [{ 
+        row: studentIdx + 2,
+        name: studentName,
+        scores: scores, 
+        gradedBy: gradedVal,
+        year: currentYear
+    }];
+    
+    await apiCall('/api/marks', { 
+        method:'POST', 
+        body:JSON.stringify({ 
+            block:'BLOCK_0', 
+            subject:sheetName, 
+            marksData, 
+            lecturerName:currentUser.name, 
+            examType:'nck', 
+            userRole:currentUser?.role || 'admin'
+        }) 
+    });
+    
+    // ✅ Update the main table
+    for(let c=0; c<12; c++){ 
+        let mi = document.getElementById(`ac_${studentIdx}_${c}`); 
+        if(mi) mi.value = scores[c]; 
+    }
+    let gi = document.getElementById(`acGraded_${studentIdx}`); 
+    if(gi) gi.value = gradedVal;
     if(window.updateACTotal) updateACTotal(studentIdx);
-    showNotification(`✅ Saved ${currentNCKMarks[studentIdx]?.name}. Continue editing.`, false);
-  }
-  
+    
+    showNotification(`✅ Saved ${studentName}. Continue editing.`, false);
+}
   // Column Management Functions
   async function showNCKColumnManagerWithClass() { 
     if(currentUser.role !== 'admin'){ 
