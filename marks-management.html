@@ -3141,22 +3141,46 @@ function generateInterventionListHTML(data) {
   `;
 }
   
-  // ======================= NCK MARKS - XY FORMS =======================
-  async function showNCKMarks() { 
-    let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button><div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3><p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div><div class="selector-group"><label><i class="fas fa-table-list"></i> Select Sheet:</label><select id="nckSheetSelect" style="min-width:250px;"><option value="XY FORMS">📊 XY FORMS - Clinical Areas Evaluation</option><option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written Assessments</option></select><button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button></div><div id="nckMarksContainer"></div>`; 
-    updateContentArea(html);
-    document.getElementById('nckSheetSelect').onchange=()=>loadNCKMarks(); 
-    loadNCKMarks(); 
-  }
+  // ======================= NCK MARKS - FIXED SHEET NAMES =======================
+async function showNCKMarks() { 
+  let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
+    <div class="header"><h3><i class="fas fa-file-medical"></i> NCK Score Sheet Entry</h3>
+    <p>Clinical evaluation (XY FORMS) & Assessment & Case</p></div>
+    <div class="selector-group">
+      <label><i class="fas fa-table-list"></i> Select Sheet:</label>
+      <select id="nckSheetSelect" style="min-width:250px;">
+        <option value="NCK_XY_FORMS">📊 XY FORMS - Clinical Areas Evaluation</option>
+        <option value="NCK_ASSESSMENT_AND_CASE">📋 ASSESSMENT & CASE - Written Assessments</option>
+      </select>
+      <button class="export-btn" onclick="loadNCKMarks()"><i class="fas fa-sync-alt"></i> Load Data</button>
+    </div>
+    <div id="nckMarksContainer"></div>`; 
+  updateContentArea(html);
+  document.getElementById('nckSheetSelect').onchange = () => loadNCKMarks(); 
+  loadNCKMarks(); 
+}
   
   async function loadNCKMarks() { 
-    const sheetName=document.getElementById('nckSheetSelect').value; 
-    showLoading(`Loading ${sheetName}...`); 
-    const marks=await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`,{}); 
-    console.log(`NCK ${sheetName} data:`,marks); 
-    if(sheetName==='XY FORMS'){ displayXYFormsMarks(marks); } else { displayAssessmentMarks(marks); } 
-    hideLoading(); 
+  const sheetName = document.getElementById('nckSheetSelect').value; 
+  showLoading(`Loading ${sheetName}...`); 
+  const marks = await apiCall(`/api/marks/BLOCK_0/${encodeURIComponent(sheetName)}`, {}); 
+  console.log(`NCK ${sheetName} data:`, marks); 
+  
+  // ✅ Check which sheet was selected
+  if (sheetName === 'NCK_XY_FORMS') { 
+    displayXYFormsMarks(marks); 
+  } else if (sheetName === 'NCK_ASSESSMENT_AND_CASE') {
+    displayAssessmentMarks(marks); 
+  } else {
+    // Fallback for old sheet names
+    if (sheetName === 'XY FORMS') {
+      displayXYFormsMarks(marks);
+    } else {
+      displayAssessmentMarks(marks);
+    }
   }
+  hideLoading(); 
+}
   
   function displayXYFormsMarks(marks) { 
     if(!marks||marks.length===0){ 
@@ -3597,47 +3621,65 @@ function generateInterventionListHTML(data) {
     } else { showNotification(`Save failed: ${result.message}`, true); return false; }
   }
   
-  window.saveNCKMarks = async function() { 
-    const sheetName = document.getElementById('nckSheetSelect').value; 
-    let marksData = []; 
-    if (sheetName === 'XY FORMS') { 
-      const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
-      for (let i = 0; i < rows.length; i++) { 
-        let scores = []; 
-        for (let c = 0; c < 22; c++) { 
-          scores.push(parseFloat(document.getElementById(`xy_${i}_${c}`)?.value) || 0); 
-        } 
-        marksData.push({ row: i + 2, scores: scores, gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' }); 
+ window.saveNCKMarks = async function() { 
+  const sheetName = document.getElementById('nckSheetSelect').value; 
+  let marksData = []; 
+  
+  if (sheetName === 'NCK_XY_FORMS') { 
+    const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
+    for (let i = 0; i < rows.length; i++) { 
+      let scores = []; 
+      for (let c = 0; c < 22; c++) { 
+        scores.push(parseFloat(document.getElementById(`xy_${i}_${c}`)?.value) || 0); 
       } 
-    } else { 
-      const columnCount = 12;
-      const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
-      for (let i = 0; i < rows.length; i++) { 
-        let scores = []; 
-        for (let c = 0; c < columnCount; c++) { 
-          const val = document.getElementById(`ac_${i}_${c}`)?.value; 
-          const score = (val !== '' && !isNaN(parseFloat(val))) ? parseFloat(val) : ''; 
-          scores.push(score); 
-        } 
-        marksData.push({ row: i + 2, scores: scores, gradedBy: document.getElementById(`acGraded_${i}`)?.value || '' }); 
-      } 
+      marksData.push({ 
+        row: i + 2, 
+        scores: scores, 
+        gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' 
+      }); 
     } 
-    showLoading('Saving NCK marks...'); 
-    const result = await apiCall('/api/marks', { 
-      method: 'POST', 
-      body: JSON.stringify({ 
-        block: 'BLOCK_0', 
-        subject: sheetName, 
-        marksData: marksData, 
-        lecturerName: currentUser.name, 
-        examType: 'nck', 
-        userRole: currentUser?.role 
-      }) 
-    }); 
-    hideLoading(); 
-    showNotification(result.success ? 'NCK marks saved successfully!' : (result.message || 'Error saving NCK marks'), !result.success); 
-    if (result.success) loadNCKMarks(); 
-  };
+  } else { 
+    const columnCount = 12;
+    const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
+    for (let i = 0; i < rows.length; i++) { 
+      let scores = []; 
+      for (let c = 0; c < columnCount; c++) { 
+        const val = document.getElementById(`ac_${i}_${c}`)?.value; 
+        const score = (val !== '' && !isNaN(parseFloat(val))) ? parseFloat(val) : ''; 
+        scores.push(score); 
+      } 
+      marksData.push({ 
+        row: i + 2, 
+        scores: scores, 
+        gradedBy: document.getElementById(`acGraded_${i}`)?.value || '' 
+      }); 
+    } 
+  } 
+  
+  showLoading('Saving NCK marks...'); 
+  
+  const result = await apiCall('/api/marks', { 
+    method: 'POST', 
+    body: JSON.stringify({ 
+      block: 'BLOCK_0', 
+      subject: sheetName,  // ✅ Sends the correct sheet name (NCK_XY_FORMS or NCK_ASSESSMENT_AND_CASE)
+      marksData: marksData, 
+      lecturerName: currentUser.name, 
+      examType: 'nck', 
+      userRole: currentUser?.role || 'admin'
+    }) 
+  }); 
+  
+  hideLoading(); 
+  
+  if (result && (result.success === true || result.message === 'NCK marks saved successfully')) { 
+    showNotification('✅ NCK marks saved successfully!', false);
+    setTimeout(() => loadNCKMarks(), 500);
+  } else { 
+    console.error('❌ NCK save failed:', result);
+    showNotification(result?.message || result?.error || 'Error saving NCK marks', true); 
+  } 
+};
   
   // Fast Entry Functions with Instant DB Save
   function openFastEntryPanel() { 
