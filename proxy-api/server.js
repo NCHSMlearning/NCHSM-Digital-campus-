@@ -6,8 +6,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ===== SPREADSHEET CONFIGURATION - ALL CLASSES =====
-const SPREADSHEETS = {
+// ===== ✅ MASTER SPREADSHEET CONFIGURATION =====
+// ALL data is now in ONE master spreadsheet
+const MASTER_SPREADSHEET_ID = '1btqWNKQ1HNMOvhDKDScQAFu2NijB8sbs04eH64z6pE4';
+
+// Keep old IDs for reference/backup only (DO NOT use for data operations)
+const OLD_SPREADSHEETS_BACKUP = {
   '2024': {
     internal: '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0',
     nck: '1F-DsXPgZYSyqH9F3kGDP9Z4_AtTV_ZAOd6KXbYdchMo'
@@ -21,8 +25,7 @@ const SPREADSHEETS = {
     nck: '1F3R92jREt7tYFvYo0YtiQeh7HZldY_47YkwvlBiD44E'
   }
 };
-// Use the March 2024 spreadsheet as the master auth source
-const MASTER_SPREADSHEET_ID = '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0';
+
 // ===== MARK ENTRY SETTINGS =====
 let markEntrySettings = {
   global: { enabled: true, closedBy: null, closedAt: null }
@@ -77,12 +80,14 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-// ===== MIDDLEWARE =====
+// ===== ✅ MIDDLEWARE - ALWAYS USE MASTER SPREADSHEET =====
 app.use((req, res, next) => {
+  // Always use the master spreadsheet for ALL operations
+  req.spreadsheetId = MASTER_SPREADSHEET_ID;
+  
   const year = req.headers['x-year'] || req.body.year || '2024';
   const examType = req.headers['x-exam-type'] || req.body.examType || 'internal';
-  req.spreadsheetId = SPREADSHEETS[year]?.[examType] || SPREADSHEETS['2024'].internal;
-  console.log(`[MIDDLEWARE] Year: ${year}, ExamType: ${examType}`);
+  console.log(`[MIDDLEWARE] Using MASTER spreadsheet for year: ${year}, examType: ${examType}`);
   next();
 });
 
@@ -90,7 +95,7 @@ app.use((req, res, next) => {
 async function getStudentsList(spreadsheetId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
-    range: 'STUDENTS!A:D',
+    range: 'STUDENTS!A:E',  // ✅ Updated to include YEAR column
   });
   const data = response.data.values || [];
   const students = [];
@@ -125,7 +130,8 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/years', (req, res) => {
-  res.json(Object.keys(SPREADSHEETS));
+  // ✅ All years are now in one master spreadsheet
+  res.json(['2024', '2025', '2026']);
 });
 
 app.get('/api/blocks', (req, res) => {
@@ -244,7 +250,7 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT - FIXED FOR 12 COLUMNS ==========
+// ========== GET MARKS ENDPOINT ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -286,12 +292,9 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       } else {
-        // ===== ASSESSMENT AND CASE - FIXED: Read ALL 12 columns (C through N) =====
-        // Column C = index 2 (ANC WARD) through Column N = index 13 (COMMUNITY DIAGNOSIS)
-        // Total 12 assessment columns
-        const assessmentStartCol = 2;  // Column C
-        const assessmentEndCol = 13;   // Column N
-        const assessmentCount = assessmentEndCol - assessmentStartCol + 1; // 12 columns
+        const assessmentStartCol = 2;
+        const assessmentEndCol = 13;
+        const assessmentCount = assessmentEndCol - assessmentStartCol + 1;
         
         console.log(`[ASSESSMENT] Reading ${assessmentCount} columns (${assessmentStartCol} to ${assessmentEndCol})`);
         
@@ -300,7 +303,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           if (!row || !row[1]) continue;
           
           const scores = [];
-          // Read ALL 12 assessment columns (C through N)
           for (let col = assessmentStartCol; col <= assessmentEndCol && col < row.length; col++) {
             let score = 0;
             if (row[col] && row[col] !== '') {
@@ -309,22 +311,18 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                 score = 0;
               } else {
                 score = parseFloat(rawValue) || 0;
-                // DO NOT cap at 100 - case studies can have scores over 100 (e.g., 453)
-                // Only cap if it's unreasonably high (over 1000)
                 if (score > 1000) score = 0;
               }
             }
             scores.push(score);
           }
           
-          // Ensure we have exactly 12 scores
           while (scores.length < assessmentCount) scores.push(0);
           
           const total = scores.reduce((a, b) => a + b, 0);
           const validCount = scores.filter(s => s > 0).length;
           const average = validCount > 0 ? total / validCount : 0;
           
-          // Graded by is in column Q (index 16)
           let gradedBy = '';
           if (row[16] && row[16] !== '') {
             gradedBy = row[16];
@@ -375,7 +373,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
   }
 });
 
-// ========== FIXED: SAVE MARKS ENDPOINT (Supports Import) ==========
+// ========== SAVE MARKS ENDPOINT ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
@@ -387,7 +385,7 @@ app.post('/api/marks', async (req, res) => {
     console.log(`[SAVE] User: ${lecturerName}, Role: ${userRole}, Subject: ${subject}`);
     console.log(`[SAVE] Records: ${marksData?.length || 0}`);
     
-    // ===== ENTRY CHECK =====
+    // Entry check
     const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
     
     if (!isAdmin) {
@@ -418,15 +416,13 @@ app.post('/api/marks', async (req, res) => {
     });
     if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
     
-    // ===== SAVE LOGIC =====
+    // Save logic
     if (examType === 'nck') {
-      // NCK saving code (keep as is)
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       
-      // ===== FIX 1: Check if sheet exists =====
       let sheetExists = true;
       let currentData = [];
       try {
@@ -440,7 +436,6 @@ app.post('/api/marks', async (req, res) => {
         sheetExists = false;
         console.log(`[SAVE] Sheet ${sheetName} does not exist, creating...`);
         
-        // Create the sheet with headers
         try {
           await sheets.spreadsheets.batchUpdate({
             spreadsheetId: spreadsheetId,
@@ -451,7 +446,6 @@ app.post('/api/marks', async (req, res) => {
             }
           });
           
-          // Add headers
           const headers = ['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE'];
           await sheets.spreadsheets.values.update({
             spreadsheetId,
@@ -471,7 +465,6 @@ app.post('/api/marks', async (req, res) => {
         }
       }
       
-      // ===== FIX 2: Build map of existing admissions =====
       const existingAdmissions = new Map();
       let maxRow = 1;
       
@@ -479,14 +472,13 @@ app.post('/api/marks', async (req, res) => {
         const row = currentData[i];
         if (row && row[0]) {
           const admission = row[0].toString().trim();
-          existingAdmissions.set(admission, i + 1); // row number (1-indexed)
+          existingAdmissions.set(admission, i + 1);
           if (i + 1 > maxRow) maxRow = i + 1;
         }
       }
       
       console.log(`[SAVE] Found ${existingAdmissions.size} existing students, max row: ${maxRow}`);
       
-      // ===== FIX 3: Process marks - separate updates from inserts =====
       const rowsToUpdate = [];
       const rowsToInsert = [];
       let skippedCount = 0;
@@ -498,12 +490,10 @@ app.post('/api/marks', async (req, res) => {
           continue;
         }
         
-        // Get scores
         let cat1 = parseFloat(mark.cat1) || 0;
         let cat2 = parseFloat(mark.cat2) || 0;
         let exam = parseFloat(mark.exam) || 0;
         
-        // Determine assessment type from existing data or use full
         let assessmentType = 'full';
         if (existingAdmissions.has(admission)) {
           const rowNum = existingAdmissions.get(admission);
@@ -512,7 +502,6 @@ app.post('/api/marks', async (req, res) => {
           }
         }
         
-        // Calculate final score
         let finalScore = 0;
         const hasCat1 = cat1 > 0;
         const hasCat2 = cat2 > 0;
@@ -547,7 +536,6 @@ app.post('/api/marks', async (req, res) => {
           assessmentType
         };
         
-        // Check if student exists
         if (existingAdmissions.has(admission)) {
           rowsToUpdate.push(rowData);
         } else {
@@ -555,7 +543,6 @@ app.post('/api/marks', async (req, res) => {
         }
       }
       
-      // ===== FIX 4: Update existing rows =====
       for (const mark of rowsToUpdate) {
         const rowNum = existingAdmissions.get(mark.admission);
         await sheets.spreadsheets.values.update({
@@ -568,7 +555,6 @@ app.post('/api/marks', async (req, res) => {
         });
       }
       
-      // ===== FIX 5: Insert new rows =====
       if (rowsToInsert.length > 0) {
         const valuesToInsert = rowsToInsert.map(mark => [
           mark.admission,
@@ -610,12 +596,13 @@ app.post('/api/marks', async (req, res) => {
     });
   }
 });
-// ========== STUDENT ENDPOINTS (Simplified) ==========
+
+// ========== STUDENT ENDPOINTS ==========
 app.get('/api/students', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',  // ✅ Updated to include YEAR column
     });
     const data = response.data.values || [];
     const students = [];
@@ -625,7 +612,13 @@ app.get('/api/students', async (req, res) => {
       const admission = row ? row[0] : null;
       if (admission && !seen[admission]) {
         seen[admission] = true;
-        students.push({ admission, name: row[1] || '', block: row[2] || 'BLOCK_0', status: row[3] || 'ACTIVE' });
+        students.push({ 
+          admission, 
+          name: row[1] || '', 
+          block: row[2] || 'BLOCK_0', 
+          year: row[3] || '',  // ✅ Include year
+          status: row[4] || 'ACTIVE' 
+        });
       }
     }
     res.json(students);
@@ -636,18 +629,18 @@ app.get('/api/students', async (req, res) => {
 
 app.post('/api/add-student', async (req, res) => {
   try {
-    const { admission, name, block } = req.body;
+    const { admission, name, block, year } = req.body;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',
     });
     const data = response.data.values || [];
     const nextRow = data.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
-      range: `STUDENTS!A${nextRow}:D${nextRow}`,
+      range: `STUDENTS!A${nextRow}:E${nextRow}`,
       valueInputOption: 'RAW',
-      requestBody: { values: [[admission, name.toUpperCase(), block, 'ACTIVE']] }
+      requestBody: { values: [[admission, name.toUpperCase(), block, year || '2026', 'ACTIVE']] }
     });
     res.json({ success: true, message: 'Student added successfully' });
   } catch (error) {
@@ -657,19 +650,19 @@ app.post('/api/add-student', async (req, res) => {
 
 app.post('/api/update-student', async (req, res) => {
   try {
-    const { admission, name, block } = req.body;
+    const { admission, name, block, year } = req.body;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === admission) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
-          range: `STUDENTS!B${i+1}:C${i+1}`,
+          range: `STUDENTS!B${i+1}:D${i+1}`,
           valueInputOption: 'RAW',
-          requestBody: { values: [[name.toUpperCase(), block]] }
+          requestBody: { values: [[name.toUpperCase(), block, year || '2026']] }
         });
         break;
       }
@@ -685,14 +678,14 @@ app.post('/api/delete-student', async (req, res) => {
     const { admission } = req.body;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',
     });
     const data = response.data.values || [];
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === admission) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: req.spreadsheetId,
-          range: `STUDENTS!D${i+1}`,
+          range: `STUDENTS!E${i+1}`,
           valueInputOption: 'RAW',
           requestBody: { values: [['INACTIVE']] }
         });
@@ -705,13 +698,10 @@ app.post('/api/delete-student', async (req, res) => {
   }
 });
 
-// ========== LECTURER ENDPOINTS (Simplified) ==========
-// ========== GET LECTURERS FROM MASTER SPREADSHEET ==========
+// ========== LECTURER ENDPOINTS ==========
 app.get('/api/lecturers', async (req, res) => {
   try {
-    // ✅ Use the master spreadsheet for authentication
     const spreadsheetId = MASTER_SPREADSHEET_ID;
-    
     console.log(`[GET LECTURERS] Using master spreadsheet: ${spreadsheetId}`);
     
     const response = await sheets.spreadsheets.values.get({
@@ -742,12 +732,9 @@ app.get('/api/lecturers', async (req, res) => {
   }
 });
 
-// ========== GET SINGLE LECTURER FROM MASTER SPREADSHEET ==========
 app.get('/api/lecturer/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    
-    // ✅ Use the master spreadsheet for lecturer data
     const spreadsheetId = MASTER_SPREADSHEET_ID;
     
     console.log(`[GET LECTURER] Looking for: ${username} in master spreadsheet`);
@@ -771,7 +758,6 @@ app.get('/api/lecturer/:username', async (req, res) => {
       }
     }
     
-    // If not found, return null
     res.json(null);
   } catch (error) {
     console.error('Error fetching lecturer:', error);
@@ -779,13 +765,9 @@ app.get('/api/lecturer/:username', async (req, res) => {
   }
 });
 
-// ========== ADD LECTURER TO MASTER SPREADSHEET ==========
-// ========== ADD LECTURER TO MASTER SPREADSHEET ==========
 app.post('/api/add-lecturer', async (req, res) => {
   try {
     const { username, name, email, password, subjects } = req.body;
-    
-    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
     
     console.log(`[ADD LECTURER] Adding: ${username} to master spreadsheet`);
@@ -821,13 +803,9 @@ app.post('/api/add-lecturer', async (req, res) => {
   }
 });
 
-// ========== UPDATE LECTURER IN MASTER SPREADSHEET ==========
-// ========== UPDATE LECTURER IN MASTER SPREADSHEET ==========
 app.post('/api/update-lecturer', async (req, res) => {
   try {
     const { oldUsername, username, name, email, password, subjects } = req.body;
-    
-    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
     
     console.log(`[UPDATE LECTURER] Updating: ${oldUsername} in master spreadsheet`);
@@ -842,8 +820,6 @@ app.post('/api/update-lecturer', async (req, res) => {
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === oldUsername) {
         const row = i + 1;
-        
-        // Prepare update data
         const subjectsStr = subjects && subjects.length > 0 ? subjects.join(',') : '';
         
         await sheets.spreadsheets.values.update({
@@ -874,13 +850,9 @@ app.post('/api/update-lecturer', async (req, res) => {
   }
 });
 
-// ========== DELETE LECTURER FROM MASTER SPREADSHEET ==========
-// ========== DELETE LECTURER FROM MASTER SPREADSHEET ==========
 app.post('/api/delete-lecturer', async (req, res) => {
   try {
     const { username } = req.body;
-    
-    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
     
     console.log(`[DELETE LECTURER] Deleting: ${username} from master spreadsheet`);
@@ -943,7 +915,6 @@ app.post('/api/add-unit', async (req, res) => {
     const data = response.data.values || [];
     let nextRow = data.length + 1;
     
-    // Check if unit already exists
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === block && data[i][1] === name) {
         if (data[i][2] === 'YES') {
@@ -955,14 +926,12 @@ app.post('/api/add-unit', async (req, res) => {
             valueInputOption: 'RAW',
             requestBody: { values: [['YES', assessmentType]] }
           });
-          // Also create the marksheet with students
           await createMarksheetWithStudents(req.spreadsheetId, block, name, assessmentType);
           return res.json({ success: true, message: 'Unit reactivated successfully' });
         }
       }
     }
     
-    // Add to CONFIG
     await sheets.spreadsheets.values.update({
       spreadsheetId: req.spreadsheetId,
       range: `CONFIG!A${nextRow}:D${nextRow}`,
@@ -970,7 +939,6 @@ app.post('/api/add-unit', async (req, res) => {
       requestBody: { values: [[block, name, 'YES', assessmentType]] }
     });
     
-    // Create marksheet with students
     await createMarksheetWithStudents(req.spreadsheetId, block, name, assessmentType);
     
     res.json({ success: true, message: 'Unit added successfully' });
@@ -980,26 +948,21 @@ app.post('/api/add-unit', async (req, res) => {
   }
 });
 
-// Helper function to create marksheet with students
-// ======================= FIXED: CREATE MARKSHEET WITH STUDENTS =======================
-// ======================= FIXED: CREATE MARKSHEET WITH STUDENTS (NO DUPLICATES) =======================
+// ===== CREATE MARKSHEET WITH STUDENTS =====
 async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType) {
   try {
     console.log(`📝 Creating marksheet for ${block} - ${subject}`);
     
-    // 1. Get students from STUDENTS sheet
     const studentsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',
     });
     const students = studentsResponse.data.values || [];
     console.log(`📊 Found ${students.length - 1} students in STUDENTS sheet`);
     
-    // Clean subject name for sheet title
     let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
     const sheetName = `${block}_${cleanSubject}`;
     
-    // 2. ✅ CHECK: Does the sheet already exist?
     let existingAdmissions = new Set();
     let sheetExists = false;
     
@@ -1011,7 +974,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       const existingData = existingResponse.data.values || [];
       sheetExists = true;
       
-      // Normalize existing admissions for comparison
       for (let i = 1; i < existingData.length; i++) {
         if (existingData[i] && existingData[i][0]) {
           let admission = existingData[i][0].trim().toUpperCase();
@@ -1030,17 +992,13 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       sheetExists = false;
     }
     
-    // 3. Prepare rows - HEADERS FIRST
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE']];
-    
     let addedCount = 0;
     let skippedCount = 0;
     
-    // 4. ✅ ADD ONLY STUDENTS THAT DON'T ALREADY EXIST
     for (let i = 1; i < students.length; i++) {
       const row = students[i];
-      if (row && row[0] && row[0].trim() !== '' && row[3] !== 'INACTIVE') {
-        // Normalize admission for comparison
+      if (row && row[0] && row[0].trim() !== '' && row[4] !== 'INACTIVE') {
         let admission = row[0].trim().toUpperCase();
         admission = admission.replace(/\/24(?![0-9])/g, '/2024');
         admission = admission.replace(/\/25(?![0-9])/g, '/2025');
@@ -1049,7 +1007,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
         admission = admission.replace(/MAR\/25(?![0-9])/g, 'MAR/2025');
         admission = admission.replace(/MAR\/26(?![0-9])/g, 'MAR/2026');
         
-        // ✅ SKIP if student already exists
         if (existingAdmissions.has(admission)) {
           skippedCount++;
           console.log(`⏭️ Skipping existing: ${row[0]}`);
@@ -1057,15 +1014,15 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
         }
         
         rows.push([
-          row[0].trim(),           // ADMISSION
-          row[1] || '',            // NAME
-          '',                      // CAT1
-          '',                      // CAT2
-          '',                      // EXAM
-          '',                      // FINAL
-          '',                      // GRADE
-          '',                      // GRADED BY
-          assessmentType || 'full' // ASSESSMENT_TYPE
+          row[0].trim(),
+          row[1] || '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          assessmentType || 'full'
         ]);
         addedCount++;
         existingAdmissions.add(admission);
@@ -1074,15 +1031,12 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     
     console.log(`👥 Adding ${addedCount} new students, skipping ${skippedCount} existing`);
     
-    // 5. If sheet exists and no new students, return
     if (sheetExists && addedCount === 0) {
       console.log(`✅ No new students to add. Sheet already has ${existingAdmissions.size} students.`);
       return { success: true, studentCount: existingAdmissions.size, newStudents: 0 };
     }
     
-    // 6. If sheet exists, append new rows instead of deleting everything
     if (sheetExists) {
-      // Get current data to find last row
       const currentResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: `${sheetName}!A:I`,
@@ -1090,7 +1044,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       const currentData = currentResponse.data.values || [];
       const lastRow = currentData.length;
       
-      // Append new students starting from next row
       if (rows.length > 1) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: spreadsheetId,
@@ -1103,7 +1056,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       return { success: true, studentCount: existingAdmissions.size + addedCount, newStudents: addedCount };
     }
     
-    // 7. Create new sheet (only if it doesn't exist)
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetId,
       requestBody: {
@@ -1113,7 +1065,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       }
     });
     
-    // 8. Write data to new sheet
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
       range: `${sheetName}!A1:I${rows.length}`,
@@ -1129,6 +1080,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     return { success: false, error: error.message };
   }
 }
+
 app.post('/api/update-unit', async (req, res) => {
   try {
     const { block, oldName, newName, assessmentType } = req.body;
@@ -1181,17 +1133,13 @@ app.post('/api/delete-unit', async (req, res) => {
   }
 });
 
-// ========== CENTRALIZED AUTHENTICATION - ONE MASTER SPREADSHEET ==========
-
-
+// ========== LOGIN ENDPOINT ==========
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
-    // ✅ Only check the MASTER spreadsheet for authentication
     const spreadsheetId = MASTER_SPREADSHEET_ID;
     
-    // 1. Check ADMIN sheet (for admin users)
+    // Check ADMIN sheet
     try {
       const adminResponse = await sheets.spreadsheets.values.get({ 
         spreadsheetId, 
@@ -1207,7 +1155,6 @@ app.post('/api/login', async (req, res) => {
               username, 
               name: 'Administrator', 
               role: 'admin',
-              // ✅ Admin gets access to all years
               subjects: ['ALL']
             } 
           });
@@ -1215,7 +1162,7 @@ app.post('/api/login', async (req, res) => {
       }
     } catch (e) { /* skip */ }
     
-    // 2. Check LECTURERS sheet (for lecturers)
+    // Check LECTURERS sheet
     try {
       const lecturersResponse = await sheets.spreadsheets.values.get({ 
         spreadsheetId, 
@@ -1224,9 +1171,7 @@ app.post('/api/login', async (req, res) => {
       const lecturers = lecturersResponse.data.values || [];
       for (let i = 1; i < lecturers.length; i++) {
         const row = lecturers[i];
-        // ✅ Check: username matches, password matches, status is YES
         if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
-          // Get subjects - these should include year info
           let subjects = row[4] ? row[4].split(',') : [];
           
           return res.json({ 
@@ -1236,49 +1181,12 @@ app.post('/api/login', async (req, res) => {
               name: row[1] || username, 
               role: 'lecturer',
               subjects: subjects,
-              // ✅ Store the home year (which spreadsheet they belong to)
-              homeYear: row[6] || '2024' // Optional: add a year column
+              homeYear: row[6] || '2024'
             } 
           });
         }
       }
     } catch (e) { /* skip */ }
-    
-    // 3. If not found in master, try other spreadsheets as fallback
-    // This is for backward compatibility
-    for (const year of ['2024', '2025', '2026']) {
-      if (year === '2024') continue; // Already checked
-      
-      const fallbackId = SPREADSHEETS[year]?.internal;
-      if (!fallbackId) continue;
-      
-      try {
-        const fallbackResponse = await sheets.spreadsheets.values.get({ 
-          spreadsheetId: fallbackId, 
-          range: 'LECTURERS!A:G' 
-        });
-        const fallbackData = fallbackResponse.data.values || [];
-        for (let i = 1; i < fallbackData.length; i++) {
-          const row = fallbackData[i];
-          if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
-            let subjects = row[4] ? row[4].split(',') : [];
-            // ✅ Add year prefix to subjects
-            subjects = subjects.map(s => `${year}|${s}`);
-            
-            return res.json({ 
-              success: true, 
-              user: { 
-                username, 
-                name: row[1] || username, 
-                role: 'lecturer',
-                subjects: subjects,
-                homeYear: year
-              } 
-            });
-          }
-        }
-      } catch (e) { /* skip */ }
-    }
     
     res.json({ success: false, message: 'Invalid username or password' });
   } catch (error) {
@@ -1295,11 +1203,10 @@ app.get('/api/stats', async (req, res) => {
     res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
   }
 });
-// ======================= SCORE PUBLISHING ENDPOINTS =======================
-// Store published scores in memory (will be persisted to a sheet in production)
-let publishedScores = new Map(); // key: `${examType}_${examId}_${studentId}`
 
-// Load published scores from a dedicated sheet
+// ======================= SCORE PUBLISHING ENDPOINTS =======================
+let publishedScores = new Map();
+
 async function loadPublishedScores(spreadsheetId) {
     try {
         const response = await sheets.spreadsheets.values.get({
@@ -1324,7 +1231,6 @@ async function loadPublishedScores(spreadsheetId) {
         }
     } catch (error) {
         console.log('No PUBLISHED_SCORES sheet found, creating...');
-        // Create the sheet if it doesn't exist
         try {
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId: spreadsheetId,
@@ -1344,10 +1250,8 @@ async function loadPublishedScores(spreadsheetId) {
     }
 }
 
-// Save a published score to the sheet
 async function savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, status, publishedBy) {
     try {
-        // Check if entry exists
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: spreadsheetId,
             range: 'PUBLISHED_SCORES!A:E',
@@ -1365,7 +1269,6 @@ async function savePublishedScoreToSheet(spreadsheetId, examType, examId, studen
         const now = new Date().toISOString();
         
         if (foundRow !== -1) {
-            // Update existing
             await sheets.spreadsheets.values.update({
                 spreadsheetId: spreadsheetId,
                 range: `PUBLISHED_SCORES!D${foundRow}:E${foundRow}`,
@@ -1373,7 +1276,6 @@ async function savePublishedScoreToSheet(spreadsheetId, examType, examId, studen
                 requestBody: { values: [[status, now]] }
             });
         } else {
-            // Add new
             const nextRow = data.length + 1;
             await sheets.spreadsheets.values.update({
                 spreadsheetId: spreadsheetId,
@@ -1387,7 +1289,6 @@ async function savePublishedScoreToSheet(spreadsheetId, examType, examId, studen
     }
 }
 
-// Get all published scores for a student (for student portal)
 app.get('/api/student-published-scores/:admission', async (req, res) => {
     try {
         const { admission } = req.params;
@@ -1412,7 +1313,6 @@ app.get('/api/student-published-scores/:admission', async (req, res) => {
     }
 });
 
-// Check if a specific score is published
 app.get('/api/score-published/:examType/:examId/:studentId', async (req, res) => {
     try {
         const { examType, examId, studentId } = req.params;
@@ -1429,7 +1329,6 @@ app.get('/api/score-published/:examType/:examId/:studentId', async (req, res) =>
     }
 });
 
-// Publish a score (Admin only)
 app.post('/api/publish-score', async (req, res) => {
     try {
         const { examType, examId, studentId, studentName, examName, publishedBy } = req.body;
@@ -1443,7 +1342,6 @@ app.post('/api/publish-score', async (req, res) => {
         
         await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'PUBLISHED', publishedBy);
         
-        // Log the action
         markEntryLogs.unshift({
             timestamp: new Date().toISOString(),
             lecturerName: publishedBy,
@@ -1458,7 +1356,6 @@ app.post('/api/publish-score', async (req, res) => {
     }
 });
 
-// Unpublish a score (Admin only)
 app.post('/api/unpublish-score', async (req, res) => {
     try {
         const { examType, examId, studentId, studentName, examName, publishedBy } = req.body;
@@ -1468,7 +1365,6 @@ app.post('/api/unpublish-score', async (req, res) => {
         publishedScores.delete(key);
         await savePublishedScoreToSheet(spreadsheetId, examType, examId, studentId, 'HIDDEN', publishedBy);
         
-        // Log the action
         markEntryLogs.unshift({
             timestamp: new Date().toISOString(),
             lecturerName: publishedBy,
@@ -1483,7 +1379,6 @@ app.post('/api/unpublish-score', async (req, res) => {
     }
 });
 
-// Bulk publish scores
 app.post('/api/bulk-publish', async (req, res) => {
     try {
         const { examType, examId, examName, studentIds, publishedBy } = req.body;
@@ -1516,7 +1411,6 @@ app.post('/api/bulk-publish', async (req, res) => {
     }
 });
 
-// Bulk unpublish scores
 app.post('/api/bulk-unpublish', async (req, res) => {
     try {
         const { examType, examId, examName, studentIds, publishedBy } = req.body;
@@ -1546,7 +1440,6 @@ app.post('/api/bulk-unpublish', async (req, res) => {
     }
 });
 
-// Get publication logs
 app.get('/api/publish-logs', (req, res) => {
     const publishLogs = markEntryLogs.filter(log => 
         log.action === 'publish' || 
@@ -1557,33 +1450,23 @@ app.get('/api/publish-logs', (req, res) => {
     res.json(publishLogs.slice(0, 100));
 });
 
-// Initialize published scores on server start
+// ✅ Initialize from master spreadsheet
 async function initPublishedScores() {
-    // Try to load from default spreadsheet
-    for (const year of ['2024', '2025', '2026']) {
-        const spreadsheetId = SPREADSHEETS[year]?.internal;
-        if (spreadsheetId) {
-            await loadPublishedScores(spreadsheetId);
-            break;
-        }
-    }
+    await loadPublishedScores(MASTER_SPREADSHEET_ID);
 }
 
-// Call initialization
 initPublishedScores();
 
-// ========== STUDENT PORTAL ENDPOINTS (MISSING - ADD THESE!) ==========
+// ========== STUDENT PORTAL ENDPOINTS ==========
 
-// 1. Student gets their published internal marks
 app.get('/api/student/marks/:admission', async (req, res) => {
     try {
         const { admission } = req.params;
         const year = req.headers['x-year'] || '2026';
-        const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+        const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
         
         console.log(`📚 Student ${admission} requesting published marks`);
         
-        // Get all subjects from CONFIG
         const configResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: spreadsheetId,
             range: 'CONFIG!A:D',
@@ -1592,7 +1475,6 @@ app.get('/api/student/marks/:admission', async (req, res) => {
         
         const allMarks = [];
         
-        // Loop through all blocks and subjects
         for (let i = 1; i < configData.length; i++) {
             const row = configData[i];
             if (row && row[0] && row[2] === 'YES') {
@@ -1614,13 +1496,11 @@ app.get('/api/student/marks/:admission', async (req, res) => {
                     for (let j = 1; j < marksData.length; j++) {
                         const markRow = marksData[j];
                         if (markRow && markRow[0] === admission) {
-                            // Check if this score is PUBLISHED
                             const examId = `${block}_${subject}`;
                             const key = `internal_${examId}_${admission}`;
                             const isPublished = publishedScores.has(key);
                             
                             if (isPublished) {
-                                // Calculate final score
                                 let cat1 = parseFloat(markRow[2]) || 0;
                                 let cat2 = parseFloat(markRow[3]) || 0;
                                 let examScore = parseFloat(markRow[4]) || 0;
@@ -1665,19 +1545,17 @@ app.get('/api/student/marks/:admission', async (req, res) => {
     }
 });
 
-// 2. Student gets their NCK clinical scores
 app.get('/api/nck-student/:admission', async (req, res) => {
     try {
         const { admission } = req.params;
         const year = req.headers['x-year'] || '2026';
-        const spreadsheetId = SPREADSHEETS[year]?.nck || SPREADSHEETS['2026'].nck;
+        const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
         
         console.log(`🏥 Student ${admission} requesting NCK scores`);
         
-        // Get XY FORMS data
         const xyResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: spreadsheetId,
-            range: 'XY FORMS!A:Z',
+            range: 'NCK_XY_FORMS!A:Z',
         });
         
         const xyData = xyResponse.data.values || [];
@@ -1686,8 +1564,7 @@ app.get('/api/nck-student/:admission', async (req, res) => {
         for (let i = 1; i < xyData.length; i++) {
             const row = xyData[i];
             if (row && (row[1] === admission || row[0] === admission)) {
-                // Get scores from columns C-X (indices 2-23)
-                for (let j = 2; j <= 23 && j < row.length; j++) {
+                for (let j = 3; j <= 24 && j < row.length; j++) {
                     const score = parseFloat(row[j]);
                     studentScores.push(isNaN(score) ? 0 : score);
                 }
@@ -1704,16 +1581,15 @@ app.get('/api/nck-student/:admission', async (req, res) => {
     }
 });
 
-// 3. Check if student exists
 app.get('/api/student/:admission', async (req, res) => {
     try {
         const { admission } = req.params;
         const year = req.headers['x-year'] || '2026';
-        const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+        const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
         
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: spreadsheetId,
-            range: 'STUDENTS!A:D',
+            range: 'STUDENTS!A:E',
         });
         
         const data = response.data.values || [];
@@ -1725,7 +1601,8 @@ app.get('/api/student/:admission', async (req, res) => {
                     admission: data[i][0],
                     name: data[i][1],
                     block: data[i][2],
-                    status: data[i][3]
+                    year: data[i][3],
+                    status: data[i][4]
                 };
                 break;
             }
@@ -1740,21 +1617,19 @@ app.get('/api/student/:admission', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-// ========== 📄 TRANSCRIPT GENERATION ENDPOINT ==========
+
+// ========== TRANSCRIPT GENERATION ENDPOINTS ==========
 app.get('/api/transcript/:admission', async (req, res) => {
   try {
     const { admission } = req.params;
     const year = req.headers['x-year'] || '2026';
-    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+    const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
     
     console.log(`📄 Generating transcript for ${admission}`);
     
-    // 1. Get student details
     const studentResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
-      range: 'STUDENTS!A:D',
+      range: 'STUDENTS!A:E',
     });
     const students = studentResponse.data.values || [];
     let student = null;
@@ -1765,7 +1640,8 @@ app.get('/api/transcript/:admission', async (req, res) => {
           admission: students[i][0],
           name: students[i][1] || 'Unknown',
           block: students[i][2] || 'BLOCK_0',
-          status: students[i][3] || 'ACTIVE'
+          year: students[i][3] || '2026',
+          status: students[i][4] || 'ACTIVE'
         };
         break;
       }
@@ -1775,7 +1651,6 @@ app.get('/api/transcript/:admission', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
     
-    // 2. Get all subjects from CONFIG
     const configResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
       range: 'CONFIG!A:D',
@@ -1786,7 +1661,6 @@ app.get('/api/transcript/:admission', async (req, res) => {
     let totalScore = 0;
     let subjectCount = 0;
     
-    // 3. Loop through all blocks and subjects to find student's marks
     for (let i = 1; i < configData.length; i++) {
       const row = configData[i];
       if (row && row[0] && row[2] === 'YES') {
@@ -1813,7 +1687,6 @@ app.get('/api/transcript/:admission', async (req, res) => {
               let exam = parseFloat(markRow[4]) || 0;
               let finalScore = 0;
               
-              // Calculate based on assessment type
               if (assessmentType === 'full') {
                 finalScore = ((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30) + Math.min(exam,70);
               } else if (assessmentType === 'single_cat') {
@@ -1846,11 +1719,9 @@ app.get('/api/transcript/:admission', async (req, res) => {
       }
     }
     
-    // 4. Calculate overall average
     const overallAvg = subjectCount > 0 ? Math.round((totalScore / subjectCount) * 10) / 10 : 0;
     const status = overallAvg >= 60 ? 'PASS' : (subjectCount > 0 ? 'FAIL' : 'PENDING');
     
-    // 5. Calculate grade distribution
     const gradeCount = { 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'PASS': 0, 'FAIL': 0 };
     let passed = 0;
     let failed = 0;
@@ -1871,14 +1742,12 @@ app.get('/api/transcript/:admission', async (req, res) => {
       }
     });
     
-    // 6. Generate letter grade based on overall average
     let overallGrade = 'E';
     if (overallAvg >= 80) overallGrade = 'A';
     else if (overallAvg >= 70) overallGrade = 'B';
     else if (overallAvg >= 60) overallGrade = 'C';
     else if (overallAvg >= 50) overallGrade = 'D';
     
-    // 7. Build transcript response
     const transcript = {
       student: student,
       subjects: subjects,
@@ -1901,12 +1770,11 @@ app.get('/api/transcript/:admission', async (req, res) => {
   }
 });
 
-// ========== 📄 BULK TRANSCRIPT GENERATION ==========
 app.post('/api/transcripts/bulk', async (req, res) => {
   try {
     const { admissions } = req.body;
     const year = req.headers['x-year'] || '2026';
-    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2026'].internal;
+    const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
     
     if (!admissions || !Array.isArray(admissions) || admissions.length === 0) {
       return res.status(400).json({ success: false, message: 'No admissions provided' });
@@ -1918,11 +1786,9 @@ app.post('/api/transcripts/bulk', async (req, res) => {
     
     for (const admission of admissions) {
       try {
-        // Use the single transcript endpoint logic (duplicated for speed)
-        // Get student details
         const studentResponse = await sheets.spreadsheets.values.get({
           spreadsheetId: spreadsheetId,
-          range: 'STUDENTS!A:D',
+          range: 'STUDENTS!A:E',
         });
         const students = studentResponse.data.values || [];
         let student = null;
@@ -1933,7 +1799,8 @@ app.post('/api/transcripts/bulk', async (req, res) => {
               admission: students[i][0],
               name: students[i][1] || 'Unknown',
               block: students[i][2] || 'BLOCK_0',
-              status: students[i][3] || 'ACTIVE'
+              year: students[i][3] || '2026',
+              status: students[i][4] || 'ACTIVE'
             };
             break;
           }
@@ -1941,7 +1808,6 @@ app.post('/api/transcripts/bulk', async (req, res) => {
         
         if (!student) continue;
         
-        // Get subjects and marks
         const configResponse = await sheets.spreadsheets.values.get({
           spreadsheetId: spreadsheetId,
           range: 'CONFIG!A:D',
@@ -2037,3 +1903,6 @@ app.post('/api/transcripts/bulk', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
