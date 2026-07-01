@@ -4475,24 +4475,52 @@ function generateInterventionListHTML(data) {
     if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row'; 
   };
   
-  window.saveAdminMarks = async function(){ 
+ window.saveAdminMarks = async function(){ 
     let marksData = []; 
     const len = window.currentAdminMarks?.length || 0; 
     const at = window.currentAdminAssessmentType || 'full'; 
     
     for(let i = 0; i < len; i++){ 
-      if(at === 'full') marksData.push({ row: i + 2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: document.getElementById(`acat2_${i}`)?.value || '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
-      else if(at === 'single_cat') marksData.push({ row: i + 2, cat1: document.getElementById(`acat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
-      else marksData.push({ row: i + 2, cat1: '', cat2: '', exam: document.getElementById(`aexam_${i}`)?.value || '' }); 
+        // ✅ Get admission from currentAdminMarks
+        const admission = window.currentAdminMarks[i]?.admission || '';
+        
+        let cat1 = document.getElementById(`acat1_${i}`)?.value || ''; 
+        let cat2 = document.getElementById(`acat2_${i}`)?.value || ''; 
+        let exam = document.getElementById(`aexam_${i}`)?.value || ''; 
+        
+        marksData.push({ 
+            row: i + 2,
+            admission: admission,  // ✅ ADD THIS!
+            cat1: parseFloat(cat1) || 0, 
+            cat2: parseFloat(cat2) || 0, 
+            exam: parseFloat(exam) || 0 
+        }); 
     } 
     
     showLoading('Saving marks...'); 
-    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentAdminBlock, subject: window.currentAdminSubject, marksData: marksData, lecturerName: currentUser.name }) }); 
+    const result = await apiCall('/api/marks', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+            block: window.currentAdminBlock, 
+            subject: window.currentAdminSubject, 
+            marksData: marksData, 
+            lecturerName: currentUser.name,
+            examType: 'internal',
+            userRole: currentUser?.role || 'admin'
+        }) 
+    }); 
     hideLoading(); 
-    showNotification(result?.success ? 'Marks saved successfully!' : 'Error saving marks', !result?.success); 
-    if(result?.success) loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType); 
-  };
-  
+    
+    if (result && (result.success === true || result.message === 'Marks saved successfully')) { 
+        showNotification(`✅ Saved ${result.updated || 0} updated + ${result.inserted || 0} new marks`, false);
+        unsavedChanges = false;
+        setTimeout(() => {
+            loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType);
+        }, 500);
+    } else { 
+        showNotification(result?.message || result?.error || 'Error saving marks', true); 
+    } 
+};
   window.exportAdminMarks = function(){ 
     if(window.currentAdminMarks){ 
       const data = window.currentAdminMarks.map((m, i) => ({ Admission: m.admission, Name: m.name, CAT1: document.getElementById(`acat1_${i}`)?.value || '', CAT2: document.getElementById(`acat2_${i}`)?.value || '', Exam: document.getElementById(`aexam_${i}`)?.value || '', Total: document.getElementById(`atotal_${i}`)?.innerHTML || '' })); 
@@ -4656,23 +4684,52 @@ function generateInterventionListHTML(data) {
     if(row) row.className = total >= 60 ? 'pass-row' : 'fail-row'; 
   };
   
-  window.saveLecturerMarks = async function(){ 
+ window.saveLecturerMarks = async function(){ 
     let marksData = []; 
     const len = window.currentMarksData?.length || 0; 
     const at = window.currentAssessmentType || 'full'; 
     
     for(let i = 0; i < len; i++){ 
-      if(at === 'full') marksData.push({ row: i + 2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: document.getElementById(`cat2_${i}`)?.value || '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
-      else if(at === 'single_cat') marksData.push({ row: i + 2, cat1: document.getElementById(`cat1_${i}`)?.value || '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
-      else marksData.push({ row: i + 2, cat1: '', cat2: '', exam: document.getElementById(`exam_${i}`)?.value || '' }); 
+        // ✅ Get admission from currentMarksData
+        const admission = window.currentMarksData[i]?.admission || '';
+        
+        let cat1 = document.getElementById(`cat1_${i}`)?.value || ''; 
+        let cat2 = document.getElementById(`cat2_${i}`)?.value || ''; 
+        let exam = document.getElementById(`exam_${i}`)?.value || ''; 
+        
+        marksData.push({ 
+            row: i + 2,
+            admission: admission,  // ✅ ADD THIS!
+            cat1: parseFloat(cat1) || 0, 
+            cat2: parseFloat(cat2) || 0, 
+            exam: parseFloat(exam) || 0 
+        }); 
     } 
     
     showLoading('Saving marks...'); 
-    const result = await apiCall('/api/marks', { method: 'POST', body: JSON.stringify({ block: window.currentMarksBlock, subject: window.currentMarksSubject, marksData: marksData, lecturerName: currentUser.name }) }); 
+    const result = await apiCall('/api/marks', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+            block: window.currentMarksBlock, 
+            subject: window.currentMarksSubject, 
+            marksData: marksData, 
+            lecturerName: currentUser.name,
+            examType: 'internal',
+            userRole: currentUser?.role || 'lecturer'
+        }) 
+    }); 
     hideLoading(); 
-    showNotification(result?.success ? 'Marks saved successfully!' : 'Error saving marks', !result?.success); 
-    if(result?.success) loadMarksForSubject(window.currentMarksBlock, window.currentMarksSubject, window.currentAssessmentType); 
-  };
+    
+    if (result && (result.success === true || result.message === 'Marks saved successfully')) { 
+        showNotification(`✅ Saved ${result.updated || 0} updated + ${result.inserted || 0} new marks`, false);
+        unsavedChanges = false;
+        setTimeout(() => {
+            loadMarksForSubject(window.currentMarksBlock, window.currentMarksSubject, window.currentAssessmentType);
+        }, 500);
+    } else { 
+        showNotification(result?.message || result?.error || 'Error saving marks', true); 
+    } 
+};
   
   // ======================= STUDENT MANAGEMENT =======================
   async function showStudents() { 
