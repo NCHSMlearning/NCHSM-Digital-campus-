@@ -44,6 +44,11 @@ let unsavedChanges = false;
 const INTAKE_YEARS = ['2024', '2025', '2026'];
 
 // ============================================================
+// GLOBAL FUNCTIONS (Will be set inside startApp)
+// ============================================================
+let showLoading, hideLoading, showNotification, closeModal, markUnsaved;
+
+// ============================================================
 // SHOW LOGIN (GLOBAL)
 // ============================================================
 function showLogin() {
@@ -81,66 +86,68 @@ async function doLogin() {
         document.getElementById('loginError').innerHTML = '❌ Please enter username and password';
         return;
     }
-    showLoading('Logging in...');
+    if (typeof showLoading === 'function') showLoading('Logging in...');
     try {
         if (username === 'admin' && password === 'admin123') {
             currentUser = { username: 'admin', name: 'Administrator', role: 'admin', subjects: ['ALL'] };
             currentYear = '2026';
             localStorage.setItem('selectedYear', currentYear);
             localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-            hideLoading();
-            showMain();
-            showNotification('Welcome Administrator! 👋');
+            if (typeof hideLoading === 'function') hideLoading();
+            if (typeof showMain === 'function') showMain();
+            if (typeof showNotification === 'function') showNotification('Welcome Administrator! 👋');
             return;
         }
         // Check lecturers table
-        const { data: lecturer, error } = await window.sb
-            .from('lecturers')
-            .select('*')
-            .eq('email', username)
-            .eq('status', 'approved')
-            .single();
-        if (lecturer) {
-            currentUser = {
-                username: lecturer.email,
-                name: lecturer.full_name,
-                role: lecturer.role || 'lecturer',
-                subjects: lecturer.subjects || []
-            };
-            currentYear = '2026';
-            localStorage.setItem('selectedYear', currentYear);
-            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-            hideLoading();
-            showMain();
-            showNotification(`Welcome ${currentUser.name}! 👋`);
-            return;
+        if (typeof window.sb !== 'undefined' && window.sb.from) {
+            const { data: lecturer, error } = await window.sb
+                .from('lecturers')
+                .select('*')
+                .eq('email', username)
+                .eq('status', 'approved')
+                .single();
+            if (lecturer) {
+                currentUser = {
+                    username: lecturer.email,
+                    name: lecturer.full_name,
+                    role: lecturer.role || 'lecturer',
+                    subjects: lecturer.subjects || []
+                };
+                currentYear = '2026';
+                localStorage.setItem('selectedYear', currentYear);
+                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+                if (typeof hideLoading === 'function') hideLoading();
+                if (typeof showMain === 'function') showMain();
+                if (typeof showNotification === 'function') showNotification(`Welcome ${currentUser.name}! 👋`);
+                return;
+            }
+            // Check consolidated_user_profiles_table
+            const { data: profile, error: profileError } = await window.sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('email', username)
+                .single();
+            if (profile && (profile.role === 'lecturer' || profile.role === 'admin')) {
+                currentUser = {
+                    username: profile.email,
+                    name: profile.full_name,
+                    role: profile.role || 'lecturer',
+                    subjects: profile.subjects || []
+                };
+                currentYear = profile.intake_year || '2026';
+                localStorage.setItem('selectedYear', currentYear);
+                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+                if (typeof hideLoading === 'function') hideLoading();
+                if (typeof showMain === 'function') showMain();
+                if (typeof showNotification === 'function') showNotification(`Welcome ${currentUser.name}! 👋`);
+                return;
+            }
         }
-        // Check consolidated_user_profiles_table
-        const { data: profile, error: profileError } = await window.sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('email', username)
-            .single();
-        if (profile && (profile.role === 'lecturer' || profile.role === 'admin')) {
-            currentUser = {
-                username: profile.email,
-                name: profile.full_name,
-                role: profile.role || 'lecturer',
-                subjects: profile.subjects || []
-            };
-            currentYear = profile.intake_year || '2026';
-            localStorage.setItem('selectedYear', currentYear);
-            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-            hideLoading();
-            showMain();
-            showNotification(`Welcome ${currentUser.name}! 👋`);
-            return;
-        }
-        hideLoading();
+        if (typeof hideLoading === 'function') hideLoading();
         document.getElementById('loginError').innerHTML = '❌ Invalid username or password';
     } catch (error) {
         console.error('Login error:', error);
-        hideLoading();
+        if (typeof hideLoading === 'function') hideLoading();
         document.getElementById('loginError').innerHTML = '❌ Login error: ' + error.message;
     }
 }
@@ -156,7 +163,7 @@ function checkLogin() {
         currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026';
         const savedExamType = localStorage.getItem('selectedExamType');
         if (savedExamType) currentExamType = savedExamType;
-        showMain();
+        if (typeof showMain === 'function') showMain();
     } else {
         showLogin();
     }
@@ -170,7 +177,7 @@ function logout() {
     currentUser = null;
     if (autoSaveInterval) clearInterval(autoSaveInterval);
     showLogin();
-    showNotification('Logged out successfully');
+    if (typeof showNotification === 'function') showNotification('Logged out successfully');
 }
 
 // ============================================================
@@ -194,7 +201,7 @@ function startApp() {
     } else if (typeof window.supabase !== 'undefined') {
         supabaseClient = window.supabase;
         console.log('✅ Using window.supabase client');
-    } else if (typeof window.sb !== 'undefined') {
+    } else if (typeof window.sb !== 'undefined' && window.sb.from) {
         supabaseClient = window.sb;
         console.log('✅ Using window.sb client');
     } else {
@@ -203,48 +210,55 @@ function startApp() {
         return;
     }
     
+    // Make it globally available
     window.sb = supabaseClient;
     window.supabase = supabaseClient;
     
     console.log('✅ Supabase client ready');
     console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
     
-    // ===== UI FUNCTIONS =====
-    function showLoading(msg) {
+    // ============================================================
+    // UI FUNCTIONS (Defined here, exposed globally)
+    // ============================================================
+    
+    showLoading = function(msg) {
         let l = document.querySelector('.loader');
         if (l) l.remove();
         l = document.createElement('div');
         l.className = 'loader';
         l.innerHTML = `<div class="spinner"></div><div class="loader-text">${msg || 'Loading...'}</div>`;
         document.body.appendChild(l);
-    }
+    };
     
-    function hideLoading() {
+    hideLoading = function() {
         const l = document.querySelector('.loader');
         if (l) l.remove();
-    }
+    };
     
-    function showNotification(msg, isErr = false) {
+    showNotification = function(msg, isErr = false) {
         const t = document.createElement('div');
         t.className = 'notification-toast';
         if (isErr) t.classList.add('error');
         t.innerHTML = `<i class="fas ${isErr ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${msg}`;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 4000);
-    }
+    };
     
-    function closeModal() {
+    closeModal = function() {
         document.querySelectorAll('.modal').forEach(m => m.remove());
-    }
+    };
     
-    function markUnsaved() {
+    markUnsaved = function() {
         unsavedChanges = true;
-    }
+    };
     
-    // ===== HELPER FUNCTIONS =====
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
     async function getMarkEntrySettings() {
         try {
-            const { data, error } = await sb.from('mark_entry_settings').select('*');
+            const { data, error } = await window.sb.from('mark_entry_settings').select('*');
             if (error) throw error;
             const settings = {};
             data.forEach(item => {
@@ -263,7 +277,7 @@ function startApp() {
     
     async function logMarkEntry(lecturerName, action, target, block, examType, details) {
         try {
-            await sb.from('mark_entry_logs').insert({
+            await window.sb.from('mark_entry_logs').insert({
                 lecturer_name: lecturerName || 'System',
                 action: action,
                 target: target,
@@ -308,131 +322,381 @@ function startApp() {
         return 'E';
     }
     
-    // ===== CHECK LOGIN =====
-    function checkLogin() {
-        const saved = localStorage.getItem('nursingUser');
-        if (saved) {
-            currentUser = JSON.parse(saved);
-            const savedYear = localStorage.getItem('selectedYear');
-            currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026';
-            const savedExamType = localStorage.getItem('selectedExamType');
-            if (savedExamType) currentExamType = savedExamType;
-            showMain();
-        } else {
-            showLogin();
-        }
-    }
+    // ============================================================
+    // API CALL
+    // ============================================================
     
-    // ===== SHOW LOGIN =====
-    function showLogin() {
-        document.getElementById('app').innerHTML = `
-            <div class="login-container">
-                <div class="logo"><i class="fas fa-graduation-cap"></i></div>
-                <h2>Nursing School System</h2>
-                <p class="subtitle">Nakuru College of Health Sciences</p>
-                <input type="text" id="username" placeholder="👤 Username" autocomplete="username">
-                <input type="password" id="password" placeholder="🔒 Password" autocomplete="current-password">
-                <button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <div id="loginError" class="login-error"></div>
-                <div class="login-help">
-                    <p>💡 Lecturers: Use your email with password <strong>password123</strong></p>
-                    <p style="margin-top:4px;">📚 Your subjects from all intakes will be shown</p>
-                    <p style="margin-top:8px;">👤 Admin: admin / admin123</p>
-                </div>
-            </div>
-        `;
-        document.getElementById('username').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') document.getElementById('password').focus();
-        });
-        document.getElementById('password').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') doLogin();
-        });
-    }
-    
-    // ===== DO LOGIN =====
-    async function doLogin() {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-        if (!username || !password) {
-            document.getElementById('loginError').innerHTML = '❌ Please enter username and password';
-            return;
-        }
-        showLoading('Logging in...');
+    async function apiCall(endpoint, opts = {}) {
         try {
-            if (username === 'admin' && password === 'admin123') {
-                currentUser = { username: 'admin', name: 'Administrator', role: 'admin', subjects: ['ALL'] };
-                currentYear = '2026';
-                localStorage.setItem('selectedYear', currentYear);
-                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-                hideLoading();
-                showMain();
-                showNotification('Welcome Administrator! 👋');
-                return;
+            console.log(`📡 API Call: ${endpoint}`);
+            
+            // --- GET MARKS ---
+            if (endpoint.match(/^\/api\/marks\/.+\/.+$/) && !opts.method) {
+                const parts = endpoint.split('/');
+                const block = parts[2];
+                const subject = decodeURIComponent(parts[3]);
+                const year = currentYear || '2026';
+                const examType = currentExamType || 'internal';
+                
+                if (examType === 'nck') {
+                    const { data, error } = await window.sb
+                        .from('nck_marks')
+                        .select('*')
+                        .eq('block', block)
+                        .eq('subject_name', subject)
+                        .eq('academic_year', year)
+                        .order('admission_number');
+                    if (error) throw error;
+                    return data.map(item => ({
+                        row: 0,
+                        admission: item.admission_number,
+                        name: item.student_name,
+                        scores: item.scores || [],
+                        final: parseFloat(item.final_score) || 0,
+                        gradedBy: item.graded_by || ''
+                    }));
+                }
+                
+                const { data, error } = await window.sb
+                    .from('student_marks')
+                    .select('*')
+                    .eq('block', block)
+                    .eq('subject_name', subject)
+                    .eq('academic_year', year)
+                    .order('admission_number');
+                if (error) throw error;
+                return data.map(item => ({
+                    row: 0,
+                    admission: item.admission_number,
+                    name: item.student_name,
+                    cat1: parseFloat(item.cat1_score) || 0,
+                    cat2: parseFloat(item.cat2_score) || 0,
+                    exam: parseFloat(item.exam_score) || 0,
+                    final: parseFloat(item.final_score) || 0,
+                    grade: item.grade || '',
+                    gradedBy: item.graded_by || '',
+                    assessmentType: item.assessment_type || 'full'
+                }));
             }
             
-            // Check lecturers table
-            const { data: lecturer, error } = await sb
-                .from('lecturers')
-                .select('*')
-                .eq('email', username)
-                .eq('status', 'approved')
-                .single();
-            if (lecturer) {
-                currentUser = {
-                    username: lecturer.email,
-                    name: lecturer.full_name,
-                    role: lecturer.role || 'lecturer',
-                    subjects: lecturer.subjects || []
+            // --- SAVE MARKS ---
+            if (endpoint === '/api/marks' && opts.method === 'POST') {
+                const body = JSON.parse(opts.body);
+                const { block, subject, marksData, lecturerName } = body;
+                const year = currentYear || '2026';
+                const examType = currentExamType || 'internal';
+                const userRole = currentUser?.role || 'admin';
+                
+                const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
+                if (!isAdmin) {
+                    const settings = await getMarkEntrySettings();
+                    if (settings.global && settings.global.enabled === false) {
+                        return { success: false, message: '❌ Mark entry is globally closed.' };
+                    }
+                    const classKey = `year_${year}`;
+                    if (settings[classKey] && settings[classKey].enabled === false) {
+                        return { success: false, message: `❌ Mark entry is closed for ${year} class.` };
+                    }
+                    if (examType === 'internal') {
+                        const subjectKey = `${block}_${subject}`;
+                        if (settings[subjectKey] && settings[subjectKey].enabled === false) {
+                            return { success: false, message: `❌ Mark entry is closed for ${subject}.` };
+                        }
+                    }
+                }
+                
+                let savedCount = 0, updatedCount = 0, insertedCount = 0;
+                const errors = [];
+                
+                if (examType === 'nck') {
+                    for (const mark of marksData) {
+                        try {
+                            const admission = mark.admission || mark.admission_number;
+                            if (!admission) continue;
+                            const scores = mark.scores || [];
+                            const finalScore = mark.final || 0;
+                            const gradedBy = mark.gradedBy || lecturerName || 'System';
+                            
+                            const { data: existing } = await window.sb
+                                .from('nck_marks')
+                                .select('id')
+                                .eq('admission_number', admission)
+                                .eq('subject_name', subject)
+                                .eq('block', block)
+                                .eq('academic_year', year)
+                                .single();
+                            
+                            if (existing) {
+                                await window.sb.from('nck_marks').update({
+                                    scores, final_score: finalScore, graded_by: gradedBy,
+                                    updated_at: new Date().toISOString()
+                                }).eq('id', existing.id);
+                                updatedCount++;
+                            } else {
+                                await window.sb.from('nck_marks').insert({
+                                    admission_number: admission, student_name: mark.name || '',
+                                    subject_name: subject, block: block, assessment_type: 'clinical',
+                                    scores, final_score: finalScore, graded_by: gradedBy,
+                                    academic_year: year, status: 'completed'
+                                });
+                                insertedCount++;
+                            }
+                            savedCount++;
+                        } catch (markError) {
+                            errors.push({ admission: mark.admission, error: markError.message });
+                        }
+                    }
+                } else {
+                    for (const mark of marksData) {
+                        try {
+                            const admission = mark.admission;
+                            if (!admission) continue;
+                            const cat1 = parseFloat(mark.cat1) || 0;
+                            const cat2 = parseFloat(mark.cat2) || 0;
+                            const exam = parseFloat(mark.exam) || 0;
+                            const assessmentType = mark.assessmentType || 'full';
+                            const finalScore = calculateFinalScore(cat1, cat2, exam, assessmentType);
+                            const grade = calculateGrade(finalScore);
+                            
+                            const { data: existing } = await window.sb
+                                .from('student_marks')
+                                .select('id')
+                                .eq('admission_number', admission)
+                                .eq('subject_name', subject)
+                                .eq('block', block)
+                                .eq('academic_year', year)
+                                .single();
+                            
+                            if (existing) {
+                                await window.sb.from('student_marks').update({
+                                    cat1_score: cat1, cat2_score: cat2, exam_score: exam,
+                                    final_score: finalScore, grade: grade,
+                                    graded_by: lecturerName || 'System',
+                                    assessment_type: assessmentType,
+                                    updated_at: new Date().toISOString()
+                                }).eq('id', existing.id);
+                                updatedCount++;
+                            } else {
+                                await window.sb.from('student_marks').insert({
+                                    admission_number: admission, student_name: mark.name || '',
+                                    block, subject_name: subject, assessment_type: assessmentType,
+                                    cat1_score: cat1, cat2_score: cat2, exam_score: exam,
+                                    final_score: finalScore, grade: grade,
+                                    graded_by: lecturerName || 'System',
+                                    academic_year: year
+                                });
+                                insertedCount++;
+                            }
+                            savedCount++;
+                        } catch (markError) {
+                            errors.push({ admission: mark.admission, error: markError.message });
+                        }
+                    }
+                }
+                
+                await logMarkEntry(lecturerName || 'System', 'save', subject, block, examType,
+                    `Saved ${savedCount} marks (${updatedCount} updated, ${insertedCount} inserted)`);
+                
+                return {
+                    success: true,
+                    message: `✅ Saved ${savedCount} marks (${updatedCount} updated, ${insertedCount} inserted)`,
+                    saved: savedCount, updated: updatedCount, inserted: insertedCount,
+                    errors: errors.length > 0 ? errors : undefined
                 };
-                currentYear = '2026';
-                localStorage.setItem('selectedYear', currentYear);
-                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-                hideLoading();
-                showMain();
-                showNotification(`Welcome ${currentUser.name}! 👋`);
-                return;
             }
             
-            // Check consolidated_user_profiles_table
-            const { data: profile, error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('email', username)
-                .single();
-            if (profile && (profile.role === 'lecturer' || profile.role === 'admin')) {
-                currentUser = {
-                    username: profile.email,
-                    name: profile.full_name,
-                    role: profile.role || 'lecturer',
-                    subjects: profile.subjects || []
-                };
-                currentYear = profile.intake_year || '2026';
-                localStorage.setItem('selectedYear', currentYear);
-                localStorage.setItem('nursingUser', JSON.stringify(currentUser));
-                hideLoading();
-                showMain();
-                showNotification(`Welcome ${currentUser.name}! 👋`);
-                return;
+            // --- GET SUBJECTS ---
+            if (endpoint.match(/^\/api\/subjects\/.+$/) && !opts.method) {
+                const block = endpoint.split('/')[3];
+                const year = currentYear || '2026';
+                const examType = currentExamType || 'internal';
+                if (examType === 'nck') {
+                    return [{ name: 'XY FORMS', assessmentType: 'nck' }, { name: 'ASSESSMENT AND CASE', assessmentType: 'nck' }];
+                }
+                const { data, error } = await window.sb
+                    .from('units_catalog')
+                    .select('unit_name, assessment_type')
+                    .eq('block', block)
+                    .eq('year', parseInt(year))
+                    .eq('status', 'active');
+                if (error) throw error;
+                return data.map(item => ({ name: item.unit_name, assessmentType: item.assessment_type || 'full' }));
             }
-            hideLoading();
-            document.getElementById('loginError').innerHTML = '❌ Invalid username or password';
+            
+            // --- GET STUDENTS ---
+            if (endpoint === '/api/students' && !opts.method) {
+                const year = currentYear || '2026';
+                const { data, error } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('student_id, full_name, block, intake_year, status')
+                    .eq('role', 'student')
+                    .eq('intake_year', year)
+                    .order('full_name');
+                if (error) throw error;
+                return data.map(item => ({
+                    admission: item.student_id || '',
+                    name: item.full_name || '',
+                    block: item.block || 'BLOCK_0',
+                    status: item.status || 'ACTIVE'
+                }));
+            }
+            
+            // --- GET LECTURERS ---
+            if (endpoint === '/api/lecturers' && !opts.method) {
+                const { data, error } = await window.sb
+                    .from('lecturers')
+                    .select('*')
+                    .eq('status', 'approved')
+                    .order('full_name');
+                if (error) throw error;
+                return data;
+            }
+            
+            // --- GET UNITS ---
+            if (endpoint === '/api/units' && !opts.method) {
+                const year = currentYear || '2026';
+                const { data, error } = await window.sb
+                    .from('units_catalog')
+                    .select('*')
+                    .eq('year', parseInt(year))
+                    .eq('status', 'active')
+                    .order('block');
+                if (error) throw error;
+                const units = {};
+                data.forEach(item => {
+                    const block = item.block;
+                    if (!units[block]) units[block] = [];
+                    units[block].push({ name: item.unit_name, assessmentType: item.assessment_type || 'full' });
+                });
+                return units;
+            }
+            
+            // --- GET STATS ---
+            if (endpoint === '/api/stats' && !opts.method) {
+                const year = currentYear || '2026';
+                const { count: studentCount } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('role', 'student')
+                    .eq('intake_year', year);
+                const { count: subjectCount } = await window.sb
+                    .from('units_catalog')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('year', parseInt(year))
+                    .eq('status', 'active');
+                const { count: marksCount } = await window.sb
+                    .from('student_marks')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('academic_year', year);
+                return { totalStudents: studentCount || 0, totalSubjects: subjectCount || 0, totalMarks: marksCount || 0, totalBlocks: 6 };
+            }
+            
+            // --- GET BLOCKS ---
+            if (endpoint === '/api/blocks' && !opts.method) {
+                return ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+            }
+            
+            // --- GET YEARS ---
+            if (endpoint === '/api/years' && !opts.method) {
+                return ['2024', '2025', '2026'];
+            }
+            
+            // --- MARK ENTRY SETTINGS ---
+            if (endpoint === '/api/mark-entry/settings' && !opts.method) {
+                return await getMarkEntrySettings();
+            }
+            
+            // --- MARK ENTRY LOGS ---
+            if (endpoint === '/api/mark-entry/logs' && !opts.method) {
+                const { data, error } = await window.sb
+                    .from('mark_entry_logs')
+                    .select('*')
+                    .order('timestamp', { ascending: false })
+                    .limit(100);
+                if (error) throw error;
+                return data || [];
+            }
+            
+            // --- TOGGLE GLOBAL ---
+            if (endpoint === '/api/mark-entry/toggle-global' && opts.method === 'POST') {
+                const body = JSON.parse(opts.body);
+                const { lecturerName } = body;
+                const { data: current } = await window.sb
+                    .from('mark_entry_settings')
+                    .select('enabled')
+                    .eq('setting_key', 'global')
+                    .single();
+                const newEnabled = !(current?.enabled !== false);
+                await window.sb.from('mark_entry_settings').upsert({
+                    setting_key: 'global',
+                    enabled: newEnabled,
+                    closed_by: newEnabled ? null : lecturerName,
+                    closed_at: newEnabled ? null : new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'setting_key' });
+                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', 'Global Entry', null, 'all',
+                    newEnabled ? 'Opened global mark entry' : 'Closed global mark entry');
+                return { success: true, message: newEnabled ? 'Global mark entry opened' : 'Global mark entry closed', enabled: newEnabled };
+            }
+            
+            // --- TOGGLE CLASS ---
+            if (endpoint === '/api/mark-entry/toggle-class' && opts.method === 'POST') {
+                const body = JSON.parse(opts.body);
+                const { year, lecturerName } = body;
+                const settingKey = `year_${year}`;
+                const { data: current } = await window.sb
+                    .from('mark_entry_settings')
+                    .select('enabled')
+                    .eq('setting_key', settingKey)
+                    .single();
+                const newEnabled = !(current?.enabled !== false);
+                await window.sb.from('mark_entry_settings').upsert({
+                    setting_key: settingKey,
+                    enabled: newEnabled,
+                    closed_by: newEnabled ? null : lecturerName,
+                    closed_at: newEnabled ? null : new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'setting_key' });
+                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', `${year} Class`, null, 'all',
+                    newEnabled ? `Opened mark entry for ${year} class` : `Closed mark entry for ${year} class`);
+                return { success: true, message: newEnabled ? `${year} class entry opened` : `${year} class entry closed`, enabled: newEnabled };
+            }
+            
+            // --- TOGGLE SUBJECT ---
+            if (endpoint === '/api/mark-entry/toggle-subject' && opts.method === 'POST') {
+                const body = JSON.parse(opts.body);
+                const { block, subject, lecturerName } = body;
+                const settingKey = `${block}_${subject}`;
+                const { data: current } = await window.sb
+                    .from('mark_entry_settings')
+                    .select('enabled')
+                    .eq('setting_key', settingKey)
+                    .single();
+                const newEnabled = !(current?.enabled !== false);
+                await window.sb.from('mark_entry_settings').upsert({
+                    setting_key: settingKey,
+                    enabled: newEnabled,
+                    closed_by: newEnabled ? null : lecturerName,
+                    closed_at: newEnabled ? null : new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'setting_key' });
+                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', subject, block, 'internal',
+                    newEnabled ? `Opened mark entry for ${subject}` : `Closed mark entry for ${subject}`);
+                return { success: true, message: newEnabled ? `Entry opened for ${subject}` : `Entry closed for ${subject}`, enabled: newEnabled };
+            }
+            
+            return { success: false, error: 'Endpoint not implemented' };
+            
         } catch (error) {
-            console.error('Login error:', error);
-            hideLoading();
-            document.getElementById('loginError').innerHTML = '❌ Login error: ' + error.message;
+            console.error('❌ API Error:', error);
+            return { success: false, error: error.message };
         }
     }
     
-    // ===== LOGOUT =====
-    function logout() {
-        localStorage.removeItem('nursingUser');
-        currentUser = null;
-        if (autoSaveInterval) clearInterval(autoSaveInterval);
-        showLogin();
-        showNotification('Logged out successfully');
-    }
+    // ============================================================
+    // SHOW MAIN
+    // ============================================================
     
-    // ===== SHOW MAIN =====
     async function showMain() {
         showLoading('Loading Dashboard...');
         const isAdmin = (currentUser?.role === 'admin');
@@ -513,6 +777,13 @@ function startApp() {
         hideLoading();
     }
     
+    // Expose showMain globally so doLogin can call it
+    window.showMain = showMain;
+    
+    // ============================================================
+    // CHANGE YEAR / EXAM TYPE
+    // ============================================================
+    
     function changeYear() {
         const newYear = document.getElementById('yearSelectMain')?.value;
         if (newYear && newYear !== currentYear) {
@@ -544,7 +815,10 @@ function startApp() {
         }
     }
     
-    // ===== RENDER WITH SIDEBAR =====
+    // ============================================================
+    // RENDER WITH SIDEBAR
+    // ============================================================
+    
     function renderWithSidebar(contentHtml) {
         const isAdmin = currentUser?.role === 'admin';
         const isLecturer = currentUser?.role === 'lecturer';
@@ -622,7 +896,10 @@ function startApp() {
         }
     }
     
-    // ===== TAB SWITCHING =====
+    // ============================================================
+    // TAB SWITCHING
+    // ============================================================
+    
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         const targetTab = document.getElementById(`tab-${tabName}`);
@@ -648,7 +925,10 @@ function startApp() {
         }
     }
     
-    // ===== DARK MODE =====
+    // ============================================================
+    // DARK MODE
+    // ============================================================
+    
     function toggleDarkMode() {
         document.body.classList.toggle('dark-mode');
         localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
@@ -664,375 +944,10 @@ function startApp() {
         }
     }
     
-    // ===== API CALL =====
-    async function apiCall(endpoint, opts = {}) {
-        try {
-            console.log(`📡 API Call: ${endpoint}`);
-            
-            // --- GET MARKS ---
-            if (endpoint.match(/^\/api\/marks\/.+\/.+$/) && !opts.method) {
-                const parts = endpoint.split('/');
-                const block = parts[2];
-                const subject = decodeURIComponent(parts[3]);
-                const year = currentYear || '2026';
-                const examType = currentExamType || 'internal';
-                
-                if (examType === 'nck') {
-                    const { data, error } = await sb
-                        .from('nck_marks')
-                        .select('*')
-                        .eq('block', block)
-                        .eq('subject_name', subject)
-                        .eq('academic_year', year)
-                        .order('admission_number');
-                    if (error) throw error;
-                    return data.map(item => ({
-                        row: 0,
-                        admission: item.admission_number,
-                        name: item.student_name,
-                        scores: item.scores || [],
-                        final: parseFloat(item.final_score) || 0,
-                        gradedBy: item.graded_by || ''
-                    }));
-                }
-                
-                const { data, error } = await sb
-                    .from('student_marks')
-                    .select('*')
-                    .eq('block', block)
-                    .eq('subject_name', subject)
-                    .eq('academic_year', year)
-                    .order('admission_number');
-                if (error) throw error;
-                return data.map(item => ({
-                    row: 0,
-                    admission: item.admission_number,
-                    name: item.student_name,
-                    cat1: parseFloat(item.cat1_score) || 0,
-                    cat2: parseFloat(item.cat2_score) || 0,
-                    exam: parseFloat(item.exam_score) || 0,
-                    final: parseFloat(item.final_score) || 0,
-                    grade: item.grade || '',
-                    gradedBy: item.graded_by || '',
-                    assessmentType: item.assessment_type || 'full'
-                }));
-            }
-            
-            // --- SAVE MARKS ---
-            if (endpoint === '/api/marks' && opts.method === 'POST') {
-                const body = JSON.parse(opts.body);
-                const { block, subject, marksData, lecturerName } = body;
-                const year = currentYear || '2026';
-                const examType = currentExamType || 'internal';
-                const userRole = currentUser?.role || 'admin';
-                
-                const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
-                if (!isAdmin) {
-                    const settings = await getMarkEntrySettings();
-                    if (settings.global && settings.global.enabled === false) {
-                        return { success: false, message: '❌ Mark entry is globally closed.' };
-                    }
-                    const classKey = `year_${year}`;
-                    if (settings[classKey] && settings[classKey].enabled === false) {
-                        return { success: false, message: `❌ Mark entry is closed for ${year} class.` };
-                    }
-                    if (examType === 'internal') {
-                        const subjectKey = `${block}_${subject}`;
-                        if (settings[subjectKey] && settings[subjectKey].enabled === false) {
-                            return { success: false, message: `❌ Mark entry is closed for ${subject}.` };
-                        }
-                    }
-                }
-                
-                let savedCount = 0, updatedCount = 0, insertedCount = 0;
-                const errors = [];
-                
-                if (examType === 'nck') {
-                    for (const mark of marksData) {
-                        try {
-                            const admission = mark.admission || mark.admission_number;
-                            if (!admission) continue;
-                            const scores = mark.scores || [];
-                            const finalScore = mark.final || 0;
-                            const gradedBy = mark.gradedBy || lecturerName || 'System';
-                            
-                            const { data: existing } = await sb
-                                .from('nck_marks')
-                                .select('id')
-                                .eq('admission_number', admission)
-                                .eq('subject_name', subject)
-                                .eq('block', block)
-                                .eq('academic_year', year)
-                                .single();
-                            
-                            if (existing) {
-                                await sb.from('nck_marks').update({
-                                    scores, final_score: finalScore, graded_by: gradedBy,
-                                    updated_at: new Date().toISOString()
-                                }).eq('id', existing.id);
-                                updatedCount++;
-                            } else {
-                                await sb.from('nck_marks').insert({
-                                    admission_number: admission, student_name: mark.name || '',
-                                    subject_name: subject, block: block, assessment_type: 'clinical',
-                                    scores, final_score: finalScore, graded_by: gradedBy,
-                                    academic_year: year, status: 'completed'
-                                });
-                                insertedCount++;
-                            }
-                            savedCount++;
-                        } catch (markError) {
-                            errors.push({ admission: mark.admission, error: markError.message });
-                        }
-                    }
-                } else {
-                    for (const mark of marksData) {
-                        try {
-                            const admission = mark.admission;
-                            if (!admission) continue;
-                            const cat1 = parseFloat(mark.cat1) || 0;
-                            const cat2 = parseFloat(mark.cat2) || 0;
-                            const exam = parseFloat(mark.exam) || 0;
-                            const assessmentType = mark.assessmentType || 'full';
-                            const finalScore = calculateFinalScore(cat1, cat2, exam, assessmentType);
-                            const grade = calculateGrade(finalScore);
-                            
-                            const { data: existing } = await sb
-                                .from('student_marks')
-                                .select('id')
-                                .eq('admission_number', admission)
-                                .eq('subject_name', subject)
-                                .eq('block', block)
-                                .eq('academic_year', year)
-                                .single();
-                            
-                            if (existing) {
-                                await sb.from('student_marks').update({
-                                    cat1_score: cat1, cat2_score: cat2, exam_score: exam,
-                                    final_score: finalScore, grade: grade,
-                                    graded_by: lecturerName || 'System',
-                                    assessment_type: assessmentType,
-                                    updated_at: new Date().toISOString()
-                                }).eq('id', existing.id);
-                                updatedCount++;
-                            } else {
-                                await sb.from('student_marks').insert({
-                                    admission_number: admission, student_name: mark.name || '',
-                                    block, subject_name: subject, assessment_type: assessmentType,
-                                    cat1_score: cat1, cat2_score: cat2, exam_score: exam,
-                                    final_score: finalScore, grade: grade,
-                                    graded_by: lecturerName || 'System',
-                                    academic_year: year
-                                });
-                                insertedCount++;
-                            }
-                            savedCount++;
-                        } catch (markError) {
-                            errors.push({ admission: mark.admission, error: markError.message });
-                        }
-                    }
-                }
-                
-                await logMarkEntry(lecturerName || 'System', 'save', subject, block, examType,
-                    `Saved ${savedCount} marks (${updatedCount} updated, ${insertedCount} inserted)`);
-                
-                return {
-                    success: true,
-                    message: `✅ Saved ${savedCount} marks (${updatedCount} updated, ${insertedCount} inserted)`,
-                    saved: savedCount, updated: updatedCount, inserted: insertedCount,
-                    errors: errors.length > 0 ? errors : undefined
-                };
-            }
-            
-            // --- GET SUBJECTS ---
-            if (endpoint.match(/^\/api\/subjects\/.+$/) && !opts.method) {
-                const block = endpoint.split('/')[3];
-                const year = currentYear || '2026';
-                const examType = currentExamType || 'internal';
-                if (examType === 'nck') {
-                    return [{ name: 'XY FORMS', assessmentType: 'nck' }, { name: 'ASSESSMENT AND CASE', assessmentType: 'nck' }];
-                }
-                const { data, error } = await sb
-                    .from('units_catalog')
-                    .select('unit_name, assessment_type')
-                    .eq('block', block)
-                    .eq('year', parseInt(year))
-                    .eq('status', 'active');
-                if (error) throw error;
-                return data.map(item => ({ name: item.unit_name, assessmentType: item.assessment_type || 'full' }));
-            }
-            
-            // --- GET STUDENTS ---
-            if (endpoint === '/api/students' && !opts.method) {
-                const year = currentYear || '2026';
-                const { data, error } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('student_id, full_name, block, intake_year, status')
-                    .eq('role', 'student')
-                    .eq('intake_year', year)
-                    .order('full_name');
-                if (error) throw error;
-                return data.map(item => ({
-                    admission: item.student_id || '',
-                    name: item.full_name || '',
-                    block: item.block || 'BLOCK_0',
-                    status: item.status || 'ACTIVE'
-                }));
-            }
-            
-            // --- GET LECTURERS ---
-            if (endpoint === '/api/lecturers' && !opts.method) {
-                const { data, error } = await sb
-                    .from('lecturers')
-                    .select('*')
-                    .eq('status', 'approved')
-                    .order('full_name');
-                if (error) throw error;
-                return data;
-            }
-            
-            // --- GET UNITS ---
-            if (endpoint === '/api/units' && !opts.method) {
-                const year = currentYear || '2026';
-                const { data, error } = await sb
-                    .from('units_catalog')
-                    .select('*')
-                    .eq('year', parseInt(year))
-                    .eq('status', 'active')
-                    .order('block');
-                if (error) throw error;
-                const units = {};
-                data.forEach(item => {
-                    const block = item.block;
-                    if (!units[block]) units[block] = [];
-                    units[block].push({ name: item.unit_name, assessmentType: item.assessment_type || 'full' });
-                });
-                return units;
-            }
-            
-            // --- GET STATS ---
-            if (endpoint === '/api/stats' && !opts.method) {
-                const year = currentYear || '2026';
-                const { count: studentCount } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('role', 'student')
-                    .eq('intake_year', year);
-                const { count: subjectCount } = await sb
-                    .from('units_catalog')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('year', parseInt(year))
-                    .eq('status', 'active');
-                const { count: marksCount } = await sb
-                    .from('student_marks')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('academic_year', year);
-                return { totalStudents: studentCount || 0, totalSubjects: subjectCount || 0, totalMarks: marksCount || 0, totalBlocks: 6 };
-            }
-            
-            // --- GET BLOCKS ---
-            if (endpoint === '/api/blocks' && !opts.method) {
-                return ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-            }
-            
-            // --- GET YEARS ---
-            if (endpoint === '/api/years' && !opts.method) {
-                return ['2024', '2025', '2026'];
-            }
-            
-            // --- MARK ENTRY SETTINGS ---
-            if (endpoint === '/api/mark-entry/settings' && !opts.method) {
-                return await getMarkEntrySettings();
-            }
-            
-            // --- MARK ENTRY LOGS ---
-            if (endpoint === '/api/mark-entry/logs' && !opts.method) {
-                const { data, error } = await sb
-                    .from('mark_entry_logs')
-                    .select('*')
-                    .order('timestamp', { ascending: false })
-                    .limit(100);
-                if (error) throw error;
-                return data || [];
-            }
-            
-            // --- TOGGLE GLOBAL ---
-            if (endpoint === '/api/mark-entry/toggle-global' && opts.method === 'POST') {
-                const body = JSON.parse(opts.body);
-                const { lecturerName } = body;
-                const { data: current } = await sb
-                    .from('mark_entry_settings')
-                    .select('enabled')
-                    .eq('setting_key', 'global')
-                    .single();
-                const newEnabled = !(current?.enabled !== false);
-                await sb.from('mark_entry_settings').upsert({
-                    setting_key: 'global',
-                    enabled: newEnabled,
-                    closed_by: newEnabled ? null : lecturerName,
-                    closed_at: newEnabled ? null : new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'setting_key' });
-                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', 'Global Entry', null, 'all',
-                    newEnabled ? 'Opened global mark entry' : 'Closed global mark entry');
-                return { success: true, message: newEnabled ? 'Global mark entry opened' : 'Global mark entry closed', enabled: newEnabled };
-            }
-            
-            // --- TOGGLE CLASS ---
-            if (endpoint === '/api/mark-entry/toggle-class' && opts.method === 'POST') {
-                const body = JSON.parse(opts.body);
-                const { year, lecturerName } = body;
-                const settingKey = `year_${year}`;
-                const { data: current } = await sb
-                    .from('mark_entry_settings')
-                    .select('enabled')
-                    .eq('setting_key', settingKey)
-                    .single();
-                const newEnabled = !(current?.enabled !== false);
-                await sb.from('mark_entry_settings').upsert({
-                    setting_key: settingKey,
-                    enabled: newEnabled,
-                    closed_by: newEnabled ? null : lecturerName,
-                    closed_at: newEnabled ? null : new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'setting_key' });
-                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', `${year} Class`, null, 'all',
-                    newEnabled ? `Opened mark entry for ${year} class` : `Closed mark entry for ${year} class`);
-                return { success: true, message: newEnabled ? `${year} class entry opened` : `${year} class entry closed`, enabled: newEnabled };
-            }
-            
-            // --- TOGGLE SUBJECT ---
-            if (endpoint === '/api/mark-entry/toggle-subject' && opts.method === 'POST') {
-                const body = JSON.parse(opts.body);
-                const { block, subject, lecturerName } = body;
-                const settingKey = `${block}_${subject}`;
-                const { data: current } = await sb
-                    .from('mark_entry_settings')
-                    .select('enabled')
-                    .eq('setting_key', settingKey)
-                    .single();
-                const newEnabled = !(current?.enabled !== false);
-                await sb.from('mark_entry_settings').upsert({
-                    setting_key: settingKey,
-                    enabled: newEnabled,
-                    closed_by: newEnabled ? null : lecturerName,
-                    closed_at: newEnabled ? null : new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'setting_key' });
-                await logMarkEntry(lecturerName, newEnabled ? 'open' : 'close', subject, block, 'internal',
-                    newEnabled ? `Opened mark entry for ${subject}` : `Closed mark entry for ${subject}`);
-                return { success: true, message: newEnabled ? `Entry opened for ${subject}` : `Entry closed for ${subject}`, enabled: newEnabled };
-            }
-            
-            return { success: false, error: 'Endpoint not implemented' };
-            
-        } catch (error) {
-            console.error('❌ API Error:', error);
-            return { success: false, error: error.message };
-        }
-    }
+    // ============================================================
+    // REFRESH ALL DATA
+    // ============================================================
     
-    // ===== REFRESH ALL DATA =====
     async function refreshAllData() {
         console.log('🔄 Refreshing all data...');
         showLoading('Refreshing data...');
@@ -1059,7 +974,10 @@ function startApp() {
         }
     }
     
-    // ===== STUDENTS FUNCTIONS =====
+    // ============================================================
+    // STUDENTS FUNCTIONS
+    // ============================================================
+    
     async function showStudents() {
         showLoading('Loading students...');
         const students = await apiCall('/api/students', {});
@@ -1113,7 +1031,7 @@ function startApp() {
         if (!admission || !name) { showNotification('Fill all fields', true); return; }
         showLoading('Adding student...');
         try {
-            const { error } = await sb.from('consolidated_user_profiles_table').insert({
+            const { error } = await window.sb.from('consolidated_user_profiles_table').insert({
                 student_id: admission,
                 full_name: name,
                 block: block,
@@ -1155,7 +1073,7 @@ function startApp() {
         if (!name) { showNotification('Name is required', true); return; }
         showLoading('Updating student...');
         try {
-            const { error } = await sb.from('consolidated_user_profiles_table')
+            const { error } = await window.sb.from('consolidated_user_profiles_table')
                 .update({ full_name: name, block: block, updated_at: new Date().toISOString() })
                 .eq('student_id', adm)
                 .eq('role', 'student');
@@ -1174,7 +1092,7 @@ function startApp() {
         if (!confirm(`Delete student "${adm}"? This will mark them as INACTIVE.`)) return;
         showLoading('Deleting student...');
         try {
-            const { error } = await sb.from('consolidated_user_profiles_table')
+            const { error } = await window.sb.from('consolidated_user_profiles_table')
                 .update({ status: 'inactive', updated_at: new Date().toISOString() })
                 .eq('student_id', adm)
                 .eq('role', 'student');
@@ -1188,7 +1106,10 @@ function startApp() {
         }
     }
     
-    // ===== LECTURERS FUNCTIONS =====
+    // ============================================================
+    // LECTURERS FUNCTIONS
+    // ============================================================
+    
     async function showLecturers() {
         showLoading('Loading lecturers...');
         const lecturers = await apiCall('/api/lecturers', {});
@@ -1240,7 +1161,7 @@ function startApp() {
         if (!username || !name) { showNotification('Username and Name required', true); return; }
         showLoading('Adding lecturer...');
         try {
-            const { error } = await sb.from('lecturers').insert({
+            const { error } = await window.sb.from('lecturers').insert({
                 username: username,
                 full_name: name,
                 email: email || username + '@example.com',
@@ -1263,7 +1184,7 @@ function startApp() {
         if (!confirm(`Delete lecturer "${username}"?`)) return;
         showLoading('Deleting lecturer...');
         try {
-            const { error } = await sb.from('lecturers')
+            const { error } = await window.sb.from('lecturers')
                 .update({ status: 'inactive' })
                 .eq('username', username);
             hideLoading();
@@ -1280,7 +1201,10 @@ function startApp() {
         showNotification('Edit lecturer feature coming soon', true);
     }
     
-    // ===== UNITS FUNCTIONS =====
+    // ============================================================
+    // UNITS FUNCTIONS
+    // ============================================================
+    
     async function showUnits() {
         showLoading('Loading units...');
         const units = await apiCall('/api/units', {});
@@ -1333,7 +1257,7 @@ function startApp() {
         if (!name) { showNotification('Enter subject name', true); return; }
         showLoading('Adding unit...');
         try {
-            const { error } = await sb.from('units_catalog').insert({
+            const { error } = await window.sb.from('units_catalog').insert({
                 unit_name: name,
                 block: block,
                 assessment_type: type,
@@ -1356,7 +1280,7 @@ function startApp() {
         if (!confirm(`Delete unit "${name}"? This will delete ALL marks for this subject!`)) return;
         showLoading('Deleting unit...');
         try {
-            const { error } = await sb.from('units_catalog')
+            const { error } = await window.sb.from('units_catalog')
                 .update({ status: 'inactive' })
                 .eq('block', block)
                 .eq('unit_name', name)
@@ -1397,7 +1321,7 @@ function startApp() {
         if (!newName) { showNotification('Enter subject name', true); return; }
         showLoading('Updating unit...');
         try {
-            const { error } = await sb.from('units_catalog')
+            const { error } = await window.sb.from('units_catalog')
                 .update({ unit_name: newName, assessment_type: newType, updated_at: new Date().toISOString() })
                 .eq('block', block)
                 .eq('unit_name', oldName)
@@ -1413,7 +1337,10 @@ function startApp() {
         }
     }
     
-    // ===== NCK MARKS =====
+    // ============================================================
+    // NCK MARKS
+    // ============================================================
+    
     async function showNCKMarks() {
         const html = `
             <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
@@ -1646,7 +1573,10 @@ function startApp() {
         }
     };
     
-    // ===== ENTRY CONTROL FUNCTIONS =====
+    // ============================================================
+    // ENTRY CONTROL FUNCTIONS
+    // ============================================================
+    
     async function showEntryControlPanel() {
         showLoading('Loading entry control...');
         const settings = await getMarkEntrySettings();
@@ -1788,7 +1718,10 @@ function startApp() {
         hideLoading();
     }
     
-    // ===== SHOW ADMIN MARKS =====
+    // ============================================================
+    // SHOW ADMIN MARKS
+    // ============================================================
+    
     async function showAdminMarks() {
         const html = `
             <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
@@ -1951,7 +1884,10 @@ function startApp() {
         showNotification('Exported successfully!');
     };
     
-    // ===== FILL DOWN VALUES =====
+    // ============================================================
+    // FILL DOWN VALUES
+    // ============================================================
+    
     function fillDownValues() {
         const inputs = document.querySelectorAll('#marksTableContainer input[type="number"], #nckMarksContainer input[type="number"]');
         if (inputs.length === 0) { showNotification('No inputs found', true); return; }
@@ -1964,7 +1900,10 @@ function startApp() {
         markUnsaved();
     }
     
-    // ===== FAST ENTRY FUNCTIONS (PLACEHOLDERS) =====
+    // ============================================================
+    // FAST ENTRY FUNCTIONS (PLACEHOLDERS)
+    // ============================================================
+    
     function openFastEntryPanel() {
         showNotification('Fast Entry Mode - Click a student name to edit', false);
     }
@@ -1981,7 +1920,10 @@ function startApp() {
         showNotification(`Editing ${name} - Click save to update assessment marks`, false);
     }
     
-    // ===== SCORE PUBLISHING =====
+    // ============================================================
+    // SCORE PUBLISHING
+    // ============================================================
+    
     async function showScorePublishPanel() {
         if (currentUser?.role !== 'admin') {
             showNotification('Only administrators can access this panel', true);
@@ -1989,7 +1931,7 @@ function startApp() {
         }
         showLoading('Loading Score Publishing Panel...');
         const year = currentYear || '2026';
-        const { data: marks } = await sb.from('student_marks').select('*').eq('academic_year', year);
+        const { data: marks } = await window.sb.from('student_marks').select('*').eq('academic_year', year);
         const totalScores = marks?.length || 0;
         const published = marks?.filter(m => m.published === true).length || 0;
         const hidden = totalScores - published;
@@ -2053,7 +1995,10 @@ function startApp() {
         showNotification(`Toggling publication for ${subjectName}`, false);
     }
     
-    // ===== REPORTS =====
+    // ============================================================
+    // REPORTS
+    // ============================================================
+    
     async function showFullReports() {
         const html = `
             <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
@@ -2078,16 +2023,19 @@ function startApp() {
         }, 2000);
     }
     
-    // ===== COMPREHENSIVE ANALYTICS =====
+    // ============================================================
+    // COMPREHENSIVE ANALYTICS
+    // ============================================================
+    
     async function showComprehensiveAnalytics() {
         showLoading('Loading analytics...');
         const year = currentYear || '2026';
-        const { data: students } = await sb
+        const { data: students } = await window.sb
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
             .eq('intake_year', year);
-        const { data: marks } = await sb
+        const { data: marks } = await window.sb
             .from('student_marks')
             .select('*')
             .eq('academic_year', year);
@@ -2123,7 +2071,10 @@ function startApp() {
         hideLoading();
     }
     
-    // ===== EXPORT TO CSV =====
+    // ============================================================
+    // EXPORT TO CSV
+    // ============================================================
+    
     function exportToCSV(data, filename) {
         if (!data || data.length === 0) { showNotification('No data to export', true); return; }
         const headers = Object.keys(data[0]);
