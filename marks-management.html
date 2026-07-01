@@ -180,23 +180,162 @@
   function hideLoading() { let l=document.querySelector('.loader'); if(l) l.remove(); }
   function showNotification(msg,isErr) { let t=document.createElement('div'); t.className='notification-toast'; if(isErr) t.classList.add('error'); t.innerHTML=`<i class="fas ${isErr?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
   
-  async function apiCall(endpoint,opts={}) { 
+  // ======================= FIXED: API Call with Cache Busting =======================
+async function apiCall(endpoint, opts = {}) { 
     try { 
-      const headers={'Content-Type':'application/json','X-Year':currentYear,'X-Exam-Type':currentExamType,'X-User-Role':currentUser?.role||''}; 
-      const res=await fetch(API_BASE_URL+endpoint,{headers,...opts}); 
-      if(!res.ok){
-        const errorData=await res.json().catch(()=>({message:`HTTP ${res.status}`}));
-        return {success:false,message:errorData.message};
-      }
-      const ct=res.headers.get('content-type'); 
-      if(ct&&ct.includes('application/json')) return await res.json(); 
-      return {error:'Non-JSON response'}; 
-    } catch(e){ console.error(e); return {success:false,error:e.message}; } 
-  }
-  
-  async function getConfig() { if(configCache) return configCache; configCache=await apiCall('/api/units',{}); return configCache; }
-  function exportToCSV(data,filename) { if(!data||!data.length){ showNotification('No data to export',true); return; } const headers=Object.keys(data[0]); let csv=[headers.join(',')]; data.forEach(row=>{ const values=headers.map(h=>`"${String(row[h]||'').replace(/"/g,'""')}"`); csv.push(values.join(',')); }); const blob=new Blob([csv.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${filename}_${currentYear}_${new Date().toISOString().slice(0,19)}.csv`; a.click(); URL.revokeObjectURL(a.href); showNotification('Export completed!'); }
-// ======================= IMPORT MARKS FROM CSV =======================
+        // ✅ Add cache-busting headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Year': currentYear,
+            'X-Exam-Type': currentExamType,
+            'X-User-Role': currentUser?.role || '',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }; 
+        
+        // Merge with any additional headers from opts
+        if (opts.headers) {
+            Object.assign(headers, opts.headers);
+        }
+        
+        // ✅ Add timestamp to URL to prevent caching (optional but effective)
+        const separator = endpoint.includes('?') ? '&' : '?';
+        const url = API_BASE_URL + endpoint + separator + '_t=' + Date.now();
+        
+        console.log(`📡 Fetching: ${endpoint}`);
+        
+        const res = await fetch(url, {
+            headers,
+            ...opts
+        }); 
+        
+        if (!res.ok){
+            const errorData = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+            return { success: false, message: errorData.message };
+        }
+        const ct = res.headers.get('content-type'); 
+        if (ct && ct.includes('application/json')) return await res.json(); 
+        return { error: 'Non-JSON response' }; 
+    } catch(e){ 
+        console.error('❌ API Error:', e); 
+        return { success: false, error: e.message }; 
+    } 
+}
+
+// ======================= FIXED: Always fetch fresh config =======================
+async function getConfig(forceRefresh = false) { 
+    if (forceRefresh || !configCache) {
+        console.log('🔄 Fetching fresh config...');
+        configCache = await apiCall('/api/units', {});
+        console.log('✅ Config updated');
+    }
+    return configCache; 
+}
+
+// ======================= Force refresh config =======================
+async function refreshConfig() {
+    configCache = null;
+    return await getConfig(true);
+}
+
+// ======================= GLOBAL REFRESH =======================
+async function refreshAllData() {
+    console.log('🔄 Refreshing all data from server...');
+    showLoading('Refreshing data...');
+    
+    // Clear all caches
+    configCache = null;
+    currentAdminMarks = null;
+    currentMarksData = null;
+    currentNCKMarks = null;
+    
+    // Force refresh stats
+    const stats = await apiCall('/api/stats', {});
+    console.log('📊 Stats refreshed:', stats);
+    
+    // Reload current view
+    if (window.currentAdminBlock && window.currentAdminSubject) {
+        await loadAdminMarks(
+            window.currentAdminBlock,
+            window.currentAdminSubject,
+            window.currentAdminAssessmentType
+        );
+    } else if (currentUser?.role === 'lecturer') {
+        await showLecturerSubjects();
+    } else if (document.getElementById('nckSheetSelect')) {
+        await loadNCKMarks();
+    } else {
+        await showMain();
+    }
+    
+    hideLoading();
+    showNotification('✅ Data refreshed from server!', false);
+}
+
+// ======================= ADD REFRESH BUTTON =======================
+function addGlobalRefreshButton() {
+    // Remove existing refresh button
+    const existing = document.querySelector('.global-refresh-btn');
+    if (existing) existing.remove();
+    
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'menu-btn btn-info global-refresh-btn';
+    refreshBtn.style.cssText = 'padding:6px 12px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#2563eb);margin-left:10px;font-size:11px;';
+    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+    refreshBtn.onclick = refreshAllData;
+    
+    // Add to user info section
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo) {
+        const div = userInfo.querySelector('div');
+        if (div) {
+            div.appendChild(refreshBtn);
+        }
+    }
+    
+    // Also add to admin menu if exists
+    const adminMenu = document.querySelector('.admin-menu-grid');
+    if (adminMenu && !adminMenu.querySelector('.refresh-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'menu-btn btn-info refresh-btn';
+        btn.style.cssText = 'background:linear-gradient(135deg,#3b82f6,#2563eb);padding:10px;border:none;border-radius:16px;color:white;font-weight:600;cursor:pointer;';
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh All';
+        btn.onclick = refreshAllData;
+        adminMenu.appendChild(btn);
+    }
+}
+
+// ======================= KEYBOARD SHORTCUT =======================
+document.addEventListener('keydown', function(e) {
+    // Ctrl+R or Cmd+R to refresh data (not page)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        if (document.getElementById('app')) {
+            e.preventDefault();
+            refreshAllData();
+            showNotification('🔄 Refreshing data...', false);
+        }
+    }
+});
+
+// ======================= CALL ON PAGE LOAD =======================
+// Add refresh button after page loads
+setTimeout(addGlobalRefreshButton, 1000);
+
+// Override render functions to include refresh button
+const originalRenderWithSidebar = window.renderWithSidebar;
+window.renderWithSidebar = function(contentHtml) {
+    originalRenderWithSidebar(contentHtml);
+    setTimeout(addGlobalRefreshButton, 500);
+};
+
+const originalUpdateContentArea = window.updateContentArea;
+window.updateContentArea = function(html) {
+    originalUpdateContentArea(html);
+    setTimeout(addGlobalRefreshButton, 500);
+};
+
+console.log('⌨️ Press Ctrl+R to refresh data (not page)');
 // ======================= FIXED: IMPORT MARKS FROM CSV =======================
 window.importMarks = function() {
     const fileInput = document.createElement('input');
