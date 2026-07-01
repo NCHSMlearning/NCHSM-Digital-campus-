@@ -246,6 +246,7 @@ app.get('/api/subjects/:block', async (req, res) => {
 }
 
 // ========== GET MARKS ENDPOINT - HANDLES BOTH INTERNAL AND NCK ==========
+// ========== GET MARKS ENDPOINT - FIXED NCK READING ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -256,7 +257,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     
     // ===== NCK MARKS =====
     if (examType === 'nck') {
-      // Use the subject name as the sheet name (e.g., 'NCK_XY_FORMS' or 'NCK_ASSESSMENT_AND_CASE')
       const sheetName = subject;
       
       console.log(`[GET NCK] Reading sheet: ${sheetName}`);
@@ -268,65 +268,74 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         });
         
         const data = response.data.values || [];
+        console.log(`[GET NCK] Raw data rows: ${data.length}`);
+        
+        // ✅ If no data, return empty
+        if (data.length === 0) {
+          console.log(`[GET NCK] No data found in sheet ${sheetName}`);
+          res.json([]);
+          return;
+        }
+        
+        // ✅ Log headers for debugging
+        console.log(`[GET NCK] Headers:`, data[0]);
+        console.log(`[GET NCK] Header count:`, data[0]?.length || 0);
+        
         const marks = [];
         
-        // Check if we're reading XY FORMS or ASSESSMENT AND CASE
-        if (sheetName === 'NCK_XY_FORMS') {
-          // XY FORMS: Column A = Admission, Column B = Name, Columns C-X = Scores (22 columns), Column Y = Average, Column Z = Grade, Column AA = Graded By
-          for (let i = 1; i < data.length; i++) {
-            const row = data[i];
-            if (!row || !row[1]) continue; // Skip if no name
-            
-            const scores = [];
-            // Extract scores from columns C-X (indices 2 to 23)
-            for (let j = 2; j <= 23 && j < row.length; j++) {
-              const val = parseFloat(row[j]);
-              scores.push(isNaN(val) ? 0 : val);
-            }
-            while (scores.length < 22) scores.push(0);
-            
-            // Calculate average from scores
-            const validScores = scores.filter(s => s > 0);
-            const avg = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
-            
-            marks.push({
-              row: i + 1,
-              admission: row[0] || '',
-              name: row[1] || '',
-              scores: scores,
-              final: Math.round(avg * 100) / 100,
-              gradedBy: row[26] || row[25] || ''
-            });
+        // ✅ Check if this is XY FORMS or ASSESSMENT
+        const isXYForms = sheetName === 'NCK_XY_FORMS' || sheetName === 'XY FORMS';
+        const isAssessment = sheetName === 'NCK_ASSESSMENT_AND_CASE' || sheetName === 'ASSESSMENT AND CASE';
+        
+        // ✅ Process rows
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if (!row || !row[1]) continue; // Skip if no name
+          
+          // ✅ Extract scores - skip ADMISSION (col 0) and NAME (col 1)
+          const scores = [];
+          const startCol = 2; // Start at column C
+          
+          // Determine max scores based on sheet type
+          let maxScores = 22; // Default for XY FORMS
+          if (isAssessment) {
+            maxScores = 12; // 12 assessments for ASSESSMENT
           }
-        } else if (sheetName === 'NCK_ASSESSMENT_AND_CASE') {
-          // ASSESSMENT AND CASE: Column A = Admission, Column B = Name, Columns C-N = 12 Assessments, Column O = Total, Column P = Average, Column Q = Status, Column R = Graded By
-          for (let i = 1; i < data.length; i++) {
-            const row = data[i];
-            if (!row || !row[1]) continue; // Skip if no name
-            
-            const scores = [];
-            // Extract scores from columns C-N (indices 2 to 13)
-            for (let j = 2; j <= 13 && j < row.length; j++) {
-              const val = parseFloat(row[j]);
-              scores.push(isNaN(val) ? 0 : val);
+          
+          // ✅ Extract scores
+          for (let j = startCol; j < row.length && scores.length < maxScores; j++) {
+            // Skip YEAR column if it's a year value
+            const val = row[j];
+            if (val === '2024' || val === '2025' || val === '2026' || val === 'YEAR') {
+              continue;
             }
-            while (scores.length < 12) scores.push(0);
-            
-            // Calculate total and average
-            const validScores = scores.filter(s => s > 0);
-            const total = validScores.reduce((a, b) => a + b, 0);
-            const avg = validScores.length > 0 ? total / validScores.length : 0;
-            
-            marks.push({
-              row: i + 1,
-              admission: row[0] || '',
-              name: row[1] || '',
-              scores: scores,
-              total: Math.round(total * 100) / 100,
-              final: Math.round(avg * 100) / 100,
-              gradedBy: row[17] || row[16] || ''
-            });
+            const numVal = parseFloat(val);
+            scores.push(isNaN(numVal) ? 0 : numVal);
           }
+          
+          // Pad to max scores
+          while (scores.length < maxScores) scores.push(0);
+          
+          // ✅ Calculate average
+          const validScores = scores.filter(s => s > 0);
+          const avg = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+          
+          // ✅ Get graded by from the last column
+          let gradedBy = '';
+          const lastCol = row.length - 1;
+          if (row[lastCol] && row[lastCol] !== 'YEAR' && row[lastCol] !== '2024' && row[lastCol] !== '2025' && row[lastCol] !== '2026') {
+            gradedBy = row[lastCol];
+          }
+          
+          marks.push({
+            row: i + 1,
+            admission: row[0] || '',
+            name: row[1] || '',
+            scores: scores,
+            total: scores.reduce((a, b) => a + b, 0),
+            final: Math.round(avg * 100) / 100,
+            gradedBy: gradedBy || ''
+          });
         }
         
         console.log(`[GET NCK] Found ${marks.length} records from ${sheetName}`);
