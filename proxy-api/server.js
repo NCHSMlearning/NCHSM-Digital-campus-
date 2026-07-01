@@ -742,98 +742,162 @@ app.get('/api/lecturers', async (req, res) => {
   }
 });
 
+// ========== GET SINGLE LECTURER FROM MASTER SPREADSHEET ==========
 app.get('/api/lecturer/:username', async (req, res) => {
   try {
     const { username } = req.params;
+    
+    // ✅ Use the master spreadsheet for lecturer data
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`[GET LECTURER] Looking for: ${username} in master spreadsheet`);
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
+    
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (row && row[0] === username) {
-        res.json({ username: row[0], name: row[1], email: row[2] || '', subjects: row[4] ? row[4].split(',') : [] });
+        res.json({
+          username: row[0],
+          name: row[1] || row[0],
+          email: row[2] || '',
+          subjects: row[4] ? row[4].split(',') : []
+        });
         return;
       }
     }
+    
+    // If not found, return null
     res.json(null);
   } catch (error) {
+    console.error('Error fetching lecturer:', error);
     res.json(null);
   }
 });
 
+// ========== ADD LECTURER TO MASTER SPREADSHEET ==========
 app.post('/api/add-lecturer', async (req, res) => {
   try {
     const { username, name, email, password, subjects } = req.body;
+    
+    // ✅ Use the master spreadsheet
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
     const nextRow = data.length + 1;
+    
     await sheets.spreadsheets.values.update({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: `LECTURERS!A${nextRow}:G${nextRow}`,
       valueInputOption: 'RAW',
-      requestBody: { values: [[username, name, email || '', password, subjects ? subjects.join(',') : '', 'YES', new Date().toISOString()]] }
+      requestBody: { 
+        values: [[
+          username, 
+          name, 
+          email || '', 
+          password, 
+          subjects ? subjects.join(',') : '', 
+          'YES', 
+          new Date().toISOString()
+        ]] 
+      }
     });
+    
     res.json({ success: true, message: 'Lecturer added successfully' });
   } catch (error) {
+    console.error('Error adding lecturer:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// ========== UPDATE LECTURER IN MASTER SPREADSHEET ==========
 app.post('/api/update-lecturer', async (req, res) => {
   try {
     const { oldUsername, username, name, email, password, subjects } = req.body;
+    
+    // ✅ Use the master spreadsheet
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
+    
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === oldUsername) {
         const row = i + 1;
         await sheets.spreadsheets.values.update({
-          spreadsheetId: req.spreadsheetId,
-          range: `LECTURERS!A${row}:E${row}`,
+          spreadsheetId: spreadsheetId,
+          range: `LECTURERS!A${row}:F${row}`,
           valueInputOption: 'RAW',
-          requestBody: { values: [[username, name, email || '', password || data[i][3], subjects ? subjects.join(',') : '']] }
+          requestBody: { 
+            values: [[
+              username, 
+              name, 
+              email || '', 
+              password || data[i][3], 
+              subjects ? subjects.join(',') : '', 
+              'YES'
+            ]] 
+          }
         });
-        break;
+        res.json({ success: true, message: 'Lecturer updated successfully' });
+        return;
       }
     }
-    res.json({ success: true, message: 'Lecturer updated successfully' });
+    
+    res.json({ success: false, message: 'Lecturer not found' });
   } catch (error) {
+    console.error('Error updating lecturer:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// ========== DELETE LECTURER FROM MASTER SPREADSHEET ==========
 app.post('/api/delete-lecturer', async (req, res) => {
   try {
     const { username } = req.body;
+    
+    // ✅ Use the master spreadsheet
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
+    
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === username) {
         await sheets.spreadsheets.values.update({
-          spreadsheetId: req.spreadsheetId,
+          spreadsheetId: spreadsheetId,
           range: `LECTURERS!F${i+1}`,
           valueInputOption: 'RAW',
           requestBody: { values: [['NO']] }
         });
-        break;
+        res.json({ success: true, message: 'Lecturer deleted successfully' });
+        return;
       }
     }
-    res.json({ success: true, message: 'Lecturer deleted successfully' });
+    
+    res.json({ success: false, message: 'Lecturer not found' });
   } catch (error) {
+    console.error('Error deleting lecturer:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+
+
 
 // ========== UNIT ENDPOINTS ==========
 app.get('/api/units', async (req, res) => {
