@@ -3621,66 +3621,107 @@ async function showNCKMarks() {
     } else { showNotification(`Save failed: ${result.message}`, true); return false; }
   }
   
- window.saveNCKMarks = async function() { 
+window.saveNCKMarks = async function() { 
   const sheetName = document.getElementById('nckSheetSelect').value; 
+  if (!sheetName) {
+    showNotification('No sheet selected', true);
+    return;
+  }
+  
   let marksData = []; 
   
-  if (sheetName === 'NCK_XY_FORMS') { 
+  if (sheetName === 'NCK_XY_FORMS' || sheetName === 'XY FORMS') { 
     const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
     for (let i = 0; i < rows.length; i++) { 
+      // ✅ Get student name from the row
+      const nameCell = rows[i].querySelectorAll('td')[1];
+      const studentName = nameCell?.innerText?.trim() || '';
+      
       let scores = []; 
       for (let c = 0; c < 22; c++) { 
-        scores.push(parseFloat(document.getElementById(`xy_${i}_${c}`)?.value) || 0); 
+        const val = document.getElementById(`xy_${i}_${c}`)?.value;
+        scores.push(val !== '' && !isNaN(parseFloat(val)) ? parseFloat(val) : 0); 
       } 
+      
+      const gradedBy = document.getElementById(`xyGraded_${i}`)?.value || currentUser.name;
+      
+      // ✅ Get admission from the first column
+      const admissionCell = rows[i].querySelector('td:first-child');
+      const admission = admissionCell?.innerText?.trim() || '';
+      
       marksData.push({ 
-        row: i + 2, 
+        row: i + 2,
+        admission: admission,
+        name: studentName,
         scores: scores, 
-        gradedBy: document.getElementById(`xyGraded_${i}`)?.value || '' 
+        gradedBy: gradedBy,
+        year: currentYear  // ✅ ADD YEAR!
       }); 
     } 
   } else { 
+    // ASSESSMENT AND CASE
     const columnCount = 12;
     const rows = document.querySelectorAll('#nckMarksContainer tbody tr'); 
     for (let i = 0; i < rows.length; i++) { 
+      const nameCell = rows[i].querySelectorAll('td')[1];
+      const studentName = nameCell?.innerText?.trim() || '';
+      
       let scores = []; 
       for (let c = 0; c < columnCount; c++) { 
         const val = document.getElementById(`ac_${i}_${c}`)?.value; 
-        const score = (val !== '' && !isNaN(parseFloat(val))) ? parseFloat(val) : ''; 
+        const score = (val !== '' && !isNaN(parseFloat(val))) ? parseFloat(val) : 0; 
         scores.push(score); 
       } 
+      
+      const gradedBy = document.getElementById(`acGraded_${i}`)?.value || currentUser.name;
+      
+      const admissionCell = rows[i].querySelector('td:first-child');
+      const admission = admissionCell?.innerText?.trim() || '';
+      
       marksData.push({ 
-        row: i + 2, 
+        row: i + 2,
+        admission: admission,
+        name: studentName,
         scores: scores, 
-        gradedBy: document.getElementById(`acGraded_${i}`)?.value || '' 
+        gradedBy: gradedBy,
+        year: currentYear  // ✅ ADD YEAR!
       }); 
     } 
   } 
   
+  if (marksData.length === 0) {
+    showNotification('No marks to save', true);
+    return;
+  }
+  
   showLoading('Saving NCK marks...'); 
+  
+  const payload = { 
+    block: 'BLOCK_0', 
+    subject: sheetName, 
+    marksData: marksData, 
+    lecturerName: currentUser.name, 
+    examType: 'nck', 
+    userRole: currentUser?.role || 'admin'
+  };
+  
+  console.log('📤 NCK Payload:', payload);
   
   const result = await apiCall('/api/marks', { 
     method: 'POST', 
-    body: JSON.stringify({ 
-      block: 'BLOCK_0', 
-      subject: sheetName,  // ✅ Sends the correct sheet name (NCK_XY_FORMS or NCK_ASSESSMENT_AND_CASE)
-      marksData: marksData, 
-      lecturerName: currentUser.name, 
-      examType: 'nck', 
-      userRole: currentUser?.role || 'admin'
-    }) 
+    body: JSON.stringify(payload) 
   }); 
   
   hideLoading(); 
   
   if (result && (result.success === true || result.message === 'NCK marks saved successfully')) { 
-    showNotification('✅ NCK marks saved successfully!', false);
+    showNotification(`✅ NCK marks saved successfully! (${marksData.length} records)`, false);
     setTimeout(() => loadNCKMarks(), 500);
   } else { 
     console.error('❌ NCK save failed:', result);
     showNotification(result?.message || result?.error || 'Error saving NCK marks', true); 
   } 
 };
-  
   // Fast Entry Functions with Instant DB Save
   function openFastEntryPanel() { 
     if(!currentNCKMarks||currentNCKMarks.length===0){ 
