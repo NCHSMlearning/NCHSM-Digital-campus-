@@ -217,33 +217,39 @@ app.post('/api/mark-entry/toggle-subject', (req, res) => {
 });
 
 // ========== SUBJECTS ENDPOINT ==========
+// ========== SUBJECTS ENDPOINT ==========
 app.get('/api/subjects/:block', async (req, res) => {
   try {
     const { block } = req.params;
     const examType = req.headers['x-exam-type'] || 'internal';
     
-   if (examType === 'nck') {
-  res.json([
-    { name: 'NCK_XY_FORMS', assessmentType: 'nck' },
-    { name: 'NCK_ASSESSMENT_AND_CASE', assessmentType: 'nck' }
-  ]);
-} else {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: req.spreadsheetId,
-    range: 'CONFIG!A:D',
-  });
-  const config = response.data.values || [];
-  const subjects = [];
-  for (let i = 1; i < config.length; i++) {
-    if (config[i] && config[i][0] === block && config[i][2] === 'YES') {
-      subjects.push({
-        name: config[i][1],
-        assessmentType: config[i][3] || 'full'
+    if (examType === 'nck') {
+      res.json([
+        { name: 'NCK_XY_FORMS', assessmentType: 'nck' },
+        { name: 'NCK_ASSESSMENT_AND_CASE', assessmentType: 'nck' }
+      ]);
+    } else {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: 'CONFIG!A:D',
       });
+      const config = response.data.values || [];
+      const subjects = [];
+      for (let i = 1; i < config.length; i++) {
+        if (config[i] && config[i][0] === block && config[i][2] === 'YES') {
+          subjects.push({
+            name: config[i][1],
+            assessmentType: config[i][3] || 'full'
+          });
+        }
+      }
+      res.json(subjects);
     }
+  } catch (error) {
+    console.error('Error in /api/subjects:', error);
+    res.json([]);
   }
-  res.json(subjects);
-}
+});
 
 // ========== GET MARKS ENDPOINT - HANDLES BOTH INTERNAL AND NCK ==========
 // ========== GET MARKS ENDPOINT - FIXED NCK READING ==========
