@@ -321,31 +321,51 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
 
 // ========== SAVE MARKS ENDPOINT ==========
 // ========== FIXED: SAVE MARKS ENDPOINT - Only updates changed values ==========
+// ========== COMPLETE DEBUG: SAVE MARKS ENDPOINT ==========
 app.post('/api/marks', async (req, res) => {
   try {
+    console.log('🔍 ===== SAVE REQUEST STARTED =====');
+    
     const { block, subject, marksData, lecturerName } = req.body;
     const examType = req.headers['x-exam-type'] || 'internal';
     const spreadsheetId = req.spreadsheetId;
     const year = req.headers['x-year'] || '2024';
     const userRole = req.headers['x-user-role'] || req.body.userRole;
     
-    console.log(`[SAVE] User: ${lecturerName}, Role: ${userRole}, Subject: ${subject}`);
-    console.log(`[SAVE] Records: ${marksData?.length || 0}`);
+    console.log(`📋 User: ${lecturerName}, Role: ${userRole}`);
+    console.log(`📋 Subject: ${subject}`);
+    console.log(`📋 Block: ${block}`);
+    console.log(`📋 Exam Type: ${examType}`);
+    console.log(`📋 Year: ${year}`);
+    console.log(`📋 Spreadsheet ID: ${spreadsheetId}`);
+    console.log(`📋 Records received: ${marksData?.length || 0}`);
+    
+    // Log first 3 records for debugging
+    if (marksData && marksData.length > 0) {
+      console.log('📋 First 3 records:');
+      for (let i = 0; i < Math.min(3, marksData.length); i++) {
+        console.log(`  [${i}] Admission: ${marksData[i].admission}, CAT1: ${marksData[i].cat1}, CAT2: ${marksData[i].cat2}, EXAM: ${marksData[i].exam}`);
+      }
+    }
     
     // Entry check
     const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
+    console.log(`📋 Is Admin: ${isAdmin}`);
     
     if (!isAdmin) {
       if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
+        console.log('❌ Global entry closed');
         return res.status(403).json({ success: false, message: '❌ Mark entry is globally closed.' });
       }
       const classKey = `${year}_all`;
       if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
+        console.log(`❌ Class entry closed for ${year}`);
         return res.status(403).json({ success: false, message: `❌ Mark entry is closed for March ${year} class.` });
       }
       if (examType === 'internal') {
         const subjectKey = `${block}_${subject}`;
         if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
+          console.log(`❌ Subject entry closed for ${subject}`);
           return res.status(403).json({ success: false, message: `❌ Mark entry is closed for ${subject}.` });
         }
       }
@@ -363,25 +383,28 @@ app.post('/api/marks', async (req, res) => {
     });
     if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
     
-    // Save logic
+    // ===== SAVE LOGIC =====
     if (examType === 'nck') {
+      console.log('📋 NCK save - returning success');
       res.json({ success: true, message: 'NCK marks saved successfully' });
     } else {
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
+      console.log(`📋 Sheet Name: ${sheetName}`);
       
-      let sheetExists = true;
+      // ✅ Get current data from sheet
       let currentData = [];
       try {
+        console.log(`📡 Reading sheet: ${sheetName}`);
         const response = await sheets.spreadsheets.values.get({
           spreadsheetId,
           range: `${sheetName}!A:I`,
         });
         currentData = response.data.values || [];
-        console.log(`[SAVE] Sheet ${sheetName} exists with ${currentData.length} rows`);
+        console.log(`📋 Sheet has ${currentData.length} rows (including header)`);
       } catch (error) {
-        sheetExists = false;
-        console.log(`[SAVE] Sheet ${sheetName} does not exist, creating...`);
+        console.log(`⚠️ Sheet ${sheetName} does not exist, creating...`);
+        console.log(`❌ Error: ${error.message}`);
         
         try {
           await sheets.spreadsheets.batchUpdate({
@@ -402,9 +425,9 @@ app.post('/api/marks', async (req, res) => {
           });
           
           currentData = [headers];
-          console.log(`[SAVE] Created new sheet: ${sheetName}`);
+          console.log(`✅ Created new sheet: ${sheetName}`);
         } catch (createError) {
-          console.error('[SAVE] Error creating sheet:', createError);
+          console.error('❌ Error creating sheet:', createError);
           return res.status(500).json({ 
             success: false, 
             error: `Could not create sheet: ${createError.message}` 
@@ -412,15 +435,16 @@ app.post('/api/marks', async (req, res) => {
         }
       }
       
-      // Build map of existing admissions with their row data
+      // ✅ Build map of existing admissions with their current data
       const existingDataMap = new Map();
       let maxRow = 1;
       
+      console.log('📋 Building existing data map...');
       for (let i = 1; i < currentData.length; i++) {
         const row = currentData[i];
         if (row && row[0]) {
           const admission = row[0].toString().trim();
-          existingDataMap.set(admission, { 
+          existingDataMap.set(admission, {
             rowNum: i + 1,
             name: row[1] || '',
             cat1: parseFloat(row[2]) || 0,
@@ -435,15 +459,29 @@ app.post('/api/marks', async (req, res) => {
         }
       }
       
-      console.log(`[SAVE] Found ${existingDataMap.size} existing students, max row: ${maxRow}`);
+      console.log(`📋 Found ${existingDataMap.size} existing students in sheet`);
+      
+      // Log first 3 existing records for comparison
+      let count = 0;
+      for (const [admission, data] of existingDataMap) {
+        if (count < 3) {
+          console.log(`📋 Existing [${count}]: ${admission} - CAT1: ${data.cat1}, CAT2: ${data.cat2}, EXAM: ${data.exam}`);
+          count++;
+        } else break;
+      }
       
       const rowsToUpdate = [];
       const rowsToInsert = [];
       let skippedCount = 0;
+      let processedCount = 0;
       
+      // ✅ Process each mark and compare with existing data
+      console.log('📋 Processing marks...');
       for (const mark of marksData) {
+        processedCount++;
         const admission = mark.admission ? mark.admission.toString().trim() : '';
         if (!admission) {
+          console.log(`⚠️ [${processedCount}] Skipping: No admission number`);
           skippedCount++;
           continue;
         }
@@ -453,27 +491,36 @@ app.post('/api/marks', async (req, res) => {
         let exam = parseFloat(mark.exam) || 0;
         let name = mark.name || '';
         
-        // Check if student exists
+        console.log(`📋 [${processedCount}] Processing: ${admission} - CAT1: ${cat1}, CAT2: ${cat2}, EXAM: ${exam}`);
+        
+        // ✅ Check if student exists
         if (existingDataMap.has(admission)) {
           const existing = existingDataMap.get(admission);
+          console.log(`📋 [${processedCount}] Found existing: ${admission}`);
+          console.log(`   Existing: CAT1=${existing.cat1}, CAT2=${existing.cat2}, EXAM=${existing.exam}`);
+          console.log(`   New:      CAT1=${cat1}, CAT2=${cat2}, EXAM=${exam}`);
           
           // ✅ Get name from existing if not provided
           if (!name) name = existing.name;
           
-          // Determine assessment type
-          let assessmentType = existing.assessmentType || 'full';
+          // ✅ COMPARE VALUES - Check if anything changed
+          const cat1Changed = Math.abs(existing.cat1 - cat1) > 0.01;
+          const cat2Changed = Math.abs(existing.cat2 - cat2) > 0.01;
+          const examChanged = Math.abs(existing.exam - exam) > 0.01;
           
-          // ✅ CHECK IF VALUES CHANGED - Only update if different
-          const cat1Changed = existing.cat1 !== cat1;
-          const cat2Changed = existing.cat2 !== cat2;
-          const examChanged = existing.exam !== exam;
+          console.log(`   Changes: CAT1=${cat1Changed}, CAT2=${cat2Changed}, EXAM=${examChanged}`);
           
           if (cat1Changed || cat2Changed || examChanged) {
-            // Calculate final score
+            console.log(`✅ [${processedCount}] Will UPDATE ${admission}`);
+            
+            // ✅ Calculate final score
             let finalScore = 0;
             const hasCat1 = cat1 > 0;
             const hasCat2 = cat2 > 0;
             const hasExam = exam > 0;
+            
+            // Determine assessment type
+            let assessmentType = existing.assessmentType || 'full';
             
             if (assessmentType === 'full') {
               if (hasExam && hasCat1 && hasCat2) {
@@ -503,7 +550,7 @@ app.post('/api/marks', async (req, res) => {
             finalScore = Math.round(finalScore * 10) / 10;
             const grade = await calculateGrade(finalScore);
             
-            const rowData = {
+            rowsToUpdate.push({
               admission,
               name: name || '',
               cat1,
@@ -514,25 +561,23 @@ app.post('/api/marks', async (req, res) => {
               gradedBy: lecturerName || existing.gradedBy || '',
               assessmentType,
               rowNum: existing.rowNum
-            };
-            
-            rowsToUpdate.push(rowData);
-            console.log(`[SAVE] Updating ${admission}: CAT1 ${existing.cat1}→${cat1}, CAT2 ${existing.cat2}→${cat2}, EXAM ${existing.exam}→${exam}`);
+            });
+            console.log(`   Final Score: ${finalScore}, Grade: ${grade}`);
           } else {
             skippedCount++;
-            console.log(`[SAVE] Skipping ${admission}: No changes`);
+            console.log(`⏭️ [${processedCount}] Skipping ${admission}: No changes`);
           }
         } else {
-          // New student - insert
+          // ✅ New student - insert
+          console.log(`➕ [${processedCount}] Will INSERT new student: ${admission}`);
+          
           // Calculate final score
           let finalScore = 0;
           const hasCat1 = cat1 > 0;
           const hasCat2 = cat2 > 0;
           const hasExam = exam > 0;
           
-          // Default assessment type
           let assessmentType = 'full';
-          
           if (assessmentType === 'full') {
             if (hasExam && hasCat1 && hasCat2) {
               finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30) + Math.min(exam, 70);
@@ -572,12 +617,16 @@ app.post('/api/marks', async (req, res) => {
             gradedBy: lecturerName || '',
             assessmentType
           });
-          console.log(`[SAVE] Inserting new student: ${admission}`);
+          console.log(`   Final Score: ${finalScore}, Grade: ${grade}`);
         }
       }
       
-      // ✅ Update existing rows (only changed ones)
+      console.log(`📋 Summary: Updates=${rowsToUpdate.length}, Inserts=${rowsToInsert.length}, Skipped=${skippedCount}`);
+      
+      // ✅ Update existing rows
+      console.log(`📡 Updating ${rowsToUpdate.length} rows...`);
       for (const mark of rowsToUpdate) {
+        console.log(`   Updating row ${mark.rowNum} for ${mark.admission}: CAT1=${mark.cat1}, CAT2=${mark.cat2}, EXAM=${mark.exam}`);
         await sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `${sheetName}!B${mark.rowNum}:H${mark.rowNum}`,
@@ -586,11 +635,11 @@ app.post('/api/marks', async (req, res) => {
             values: [[mark.name, mark.cat1, mark.cat2, mark.exam, mark.finalScore, mark.grade, mark.gradedBy]] 
           }
         });
-        console.log(`[SAVE] Updated row ${mark.rowNum} for ${mark.admission}`);
       }
       
       // ✅ Insert new rows
       if (rowsToInsert.length > 0) {
+        console.log(`📡 Inserting ${rowsToInsert.length} new rows...`);
         const valuesToInsert = rowsToInsert.map(mark => [
           mark.admission,
           mark.name,
@@ -604,27 +653,34 @@ app.post('/api/marks', async (req, res) => {
         ]);
         
         const startRow = maxRow + 1;
+        console.log(`   Inserting at row ${startRow}`);
         await sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `${sheetName}!A${startRow}:I${startRow + valuesToInsert.length - 1}`,
           valueInputOption: 'RAW',
           requestBody: { values: valuesToInsert }
         });
-        console.log(`[SAVE] Inserted ${valuesToInsert.length} new rows starting at ${startRow}`);
       }
       
-      console.log(`[SAVE] Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+      console.log(`✅ SAVE COMPLETE: Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+      console.log('🔍 ===== SAVE REQUEST COMPLETED =====');
       
       res.json({ 
         success: true, 
         message: `Saved ${rowsToUpdate.length} updated + ${rowsToInsert.length} new marks`,
         updated: rowsToUpdate.length,
         inserted: rowsToInsert.length,
-        skipped: skippedCount
+        skipped: skippedCount,
+        debug: {
+          totalReceived: marksData?.length || 0,
+          existingStudents: existingDataMap.size,
+          processed: processedCount
+        }
       });
     }
   } catch (error) {
     console.error('❌ Error saving marks:', error);
+    console.error('❌ Stack:', error.stack);
     res.status(500).json({ 
       success: false, 
       error: error.message,
