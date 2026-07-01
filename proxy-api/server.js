@@ -705,27 +705,35 @@ app.post('/api/delete-student', async (req, res) => {
 });
 
 // ========== LECTURER ENDPOINTS (Simplified) ==========
+// ========== GET LECTURERS FROM MASTER SPREADSHEET ==========
 app.get('/api/lecturers', async (req, res) => {
   try {
+    // ✅ Always use the master spreadsheet
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'LECTURERS!A:G',
     });
     const data = response.data.values || [];
     const lecturers = [];
+    
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (row && row[0] && row[5] !== 'NO') {
         lecturers.push({
           username: row[0],
-          name: row[1],
+          name: row[1] || row[0],
           email: row[2] || '',
-          subjects: row[4] ? row[4].split(',') : []
+          subjects: row[4] ? row[4].split(',') : [],
+          status: row[5] || 'YES'
         });
       }
     }
+    
     res.json(lecturers);
   } catch (error) {
+    console.error('Error fetching lecturers:', error);
     res.json([]);
   }
 });
@@ -1093,31 +1101,109 @@ app.post('/api/delete-unit', async (req, res) => {
   }
 });
 
-// ========== LOGIN & STATS ==========
+// ========== CENTRALIZED AUTHENTICATION - ONE MASTER SPREADSHEET ==========
+// Use the March 2024 spreadsheet as the master auth source
+const MASTER_SPREADSHEET_ID = '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0';
+
 app.post('/api/login', async (req, res) => {
   try {
-    const { username, password, year } = req.body;
-    const spreadsheetId = SPREADSHEETS[year]?.internal || SPREADSHEETS['2024'].internal;
+    const { username, password } = req.body;
     
-    const adminResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'ADMIN!A:C' });
-    const admins = adminResponse.data.values || [];
-    for (let i = 1; i < admins.length; i++) {
-      const row = admins[i];
-      if (row && row[0] === username && row[1] === password) {
-        return res.json({ success: true, user: { username, name: 'Administrator', role: 'admin' } });
+    // ✅ Only check the MASTER spreadsheet for authentication
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    // 1. Check ADMIN sheet (for admin users)
+    try {
+      const adminResponse = await sheets.spreadsheets.values.get({ 
+        spreadsheetId, 
+        range: 'ADMIN!A:C' 
+      });
+      const admins = adminResponse.data.values || [];
+      for (let i = 1; i < admins.length; i++) {
+        const row = admins[i];
+        if (row && row[0] === username && row[1] === password) {
+          return res.json({ 
+            success: true, 
+            user: { 
+              username, 
+              name: 'Administrator', 
+              role: 'admin',
+              // ✅ Admin gets access to all years
+              subjects: ['ALL']
+            } 
+          });
+        }
       }
+    } catch (e) { /* skip */ }
+    
+    // 2. Check LECTURERS sheet (for lecturers)
+    try {
+      const lecturersResponse = await sheets.spreadsheets.values.get({ 
+        spreadsheetId, 
+        range: 'LECTURERS!A:G' 
+      });
+      const lecturers = lecturersResponse.data.values || [];
+      for (let i = 1; i < lecturers.length; i++) {
+        const row = lecturers[i];
+        // ✅ Check: username matches, password matches, status is YES
+        if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
+          // Get subjects - these should include year info
+          let subjects = row[4] ? row[4].split(',') : [];
+          
+          return res.json({ 
+            success: true, 
+            user: { 
+              username, 
+              name: row[1] || username, 
+              role: 'lecturer',
+              subjects: subjects,
+              // ✅ Store the home year (which spreadsheet they belong to)
+              homeYear: row[6] || '2024' // Optional: add a year column
+            } 
+          });
+        }
+      }
+    } catch (e) { /* skip */ }
+    
+    // 3. If not found in master, try other spreadsheets as fallback
+    // This is for backward compatibility
+    for (const year of ['2024', '2025', '2026']) {
+      if (year === '2024') continue; // Already checked
+      
+      const fallbackId = SPREADSHEETS[year]?.internal;
+      if (!fallbackId) continue;
+      
+      try {
+        const fallbackResponse = await sheets.spreadsheets.values.get({ 
+          spreadsheetId: fallbackId, 
+          range: 'LECTURERS!A:G' 
+        });
+        const fallbackData = fallbackResponse.data.values || [];
+        for (let i = 1; i < fallbackData.length; i++) {
+          const row = fallbackData[i];
+          if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
+            let subjects = row[4] ? row[4].split(',') : [];
+            // ✅ Add year prefix to subjects
+            subjects = subjects.map(s => `${year}|${s}`);
+            
+            return res.json({ 
+              success: true, 
+              user: { 
+                username, 
+                name: row[1] || username, 
+                role: 'lecturer',
+                subjects: subjects,
+                homeYear: year
+              } 
+            });
+          }
+        }
+      } catch (e) { /* skip */ }
     }
     
-    const lecturersResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'LECTURERS!A:G' });
-    const lecturers = lecturersResponse.data.values || [];
-    for (let i = 1; i < lecturers.length; i++) {
-      const row = lecturers[i];
-      if (row && row[0] === username && row[3] === password && row[5] !== 'NO') {
-        return res.json({ success: true, user: { username, name: row[1], role: 'lecturer', subjects: row[4] ? row[4].split(',') : [] } });
-      }
-    }
     res.json({ success: false, message: 'Invalid username or password' });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
