@@ -251,7 +251,6 @@ app.get('/api/subjects/:block', async (req, res) => {
   }
 });
 
-// ========== GET MARKS ENDPOINT - HANDLES BOTH INTERNAL AND NCK ==========
 // ========== GET MARKS ENDPOINT - WITH NCK YEAR FILTERING ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
@@ -282,7 +281,30 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           return;
         }
         
-        console.log(`[GET NCK] Headers:`, data[0]);
+        const headers = data[0] || [];
+        console.log(`[GET NCK] Headers:`, headers);
+        
+        // ✅ FIND THE YEAR COLUMN BY HEADER NAME
+        let yearColIndex = -1;
+        for (let i = 0; i < headers.length; i++) {
+          const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
+          if (header === 'YEAR') {
+            yearColIndex = i;
+            break;
+          }
+        }
+        
+        // If YEAR not found, check the last column
+        if (yearColIndex === -1) {
+          const lastCol = headers.length - 1;
+          const lastHeader = headers[lastCol] ? headers[lastCol].toString().trim() : '';
+          if (lastHeader === 'YEAR' || lastHeader === '2024' || lastHeader === '2025' || lastHeader === '2026') {
+            yearColIndex = lastCol;
+            console.log(`[GET NCK] Using last column (${yearColIndex}) as YEAR`);
+          }
+        }
+        
+        console.log(`[GET NCK] Year column index: ${yearColIndex}`);
         
         const marks = [];
         const isXYForms = sheetName === 'NCK_XY_FORMS' || sheetName === 'XY FORMS';
@@ -293,15 +315,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           const row = data[i];
           if (!row || !row[1]) continue; // Skip if no name
           
-          // ✅ Find YEAR column (at the end - column AB or AC)
+          // ✅ GET YEAR FROM THE YEAR COLUMN
           let studentYear = '2024';
-          // Check the last 5 columns for a year value
-          for (let j = row.length - 1; j >= Math.max(0, row.length - 5); j--) {
-            const val = row[j];
-            if (val === '2024' || val === '2025' || val === '2026') {
-              studentYear = val.toString();
-              console.log(`✅ Found year ${studentYear} for ${row[1]}`);
-              break;
+          if (yearColIndex !== -1 && row[yearColIndex] !== undefined && row[yearColIndex] !== '') {
+            const yearVal = row[yearColIndex].toString().trim();
+            if (yearVal === '2024' || yearVal === '2025' || yearVal === '2026') {
+              studentYear = yearVal;
             }
           }
           
@@ -314,8 +333,9 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           // ✅ Extract scores (start at column 2, skip ADMISSION and NAME)
           const scores = [];
           for (let j = 2; j < row.length && scores.length < maxScores; j++) {
+            // Skip the YEAR column
+            if (j === yearColIndex) continue;
             const val = row[j];
-            // Skip YEAR column if it's a year value
             if (val === '2024' || val === '2025' || val === '2026' || val === 'YEAR') {
               continue;
             }
@@ -328,11 +348,14 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           const validScores = scores.filter(s => s > 0);
           const avg = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
           
-          // Get graded by from the last column
+          // Get graded by from the last column (skip YEAR)
           let gradedBy = '';
-          const lastCol = row.length - 1;
-          if (row[lastCol] && row[lastCol] !== 'YEAR' && row[lastCol] !== '2024' && row[lastCol] !== '2025' && row[lastCol] !== '2026') {
-            gradedBy = row[lastCol];
+          for (let j = row.length - 1; j >= 0; j--) {
+            if (j === yearColIndex) continue;
+            if (row[j] && row[j] !== 'YEAR' && row[j] !== '2024' && row[j] !== '2025' && row[j] !== '2026') {
+              gradedBy = row[j];
+              break;
+            }
           }
           
           marks.push({
@@ -343,7 +366,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             total: scores.reduce((a, b) => a + b, 0),
             final: Math.round(avg * 100) / 100,
             gradedBy: gradedBy || '',
-            year: studentYear // Include year for debugging
+            year: studentYear
           });
         }
         
