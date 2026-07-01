@@ -441,9 +441,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     res.json([]);
   }
 });
-// ========== SAVE MARKS ENDPOINT ==========
-// ========== FIXED: SAVE MARKS ENDPOINT - Only updates changed values ==========
-// ========== COMPLETE DEBUG: SAVE MARKS ENDPOINT ==========
+// ========== SAVE MARKS ENDPOINT - FIXED WITH NCK YEAR SUPPORT ==========
 app.post('/api/marks', async (req, res) => {
   try {
     console.log('🔍 ===== SAVE REQUEST STARTED =====');
@@ -507,9 +505,212 @@ app.post('/api/marks', async (req, res) => {
     
     // ===== SAVE LOGIC =====
     if (examType === 'nck') {
-      console.log('📋 NCK save - returning success');
-      res.json({ success: true, message: 'NCK marks saved successfully' });
+      console.log('📋 NCK save - processing...');
+      
+      const sheetName = subject;
+      
+      // ✅ Read current data from sheet (include YEAR column)
+      let currentData = [];
+      try {
+        const response = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${sheetName}!A:AB`,
+        });
+        currentData = response.data.values || [];
+        console.log(`[SAVE NCK] Sheet ${sheetName} exists with ${currentData.length} rows`);
+      } catch (error) {
+        console.log(`[SAVE NCK] Sheet ${sheetName} does not exist, creating...`);
+        try {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: spreadsheetId,
+            requestBody: {
+              requests: [
+                { addSheet: { properties: { title: sheetName } } }
+              ]
+            }
+          });
+          
+          // ✅ Headers with YEAR at the end
+          const headers = ['ADMISSION', 'NAME', 'MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL', 'AVERAGE', 'GRADE', 'GRADED BY', 'YEAR'];
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!A1:AB1`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [headers] }
+          });
+          
+          currentData = [headers];
+          console.log(`[SAVE NCK] Created new sheet: ${sheetName}`);
+        } catch (createError) {
+          console.error('[SAVE NCK] Error creating sheet:', createError);
+          return res.status(500).json({ 
+            success: false, 
+            error: `Could not create sheet: ${createError.message}` 
+          });
+        }
+      }
+      
+      // ✅ Build map of existing student names with their row data
+      const existingDataMap = new Map();
+      let maxRow = 1;
+      
+      // Find YEAR column index
+      let yearColIndex = -1;
+      const headers = currentData[0] || [];
+      for (let i = 0; i < headers.length; i++) {
+        if (headers[i] === 'YEAR') {
+          yearColIndex = i;
+          break;
+        }
+      }
+      if (yearColIndex === -1) {
+        yearColIndex = headers.length - 1; // Use last column
+      }
+      
+      console.log(`[SAVE NCK] YEAR column at index: ${yearColIndex}`);
+      
+      for (let i = 1; i < currentData.length; i++) {
+        const row = currentData[i];
+        if (row && row[1]) {
+          const studentName = row[1].toString().trim();
+          existingDataMap.set(studentName, {
+            rowNum: i + 1,
+            scores: [],
+            gradedBy: row[26] || '',
+            year: row[yearColIndex] || '2024'
+          });
+          
+          // Extract scores (columns 2-23, indices 2-23)
+          for (let j = 2; j <= 23 && j < row.length; j++) {
+            existingDataMap.get(studentName).scores.push(parseFloat(row[j]) || 0);
+          }
+          while (existingDataMap.get(studentName).scores.length < 22) {
+            existingDataMap.get(studentName).scores.push(0);
+          }
+          
+          if (i + 1 > maxRow) maxRow = i + 1;
+        }
+      }
+      
+      console.log(`[SAVE NCK] Found ${existingDataMap.size} existing students`);
+      
+      const rowsToUpdate = [];
+      const rowsToInsert = [];
+      let skippedCount = 0;
+      
+      for (const mark of marksData) {
+        const studentName = mark.name ? mark.name.toString().trim() : '';
+        if (!studentName) {
+          skippedCount++;
+          continue;
+        }
+        
+        const scores = mark.scores || [];
+        const gradedBy = mark.gradedBy || lecturerName || '';
+        const yearValue = mark.year || year || '2024';
+        
+        // Pad scores to 22
+        while (scores.length < 22) scores.push(0);
+        
+        // Calculate average
+        const validScores = scores.filter(s => s > 0);
+        const average = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+        const grade = average >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+        
+        if (existingDataMap.has(studentName)) {
+          const existing = existingDataMap.get(studentName);
+          
+          // ✅ Check if scores changed
+          let changed = false;
+          for (let i = 0; i < 22; i++) {
+            if (existing.scores[i] !== scores[i]) {
+              changed = true;
+              break;
+            }
+          }
+          
+          if (changed || existing.year !== yearValue) {
+            rowsToUpdate.push({
+              name: studentName,
+              scores: scores,
+              average: average,
+              grade: grade,
+              gradedBy: gradedBy,
+              year: yearValue,
+              rowNum: existing.rowNum
+            });
+            console.log(`[SAVE NCK] Updating ${studentName}`);
+          } else {
+            skippedCount++;
+            console.log(`[SAVE NCK] Skipping ${studentName}: No changes`);
+          }
+        } else {
+          rowsToInsert.push({
+            name: studentName,
+            scores: scores,
+            average: average,
+            grade: grade,
+            gradedBy: gradedBy,
+            year: yearValue
+          });
+          console.log(`[SAVE NCK] Inserting new student: ${studentName} with year ${yearValue}`);
+        }
+      }
+      
+      // ✅ Update existing rows
+      for (const mark of rowsToUpdate) {
+        const rowValues = [
+          '',  // ADMISSION (empty)
+          mark.name,
+          ...mark.scores.slice(0, 22),
+          Math.round(mark.average * 100) / 100,
+          mark.grade,
+          mark.gradedBy,
+          mark.year  // ✅ YEAR at the end
+        ];
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheetName}!A${mark.rowNum}:AB${mark.rowNum}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [rowValues] }
+        });
+        console.log(`[SAVE NCK] Updated row ${mark.rowNum}`);
+      }
+      
+      // ✅ Insert new rows
+      if (rowsToInsert.length > 0) {
+        const valuesToInsert = rowsToInsert.map(mark => [
+          '',  // ADMISSION (empty)
+          mark.name,
+          ...mark.scores.slice(0, 22),
+          Math.round(mark.average * 100) / 100,
+          mark.grade,
+          mark.gradedBy,
+          mark.year  // ✅ YEAR at the end
+        ]);
+        
+        const startRow = maxRow + 1;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheetName}!A${startRow}:AB${startRow + valuesToInsert.length - 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: valuesToInsert }
+        });
+        console.log(`[SAVE NCK] Inserted ${valuesToInsert.length} new rows starting at ${startRow}`);
+      }
+      
+      console.log(`[SAVE NCK] Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Saved ${rowsToUpdate.length} updated + ${rowsToInsert.length} new NCK marks`,
+        updated: rowsToUpdate.length,
+        inserted: rowsToInsert.length,
+        skipped: skippedCount
+      });
+      
     } else {
+      // ===== INTERNAL MARKS SAVE =====
       let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
       const sheetName = `${block}_${cleanSubject}`;
       console.log(`📋 Sheet Name: ${sheetName}`);
