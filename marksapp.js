@@ -1,46 +1,63 @@
 // ============================================
-// NURSING MARKS SYSTEM - ALL-IN-ONE
-// Supabase + Complete Application Logic
+// NURSING MARKS SYSTEM - COMPLETE WORKING
 // ============================================
 
-// ============================================
-// PART 1: SUPABASE CONFIGURATION
-// ============================================
+// ===== WAIT FOR SUPABASE SDK =====
+(function() {
+    if (typeof supabaseJs === 'undefined') {
+        console.log('⏳ Loading Supabase SDK...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        script.onload = function() {
+            console.log('✅ Supabase SDK loaded!');
+            startApp();
+        };
+        script.onerror = function() {
+            alert('❌ Failed to load Supabase SDK. Please check your internet.');
+        };
+        document.head.appendChild(script);
+    } else {
+        console.log('✅ Supabase SDK already loaded');
+        startApp();
+    }
+})();
 
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-
-// Create Supabase client
-const supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.sb = supabaseClient;
-window.SUPABASE_URL = SUPABASE_URL;
-
-console.log('✅ Supabase client initialized');
-
-// ============================================
-// PART 2: APPLICATION LOGIC
-// ============================================
-
-// ===== GLOBALS =====
-let currentUser = null;
-let currentYear = '2026';
-let currentExamType = 'internal';
-let configCache = null;
-let currentMarksData = null;
-let currentMarksBlock = null;
-let currentMarksSubject = null;
-let currentAssessmentType = null;
-let currentAdminMarks = null;
-let currentAdminAssessmentType = null;
-let currentAdminBlock = null;
-let currentAdminSubject = null;
-let currentNCKMarks = null;
-let fastEntryVisible = false;
-let autoSaveInterval = null;
-let unsavedChanges = false;
-
-const INTAKE_YEARS = ['2024', '2025', '2026'];
-const sb = window.sb;
+// ===== MAIN APPLICATION =====
+function startApp() {
+    console.log('🚀 Starting Nursing Marks System...');
+    
+    // ===== SUPABASE CONFIG =====
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    
+    // Create Supabase client
+    const supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.sb = supabaseClient;
+    
+    console.log('✅ Supabase client ready');
+    console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
+    
+    // ===== GLOBALS =====
+    let currentUser = null;
+    let currentYear = '2026';
+    let currentExamType = 'internal';
+    let configCache = null;
+    let currentMarksData = null;
+    let currentMarksBlock = null;
+    let currentMarksSubject = null;
+    let currentAssessmentType = null;
+    let currentAdminMarks = null;
+    let currentAdminAssessmentType = null;
+    let currentAdminBlock = null;
+    let currentAdminSubject = null;
+    let currentNCKMarks = null;
+    let fastEntryVisible = false;
+    let autoSaveInterval = null;
+    let unsavedChanges = false;
+    
+    const INTAKE_YEARS = ['2024', '2025', '2026'];
+    const sb = window.sb;
+    
 
 // ============================================================
 // CORE UI FUNCTIONS
