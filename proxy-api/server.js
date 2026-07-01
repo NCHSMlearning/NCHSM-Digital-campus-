@@ -254,106 +254,49 @@ app.get('/api/subjects/:block', async (req, res) => {
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
-    const examType = req.headers['x-exam-type'] || 'internal';
     const year = req.headers['x-year'] || '2024';
     
     console.log(`[GET MARKS] Year: ${year}, block=${block}, subject=${subject}`);
     
-    if (examType === 'nck') {
-      let sheetName = subject;
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: req.spreadsheetId,
-        range: `${sheetName}!A:Z`,
-      });
-      const data = response.data.values || [];
-      const marks = [];
-      
-      if (sheetName === 'XY FORMS') {
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if (!row || (!row[0] && !row[1])) continue;
-          const studentName = row[1] || row[0] || '';
-          if (!studentName || studentName === 'S.NO' || studentName === 'SN NO') continue;
-          const clinicalScores = [];
-          for (let j = 2; j <= 23 && j < row.length; j++) {
-            const score = parseFloat(row[j]);
-            clinicalScores.push(isNaN(score) ? 0 : score);
-          }
-          while (clinicalScores.length < 22) clinicalScores.push(0);
-          const validScores = clinicalScores.filter(s => s > 0);
-          let finalScore = validScores.length ? validScores.reduce((a, b) => a + b, 0) / validScores.length : (row[24] ? parseFloat(row[24]) : 0);
-          marks.push({
-            row: i + 1,
-            admission: row[0] || '',
-            name: studentName,
-            scores: clinicalScores,
-            final: Math.round(finalScore * 100) / 100,
-            gradedBy: row[25] || row[26] || ''
-          });
-        }
-      } else {
-        const assessmentStartCol = 2;
-        const assessmentEndCol = 13;
-        const assessmentCount = assessmentEndCol - assessmentStartCol + 1;
-        
-        console.log(`[ASSESSMENT] Reading ${assessmentCount} columns (${assessmentStartCol} to ${assessmentEndCol})`);
-        
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if (!row || !row[1]) continue;
-          
-          const scores = [];
-          for (let col = assessmentStartCol; col <= assessmentEndCol && col < row.length; col++) {
-            let score = 0;
-            if (row[col] && row[col] !== '') {
-              const rawValue = row[col];
-              if (typeof rawValue === 'string' && rawValue.startsWith('=')) {
-                score = 0;
-              } else {
-                score = parseFloat(rawValue) || 0;
-                if (score > 1000) score = 0;
-              }
-            }
-            scores.push(score);
-          }
-          
-          while (scores.length < assessmentCount) scores.push(0);
-          
-          const total = scores.reduce((a, b) => a + b, 0);
-          const validCount = scores.filter(s => s > 0).length;
-          const average = validCount > 0 ? total / validCount : 0;
-          
-          let gradedBy = '';
-          if (row[16] && row[16] !== '') {
-            gradedBy = row[16];
-          }
-          
-          marks.push({
-            row: i + 1,
-            admission: row[0] || '',
-            name: row[1] || '',
-            scores: scores,
-            total: total,
-            final: average,
-            gradedBy: gradedBy
-          });
-        }
+    // Get all marks from master
+    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+    const sheetName = `${block}_${cleanSubject}`;
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: `${sheetName}!A:I`,
+    });
+    
+    const data = response.data.values || [];
+    const allMarks = [];
+    
+    // ✅ Get student-year mapping from STUDENTS sheet
+    const studentsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: req.spreadsheetId,
+      range: 'STUDENTS!A:E',
+    });
+    const studentsData = studentsResponse.data.values || [];
+    
+    // Create map: admission → year
+    const studentYearMap = {};
+    for (let i = 1; i < studentsData.length; i++) {
+      const row = studentsData[i];
+      if (row && row[0]) {
+        studentYearMap[row[0].trim()] = row[3] || '2024'; // Column D = YEAR
       }
-      res.json(marks);
-    } else {
-      let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-      const sheetName = `${block}_${cleanSubject}`;
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: req.spreadsheetId,
-        range: `${sheetName}!A:I`,
-      });
-      const data = response.data.values || [];
-      const marks = [];
-      for (let i = 1; i < data.length; i++) {
-        if (data[i] && data[i][0]) {
-          marks.push({ 
+    }
+    
+    // ✅ Filter marks by year
+    for (let i = 1; i < data.length; i++) {
+      if (data[i] && data[i][0]) {
+        const admission = data[i][0].trim();
+        const studentYear = studentYearMap[admission] || '2024';
+        
+        // ✅ ONLY include students from the selected year
+        if (studentYear === year) {
+          allMarks.push({ 
             row: i + 1, 
-            admission: data[i][0], 
+            admission: admission, 
             name: data[i][1], 
             cat1: data[i][2] || '', 
             cat2: data[i][3] || '', 
@@ -365,8 +308,11 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
           });
         }
       }
-      res.json(marks);
     }
+    
+    console.log(`[GET MARKS] Found ${allMarks.length} marks for ${year}`);
+    res.json(allMarks);
+    
   } catch (error) {
     console.error('Error in /api/marks:', error);
     res.json([]);
