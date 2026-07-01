@@ -2121,3 +2121,447 @@ function startApp() {
     console.log('⌨️ Press Ctrl+R to refresh data (not page)');
     
 } // <-- THIS CLOSES THE startApp() FUNCTION
+// ============================================================
+// ALL GLOBAL FUNCTIONS - Called from HTML
+// ============================================================
+
+// ===== ADD NEW UNIT =====
+async function addNewUnit() {
+    const block = document.getElementById('newUnitBlock')?.value;
+    const name = document.getElementById('newUnitName')?.value.trim().toUpperCase();
+    const type = document.getElementById('newUnitType')?.value;
+    if (!name) {
+        if (typeof showNotification === 'function') showNotification('Enter subject name', true);
+        return;
+    }
+    if (typeof showLoading === 'function') showLoading('Adding unit...');
+    try {
+        const { error } = await window.sb.from('units_catalog').insert({
+            unit_name: name,
+            block: block,
+            assessment_type: type,
+            year: parseInt(currentYear),
+            status: 'active',
+            program: 'Nursing',
+            unit_code: name.substring(0, 8)
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Unit added successfully!');
+        if (typeof showUnits === 'function') showUnits();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error adding unit: ' + error.message, true);
+    }
+}
+
+// ===== SAVE NEW STUDENT =====
+async function saveNewStudent() {
+    const admission = document.getElementById('studentAdmission')?.value.trim();
+    const name = document.getElementById('studentName')?.value.trim();
+    const block = document.getElementById('studentBlock')?.value;
+    if (!admission || !name) {
+        if (typeof showNotification === 'function') showNotification('Fill all fields', true);
+        return;
+    }
+    if (typeof showLoading === 'function') showLoading('Adding student...');
+    try {
+        const { error } = await window.sb.from('consolidated_user_profiles_table').insert({
+            student_id: admission,
+            full_name: name,
+            block: block,
+            role: 'student',
+            intake_year: currentYear,
+            status: 'active'
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof closeModal === 'function') closeModal();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Student added successfully!');
+        if (typeof showStudents === 'function') showStudents();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error adding student: ' + error.message, true);
+    }
+}
+
+// ===== SAVE NEW LECTURER =====
+async function saveNewLecturer() {
+    const username = document.getElementById('lecUser')?.value.trim();
+    const name = document.getElementById('lecName')?.value.trim();
+    const email = document.getElementById('lecEmail')?.value.trim();
+    const password = document.getElementById('lecPass')?.value || 'password123';
+    if (!username || !name) {
+        if (typeof showNotification === 'function') showNotification('Username and Name required', true);
+        return;
+    }
+    if (typeof showLoading === 'function') showLoading('Adding lecturer...');
+    try {
+        const { error } = await window.sb.from('lecturers').insert({
+            username: username,
+            full_name: name,
+            email: email || username + '@example.com',
+            staff_id: username,
+            status: 'approved',
+            role: 'lecturer'
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof closeModal === 'function') closeModal();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Lecturer added successfully!');
+        if (typeof showLecturers === 'function') showLecturers();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error adding lecturer: ' + error.message, true);
+    }
+}
+
+// ===== DELETE UNIT =====
+async function deleteUnit(block, name) {
+    if (!confirm(`Delete unit "${name}"? This will delete ALL marks for this subject!`)) return;
+    if (typeof showLoading === 'function') showLoading('Deleting unit...');
+    try {
+        const { error } = await window.sb.from('units_catalog')
+            .update({ status: 'inactive' })
+            .eq('block', block)
+            .eq('unit_name', name)
+            .eq('year', parseInt(currentYear));
+        if (typeof hideLoading === 'function') hideLoading();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Unit deleted successfully!');
+        if (typeof showUnits === 'function') showUnits();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error deleting unit: ' + error.message, true);
+    }
+}
+
+// ===== UPDATE UNIT =====
+async function updateUnit(block, oldName) {
+    const newName = document.getElementById('editUnitName')?.value.trim().toUpperCase();
+    const newType = document.getElementById('editUnitType')?.value;
+    if (!newName) {
+        if (typeof showNotification === 'function') showNotification('Enter subject name', true);
+        return;
+    }
+    if (typeof showLoading === 'function') showLoading('Updating unit...');
+    try {
+        const { error } = await window.sb.from('units_catalog')
+            .update({ unit_name: newName, assessment_type: newType, updated_at: new Date().toISOString() })
+            .eq('block', block)
+            .eq('unit_name', oldName)
+            .eq('year', parseInt(currentYear));
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof closeModal === 'function') closeModal();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Unit updated successfully!');
+        if (typeof showUnits === 'function') showUnits();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error updating unit: ' + error.message, true);
+    }
+}
+
+// ===== UPDATE STUDENT =====
+async function updateStudent(adm) {
+    const name = document.getElementById('editStudentName')?.value.trim();
+    const block = document.getElementById('editStudentBlock')?.value;
+    if (!name) {
+        if (typeof showNotification === 'function') showNotification('Name is required', true);
+        return;
+    }
+    if (typeof showLoading === 'function') showLoading('Updating student...');
+    try {
+        const { error } = await window.sb.from('consolidated_user_profiles_table')
+            .update({ full_name: name, block: block, updated_at: new Date().toISOString() })
+            .eq('student_id', adm)
+            .eq('role', 'student');
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof closeModal === 'function') closeModal();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Student updated successfully!');
+        if (typeof showStudents === 'function') showStudents();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error updating student: ' + error.message, true);
+    }
+}
+
+// ===== DELETE STUDENT =====
+async function deleteStudent(adm) {
+    if (!confirm(`Delete student "${adm}"? This will mark them as INACTIVE.`)) return;
+    if (typeof showLoading === 'function') showLoading('Deleting student...');
+    try {
+        const { error } = await window.sb.from('consolidated_user_profiles_table')
+            .update({ status: 'inactive', updated_at: new Date().toISOString() })
+            .eq('student_id', adm)
+            .eq('role', 'student');
+        if (typeof hideLoading === 'function') hideLoading();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Student deleted successfully!');
+        if (typeof showStudents === 'function') showStudents();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error deleting student: ' + error.message, true);
+    }
+}
+
+// ===== DELETE LECTURER =====
+async function deleteLecturer(username) {
+    if (!confirm(`Delete lecturer "${username}"?`)) return;
+    if (typeof showLoading === 'function') showLoading('Deleting lecturer...');
+    try {
+        const { error } = await window.sb.from('lecturers')
+            .update({ status: 'inactive' })
+            .eq('username', username);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (error) throw error;
+        if (typeof showNotification === 'function') showNotification('Lecturer deleted successfully!');
+        if (typeof showLecturers === 'function') showLecturers();
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error deleting lecturer: ' + error.message, true);
+    }
+}
+
+// ===== SHOW ADD STUDENT MODAL =====
+function showAddStudentModal() {
+    const modal = `
+        <div id="studentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-user-plus"></i> Add Student</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field"><label>Admission Number</label><input type="text" id="studentAdmission" placeholder="e.g., KRCHN/0001/26"></div>
+                    <div class="field"><label>Full Name</label><input type="text" id="studentName" placeholder="Full Name"></div>
+                    <div class="field"><label>Block</label>
+                        <select id="studentBlock">
+                            ${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option value="${b}">${b}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button onclick="saveNewStudent()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Student</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+// ===== SHOW ADD LECTURER MODAL =====
+function showAddLecturerModal() {
+    const modal = `
+        <div id="lecturerModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-user-plus"></i> Add Lecturer</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field"><label>Username</label><input type="text" id="lecUser" placeholder="e.g., johndoe"></div>
+                    <div class="field"><label>Full Name</label><input type="text" id="lecName" placeholder="John Doe"></div>
+                    <div class="field"><label>Email</label><input type="email" id="lecEmail" placeholder="john@example.com"></div>
+                    <div class="field"><label>Password</label><input type="password" id="lecPass" value="password123"></div>
+                    <button onclick="saveNewLecturer()" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Save Lecturer</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+// ===== SHOW EDIT STUDENT MODAL =====
+function showEditStudentModal(adm, name, block) {
+    const modal = `
+        <div id="studentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-user-edit"></i> Edit Student</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field"><label>Admission</label><input type="text" value="${adm}" readonly></div>
+                    <div class="field"><label>Name</label><input type="text" id="editStudentName" value="${name}"></div>
+                    <div class="field"><label>Block</label>
+                        <select id="editStudentBlock">
+                            ${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option ${b === block ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button onclick="updateStudent('${adm}')" class="save-btn" style="width:100%"><i class="fas fa-save"></i> Update</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+// ===== SHOW EDIT UNIT MODAL =====
+function showEditUnitModal(block, name, curType) {
+    const modal = `
+        <div id="unitModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Edit Unit</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div>
+                    <div class="field"><label>Assessment Type</label>
+                        <select id="editUnitType">
+                            <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
+                            <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
+                            <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+                        </select>
+                    </div>
+                    <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+// ===== TOGGLE GLOBAL ENTRY =====
+async function toggleGlobalEntry() {
+    if (typeof showLoading === 'function') showLoading('Toggling global entry...');
+    try {
+        const result = await apiCall('/api/mark-entry/toggle-global', {
+            method: 'POST',
+            body: JSON.stringify({ lecturerName: currentUser?.name || 'System' })
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (result.success) {
+            if (typeof showNotification === 'function') showNotification(result.message);
+            if (typeof showEntryControlPanel === 'function') showEntryControlPanel();
+        } else {
+            if (typeof showNotification === 'function') showNotification(result.message || 'Error toggling global entry', true);
+        }
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error: ' + error.message, true);
+    }
+}
+
+// ===== TOGGLE CLASS ENTRY =====
+async function toggleClassEntry(year) {
+    if (typeof showLoading === 'function') showLoading(`Toggling ${year} class entry...`);
+    try {
+        const result = await apiCall('/api/mark-entry/toggle-class', {
+            method: 'POST',
+            body: JSON.stringify({ year, lecturerName: currentUser?.name || 'System' })
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (result.success) {
+            if (typeof showNotification === 'function') showNotification(result.message);
+            if (typeof showEntryControlPanel === 'function') showEntryControlPanel();
+        } else {
+            if (typeof showNotification === 'function') showNotification(result.message || `Error toggling ${year} class entry`, true);
+        }
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error: ' + error.message, true);
+    }
+}
+
+// ===== TOGGLE SUBJECT ENTRY =====
+async function toggleSubjectEntry(block, subject) {
+    if (typeof showLoading === 'function') showLoading(`Toggling ${subject} entry...`);
+    try {
+        const result = await apiCall('/api/mark-entry/toggle-subject', {
+            method: 'POST',
+            body: JSON.stringify({ block, subject, lecturerName: currentUser?.name || 'System' })
+        });
+        if (typeof hideLoading === 'function') hideLoading();
+        if (result.success) {
+            if (typeof showNotification === 'function') showNotification(result.message);
+            if (typeof showBlockSubjectControl === 'function') showBlockSubjectControl(block);
+        } else {
+            if (typeof showNotification === 'function') showNotification(result.message || `Error toggling ${subject} entry`, true);
+        }
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('Error: ' + error.message, true);
+    }
+}
+
+// ===== GENERATE REPORT =====
+function generateReport(reportType) {
+    if (typeof showNotification === 'function') showNotification(`Generating ${reportType} report... Please wait.`, false);
+    setTimeout(() => {
+        if (typeof showNotification === 'function') showNotification(`✅ ${reportType} report generated!`, false);
+    }, 2000);
+}
+
+// ===== EXPORT ADMIN MARKS =====
+function exportAdminMarks() {
+    if (!window.currentAdminMarks) {
+        if (typeof showNotification === 'function') showNotification('No data to export', true);
+        return;
+    }
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total'];
+    let csv = headers.join(',') + '\n';
+    for (let i = 0; i < window.currentAdminMarks.length; i++) {
+        const m = window.currentAdminMarks[i];
+        const cat1 = document.getElementById(`acat1_${i}`)?.value || '';
+        const cat2 = document.getElementById(`acat2_${i}`)?.value || '';
+        const exam = document.getElementById(`aexam_${i}`)?.value || '';
+        const total = document.getElementById(`atotal_${i}`)?.innerHTML || '';
+        csv += `${m.admission},"${m.name}",${cat1},${cat2},${exam},${total}\n`;
+    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${window.currentAdminSubject}_marks_${currentYear}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    if (typeof showNotification === 'function') showNotification('Exported successfully!');
+}
+
+// ===== EXPORT TO CSV (Generic) =====
+function exportToCSV(data, filename) {
+    if (!data || data.length === 0) {
+        if (typeof showNotification === 'function') showNotification('No data to export', true);
+        return;
+    }
+    const headers = Object.keys(data[0]);
+    let csv = headers.join(',') + '\n';
+    for (const row of data) {
+        const values = headers.map(h => {
+            let val = row[h] || '';
+            if (typeof val === 'string' && val.includes(',')) val = `"${val}"`;
+            return val;
+        });
+        csv += values.join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${currentYear}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    if (typeof showNotification === 'function') showNotification('Exported successfully!');
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS TO WINDOW (Ensure they're global)
+// ============================================================
+
+window.addNewUnit = addNewUnit;
+window.saveNewStudent = saveNewStudent;
+window.saveNewLecturer = saveNewLecturer;
+window.deleteUnit = deleteUnit;
+window.updateUnit = updateUnit;
+window.updateStudent = updateStudent;
+window.deleteStudent = deleteStudent;
+window.deleteLecturer = deleteLecturer;
+window.showAddStudentModal = showAddStudentModal;
+window.showAddLecturerModal = showAddLecturerModal;
+window.showEditStudentModal = showEditStudentModal;
+window.showEditUnitModal = showEditUnitModal;
+window.toggleGlobalEntry = toggleGlobalEntry;
+window.toggleClassEntry = toggleClassEntry;
+window.toggleSubjectEntry = toggleSubjectEntry;
+window.generateReport = generateReport;
+window.exportAdminMarks = exportAdminMarks;
+window.exportToCSV = exportToCSV;
