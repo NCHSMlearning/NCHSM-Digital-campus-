@@ -21,7 +21,8 @@ const SPREADSHEETS = {
     nck: '1F3R92jREt7tYFvYo0YtiQeh7HZldY_47YkwvlBiD44E'
   }
 };
-
+// Use the March 2024 spreadsheet as the master auth source
+const MASTER_SPREADSHEET_ID = '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0';
 // ===== MARK ENTRY SETTINGS =====
 let markEntrySettings = {
   global: { enabled: true, closedBy: null, closedAt: null }
@@ -708,8 +709,10 @@ app.post('/api/delete-student', async (req, res) => {
 // ========== GET LECTURERS FROM MASTER SPREADSHEET ==========
 app.get('/api/lecturers', async (req, res) => {
   try {
-    // ✅ Always use the master spreadsheet
+    // ✅ Use the master spreadsheet for authentication
     const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`[GET LECTURERS] Using master spreadsheet: ${spreadsheetId}`);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
@@ -731,6 +734,7 @@ app.get('/api/lecturers', async (req, res) => {
       }
     }
     
+    console.log(`[GET LECTURERS] Found ${lecturers.length} lecturers`);
     res.json(lecturers);
   } catch (error) {
     console.error('Error fetching lecturers:', error);
@@ -1102,8 +1106,7 @@ app.post('/api/delete-unit', async (req, res) => {
 });
 
 // ========== CENTRALIZED AUTHENTICATION - ONE MASTER SPREADSHEET ==========
-// Use the March 2024 spreadsheet as the master auth source
-const MASTER_SPREADSHEET_ID = '1tQDMPoU7KWz3OIKssoJZfnX7kM5_WDbZKcpyLjtxNS0';
+
 
 app.post('/api/login', async (req, res) => {
   try {
