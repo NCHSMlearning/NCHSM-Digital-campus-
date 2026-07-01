@@ -1,6 +1,32 @@
+
+
 // ============================================
-// NURSING MARKS SYSTEM - COMPLETE WORKING
+// FORCE SUPABASE CLIENT CREATION
 // ============================================
+(function() {
+    const URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    
+    // Check if supabaseJs is available
+    if (typeof supabaseJs !== 'undefined') {
+        window.sb = supabaseJs.createClient(URL, KEY);
+        console.log('✅ Supabase client created at top of file');
+    } else if (typeof window.supabaseJs !== 'undefined') {
+        window.sb = window.supabaseJs.createClient(URL, KEY);
+        console.log('✅ Supabase client created from window.supabaseJs');
+    } else {
+        console.warn('⚠️ supabaseJs not available yet, will retry...');
+        // Try again after a delay
+        setTimeout(function() {
+            if (typeof supabaseJs !== 'undefined') {
+                window.sb = supabaseJs.createClient(URL, KEY);
+                console.log('✅ Supabase client created after delay');
+            }
+        }, 1000);
+    }
+    
+    console.log('📡 sb.from exists:', typeof window.sb?.from === 'function');
+})();
 
 // ===== WAIT FOR SUPABASE SDK =====
 (function() {
