@@ -320,6 +320,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
 });
 
 // ========== SAVE MARKS ENDPOINT ==========
+// ========== FIXED: SAVE MARKS ENDPOINT - Only updates changed values ==========
 app.post('/api/marks', async (req, res) => {
   try {
     const { block, subject, marksData, lecturerName } = req.body;
@@ -411,19 +412,30 @@ app.post('/api/marks', async (req, res) => {
         }
       }
       
-      const existingAdmissions = new Map();
+      // Build map of existing admissions with their row data
+      const existingDataMap = new Map();
       let maxRow = 1;
       
       for (let i = 1; i < currentData.length; i++) {
         const row = currentData[i];
         if (row && row[0]) {
           const admission = row[0].toString().trim();
-          existingAdmissions.set(admission, i + 1);
+          existingDataMap.set(admission, { 
+            rowNum: i + 1,
+            name: row[1] || '',
+            cat1: parseFloat(row[2]) || 0,
+            cat2: parseFloat(row[3]) || 0,
+            exam: parseFloat(row[4]) || 0,
+            final: parseFloat(row[5]) || 0,
+            grade: row[6] || '',
+            gradedBy: row[7] || '',
+            assessmentType: row[8] || 'full'
+          });
           if (i + 1 > maxRow) maxRow = i + 1;
         }
       }
       
-      console.log(`[SAVE] Found ${existingAdmissions.size} existing students, max row: ${maxRow}`);
+      console.log(`[SAVE] Found ${existingDataMap.size} existing students, max row: ${maxRow}`);
       
       const rowsToUpdate = [];
       const rowsToInsert = [];
@@ -439,68 +451,145 @@ app.post('/api/marks', async (req, res) => {
         let cat1 = parseFloat(mark.cat1) || 0;
         let cat2 = parseFloat(mark.cat2) || 0;
         let exam = parseFloat(mark.exam) || 0;
+        let name = mark.name || '';
         
-        let assessmentType = 'full';
-        if (existingAdmissions.has(admission)) {
-          const rowNum = existingAdmissions.get(admission);
-          if (currentData[rowNum - 1] && currentData[rowNum - 1][8]) {
-            assessmentType = currentData[rowNum - 1][8];
+        // Check if student exists
+        if (existingDataMap.has(admission)) {
+          const existing = existingDataMap.get(admission);
+          
+          // ✅ Get name from existing if not provided
+          if (!name) name = existing.name;
+          
+          // Determine assessment type
+          let assessmentType = existing.assessmentType || 'full';
+          
+          // ✅ CHECK IF VALUES CHANGED - Only update if different
+          const cat1Changed = existing.cat1 !== cat1;
+          const cat2Changed = existing.cat2 !== cat2;
+          const examChanged = existing.exam !== exam;
+          
+          if (cat1Changed || cat2Changed || examChanged) {
+            // Calculate final score
+            let finalScore = 0;
+            const hasCat1 = cat1 > 0;
+            const hasCat2 = cat2 > 0;
+            const hasExam = exam > 0;
+            
+            if (assessmentType === 'full') {
+              if (hasExam && hasCat1 && hasCat2) {
+                finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30) + Math.min(exam, 70);
+              } else if (hasExam && hasCat1) {
+                finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+              } else if (hasExam) {
+                finalScore = Math.min(exam, 100);
+              } else if (hasCat1 && hasCat2) {
+                finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
+              } else if (hasCat1) {
+                finalScore = (Math.min(cat1, 30) / 30) * 100;
+              }
+            } else if (assessmentType === 'single_cat') {
+              if (hasExam && hasCat1) {
+                finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+              } else if (hasExam) {
+                finalScore = Math.min(exam, 100);
+              } else if (hasCat1) {
+                finalScore = (Math.min(cat1, 30) / 30) * 100;
+              }
+            } else {
+              if (hasExam) {
+                finalScore = Math.min(exam, 100);
+              }
+            }
+            finalScore = Math.round(finalScore * 10) / 10;
+            const grade = await calculateGrade(finalScore);
+            
+            const rowData = {
+              admission,
+              name: name || '',
+              cat1,
+              cat2,
+              exam,
+              finalScore,
+              grade,
+              gradedBy: lecturerName || existing.gradedBy || '',
+              assessmentType,
+              rowNum: existing.rowNum
+            };
+            
+            rowsToUpdate.push(rowData);
+            console.log(`[SAVE] Updating ${admission}: CAT1 ${existing.cat1}→${cat1}, CAT2 ${existing.cat2}→${cat2}, EXAM ${existing.exam}→${exam}`);
+          } else {
+            skippedCount++;
+            console.log(`[SAVE] Skipping ${admission}: No changes`);
           }
-        }
-        
-        let finalScore = 0;
-        const hasCat1 = cat1 > 0;
-        const hasCat2 = cat2 > 0;
-        const hasExam = exam > 0;
-        
-        if (hasExam && hasCat1 && hasCat2) {
-          const cappedCat1 = Math.min(cat1, 30);
-          const cappedCat2 = Math.min(cat2, 30);
-          const cappedExam = Math.min(exam, 70);
-          finalScore = ((cappedCat1 + cappedCat2) / 60 * 30) + cappedExam;
-        } else if (hasExam && hasCat1) {
-          finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
-        } else if (hasExam) {
-          finalScore = Math.min(exam, 100);
-        } else if (hasCat1 && hasCat2) {
-          finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
-        } else if (hasCat1) {
-          finalScore = (Math.min(cat1, 30) / 30) * 100;
-        }
-        finalScore = Math.round(finalScore * 10) / 10;
-        const grade = await calculateGrade(finalScore);
-        
-        const rowData = {
-          admission,
-          name: mark.name || '',
-          cat1,
-          cat2,
-          exam,
-          finalScore,
-          grade,
-          gradedBy: lecturerName || '',
-          assessmentType
-        };
-        
-        if (existingAdmissions.has(admission)) {
-          rowsToUpdate.push(rowData);
         } else {
-          rowsToInsert.push(rowData);
+          // New student - insert
+          // Calculate final score
+          let finalScore = 0;
+          const hasCat1 = cat1 > 0;
+          const hasCat2 = cat2 > 0;
+          const hasExam = exam > 0;
+          
+          // Default assessment type
+          let assessmentType = 'full';
+          
+          if (assessmentType === 'full') {
+            if (hasExam && hasCat1 && hasCat2) {
+              finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30) + Math.min(exam, 70);
+            } else if (hasExam && hasCat1) {
+              finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+            } else if (hasExam) {
+              finalScore = Math.min(exam, 100);
+            } else if (hasCat1 && hasCat2) {
+              finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
+            } else if (hasCat1) {
+              finalScore = (Math.min(cat1, 30) / 30) * 100;
+            }
+          } else if (assessmentType === 'single_cat') {
+            if (hasExam && hasCat1) {
+              finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+            } else if (hasExam) {
+              finalScore = Math.min(exam, 100);
+            } else if (hasCat1) {
+              finalScore = (Math.min(cat1, 30) / 30) * 100;
+            }
+          } else {
+            if (hasExam) {
+              finalScore = Math.min(exam, 100);
+            }
+          }
+          finalScore = Math.round(finalScore * 10) / 10;
+          const grade = await calculateGrade(finalScore);
+          
+          rowsToInsert.push({
+            admission,
+            name: name || '',
+            cat1,
+            cat2,
+            exam,
+            finalScore,
+            grade,
+            gradedBy: lecturerName || '',
+            assessmentType
+          });
+          console.log(`[SAVE] Inserting new student: ${admission}`);
         }
       }
       
+      // ✅ Update existing rows (only changed ones)
       for (const mark of rowsToUpdate) {
-        const rowNum = existingAdmissions.get(mark.admission);
         await sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `${sheetName}!C${rowNum}:H${rowNum}`,
+          range: `${sheetName}!B${mark.rowNum}:H${mark.rowNum}`,
           valueInputOption: 'RAW',
           requestBody: { 
-            values: [[mark.cat1, mark.cat2, mark.exam, mark.finalScore, mark.grade, mark.gradedBy]] 
+            values: [[mark.name, mark.cat1, mark.cat2, mark.exam, mark.finalScore, mark.grade, mark.gradedBy]] 
           }
         });
+        console.log(`[SAVE] Updated row ${mark.rowNum} for ${mark.admission}`);
       }
       
+      // ✅ Insert new rows
       if (rowsToInsert.length > 0) {
         const valuesToInsert = rowsToInsert.map(mark => [
           mark.admission,
@@ -521,6 +610,7 @@ app.post('/api/marks', async (req, res) => {
           valueInputOption: 'RAW',
           requestBody: { values: valuesToInsert }
         });
+        console.log(`[SAVE] Inserted ${valuesToInsert.length} new rows starting at ${startRow}`);
       }
       
       console.log(`[SAVE] Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
