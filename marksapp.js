@@ -22,7 +22,160 @@
     }
 })();
 
-// ===== MAIN APPLICATION =====
+// ============================================================
+// GLOBALS (OUTSIDE startApp)
+// ============================================================
+let currentUser = null;
+let currentYear = '2026';
+let currentExamType = 'internal';
+let configCache = null;
+let currentMarksData = null;
+let currentMarksBlock = null;
+let currentMarksSubject = null;
+let currentAssessmentType = null;
+let currentAdminMarks = null;
+let currentAdminAssessmentType = null;
+let currentAdminBlock = null;
+let currentAdminSubject = null;
+let currentNCKMarks = null;
+let fastEntryVisible = false;
+let autoSaveInterval = null;
+let unsavedChanges = false;
+const INTAKE_YEARS = ['2024', '2025', '2026'];
+
+// ============================================================
+// SHOW LOGIN (GLOBAL)
+// ============================================================
+function showLogin() {
+    document.getElementById('app').innerHTML = `
+        <div class="login-container">
+            <div class="logo"><i class="fas fa-graduation-cap"></i></div>
+            <h2>Nursing School System</h2>
+            <p class="subtitle">Nakuru College of Health Sciences</p>
+            <input type="text" id="username" placeholder="👤 Username" autocomplete="username">
+            <input type="password" id="password" placeholder="🔒 Password" autocomplete="current-password">
+            <button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
+            <div id="loginError" class="login-error"></div>
+            <div class="login-help">
+                <p>💡 Lecturers: Use your email with password <strong>password123</strong></p>
+                <p style="margin-top:4px;">📚 Your subjects from all intakes will be shown</p>
+                <p style="margin-top:8px;">👤 Admin: admin / admin123</p>
+            </div>
+        </div>
+    `;
+    document.getElementById('username').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') document.getElementById('password').focus();
+    });
+    document.getElementById('password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') doLogin();
+    });
+}
+
+// ============================================================
+// DO LOGIN (GLOBAL)
+// ============================================================
+async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username || !password) {
+        document.getElementById('loginError').innerHTML = '❌ Please enter username and password';
+        return;
+    }
+    showLoading('Logging in...');
+    try {
+        if (username === 'admin' && password === 'admin123') {
+            currentUser = { username: 'admin', name: 'Administrator', role: 'admin', subjects: ['ALL'] };
+            currentYear = '2026';
+            localStorage.setItem('selectedYear', currentYear);
+            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+            hideLoading();
+            showMain();
+            showNotification('Welcome Administrator! 👋');
+            return;
+        }
+        // Check lecturers table
+        const { data: lecturer, error } = await window.sb
+            .from('lecturers')
+            .select('*')
+            .eq('email', username)
+            .eq('status', 'approved')
+            .single();
+        if (lecturer) {
+            currentUser = {
+                username: lecturer.email,
+                name: lecturer.full_name,
+                role: lecturer.role || 'lecturer',
+                subjects: lecturer.subjects || []
+            };
+            currentYear = '2026';
+            localStorage.setItem('selectedYear', currentYear);
+            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+            hideLoading();
+            showMain();
+            showNotification(`Welcome ${currentUser.name}! 👋`);
+            return;
+        }
+        // Check consolidated_user_profiles_table
+        const { data: profile, error: profileError } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', username)
+            .single();
+        if (profile && (profile.role === 'lecturer' || profile.role === 'admin')) {
+            currentUser = {
+                username: profile.email,
+                name: profile.full_name,
+                role: profile.role || 'lecturer',
+                subjects: profile.subjects || []
+            };
+            currentYear = profile.intake_year || '2026';
+            localStorage.setItem('selectedYear', currentYear);
+            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+            hideLoading();
+            showMain();
+            showNotification(`Welcome ${currentUser.name}! 👋`);
+            return;
+        }
+        hideLoading();
+        document.getElementById('loginError').innerHTML = '❌ Invalid username or password';
+    } catch (error) {
+        console.error('Login error:', error);
+        hideLoading();
+        document.getElementById('loginError').innerHTML = '❌ Login error: ' + error.message;
+    }
+}
+
+// ============================================================
+// CHECK LOGIN (GLOBAL)
+// ============================================================
+function checkLogin() {
+    const saved = localStorage.getItem('nursingUser');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        const savedYear = localStorage.getItem('selectedYear');
+        currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026';
+        const savedExamType = localStorage.getItem('selectedExamType');
+        if (savedExamType) currentExamType = savedExamType;
+        showMain();
+    } else {
+        showLogin();
+    }
+}
+
+// ============================================================
+// LOGOUT (GLOBAL)
+// ============================================================
+function logout() {
+    localStorage.removeItem('nursingUser');
+    currentUser = null;
+    if (autoSaveInterval) clearInterval(autoSaveInterval);
+    showLogin();
+    showNotification('Logged out successfully');
+}
+
+// ============================================================
+// MAIN APPLICATION
+// ============================================================
 function startApp() {
     console.log('🚀 Starting Nursing Marks System...');
     
@@ -30,59 +183,31 @@ function startApp() {
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     
-    // ===== CREATE OR GET SUPABASE CLIENT =====
+    // ===== CREATE SUPABASE CLIENT =====
     let supabaseClient;
-    
     if (typeof supabaseJs !== 'undefined') {
-        // Supabase SDK loaded via CDN
         supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase client created via supabaseJs');
     } else if (typeof supabase !== 'undefined') {
-        // Supabase already exists (maybe from another script)
         supabaseClient = supabase;
         console.log('✅ Using existing supabase client');
     } else if (typeof window.supabase !== 'undefined') {
-        // Supabase exists on window
         supabaseClient = window.supabase;
         console.log('✅ Using window.supabase client');
     } else if (typeof window.sb !== 'undefined') {
-        // Supabase exists as sb on window
         supabaseClient = window.sb;
         console.log('✅ Using window.sb client');
     } else {
-        // ❌ No Supabase client found
         console.error('❌ Supabase SDK not available!');
-        alert('❌ Supabase SDK failed to load. Please refresh the page.');
+        alert('❌ Supabase SDK failed to load. Please refresh.');
         return;
     }
     
-    // Make it globally available
     window.sb = supabaseClient;
     window.supabase = supabaseClient;
     
     console.log('✅ Supabase client ready');
     console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
-    
-    // ===== GLOBALS =====
-    let currentUser = null;
-    let currentYear = '2026';
-    let currentExamType = 'internal';
-    let configCache = null;
-    let currentMarksData = null;
-    let currentMarksBlock = null;
-    let currentMarksSubject = null;
-    let currentAssessmentType = null;
-    let currentAdminMarks = null;
-    let currentAdminAssessmentType = null;
-    let currentAdminBlock = null;
-    let currentAdminSubject = null;
-    let currentNCKMarks = null;
-    let fastEntryVisible = false;
-    let autoSaveInterval = null;
-    let unsavedChanges = false;
-    
-    const INTAKE_YEARS = ['2024', '2025', '2026'];
-    const sb = window.sb;
     
     // ===== UI FUNCTIONS =====
     function showLoading(msg) {
