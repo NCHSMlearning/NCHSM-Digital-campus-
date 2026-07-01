@@ -252,7 +252,7 @@ app.get('/api/subjects/:block', async (req, res) => {
 });
 
 // ========== GET MARKS ENDPOINT - HANDLES BOTH INTERNAL AND NCK ==========
-// ========== GET MARKS ENDPOINT - FIXED NCK READING ==========
+// ========== GET MARKS ENDPOINT - WITH NCK YEAR FILTERING ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
     const { block, subject } = req.params;
@@ -261,11 +261,11 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     
     console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
     
-    // ===== NCK MARKS =====
+    // ===== NCK MARKS WITH YEAR FILTERING =====
     if (examType === 'nck') {
       const sheetName = subject;
       
-      console.log(`[GET NCK] Reading sheet: ${sheetName}`);
+      console.log(`[GET NCK] Reading sheet: ${sheetName} for year: ${year}`);
       
       try {
         const response = await sheets.spreadsheets.values.get({
@@ -276,57 +276,59 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         const data = response.data.values || [];
         console.log(`[GET NCK] Raw data rows: ${data.length}`);
         
-        // ✅ If no data, return empty
         if (data.length === 0) {
           console.log(`[GET NCK] No data found in sheet ${sheetName}`);
           res.json([]);
           return;
         }
         
-        // ✅ Log headers for debugging
         console.log(`[GET NCK] Headers:`, data[0]);
-        console.log(`[GET NCK] Header count:`, data[0]?.length || 0);
         
         const marks = [];
-        
-        // ✅ Check if this is XY FORMS or ASSESSMENT
         const isXYForms = sheetName === 'NCK_XY_FORMS' || sheetName === 'XY FORMS';
         const isAssessment = sheetName === 'NCK_ASSESSMENT_AND_CASE' || sheetName === 'ASSESSMENT AND CASE';
+        let maxScores = isXYForms ? 22 : 12;
         
-        // ✅ Process rows
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           if (!row || !row[1]) continue; // Skip if no name
           
-          // ✅ Extract scores - skip ADMISSION (col 0) and NAME (col 1)
-          const scores = [];
-          const startCol = 2; // Start at column C
-          
-          // Determine max scores based on sheet type
-          let maxScores = 22; // Default for XY FORMS
-          if (isAssessment) {
-            maxScores = 12; // 12 assessments for ASSESSMENT
+          // ✅ Find YEAR column (at the end - column AB or AC)
+          let studentYear = '2024';
+          // Check the last 5 columns for a year value
+          for (let j = row.length - 1; j >= Math.max(0, row.length - 5); j--) {
+            const val = row[j];
+            if (val === '2024' || val === '2025' || val === '2026') {
+              studentYear = val.toString();
+              console.log(`✅ Found year ${studentYear} for ${row[1]}`);
+              break;
+            }
           }
           
-          // ✅ Extract scores
-          for (let j = startCol; j < row.length && scores.length < maxScores; j++) {
-            // Skip YEAR column if it's a year value
+          // ✅ FILTER BY YEAR - ONLY include students from the selected year
+          if (studentYear !== year) {
+            console.log(`⏭️ Skipping ${row[1]} (${studentYear}) - not ${year}`);
+            continue;
+          }
+          
+          // ✅ Extract scores (start at column 2, skip ADMISSION and NAME)
+          const scores = [];
+          for (let j = 2; j < row.length && scores.length < maxScores; j++) {
             const val = row[j];
+            // Skip YEAR column if it's a year value
             if (val === '2024' || val === '2025' || val === '2026' || val === 'YEAR') {
               continue;
             }
             const numVal = parseFloat(val);
             scores.push(isNaN(numVal) ? 0 : numVal);
           }
-          
-          // Pad to max scores
           while (scores.length < maxScores) scores.push(0);
           
-          // ✅ Calculate average
+          // Calculate average
           const validScores = scores.filter(s => s > 0);
           const avg = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
           
-          // ✅ Get graded by from the last column
+          // Get graded by from the last column
           let gradedBy = '';
           const lastCol = row.length - 1;
           if (row[lastCol] && row[lastCol] !== 'YEAR' && row[lastCol] !== '2024' && row[lastCol] !== '2025' && row[lastCol] !== '2026') {
@@ -340,11 +342,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             scores: scores,
             total: scores.reduce((a, b) => a + b, 0),
             final: Math.round(avg * 100) / 100,
-            gradedBy: gradedBy || ''
+            gradedBy: gradedBy || '',
+            year: studentYear // Include year for debugging
           });
         }
         
-        console.log(`[GET NCK] Found ${marks.length} records from ${sheetName}`);
+        console.log(`[GET NCK] Found ${marks.length} records for year ${year} from ${sheetName}`);
         res.json(marks);
         
       } catch (error) {
@@ -415,7 +418,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     res.json([]);
   }
 });
-
 // ========== SAVE MARKS ENDPOINT ==========
 // ========== FIXED: SAVE MARKS ENDPOINT - Only updates changed values ==========
 // ========== COMPLETE DEBUG: SAVE MARKS ENDPOINT ==========
