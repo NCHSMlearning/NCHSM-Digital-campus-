@@ -1323,44 +1323,138 @@ function addQuickImportToDashboard() {
     markUnsaved(); 
   }
   
-  // ======================= LOGIN & MAIN =======================
-  function checkLogin() { initDarkMode(); const saved=localStorage.getItem('nursingUser'); if(saved){ currentUser=JSON.parse(saved); const savedYear=localStorage.getItem('selectedYear'); currentYear=(savedYear&&INTAKE_YEARS.includes(savedYear))?savedYear:'2026'; showMain(); } else { showLogin(); } }
-  
-  function showLogin() { 
-    const yearOptions=INTAKE_YEARS.map(y=>`<option value="${y}" ${y==='2026'?'selected':''}>🎓 March ${y} Class</option>`).join(''); 
-    document.getElementById('app').innerHTML=`<div class="login-container"><div style="text-align:center;margin-bottom:24px;"><i class="fas fa-graduation-cap" style="font-size:48px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;color:transparent;"></i></div><h2>Nursing School System</h2><p style="text-align:center;color:#64748b;margin-bottom:32px;">Nakuru College of Health Sciences</p><select id="loginYear">${yearOptions}</select><input type="text" id="username" placeholder="👤 Username"><input type="password" id="password" placeholder="🔒 Password"><button onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Login</button><div id="loginError" style="color:#ef4444;margin-top:16px;text-align:center;"></div></div>`; 
-  }
-  
-  async function doLogin() { 
-    showLoading('Logging in...'); 
-    const username=document.getElementById('username').value; 
-    const password=document.getElementById('password').value; 
-    const year=document.getElementById('loginYear').value; 
-    currentYear=year; 
-    localStorage.setItem('selectedYear',currentYear); 
-    const result=await apiCall('/api/login',{method:'POST',body:JSON.stringify({username,password,year:currentYear})}); 
-    hideLoading(); 
-    if(result.success){ 
-      currentUser=result.user; 
-      localStorage.setItem('nursingUser',JSON.stringify(currentUser)); 
-      showMain(); 
-      showNotification(`Welcome ${currentUser.name}!`); 
+ // ======================= LOGIN & MAIN =======================
+function checkLogin() { 
+    initDarkMode(); 
+    const saved = localStorage.getItem('nursingUser'); 
+    if (saved) { 
+        currentUser = JSON.parse(saved); 
+        const savedYear = localStorage.getItem('selectedYear'); 
+        currentYear = (savedYear && INTAKE_YEARS.includes(savedYear)) ? savedYear : '2026'; 
+        showMain(); 
     } else { 
-      document.getElementById('loginError').innerHTML=result.message; 
+        showLogin(); 
     } 
-  }
-  
-  function logout() { 
+}
+
+// ======================= FIXED: LOGIN - NO YEAR SELECTOR =======================
+function showLogin() { 
+    document.getElementById('app').innerHTML = `
+        <div class="login-container">
+            <div style="text-align:center;margin-bottom:24px;">
+                <i class="fas fa-graduation-cap" style="font-size:48px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;color:transparent;"></i>
+            </div>
+            <h2>Nursing School System</h2>
+            <p style="text-align:center;color:#64748b;margin-bottom:32px;">Nakuru College of Health Sciences</p>
+            
+            <!-- ✅ NO YEAR SELECTOR - Removed! -->
+            <input type="text" id="username" placeholder="👤 Username" 
+                   style="width:100%;padding:14px;border-radius:12px;border:2px solid #e2e8f0;margin-bottom:12px;font-size:16px;box-sizing:border-box;">
+            <input type="password" id="password" placeholder="🔒 Password" 
+                   style="width:100%;padding:14px;border-radius:12px;border:2px solid #e2e8f0;margin-bottom:12px;font-size:16px;box-sizing:border-box;">
+            
+            <button onclick="doLogin()" 
+                    style="width:100%;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.3s;">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+            <div id="loginError" style="color:#ef4444;margin-top:16px;text-align:center;"></div>
+            
+            <div style="margin-top:20px;text-align:center;font-size:12px;color:#94a3b8;">
+                <p>💡 Lecturers: Use your username with password <strong>password123</strong></p>
+                <p style="margin-top:4px;">📚 Your subjects from all intakes will be shown</p>
+            </div>
+        </div>
+    `;
+    
+    // Allow Enter key to submit
+    document.getElementById('username').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('password').focus();
+        }
+    });
+    document.getElementById('password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            doLogin();
+        }
+    });
+}
+
+// ======================= FIXED: DO LOGIN - TRY ALL YEARS =======================
+async function doLogin() { 
+    const username = document.getElementById('username').value.trim(); 
+    const password = document.getElementById('password').value; 
+    
+    if (!username || !password) {
+        document.getElementById('loginError').innerHTML = '❌ Please enter username and password';
+        return;
+    }
+    
+    showLoading('Logging in...'); 
+    
+    // ✅ Try all years automatically
+    const years = ['2024', '2025', '2026'];
+    let found = false;
+    let lastError = '';
+    
+    for (const year of years) {
+        const result = await apiCall('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                username, 
+                password, 
+                year: year
+            })
+        });
+        
+        if (result.success) {
+            currentUser = result.user;
+            currentYear = year;
+            localStorage.setItem('selectedYear', currentYear);
+            localStorage.setItem('nursingUser', JSON.stringify(currentUser));
+            hideLoading();
+            showMain();
+            showNotification(`Welcome ${currentUser.name}! (${year} Class)`);
+            found = true;
+            break;
+        } else {
+            lastError = result.message || 'Invalid credentials';
+        }
+    }
+    
+    if (!found) {
+        hideLoading();
+        document.getElementById('loginError').innerHTML = '❌ ' + lastError;
+        
+        // Show available users for debugging
+        showAvailableUsers();
+    }
+}
+
+// ======================= HELPER: Show available users =======================
+async function showAvailableUsers() {
+    try {
+        const lecturers = await apiCall('/api/lecturers', {});
+        if (lecturers && lecturers.length > 0) {
+            const usernames = lecturers.map(l => l.username).join(', ');
+            document.getElementById('loginError').innerHTML += 
+                `<br><small style="color:#64748b;">Available users: ${usernames}</small>`;
+        }
+    } catch (e) {
+        // Ignore
+    }
+}
+
+function logout() { 
     localStorage.removeItem('nursingUser'); 
-    currentUser=null; 
-    configCache=null; 
-    if(autoSaveInterval) clearInterval(autoSaveInterval); 
+    currentUser = null; 
+    configCache = null; 
+    if (autoSaveInterval) clearInterval(autoSaveInterval); 
     showLogin(); 
-  }
-  
-  // ======================= SIDEBAR INTEGRATION - WRAPS THE MAIN CONTENT =======================
-  function renderWithSidebar(contentHtml) {
+}
+ function renderWithSidebar(contentHtml) {
     const isAdmin = currentUser?.role === 'admin';
+    const isLecturer = currentUser?.role === 'lecturer';
+    
     const sidebarHtml = `
       <div class="app-wrapper">
         <aside class="sidebar" id="mainSidebar">
@@ -1390,6 +1484,7 @@ function addQuickImportToDashboard() {
             <div class="user-details">
               <div class="user-name">${currentUser?.name || 'User'}</div>
               <div class="user-role">${currentUser?.role || 'lecturer'}</div>
+              ${isLecturer ? `<div style="font-size:10px;color:#94a3b8;">All intakes: 2024, 2025, 2026</div>` : ''}
             </div>
           </div>
         </aside>
@@ -1397,8 +1492,20 @@ function addQuickImportToDashboard() {
           <div class="top-bar">
             <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
             <div style="display:flex; gap:12px;">
-              <select id="yearSelectSide" style="padding:6px 12px; border-radius:40px;">${INTAKE_YEARS.map(y => `<option value="${y}" ${y===currentYear?'selected':''}>${y} Class</option>`).join('')}</select>
-              <select id="examTypeSide" style="padding:6px 12px; border-radius:40px;"><option value="internal" ${currentExamType==='internal'?'selected':''}>Internal</option><option value="nck" ${currentExamType==='nck'?'selected':''}>NCK</option></select>
+              ${isAdmin ? `
+                <select id="yearSelectSide" style="padding:6px 12px; border-radius:40px;">
+                  ${INTAKE_YEARS.map(y => `<option value="${y}" ${y===currentYear?'selected':''}>${y} Class</option>`).join('')}
+                </select>
+                <select id="examTypeSide" style="padding:6px 12px; border-radius:40px;">
+                  <option value="internal" ${currentExamType==='internal'?'selected':''}>Internal</option>
+                  <option value="nck" ${currentExamType==='nck'?'selected':''}>NCK</option>
+                </select>
+              ` : `
+                <!-- ✅ Lecturers see current year info but can't change it -->
+                <span style="padding:6px 12px; background:rgba(99,102,241,0.1); border-radius:40px; font-size:13px;">
+                  📅 All Intakes (2024-2026)
+                </span>
+              `}
               <button class="theme-toggle" id="themeToggleBtn"><i class="fas fa-moon"></i></button>
             </div>
           </div>
@@ -1406,9 +1513,10 @@ function addQuickImportToDashboard() {
         </main>
       </div>
     `;
+    
     document.getElementById('app').innerHTML = sidebarHtml;
     
-    // Attach sidebar navigation events
+    // Attach sidebar navigation events (keep existing)
     document.querySelectorAll('.nav-item').forEach(el => {
       el.addEventListener('click', (e) => {
         const navId = el.dataset.nav;
@@ -1433,22 +1541,24 @@ function addQuickImportToDashboard() {
       document.getElementById('mainSidebar')?.classList.toggle('mobile-open');
     });
     
-    // Year and exam type changes
-    document.getElementById('yearSelectSide')?.addEventListener('change', (e) => {
-      currentYear = e.target.value;
-      localStorage.setItem('selectedYear', currentYear);
-      configCache = null;
-      showMain();
-    });
-    
-    document.getElementById('examTypeSide')?.addEventListener('change', (e) => {
-      currentExamType = e.target.value;
-      localStorage.setItem('selectedExamType', currentExamType);
-      showMain();
-    });
+    // ✅ Only admins can change year
+    if (isAdmin) {
+        document.getElementById('yearSelectSide')?.addEventListener('change', (e) => {
+          currentYear = e.target.value;
+          localStorage.setItem('selectedYear', currentYear);
+          configCache = null;
+          showMain();
+        });
+        
+        document.getElementById('examTypeSide')?.addEventListener('change', (e) => {
+          currentExamType = e.target.value;
+          localStorage.setItem('selectedExamType', currentExamType);
+          showMain();
+        });
+    }
     
     document.getElementById('themeToggleBtn')?.addEventListener('click', toggleDarkMode);
-  }
+}
   
   // Modified showMain to use sidebar layout
 // ======================= FIXED: showMain() =======================
