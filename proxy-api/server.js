@@ -780,12 +780,15 @@ app.get('/api/lecturer/:username', async (req, res) => {
 });
 
 // ========== ADD LECTURER TO MASTER SPREADSHEET ==========
+// ========== ADD LECTURER TO MASTER SPREADSHEET ==========
 app.post('/api/add-lecturer', async (req, res) => {
   try {
     const { username, name, email, password, subjects } = req.body;
     
-    // ✅ Use the master spreadsheet
+    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`[ADD LECTURER] Adding: ${username} to master spreadsheet`);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
@@ -803,7 +806,7 @@ app.post('/api/add-lecturer', async (req, res) => {
           username, 
           name, 
           email || '', 
-          password, 
+          password || 'password123', 
           subjects ? subjects.join(',') : '', 
           'YES', 
           new Date().toISOString()
@@ -819,12 +822,16 @@ app.post('/api/add-lecturer', async (req, res) => {
 });
 
 // ========== UPDATE LECTURER IN MASTER SPREADSHEET ==========
+// ========== UPDATE LECTURER IN MASTER SPREADSHEET ==========
 app.post('/api/update-lecturer', async (req, res) => {
   try {
     const { oldUsername, username, name, email, password, subjects } = req.body;
     
-    // ✅ Use the master spreadsheet
+    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`[UPDATE LECTURER] Updating: ${oldUsername} in master spreadsheet`);
+    console.log(`[UPDATE LECTURER] Subjects:`, subjects);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
@@ -835,6 +842,10 @@ app.post('/api/update-lecturer', async (req, res) => {
     for (let i = 1; i < data.length; i++) {
       if (data[i] && data[i][0] === oldUsername) {
         const row = i + 1;
+        
+        // Prepare update data
+        const subjectsStr = subjects && subjects.length > 0 ? subjects.join(',') : '';
+        
         await sheets.spreadsheets.values.update({
           spreadsheetId: spreadsheetId,
           range: `LECTURERS!A${row}:F${row}`,
@@ -845,11 +856,12 @@ app.post('/api/update-lecturer', async (req, res) => {
               name, 
               email || '', 
               password || data[i][3], 
-              subjects ? subjects.join(',') : '', 
+              subjectsStr, 
               'YES'
             ]] 
           }
         });
+        
         res.json({ success: true, message: 'Lecturer updated successfully' });
         return;
       }
@@ -863,12 +875,15 @@ app.post('/api/update-lecturer', async (req, res) => {
 });
 
 // ========== DELETE LECTURER FROM MASTER SPREADSHEET ==========
+// ========== DELETE LECTURER FROM MASTER SPREADSHEET ==========
 app.post('/api/delete-lecturer', async (req, res) => {
   try {
     const { username } = req.body;
     
-    // ✅ Use the master spreadsheet
+    // ✅ ALWAYS use the master spreadsheet
     const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`[DELETE LECTURER] Deleting: ${username} from master spreadsheet`);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
@@ -895,9 +910,6 @@ app.post('/api/delete-lecturer', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-
-
 
 // ========== UNIT ENDPOINTS ==========
 app.get('/api/units', async (req, res) => {
