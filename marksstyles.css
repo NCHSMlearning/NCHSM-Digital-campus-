@@ -1870,3 +1870,423 @@ body.dark-mode .report-card {
 .gap-24 {
     gap: 24px;
 }
+/* ============================================================ */
+/* ENHANCED MARKS ENTRY STYLES                                  */
+/* ============================================================ */
+
+/* Page Header */
+.marks-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: white;
+    padding: 20px 24px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 4px solid #6366f1;
+}
+
+.marks-header-content h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.marks-header-content h3 i {
+    color: #6366f1;
+}
+
+.marks-header-content p {
+    margin: 4px 0 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.marks-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Selection Panel */
+.marks-selection-panel {
+    background: white;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+}
+
+.selection-item label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.selection-item label i {
+    margin-right: 6px;
+    color: #6366f1;
+}
+
+.selection-item .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    transition: all 0.2s;
+}
+
+.selection-item .form-control:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.selection-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.selection-actions .btn-primary,
+.selection-actions .btn-success,
+.selection-actions .btn-warning {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selection-actions .btn-primary {
+    background: #4f46e5;
+    color: white;
+}
+.selection-actions .btn-primary:hover {
+    background: #4338ca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+}
+
+.selection-actions .btn-success {
+    background: #10b981;
+    color: white;
+}
+.selection-actions .btn-success:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+
+.selection-actions .btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+.selection-actions .btn-warning:hover {
+    background: #d97706;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.3);
+}
+
+/* Marks Table Container */
+.marks-table-container {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.marks-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.toolbar-left {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.toolbar-left .badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.toolbar-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.view-all-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+}
+
+.view-all-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-sm.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+.btn-sm.btn-danger:hover {
+    background: #dc2626;
+}
+
+/* Responsive Table */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.marks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.marks-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 2px solid #e2e8f0;
+    text-align: left;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.marks-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.marks-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.marks-table tbody tr.pass-row {
+    background: #f0fdf4;
+}
+.marks-table tbody tr.fail-row {
+    background: #fef2f2;
+}
+.marks-table tbody tr.pending-row {
+    background: #fffbeb;
+}
+
+/* Audit Columns - Hidden by Default */
+.audit-col {
+    display: none;
+}
+
+.show-audit .audit-col {
+    display: table-cell;
+}
+
+/* Marks Input */
+.marks-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.marks-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.marks-input.has-score {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+
+/* Status Select */
+.status-select {
+    padding: 4px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: white;
+}
+
+.status-select.present {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+.status-select.missed {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+.status-select.cheated {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+/* Modal */
+#bulkDeleteModal .modal-content {
+    max-width: 500px;
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+}
+
+#bulkDeleteModal .modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#bulkDeleteModal .modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+#bulkDeleteModal .modal-body {
+    padding: 24px;
+}
+
+#bulkDeleteModal .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.text-danger {
+    color: #dc2626;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #94a3b8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .marks-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .marks-header-actions {
+        width: 100%;
+    }
+    
+    .marks-header-actions button {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .selection-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .marks-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .toolbar-right {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .selection-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .marks-table {
+        font-size: 0.75rem;
+    }
+    
+    .marks-table thead th,
+    .marks-table tbody td {
+        padding: 6px 8px;
+    }
+    
+    .marks-input {
+        width: 60px;
+    }
+}
