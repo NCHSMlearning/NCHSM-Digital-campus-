@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
-    <meta charset="UTF-8" /> 
+<head>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>NCHSM Secure Exam – Proctored (Improved)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js">
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- USE YOUR EXISTING CSS ONLY -->
+    <!-- EXTERNAL CSS -->
     <link rel="stylesheet" href="css/exam.css" />
 </head>
 <body>
@@ -276,24 +276,25 @@
         <p style="font-size:0.9rem;color:#94A3B8;">Please return to fullscreen mode immediately.</p>
     </div>
 
-    <!-- FACE BLOCK OVERLAY -->
+    <!-- FACE BLOCK OVERLAY - UPDATED WITH TIMER AND MESSAGE -->
     <div id="face-block-overlay">
         <div class="block-icon">🚨</div>
-        <h2>EXAM PAUSED!</h2>
-        <p class="block-reason" id="face-block-reason">Face not detected</p>
-        <p style="color:#FDB913;font-size:0.9rem;margin:10px 0;">
-            Please look at the camera to continue.
-        </p>
-        <div class="block-timer" id="face-recovery-countdown">15</div>
-        <p class="block-sub">Exam will auto-submit if face is not detected</p>
+        <h2>⛔ EXAM PAUSED!</h2>
+        <p class="block-message" id="face-block-reason">👀 Please look at the camera to continue</p>
+        <div class="block-timer-container">
+            <span class="block-timer-label">⏳ Time remaining:</span>
+            <span class="block-timer" id="face-recovery-countdown">15</span>
+            <span class="block-timer-warning">seconds</span>
+        </div>
+        <p class="block-sub">⏰ Exam will auto-submit if face is not detected within 15 seconds</p>
         <div class="block-status">
             <div class="status-item">
                 <span style="color:#F59E0B;">⏱️</span>
-                <span>Time continues</span>
+                <span>Timer continues</span>
             </div>
             <div class="status-item">
                 <span style="color:#DC2626;">⚠️</span>
-                <span>5s grace period</span>
+                <span>Auto-submit in 15s</span>
             </div>
         </div>
     </div>
@@ -355,7 +356,7 @@
         <i class="fas fa-wifi"></i> Online
     </div>
 
-    <!-- ========== JAVASCRIPT (IMPROVED) ========== -->
+    <!-- ========== JAVASCRIPT ========== -->
     <script>
         // ============================================================
         // SUPABASE CONFIG
@@ -471,7 +472,7 @@
         const multipleFacesWarning = document.getElementById('multiple-faces-warning');
 
         // ============================================================
-        // TOAST SYSTEM (improved)
+        // TOAST SYSTEM
         // ============================================================
         function showToast(message, type) {
             type = type || 'info';
@@ -819,7 +820,7 @@
                     snapshotUrl = urlData.publicUrl;
                 }
             } catch (uploadError) {
-                // Silent fail - just continue without snapshot URL
+                // Silent fail
             }
 
             var logData = {
@@ -983,7 +984,7 @@
         }
 
         // ============================================================
-        // STRICT FACE DETECTION ENFORCEMENT
+        // STRICT FACE DETECTION ENFORCEMENT WITH PAUSE/RESUME
         // ============================================================
         async function startExamFaceDetection() {
             try {
@@ -1001,7 +1002,12 @@
 
                 faceDetectionInterval = setInterval(async function() {
                     if (!video || !video.srcObject || video.paused || video.ended) {
-                        handleFaceDetectionLost('Camera stream lost');
+                        if (!isExamPaused) {
+                            faceDetectionLostCount++;
+                            if (faceDetectionLostCount >= MAX_FACE_LOST) {
+                                pauseExam('Camera stream lost');
+                            }
+                        }
                         return;
                     }
 
@@ -1014,43 +1020,10 @@
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                         if (detections && detections.length > 0) {
-                            // ✅ FACE DETECTED - Reset all counters
-                            faceDetectionLostCount = 0;
-                            isExamPaused = false;
-
-                            // Clear multiple faces warning if active
-                            if (multipleFacesInterval) {
-                                clearInterval(multipleFacesInterval);
-                                multipleFacesInterval = null;
-                            }
-                            if (multipleFacesTimeout) {
-                                clearTimeout(multipleFacesTimeout);
-                                multipleFacesTimeout = null;
-                            }
-
-                            var warningEl = document.getElementById('multiple-faces-warning');
-                            if (warningEl) warningEl.classList.remove('active');
-
-                            if (faceDetectionRecoveryTimer) {
-                                clearInterval(faceDetectionRecoveryTimer);
-                                faceDetectionRecoveryTimer = null;
-                                faceBlockOverlay.classList.remove('active');
-                                faceBlockOverlay.style.display = 'none';
-                            }
-
-                            detections.forEach(function(det) {
-                                var box = det.box;
-                                ctx.strokeStyle = '#16A34A';
-                                ctx.lineWidth = 3;
-                                ctx.strokeRect(box.x, box.y, box.width, box.height);
-                                ctx.fillStyle = 'rgba(22, 163, 74, 0.1)';
-                                ctx.fillRect(box.x, box.y, box.width, box.height);
-                            });
-
                             var faceCount = detections.length;
 
                             if (faceCount === 1) {
-                                // ✅ Single face detected - GOOD
+                                // ✅ Single face detected - RESUME if paused
                                 statusEl.textContent = '✅ Face detected - Proctoring active';
                                 statusEl.style.color = '#16A34A';
                                 statusEl.className = '';
@@ -1059,13 +1032,28 @@
                                 faceDetectionOverlay.style.borderColor = '#38A169';
                                 faceDetectionOverlay.classList.remove('face-lost', 'multiple-faces');
 
+                                // CRITICAL: Resume exam if it was paused
                                 if (isExamPaused) {
                                     resumeExam();
                                 }
 
+                                // Reset face detection lost count
+                                faceDetectionLostCount = 0;
+
+                                // Draw face box
+                                detections.forEach(function(det) {
+                                    var box = det.box;
+                                    ctx.strokeStyle = '#16A34A';
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+                                    ctx.fillStyle = 'rgba(22, 163, 74, 0.1)';
+                                    ctx.fillRect(box.x, box.y, box.width, box.height);
+                                });
+
                                 document.querySelectorAll('.status-item.face-lost').forEach(function(el) {
                                     el.classList.remove('face-lost');
                                 });
+
                             } else if (faceCount > 1) {
                                 // ⚠️ MULTIPLE FACES - 10 SECOND WARNING
                                 statusEl.textContent = '🚨 MULTIPLE FACES DETECTED (' + faceCount + ')!';
@@ -1082,15 +1070,12 @@
                                         'Detected ' + faceCount + ' faces in camera - 10 second warning', 'critical');
                                     lastMultipleFacesLogTime = Date.now();
 
-                                    // Show 10 second warning with countdown
                                     showMultipleFacesWarning(10);
 
-                                    // Clear any existing timeout
                                     if (multipleFacesTimeout) {
                                         clearTimeout(multipleFacesTimeout);
                                     }
 
-                                    // Auto-submit after 10 seconds
                                     multipleFacesTimeout = setTimeout(function() {
                                         var warningEl2 = document.getElementById('multiple-faces-warning');
                                         if (warningEl2) warningEl2.classList.remove('active');
@@ -1106,13 +1091,45 @@
                             }
                         } else {
                             // ❌ NO FACE DETECTED
-                            handleFaceDetectionLost('No face detected');
+                            if (!isExamPaused) {
+                                faceDetectionLostCount++;
+                                statusEl.textContent = '⚠️ Face lost (' + faceDetectionLostCount + '/' + MAX_FACE_LOST + ')';
+                                statusEl.style.color = '#F59E0B';
+                                statusEl.className = 'face-lost';
+                                examCameraStatusBadge.textContent = '⚠️ Face Lost!';
+                                examCameraStatusBadge.className = 'camera-status-badge danger';
+                                faceDetectionOverlay.style.borderColor = '#F59E0B';
+                                faceDetectionOverlay.classList.add('face-lost');
+
+                                if (faceDetectionLostCount === 1) {
+                                    showToast('⚠️ Face not detected! Please look at the camera.', 'warning');
+                                    logProctoringEvent('face_lost', 'Face detection lost', 'warning');
+                                    captureSnapshot();
+                                }
+
+                                // Update current question status
+                                var currentStatus = document.getElementById('q-status-' + currentIndex);
+                                if (currentStatus && !currentStatus.classList.contains('face-lost')) {
+                                    currentStatus.classList.add('face-lost');
+                                }
+
+                                // ⛔ PAUSE EXAM after threshold
+                                if (faceDetectionLostCount >= MAX_FACE_LOST) {
+                                    pauseExam('Face not detected for ' + MAX_FACE_LOST + ' seconds');
+                                }
+                            }
                         }
                     } catch (detectionError) {
                         console.warn('Face detection error:', detectionError);
-                        handleFaceDetectionLost('Detection error');
+                        if (!isExamPaused) {
+                            faceDetectionLostCount++;
+                            if (faceDetectionLostCount >= MAX_FACE_LOST) {
+                                pauseExam('Detection error');
+                            }
+                        }
                     }
                 }, 1000);
+
             } catch (modelError) {
                 console.warn('Face detection not available:', modelError);
                 faceStatus.textContent = '❌ Face detection unavailable - Contact support';
@@ -1122,7 +1139,129 @@
             }
         }
 
-        // Show multiple faces warning with countdown
+        // ============================================================
+        // PAUSE EXAM - Shows overlay with countdown
+        // ============================================================
+        function pauseExam(reason) {
+            if (!isExamActive || isExamPaused) return;
+
+            console.log('⛔ Pausing exam:', reason);
+
+            // Set pause state
+            isExamPaused = true;
+
+            // Disable all exam interactions
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            submitBtn.disabled = true;
+
+            // Disable flag button
+            var flagBtn = document.getElementById('flag-question-btn');
+            if (flagBtn) flagBtn.disabled = true;
+
+            // Show face block overlay with message
+            faceBlockReason.textContent = '👀 Please look at the camera to continue';
+            faceBlockOverlay.style.display = 'flex';
+            faceBlockOverlay.classList.add('active');
+
+            // Start recovery timer
+            if (faceDetectionRecoveryTimer) {
+                clearInterval(faceDetectionRecoveryTimer);
+                faceDetectionRecoveryTimer = null;
+            }
+
+            var countdown = 15;
+            faceRecoveryCountdown.textContent = countdown;
+
+            faceDetectionRecoveryTimer = setInterval(function() {
+                countdown--;
+                faceRecoveryCountdown.textContent = countdown;
+                faceBlockReason.textContent = '👀 Please look at the camera to continue (' + countdown + 's)';
+
+                // Check if face is detected again (resume will be called from face detection loop)
+                if (!isExamPaused) {
+                    clearInterval(faceDetectionRecoveryTimer);
+                    faceDetectionRecoveryTimer = null;
+                    faceBlockOverlay.classList.remove('active');
+                    faceBlockOverlay.style.display = 'none';
+                    return;
+                }
+
+                if (countdown <= 0) {
+                    clearInterval(faceDetectionRecoveryTimer);
+                    faceDetectionRecoveryTimer = null;
+
+                    // Auto-submit if face not recovered
+                    faceBlockOverlay.classList.remove('active');
+                    faceBlockOverlay.style.display = 'none';
+                    showToast('🚨 Face not recovered! Auto-submitting exam...', 'error');
+                    logProctoringEvent('auto_submit', 'Auto-submitted due to prolonged face absence (15s timeout)', 'critical');
+                    executeSubmissionWithLoading();
+                }
+            }, 1000);
+
+            logProctoringEvent('exam_paused', 'Exam paused: ' + reason, 'warning');
+            showToast('⛔ Exam paused! Please look at the camera to continue.', 'warning');
+        }
+
+        // ============================================================
+        // RESUME EXAM - Restores all functionality
+        // ============================================================
+        function resumeExam() {
+            if (!isExamPaused) return;
+
+            console.log('🔄 Resuming exam...');
+
+            // Reset all pause-related counters
+            faceDetectionLostCount = 0;
+            isExamPaused = false;
+
+            // Hide face block overlay
+            faceBlockOverlay.classList.remove('active');
+            faceBlockOverlay.style.display = 'none';
+
+            // Clear recovery timer
+            if (faceDetectionRecoveryTimer) {
+                clearInterval(faceDetectionRecoveryTimer);
+                faceDetectionRecoveryTimer = null;
+            }
+
+            // Re-enable navigation buttons
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === questions.length - 1;
+
+            // Re-enable flag button
+            var flagBtn = document.getElementById('flag-question-btn');
+            if (flagBtn) flagBtn.disabled = false;
+
+            // Re-enable submit button if answers exist
+            if (hasAnsweredAtLeastOne && !isSubmitting) {
+                submitBtn.disabled = false;
+            }
+
+            // Remove face-lost class from status items
+            document.querySelectorAll('.status-item.face-lost').forEach(function(el) {
+                el.classList.remove('face-lost');
+            });
+
+            // Update face status display
+            faceStatus.textContent = '✅ Face detected - Proctoring active';
+            faceStatus.style.color = '#16A34A';
+            faceStatus.className = '';
+            examCameraStatusBadge.textContent = '✅ Face OK';
+            examCameraStatusBadge.className = 'camera-status-badge';
+            faceDetectionOverlay.style.borderColor = '#38A169';
+            faceDetectionOverlay.classList.remove('face-lost', 'multiple-faces');
+
+            showToast('✅ Face detected! Exam resumed.', 'success');
+            logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
+
+            console.log('✅ Exam resumed successfully');
+        }
+
+        // ============================================================
+        // MULTIPLE FACES WARNING
+        // ============================================================
         function showMultipleFacesWarning(duration) {
             if (typeof duration === 'undefined') duration = 10;
             var warning = document.getElementById('multiple-faces-warning');
@@ -1140,12 +1279,10 @@
                 '<div id="multiple-faces-progress" style="width:100%;height:100%;background:#FDB913;border-radius:2px;transition:width 1s linear;"></div>' +
                 '</div>';
 
-            // Start countdown
             var countdown = duration;
             var countdownEl = document.getElementById('multiple-faces-countdown');
             var progressEl = document.getElementById('multiple-faces-progress');
 
-            // Clear any existing interval
             if (multipleFacesInterval) {
                 clearInterval(multipleFacesInterval);
             }
@@ -1155,7 +1292,6 @@
                 if (countdownEl) countdownEl.textContent = countdown;
                 if (progressEl) progressEl.style.width = (countdown / duration * 100) + '%';
 
-                // Blink warning when time is almost up
                 if (countdown <= 3) {
                     if (countdown % 2 === 0) {
                         warning.style.background = 'rgba(220, 38, 38, 0.95)';
@@ -1169,110 +1305,6 @@
                     multipleFacesInterval = null;
                 }
             }, 1000);
-        }
-
-        function handleFaceDetectionLost(reason) {
-            if (isExamPaused) return;
-
-            faceDetectionLostCount++;
-
-            var statusEl = faceStatus;
-
-            // Update UI
-            statusEl.textContent = '⚠️ Face lost (' + faceDetectionLostCount + '/' + MAX_FACE_LOST + ')';
-            statusEl.style.color = '#F59E0B';
-            statusEl.className = 'face-lost';
-            examCameraStatusBadge.textContent = '⚠️ Face Lost!';
-            examCameraStatusBadge.className = 'camera-status-badge danger';
-            faceDetectionOverlay.style.borderColor = '#F59E0B';
-            faceDetectionOverlay.classList.add('face-lost');
-
-            // Log first occurrence
-            if (faceDetectionLostCount === 1) {
-                logProctoringEvent('face_lost', 'Face detection lost: ' + reason, 'warning');
-                showToast('⚠️ Face not detected! Please look at the camera.', 'warning');
-                captureSnapshot();
-            }
-
-            // Update current question status
-            var currentStatus = document.getElementById('q-status-' + currentIndex);
-            if (currentStatus && !currentStatus.classList.contains('face-lost')) {
-                currentStatus.classList.add('face-lost');
-            }
-
-            // ⛔ PAUSE EXAM after threshold
-            if (faceDetectionLostCount >= MAX_FACE_LOST) {
-                isExamPaused = true;
-                pauseExam('Face not detected for ' + MAX_FACE_LOST + ' seconds');
-            }
-        }
-
-        function pauseExam(reason) {
-            if (!isExamActive) return;
-
-            // Show blocker overlay
-            faceBlockReason.textContent = reason || 'Face not detected';
-            faceBlockOverlay.style.display = 'flex';
-            faceBlockOverlay.classList.add('active');
-
-            // Start recovery timer
-            if (faceDetectionRecoveryTimer) clearInterval(faceDetectionRecoveryTimer);
-
-            var countdown = 15; // 15 seconds to recover
-            faceRecoveryCountdown.textContent = countdown;
-
-            faceDetectionRecoveryTimer = setInterval(function() {
-                countdown--;
-                faceRecoveryCountdown.textContent = countdown;
-
-                // Check if face is detected again
-                if (!isExamPaused) {
-                    clearInterval(faceDetectionRecoveryTimer);
-                    faceDetectionRecoveryTimer = null;
-                    faceBlockOverlay.classList.remove('active');
-                    faceBlockOverlay.style.display = 'none';
-                    return;
-                }
-
-                if (countdown <= 0) {
-                    clearInterval(faceDetectionRecoveryTimer);
-                    faceDetectionRecoveryTimer = null;
-
-                    // ⛔ AUTO-SUBMIT if face not recovered
-                    faceBlockOverlay.classList.remove('active');
-                    faceBlockOverlay.style.display = 'none';
-                    showToast('🚨 Face not recovered! Auto-submitting exam...', 'error');
-                    logProctoringEvent('auto_submit', 'Auto-submitted due to prolonged face absence', 'critical');
-                    executeSubmissionWithLoading();
-                }
-            }, 1000);
-
-            logProctoringEvent('exam_paused', 'Exam paused: ' + reason, 'warning');
-            showToast('⛔ Exam paused! Please show your face to continue. ' + countdown + 's remaining.', 'warning');
-        }
-
-        function resumeExam() {
-            if (!isExamPaused) return;
-            isExamPaused = false;
-
-            // Hide overlay
-            faceBlockOverlay.classList.remove('active');
-            faceBlockOverlay.style.display = 'none';
-
-            if (faceDetectionRecoveryTimer) {
-                clearInterval(faceDetectionRecoveryTimer);
-                faceDetectionRecoveryTimer = null;
-            }
-
-            faceDetectionLostCount = 0;
-
-            // Remove face-lost from status items
-            document.querySelectorAll('.status-item.face-lost').forEach(function(el) {
-                el.classList.remove('face-lost');
-            });
-
-            showToast('✅ Face detected! Exam resumed.', 'success');
-            logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
         }
 
         // ============================================================
@@ -1339,7 +1371,6 @@
             updateStatusTable();
             updateExamStats();
 
-            // Reset question timer
             questionStartTime = Date.now();
 
             questionTimerInterval = setInterval(function() {
@@ -1371,7 +1402,7 @@
         }
 
         // ============================================================
-        // ANSWER SAVING WITH AUTO-SAVE STATUS
+        // ANSWER SAVING
         // ============================================================
         function updateAutoSaveStatus(status, message) {
             if (!autoSaveStatus) return;
@@ -1756,7 +1787,7 @@
         }
 
         // ============================================================
-        // SUBMISSION WITH LOADING STATE
+        // SUBMISSION
         // ============================================================
         function submitExam() {
             if (isSubmitting) return;
@@ -1835,7 +1866,6 @@
             if (isSubmitting) return;
             isSubmitting = true;
 
-            // Show loading state on button
             submitBtn.disabled = true;
             submitBtn.classList.add('submitting');
             submitText.textContent = 'Submitting...';
@@ -1843,7 +1873,6 @@
             prevBtn.disabled = true;
             nextBtn.disabled = true;
 
-            // Hide face block if visible
             faceBlockOverlay.classList.remove('active');
             faceBlockOverlay.style.display = 'none';
             multipleFacesWarning.classList.remove('active');
