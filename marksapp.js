@@ -1,89 +1,59 @@
 // ============================================
-// NURSING MARKS SYSTEM - COMPLETE WORKING
-// ALL FUNCTIONS INCLUDED - READY TO USE
-// ============================================
-
-// ============================================
-// FORCE SUPABASE CLIENT CREATION - MUST BE FIRST!
+// PERMANENT SUPABASE FIX - LOAD SDK AND CREATE CLIENT
 // ============================================
 (function() {
-    const URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    
-    console.log('🔧 FORCING Supabase client...');
-    
-    let client = null;
-    
-    if (typeof supabaseJs !== 'undefined') {
-        try {
-            client = supabaseJs.createClient(URL, KEY);
-            console.log('✅ Created via supabaseJs');
-        } catch(e) { console.error('Method 1 failed:', e.message); }
-    }
-    
-    if (!client && typeof window.supabaseJs !== 'undefined') {
-        try {
-            client = window.supabaseJs.createClient(URL, KEY);
-            console.log('✅ Created via window.supabaseJs');
-        } catch(e) { console.error('Method 2 failed:', e.message); }
-    }
-    
-    if (!client && typeof window.supabase !== 'undefined') {
-        client = window.supabase;
-        console.log('✅ Using window.supabase');
-    }
-    
-    if (!client && typeof window.sb !== 'undefined' && typeof window.sb.from === 'function') {
-        client = window.sb;
-        console.log('✅ Using window.sb');
-    }
-    
-    if (!client) {
-        console.warn('⚠️ No client found, loading SDK dynamically...');
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        script.onload = function() {
-            console.log('✅ SDK loaded dynamically!');
-            if (typeof supabaseJs !== 'undefined') {
-                try {
-                    window.sb = supabaseJs.createClient(URL, KEY);
-                    window.supabase = window.sb;
-                    console.log('✅ Client created after dynamic load');
-                } catch(e) {
-                    console.error('Error creating client:', e);
-                }
-            }
-        };
-        script.onerror = function() {
-            alert('❌ Failed to connect to Supabase. Please refresh.');
-        };
-        document.head.appendChild(script);
+    // If sb already exists and works, skip
+    if (typeof window.sb !== 'undefined' && typeof window.sb.from === 'function') {
+        console.log('✅ sb already exists and works');
         return;
     }
     
-    window.sb = client;
-    window.supabase = client;
-    console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
-})();
-
-// ===== WAIT FOR SUPABASE SDK =====
-(function() {
-    if (typeof supabaseJs === 'undefined') {
-        console.log('⏳ Loading Supabase SDK...');
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        script.onload = function() {
-            console.log('✅ Supabase SDK loaded!');
-            startApp();
-        };
-        script.onerror = function() {
-            alert('❌ Failed to load Supabase SDK. Please check your internet.');
-        };
-        document.head.appendChild(script);
-    } else {
-        console.log('✅ Supabase SDK already loaded');
-        startApp();
-    }
+    console.log('🔧 Loading Supabase SDK...');
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.onload = function() {
+        console.log('✅ Supabase SDK loaded!');
+        const URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        
+        // Try different ways to create client
+        let client = null;
+        if (typeof supabase !== 'undefined' && supabase.createClient) {
+            client = supabase.createClient(URL, KEY);
+            console.log('✅ Created client using supabase.createClient');
+        } else if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+            client = window.supabase.createClient(URL, KEY);
+            console.log('✅ Created client using window.supabase.createClient');
+        } else if (typeof supabaseJs !== 'undefined') {
+            client = supabaseJs.createClient(URL, KEY);
+            console.log('✅ Created client using supabaseJs.createClient');
+        } else if (typeof window.supabaseJs !== 'undefined') {
+            client = window.supabaseJs.createClient(URL, KEY);
+            console.log('✅ Created client using window.supabaseJs.createClient');
+        }
+        
+        if (client) {
+            window.sb = client;
+            window.supabase = client;
+            console.log('✅ Supabase client created!');
+            console.log('📡 sb.from exists:', typeof window.sb.from === 'function');
+            
+            // Start the app
+            if (typeof startApp === 'function') {
+                startApp();
+            } else {
+                location.reload();
+            }
+        } else {
+            console.error('❌ Could not create client');
+            alert('❌ Could not create Supabase client. Please refresh.');
+        }
+    };
+    script.onerror = function() {
+        console.error('❌ Failed to load Supabase SDK');
+        alert('❌ Failed to load Supabase SDK. Please check your internet.');
+    };
+    document.head.appendChild(script);
 })();
 
 // ============================================================
