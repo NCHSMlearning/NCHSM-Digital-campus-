@@ -2951,7 +2951,7 @@ async function saveAdminMarks() {
     }
 }
 
-function updateAdminTotal(idx) {
+function updateAdminTotal(idx) { 
     const at = window.currentAdminAssessmentType || 'full';
     let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0;
     let cat2 = parseFloat(document.getElementById(`acat2_${idx}`)?.value) || 0;
