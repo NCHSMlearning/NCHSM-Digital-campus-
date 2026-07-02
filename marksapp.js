@@ -1,6 +1,6 @@
 // ============================================
 // PERMANENT SUPABASE FIX - LOAD SDK AND CREATE CLIENT
-// ============================================
+// ============================================ 
 (function() {
     // If sb already exists and works, skip
     if (typeof window.sb !== 'undefined' && typeof window.sb.from === 'function') {
