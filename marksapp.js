@@ -1216,56 +1216,99 @@ function startApp() {
     // ============================================================
     // SHOW ADMIN MARKS
     // ============================================================
-    
     showAdminMarks = async function() {
-        const html = `
-            <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
-            <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3><p>Select a block and subject to enter marks</p></div>
-            <select id="blockSelect" class="full-width">
-                <option value="">-- Select Block --</option>
-                ${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option value="${b}">${b.replace('_', ' ')}</option>`).join('')}
-            </select>
-            <select id="subjectSelect" class="full-width" style="display:none;"><option value="">-- Select Subject --</option></select>
-            <div id="marksTableContainer"><div class="card text-center"><p>Select a block and subject to view marks</p></div></div>
-        `;
-        updateContentArea(html);
-        document.getElementById('blockSelect').addEventListener('change', function() {
-            if (this.value) loadAdminSubjects(this.value);
-        });
-    };
+    showLoading('Loading blocks...');
+    
+    // Get all distinct blocks from the database
+    const { data, error } = await window.sb
+        .from('units_catalog')
+        .select('block, program')
+        .eq('year', parseInt(currentYear))
+        .eq('status', 'active')
+        .order('block');
+    
+    // Get unique blocks with their programs
+    const blockMap = {};
+    data?.forEach(item => {
+        if (!blockMap[item.block]) {
+            blockMap[item.block] = new Set();
+        }
+        blockMap[item.block].add(item.program);
+    });
+    
+    const blocks = Object.keys(blockMap);
+    const blockOptions = blocks.map(block => {
+        const programs = [...blockMap[block]].join(', ');
+        // Add friendly label
+        let label = block;
+        if (block === 'Introductory') label = 'BLOCK 0 - Introductory';
+        else if (block.match(/^Block \d$/)) label = `BLOCK ${block.replace('Block ', '')} - ${block}`;
+        else if (block.match(/^Term \d$/)) label = `📚 ${block}`;
+        else if (block.includes('Year')) label = `📚 ${block}`;
+        else if (block === 'Final') label = '🎓 Final';
+        
+        return `<option value="${block}">${label} (${programs})</option>`;
+    }).join('');
+    
+    const html = `
+        <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
+        <div class="header"><h3><i class="fas fa-pen-alt"></i> Internal Marks Entry</h3><p>Select a block and subject to enter marks</p></div>
+        <select id="blockSelect" class="full-width">
+            <option value="">-- Select Block --</option>
+            ${blockOptions}
+        </select>
+        <select id="subjectSelect" class="full-width" style="display:none;"><option value="">-- Select Subject --</option></select>
+        <div id="marksTableContainer"><div class="card text-center"><p>Select a block and subject to view marks</p></div></div>
+    `;
+    
+    updateContentArea(html);
+    hideLoading();
+    
+    document.getElementById('blockSelect').addEventListener('change', function() {
+        if (this.value) loadAdminSubjects(this.value);
+    });
+};
     
     // ============================================================
     // LOAD ADMIN SUBJECTS (FIXED)
     // ============================================================
     
-    loadAdminSubjects = async function(block) {
-        if (!block) return;
-        showLoading('Loading subjects...');
-        const subjects = await apiCall(`/api/subjects/${block}`, {});
-        const sel = document.getElementById('subjectSelect');
-        sel.style.display = 'block';
-        sel.innerHTML = '<option value="">-- Select Subject --</option>';
-        
-        if (subjects && Array.isArray(subjects)) {
-            subjects.forEach(s => {
-                sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${s.name}</option>`;
-            });
-        } else {
-            console.warn('⚠️ Subjects is not an array:', subjects);
-            sel.innerHTML += '<option value="">No subjects available</option>';
-            if (typeof showNotification === 'function') {
-                showNotification('No subjects found for this block', true);
-            }
+ loadAdminSubjects = async function(block) {
+    if (!block) return;
+    showLoading('Loading subjects...');
+    
+    // Get subjects for this block
+    const { data, error } = await window.sb
+        .from('units_catalog')
+        .select('unit_name, program')
+        .eq('block', block)
+        .eq('year', parseInt(currentYear))
+        .eq('status', 'active')
+        .order('unit_name');
+    
+    const sel = document.getElementById('subjectSelect');
+    sel.style.display = 'block';
+    sel.innerHTML = '<option value="">-- Select Subject --</option>';
+    
+    if (data && data.length > 0) {
+        data.forEach(item => {
+            sel.innerHTML += `<option value="${item.unit_name}" data-program="${item.program}">${item.unit_name} (${item.program})</option>`;
+        });
+    } else {
+        sel.innerHTML += '<option value="">No subjects found</option>';
+        if (typeof showNotification === 'function') {
+            showNotification('No subjects found for this block', true);
         }
-        
-        sel.onchange = function() {
-            if (this.value) {
-                const type = this.options[this.selectedIndex].dataset.type;
-                loadAdminMarks(block, this.value, type);
-            }
-        };
-        hideLoading();
+    }
+    
+    sel.onchange = function() {
+        if (this.value) {
+            const program = this.options[this.selectedIndex].dataset.program;
+            loadAdminMarks(block, this.value, 'full');
+        }
     };
+    hideLoading();
+};
     
     // ============================================================
     // LOAD ADMIN MARKS
@@ -1506,7 +1549,173 @@ function startApp() {
         updateContentArea(html);
         hideLoading();
     };
+    // ============================================================
+// SHOW LECTURER SUBJECTS (GLOBAL)
+// ============================================================
+showLecturerSubjects = async function() {
+    showLoading('Loading your subjects...');
     
+    // Get all blocks from database with program info
+    const { data: blocksData, error: blocksError } = await window.sb
+        .from('units_catalog')
+        .select('block, program')
+        .eq('year', parseInt(currentYear))
+        .eq('status', 'active');
+    
+    if (blocksError) {
+        console.error('Error fetching blocks:', blocksError);
+        hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading blocks: ' + blocksError.message, true);
+        }
+        return;
+    }
+    
+    // Group blocks by program
+    const blockGroups = {};
+    blocksData?.forEach(item => {
+        if (!blockGroups[item.block]) {
+            blockGroups[item.block] = new Set();
+        }
+        blockGroups[item.block].add(item.program);
+    });
+    
+    const blocks = Object.keys(blockGroups);
+    const lecturerSubjects = currentUser.subjects || [];
+    const settings = await getMarkEntrySettings();
+    
+    // Build subjects by block
+    const subjectsByBlock = {};
+    blocks.forEach(b => { subjectsByBlock[b] = []; });
+    
+    for (let subj of lecturerSubjects) {
+        const parts = subj.split('|');
+        const block = parts[0];
+        const name = parts[1];
+        
+        // Check if this subject exists in the block
+        const { data: subjectData, error: subjectError } = await window.sb
+            .from('units_catalog')
+            .select('unit_name, assessment_type, program')
+            .eq('block', block)
+            .eq('unit_name', name)
+            .eq('year', parseInt(currentYear))
+            .eq('status', 'active')
+            .single();
+        
+        if (subjectData) {
+            let isSubjectOpen = true;
+            let closedReason = '';
+            
+            if (settings.global && settings.global.enabled === false) {
+                isSubjectOpen = false;
+                closedReason = 'Global entry closed by administrator';
+            } else if (settings[`year_${currentYear}`] && settings[`year_${currentYear}`].enabled === false) {
+                isSubjectOpen = false;
+                closedReason = `Entry closed for ${currentYear} class`;
+            } else if (settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false) {
+                isSubjectOpen = false;
+                closedReason = `Entry closed for this subject`;
+            }
+            
+            subjectsByBlock[block].push({
+                name: name,
+                assessmentType: subjectData.assessment_type || 'full',
+                isOpen: isSubjectOpen,
+                closedReason: closedReason,
+                program: subjectData.program || 'Unknown'
+            });
+        }
+    }
+    
+    // Build HTML
+    let html = `
+        <button class="back-btn" onclick="switchTab('dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
+        <div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks - ${currentYear} Class</p></div>
+        <div style="margin-bottom:16px;padding:12px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:12px;">
+            <span style="font-weight:600;">📚 Programs: ${[...new Set(blocksData?.map(d => d.program) || [])].join(', ')}</span>
+        </div>
+    `;
+    
+    for (let block of blocks) {
+        const subjects = subjectsByBlock[block] || [];
+        const programs = [...(blockGroups[block] || [])].join(', ');
+        if (subjects.length) {
+            let blockLabel = block;
+            if (block === 'Introductory') blockLabel = 'BLOCK 0 - Introductory';
+            else if (block.match(/^Block \d$/)) blockLabel = block;
+            else if (block.match(/^Term \d$/)) blockLabel = `📚 ${block}`;
+            else if (block.includes('Year')) blockLabel = `📚 ${block}`;
+            else if (block === 'Final') blockLabel = '🎓 Final';
+            
+            html += `<div style="margin:20px 0 10px;">
+                <h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">
+                    ${blockLabel} <span style="font-size:12px;font-weight:normal;opacity:0.8;">(${programs})</span>
+                </h3>
+            </div>
+            <div class="subject-list">`;
+            
+            for (let s of subjects) {
+                const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖');
+                const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+                const statusBadge = s.isOpen ? '<span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>' : '<span class="badge badge-fail"><i class="fas fa-lock"></i> Closed</span>';
+                const onclickAttr = s.isOpen ? `onclick="openMarksEntry('${block}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"` : `onclick="showNotification('${s.closedReason}', true)"`;
+                
+                html += `<div class="subject-card ${!s.isOpen ? 'closed' : ''}" ${onclickAttr}>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4>${typeIcon} ${s.name}</h4>
+                        ${statusBadge}
+                    </div>
+                    <p><i class="fas fa-layer-group"></i> ${blockLabel} | ${typeLabel}</p>
+                    <small style="color:#94a3b8;">${s.program}</small>
+                    ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
+                </div>`;
+            }
+            html += `</div>`;
+        }
+    }
+    
+    // If no subjects found
+    if (!html.includes('subject-card')) {
+        html += `<div class="card text-center" style="padding:40px;">
+            <i class="fas fa-book" style="font-size:48px;color:#94a3b8;"></i>
+            <h4 style="margin-top:16px;">No subjects assigned yet</h4>
+            <p style="color:#94a3b8;">Contact your administrator to assign subjects</p>
+        </div>`;
+    }
+    
+    updateContentArea(html);
+    hideLoading();
+};
+
+// ============================================================
+// OPEN MARKS ENTRY (GLOBAL)
+// ============================================================
+function openMarksEntry(block, subject, atype) {
+    currentMarksBlock = block;
+    currentMarksSubject = subject;
+    currentAssessmentType = atype;
+    loadMarksForSubject(block, subject, atype);
+}
+
+// ============================================================
+// LOAD MARKS FOR SUBJECT (GLOBAL)
+// ============================================================
+async function loadMarksForSubject(block, subject, atype) {
+    showLoading('Loading marks...');
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {});
+    let html = `
+        <button class="back-btn" onclick="showLecturerSubjects()"><i class="fas fa-arrow-left"></i> Back</button>
+        <div class="header">
+            <h3>📝 ${subject}</h3>
+            <p>${block} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p>
+        </div>
+        <div id="marksTableContainer"></div>
+    `;
+    updateContentArea(html);
+    displayLecturerMarksTable(marks, block, subject, atype);
+    hideLoading();
+}
     // ============================================================
     // OTHER FUNCTIONS (manageSubjectPublication, bulkToggleSubjectPublication)
     // ============================================================
