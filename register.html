@@ -15,8 +15,13 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- Croppic CSS (for image cropping like NCK) -->
+    <link href="https://osp.nckenya.go.ke/assets/css/theme-default/libs/croppic/croppic.css" rel="stylesheet">
+    
     <style>
-        /* ... keep all your existing styles ... */
+        /* ============================================
+                   ALL YOUR EXISTING STYLES + NEW UPLOAD STYLES
+                   ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -64,7 +69,7 @@
             border-radius: 32px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.2);
             width: 100%;
-            max-width: 700px;
+            max-width: 750px;
             padding: 2rem 2rem 2.2rem;
             transition: all 0.3s ease;
             animation: fadeSlideUp 0.5s ease-out;
@@ -142,16 +147,16 @@
             z-index: 0;
         }
         .progress-step {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: #94a3b8;
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 20px;
             background: #f1f5f9;
             position: relative;
             z-index: 1;
             transition: all 0.3s;
             text-align: center;
-            min-width: 80px;
+            min-width: 70px;
             cursor: pointer;
         }
         .progress-step.active {
@@ -266,6 +271,14 @@
             background: #059669;
             box-shadow: none;
         }
+        .btn-danger {
+            background: #ef4444;
+            box-shadow: none;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+            box-shadow: none;
+        }
         
         .draft-actions {
             display: grid;
@@ -363,15 +376,19 @@
             min-height: 36px;
         }
 
+        /* ============================================
+                   PROFILE PHOTO UPLOAD - ENHANCED
+                   ============================================ */
         .photo-upload-container {
             display: flex;
             align-items: center;
             gap: 20px;
             margin-top: 4px;
+            flex-wrap: wrap;
         }
         .photo-preview {
-            width: 100px;
-            height: 100px;
+            width: 130px;
+            height: 130px;
             border-radius: 50%;
             border: 3px dashed #e2e8f0;
             display: flex;
@@ -383,6 +400,7 @@
             overflow: hidden;
             background: #f8fafc;
             position: relative;
+            flex-shrink: 0;
         }
         .photo-preview:hover {
             border-color: #38A169;
@@ -396,7 +414,7 @@
         }
         .photo-preview .placeholder-icon {
             color: #94a3b8;
-            font-size: 2rem;
+            font-size: 2.5rem;
         }
         .photo-preview .placeholder-text {
             font-size: 0.6rem;
@@ -419,7 +437,136 @@
         .photo-preview:hover .upload-hover {
             opacity: 1;
         }
+        .photo-upload-controls {
+            flex: 1;
+            min-width: 150px;
+        }
+        .photo-status {
+            font-size: 0.7rem;
+            color: #64748B;
+            margin-top: 4px;
+        }
+        .photo-status.uploaded {
+            color: #10b981;
+            font-weight: 600;
+        }
 
+        /* ============================================
+                   DOCUMENT UPLOAD CARDS (UPDATED - Only KCSE & ID)
+                   ============================================ */
+        .documents-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 4px;
+        }
+        @media (max-width: 550px) {
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .doc-card {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafbfc;
+            position: relative;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .doc-card:hover {
+            border-color: #0A3D62;
+            background: #f0f7ff;
+            transform: translateY(-2px);
+        }
+        .doc-card.uploaded {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .doc-card .doc-icon {
+            font-size: 30px;
+            margin-bottom: 6px;
+            color: #0A3D62;
+        }
+        .doc-card .doc-name {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .doc-card .doc-status {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .doc-card .doc-status.uploaded-text {
+            color: #10b981;
+            font-weight: 600;
+        }
+        .doc-card input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .doc-card .doc-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .doc-card.uploaded .doc-badge {
+            display: flex;
+        }
+        .doc-card .doc-remove {
+            position: absolute;
+            bottom: 4px;
+            right: 8px;
+            font-size: 0.55rem;
+            color: #ef4444;
+            cursor: pointer;
+            display: none;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 10px;
+            border-radius: 12px;
+            border: 1px solid #fee2e2;
+            z-index: 2;
+        }
+        .doc-card.uploaded .doc-remove {
+            display: block;
+        }
+        .doc-card .doc-remove:hover {
+            background: #fee2e2;
+        }
+        .doc-card .doc-file-name {
+            font-size: 0.55rem;
+            color: #64748B;
+            margin-top: 2px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* ============================================
+                   TERMS & CONDITIONS
+                   ============================================ */
         .terms-container {
             display: flex;
             align-items: flex-start;
@@ -463,20 +610,103 @@
             transition: all 0.3s ease;
         }
 
-        @keyframes confettiFall {
-            0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg) scale(0); opacity: 0; }
-        }
-        .confetti-piece {
+        /* ============================================
+                   TERMS MODAL
+                   ============================================ */
+        .terms-modal-overlay {
+            display: none;
             position: fixed;
-            width: 10px;
-            height: 10px;
-            border-radius: 2px;
-            animation: confettiFall 3s ease-in forwards;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
             z-index: 99999;
-            pointer-events: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .terms-modal-overlay.show {
+            display: flex;
+        }
+        .terms-modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+            animation: bounceIn 0.5s ease;
+        }
+        .terms-modal-content .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0A3D62;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .terms-modal-content .modal-header h2 {
+            color: #0A3D62;
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        .terms-modal-content .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #6b7280;
+            width: auto;
+            margin: 0;
+            padding: 0 10px;
+            box-shadow: none;
+        }
+        .terms-modal-content .modal-close:hover {
+            transform: none;
+            background: none;
+            box-shadow: none;
+        }
+        .terms-modal-content .terms-body {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #334155;
+        }
+        .terms-modal-content .terms-body h4 {
+            color: #0A3D62;
+            margin-top: 18px;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+        .terms-modal-content .terms-body p {
+            margin-bottom: 6px;
+        }
+        .terms-modal-content .terms-body ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        .terms-modal-content .terms-body ul li {
+            margin-bottom: 4px;
+        }
+        .terms-modal-content .modal-footer {
+            margin-top: 20px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+        .terms-modal-content .modal-footer button {
+            width: auto;
+            padding: 12px 40px;
+            margin: 0;
+            border-radius: 40px;
         }
 
+        /* ============================================
+                   SUCCESS OVERLAY
+                   ============================================ */
         .success-overlay {
             position: fixed;
             top: 0;
@@ -536,12 +766,51 @@
             cursor: pointer;
             transition: 0.3s;
             font-family: 'Poppins', sans-serif;
+            width: auto;
+            margin: 0;
         }
         .success-card .btn:hover {
             background: #073450;
             transform: translateY(-2px);
         }
 
+        /* ============================================
+                   CROPPIC OVERRIDES
+                   ============================================ */
+        .cropContainerModal {
+            max-height: 400px;
+            overflow: hidden;
+        }
+        .cropControlsUpload {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .cropControlsUpload button {
+            width: auto;
+            padding: 8px 20px;
+            font-size: 0.8rem;
+            margin: 0;
+            border-radius: 30px;
+        }
+        .cropControlsUpload .cropControlCrop {
+            background: #10b981;
+        }
+        .cropControlsUpload .cropControlCrop:hover {
+            background: #059669;
+        }
+        .cropControlsUpload .cropControlRemove {
+            background: #ef4444;
+        }
+        .cropControlsUpload .cropControlRemove:hover {
+            background: #dc2626;
+        }
+
+        /* ============================================
+                   ANIMATIONS
+                   ============================================ */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -555,7 +824,23 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg) scale(0); opacity: 0; }
+        }
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            animation: confettiFall 3s ease-in forwards;
+            z-index: 99999;
+            pointer-events: none;
+        }
 
+        /* ============================================
+                   RESPONSIVE
+                   ============================================ */
         @media (max-width: 550px) {
             .register-container { padding: 1.5rem; max-width: 100%; }
             .college-title { font-size: 1rem; }
@@ -567,6 +852,9 @@
             .draft-actions { grid-template-columns: 1fr; }
             .photo-upload-container { flex-direction: column; align-items: center; }
             .success-card { padding: 25px; }
+            .photo-preview { width: 100px; height: 100px; }
+            .documents-grid { grid-template-columns: 1fr; }
+            .terms-modal-content { padding: 20px; }
         }
         
         .btn-loading {
@@ -584,6 +872,26 @@
         
         .hidden {
             display: none !important;
+        }
+        
+        .upload-progress {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+            display: none;
+        }
+        .upload-progress .progress-bar-inner {
+            height: 100%;
+            background: #10b981;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        .upload-progress.active {
+            display: block;
         }
     </style>
 </head>
@@ -613,13 +921,19 @@
             Academic
         </div>
         <div class="progress-step" data-step="3">
+            <span class="step-icon">📁</span>
+            Documents
+        </div>
+        <div class="progress-step" data-step="4">
             <span class="step-icon">🔐</span>
             Security
         </div>
     </div>
 
     <form id="register-form" enctype="multipart/form-data">
+        <!-- ============================================ -->
         <!-- STEP 1: PERSONAL INFORMATION -->
+        <!-- ============================================ -->
         <div class="form-section" data-section="1">
             <div class="form-group">
                 <label><i data-feather="user"></i> Register As</label>
@@ -679,18 +993,22 @@
                 </div>
             </div>
 
+            <!-- PROFILE PHOTO UPLOAD -->
             <div class="form-group">
-                <label><i data-feather="camera"></i> Profile Photo</label>
+                <label><i data-feather="camera"></i> Profile Photo <span style="font-weight:400;color:#64748B;">(Optional)</span></label>
                 <div class="photo-upload-container">
                     <div class="photo-preview" id="photoPreview" onclick="document.getElementById('profile_photo').click()">
                         <div class="placeholder-icon">📸</div>
                         <div class="placeholder-text">Upload Photo</div>
                         <div class="upload-hover">Click to change</div>
                     </div>
-                    <div>
-                        <input type="file" id="profile_photo" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
-                        <div class="help-text">Optional - Upload a passport photo (JPEG, PNG)</div>
-                        <div class="help-text" id="photoStatus">No photo selected</div>
+                    <div class="photo-upload-controls">
+                        <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
+                        <div class="help-text">Upload a passport photo (JPEG, PNG) - Max 5MB</div>
+                        <div class="photo-status" id="photoStatus">No photo selected</div>
+                        <div class="upload-progress" id="photoProgress">
+                            <div class="progress-bar-inner" id="photoProgressBar"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -700,7 +1018,9 @@
             </button>
         </div>
 
+        <!-- ============================================ -->
         <!-- STEP 2: ACADEMIC INFORMATION -->
+        <!-- ============================================ -->
         <div class="form-section" data-section="2" style="display: none;">
 
             <div id="student-fields" class="role-fields">
@@ -837,13 +1157,71 @@
                     ← Back
                 </button>
                 <button type="button" class="btn-success" onclick="goToStep(3)" style="flex: 1;">
+                    Next Step → Documents
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STEP 3: DOCUMENT UPLOADS (UPDATED - Only KCSE & ID) -->
+        <!-- ============================================ -->
+        <div class="form-section" data-section="3" style="display: none;">
+            
+            <div style="background:#f0f7ff;padding:12px 16px;border-radius:12px;margin-bottom:16px;">
+                <p style="font-size:0.75rem;color:#1e293b;margin:0;">
+                    <i data-feather="info" style="width:16px;height:16px;color:#0A3D62;"></i>
+                    Upload your academic documents. All documents will be verified by the administration.
+                </p>
+            </div>
+
+            <!-- Document Upload Grid - Updated: Only KCSE & ID -->
+            <div class="documents-grid">
+                <!-- 1. KCSE Certificate -->
+                <div class="doc-card" id="doc_kcse">
+                    <div class="doc-icon">📄</div>
+                    <div class="doc-name">KCSE Certificate</div>
+                    <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
+                    <div class="doc-badge">✓</div>
+                    <div class="doc-remove" onclick="removeDocument('kcse')">✕ Remove</div>
+                    <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kcse')">
+                    <div class="doc-file-name" id="doc_kcse_filename"></div>
+                </div>
+
+                <!-- 2. ID / Passport / Birth Certificate -->
+                <div class="doc-card" id="doc_id">
+                    <div class="doc-icon">🪪</div>
+                    <div class="doc-name">ID / Passport / Birth Cert</div>
+                    <div class="doc-status" id="doc_id_status">Not uploaded</div>
+                    <div class="doc-badge">✓</div>
+                    <div class="doc-remove" onclick="removeDocument('id')">✕ Remove</div>
+                    <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'id')">
+                    <div class="doc-file-name" id="doc_id_filename"></div>
+                </div>
+            </div>
+
+            <div class="help-text" style="margin-top:12px;text-align:center;">
+                Supported formats: PDF, JPG, PNG, JPEG | Max size: 5MB per file
+            </div>
+
+            <!-- Upload Progress -->
+            <div class="upload-progress" id="docUploadProgress">
+                <div class="progress-bar-inner" id="docProgressBar"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
+                <button type="button" onclick="goToStep(2)" style="flex: 1; background: #6b7280;">
+                    ← Back
+                </button>
+                <button type="button" class="btn-success" onclick="goToStep(4)" style="flex: 1;">
                     Next Step → Security
                 </button>
             </div>
         </div>
 
-        <!-- STEP 3: SECURITY & SUBMIT -->
-        <div class="form-section" data-section="3" style="display: none;">
+        <!-- ============================================ -->
+        <!-- STEP 4: SECURITY & SUBMIT -->
+        <!-- ============================================ -->
+        <div class="form-section" data-section="4" style="display: none;">
 
             <div class="two-columns">
                 <div class="form-group">
@@ -863,12 +1241,13 @@
                 </div>
             </div>
 
+            <!-- Terms & Conditions -->
             <div class="form-group">
                 <div class="terms-container">
                     <input type="checkbox" id="terms" required>
                     <label for="terms">
                         I agree to the 
-                        <a href="#" onclick="showTermsModal(event)">Terms & Conditions</a> 
+                        <a href="#" onclick="openTermsModal(event)">Terms & Conditions</a> 
                         and confirm that all information provided is accurate.
                     </label>
                 </div>
@@ -887,8 +1266,8 @@
                 <span id="button-text">✅ Create Account</span>
             </button>
             
-            <button type="button" onclick="goToStep(2)" style="margin-top: 0.5rem; background: #6b7280;">
-                ← Back to Academic Info
+            <button type="button" onclick="goToStep(3)" style="margin-top: 0.5rem; background: #6b7280;">
+                ← Back to Documents
             </button>
 
             <div id="message" class="message"></div>
@@ -901,40 +1280,68 @@
     </div>
 </div>
 
-<!-- Terms Modal -->
-<div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 99999; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 24px; max-width: 600px; width: 95%; max-height: 80vh; overflow-y: auto; padding: 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #0A3D62; padding-bottom: 15px;">
-            <h2 style="color: #0A3D62; margin: 0;">📋 Terms & Conditions</h2>
-            <button onclick="closeTermsModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+<!-- ============================================ -->
+<!-- TERMS & CONDITIONS MODAL -->
+<!-- ============================================ -->
+<div class="terms-modal-overlay" id="termsModal">
+    <div class="terms-modal-content">
+        <div class="modal-header">
+            <h2>📋 Terms & Conditions</h2>
+            <button class="modal-close" onclick="closeTermsModal()">&times;</button>
         </div>
-        <div style="font-size: 0.9rem; line-height: 1.8; color: #334155;">
-            <h4>1. Account Registration</h4>
-            <p>You must provide accurate and complete information during registration.</p>
-            <h4>2. Academic Integrity</h4>
-            <p>Students must maintain academic honesty.</p>
-            <h4>3. Data Privacy</h4>
-            <p>Your personal data will be stored securely.</p>
-            <h4>4. Platform Usage</h4>
-            <p>This platform is for educational purposes only.</p>
-            <h4>5. Fee Payment</h4>
-            <p>Students are required to pay fees as per the fee structure.</p>
-            <h4>6. Code of Conduct</h4>
-            <p>All users must adhere to the college's code of conduct.</p>
-            <h4>7. Account Security</h4>
-            <p>You are responsible for maintaining your password confidentiality.</p>
-            <h4>8. Contact</h4>
-            <p>For questions: <strong>admin@nchsm.ac.ke</strong></p>
+        <div class="terms-body">
+            <p style="color:#64748B;margin-bottom:12px;"><strong>Last Updated:</strong> February 2026</p>
+
+            <h4>1. Acceptance of Terms</h4>
+            <p>By accessing and using the Nakuru College of Health Sciences and Management (NCHSM) Digital Portal, you agree to comply with and be bound by these Terms and Conditions.</p>
+
+            <h4>2. User Accounts</h4>
+            <p>You must provide accurate and complete information when creating your account. You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account.</p>
+
+            <h4>3. Acceptable Use Policy</h4>
+            <p>You agree not to:</p>
+            <ul>
+                <li>Share your account credentials with others</li>
+                <li>Attempt to gain unauthorized access to any systems or networks</li>
+                <li>Upload malicious code or content</li>
+                <li>Harass, abuse, or harm other users</li>
+                <li>Violate any applicable laws or regulations</li>
+            </ul>
+
+            <h4>4. Academic Integrity</h4>
+            <p>All academic work submitted through the portal must be your own. Plagiarism, cheating, or any form of academic dishonesty is strictly prohibited and may result in disciplinary action.</p>
+
+            <h4>5. Intellectual Property</h4>
+            <p>All content, materials, and resources provided through the NCHSM Digital Portal are protected by copyright and other intellectual property laws. You may not reproduce, distribute, or modify any content without explicit permission.</p>
+
+            <h4>6. Privacy and Data Protection</h4>
+            <p>Your use of the portal is also governed by our Privacy Policy. We collect and process your personal data in accordance with applicable data protection laws.</p>
+
+            <h4>7. Termination</h4>
+            <p>NCHSM reserves the right to suspend or terminate your access to the portal for violation of these terms or for any other reason deemed appropriate by the college administration.</p>
+
+            <h4>8. Limitation of Liability</h4>
+            <p>NCHSM shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use or inability to use the portal.</p>
+
+            <h4>9. Modifications to Terms</h4>
+            <p>We reserve the right to modify these terms at any time. Continued use of the portal after changes constitutes acceptance of the modified terms.</p>
+
+            <h4>10. Contact Information</h4>
+            <p>For questions about these Terms, please contact:</p>
+            <p style="margin-left:20px;">
+                <strong>Email:</strong> legal@nchsm.ac.ke<br>
+                <strong>Phone:</strong> +254 790969743
+            </p>
         </div>
-        <div style="margin-top: 20px; text-align: center;">
-            <button onclick="closeTermsModal(); document.getElementById('terms').checked = true;" style="background: #0A3D62; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif;">
-                ✅ I Agree
-            </button>
+        <div class="modal-footer">
+            <button onclick="acceptTerms()">✅ I Agree to Terms</button>
         </div>
     </div>
 </div>
 
-<!-- Success Overlay -->
+<!-- ============================================ -->
+<!-- SUCCESS OVERLAY -->
+<!-- ============================================ -->
 <div class="success-overlay" id="successOverlay">
     <div class="success-card">
         <div class="check-circle">✅</div>
@@ -976,7 +1383,15 @@
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ============================================
-    // EMAIL VALIDATION - REAL-TIME CHECK
+    // STORED DOCUMENTS DATA
+    // ============================================
+    const uploadedDocs = {
+        kcse: null,
+        id: null
+    };
+
+    // ============================================
+    // EMAIL VALIDATION
     // ============================================
     let emailCheckTimeout = null;
     let emailCheckInProgress = false;
@@ -985,32 +1400,24 @@
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-   // ============================================
-// EMAIL VALIDATION - FIXED (Only check profile table)
-// ============================================
-async function checkEmailExists(email) {
-    if (!email || email.length < 5) return false;
-    
-    try {
-        // ONLY check the profile table - we don't have access to auth.users
-        const { data: profileData, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('email')
-            .eq('email', email)
-            .maybeSingle();
-        
-        if (profileError) {
-            console.error('Profile check error:', profileError);
+    async function checkEmailExists(email) {
+        if (!email || email.length < 5) return false;
+        try {
+            const { data: profileData, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('email')
+                .eq('email', email)
+                .maybeSingle();
+            if (profileError) {
+                console.error('Profile check error:', profileError);
+                return false;
+            }
+            return !!profileData;
+        } catch (error) {
+            console.error('Error checking email:', error);
             return false;
         }
-        
-        return !!profileData;
-        
-    } catch (error) {
-        console.error('Error checking email:', error);
-        return false;
     }
-}
 
     document.getElementById('email').addEventListener('input', function() {
         const email = this.value.trim();
@@ -1041,7 +1448,6 @@ async function checkEmailExists(email) {
             
             try {
                 const exists = await checkEmailExists(email);
-                
                 if (exists) {
                     emailStatus.textContent = '❌ Email already registered. Please use a different email.';
                     emailStatus.style.color = '#DC2626';
@@ -1062,7 +1468,7 @@ async function checkEmailExists(email) {
     });
 
     // ============================================
-    // PASSWORD STRENGTH METER
+    // PASSWORD STRENGTH
     // ============================================
     document.getElementById('password').addEventListener('input', function() {
         const password = this.value;
@@ -1232,6 +1638,168 @@ async function checkEmailExists(email) {
     });
 
     // ============================================
+    // PROFILE PHOTO UPLOAD
+    // ============================================
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            showFeedback('❌ Please upload an image file.', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        const preview = document.getElementById('photoPreview');
+        const reader = new FileReader();
+        
+        // Show progress
+        const progressEl = document.getElementById('photoProgress');
+        const progressBar = document.getElementById('photoProgressBar');
+        progressEl.classList.add('active');
+        
+        reader.onload = function(e) {
+            // Remove old content
+            const oldImg = preview.querySelector('img');
+            if (oldImg) oldImg.remove();
+            const placeholderIcon = preview.querySelector('.placeholder-icon');
+            const placeholderText = preview.querySelector('.placeholder-text');
+            if (placeholderIcon) placeholderIcon.style.display = 'none';
+            if (placeholderText) placeholderText.style.display = 'none';
+            
+            // Add new image
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = 'Profile photo';
+            preview.prepend(img);
+            
+            // Update status
+            const statusEl = document.getElementById('photoStatus');
+            statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            statusEl.className = 'photo-status uploaded';
+            
+            // Hide progress
+            setTimeout(() => {
+                progressEl.classList.remove('active');
+                progressBar.style.width = '0%';
+            }, 500);
+        };
+        
+        reader.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const progress = (e.loaded / e.total) * 100;
+                progressBar.style.width = progress + '%';
+            }
+        };
+        
+        reader.readAsDataURL(file);
+        
+        // Store the file for upload later
+        uploadedDocs.profile_photo = file;
+    }
+
+    // ============================================
+    // DOCUMENT UPLOAD (Only KCSE & ID)
+    // ============================================
+    function handleDocumentUpload(event, docType) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showFeedback(`❌ ${getDocLabel(docType)} exceeds 5MB limit.`, 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        // Store document
+        uploadedDocs[docType] = file;
+        
+        // Update UI
+        const card = document.getElementById(`doc_${docType}`);
+        const statusEl = document.getElementById(`doc_${docType}_status`);
+        const filenameEl = document.getElementById(`doc_${docType}_filename`);
+        
+        card.classList.add('uploaded');
+        statusEl.textContent = `✅ Uploaded`;
+        statusEl.className = 'doc-status uploaded-text';
+        filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        
+        showFeedback(`✅ ${getDocLabel(docType)} uploaded successfully!`, 'success');
+        
+        // Show progress
+        const progressEl = document.getElementById('docUploadProgress');
+        const progressBar = document.getElementById('docProgressBar');
+        progressEl.classList.add('active');
+        progressBar.style.width = '100%';
+        setTimeout(() => {
+            progressEl.classList.remove('active');
+            progressBar.style.width = '0%';
+        }, 800);
+    }
+
+    function getDocLabel(docType) {
+        const labels = {
+            kcse: 'KCSE Certificate',
+            id: 'ID/Passport/Birth Cert'
+        };
+        return labels[docType] || docType;
+    }
+
+    function removeDocument(docType) {
+        uploadedDocs[docType] = null;
+        const card = document.getElementById(`doc_${docType}`);
+        const statusEl = document.getElementById(`doc_${docType}_status`);
+        const filenameEl = document.getElementById(`doc_${docType}_filename`);
+        
+        card.classList.remove('uploaded');
+        statusEl.textContent = 'Not uploaded';
+        statusEl.className = 'doc-status';
+        filenameEl.textContent = '';
+        
+        // Clear the file input
+        const input = card.querySelector('input[type="file"]');
+        if (input) input.value = '';
+        
+        showFeedback(`🗑️ ${getDocLabel(docType)} removed.`, 'warning');
+    }
+
+    // ============================================
+    // TERMS & CONDITIONS MODAL
+    // ============================================
+    let termsAccepted = false;
+
+    function openTermsModal(e) {
+        if (e) e.preventDefault();
+        document.getElementById('termsModal').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeTermsModal() {
+        document.getElementById('termsModal').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    function acceptTerms() {
+        termsAccepted = true;
+        document.getElementById('terms').checked = true;
+        closeTermsModal();
+        showFeedback('✅ You have accepted the Terms & Conditions.', 'success');
+    }
+
+    document.getElementById('termsModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTermsModal();
+    });
+
+    // ============================================
     // SAVE/LOAD DRAFT
     // ============================================
     function saveDraft() {
@@ -1239,6 +1807,11 @@ async function checkEmailExists(email) {
         const data = {};
         for (const [key, value] of formData.entries()) {
             data[key] = value;
+        }
+        // Save document status
+        data._docs = {};
+        for (const [key, value] of Object.entries(uploadedDocs)) {
+            data._docs[key] = value ? 'uploaded' : 'none';
         }
         localStorage.setItem('registration_draft', JSON.stringify(data));
         showFeedback('✅ Draft saved! You can continue later.', 'success');
@@ -1253,6 +1826,21 @@ async function checkEmailExists(email) {
         try {
             const data = JSON.parse(saved);
             Object.keys(data).forEach(key => {
+                if (key === '_docs') {
+                    // Restore document status
+                    for (const [docType, status] of Object.entries(data._docs)) {
+                        if (status === 'uploaded') {
+                            const card = document.getElementById(`doc_${docType}`);
+                            const statusEl = document.getElementById(`doc_${docType}_status`);
+                            const filenameEl = document.getElementById(`doc_${docType}_filename`);
+                            card.classList.add('uploaded');
+                            statusEl.textContent = '✅ Previously uploaded';
+                            statusEl.className = 'doc-status uploaded-text';
+                            filenameEl.textContent = 'Saved from draft';
+                        }
+                    }
+                    return;
+                }
                 const input = document.querySelector(`[name="${key}"]`);
                 if (input) {
                     input.value = data[key];
@@ -1266,46 +1854,6 @@ async function checkEmailExists(email) {
         } catch (e) {
             showFeedback('Error loading draft: ' + e.message, 'error');
         }
-    }
-
-    // ============================================
-    // TERMS & CONDITIONS
-    // ============================================
-    function showTermsModal(e) {
-        if (e) e.preventDefault();
-        document.getElementById('termsModal').style.display = 'flex';
-    }
-
-    function closeTermsModal() {
-        document.getElementById('termsModal').style.display = 'none';
-    }
-
-    document.getElementById('termsModal').addEventListener('click', function(e) {
-        if (e.target === this) closeTermsModal();
-    });
-
-    // ============================================
-    // PROFILE PHOTO UPLOAD
-    // ============================================
-    function handlePhotoUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const preview = document.getElementById('photoPreview');
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const oldImg = preview.querySelector('img');
-            if (oldImg) oldImg.remove();
-            const placeholderIcon = preview.querySelector('.placeholder-icon');
-            const placeholderText = preview.querySelector('.placeholder-text');
-            if (placeholderIcon) placeholderIcon.style.display = 'none';
-            if (placeholderText) placeholderText.style.display = 'none';
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'Profile photo';
-            preview.prepend(img);
-            document.getElementById('photoStatus').textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        };
-        reader.readAsDataURL(file);
     }
 
     // ============================================
@@ -1402,7 +1950,7 @@ async function checkEmailExists(email) {
     }
 
     // ============================================
-    // FORM SUBMISSION - TRIGGER HANDLES PROFILE
+    // FORM SUBMISSION
     // ============================================
     document.getElementById('register-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1416,7 +1964,7 @@ async function checkEmailExists(email) {
         document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
         
         // Check terms
-        if (!document.getElementById('terms').checked) {
+        if (!document.getElementById('terms').checked && !termsAccepted) {
             showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
             btn.disabled = false;
             document.getElementById('button-text').textContent = '✅ Create Account';
@@ -1559,8 +2107,6 @@ async function checkEmailExists(email) {
             
             if (role === 'student') {
                 const programValue = document.getElementById('program_type').value;
-                console.log('🔍 Program value for auth:', programValue);
-                
                 userMetadata = {
                     ...userMetadata,
                     admission_number: student_id_number,
@@ -1571,21 +2117,17 @@ async function checkEmailExists(email) {
                     current_block: defaultBlock,
                     guardian_name, guardian_phone,
                     admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString()
+                    admission_year: today.getFullYear().toString(),
+                    // Document upload status - only KCSE & ID
+                    doc_kcse: uploadedDocs.kcse ? 'uploaded' : 'pending',
+                    doc_id: uploadedDocs.id ? 'uploaded' : 'pending'
                 };
-                
-                console.log('📤 USER METADATA:', {
-                    program: userMetadata.program,
-                    course: userMetadata.course,
-                    intake_year: userMetadata.intake_year
-                });
             } else if (role === 'lecturer') {
                 userMetadata = { ...userMetadata, staff_id, department };
             }
             
             // ============================================
             // CREATE USER IN SUPABASE AUTH
-            // The trigger will automatically create the profile!
             // ============================================
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email, password,
@@ -1603,68 +2145,62 @@ async function checkEmailExists(email) {
             }
             
             console.log('✅ Auth user created:', authData.user.id);
-            console.log('⏳ Waiting for trigger to create profile...');
             
-            // Wait for the trigger to create the profile
+            // Wait for trigger to create profile
             await new Promise(resolve => setTimeout(resolve, 1500));
             
-            // Verify profile was created
-            const { data: profileCheck, error: checkError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', authData.user.id)
-                .maybeSingle();
+            // ============================================
+            // UPLOAD DOCUMENTS TO STORAGE
+            // ============================================
+            const userId = authData.user.id;
+            const uploadPromises = [];
             
-            if (checkError) {
-                console.error('⚠️ Error checking profile:', checkError);
+            // Upload profile photo
+            if (uploadedDocs.profile_photo) {
+                const photoFile = uploadedDocs.profile_photo;
+                const photoExt = photoFile.name.split('.').pop();
+                const photoPath = `profiles/${userId}/photo.${photoExt}`;
+                const uploadPromise = sb.storage
+                    .from('user-documents')
+                    .upload(photoPath, photoFile, { upsert: true })
+                    .then(() => {
+                        console.log('✅ Profile photo uploaded');
+                        return sb.from('consolidated_user_profiles_table')
+                            .update({ profile_photo_url: photoPath })
+                            .eq('user_id', userId);
+                    })
+                    .catch(err => console.error('❌ Failed to upload profile photo:', err));
+                uploadPromises.push(uploadPromise);
             }
             
-            if (profileCheck) {
-                console.log('✅ Profile created by trigger:', profileCheck);
-            } else {
-                console.warn('⚠️ Profile not found after trigger. Creating manually...');
-                
-                // Fallback: Manually create profile if trigger didn't work
-                let fallbackData = {
-                    user_id: authData.user.id,
-                    email: email,
-                    full_name: full_name,
-                    role: role,
-                    phone: phone,
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                };
-                
-                if (role === 'student') {
-                    fallbackData = {
-                        ...fallbackData,
-                        student_id: student_id_number || authData.user.id.substring(0, 8).toUpperCase(),
-                        program: program_type,
-                        intake_year: intakeData.intake_year,
-                        block: defaultBlock,
-                        guardian_name, guardian_phone,
-                        admission_date: admissionDate,
-                        admission_year: today.getFullYear().toString()
-                    };
-                } else if (role === 'lecturer') {
-                    fallbackData = { ...fallbackData, staff_id, department };
+            // Upload documents - only KCSE & ID
+            const docTypes = ['kcse', 'id'];
+            for (const docType of docTypes) {
+                if (uploadedDocs[docType]) {
+                    const file = uploadedDocs[docType];
+                    const ext = file.name.split('.').pop();
+                    const docPath = `documents/${userId}/${docType}.${ext}`;
+                    const uploadPromise = sb.storage
+                        .from('user-documents')
+                        .upload(docPath, file, { upsert: true })
+                        .then(() => {
+                            console.log(`✅ ${docType} document uploaded`);
+                            return sb.from('user_documents')
+                                .insert({
+                                    user_id: userId,
+                                    document_type: docType,
+                                    file_path: docPath,
+                                    file_name: file.name,
+                                    upload_date: new Date().toISOString()
+                                });
+                        })
+                        .catch(err => console.error(`❌ Failed to upload ${docType}:`, err));
+                    uploadPromises.push(uploadPromise);
                 }
-                
-                const { error: fallbackError } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .insert(fallbackData);
-                
-                if (fallbackError) {
-                    console.error('❌ Fallback insert failed:', fallbackError);
-                    try {
-                        await sb.auth.admin.deleteUser(authData.user.id);
-                    } catch (deleteError) {
-                        console.error('❌ Could not delete auth user:', deleteError);
-                    }
-                    throw fallbackError;
-                }
-                console.log('✅ Profile created manually (fallback)');
             }
+            
+            // Wait for all uploads to complete
+            await Promise.allSettled(uploadPromises);
             
             // ============================================
             // SUCCESS!
@@ -1697,7 +2233,7 @@ async function checkEmailExists(email) {
         }
     });
 
-    console.log('✅ Registration page loaded with all features!');
+    console.log('✅ Registration page loaded with features: Profile Photo + KCSE + ID/Passport uploads!');
 </script>
 </body>
 </html>
