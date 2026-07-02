@@ -1773,6 +1773,642 @@ async function loadMarksForSubject(block, subject, atype) {
     
 } // END OF startApp()
 
+
+// ============================================================
+// ENHANCED MARKS ENTRY FUNCTIONS
+// ============================================================
+
+// Load subjects for the selected block
+async function loadSubjectsForBlock(block) {
+    if (!block) {
+        document.getElementById('marksSubject').innerHTML = '<option value="">-- Select Subject --</option>';
+        return;
+    }
+    
+    try {
+        const { data, error } = await window.sb
+            .from('units_catalog')
+            .select('unit_name')
+            .eq('block', block)
+            .eq('year', parseInt(document.getElementById('marksYear').value))
+            .eq('status', 'active')
+            .order('unit_name');
+        
+        const subjectSelect = document.getElementById('marksSubject');
+        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                subjectSelect.innerHTML += `<option value="${item.unit_name}">${item.unit_name}</option>`;
+            });
+        } else {
+            subjectSelect.innerHTML += '<option value="">No subjects found</option>';
+        }
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading subjects: ' + error.message, true);
+        }
+    }
+}
+
+// Load marks data
+async function loadMarksData() {
+    const block = document.getElementById('marksBlock').value;
+    const subject = document.getElementById('marksSubject').value;
+    const year = document.getElementById('marksYear').value;
+    const term = document.getElementById('marksTerm').value;
+    const examType = document.getElementById('marksExamType').value;
+    
+    if (!block || !subject) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select block and subject', true);
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading('Loading marks...');
+    
+    try {
+        // Get students for this block
+        const { data: students, error: studentError } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name')
+            .eq('block', block)
+            .eq('intake_year', year)
+            .eq('role', 'student')
+            .eq('status', 'active')
+            .order('full_name');
+        
+        if (studentError) throw studentError;
+        
+        // Get existing marks for this subject
+        const { data: marks, error: marksError } = await window.sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', subject)
+            .eq('academic_year', year);
+        
+        if (marksError) throw marksError;
+        
+        // Build marks map by admission
+        const marksMap = {};
+        marks?.forEach(m => {
+            marksMap[m.admission_number] = m;
+        });
+        
+        // Build table rows
+        const tbody = document.getElementById('marksTableBody');
+        
+        if (!students || students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="12" class="text-center text-muted" style="padding:40px;">
+                        <i class="fas fa-users" style="font-size:32px;display:block;margin-bottom:10px;color:#94a3b8;"></i>
+                        No students found for this block
+                    </td>
+                </tr>
+            `;
+            updateStats();
+            if (typeof hideLoading === 'function') hideLoading();
+            return;
+        }
+        
+        let html = '';
+        let passed = 0;
+        let failed = 0;
+        let totalScore = 0;
+        let scoredCount = 0;
+        
+        students.forEach((student, index) => {
+            const admission = student.student_id || '';
+            const name = student.full_name || 'Unknown';
+            const existingMark = marksMap[admission];
+            const score = existingMark?.final_score || '';
+            const status = existingMark?.status || 'present';
+            const grade = existingMark?.grade || '';
+            const comments = existingMark?.comments || '';
+            const gradedBy = existingMark?.graded_by || '';
+            const createdAt = existingMark?.created_at ? new Date(existingMark.created_at).toLocaleString() : '';
+            const updatedAt = existingMark?.updated_at ? new Date(existingMark.updated_at).toLocaleString() : '';
+            
+            const scoreNum = parseFloat(score) || 0;
+            if (scoreNum > 0) {
+                totalScore += scoreNum;
+                scoredCount++;
+                if (scoreNum >= 60) passed++;
+                else failed++;
+            }
+            
+            const rowClass = scoreNum >= 60 ? 'pass-row' : (scoreNum > 0 ? 'fail-row' : 'pending-row');
+            
+            html += `
+                <tr class="${rowClass}" data-admission="${admission}">
+                    <td>${index + 1}</td>
+                    <td><strong>${admission}</strong></td>
+                    <td>${name}</td>
+                    <td>
+                        <input type="number" class="marks-input" 
+                               id="mark_${admission}" 
+                               value="${score}" 
+                               min="0" 
+                               max="${document.getElementById('marksMaxScore').value || 100}"
+                               step="0.5"
+                               onchange="updateRowStats(this, '${admission}')"
+                               onkeydown="if(event.key==='Enter') saveSingleMark('${admission}')">
+                    </td>
+                    <td>
+                        <select class="status-select" id="status_${admission}" onchange="updateRowStats(this, '${admission}')">
+                            <option value="present" ${status === 'present' ? 'selected' : ''}>Present</option>
+                            <option value="missed" ${status === 'missed' ? 'selected' : ''}>Missed</option>
+                            <option value="cheated" ${status === 'cheated' ? 'selected' : ''}>Cheated</option>
+                        </select>
+                    </td>
+                    <td id="grade_${admission}">${grade}</td>
+                    <td id="points_${admission}">${scoreNum > 0 ? (scoreNum / 10).toFixed(1) : '-'}</td>
+                    <td>
+                        <input type="text" class="comments-input" 
+                               id="comments_${admission}" 
+                               value="${comments}" 
+                               placeholder="Add comment..."
+                               style="width:100%;padding:4px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:0.8rem;"
+                               onchange="markUnsaved()">
+                    </td>
+                    <td class="audit-col">${gradedBy || '-'}</td>
+                    <td class="audit-col">${createdAt || '-'}</td>
+                    <td class="audit-col">${gradedBy || '-'}</td>
+                    <td class="audit-col">${updatedAt || '-'}</td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        updateStats(passed, failed, students.length, totalScore, scoredCount);
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`Loaded ${students.length} students for ${subject}`, false);
+        }
+        
+    } catch (error) {
+        console.error('Error loading marks:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading marks: ' + error.message, true);
+        }
+    }
+    
+    if (typeof hideLoading === 'function') hideLoading();
+}
+
+// Update statistics
+function updateStats(passed, failed, total, totalScore, scoredCount) {
+    const totalStudents = total || document.querySelectorAll('#marksTableBody tr').length;
+    const passedCount = passed || document.querySelectorAll('#marksTableBody tr.pass-row').length;
+    const failedCount = failed || document.querySelectorAll('#marksTableBody tr.fail-row').length;
+    
+    document.getElementById('totalStudentsBadge').textContent = `${totalStudents} Students`;
+    document.getElementById('passedBadge').textContent = `${passedCount} Passed`;
+    document.getElementById('failedBadge').textContent = `${failedCount} Failed`;
+    
+    // Calculate average
+    const allScores = [];
+    document.querySelectorAll('.marks-input').forEach(input => {
+        const val = parseFloat(input.value);
+        if (val > 0) allScores.push(val);
+    });
+    const avg = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 0;
+    document.getElementById('avgScoreBadge').textContent = `Avg: ${avg.toFixed(1)}%`;
+}
+
+// Update row stats (grade, points)
+function updateRowStats(element, admission) {
+    const score = parseFloat(document.getElementById(`mark_${admission}`).value) || 0;
+    const status = document.getElementById(`status_${admission}`).value;
+    const maxScore = parseFloat(document.getElementById('marksMaxScore').value) || 100;
+    
+    // Calculate grade
+    const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+    let grade = '';
+    let points = 0;
+    
+    if (status === 'missed' || status === 'cheated') {
+        grade = '--';
+        points = 0;
+    } else if (score > 0) {
+        if (percentage >= 80) grade = 'A';
+        else if (percentage >= 75) grade = 'A-';
+        else if (percentage >= 70) grade = 'B+';
+        else if (percentage >= 65) grade = 'B';
+        else if (percentage >= 60) grade = 'B-';
+        else if (percentage >= 55) grade = 'C+';
+        else if (percentage >= 50) grade = 'C';
+        else if (percentage >= 45) grade = 'C-';
+        else if (percentage >= 40) grade = 'D+';
+        else if (percentage >= 35) grade = 'D';
+        else grade = 'E';
+        points = (score / 10).toFixed(1);
+    } else {
+        grade = '--';
+        points = 0;
+    }
+    
+    document.getElementById(`grade_${admission}`).textContent = grade;
+    document.getElementById(`points_${admission}`).textContent = points;
+    
+    // Update row class
+    const row = document.getElementById(`mark_${admission}`).closest('tr');
+    if (row) {
+        row.className = score >= 60 ? 'pass-row' : (score > 0 ? 'fail-row' : 'pending-row');
+    }
+    
+    // Update stats
+    updateStats();
+    markUnsaved();
+    
+    // Auto-save on change (debounced)
+    clearTimeout(window._saveTimeout);
+    window._saveTimeout = setTimeout(() => {
+        saveSingleMark(admission);
+    }, 800);
+}
+
+// Save a single mark
+async function saveSingleMark(admission) {
+    const block = document.getElementById('marksBlock').value;
+    const subject = document.getElementById('marksSubject').value;
+    const year = document.getElementById('marksYear').value;
+    const examType = document.getElementById('marksExamType').value;
+    
+    const score = parseFloat(document.getElementById(`mark_${admission}`).value) || 0;
+    const status = document.getElementById(`status_${admission}`).value;
+    const comments = document.getElementById(`comments_${admission}`).value || '';
+    
+    // Get student name
+    const row = document.getElementById(`mark_${admission}`).closest('tr');
+    const name = row?.querySelectorAll('td')[2]?.textContent || '';
+    
+    try {
+        // Calculate final score based on exam type
+        let finalScore = score;
+        let grade = '';
+        const maxScore = parseFloat(document.getElementById('marksMaxScore').value) || 100;
+        const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+        
+        if (score > 0 && status !== 'missed' && status !== 'cheated') {
+            if (percentage >= 80) grade = 'A';
+            else if (percentage >= 75) grade = 'A-';
+            else if (percentage >= 70) grade = 'B+';
+            else if (percentage >= 65) grade = 'B';
+            else if (percentage >= 60) grade = 'B-';
+            else if (percentage >= 55) grade = 'C+';
+            else if (percentage >= 50) grade = 'C';
+            else if (percentage >= 45) grade = 'C-';
+            else if (percentage >= 40) grade = 'D+';
+            else if (percentage >= 35) grade = 'D';
+            else grade = 'E';
+        }
+        
+        // Check if exists
+        const { data: existing } = await window.sb
+            .from('student_marks')
+            .select('id')
+            .eq('admission_number', admission)
+            .eq('subject_name', subject)
+            .eq('block', block)
+            .eq('academic_year', year)
+            .single();
+        
+        if (existing) {
+            // Update
+            const { error } = await window.sb
+                .from('student_marks')
+                .update({
+                    exam_score: score,
+                    final_score: finalScore,
+                    grade: grade,
+                    status: status,
+                    comments: comments,
+                    graded_by: currentUser?.name || 'System',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existing.id);
+            
+            if (error) throw error;
+        } else {
+            // Insert
+            const { error } = await window.sb
+                .from('student_marks')
+                .insert({
+                    admission_number: admission,
+                    student_name: name,
+                    block: block,
+                    subject_name: subject,
+                    exam_score: score,
+                    final_score: finalScore,
+                    grade: grade,
+                    status: status,
+                    comments: comments,
+                    graded_by: currentUser?.name || 'System',
+                    assessment_type: examType,
+                    academic_year: year
+                });
+            
+            if (error) throw error;
+        }
+        
+        // Show subtle save indicator
+        const input = document.getElementById(`mark_${admission}`);
+        if (input) {
+            input.style.borderColor = '#10b981';
+            setTimeout(() => {
+                input.style.borderColor = '';
+            }, 1500);
+        }
+        
+    } catch (error) {
+        console.error('Error saving mark:', error);
+        // Show error on the input
+        const input = document.getElementById(`mark_${admission}`);
+        if (input) {
+            input.style.borderColor = '#ef4444';
+            setTimeout(() => {
+                input.style.borderColor = '';
+            }, 2000);
+        }
+    }
+}
+
+// Save all marks
+async function saveAllMarks() {
+    const admissionList = [];
+    document.querySelectorAll('#marksTableBody tr').forEach(row => {
+        const admission = row.dataset.admission;
+        if (admission) {
+            admissionList.push(admission);
+        }
+    });
+    
+    if (admissionList.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No marks to save', true);
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading(`Saving ${admissionList.length} marks...`);
+    
+    let saved = 0;
+    let errors = 0;
+    
+    for (const admission of admissionList) {
+        try {
+            await saveSingleMark(admission);
+            saved++;
+        } catch (error) {
+            errors++;
+        }
+    }
+    
+    if (typeof hideLoading === 'function') hideLoading();
+    
+    if (typeof showNotification === 'function') {
+        if (errors === 0) {
+            showNotification(`✅ Saved ${saved} marks successfully!`, false);
+        } else {
+            showNotification(`⚠️ Saved ${saved} marks, ${errors} failed`, true);
+        }
+    }
+}
+
+// Auto-fill marks (fill down)
+function autoFillMarks() {
+    const inputs = document.querySelectorAll('.marks-input');
+    if (inputs.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No marks to auto-fill', true);
+        }
+        return;
+    }
+    
+    const firstVal = inputs[0]?.value || 0;
+    if (!confirm(`Fill all marks with ${firstVal || 'empty'}?`)) return;
+    
+    inputs.forEach(input => {
+        input.value = firstVal;
+        input.dispatchEvent(new Event('change'));
+    });
+    
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ Auto-filled ${inputs.length} marks`, false);
+    }
+}
+
+// Export marks data
+function exportMarksData() {
+    const rows = document.querySelectorAll('#marksTableBody tr');
+    if (rows.length === 0 || rows[0].querySelectorAll('td').length < 3) {
+        if (typeof showNotification === 'function') {
+            showNotification('No data to export', true);
+        }
+        return;
+    }
+    
+    let csv = 'Admission,Name,Score,Status,Grade,Points,Comments\n';
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 8) {
+            const admission = cells[1]?.textContent?.trim() || '';
+            const name = cells[2]?.textContent?.trim() || '';
+            const score = cells[3]?.querySelector('input')?.value || '';
+            const status = cells[4]?.querySelector('select')?.value || '';
+            const grade = cells[5]?.textContent?.trim() || '';
+            const points = cells[6]?.textContent?.trim() || '';
+            const comments = cells[7]?.querySelector('input')?.value || '';
+            
+            csv += `${admission},"${name}",${score},${status},${grade},${points},"${comments}"\n`;
+        }
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `marks_${document.getElementById('marksSubject').value}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ Exported marks successfully!', false);
+    }
+}
+
+// Toggle audit columns
+function toggleAuditColumns() {
+    const table = document.getElementById('marksDataTable');
+    const checked = document.getElementById('showAuditColumns').checked;
+    if (checked) {
+        table.classList.add('show-audit');
+    } else {
+        table.classList.remove('show-audit');
+    }
+}
+
+// Confirm bulk delete
+function confirmBulkDelete() {
+    const modal = document.getElementById('bulkDeleteModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('bulkDeleteConfirm').value = '';
+    }
+}
+
+// Execute bulk delete
+async function executeBulkDelete() {
+    const confirmText = document.getElementById('bulkDeleteConfirm').value;
+    if (confirmText !== 'DELETE') {
+        if (typeof showNotification === 'function') {
+            showNotification('Please type "DELETE" to confirm', true);
+        }
+        return;
+    }
+    
+    const block = document.getElementById('marksBlock').value;
+    const subject = document.getElementById('marksSubject').value;
+    const year = document.getElementById('marksYear').value;
+    
+    if (!block || !subject) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select block and subject', true);
+        }
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete ALL marks for this subject?')) return;
+    
+    if (typeof showLoading === 'function') showLoading('Deleting marks...');
+    
+    try {
+        const { error } = await window.sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', subject)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        closeModal();
+        if (typeof showNotification === 'function') {
+            showNotification('✅ All marks deleted successfully!', false);
+        }
+        loadMarksData();
+        
+    } catch (error) {
+        console.error('Error deleting marks:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Error deleting marks: ' + error.message, true);
+        }
+    }
+    
+    if (typeof hideLoading === 'function') hideLoading();
+}
+
+// Import marks from CSV
+function importMarksCSV() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const csv = event.target.result;
+                const lines = csv.split('\n').filter(line => line.trim());
+                if (lines.length < 2) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('CSV file is empty', true);
+                    }
+                    return;
+                }
+                
+                // Parse headers
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                // Find column indices
+                const nameIdx = headers.findIndex(h => h.toLowerCase().includes('name'));
+                const admissionIdx = headers.findIndex(h => h.toLowerCase().includes('admission') || h.toLowerCase().includes('reg'));
+                const scoreIdx = headers.findIndex(h => h.toLowerCase().includes('score') || h.toLowerCase().includes('mark'));
+                const statusIdx = headers.findIndex(h => h.toLowerCase().includes('status'));
+                
+                let imported = 0;
+                let errors = 0;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    const admission = admissionIdx >= 0 ? values[admissionIdx] : '';
+                    const name = nameIdx >= 0 ? values[nameIdx] : '';
+                    const score = scoreIdx >= 0 ? parseFloat(values[scoreIdx]) || 0 : 0;
+                    const status = statusIdx >= 0 ? values[statusIdx] || 'present' : 'present';
+                    
+                    if (admission) {
+                        // Find the input for this admission
+                        const input = document.getElementById(`mark_${admission}`);
+                        if (input) {
+                            input.value = score;
+                            const statusSelect = document.getElementById(`status_${admission}`);
+                            if (statusSelect) {
+                                statusSelect.value = status;
+                            }
+                            input.dispatchEvent(new Event('change'));
+                            imported++;
+                        } else {
+                            errors++;
+                        }
+                    }
+                }
+                
+                if (typeof showNotification === 'function') {
+                    showNotification(`✅ Imported ${imported} marks, ${errors} skipped`, false);
+                }
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                if (typeof showNotification === 'function') {
+                    showNotification('Error importing: ' + error.message, true);
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+    fileInput.click();
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Load subjects when block changes 
+    document.getElementById('marksBlock').addEventListener('change', function() {
+        loadSubjectsForBlock(this.value);
+    });
+    
+    // Load subjects when year changes
+    document.getElementById('marksYear').addEventListener('change', function() {
+        const block = document.getElementById('marksBlock').value;
+        if (block) {
+            loadSubjectsForBlock(block);
+        }
+    });
+    
+    // Update max score for inputs
+    document.getElementById('marksMaxScore').addEventListener('change', function() {
+        const max = this.value || 100;
+        document.querySelectorAll('.marks-input').forEach(input => {
+            input.max = max;
+        });
+    });
+});
 // ============================================================
 // ALL GLOBAL FUNCTIONS - Called from HTML
 // ============================================================
