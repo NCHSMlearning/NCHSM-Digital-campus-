@@ -107,6 +107,7 @@ let autoSaveInterval = null;
 let unsavedChanges = false;
 const INTAKE_YEARS = ['2024', '2025', '2026'];
 
+// ✅ NEW (fillDownValues removed)
 let showLoading, hideLoading, showNotification, closeModal, markUnsaved;
 let displayXYFormsMarks, displayAssessmentMarks;
 let loadAdminMarks, loadAdminSubjects;
@@ -115,8 +116,7 @@ let showEntryControlPanel, showAdminMarks, showBlockSubjectControl;
 let showComprehensiveAnalytics, showScorePublishPanel, showFullReports;
 let renderWithSidebar, switchTab, toggleDarkMode, initDarkMode, refreshAllData;
 let apiCall, getMarkEntrySettings, logMarkEntry, calculateFinalScore, calculateGrade;
-let changeYear, changeExamType, updateContentArea, fillDownValues;
-
+let changeYear, changeExamType, updateContentArea;  // ✅ FIXED - no fillDownValues
 // ============================================================
 // SHOW LOGIN (GLOBAL)
 // ============================================================
