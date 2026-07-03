@@ -2109,7 +2109,7 @@
                 const programValue = document.getElementById('program_type').value;
                 userMetadata = {
                     ...userMetadata,
-                    admission_number: student_id_number,
+                    student_id: student_id_number,  // ← USE THIS COLUMN INSTEAD ✓
                     program: programValue,
                     course: programValue,
                     intake_year: intakeData.intake_year,
