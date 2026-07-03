@@ -982,24 +982,50 @@
             }
         }
         
-        const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
-        const combinedBlock = Array.from(group.blocks).join(' · ') || group.block_term || 'General';
-        const combinedProgram = Array.from(group.programs).join(' · ') || 'KRCHN Program';
-        
-        const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
-        const cat2Score = grade?.cat_2_score ?? null;
-        const finalScore = grade?.exam_score ?? null;
-        const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
-        const marks = grade?.marks ? parseFloat(grade.marks) : null;
-        
-        const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || 
-                                  grade.result_status === 'RELEASED' || grade.result_status === 'PENDING_REVIEW' || 
-                                  grade.result_status === 'PENDING' || marks !== null || totalPercentage !== null);
-        
-        const examType = (group.exam_type || '').toUpperCase();
-        const isCatExam = examType.includes('CAT');
-        const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
-        
+       const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
+const combinedBlock = Array.from(group.blocks).join(' · ') || group.block_term || 'General';
+
+// ✅ FIX: Determine if this is a TVET exam
+const examProgram = group.program_type || group.target_program || '';
+const isExamTVET = this.TVET_PROGRAMS.includes(examProgram) || 
+                   examProgram === 'TVET' || 
+                   examProgram === 'CPOTT' || examProgram === 'DPOTT' ||
+                   examProgram === 'DICT' || examProgram === 'DCH' ||
+                   examProgram === 'DHRIT' || examProgram === 'DSL' ||
+                   examProgram === 'DSW' || examProgram === 'DCJS' ||
+                   examProgram === 'DHSS' || examProgram === 'DME' ||
+                   examProgram === 'CCH' || examProgram === 'CHRIT' ||
+                   examProgram === 'CPC' || examProgram === 'CSL' ||
+                   examProgram === 'CSW' || examProgram === 'CCJS' ||
+                   examProgram === 'CAG' || examProgram === 'CHSS' ||
+                   examProgram === 'CICT' || examProgram === 'ACH' ||
+                   examProgram === 'AAG' || examProgram === 'ASW' ||
+                   examProgram === 'CCA' || examProgram === 'PTE';
+
+// ✅ Set combinedProgram based on exam type
+let combinedProgram = 'KRCHN Program';
+let programBadgeClass = 'badge-krchn';
+let programIcon = 'fa-graduation-cap';
+
+if (isExamTVET || this.isTVETStudent) {
+    combinedProgram = 'TVET Program';
+    programBadgeClass = 'badge-tvet';
+    programIcon = 'fa-tools';
+}
+
+const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
+const cat2Score = grade?.cat_2_score ?? null;
+const finalScore = grade?.exam_score ?? null;
+const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
+const marks = grade?.marks ? parseFloat(grade.marks) : null;
+
+const hasTaken = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL' || 
+                          grade.result_status === 'RELEASED' || grade.result_status === 'PENDING_REVIEW' || 
+                          grade.result_status === 'PENDING' || marks !== null || totalPercentage !== null);
+
+const examType = (group.exam_type || '').toUpperCase();
+const isCatExam = examType.includes('CAT');
+const isFinalExam = examType === 'EXAM' || examType === 'FINAL' || examType === 'END_TERM';
         // ============================================
         // 🕐 EXAM DATE/TIME - ALWAYS KENYA TIME (UTC+3)
         // ============================================
