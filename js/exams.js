@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    
+     
     console.log('✅ exams.js - ONE-CALL OPTIMIZED WITH EXTERNAL API INTEGRATION');
     
     // ============================================
