@@ -15,11 +15,13 @@
             this.userProfile = null;
             this.loaded = false;
             this.maxUnits = 15;
+            this.isSubmitting = false;  // ✅ NEW: Prevent double submission
             
             // User data
             this.programCode = null;
             this.programType = null;
             this.intakeYear = null;
+            this.intakeMonth = null;  // ✅ NEW: Store intake month
             this.userBlock = null;
             this.userTerm = null;
             this.isTVETStudent = false;
@@ -104,51 +106,52 @@
             return null;
         }
         
-       updateUserData() {
-    if (this.userProfile) {
-        let programFromProfile = this.userProfile.program || 'KRCHN';
-        
-        // TVET Program Codes
-        const tvetPrograms = [
-            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-            'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
-        ];
-        
-        if (tvetPrograms.includes(programFromProfile) || programFromProfile === 'TVET') {
-            this.isTVETStudent = true;
-            this.programCode = programFromProfile;
-            console.log('TVET Student detected. Program:', this.programCode);
-        } else {
-            this.isTVETStudent = false;
-            this.programCode = 'KRCHN';
-            console.log('KRCHN Student detected');
+        updateUserData() {
+            if (this.userProfile) {
+                let programFromProfile = this.userProfile.program || 'KRCHN';
+                
+                // TVET Program Codes
+                const tvetPrograms = [
+                    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                    'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+                ];
+                
+                if (tvetPrograms.includes(programFromProfile) || programFromProfile === 'TVET') {
+                    this.isTVETStudent = true;
+                    this.programCode = programFromProfile;
+                    console.log('TVET Student detected. Program:', this.programCode);
+                } else {
+                    this.isTVETStudent = false;
+                    this.programCode = 'KRCHN';
+                    console.log('KRCHN Student detected');
+                }
+                
+                // ✅ NEW: Store intake year and month
+                this.intakeYear = this.userProfile.intake_year || 2025;
+                this.intakeMonth = this.userProfile.intake_month || null;
+                
+                // Set block/term based on student type
+                if (this.isTVETStudent) {
+                    this.userTerm = this.userProfile.term || this.userProfile.block || 'Year 1 Term 1';
+                    this.userBlock = null;
+                } else {
+                    this.userBlock = this.userProfile.block || 'Block 1';
+                    this.userTerm = null;
+                }
+                
+                console.log('User data updated:', {
+                    programCode: this.programCode,
+                    programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
+                    intake: this.intakeYear,
+                    intakeMonth: this.intakeMonth,
+                    blockTerm: this.isTVETStudent ? this.userTerm : this.userBlock
+                });
+                
+                return true;
+            }
+            return false;
         }
-        
-        this.intakeYear = this.userProfile.intake_year || 2025;
-        
-        // Set block/term based on student type
-        if (this.isTVETStudent) {
-            // TVET uses terms like "Year 1 Term 1", "Year 1 Term 2", etc.
-            this.userTerm = this.userProfile.term || this.userProfile.block || 'Year 1 Term 1';
-            this.userBlock = null;
-        } else {
-            // KRCHN uses blocks like "Block 1", "Block 2", "Block 3", "Block 4"
-            this.userBlock = this.userProfile.block || 'Block 1';
-            this.userTerm = null;
-        }
-        
-        console.log('User data updated:', {
-            programCode: this.programCode,
-            programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
-            intake: this.intakeYear,
-            blockTerm: this.isTVETStudent ? this.userTerm : this.userBlock
-        });
-        
-        return true;
-    }
-    return false;
-}
         
         cacheElements() {
             this.availableBody = document.getElementById('availableUnitsBody');
@@ -178,6 +181,11 @@
                     e.preventDefault();
                     if (!this.userProfile) {
                         this.showError('Please log in first');
+                        return;
+                    }
+                    // ✅ Prevent double submission
+                    if (this.isSubmitting) {
+                        console.log('⏳ Submission already in progress...');
                         return;
                     }
                     this.submitRegistration();
@@ -296,11 +304,9 @@
                 // CRITICAL: Filter by program to separate KRCHN and TVET
                 if (this.programCode) {
                     if (this.isTVETStudent) {
-                        // TVET student - show only TVET units matching their program
                         query = query.eq('program', this.programCode);
                         console.log('Filtering for TVET program:', this.programCode);
                     } else {
-                        // KRCHN student - show only KRCHN units
                         query = query.eq('program', 'KRCHN');
                         console.log('Filtering for KRCHN program');
                     }
@@ -468,7 +474,17 @@
             this.updateSelectedCount();
         }
         
+        // ============================================
+        // ✅ SUBMIT REGISTRATION - WITH DUPLICATE PREVENTION
+        // ============================================
         async submitRegistration() {
+            // ✅ Prevent double submission
+            if (this.isSubmitting) {
+                console.log('⏳ Submission already in progress...');
+                this.showError('Please wait, your registration is already being processed.', 'warning');
+                return;
+            }
+            
             const regType = this.regType?.value;
             if (!regType) {
                 this.showError('Please select Registration Type', 'warning');
@@ -483,15 +499,53 @@
                 return;
             }
             
+            // ✅ Check if any selected units are already registered
+            const alreadyRegistered = [];
+            const newUnits = [];
+            
+            for (const code of selectedCodes) {
+                const existing = this.registeredUnits.find(u => u.unit_code === code);
+                if (existing) {
+                    alreadyRegistered.push(code);
+                } else {
+                    newUnits.push(code);
+                }
+            }
+            
+            // ✅ If all units are already registered, show warning
+            if (newUnits.length === 0) {
+                this.showError(`All selected units are already registered.\n\nAlready registered: ${alreadyRegistered.join(', ')}`, 'warning');
+                // Clear selections
+                document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
+                this.updateSelectedCount();
+                return;
+            }
+            
+            // ✅ If some units are already registered, ask user
+            if (alreadyRegistered.length > 0) {
+                const confirmResult = await Swal.fire({
+                    title: '⚠️ Some Units Already Registered',
+                    html: `The following units are already registered and will be skipped:<br><br>
+                           <strong>${alreadyRegistered.join(', ')}</strong><br><br>
+                           Proceed with ${newUnits.length} new unit(s)?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: `Yes, Register ${newUnits.length} Unit(s)`,
+                    cancelButtonText: 'Cancel'
+                });
+                
+                if (!confirmResult.isConfirmed) return;
+            }
+            
             const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
-            if (selectedCodes.length + currentTotal > this.maxUnits) {
+            if (newUnits.length + currentTotal > this.maxUnits) {
                 this.showError(`You can only register up to ${this.maxUnits} units total. You currently have ${currentTotal} units.`, 'warning');
                 return;
             }
             
             const confirmResult = await Swal.fire({
                 title: 'Confirm Registration',
-                text: `Submit ${selectedCodes.length} unit(s) for approval?`,
+                text: `Submit ${newUnits.length} unit(s) for approval?${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, Submit',
@@ -500,17 +554,25 @@
             
             if (!confirmResult.isConfirmed) return;
             
-            Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            // ✅ Set submitting flag and disable button
+            this.isSubmitting = true;
+            this.disableSubmitButton(true);
+            
+            Swal.fire({ 
+                title: 'Submitting...', 
+                allowOutsideClick: false, 
+                didOpen: () => { Swal.showLoading(); } 
+            });
             
             try {
                 const supabase = window.db?.supabase;
                 const studentId = this.userProfile?.user_id || this.userProfile?.id;
                 
-                // Get unit details
+                // Get unit details for only the new units
                 const { data: units, error: unitsError } = await supabase
                     .from('units_catalog')
                     .select('*')
-                    .in('unit_code', selectedCodes);
+                    .in('unit_code', newUnits);
                 
                 if (unitsError) throw unitsError;
                 
@@ -520,6 +582,8 @@
                     unit_name: unit.unit_name,
                     program: unit.program,
                     block: unit.block,
+                    intake_year: this.intakeYear,
+                    intake_month: this.intakeMonth,  // ✅ NEW: Store intake month
                     reg_type: regType,
                     status: 'pending',
                     submitted_date: new Date().toISOString(),
@@ -528,38 +592,92 @@
                     credits: unit.credits || 3
                 }));
                 
+                // ✅ Check for duplicate entries one more time before insert
+                const { data: existingRegs } = await supabase
+                    .from('student_unit_registrations')
+                    .select('unit_code')
+                    .eq('student_id', studentId)
+                    .in('unit_code', newUnits);
+                
+                const existingCodes = new Set((existingRegs || []).map(r => r.unit_code));
+                const finalRegistrations = registrations.filter(r => !existingCodes.has(r.unit_code));
+                
+                if (finalRegistrations.length === 0) {
+                    Swal.close();
+                    this.showError('No new units to register. All selected units are already registered.', 'warning');
+                    // Clear selections
+                    document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
+                    this.updateSelectedCount();
+                    this.isSubmitting = false;
+                    this.disableSubmitButton(false);
+                    return;
+                }
+                
                 const { error } = await supabase
                     .from('student_unit_registrations')
-                    .insert(registrations);
+                    .insert(finalRegistrations);
                 
-                if (error) throw error;
+                if (error) {
+                    // ✅ Handle unique constraint violation
+                    if (error.code === '23505') {
+                        Swal.close();
+                        this.showError('Some units were already registered. Please refresh and try again.', 'warning');
+                        await this.loadUnits();
+                        this.isSubmitting = false;
+                        this.disableSubmitButton(false);
+                        return;
+                    }
+                    throw error;
+                }
                 
                 Swal.close();
-                Swal.fire('Success', `${registrations.length} unit(s) submitted for approval!`, 'success');
+                Swal.fire('Success', `${finalRegistrations.length} unit(s) submitted for approval!${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`, 'success');
                 
                 // Clear selections
                 document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
                 if (this.selectAllCheckbox) this.selectAllCheckbox.checked = false;
+                this.updateSelectedCount();
                 
                 // Refresh data
                 await this.loadUnits();
                 
                 // Dispatch event to update exam card
                 document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
-                    detail: { approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length }
+                    detail: { 
+                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length 
+                    }
                 }));
                 
             } catch (error) {
                 Swal.close();
                 console.error('Error submitting registration:', error);
                 this.showError(`Failed to submit: ${error.message}`, 'error');
+            } finally {
+                // ✅ Always re-enable button
+                this.isSubmitting = false;
+                this.disableSubmitButton(false);
             }
         }
         
+        // ✅ Helper: Disable/enable submit button
+        disableSubmitButton(disabled) {
+            if (this.submitBtn) {
+                this.submitBtn.disabled = disabled;
+                this.submitBtn.style.opacity = disabled ? '0.6' : '1';
+                this.submitBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+                if (disabled) {
+                    this.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                } else {
+                    this.submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Registration';
+                }
+            }
+        }
+        
+        // ✅ Drop unit with duplicate check
         async dropUnit(unitCode) {
             const confirmResult = await Swal.fire({
                 title: 'Drop Unit?',
-                text: 'Are you sure you want to drop this unit?',
+                text: `Are you sure you want to drop unit ${unitCode}?`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, Drop',
@@ -574,22 +692,37 @@
                 const supabase = window.db?.supabase;
                 const studentId = this.userProfile?.user_id || this.userProfile?.id;
                 
+                // ✅ Check if unit exists before deleting
+                const { data: existing } = await supabase
+                    .from('student_unit_registrations')
+                    .select('id, status')
+                    .eq('student_id', studentId)
+                    .eq('unit_code', unitCode)
+                    .eq('status', 'pending')
+                    .maybeSingle();
+                
+                if (!existing) {
+                    Swal.close();
+                    this.showError('Unit not found or already approved.', 'warning');
+                    return;
+                }
+                
                 const { error } = await supabase
                     .from('student_unit_registrations')
                     .delete()
-                    .eq('student_id', studentId)
-                    .eq('unit_code', unitCode)
-                    .eq('status', 'pending');
+                    .eq('id', existing.id);
                 
                 if (error) throw error;
                 
                 Swal.close();
-                Swal.fire('Success', 'Unit dropped successfully!', 'success');
+                Swal.fire('Success', `Unit ${unitCode} dropped successfully!`, 'success');
                 await this.loadUnits();
                 
                 // Dispatch event to update exam card
                 document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
-                    detail: { approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length }
+                    detail: { 
+                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length 
+                    }
                 }));
                 
             } catch (error) {
@@ -620,78 +753,74 @@
             }
         }
         
-       async loadBlocks(supabase) {
-    try {
-        let query = supabase
-            .from('units_catalog')
-            .select('block')
-            .eq('status', 'active');
-        
-        // Filter by program to only show relevant blocks
-        if (this.programCode) {
-            if (this.isTVETStudent) {
-                query = query.eq('program', this.programCode);
-            } else {
-                query = query.eq('program', 'KRCHN');
+        async loadBlocks(supabase) {
+            try {
+                let query = supabase
+                    .from('units_catalog')
+                    .select('block')
+                    .eq('status', 'active');
+                
+                if (this.programCode) {
+                    if (this.isTVETStudent) {
+                        query = query.eq('program', this.programCode);
+                    } else {
+                        query = query.eq('program', 'KRCHN');
+                    }
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                let blocks = [...new Set(data.map(u => u.block))];
+                
+                // Sort blocks properly
+                if (this.isTVETStudent) {
+                    blocks.sort((a, b) => {
+                        const matchA = a.match(/Year (\d+) Term (\d+)/);
+                        const matchB = b.match(/Year (\d+) Term (\d+)/);
+                        if (matchA && matchB) {
+                            if (matchA[1] !== matchB[1]) return parseInt(matchA[1]) - parseInt(matchB[1]);
+                            return parseInt(matchA[2]) - parseInt(matchB[2]);
+                        }
+                        return a.localeCompare(b);
+                    });
+                } else {
+                    blocks.sort((a, b) => {
+                        const matchA = a.match(/Block (\d+)/);
+                        const matchB = b.match(/Block (\d+)/);
+                        if (matchA && matchB) {
+                            return parseInt(matchA[1]) - parseInt(matchB[1]);
+                        }
+                        return a.localeCompare(b);
+                    });
+                }
+                
+                let options = '<option value="">All Blocks</option>';
+                blocks.forEach(block => {
+                    options += `<option value="${this.escapeHtml(block)}">${this.escapeHtml(block)}</option>`;
+                });
+                
+                if (this.blockFilter) {
+                    this.blockFilter.innerHTML = options;
+                    
+                    if (this.isTVETStudent && this.userTerm) {
+                        if (blocks.includes(this.userTerm)) {
+                            this.blockFilter.value = this.userTerm;
+                        }
+                    } else if (!this.isTVETStudent && this.userBlock) {
+                        if (blocks.includes(this.userBlock)) {
+                            this.blockFilter.value = this.userBlock;
+                        }
+                    }
+                }
+                
+                console.log('Blocks loaded for', this.isTVETStudent ? 'TVET' : 'KRCHN', ':', blocks);
+                
+            } catch (error) {
+                console.error('Error loading blocks:', error);
             }
         }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        let blocks = [...new Set(data.map(u => u.block))];
-        
-        // Sort blocks properly
-        if (this.isTVETStudent) {
-            // TVET blocks: Year 1 Term 1, Year 1 Term 2, Year 2 Term 1, etc.
-            blocks.sort((a, b) => {
-                const matchA = a.match(/Year (\d+) Term (\d+)/);
-                const matchB = b.match(/Year (\d+) Term (\d+)/);
-                if (matchA && matchB) {
-                    if (matchA[1] !== matchB[1]) return parseInt(matchA[1]) - parseInt(matchB[1]);
-                    return parseInt(matchA[2]) - parseInt(matchB[2]);
-                }
-                return a.localeCompare(b);
-            });
-        } else {
-            // KRCHN blocks: Block 1, Block 2, Block 3, Block 4, etc.
-            blocks.sort((a, b) => {
-                const matchA = a.match(/Block (\d+)/);
-                const matchB = b.match(/Block (\d+)/);
-                if (matchA && matchB) {
-                    return parseInt(matchA[1]) - parseInt(matchB[1]);
-                }
-                return a.localeCompare(b);
-            });
-        }
-        
-        let options = '<option value="">All Blocks</option>';
-        blocks.forEach(block => {
-            options += `<option value="${this.escapeHtml(block)}">${this.escapeHtml(block)}</option>`;
-        });
-        
-        if (this.blockFilter) {
-            this.blockFilter.innerHTML = options;
-            
-            // Auto-select user's block/term if available
-            if (this.isTVETStudent && this.userTerm) {
-                if (blocks.includes(this.userTerm)) {
-                    this.blockFilter.value = this.userTerm;
-                }
-            } else if (!this.isTVETStudent && this.userBlock) {
-                if (blocks.includes(this.userBlock)) {
-                    this.blockFilter.value = this.userBlock;
-                }
-            }
-        }
-        
-        console.log('Blocks loaded for', this.isTVETStudent ? 'TVET' : 'KRCHN', ':', blocks);
-        
-    } catch (error) {
-        console.error('Error loading blocks:', error);
-    }
-}
         
         showLoading() {
             if (this.availableBody) {
@@ -728,6 +857,7 @@
                     isTVETStudent: this.isTVETStudent,
                     programCode: this.programCode,
                     intakeYear: this.intakeYear,
+                    intakeMonth: this.intakeMonth,  // ✅ NEW
                     block: this.userBlock,
                     term: this.userTerm,
                     timestamp: new Date().toISOString()
@@ -753,6 +883,7 @@
                 programCode: this.programCode,
                 programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
                 intakeYear: this.intakeYear,
+                intakeMonth: this.intakeMonth,  // ✅ NEW
                 block: this.userBlock,
                 term: this.userTerm
             };
