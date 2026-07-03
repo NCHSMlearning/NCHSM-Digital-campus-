@@ -338,102 +338,110 @@
     </div>
 </section>
 <!-- END DASHBOARD SECTION -->
-            <!-- ==================== PROFILE TAB ==================== -->
+            <!-- ==================== PROFILE TAB - COMPLETE ==================== -->
 <section id="profile" class="tab-content" hidden>
     <header class="profile-header">
         <h2>My Profile & Account</h2>
         <p class="profile-subtitle">View and manage your account information</p>
     </header>
     
+    <!-- Profile Status Message -->
+    <div id="profile-status" class="profile-status" style="display: none;"></div>
+    
     <form id="profile-form" class="profile-form" novalidate>
         <div class="profile-two-columns">
+            <!-- ============================================ -->
+            <!-- LEFT COLUMN - ALL FORM FIELDS -->
+            <!-- ============================================ -->
             <div class="profile-left">
-                <!-- Personal Information Section -->
+                
+                <!-- ===== PERSONAL INFORMATION ===== -->
                 <div class="profile-section">
                     <h3 class="section-title">Personal Information</h3>
                     <div class="profile-details grid-layout">
                         <div class="form-field full-width">
                             <label for="profile-name" class="required">Full Name</label>
                             <input type="text" id="profile-name" name="full-name" readonly required>
-                            <div id="name-help" class="help-text">Your legal name as on official documents</div>
+                            <div class="help-text">Your legal name as on official documents</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-student-id" class="required">Student ID</label>
                             <input type="text" id="profile-student-id" name="student-id" readonly>
-                            <div id="id-help" class="help-text">Your registration number</div>
+                            <div class="help-text">Your registration number</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-email" class="required">Email Address</label>
                             <input type="email" id="profile-email" name="email" readonly required>
-                            <div id="email-help" class="help-text">Used for login and notifications</div>
+                            <div class="help-text">Used for login and notifications</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-phone">Phone Number</label>
                             <input type="tel" id="profile-phone" name="phone" readonly>
-                            <div id="phone-help" class="help-text">Your primary contact number</div>
+                            <div class="help-text">Your primary contact number</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-alt-phone">Alternative Phone</label>
                             <input type="tel" id="profile-alt-phone" name="alt-phone" readonly>
-                            <div id="alt-phone-help" class="help-text">Emergency or secondary contact</div>
+                            <div class="help-text">Emergency or secondary contact</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-dob">Date of Birth</label>
                             <input type="date" id="profile-dob" name="dob" readonly>
-                            <div id="dob-help" class="help-text">Your date of birth</div>
+                            <div class="help-text">Your date of birth</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-gender">Gender</label>
-                            <select id="profile-gender" name="gender" disabled>
-                                <option value="">Select Gender</option>
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                            </select>
-                            <div id="gender-help" class="help-text">Your gender</div>
+                            <input type="text" id="profile-gender" name="gender" readonly>
+                            <div class="help-text">Your gender</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-national-id">National ID / Passport</label>
                             <input type="text" id="profile-national-id" name="national-id" readonly>
-                            <div id="national-id-help" class="help-text">Your National ID or Passport number</div>
+                            <div class="help-text">Your National ID or Passport number</div>
                         </div>
                         
-                        <div class="form-field">
+                        <div class="form-field full-width">
                             <label for="profile-address">Physical Address</label>
                             <input type="text" id="profile-address" name="address" readonly>
-                            <div id="address-help" class="help-text">Your residential address</div>
+                            <div class="help-text">Your residential address</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Guardian Information Section -->
+                <!-- ===== GUARDIAN INFORMATION ===== -->
                 <div class="profile-section">
                     <h3 class="section-title">Guardian Information</h3>
                     <div class="profile-details grid-layout">
                         <div class="form-field full-width">
                             <label for="profile-guardian-name">Parent/Guardian Name</label>
                             <input type="text" id="profile-guardian-name" name="guardian-name" readonly>
-                            <div id="guardian-name-help" class="help-text">For emergency contact purposes</div>
+                            <div class="help-text">For emergency contact purposes</div>
                         </div>
                         
                         <div class="form-field">
                             <label for="profile-guardian-phone">Guardian Phone</label>
                             <input type="tel" id="profile-guardian-phone" name="guardian-phone" readonly>
-                            <div id="guardian-phone-help" class="help-text">Guardian's contact number</div>
+                            <div class="help-text">Guardian's contact number</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Academic Information Section -->
+                <!-- ===== ACADEMIC INFORMATION (TVET/KRCHN SUPPORT) ===== -->
                 <div class="profile-section">
                     <h3 class="section-title">Academic Information</h3>
                     <div class="profile-details grid-layout">
+                        <div class="form-field">
+                            <label for="profile-role">Role</label>
+                            <input type="text" id="profile-role" name="role" readonly>
+                        </div>
+                        
                         <div class="form-field">
                             <label for="profile-program">Program</label>
                             <input type="text" id="profile-program" name="program" readonly>
@@ -445,9 +453,15 @@
                         </div>
                         
                         <div class="form-field">
+                            <label for="profile-intake-month">Intake Month</label>
+                            <input type="text" id="profile-intake-month" name="intake-month" readonly>
+                            <div class="help-text">TVET students: Your intake month</div>
+                        </div>
+                        
+                        <div class="form-field">
                             <label for="profile-admission-date">Admission Date</label>
                             <input type="date" id="profile-admission-date" name="admission-date" readonly>
-                            <div id="admission-help" class="help-text">Date you joined the college</div>
+                            <div class="help-text">Date you joined the college</div>
                         </div>
                         
                         <div class="form-field">
@@ -455,75 +469,60 @@
                             <input type="text" id="profile-admission-year" name="admission-year" readonly>
                         </div>
                         
-                        <div class="form-field">
-                            <label for="profile-block">Current Block</label>
+                        <div class="form-field" id="profile-block-field">
+                            <label for="profile-block">Current Block/Term</label>
                             <input type="text" id="profile-block" name="block" readonly>
-                            <div id="block-help" class="help-text">Your current academic block</div>
+                            <div class="help-text">KRCHN: Block | TVET: Term</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Academic Progress Section -->
+                <!-- ===== DOCUMENT STATUS ===== -->
+                <div class="profile-section">
+                    <h3 class="section-title">📄 Document Status</h3>
+                    <div class="profile-details grid-layout">
+                        <div class="form-field">
+                            <label for="profile-doc-kcse">KCSE Certificate</label>
+                            <input type="text" id="profile-doc-kcse" name="doc-kcse" readonly>
+                            <div class="help-text">Upload status: Pending / Uploaded / Verified / Rejected</div>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="profile-doc-id">ID / Passport / Birth Cert</label>
+                            <input type="text" id="profile-doc-id" name="doc-id" readonly>
+                            <div class="help-text">Upload status: Pending / Uploaded / Verified / Rejected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ACADEMIC PROGRESS ===== -->
                 <div class="profile-section">
                     <h3 class="section-title">Academic Progress</h3>
                     <div class="profile-details grid-layout">
                         <div class="form-field full-width">
-                            <label>Block Progression</label>
+                            <label>Progression Timeline</label>
                             <div class="block-progress-container">
                                 <div class="block-timeline" id="block-timeline-profile">
-                                    <div class="block-step" data-block="Introductory">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Introductory</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Block 1">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Block 1</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Block 2">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Block 2</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Block 3">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Block 3</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Block 4">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Block 4</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Block 5">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Block 5</span>
-                                    </div>
-                                    <div class="block-connector"></div>
-                                    <div class="block-step" data-block="Final">
-                                        <div class="block-marker"></div>
-                                        <span class="block-name">Final</span>
-                                    </div>
+                                    <!-- Dynamically populated -->
                                 </div>
                             </div>
                         </div>
                         
                         <div class="form-field full-width">
-                            <label>Block Progress Percentage</label>
+                            <label>Progress</label>
                             <div class="progress-container">
                                 <div class="progress-bar-block">
                                     <div class="progress-fill-block" id="block-progress-fill" style="width: 0%"></div>
                                 </div>
                                 <div class="progress-stats">
                                     <span id="block-progress-text">0% Complete</span>
-                                    <span id="current-block-status">Current: Introductory</span>
+                                    <span id="current-block-status">Current: Not Set</span>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="form-field full-width">
-                            <label>Completed Blocks</label>
+                            <label>Completed</label>
                             <div class="completed-blocks" id="completed-blocks">
                                 <span class="completed-badge">None yet</span>
                             </div>
@@ -531,7 +530,7 @@
                     </div>
                 </div>
 
-                <!-- Security Settings Section -->
+                <!-- ===== SECURITY SETTINGS ===== -->
                 <div class="profile-section">
                     <h3 class="section-title">Security Settings</h3>
                     <div class="profile-details grid-layout">
@@ -569,10 +568,14 @@
                 </div>
             </div>
 
-            <!-- Right Column - Profile Photo -->
+            <!-- ============================================ -->
+            <!-- RIGHT COLUMN - PROFILE PHOTO & DOCUMENTS -->
+            <!-- ============================================ -->
             <div class="profile-right">
+                
+                <!-- Profile Photo -->
                 <div class="photo-card">
-                    <h3>Profile Photo</h3>
+                    <h3>📸 Profile Photo</h3>
                     <div class="passport-photo-container-large">
                         <img id="passport-preview" src="https://dummyimage.com/160x160/cccccc/000000.png&text=Photo" alt="Profile photo" width="160" height="160">
                     </div>
@@ -589,10 +592,47 @@
                         <span>JPG, PNG, WebP up to 2MB</span>
                     </div>
                 </div>
+
+                <!-- Document Upload Cards -->
+                <div class="documents-card">
+                    <h3>📄 Upload Documents</h3>
+                    
+                    <!-- KCSE Certificate -->
+                    <div class="doc-upload-item" id="doc-kcse-item">
+                        <div class="doc-upload-header">
+                            <span class="doc-icon">📄</span>
+                            <span class="doc-label">KCSE Certificate</span>
+                            <span class="doc-status-badge" id="doc-kcse-badge">Pending</span>
+                        </div>
+                        <div class="doc-upload-controls">
+                            <input type="file" id="doc-kcse-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
+                            <button type="button" class="button button-secondary button-small" onclick="document.getElementById('doc-kcse-input').click()">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                            <span class="doc-file-name" id="doc-kcse-filename">No file selected</span>
+                        </div>
+                    </div>
+                    
+                    <!-- ID / Passport -->
+                    <div class="doc-upload-item" id="doc-id-item">
+                        <div class="doc-upload-header">
+                            <span class="doc-icon">🪪</span>
+                            <span class="doc-label">ID / Passport / Birth Cert</span>
+                            <span class="doc-status-badge" id="doc-id-badge">Pending</span>
+                        </div>
+                        <div class="doc-upload-controls">
+                            <input type="file" id="doc-id-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
+                            <button type="button" class="button button-secondary button-small" onclick="document.getElementById('doc-id-input').click()">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                            <span class="doc-file-name" id="doc-id-filename">No file selected</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Form Actions -->
+        <!-- ===== FORM ACTIONS ===== -->
         <div class="form-actions">
             <button type="button" id="edit-profile-button" class="button button-primary">
                 <span class="button-icon">✏️</span> Edit Profile
@@ -603,10 +643,6 @@
             <button type="button" id="cancel-edit-button" class="button button-text" style="display: none;">
                 Cancel
             </button>
-        </div>
-        
-        <div class="form-status">
-            <p id="profile-status" role="alert" aria-live="polite"></p>
         </div>
     </form>
 </section>
