@@ -4,7 +4,8 @@ class ProfileModule {
         this.userProfile = null;
         this.isEditing = false;
         this.photoObjectURL = null;
-        this.pendingPhotoFile = null; 
+        this.pendingPhotoFile = null;
+        this.pendingDocuments = {}; // Track pending document uploads
         
         this.initializeElements();
     }
@@ -30,22 +31,28 @@ class ProfileModule {
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
         this.profilePhone = document.getElementById('profile-phone');
-        this.profileAltPhone = document.getElementById('profile-alt-phone');        // NEW
+        this.profileAltPhone = document.getElementById('profile-alt-phone');
         this.profileDob = document.getElementById('profile-dob');
         this.profileGender = document.getElementById('profile-gender');
-        this.profileNationalId = document.getElementById('profile-national-id');    // NEW
-        this.profileAddress = document.getElementById('profile-address');           // NEW
+        this.profileNationalId = document.getElementById('profile-national-id');
+        this.profileAddress = document.getElementById('profile-address');
         
         // Guardian Information
-        this.profileGuardianName = document.getElementById('profile-guardian-name');   // NEW
-        this.profileGuardianPhone = document.getElementById('profile-guardian-phone'); // NEW
+        this.profileGuardianName = document.getElementById('profile-guardian-name');
+        this.profileGuardianPhone = document.getElementById('profile-guardian-phone');
         
         // Academic Information
         this.profileProgram = document.getElementById('profile-program');
         this.profileBlock = document.getElementById('profile-block');
         this.profileIntakeYear = document.getElementById('profile-intake-year');
+        this.profileIntakeMonth = document.getElementById('profile-intake-month'); // NEW
         this.profileAdmissionDate = document.getElementById('profile-admission-date');
         this.profileAdmissionYear = document.getElementById('profile-admission-year');
+        this.profileRole = document.getElementById('profile-role'); // NEW
+        
+        // Document Status
+        this.profileDocKcse = document.getElementById('profile-doc-kcse'); // NEW
+        this.profileDocId = document.getElementById('profile-doc-id'); // NEW
         
         // Block Progress elements
         this.blockProgressFill = document.getElementById('block-progress-fill');
@@ -69,8 +76,17 @@ class ProfileModule {
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
         
+        // ==================== DOCUMENT UPLOAD ELEMENTS ====================
+        this.docKcseInput = document.getElementById('doc-kcse-input');
+        this.docIdInput = document.getElementById('doc-id-input');
+        this.docKcseFilename = document.getElementById('doc-kcse-filename');
+        this.docIdFilename = document.getElementById('doc-id-filename');
+        this.docKcseBadge = document.getElementById('doc-kcse-badge');
+        this.docIdBadge = document.getElementById('doc-id-badge');
+        
         this.setupEventListeners();
         this.setupPasswordResetListeners();
+        this.setupDocumentListeners();
     }
     
     setupEventListeners() {
@@ -150,7 +166,119 @@ class ProfileModule {
         }
     }
     
-    // ==================== PASSWORD RESET LISTENERS ====================
+    // ============================================
+    // DOCUMENT UPLOAD LISTENERS
+    // ============================================
+    setupDocumentListeners() {
+        // KCSE Certificate upload
+        if (this.docKcseInput) {
+            this.docKcseInput.addEventListener('change', (e) => this.handleDocumentUpload(e, 'kcse'));
+        }
+        
+        // ID/Passport upload
+        if (this.docIdInput) {
+            this.docIdInput.addEventListener('change', (e) => this.handleDocumentUpload(e, 'id'));
+        }
+    }
+    
+    // ============================================
+    // DOCUMENT UPLOAD HANDLERS
+    // ============================================
+    async handleDocumentUpload(event, docType) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            this.showStatus('Invalid file type. Please upload PDF, JPG, or PNG.', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            this.showStatus('File too large. Maximum size is 5 MB.', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        // Update UI
+        const filenameEl = document.getElementById(`doc-${docType}-filename`);
+        const badgeEl = document.getElementById(`doc-${docType}-badge`);
+        
+        if (filenameEl) filenameEl.textContent = file.name;
+        if (badgeEl) {
+            badgeEl.textContent = 'Uploading...';
+            badgeEl.style.background = '#f59e0b';
+            badgeEl.style.color = '#78350f';
+        }
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('Database connection not available');
+            
+            // Upload to storage
+            const fileExt = file.name.split('.').pop();
+            const filePath = `documents/${this.userId}/${docType}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('user-documents')
+                .upload(filePath, file, { 
+                    cacheControl: '3600', 
+                    upsert: true,
+                    contentType: file.type
+                });
+            
+            if (uploadError) throw uploadError;
+            
+            // Update profile status
+            const docField = docType === 'kcse' ? 'doc_kcse' : 'doc_id';
+            const { error: updateError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    [docField]: 'uploaded',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', this.userId);
+            
+            if (updateError) throw updateError;
+            
+            // Update UI
+            if (badgeEl) {
+                badgeEl.textContent = '✅ Uploaded';
+                badgeEl.style.background = '#10b981';
+                badgeEl.style.color = 'white';
+            }
+            
+            // Update profile display field
+            const displayField = docType === 'kcse' ? this.profileDocKcse : this.profileDocId;
+            if (displayField) displayField.value = 'Uploaded';
+            
+            this.showStatus(`✅ ${docType.toUpperCase()} document uploaded successfully!`, 'success');
+            
+            // Update user profile
+            if (this.userProfile) {
+                this.userProfile[docField] = 'uploaded';
+            }
+            
+            // Log audit
+            await this.logAudit('DOCUMENT_UPLOAD', `Uploaded ${docType} document`, this.userId, 'SUCCESS');
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            if (badgeEl) {
+                badgeEl.textContent = '❌ Failed';
+                badgeEl.style.background = '#dc2626';
+                badgeEl.style.color = 'white';
+            }
+            this.showStatus(`Upload failed: ${error.message}`, 'error');
+            await this.logAudit('DOCUMENT_UPLOAD', `Failed to upload ${docType}: ${error.message}`, this.userId, 'FAILURE');
+        }
+    }
+    
+    // ============================================
+    // PASSWORD RESET LISTENERS
+    // ============================================
     setupPasswordResetListeners() {
         if (!this.newPassword) return;
         
@@ -187,7 +315,9 @@ class ProfileModule {
         }
     }
     
-    // ==================== PASSWORD STRENGTH FUNCTIONS ====================
+    // ============================================
+    // PASSWORD STRENGTH FUNCTIONS
+    // ============================================
     checkPasswordStrength(password) {
         if (!this.passwordStrengthBar || !this.passwordStrengthText) return;
         
@@ -487,6 +617,7 @@ class ProfileModule {
             
             this.populateProfileForm();
             await this.loadProfilePhoto();
+            this.updateDocumentStatus();
             this.updateBlockProgress();
             this.updateUIState('view');
             
@@ -504,7 +635,7 @@ class ProfileModule {
         if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
         if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
         if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';  // NEW
+        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
         
         // Date of Birth
         if (this.profileDob && this.userProfile.date_of_birth) {
@@ -524,19 +655,25 @@ class ProfileModule {
         }
         
         // National ID
-        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';  // NEW
+        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
         
         // Address
-        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';  // NEW
+        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
         
         // Guardian Information
-        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';  // NEW
-        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';  // NEW
+        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
+        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
         
         // Academic Information
+        if (this.profileRole) this.profileRole.value = this.userProfile.role || 'student';
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
-        if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+        if (this.profileBlock) {
+            const isTVET = this.isTVETStudent();
+            const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
+            this.profileBlock.value = blockOrTerm || 'Introductory';
+        }
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
+        if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
         
         // Admission Date
         if (this.profileAdmissionDate && this.userProfile.admission_date) {
@@ -559,21 +696,107 @@ class ProfileModule {
                 this.profileAdmissionYear.value = '';
             }
         }
+        
+        // Document Status
+        if (this.profileDocKcse) {
+            const status = this.userProfile.doc_kcse || 'pending';
+            this.profileDocKcse.value = this.getDocumentStatusText(status);
+        }
+        if (this.profileDocId) {
+            const status = this.userProfile.doc_id || 'pending';
+            this.profileDocId.value = this.getDocumentStatusText(status);
+        }
+    }
+    
+    isTVETStudent() {
+        const tvetPrograms = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+        ];
+        const program = this.userProfile?.program || '';
+        return tvetPrograms.includes(program) || program === 'TVET';
+    }
+    
+    getDocumentStatusText(status) {
+        const statusMap = {
+            'pending': '⏳ Pending',
+            'uploaded': '✅ Uploaded',
+            'verified': '✅ Verified',
+            'rejected': '❌ Rejected'
+        };
+        return statusMap[status] || '⏳ Pending';
+    }
+    
+    updateDocumentStatus() {
+        if (!this.userProfile) return;
+        
+        // Update badges
+        const docKcseBadge = document.getElementById('doc-kcse-badge');
+        const docIdBadge = document.getElementById('doc-id-badge');
+        
+        if (docKcseBadge) {
+            const status = this.userProfile.doc_kcse || 'pending';
+            docKcseBadge.textContent = this.getDocumentStatusText(status);
+            docKcseBadge.style.background = this.getStatusColor(status);
+            docKcseBadge.style.color = 'white';
+        }
+        
+        if (docIdBadge) {
+            const status = this.userProfile.doc_id || 'pending';
+            docIdBadge.textContent = this.getDocumentStatusText(status);
+            docIdBadge.style.background = this.getStatusColor(status);
+            docIdBadge.style.color = 'white';
+        }
+        
+        // Update filename displays
+        if (this.docKcseFilename && this.userProfile.doc_kcse === 'uploaded') {
+            this.docKcseFilename.textContent = '✅ Document uploaded';
+        }
+        if (this.docIdFilename && this.userProfile.doc_id === 'uploaded') {
+            this.docIdFilename.textContent = '✅ Document uploaded';
+        }
+    }
+    
+    getStatusColor(status) {
+        const colors = {
+            'pending': '#f59e0b',
+            'uploaded': '#10b981',
+            'verified': '#059669',
+            'rejected': '#dc2626'
+        };
+        return colors[status] || '#6b7280';
     }
     
     updateBlockProgress() {
         if (!this.userProfile) return;
         
-        const currentBlock = this.userProfile.block || this.userProfile.current_block || 'Introductory';
-        const blockOrder = {
-            'Introductory': 1,
-            'Block 1': 2,
-            'Block 2': 3,
-            'Block 3': 4,
-            'Block 4': 5,
-            'Block 5': 6,
-            'Final': 7
-        };
+        const isTVET = this.isTVETStudent();
+        const currentBlock = this.userProfile.block || this.userProfile.current_block || (isTVET ? 'Term 1' : 'Introductory');
+        
+        let blockOrder;
+        if (isTVET) {
+            blockOrder = {
+                'Term 1': 1,
+                'Term 2': 2,
+                'Term 3': 3,
+                'Term 4': 4,
+                'Term 5': 5,
+                'Term 6': 6,
+                'Final': 7,
+                'Introductory': 1
+            };
+        } else {
+            blockOrder = {
+                'Introductory': 1,
+                'Block 1': 2,
+                'Block 2': 3,
+                'Block 3': 4,
+                'Block 4': 5,
+                'Block 5': 6,
+                'Final': 7
+            };
+        }
         
         const totalBlocks = 7;
         const currentBlockNumber = blockOrder[currentBlock] || 1;
@@ -589,17 +812,24 @@ class ProfileModule {
         }
         
         if (this.currentBlockStatus) {
+            const label = isTVET ? 'Term' : 'Block';
             this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
         }
         
-        this.updateBlockTimeline(currentBlock);
-        this.updateCompletedBlocks(completedBlocksCount);
+        this.updateBlockTimeline(currentBlock, isTVET);
+        this.updateCompletedBlocks(completedBlocksCount, isTVET);
     }
     
-    updateBlockTimeline(currentBlock) {
+    updateBlockTimeline(currentBlock, isTVET) {
         if (!this.blockTimeline) return;
         
-        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        let blocks;
+        if (isTVET) {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Final'];
+        } else {
+            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        }
+        
         const currentIndex = blocks.indexOf(currentBlock);
         
         const blockSteps = this.blockTimeline.querySelectorAll('.block-step');
@@ -626,10 +856,16 @@ class ProfileModule {
         });
     }
     
-    updateCompletedBlocks(completedCount) {
+    updateCompletedBlocks(completedCount, isTVET) {
         if (!this.completedBlocksContainer) return;
         
-        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
+        let blocks;
+        if (isTVET) {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
+        } else {
+            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
+        }
+        
         const completedBlocksList = blocks.slice(0, completedCount);
         
         if (completedBlocksList.length === 0) {
@@ -793,9 +1029,13 @@ class ProfileModule {
             this.profileProgram,
             this.profileBlock,
             this.profileIntakeYear,
+            this.profileIntakeMonth,
             this.profileAdmissionDate,
             this.profileAdmissionYear,
-            this.profileNationalId
+            this.profileNationalId,
+            this.profileRole,
+            this.profileDocKcse,
+            this.profileDocId
         ];
         
         readonlyFields.forEach(field => {
@@ -917,6 +1157,7 @@ class ProfileModule {
             block: existingProfile?.block || this.userProfile?.block || null,
             current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
             intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
+            intake_month: existingProfile?.intake_month || this.userProfile?.intake_month || null,
             admission_date: existingProfile?.admission_date || this.userProfile?.admission_date || null,
             admission_year: existingProfile?.admission_year || this.userProfile?.admission_year || null,
             passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
@@ -928,7 +1169,9 @@ class ProfileModule {
             block_progress: existingProfile?.block_progress || null,
             role_id: existingProfile?.role_id || null,
             last_login: existingProfile?.last_login || null,
-            created_at: existingProfile?.created_at || new Date().toISOString()
+            created_at: existingProfile?.created_at || new Date().toISOString(),
+            doc_kcse: existingProfile?.doc_kcse || 'pending',
+            doc_id: existingProfile?.doc_id || 'pending'
         };
         
         Object.keys(upsertData).forEach(key => {
@@ -1119,14 +1362,14 @@ class ProfileModule {
             const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
             
-           // NEW (works correctly)
-const { error: updateError } = await supabase
-    .from('consolidated_user_profiles_table')
-    .update({ 
-        passport_url: publicUrl, 
-        updated_at: new Date().toISOString()
-    })
-    .eq('user_id', this.userId);
+            const { error: updateError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    passport_url: publicUrl, 
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', this.userId);
+            
             if (updateError) throw updateError;
             
             this.showStatus('Photo uploaded successfully!', 'success');
@@ -1223,4 +1466,4 @@ window.loadProfile = () => {
     if (profileModule) return profileModule.loadProfile();
 };
 
-console.log('Profile module loaded with all fields (Phone, Alt Phone, DOB, Gender, National ID, Address, Guardian Name, Guardian Phone)');
+console.log('✅ Profile module loaded with ALL fields (Phone, Alt Phone, DOB, Gender, National ID, Address, Guardian Name, Guardian Phone, Intake Month, Document Status, and Document Upload)');
