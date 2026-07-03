@@ -213,35 +213,46 @@
             
             return { type: 'KRCHN', level: 'KRCHN', code: 'KRCHN' };
         }
-        
         updateUserData() {
-            if (window.db?.currentUserProfile) {
-                this.userProfile = window.db.currentUserProfile;
-                const programFromProfile = this.userProfile.program || this.userProfile.course || 'KRCHN';
-                this.intakeYear = this.userProfile.intake_year || 2025;
-                this.userId = window.db.currentUserId;
-                
-                const programInfo = this.determineProgramType(programFromProfile);
-                this.programCode = programInfo.code;
-                this.programType = programInfo.type;
-                this.programLevel = programInfo.level;
-                this.isTVETStudent = (this.programType === 'TVET');
-                this.programName = this.getProgramDisplayName(programFromProfile);
-                
-                if (this.isTVETStudent) {
-                    this.userTerm = this.userProfile.term || this.userProfile.block || 'Term1';
-                    this.userBlock = null;
-                } else {
-                    this.userBlock = this.userProfile.block || 'A';
-                    this.userTerm = null;
-                }
-                
-                this.updateProgramIndicator();
-                return true;
-            }
-            return false;
+    if (window.db?.currentUserProfile) {
+        this.userProfile = window.db.currentUserProfile;
+        const programFromProfile = this.userProfile.program || this.userProfile.course || 'KRCHN';
+        this.intakeYear = this.userProfile.intake_year || 2025;
+        this.userId = window.db.currentUserId;
+        
+        const programInfo = this.determineProgramType(programFromProfile);
+        this.programCode = programInfo.code;
+        this.programType = programInfo.type;
+        this.programLevel = programInfo.level;
+        this.isTVETStudent = (this.programType === 'TVET');
+        this.programName = this.getProgramDisplayName(programFromProfile);
+        
+        // ✅ FIX: Set userBlock OR userTerm
+        if (this.isTVETStudent) {
+            // TVET: use term
+            this.userTerm = this.userProfile.term || this.userProfile.block || 'Term1';
+            this.userBlock = null; // TVET uses term, not block
+        } else {
+            // KRCHN: use block
+            this.userBlock = this.userProfile.block || 'A';
+            this.userTerm = null;
         }
         
+        console.log('✅ User data updated:', {
+            userId: this.userId,
+            programType: this.programType,
+            programCode: this.programCode,
+            isTVET: this.isTVETStudent,
+            userBlock: this.userBlock,
+            userTerm: this.userTerm,
+            intakeYear: this.intakeYear
+        });
+        
+        this.updateProgramIndicator();
+        return true;
+    }
+    return false;
+}
         getProgramDisplayName(programCode) {
             const code = String(programCode).toUpperCase().trim();
             const programNames = {
@@ -775,19 +786,30 @@
                 throw error;
             }
         }
-   processExamsData(exams, grades) {
+  processExamsData(exams, grades) {
     // ============================================
-    // ✅ EASIEST FIX: Filter exams by block and intake
+    // ✅ FIX: TVET students should match ANY TVET program
     // ============================================
-    const studentBlock = this.userBlock || this.userProfile?.block || 'Introductory';
+    const studentBlock = this.userBlock || this.userTerm || this.userProfile?.block || 'Term1';
     const studentIntake = this.intakeYear || this.userProfile?.intake_year || 2026;
     const studentProgram = this.programType || this.userProfile?.program || 'KRCHN';
+    const isTVET = this.isTVETStudent || this.TVET_PROGRAMS.includes(studentProgram);
     
     console.log('🔍 Filtering exams for:', {
         block: studentBlock,
         intake: studentIntake,
-        program: studentProgram
+        program: studentProgram,
+        isTVET: isTVET,
+        userBlock: this.userBlock,
+        userTerm: this.userTerm
     });
+    
+    // ✅ Define TVET programs for matching
+    const tvetPrograms = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+    ];
     
     // ✅ Filter exams before processing
     const filteredExams = exams.filter(exam => {
@@ -795,20 +817,41 @@
         const examIntake = exam.intake_year;
         const examProgram = exam.program_type || exam.target_program;
         
-        const blockMatch = examBlock === studentBlock;
-        const intakeMatch = examIntake == studentIntake;
-        const programMatch = examProgram === studentProgram || !examProgram;
+        // ✅ Block match - check both block and block_term
+        const blockMatch = examBlock === studentBlock || 
+                           examBlock === 'General' ||
+                           examBlock === 'All' ||
+                           !examBlock;
         
-        // Log mismatches for debugging
-        if (!blockMatch || !intakeMatch || !programMatch) {
-            console.log(`❌ Filtered out: ${exam.exam_name || exam.title || 'Unknown'}`, {
+        const intakeMatch = examIntake == studentIntake;
+        
+        // ✅ Program match - FIXED for TVET!
+        let programMatch = false;
+        if (isTVET) {
+            // TVET student: match if exam is for ANY TVET program
+            programMatch = tvetPrograms.includes(examProgram) || 
+                           examProgram === studentProgram ||
+                           studentProgram === examProgram ||
+                           examProgram === 'TVET';
+        } else {
+            // KRCHN student: match if exam is for KRCHN
+            programMatch = examProgram === 'KRCHN' || 
+                           examProgram === studentProgram ||
+                           studentProgram === examProgram ||
+                           !examProgram;
+        }
+        
+        // Log each exam for debugging
+        if (exam.title || exam.exam_name) {
+            console.log(`🔍 Exam "${exam.title || exam.exam_name}":`, {
                 examBlock,
                 studentBlock,
                 blockMatch,
-                examIntake,
-                studentIntake,
+                examProgram,
+                studentProgram,
+                programMatch,
                 intakeMatch,
-                reason: !blockMatch ? 'Block mismatch' : (!intakeMatch ? 'Intake mismatch' : 'Program mismatch')
+                isTVET
             });
         }
         
@@ -974,7 +1017,6 @@
             
             if (group.exam_start_time) {
                 const [hours, minutes, seconds] = group.exam_start_time.split(':');
-                // Create date in Kenya timezone
                 const dateStr = `${year}-${month}-${day}T${hours}:${minutes}:${seconds || '00'}`;
                 examStartDateTime = new Date(dateStr + '+03:00');
                 
@@ -987,7 +1029,6 @@
             
             examEndDateTime = new Date(examStartDateTime.getTime() + (group.duration_minutes || 40) * 60000);
             
-            // Format using Kenya timezone
             const dateOptions = { 
                 month: 'short', 
                 day: 'numeric', 
@@ -1162,7 +1203,6 @@
             }
         }
         
-        // Formatted graded date in Kenya time
         const formattedGradedDate = grade?.graded_at ? 
             formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : '--';
         
