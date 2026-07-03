@@ -2127,29 +2127,50 @@
         department: department 
     };
 }
-            // ============================================
-            // CREATE USER IN SUPABASE AUTH
-            // ============================================
-            const { data: authData, error: authError } = await sb.auth.signUp({
-                email, password,
-                options: { data: userMetadata }
-            });
-            
-            if (authError) {
-                if (authError.message.includes('User already registered')) {
-                    showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
-                    btn.disabled = false;
-                    document.getElementById('button-text').textContent = '✅ Create Account';
-                    return;
-                }
-                throw authError;
-            }
-            
-            console.log('✅ Auth user created:', authData.user.id);
-            
-            // Wait for trigger to create profile
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
+          // ============================================
+// CREATE USER IN SUPABASE AUTH - FIXED
+// ============================================
+console.log('📤 Sending user data:', {
+    email: email,
+    metadata: userMetadata
+});
+
+const { data: authData, error: authError } = await sb.auth.signUp({
+    email, 
+    password,
+    options: { 
+        user_metadata: userMetadata  // ✅ Changed from 'data' to 'user_metadata'
+    }
+});
+
+if (authError) {
+    if (authError.message.includes('User already registered')) {
+        showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
+        btn.disabled = false;
+        document.getElementById('button-text').textContent = '✅ Create Account';
+        return;
+    }
+    throw authError;
+}
+
+console.log('✅ Auth user created:', authData.user.id);
+console.log('📊 User metadata stored:', authData.user.user_metadata);
+
+// Wait for trigger to create profile
+await new Promise(resolve => setTimeout(resolve, 1500));
+
+// Verify the profile was created
+const { data: profile, error: profileError } = await sb
+    .from('consolidated_user_profiles_table')
+    .select('*')
+    .eq('user_id', authData.user.id)
+    .single();
+
+if (profileError) {
+    console.warn('⚠️ Profile not found yet, continuing...');
+} else {
+    console.log('✅ Profile created:', profile);
+}
             // ============================================
             // UPLOAD DOCUMENTS TO STORAGE
             // ============================================
