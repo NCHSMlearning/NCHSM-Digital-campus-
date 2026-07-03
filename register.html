@@ -2128,6 +2128,7 @@
     };
 }
           // ============================================
+// ============================================
 // CREATE USER IN SUPABASE AUTH - FIXED
 // ============================================
 console.log('📤 Sending user data:', {
@@ -2139,7 +2140,7 @@ const { data: authData, error: authError } = await sb.auth.signUp({
     email, 
     password,
     options: { 
-        user_metadata: userMetadata  // ✅ Changed from 'data' to 'user_metadata'
+        data: userMetadata  // ✅ Changed from 'user_metadata' to 'data'
     }
 });
 
@@ -2154,7 +2155,7 @@ if (authError) {
 }
 
 console.log('✅ Auth user created:', authData.user.id);
-console.log('📊 User metadata stored:', authData.user.user_metadata);
+console.log('📊 User metadata stored:', authData.user.user_metadata || authData.user.data);
 
 // Wait for trigger to create profile
 await new Promise(resolve => setTimeout(resolve, 1500));
