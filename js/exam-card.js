@@ -1,4 +1,4 @@
-// js/exam-card.js - v10.0 (Production ready - Full A4 optimized)
+// js/exam-card.js - v11.0 (TVET/KRCHN Support - Full A4 optimized)
 
 (function() {
     'use strict';
@@ -19,6 +19,13 @@
             get PIXEL_HEIGHT() { return this.HEIGHT_MM * this.DPI / 25.4; }
         }
     };
+    
+    // TVET Program Codes
+    const TVET_PROGRAMS = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+    ];
     
     /**
      * @typedef {Object} UnitRegistration
@@ -49,6 +56,8 @@
             this.userId = null;
             this.isLoading = false;
             this.pastExamRecords = [];
+            this.isTVET = false;
+            this.userLevel = 'KRCHN';
             this._boundHandlers = {};
             
             // Initialize
@@ -56,6 +65,40 @@
                 document.addEventListener('DOMContentLoaded', () => this.init());
             } else {
                 this.init();
+            }
+        }
+        
+        // ============================================
+        // TVET DETECTION HELPERS
+        // ============================================
+        
+        isTVETStudent() {
+            if (!this.userProfile) return false;
+            const program = this.userProfile.program || this.userProfile.program_type || '';
+            return TVET_PROGRAMS.includes(program) || program === 'TVET';
+        }
+        
+        getStudentLevel() {
+            if (!this.userProfile) return 'KRCHN';
+            return this.isTVETStudent() ? 'TVET' : 'KRCHN';
+        }
+        
+        getBlockLabel() {
+            return this.isTVET ? 'Current Term:' : 'Current Block:';
+        }
+        
+        getBlockValue() {
+            if (!this.userProfile) return 'N/A';
+            if (this.isTVET) {
+                return this.userProfile.term || 
+                       this.userProfile.current_term || 
+                       this.userProfile.block || 
+                       'Year 1 Term 1';
+            } else {
+                return this.userProfile.block || 
+                       this.userProfile.current_block || 
+                       this.userProfile.term || 
+                       'Introductory';
             }
         }
         
@@ -251,7 +294,20 @@
         updateUserData() {
             if (this.userProfile) {
                 this.userId = this.userProfile.user_id || this.userProfile.id || this.userProfile.student_id;
-                this.userBlock = this.userProfile.block || this.userProfile.current_block || this.userProfile.term;
+                
+                // ✅ FIX: Handle both block and term for TVET students
+                this.isTVET = this.isTVETStudent();
+                this.userLevel = this.isTVET ? 'TVET' : 'KRCHN';
+                this.userBlock = this.getBlockValue();
+                
+                console.log('📋 User data updated:', {
+                    userId: this.userId,
+                    block: this.userBlock,
+                    isTVET: this.isTVET,
+                    level: this.userLevel,
+                    program: this.userProfile.program
+                });
+                
                 return true;
             }
             return false;
@@ -307,18 +363,25 @@
             }
             
             try {
-                // Get actual user ID
+                // ✅ FIX: Get actual user ID
                 let actualUserId = this.userId;
-                const studentIdValue = this.userProfile?.student_id;
                 
-                if (studentIdValue) {
+                // For TVET students, use the UUID directly
+                if (this.userProfile?.user_id) {
+                    actualUserId = this.userProfile.user_id;
+                } else if (this.userProfile?.id) {
+                    actualUserId = this.userProfile.id;
+                } else if (this.userProfile?.student_id) {
+                    // Fallback: try to find by student_id (for older records)
                     const { data: userData } = await supabase
                         .from('consolidated_user_profiles_table')
                         .select('user_id')
-                        .eq('student_id', studentIdValue)
+                        .eq('student_id', this.userProfile.student_id)
                         .maybeSingle();
                     if (userData?.user_id) actualUserId = userData.user_id;
                 }
+                
+                console.log('🔍 Fetching approved units for user:', actualUserId);
                 
                 // Fetch with timeout
                 const timeoutPromise = new Promise((_, reject) => 
@@ -337,6 +400,7 @@
                 if (error) throw error;
                 
                 this.approvedUnits = data || [];
+                console.log(`✅ Found ${this.approvedUnits.length} approved units`);
                 return true;
             } catch (error) {
                 console.error('DB error:', error);
@@ -471,7 +535,7 @@
         }
         
         // ============================================
-        // EXAM CARD DISPLAY
+        // EXAM CARD DISPLAY - COMPLETE
         // ============================================
         
         displayExamCard() {
@@ -481,7 +545,18 @@
             const approvedUnits = this.approvedUnits;
             const isEligible = approvedUnits.length > 0;
             const examOver = this.isExamOver();
-            const currentBlock = this.userBlock || student?.block || 'Current Block';
+            
+            // ✅ FIX: Handle TVET vs KRCHN
+            const isTVET = this.isTVETStudent();
+            const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
+            const blockValue = this.getBlockValue();
+            
+            // ✅ FIX: Get correct student ID
+            const studentIdDisplay = student?.student_id || 
+                                    student?.admission_number || 
+                                    student?.user_id?.substring(0, 8) || 
+                                    'N/A';
+            const programDisplay = student?.program || student?.program_type || 'N/A';
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
@@ -536,6 +611,11 @@
                 </div>`;
             }
             
+            // ✅ FIX: Add student type badge
+            const studentTypeBadge = isTVET ? 
+                `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
+                `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
+            
             // Build the HTML
             const html = `
                 <div class="exam-card-wrapper" id="exam-card-print-area">
@@ -545,18 +625,21 @@
                             <img src="${CONFIG.LOGO_URL}" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
                             <div class="header-text">
                                 <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                                <div class="card-title">EXAMINATION CARD</div>
+                                <div class="card-title">
+                                    EXAMINATION CARD
+                                    ${studentTypeBadge}
+                                </div>
                                 <div class="card-subtitle">${examOver ? '(Historical Record)' : '(Exam Entry Permit)'}</div>
                             </div>
                             ${statusBadge}
                         </div>
                         
-                        <!-- Info Grid -->
+                        <!-- Info Grid - FIXED FOR TVET -->
                         <div class="info-grid">
                             <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'Not Available')}</div>
-                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(student?.student_id || 'N/A')}</div>
-                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(student?.program || 'N/A')}</div>
-                            <div class="info-item"><span class="info-label">Current Block:</span> <strong>${this.cleanText(currentBlock)}</strong></div>
+                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(studentIdDisplay)}</div>
+                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(programDisplay)}</div>
+                            <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${this.cleanText(blockValue)}</strong></div>
                             <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${approvedUnits.length}</strong></div>
                             <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
                             <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
@@ -740,6 +823,10 @@
                     font-weight: 800; 
                     letter-spacing: 1px; 
                     margin-top: 2px; 
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    flex-wrap: wrap;
                 }
                 .card-subtitle { 
                     font-size: 10px; 
@@ -1681,7 +1768,7 @@
     window.viewPastExam = (id) => examCardModule?.viewPastExam(id);
     window.downloadPastExamPDF = (id) => examCardModule?.downloadPastExamPDF(id);
     
-    console.log('✅ Exam Card module v10.0 ready - Full A4 optimized');
+    console.log('✅ Exam Card module v11.0 ready - TVET/KRCHN Support - Full A4 optimized');
     
     // Export for testing
     if (typeof module !== 'undefined' && module.exports) {
