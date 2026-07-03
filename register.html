@@ -2104,28 +2104,29 @@
                 full_name, role, phone, alt_phone, national_id,
                 date_of_birth: dob, gender, address, status: 'pending'
             };
-            
-            if (role === 'student') {
-                const programValue = document.getElementById('program_type').value;
-                userMetadata = {
-                    ...userMetadata,
-                    student_id: student_id_number,  // ← USE THIS COLUMN INSTEAD ✓
-                    program: programValue,
-                    course: programValue,
-                    intake_year: intakeData.intake_year,
-                    intake_month: intakeData.intake_month,
-                    current_block: defaultBlock,
-                    guardian_name, guardian_phone,
-                    admission_date: admissionDate,
-                    admission_year: today.getFullYear().toString(),
-                    // Document upload status - only KCSE & ID
-                    doc_kcse: uploadedDocs.kcse ? 'uploaded' : 'pending',
-                    doc_id: uploadedDocs.id ? 'uploaded' : 'pending'
-                };
-            } else if (role === 'lecturer') {
-                userMetadata = { ...userMetadata, staff_id, department };
-            }
-            
+          if (role === 'student') {
+    const programValue = document.getElementById('program_type').value;
+    userMetadata = {
+        ...userMetadata,
+        student_id: student_id_number,
+        program: programValue,
+        intake_year: intakeData.intake_year,
+        intake_month: intakeData.intake_month,
+        current_block: defaultBlock,
+        guardian_name: guardian_name,
+        guardian_phone: guardian_phone,
+        admission_date: admissionDate,
+        admission_year: today.getFullYear().toString(),
+        doc_kcse: uploadedDocs.kcse ? 'uploaded' : 'pending',
+        doc_id: uploadedDocs.id ? 'uploaded' : 'pending'
+    };
+} else if (role === 'lecturer') {
+    userMetadata = { 
+        ...userMetadata, 
+        staff_id: staff_id, 
+        department: department 
+    };
+}
             // ============================================
             // CREATE USER IN SUPABASE AUTH
             // ============================================
