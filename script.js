@@ -7306,6 +7306,7 @@ let allUnits = [];
 let currentBlockFilter = 'all';
 let pendingRegistrationsData = [];
 let approvedRegistrationsData = [];
+let pendingProgramFilter = 'all';  // ✅ NEW: For TVET/KRCHN filter
 
 // =====================================================
 // TOGGLE UNIT COURSES - POPULATES COURSE DROPDOWN
@@ -7402,7 +7403,7 @@ window.updateUnitBlockOptions = function(program) {
     blockSelect.innerHTML = '';
     
     if (programType === 'KRCHN') {
-        // KRCHN uses Blocks with NUMBERS (1-5)
+        // KRCHN uses Blocks with NUMBERS
         ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].forEach(block => {
             const opt = document.createElement('option');
             opt.value = block;
@@ -7410,8 +7411,8 @@ window.updateUnitBlockOptions = function(program) {
             blockSelect.appendChild(opt);
         });
     } else {
-        // TVET uses Terms
-        ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
+        // TVET uses Terms (NO Introductory!)
+        ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
             const opt = document.createElement('option');
             opt.value = term;
             opt.textContent = term;
@@ -7485,7 +7486,13 @@ function getBlockColor(block) {
         'Block 3': '#10b981',
         'Block 4': '#f59e0b',
         'Block 5': '#ef4444',
-        'Final': '#8b5cf6'
+        'Final': '#8b5cf6',
+        'Term 1': '#3b82f6',
+        'Term 2': '#06b6d4',
+        'Term 3': '#10b981',
+        'Term 4': '#f59e0b',
+        'Term 5': '#ef4444',
+        'Term 6': '#8b5cf6'
     };
     return colors[block] || '#6b7280';
 }
@@ -7498,7 +7505,13 @@ function getBlockEmoji(block) {
         'Block 3': '📒',
         'Block 4': '📙',
         'Block 5': '📕',
-        'Final': '🏆'
+        'Final': '🏆',
+        'Term 1': '📘',
+        'Term 2': '📗',
+        'Term 3': '📒',
+        'Term 4': '📙',
+        'Term 5': '📕',
+        'Term 6': '📚'
     };
     return emojis[block] || '📚';
 }
@@ -7917,7 +7930,7 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS - FIXED STUDENT NAMES
+// PENDING REGISTRATIONS - WITH TVET/KRCHN FILTER
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -7975,7 +7988,7 @@ async function loadUnitPendingRegistrations() {
         // ✅ Query using user_id (matches student_id in registrations)
         const { data: profiles, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, program, block')
+            .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
             .in('user_id', studentIds);
         
         if (profileError) {
@@ -7988,34 +8001,108 @@ async function loadUnitPendingRegistrations() {
                     full_name: p.full_name || 'Unknown',
                     student_id: p.student_id || p.user_id,
                     program: p.program || 'N/A',
-                    block: p.block || 'N/A'
+                    block: p.block || 'N/A',
+                    intake_year: p.intake_year || 'N/A',
+                    intake_month: p.intake_month || '',
+                    phone: p.phone || 'N/A',
+                    email: p.email || 'N/A'
                 };
             });
         }
         
-        console.log(`✅ Found ${Object.keys(studentInfo).length} student names out of ${studentIds.length} students`);
+        // ✅ Handle null student IDs
+        const hasNullStudent = studentIds.includes(null);
+        let nullStudentInfo = null;
+        if (hasNullStudent) {
+            const nullRegistrations = pendingRegistrationsData.filter(r => r.student_id === null);
+            if (nullRegistrations.length > 0) {
+                // Try to find by student_name if it exists
+                const firstNull = nullRegistrations[0];
+                if (firstNull.student_name) {
+                    const { data: found } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
+                        .eq('full_name', firstNull.student_name)
+                        .maybeSingle();
+                    
+                    if (found) {
+                        nullStudentInfo = {
+                            full_name: found.full_name,
+                            student_id: found.student_id || found.user_id,
+                            program: found.program || 'N/A',
+                            block: found.block || 'N/A',
+                            intake_year: found.intake_year || 'N/A',
+                            intake_month: found.intake_month || '',
+                            phone: found.phone || 'N/A',
+                            email: found.email || 'N/A'
+                        };
+                    }
+                }
+                
+                if (!nullStudentInfo) {
+                    nullStudentInfo = {
+                        full_name: '⚠️ Unknown Student (Needs Review)',
+                        student_id: 'N/A',
+                        program: 'N/A',
+                        block: 'N/A',
+                        intake_year: 'N/A',
+                        intake_month: '',
+                        phone: 'N/A',
+                        email: 'N/A'
+                    };
+                }
+            }
+        }
         
-        // ⭐ GROUP BY STUDENT
+        // ⭐ GROUP BY STUDENT with ALL data
         const groupedByStudent = {};
         for (const reg of pendingRegistrationsData) {
             const studentId = reg.student_id;
-            if (!groupedByStudent[studentId]) {
-                const info = studentInfo[studentId] || { 
-                    full_name: 'Unknown', 
-                    student_id: studentId,
+            
+            let info;
+            if (studentId === null) {
+                info = nullStudentInfo || {
+                    full_name: '⚠️ Unknown Student',
+                    student_id: 'N/A',
                     program: 'N/A',
-                    block: 'N/A'
+                    block: 'N/A',
+                    intake_year: 'N/A',
+                    intake_month: '',
+                    phone: 'N/A',
+                    email: 'N/A'
                 };
-                groupedByStudent[studentId] = {
+            } else {
+                info = studentInfo[studentId] || {
+                    full_name: '⚠️ Unknown Student',
+                    student_id: studentId.substring(0, 8) || 'N/A',
+                    program: 'N/A',
+                    block: 'N/A',
+                    intake_year: 'N/A',
+                    intake_month: '',
+                    phone: 'N/A',
+                    email: 'N/A'
+                };
+            }
+            
+            const key = studentId || 'null_student';
+            
+            if (!groupedByStudent[key]) {
+                const programType = getProgramType(info.program);
+                groupedByStudent[key] = {
                     id: studentId,
                     name: info.full_name,
                     student_id: info.student_id,
                     program: info.program,
                     block: info.block,
+                    intake: info.intake_year + (info.intake_month ? ' ' + info.intake_month : ''),
+                    phone: info.phone,
+                    email: info.email,
+                    programType: programType,
+                    isTVET: programType === 'TVET',
                     units: []
                 };
             }
-            groupedByStudent[studentId].units.push({
+            groupedByStudent[key].units.push({
                 id: reg.id,
                 unit_code: reg.unit_code,
                 unit_name: reg.unit_name,
@@ -8024,29 +8111,65 @@ async function loadUnitPendingRegistrations() {
             });
         }
         
-        // Build HTML - Grouped by Student
+        // Sort by name
+        const sortedGroups = Object.values(groupedByStudent);
+        sortedGroups.sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log(`✅ Grouped into ${sortedGroups.length} students with full data`);
+        
+        // ============================================
+        // BUILD HTML WITH FILTER CONTROLS
+        // ============================================
         let html = `
-            <!-- Header with summary -->
-            <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 12px; border: 1px solid #e5e7eb;">
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            <i class="fas fa-check-double"></i> Select All Units
-                        </button>
-                        <button onclick="clearAllUnitSelections()" class="btn-secondary" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            <i class="fas fa-times"></i> Clear Selection
-                        </button>
-                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            <i class="fas fa-check"></i> Approve Selected (<span id="selectedUnitsCount">0</span>)
-                        </button>
-                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger" style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            <i class="fas fa-trash"></i> Reject Selected
-                        </button>
-                    </div>
-                    <div style="font-size: 13px; color: #4b5563; background: white; padding: 6px 14px; border-radius: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                        <i class="fas fa-users"></i> ${Object.keys(groupedByStudent).length} students · 
-                        <i class="fas fa-book"></i> ${pendingRegistrationsData.length} units
-                    </div>
+            <!-- Filter Controls -->
+            <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-weight: 600; font-size: 13px; color: #1e293b;">
+                        <i class="fas fa-filter"></i> Filter:
+                    </span>
+                    <button onclick="filterPendingByProgram('all')" id="pendingFilterall" class="pending-filter-btn active" style="
+                        padding: 6px 16px; 
+                        border: 2px solid #4C1D95; 
+                        border-radius: 20px; 
+                        background: #4C1D95; 
+                        color: white; 
+                        cursor: pointer; 
+                        font-weight: 500; 
+                        font-size: 12px;
+                        transition: all 0.2s;
+                    ">
+                        <i class="fas fa-users"></i> All Students
+                    </button>
+                    <button onclick="filterPendingByProgram('KRCHN')" id="pendingFilterKRCHN" class="pending-filter-btn" style="
+                        padding: 6px 16px; 
+                        border: 2px solid #e5e7eb; 
+                        border-radius: 20px; 
+                        background: #e5e7eb; 
+                        color: #374151; 
+                        cursor: pointer; 
+                        font-weight: 500; 
+                        font-size: 12px;
+                        transition: all 0.2s;
+                    ">
+                        <i class="fas fa-graduation-cap"></i> 🎓 KRCHN
+                    </button>
+                    <button onclick="filterPendingByProgram('TVET')" id="pendingFilterTVET" class="pending-filter-btn" style="
+                        padding: 6px 16px; 
+                        border: 2px solid #e5e7eb; 
+                        border-radius: 20px; 
+                        background: #e5e7eb; 
+                        color: #374151; 
+                        cursor: pointer; 
+                        font-weight: 500; 
+                        font-size: 12px;
+                        transition: all 0.2s;
+                    ">
+                        <i class="fas fa-tools"></i> 🔧 TVET
+                    </button>
+                </div>
+                <div style="font-size: 13px; color: #4b5563; background: #f8fafc; padding: 6px 14px; border-radius: 20px; border: 1px solid #e5e7eb;">
+                    <i class="fas fa-users"></i> ${sortedGroups.length} students · 
+                    <i class="fas fa-book"></i> ${pendingRegistrationsData.length} units
                 </div>
             </div>
             
@@ -8055,7 +8178,7 @@ async function loadUnitPendingRegistrations() {
         `;
         
         // Loop through each student
-        for (const [studentId, student] of Object.entries(groupedByStudent)) {
+        for (const student of sortedGroups) {
             const firstUnit = student.units[0];
             const submittedDate = firstUnit?.submitted_date 
                 ? new Date(firstUnit.submitted_date).toLocaleString() 
@@ -8063,39 +8186,57 @@ async function loadUnitPendingRegistrations() {
             
             const unitCount = student.units.length;
             const isMulti = unitCount > 1;
+            const isUnknown = student.name.includes('Unknown') || student.name.includes('⚠️');
+            const programBadge = student.isTVET ? 
+                '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
+                '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
             
             html += `
                 <div class="student-group-card" style="
                     background: white; 
-                    border: 1px solid #e5e7eb; 
+                    border: 1px solid ${isUnknown ? '#f59e0b' : '#e5e7eb'}; 
                     border-radius: 12px; 
                     margin-bottom: 15px; 
                     padding: 16px; 
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
                     transition: all 0.2s;
+                    ${isUnknown ? 'border-left: 4px solid #f59e0b;' : ''}
                 "
+                data-program="${escapeHtml(student.program)}"
+                data-is-tvet="${student.isTVET}"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
                 onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'">
                     
                     <!-- Student Header -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; flex-wrap: wrap; gap: 10px;">
-                        <div>
+                        <div style="flex: 1; min-width: 0;">
                             <strong style="font-size: 16px; color: #1e3a5f;">
                                 <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
                                 ${escapeHtml(student.name)}
+                                ${programBadge}
                             </strong>
-                            <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
-                                <i class="fas fa-id-card"></i> ${escapeHtml(student.student_id?.substring(0, 8))}
-                            </span>
-                            <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
-                                <i class="fas fa-graduation-cap"></i> ${escapeHtml(student.program)}
-                            </span>
-                            <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
-                                <i class="fas fa-layer-group"></i> ${escapeHtml(student.block)}
-                            </span>
-                            <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
-                                <i class="fas fa-clock"></i> ${submittedDate}
-                            </span>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
+                                <span style="font-size: 12px; color: #6b7280;">
+                                    <i class="fas fa-id-card"></i> ${escapeHtml(student.student_id)}
+                                </span>
+                                <span style="font-size: 12px; color: #6b7280;">
+                                    <i class="fas fa-graduation-cap"></i> ${escapeHtml(student.program)}
+                                </span>
+                                <span style="font-size: 12px; color: #6b7280;">
+                                    <i class="fas fa-layer-group"></i> ${escapeHtml(student.block)}
+                                </span>
+                                <span style="font-size: 12px; color: #6b7280;">
+                                    <i class="fas fa-calendar"></i> ${escapeHtml(student.intake)}
+                                </span>
+                                ${student.phone && student.phone !== 'N/A' ? `
+                                    <span style="font-size: 12px; color: #6b7280;">
+                                        <i class="fas fa-phone"></i> ${escapeHtml(student.phone)}
+                                    </span>
+                                ` : ''}
+                                <span style="font-size: 12px; color: #6b7280;">
+                                    <i class="fas fa-clock"></i> ${submittedDate}
+                                </span>
+                            </div>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <span style="
@@ -8108,7 +8249,7 @@ async function loadUnitPendingRegistrations() {
                             ">
                                 <i class="fas fa-list"></i> ${unitCount} unit${unitCount > 1 ? 's' : ''}
                             </span>
-                            <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="
+                            <button onclick="approveStudentAllUnits('${student.id || 'null'}')" class="btn-success btn-sm" style="
                                 background: #059669; 
                                 color: white; 
                                 padding: 4px 14px; 
@@ -8122,7 +8263,7 @@ async function loadUnitPendingRegistrations() {
                             onmouseout="this.style.background='#059669'">
                                 <i class="fas fa-check"></i> Approve All
                             </button>
-                            <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="
+                            <button onclick="rejectStudentAllUnits('${student.id || 'null'}')" class="btn-danger btn-sm" style="
                                 background: #dc2626; 
                                 color: white; 
                                 padding: 4px 14px; 
@@ -8144,10 +8285,6 @@ async function loadUnitPendingRegistrations() {
             `;
             
             for (const unit of student.units) {
-                const unitSubmitted = unit.submitted_date 
-                    ? new Date(unit.submitted_date).toLocaleString() 
-                    : 'Unknown';
-                
                 html += `
                     <div class="unit-item" style="
                         display: flex; 
@@ -8161,7 +8298,7 @@ async function loadUnitPendingRegistrations() {
                     "
                     onmouseover="this.style.background='#f1f5f9'"
                     onmouseout="this.style.background='#f8fafc'">
-                        <input type="checkbox" class="unit-checkbox-item" data-reg-id="${unit.id}" data-student-id="${studentId}" onchange="updateSelectedUnitsCount()" style="width: 16px; height: 16px; cursor: pointer;">
+                        <input type="checkbox" class="unit-checkbox-item" data-reg-id="${unit.id}" data-student-id="${student.id || 'null'}" onchange="updateSelectedUnitsCount()" style="width: 16px; height: 16px; cursor: pointer;">
                         <div style="flex: 1; min-width: 0;">
                             <div>
                                 <strong style="font-size: 13px; color: #1e3a5f;">${escapeHtml(unit.unit_code)}</strong>
@@ -8217,11 +8354,16 @@ async function loadUnitPendingRegistrations() {
             <!-- Footer -->
             <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center; border: 1px solid #e5e7eb;">
                 <i class="fas fa-info-circle"></i> 
-                Total: <strong>${pendingRegistrationsData.length}</strong> pending unit(s) from <strong>${Object.keys(groupedByStudent).length}</strong> student(s)
+                Total: <strong>${pendingRegistrationsData.length}</strong> pending unit(s) from <strong>${sortedGroups.length}</strong> student(s)
             </div>
         `;
         
         container.innerHTML = html;
+        
+        // Apply any existing filter
+        if (pendingProgramFilter !== 'all') {
+            renderFilteredPendingRegistrations();
+        }
         
         // Update stats
         const pendingCountEl = document.getElementById('pendingRegistrations');
@@ -8229,7 +8371,7 @@ async function loadUnitPendingRegistrations() {
             pendingCountEl.textContent = pendingRegistrationsData.length;
         }
         
-        console.log('✅ Display complete - grouped by student!');
+        console.log('✅ Display complete - grouped by student with TVET/KRCHN filter!');
         
     } catch (error) {
         console.error('❌ Error loading pending registrations:', error);
@@ -8243,6 +8385,54 @@ async function loadUnitPendingRegistrations() {
             </div>
         `;
     }
+}
+
+// ============================================
+// FILTER PENDING REGISTRATIONS BY PROGRAM TYPE
+// ============================================
+
+function filterPendingByProgram(type) {
+    pendingProgramFilter = type;
+    
+    // Update button styles
+    document.querySelectorAll('.pending-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = '#e5e7eb';
+        btn.style.color = '#374151';
+        btn.style.borderColor = '#e5e7eb';
+    });
+    
+    const activeBtn = document.getElementById(`pendingFilter${type}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.color = 'white';
+        activeBtn.style.borderColor = '#4C1D95';
+    }
+    
+    renderFilteredPendingRegistrations();
+}
+
+function renderFilteredPendingRegistrations() {
+    const container = document.getElementById('pending-registrations-list');
+    if (!container) return;
+    
+    const cards = container.querySelectorAll('.student-group-card');
+    
+    cards.forEach(card => {
+        const program = card.dataset.program || '';
+        const isTVET = isTVETProgram(program);
+        
+        if (pendingProgramFilter === 'all') {
+            card.style.display = 'block';
+        } else if (pendingProgramFilter === 'TVET' && isTVET) {
+            card.style.display = 'block';
+        } else if (pendingProgramFilter === 'KRCHN' && !isTVET) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
 }
 
 // =====================================================
@@ -8375,10 +8565,6 @@ async function bulkRejectSelectedUnits() {
 }
 
 // =====================================================
-// APPROVED REGISTRATIONS - ENHANCED
-// =====================================================
-
-// =====================================================
 // APPROVED REGISTRATIONS - COMPLETE FIX
 // =====================================================
 
@@ -8412,106 +8598,35 @@ async function loadApprovedRegistrations() {
             return;
         }
         
-        // ============================================
-        // FIX: Clean student IDs (remove spaces, trim)
-        // ============================================
-        const studentIds = [...new Set(registrations.map(r => r.student_id?.trim()).filter(id => id))];
-        console.log('🔍 Looking up student IDs:', studentIds);
-        
-        // ============================================
-        // FIX: Query profiles with exact matching
-        // ============================================
+        // Get student names
+        const studentIds = [...new Set(registrations.map(r => r.student_id).filter(id => id))];
         let studentMap = {};
         
-        // Method 1: Query by user_id (UUID)
-        const { data: studentsByUserId, error: err1 } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id')
-            .in('user_id', studentIds);
-        
-        if (!err1 && studentsByUserId) {
-            studentsByUserId.forEach(s => {
-                studentMap[s.user_id] = s.full_name;
-                // Also map by student_id (text) for fallback
-                if (s.student_id) {
-                    studentMap[s.student_id] = s.full_name;
-                }
-            });
-            console.log(`✅ Found ${studentsByUserId.length} by user_id`);
-        }
-        
-        // Method 2: For any missing, try a case-insensitive approach
-        const missingIds = studentIds.filter(id => !studentMap[id]);
-        if (missingIds.length > 0) {
-            console.log(`🔍 Missing ${missingIds.length}, trying individual lookups...`);
+        if (studentIds.length > 0) {
+            const { data: profiles, error: err } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id')
+                .in('user_id', studentIds);
             
-            for (const id of missingIds) {
-                // Try exact match on user_id
-                const { data: exactMatch } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, student_id')
-                    .eq('user_id', id)
-                    .maybeSingle();
-                
-                if (exactMatch) {
-                    studentMap[exactMatch.user_id] = exactMatch.full_name;
-                    if (exactMatch.student_id) {
-                        studentMap[exactMatch.student_id] = exactMatch.full_name;
-                    }
-                    console.log(`✅ Found by exact user_id: ${id} → ${exactMatch.full_name}`);
-                    continue;
-                }
-                
-                // Try by student_id (text column)
-                const { data: studentMatch } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, student_id')
-                    .eq('student_id', id)
-                    .maybeSingle();
-                
-                if (studentMatch) {
-                    studentMap[studentMatch.user_id] = studentMatch.full_name;
-                    if (studentMatch.student_id) {
-                        studentMap[studentMatch.student_id] = studentMatch.full_name;
-                    }
-                    console.log(`✅ Found by student_id: ${id} → ${studentMatch.full_name}`);
-                    continue;
-                }
-                
-                // Try ilike (case-insensitive) as last resort
-                const { data: ilikeMatch } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, student_id')
-                    .ilike('user_id', `%${id.substring(0, 8)}%`)
-                    .maybeSingle();
-                
-                if (ilikeMatch) {
-                    studentMap[ilikeMatch.user_id] = ilikeMatch.full_name;
-                    if (ilikeMatch.student_id) {
-                        studentMap[ilikeMatch.student_id] = ilikeMatch.full_name;
-                    }
-                    console.log(`✅ Found by ilike: ${id} → ${ilikeMatch.full_name}`);
-                }
+            if (!err && profiles) {
+                profiles.forEach(p => {
+                    studentMap[p.user_id] = p.full_name;
+                    if (p.student_id) studentMap[p.student_id] = p.full_name;
+                });
             }
         }
         
-        console.log(`✅ Total names found: ${Object.keys(studentMap).length} out of ${studentIds.length}`);
-        
         // Build HTML
         let html = '';
-        let unknownCount = 0;
-        
         for (const reg of registrations) {
-            const studentName = studentMap[reg.student_id?.trim()] || 'Unknown';
-            if (studentName === 'Unknown') unknownCount++;
-            
+            const studentName = studentMap[reg.student_id] || 'Unknown';
             const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"></td>
-                    <td><strong style="color: #1e3a5f;">${escapeHtml(studentName)}</strong></td>
-                    <td style="font-family: monospace; font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8) || 'N/A'}...</td>
+                    <td><strong>${escapeHtml(studentName)}</strong></td>
+                    <td style="font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8) || 'N/A'}...</td>
                     <td><span class="badge badge-info">${escapeHtml(reg.unit_code)}</span></td>
                     <td>${escapeHtml(reg.unit_name)}</td>
                     <td><span class="badge badge-secondary">${escapeHtml(reg.block)}</span></td>
@@ -8526,10 +8641,6 @@ async function loadApprovedRegistrations() {
                     </td>
                 </tr>
             `;
-        }
-        
-        if (unknownCount > 0) {
-            console.log(`⚠️ ${unknownCount} registrations have unknown student names`);
         }
         
         tbody.innerHTML = html;
@@ -8693,6 +8804,8 @@ window.initUnitForm = initUnitForm;
 window.getBlockColor = getBlockColor;
 window.getBlockEmoji = getBlockEmoji;
 window.getProgramName = getProgramName;
+window.filterPendingByProgram = filterPendingByProgram;
+window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
 
 console.log('✅ Unit Registration Management module loaded');
 
@@ -8733,6 +8846,17 @@ unitStyles.textContent = `
     .card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .pending-filter-btn {
+        transition: all 0.2s ease;
+    }
+    .pending-filter-btn:hover {
+        transform: scale(1.02);
+    }
+    .pending-filter-btn.active {
+        background: #4C1D95 !important;
+        color: white !important;
+        border-color: #4C1D95 !important;
     }
 `;
 document.head.appendChild(unitStyles);
