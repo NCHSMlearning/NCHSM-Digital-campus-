@@ -2725,14 +2725,14 @@ async function loadAllUsers() {
     const tbody = $('users-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="7">Loading all users...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">Loading all users...</td></tr>';
 
     const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
         .select('*')
         .order('full_name', { ascending: true });
     
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8">Error loading users: ${error.message}</td></tr>`;
         return;
     }
 
@@ -2743,25 +2743,19 @@ async function loadAllUsers() {
             .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
 
         const isBlocked = u.block_program_year === true;
-        const isApproved = u.status === 'approved';
+        const isApproved = u.status === 'approved' || u.status === 'active';
         const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
         const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
         
-        // Get program info
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
         const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
         const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
         
-        // ============================================
-        // FIX: Use display intake function
-        // ============================================
-        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
-
-        // Escape for security
-        const escapedUserId = escapeHtml(u.user_id);
-        const escapedName = escapeHtml(u.full_name);
-        const escapedRole = escapeHtml(u.role);
+        // ✅ FIX: Show intake_year + intake_month
+        const intakeDisplay = u.intake_year ? 
+            `${u.intake_year}${u.intake_month ? ' ' + u.intake_month : ''}` : 
+            'N/A';
 
         tbody.innerHTML += `
             <tr>
@@ -2770,7 +2764,7 @@ async function loadAllUsers() {
                 <td>${escapeHtml(u.email)}</td>
                 <td>
                     <select class="btn" 
-                            onchange="updateUserRole('${escapedUserId}', this.value, '${escapedName}')" 
+                            onchange="updateUserRole('${escapeHtml(u.user_id)}', this.value, '${escapeHtml(u.full_name)}')" 
                             ${u.role === 'superadmin' ? 'disabled' : ''}>
                         ${roleOptions}
                     </select>
@@ -2781,12 +2775,12 @@ async function loadAllUsers() {
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
-                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ← FIXED: Shows full intake string -->
+                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ✅ Updated -->
                 <td class="${statusClass}">${statusText}</td>
                 <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
-                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Review & Approve</button>` : ''}
-                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                    <button class="btn btn-map" onclick="openEditUserModal('${escapeHtml(u.user_id)}')">Edit</button>
+                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')">Review & Approve</button>` : ''}
+                    <button class="btn btn-delete" onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')">Delete</button>
                 </td>
             </tr>`;
     });
@@ -2942,7 +2936,7 @@ async function loadStudents() {
 // Make globally accessible
 window.loadStudents = loadStudents;
 // ============================================
-// OPEN EDIT USER MODAL
+// OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -2963,31 +2957,48 @@ async function openEditUserModal(userId) {
             return;
         }
 
-        // Safely set values with null checks
-        const editUserId = document.getElementById('edit_user_id');
-        const editUserIdDisplay = document.getElementById('edit_user_id_display');
-        const editUserName = document.getElementById('edit_user_name');
-        const editUserEmail = document.getElementById('edit_user_email');
-        const editUserRole = document.getElementById('edit_user_role');
+        // ============================================
+        // SET ALL FIELDS - Personal Information
+        // ============================================
+        document.getElementById('edit_user_id').value = user.user_id;
+        document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
+        document.getElementById('edit_user_name').value = user.full_name || '';
+        document.getElementById('edit_user_email').value = user.email || '';
+        document.getElementById('edit_user_phone').value = user.phone || '';
+        document.getElementById('edit_user_alt_phone').value = user.alt_phone || '';
+        document.getElementById('edit_user_gender').value = user.gender || '';
+        document.getElementById('edit_user_dob').value = user.date_of_birth || '';
+        document.getElementById('edit_user_national_id').value = user.national_id || '';
+        document.getElementById('edit_user_address').value = user.address || '';
+
+        // ============================================
+        // SET ACADEMIC INFORMATION
+        // ============================================
+        document.getElementById('edit_user_role').value = user.role || 'student';
+        document.getElementById('edit_user_student_id').value = user.student_id || '';
+        document.getElementById('edit_user_intake_year').value = user.intake_year || '';
+        document.getElementById('edit_user_intake_month').value = user.intake_month || '';
+        document.getElementById('edit_user_guardian_name').value = user.guardian_name || '';
+        document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
+        document.getElementById('edit_user_status').value = user.status || 'pending';
+
+        // ============================================
+        // SET DOCUMENT STATUS
+        // ============================================
+        document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
+        document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
+
+        // ============================================
+        // HANDLE PROGRAM DROPDOWN
+        // ============================================
         const editUserProgram = document.getElementById('edit_user_program');
-        const editUserIntake = document.getElementById('edit_user_intake');
-        const editUserBlockStatus = document.getElementById('edit_user_block_status');
         const editUserBlock = document.getElementById('edit_user_block');
 
-        if (editUserId) editUserId.value = user.user_id;
-        if (editUserIdDisplay) editUserIdDisplay.textContent = user.user_id.substring(0, 8) + '...';
-        if (editUserName) editUserName.value = user.full_name || '';
-        if (editUserEmail) editUserEmail.value = user.email || '';
-        if (editUserRole) editUserRole.value = user.role || 'student';
-        if (editUserIntake) editUserIntake.value = user.intake_year || '2024';
-        if (editUserBlockStatus) editUserBlockStatus.value = user.block_program_year ? 'true' : 'false';
-        
-        // CRITICAL FIX: Update program dropdown AND block options in correct order
         if (editUserProgram) {
             // Step 1: Update the program dropdown with all options
             updateProgramDropdown(editUserProgram);
             
-            // Step 2: Set the program value (this triggers the change event)
+            // Step 2: Set the program value
             editUserProgram.value = user.program || 'KRCHN';
             
             // Step 3: Manually trigger the change event to update block options
@@ -3002,14 +3013,23 @@ async function openEditUserModal(userId) {
                     
                     // Set the block value
                     setTimeout(() => {
-                        editUserBlock.value = user.block || '';
-                        console.log('Block/Term set to:', user.block);
+                        editUserBlock.value = user.current_block || user.block || 'Introductory';
+                        console.log('✅ Block/Term set to:', user.current_block || user.block);
                     }, 50);
                 }
             }, 100);
         }
-        
+
+        // ============================================
+        // CLEAR PASSWORD FIELDS (for security)
+        // ============================================
+        document.getElementById('edit_user_new_password').value = '';
+        document.getElementById('edit_user_confirm_password').value = '';
+
+        // Show the modal
         modal.style.display = 'flex';
+        
+        console.log('✅ Edit user modal opened for:', user.full_name);
         
     } catch (e) {
         console.error('Error in openEditUserModal:', e);
@@ -3018,55 +3038,81 @@ async function openEditUserModal(userId) {
 }
 
 // ============================================
-// HANDLE EDIT USER
+// HANDLE EDIT USER - SAVE ALL FIELDS
 // ============================================
 
 async function handleEditUser(e) {
-    e.preventDefault(); 
+    e.preventDefault();
     const submitButton = e.submitter;
     if (!submitButton) {
         console.error("Form submitter button not found.");
-        return; 
+        return;
     }
 
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
     try {
-        const userId = $('edit_user_id').value;
+        const userId = document.getElementById('edit_user_id').value;
         if (!userId) throw new Error('User ID is missing.');
 
+        // ============================================
+        // COLLECT ALL FORM DATA
+        // ============================================
         const updatedData = {
-            full_name: $('edit_user_name').value.trim(),
-            email: $('edit_user_email').value.trim(),
-            role: $('edit_user_role').value,
-            program: $('edit_user_program').value || null,
-            intake_year: $('edit_user_intake').value || null,
-            block: $('edit_user_block').value || null,
-            block_program_year: $('edit_user_block_status').value === 'true',
-            status: 'approved',
+            full_name: document.getElementById('edit_user_name').value.trim(),
+            email: document.getElementById('edit_user_email').value.trim(),
+            phone: document.getElementById('edit_user_phone').value.trim() || null,
+            alt_phone: document.getElementById('edit_user_alt_phone').value.trim() || null,
+            role: document.getElementById('edit_user_role').value,
+            program: document.getElementById('edit_user_program').value || null,
+            student_id: document.getElementById('edit_user_student_id').value.trim() || null,
+            intake_year: document.getElementById('edit_user_intake_year').value.trim() || null,
+            intake_month: document.getElementById('edit_user_intake_month').value || null,
+            current_block: document.getElementById('edit_user_block').value || 'Introductory',
+            status: document.getElementById('edit_user_status').value,
+            gender: document.getElementById('edit_user_gender').value || null,
+            date_of_birth: document.getElementById('edit_user_dob').value || null,
+            national_id: document.getElementById('edit_user_national_id').value.trim() || null,
+            address: document.getElementById('edit_user_address').value.trim() || null,
+            guardian_name: document.getElementById('edit_user_guardian_name').value.trim() || null,
+            guardian_phone: document.getElementById('edit_user_guardian_phone').value.trim() || null,
+            doc_kcse: document.getElementById('edit_user_doc_kcse').value || 'pending',
+            doc_id: document.getElementById('edit_user_doc_id').value || 'pending',
             updated_at: new Date().toISOString()
         };
 
-        const newPassword = $('edit_user_new_password').value.trim();
-        const confirmPassword = $('edit_user_confirm_password').value.trim();
+        // ============================================
+        // HANDLE PASSWORD RESET (Optional)
+        // ============================================
+        const newPassword = document.getElementById('edit_user_new_password').value.trim();
+        const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
         
         if (newPassword && newPassword !== confirmPassword) {
-            showFeedback('Passwords do not match!', 'error');
+            showFeedback('❌ Passwords do not match!', 'error');
             setButtonLoading(submitButton, false, originalText);
-            return; 
+            return;
         }
 
-        // Update profile
-        const { data: updatedRow, error: profileError } = await sb
+        if (newPassword && newPassword.length < 6) {
+            showFeedback('❌ Password must be at least 6 characters.', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+
+        // ============================================
+        // UPDATE PROFILE
+        // ============================================
+        const { error: profileError } = await sb
             .from(USER_PROFILE_TABLE)
             .update(updatedData)
-            .eq('user_id', userId)
-            .select('*');
+            .eq('user_id', userId);
 
         if (profileError) throw profileError;
 
-        // Update password if provided
+        // ============================================
+        // UPDATE PASSWORD IF PROVIDED
+        // ============================================
         if (newPassword) {
             const { error: pwError } = await sb.auth.admin.updateUserById(userId, {
                 password: newPassword
@@ -3074,34 +3120,34 @@ async function handleEditUser(e) {
 
             if (pwError) {
                 console.warn('⚠️ Password update failed:', pwError);
-                showFeedback('User profile saved, but password update failed.', 'warning');
+                showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
+            } else {
+                console.log('✅ Password updated successfully');
             }
         }
 
-        // Log audit
+        // ============================================
+        // LOG AUDIT & SHOW FEEDBACK
+        // ============================================
         await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name}`, userId, 'SUCCESS');
         showFeedback('✅ User profile updated successfully!', 'success');
+
+        // ============================================
+        // CLOSE MODAL & REFRESH DATA
+        // ============================================
+        document.getElementById('userEditModal').style.display = 'none';
+        document.getElementById('edit_user_new_password').value = '';
+        document.getElementById('edit_user_confirm_password').value = '';
         
-        // Close modal and reset
-        $('userEditModal').style.display = 'none';
-        $('edit_user_new_password').value = '';
-        $('edit_user_confirm_password').value = '';
-        
-        // Refresh data
-        loadAllUsers();
-        loadStudents();
-        loadDashboardData?.();
+        // Refresh all tables
+        await loadAllUsers();
+        await loadStudents();
+        await loadPendingApprovals();
+        await loadDashboardData();
 
     } catch (err) {
         console.error('❌ Error in handleEditUser:', err);
-        showFeedback(`Failed to update user: ${err.message}`, 'error');
-        
-        try {
-            const userId = $('edit_user_id')?.value || 'unknown';
-            await logAudit('USER_EDIT', `Failed to edit user: ${err.message}`, userId, 'FAILURE');
-        } catch (logErr) {
-            console.error('Audit log failed:', logErr);
-        }
+        showFeedback(`❌ Failed to update user: ${err.message}`, 'error');
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
@@ -4037,7 +4083,7 @@ function getSelectedClassesForExam() {
     return selected;
 }
 
-// ========== CREATE EXAM ==========
+// ========== CREATE EXAM - WITH INTAKE MONTH ==========
 async function handleAddExam(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -4059,6 +4105,7 @@ async function handleAddExam(e) {
     const exam_date = document.getElementById('exam_date')?.value;
     const exam_status = document.getElementById('exam_status')?.value;
     const intake = parseInt(document.getElementById('exam_intake')?.value);
+    const intake_month = document.getElementById('exam_intake_month')?.value || null;  // ✅ NEW
     const block_term = document.getElementById('exam_block_term')?.value;
     
     const marks_out_of = parseInt(document.getElementById('exam_out_of')?.value) || 100;
@@ -4078,7 +4125,7 @@ async function handleAddExam(e) {
     try {
         // Map to your actual column names
         const examData = {
-            title: exam_title,           // Your column is 'title', not 'exam_name'
+            title: exam_title,
             exam_type: exam_type,
             exam_date: exam_date,
             exam_start_time: exam_start_time,
@@ -4086,7 +4133,8 @@ async function handleAddExam(e) {
             target_program: selected_program,
             program_type: selected_program,
             intake_year: intake,
-            block: block_term,           // Your column is 'block', not 'block_term'
+            intake_month: intake_month,  // ✅ NEW - Store intake month
+            block: block_term,
             course_id: course_id,
             online_link: exam_link,
             status: exam_status,
@@ -4106,7 +4154,7 @@ async function handleAddExam(e) {
 
         if (error) throw error;
 
-        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, data?.[0]?.id, 'SUCCESS');
+        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, Intake: ${intake} ${intake_month || ''}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, data?.[0]?.id, 'SUCCESS');
         showFeedback(`✅ Assessment added successfully!`, 'success');
         
         if (e.target) e.target.reset();
@@ -4163,12 +4211,12 @@ async function calculateExamProgress(examId) {
     }
 }
 
-// ========== LOAD EXAMS ==========
+// ========== LOAD EXAMS - WITH INTAKE MONTH ==========
 async function loadExams() {
     const tbody = document.getElementById('exams-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="11">Loading exams/CATs...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12">Loading exams/CATs...</td></tr>';
 
     // Use your actual column names
     const { data: exams, error } = await sb
@@ -4177,12 +4225,12 @@ async function loadExams() {
         .order('exam_date', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="11">Error loading exams: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12">Error loading exams: ${error.message}</td></tr>`;
         return;
     }
 
     if (!exams || exams.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11">No exams found. Create your first exam!<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="12">No exams found. Create your first exam!<\/td><\/tr>';
         populateStudentExams([]);
         return;
     }
@@ -4193,6 +4241,11 @@ async function loadExams() {
         const dateTime = new Date(e.exam_date).toLocaleDateString() + ' ' + (e.exam_start_time || '');
         const courseName = e.course?.course_name || 'N/A';
         const type = e.exam_type || 'N/A';
+        
+        // ✅ Display intake with month
+        const intakeDisplay = e.intake_year ? 
+            `${e.intake_year}${e.intake_month ? ' ' + e.intake_month : ''}` : 
+            'N/A';
         
         const progress = await calculateExamProgress(e.id);
         const progressPercent = progress.percentage;
@@ -4210,12 +4263,12 @@ async function loadExams() {
             </div>
         `;
 
-       let actionsHtml = `
-    <button class="btn-action" onclick="openEditExamModal('${e.id}')">Edit</button>
-    <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.title, true)}')">Grade</button>
-    ${e.status !== 'Completed' ? `<button class="btn-action" onclick="closeExam('${e.id}')" style="background: #F59E0B; color: white;">Close</button>` : ''}
-    <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.title, true)}')">Delete</button>
-`;
+        let actionsHtml = `
+            <button class="btn-action" onclick="openEditExamModal('${e.id}')">Edit</button>
+            <button class="btn-action" onclick="openGradeModal('${e.id}', '${escapeHtml(e.title, true)}')">Grade</button>
+            ${e.status !== 'Completed' ? `<button class="btn-action" onclick="closeExam('${e.id}')" style="background: #F59E0B; color: white;">Close</button>` : ''}
+            <button class="btn btn-delete" onclick="deleteExam('${e.id}', '${escapeHtml(e.title, true)}')">Delete</button>
+        `;
         
         if (e.online_link || e.exam_link) {
             const link = e.online_link || e.exam_link;
@@ -4232,10 +4285,11 @@ async function loadExams() {
                 <td>${passMark}%</td>
                 <td>${dateTime}</td>
                 <td>${escapeHtml(e.duration_minutes + ' mins' || 'N/A')}</td>
-                <td>${progressBar}</td>
+                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ✅ NEW: Intake column -->
+                <td>${escapeHtml(e.block || 'N/A')}</td>  <!-- ✅ NEW: Block column -->
                 <td>${statusBadge}</td>
                 <td>${actionsHtml}</td>
-             `;
+             </tr>`;
     }
 
     populateStudentExams(exams);
@@ -4249,7 +4303,6 @@ function getExamStatusBadge(status) {
     };
     return statusMap[status] || `<span class="badge">${status}</span>`;
 }
-
 // ========== POPULATE STUDENT EXAMS ==========
 async function populateStudentExams(exams) {
     const studentExamsContainer = document.getElementById('student-exams');
