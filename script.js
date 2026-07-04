@@ -1235,7 +1235,147 @@ async function loadDashboardData() {
     // Load Welcome Message
     loadStudentWelcomeMessage();
 }
+// ============================================
+// LOAD STUDENT STATISTICS - NURSING VS TVET
+// ============================================
 
+async function loadStudentStatistics() {
+    console.log('📊 Loading student statistics...');
+    
+    try {
+        // Get ALL approved students
+        const { data: students, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, program, gender, role, status, intake_year, block')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            document.getElementById('statsTotalStudents').textContent = '0';
+            document.getElementById('statsKrchnCount').textContent = '0';
+            document.getElementById('statsTvetCount').textContent = '0';
+            document.getElementById('statsProgramCount').textContent = '0';
+            document.getElementById('statsMaleTotal').textContent = '0';
+            document.getElementById('statsFemaleTotal').textContent = '0';
+            document.getElementById('statsMalePercent').textContent = '0%';
+            document.getElementById('statsFemalePercent').textContent = '0%';
+            document.getElementById('statsProgramBreakdown').innerHTML = 
+                '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">No students found</td></tr>';
+            return;
+        }
+        
+        // Calculate statistics
+        const totalStudents = students.length;
+        
+        // KRCHN vs TVET
+        const krchnStudents = students.filter(s => s.program === 'KRCHN');
+        const tvetStudents = students.filter(s => isTVETProgram(s.program));
+        const krchnCount = krchnStudents.length;
+        const tvetCount = tvetStudents.length;
+        
+        // Gender breakdown
+        const maleStudents = students.filter(s => s.gender === 'M' || s.gender === 'Male');
+        const femaleStudents = students.filter(s => s.gender === 'F' || s.gender === 'Female');
+        const maleCount = maleStudents.length;
+        const femaleCount = femaleStudents.length;
+        
+        // Gender percentages
+        const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
+        const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
+        
+        // Get unique programs
+        const uniquePrograms = [...new Set(students.map(s => s.program).filter(p => p))];
+        const programCount = uniquePrograms.length;
+        
+        // Update summary cards
+        document.getElementById('statsTotalStudents').textContent = totalStudents;
+        document.getElementById('statsKrchnCount').textContent = krchnCount;
+        document.getElementById('statsTvetCount').textContent = tvetCount;
+        document.getElementById('statsProgramCount').textContent = programCount;
+        document.getElementById('statsMaleTotal').textContent = maleCount;
+        document.getElementById('statsFemaleTotal').textContent = femaleCount;
+        document.getElementById('statsMalePercent').textContent = malePercent + '%';
+        document.getElementById('statsFemalePercent').textContent = femalePercent + '%';
+        
+        // Build program breakdown table
+        let html = '';
+        const programData = [];
+        
+        for (const programCode of uniquePrograms) {
+            const progStudents = students.filter(s => s.program === programCode);
+            const progTotal = progStudents.length;
+            const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+            const progFemale = progStudents.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+            const progType = getProgramType(programCode);
+            const progName = getProgramDisplayName(programCode);
+            const progPercent = totalStudents > 0 ? ((progTotal / totalStudents) * 100).toFixed(1) : 0;
+            
+            const ratio = progFemale > 0 ? (progMale / progFemale).toFixed(2) : (progMale > 0 ? '∞' : '0');
+            const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
+            
+            programData.push({
+                code: programCode,
+                name: progName,
+                type: progType,
+                total: progTotal,
+                male: progMale,
+                female: progFemale,
+                percent: progPercent,
+                ratio: ratioDisplay
+            });
+        }
+        
+        // Sort by total (descending)
+        programData.sort((a, b) => b.total - a.total);
+        
+        function getProgramBadge(type) {
+            return type === 'KRCHN' 
+                ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
+                : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
+        }
+        
+        for (const prog of programData) {
+            const barWidth = prog.percent;
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px 14px;"><strong>${escapeHtml(prog.name)}</strong></td>
+                    <td style="padding: 10px 14px; text-align: center;">${getProgramBadge(prog.type)}</td>
+                    <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
+                    <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
+                    <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
+                    <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${prog.ratio}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${barWidth}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
+                            </div>
+                            <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${barWidth}%</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        document.getElementById('statsProgramBreakdown').innerHTML = html;
+        document.getElementById('statsLastUpdated').textContent = new Date().toLocaleTimeString();
+        
+        console.log('✅ Student statistics loaded:', {
+            total: totalStudents,
+            krchn: krchnCount,
+            tvet: tvetCount,
+            male: maleCount,
+            female: femaleCount,
+            programs: programCount
+        });
+        
+    } catch (error) {
+        console.error('Error loading student statistics:', error);
+        document.getElementById('statsProgramBreakdown').innerHTML = 
+            `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`;
+    }
+}
 async function loadTotalDailyCheckIns() {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0); 
