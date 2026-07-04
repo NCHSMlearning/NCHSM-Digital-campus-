@@ -1,84 +1,83 @@
-// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DATABASE FIX & AUTO-MIGRATION
+// js/nurseiq.js - COMPLETE FULL VERSION
 // ============================================
-// HELPER FUNCTION: Get Current User ID
+
+// ============================================
+// TVET PROGRAM CODES & DISPLAY NAMES
+// ============================================
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+const PROGRAM_DISPLAY_NAMES = {
+    'KRCHN': 'KRCHN Nursing',
+    'DPOTT': 'Diploma in Perioperative Theatre Technology',
+    'DCH': 'Diploma in Community Health',
+    'DHRIT': 'Diploma in Health Records and IT',
+    'DSL': 'Diploma in Science Lab',
+    'DSW': 'Diploma in Social Work & Community Development',
+    'DCJS': 'Diploma in Criminal Justice',
+    'DHSS': 'Diploma in Health Support Services',
+    'DICT': 'Diploma in ICT',
+    'DME': 'Diploma in Medical Engineering',
+    'CPOTT': 'Certificate in Perioperative Theatre Technology',
+    'CCH': 'Certificate in Community Health',
+    'CHRIT': 'Certificate in Health Records and IT',
+    'CPC': 'Certificate in Patient Care',
+    'CSL': 'Certificate in Science Lab',
+    'CSW': 'Certificate in Social Work & Community Development',
+    'CCJS': 'Certificate in Criminal Justice',
+    'CAG': 'Certificate in Agriculture',
+    'CHSS': 'Certificate in Health Support Services',
+    'CICT': 'Certificate in ICT',
+    'ACH': 'Artisan in Community Health',
+    'AAG': 'Artisan in Agriculture',
+    'ASW': 'Artisan in Social Work & Community Development',
+    'CCA': 'Certificate in Computer Applications',
+    'PTE': 'TVET/CDACC (PTE)'
+};
+
+// ============================================
+// HELPER: Get Current User ID
 // ============================================
 function getCurrentUserId() {
-    // PRIORITY 1: Check for user ID from the page's logged-in user
-    if (window.userData && window.userData.id) {
-        console.log('✅ Found user ID from window.userData:', window.userData.id);
-        return window.userData.id;
-    }
-    
-    if (window.currentUser && window.currentUser.id) {
-        console.log('✅ Found user ID from window.currentUser:', window.currentUser.id);
-        return window.currentUser.id;
-    }
-    
-    // Check for user ID in meta tags from the backend
+    if (window.userData?.id) return window.userData.id;
+    if (window.currentUser?.id) return window.currentUser.id;
     const userIdMeta = document.querySelector('meta[name="user-id"]')?.content;
-    if (userIdMeta) {
-        console.log('✅ Found user ID from meta tag:', userIdMeta);
-        return userIdMeta;
-    }
-    
-    // Check for user ID in data attributes on body
+    if (userIdMeta) return userIdMeta;
     const bodyUserId = document.body.getAttribute('data-user-id');
-    if (bodyUserId) {
-        console.log('✅ Found user ID from body attribute:', bodyUserId);
-        return bodyUserId;
-    }
-    
-    // Check localStorage for the correct ID from login
+    if (bodyUserId) return bodyUserId;
     const storedUserId = localStorage.getItem('userId') || 
                         localStorage.getItem('currentUserId') ||
                         localStorage.getItem('studentId') ||
                         localStorage.getItem('user_id');
-    if (storedUserId) {
-        console.log('✅ Found user ID from localStorage:', storedUserId);
-        return storedUserId;
-    }
-    
-    // Check sessionStorage
+    if (storedUserId) return storedUserId;
     const sessionUserId = sessionStorage.getItem('userId') ||
                          sessionStorage.getItem('currentUserId') ||
                          sessionStorage.getItem('user_id');
-    if (sessionUserId) {
-        console.log('✅ Found user ID from sessionStorage:', sessionUserId);
-        return sessionUserId;
-    }
+    if (sessionUserId) return sessionUserId;
+    if (window.app?.user?.id) return window.app.user.id;
+    if (window.USER_ID) return window.USER_ID;
     
-    // Check if there's a global user object from the main app
-    if (window.app && window.app.user && window.app.user.id) {
-        console.log('✅ Found user ID from window.app:', window.app.user.id);
-        return window.app.user.id;
-    }
-    
-    // Check for user ID in a global variable
-    if (window.USER_ID) {
-        console.log('✅ Found user ID from window.USER_ID:', window.USER_ID);
-        return window.USER_ID;
-    }
-    
-    // Fallback: Create a session-based ID for anonymous users
     let anonymousId = sessionStorage.getItem('anonymousUserId');
     if (!anonymousId) {
         anonymousId = 'anonymous_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('anonymousUserId', anonymousId);
     }
-    
-    console.log('⚠️ Using anonymous user ID:', anonymousId);
     return anonymousId;
 }
-
-// Make it globally available
 window.getCurrentUserId = getCurrentUserId;
 
 // ============================================
-// NURSE IQ MODULE CLASS
+// COMPLETE NURSEIQ MODULE CLASS
 // ============================================
 class NurseIQModule {
     constructor() {
         this.userId = null;
+        this.userProfile = null;
+        this.currentProgram = 'nursing';
+        this.programDisplayName = 'KRCHN Nursing';
         this.studentQuestionBankSearch = null;
         this.nurseiqSearchBtn = null;
         this.clearSearchBtn = null;
@@ -98,7 +97,510 @@ class NurseIQModule {
         this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
         this.saveTimeout = null;
+        
+        // Active test tracking
+        this.activeSessionId = null;
+        this.testStartTime = null;
+        this.lastProgressUpdate = null;
+        this.heartbeatInterval = null;
     }
+    
+    // ============================================
+    // PROGRAM DETECTION
+    // ============================================
+    detectUserProgram() {
+        console.log('🔍 Detecting user program...');
+        let profile = null;
+        
+        if (window.currentUserProfile) profile = window.currentUserProfile;
+        else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
+        else if (window.userProfile) profile = window.userProfile;
+        else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
+        
+        if (!profile) {
+            try {
+                const savedProfile = localStorage.getItem('userProfile');
+                if (savedProfile) profile = JSON.parse(savedProfile);
+            } catch (e) {}
+        }
+        
+        if (profile) {
+            this.userProfile = profile;
+            console.log('📊 User profile data:', profile);
+            
+            if (profile.program) {
+                const programCode = String(profile.program).toUpperCase().trim();
+                console.log(`  Checking program: "${programCode}"`);
+                
+                if (TVET_PROGRAMS.includes(programCode)) {
+                    this.currentProgram = 'tvet';
+                    this.programDisplayName = PROGRAM_DISPLAY_NAMES[programCode] || programCode;
+                    console.log(`✅ Detected TVET: ${programCode} - ${this.programDisplayName}`);
+                    this.updateUIForProgram();
+                    return 'tvet';
+                }
+                
+                if (programCode === 'KRCHN') {
+                    this.currentProgram = 'nursing';
+                    this.programDisplayName = 'KRCHN Nursing';
+                    console.log('✅ Detected KRCHN Nursing');
+                    this.updateUIForProgram();
+                    return 'nursing';
+                }
+                
+                const progLower = String(profile.program).toLowerCase();
+                if (progLower.includes('nursing') || progLower.includes('krchn') || 
+                    progLower.includes('health') || progLower.includes('medical')) {
+                    this.currentProgram = 'nursing';
+                    this.programDisplayName = profile.program;
+                    console.log(`✅ Detected Nursing from: "${profile.program}"`);
+                    this.updateUIForProgram();
+                    return 'nursing';
+                }
+            }
+            
+            if (profile.program_type) {
+                const typeLower = String(profile.program_type).toLowerCase();
+                if (typeLower === 'tvet' || typeLower === 'vocational' || typeLower === 'technical') {
+                    this.currentProgram = 'tvet';
+                    this.programDisplayName = 'TVET Program';
+                    console.log('✅ Detected TVET from program_type');
+                    this.updateUIForProgram();
+                    return 'tvet';
+                } else if (typeLower === 'nursing' || typeLower === 'health') {
+                    this.currentProgram = 'nursing';
+                    this.programDisplayName = 'Nursing Program';
+                    console.log('✅ Detected Nursing from program_type');
+                    this.updateUIForProgram();
+                    return 'nursing';
+                }
+            }
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mode') === 'tvet') {
+            this.currentProgram = 'tvet';
+            this.programDisplayName = 'TVET (Test)';
+            this.updateUIForProgram();
+            return 'tvet';
+        } else if (urlParams.get('mode') === 'nursing') {
+            this.currentProgram = 'nursing';
+            this.programDisplayName = 'Nursing (Test)';
+            this.updateUIForProgram();
+            return 'nursing';
+        }
+        
+        const storedMode = localStorage.getItem('nurseiq_program_mode');
+        if (storedMode === 'tvet') {
+            this.currentProgram = 'tvet';
+            this.programDisplayName = 'TVET (Stored)';
+            this.updateUIForProgram();
+            return 'tvet';
+        } else if (storedMode === 'nursing') {
+            this.currentProgram = 'nursing';
+            this.programDisplayName = 'Nursing (Stored)';
+            this.updateUIForProgram();
+            return 'nursing';
+        }
+        
+        console.log('⚠️ No program detected, defaulting to Nursing');
+        this.currentProgram = 'nursing';
+        this.programDisplayName = 'KRCHN Nursing (Default)';
+        this.updateUIForProgram();
+        return 'nursing';
+    }
+    
+    // ============================================
+    // UPDATE UI BASED ON PROGRAM
+    // ============================================
+    updateUIForProgram() {
+        const isNursing = this.currentProgram === 'nursing';
+        const isTVET = this.currentProgram === 'tvet';
+        
+        console.log(`🔄 Updating UI for: ${this.currentProgram} (${this.programDisplayName})`);
+        
+        const titleEl = document.getElementById('nurseiqTitle');
+        const subtitleEl = document.getElementById('nurseiqSubtitle');
+        const badgeEl = document.getElementById('nurseiqSubtitleBadge');
+        const iconEl = document.getElementById('nurseiqIcon');
+        const welcomeIcon = document.getElementById('welcomeIconElement');
+        const welcomeTitle = document.getElementById('welcomeTitle');
+        const welcomeText = document.getElementById('welcomeText');
+        const loadBtnText = document.getElementById('loadBtnText');
+        const indicatorText = document.getElementById('indicatorText');
+        const indicatorIcon = document.getElementById('indicatorIcon');
+        const switchNoteText = document.getElementById('switchNoteText');
+        const programIndicator = document.getElementById('nurseiqProgramIndicator');
+        
+        if (titleEl) titleEl.textContent = isNursing ? 'NurseIQ' : 'TVETIQ';
+        if (iconEl) iconEl.className = isNursing ? 'fas fa-brain' : 'fas fa-tools';
+        
+        if (badgeEl) {
+            badgeEl.textContent = isNursing ? 'KRCHN' : 'TVET';
+            badgeEl.style.background = isNursing ? '#4C1D95' : '#1a7a5a';
+            badgeEl.style.color = 'white';
+            badgeEl.style.padding = '4px 12px';
+            badgeEl.style.borderRadius = '20px';
+            badgeEl.style.fontSize = '14px';
+            badgeEl.style.fontWeight = '600';
+            badgeEl.style.display = 'inline-block';
+            badgeEl.style.marginLeft = '10px';
+        }
+        
+        if (subtitleEl) {
+            if (isNursing) {
+                subtitleEl.textContent = 'NSCHEQ Curriculum practice questions for Kenya Registered Community Health Nursing program';
+            } else if (isTVET) {
+                subtitleEl.textContent = `NITA/TVET Curriculum practice questions for ${this.programDisplayName}`;
+            }
+        }
+        
+        if (welcomeIcon) welcomeIcon.className = isNursing ? 'fas fa-book-medical' : 'fas fa-tools';
+        if (welcomeTitle) welcomeTitle.textContent = isNursing ? 'NurseIQ Question Bank' : 'TVETIQ Question Bank';
+        
+        if (welcomeText) {
+            if (isNursing) {
+                welcomeText.textContent = 'Access practice questions organized by NSCHEQ curriculum courses.';
+            } else if (isTVET) {
+                welcomeText.textContent = `Access practice questions organized by NITA/TVET curriculum courses for ${this.programDisplayName}.`;
+            }
+        }
+        
+        if (loadBtnText) loadBtnText.textContent = isNursing ? 'Load Nursing Courses' : 'Load TVET Courses';
+        
+        if (indicatorText) {
+            indicatorText.textContent = isNursing ? 'Nursing Mode' : `TVET Mode (${this.programDisplayName})`;
+        }
+        if (indicatorIcon) indicatorIcon.className = isNursing ? 'fas fa-user-md' : 'fas fa-tools';
+        if (switchNoteText) switchNoteText.textContent = `Auto-detected: ${this.programDisplayName}`;
+        
+        if (programIndicator) {
+            if (isTVET) {
+                programIndicator.classList.add('tvet-mode');
+                programIndicator.classList.remove('nursing-mode');
+                programIndicator.style.borderColor = '#1a7a5a';
+            } else {
+                programIndicator.classList.add('nursing-mode');
+                programIndicator.classList.remove('tvet-mode');
+                programIndicator.style.borderColor = '#4C1D95';
+            }
+        }
+        
+        this.updateFilterOptions();
+        
+        localStorage.setItem('nurseiq_program_mode', this.currentProgram);
+        localStorage.setItem('nurseiq_program_display', this.programDisplayName);
+        
+        document.dispatchEvent(new CustomEvent('nurseiqProgramChanged', {
+            detail: { 
+                program: this.currentProgram,
+                displayName: this.programDisplayName,
+                isTVET: isTVET,
+                isNursing: isNursing
+            }
+        }));
+        
+        console.log('✅ UI updated for program:', this.currentProgram, '-', this.programDisplayName);
+    }
+    
+    updateFilterOptions() {
+        const isTVET = this.currentProgram === 'tvet';
+        const isNursing = this.currentProgram === 'nursing';
+        
+        const categoryFilter = document.getElementById('nurseiqCategoryFilter');
+        if (categoryFilter) {
+            categoryFilter.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = '📂 All Categories';
+            categoryFilter.appendChild(allOption);
+            
+            if (isNursing) {
+                const nursingCategories = [
+                    { value: 'theory', label: '📖 Theory' },
+                    { value: 'clinical', label: '🏥 Clinical' },
+                    { value: 'practical', label: '💉 Practical' },
+                    { value: 'osce', label: '👨‍⚕️ OSCE' },
+                    { value: 'pharmacology', label: '💊 Pharmacology' },
+                    { value: 'anatomy', label: '🧬 Anatomy' },
+                    { value: 'physiology', label: '🫀 Physiology' },
+                    { value: 'pathology', label: '🔬 Pathology' },
+                    { value: 'microbiology', label: '🦠 Microbiology' },
+                    { value: 'nutrition', label: '🍎 Nutrition' }
+                ];
+                nursingCategories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.value;
+                    option.textContent = cat.label;
+                    categoryFilter.appendChild(option);
+                });
+            } else if (isTVET) {
+                const tvetCategories = [
+                    { value: 'tvet-core', label: '⚙️ TVET Core' },
+                    { value: 'tvet-electives', label: '🔧 TVET Electives' },
+                    { value: 'tvet-practical', label: '🛠️ Practical Skills' },
+                    { value: 'tvet-theory', label: '📚 Theory' },
+                    { value: 'tvet-clinical', label: '🏥 Clinical' },
+                    { value: 'tvet-lab', label: '🔬 Laboratory' }
+                ];
+                tvetCategories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.value;
+                    option.textContent = cat.label;
+                    categoryFilter.appendChild(option);
+                });
+            }
+        }
+        
+        const levelFilter = document.getElementById('nurseiqLevelFilter');
+        if (levelFilter && isTVET) {
+            levelFilter.innerHTML = '';
+            const tvetLevels = [
+                { value: 'all', label: '📚 All Levels' },
+                { value: 'artisan', label: '🔧 Artisan' },
+                { value: 'certificate', label: '📜 Certificate' },
+                { value: 'diploma', label: '🎓 Diploma' },
+                { value: 'higher-diploma', label: '🎓 Higher Diploma' }
+            ];
+            tvetLevels.forEach(level => {
+                const option = document.createElement('option');
+                option.value = level.value;
+                option.textContent = level.label;
+                levelFilter.appendChild(option);
+            });
+        }
+    }
+    
+    // ============================================
+    // ACTIVE TEST TRACKING
+    // ============================================
+    
+    async trackActiveSession(courseId, courseName) {
+        try {
+            console.log('📊 Tracking active test session...');
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                console.warn('⚠️ No Supabase client, skipping active session tracking');
+                return;
+            }
+            
+            if (!this.userId || this.userId.startsWith('anonymous_')) {
+                console.warn('⚠️ Anonymous user, skipping active session tracking');
+                return;
+            }
+            
+            // Check if there's already an active session for this user
+            const { data: existing, error: checkError } = await supabase
+                .from('active_test_sessions')
+                .select('id')
+                .eq('user_id', this.userId)
+                .eq('is_active', true)
+                .maybeSingle();
+            
+            if (existing) {
+                await supabase
+                    .from('active_test_sessions')
+                    .update({ 
+                        is_active: false,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing.id);
+            }
+            
+            let programType = this.currentProgram || 'nursing';
+            
+            const sessionData = {
+                user_id: this.userId,
+                course_id: courseId,
+                course_name: courseName,
+                program_type: programType,
+                started_at: new Date().toISOString(),
+                last_activity: new Date().toISOString(),
+                total_questions: this.currentCourseQuestions?.length || 0,
+                answered_questions: 0,
+                correct_answers: 0,
+                current_question_index: 0,
+                is_active: true,
+                session_data: {
+                    userAgent: navigator.userAgent,
+                    screenSize: `${window.innerWidth}x${window.innerHeight}`,
+                    program: this.programDisplayName
+                }
+            };
+            
+            const { data, error } = await supabase
+                .from('active_test_sessions')
+                .insert([sessionData])
+                .select()
+                .single();
+            
+            if (error) {
+                console.warn('⚠️ Failed to create active session:', error);
+                return;
+            }
+            
+            this.activeSessionId = data.id;
+            this.testStartTime = Date.now();
+            this.lastProgressUpdate = Date.now();
+            
+            this.startHeartbeat();
+            
+            document.dispatchEvent(new CustomEvent('studentTestStarted', {
+                detail: {
+                    userId: this.userId,
+                    sessionId: this.activeSessionId,
+                    courseId: courseId,
+                    courseName: courseName,
+                    programType: programType
+                }
+            }));
+            
+            console.log('✅ Active test session created:', this.activeSessionId);
+            
+        } catch (error) {
+            console.error('❌ Error tracking active session:', error);
+        }
+    }
+    
+    startHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+        
+        this.heartbeatInterval = setInterval(() => {
+            this.sendHeartbeat();
+        }, 30000);
+        
+        console.log('💓 Heartbeat started (every 30s)');
+    }
+    
+    async sendHeartbeat() {
+        if (!this.activeSessionId) return;
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            let answered = 0;
+            let correct = 0;
+            
+            if (this.userTestAnswers) {
+                for (const [key, answer] of Object.entries(this.userTestAnswers)) {
+                    if (answer && answer.answered) {
+                        answered++;
+                        if (answer.correct) correct++;
+                    }
+                }
+            }
+            
+            const { error } = await supabase
+                .from('active_test_sessions')
+                .update({
+                    last_activity: new Date().toISOString(),
+                    answered_questions: answered,
+                    correct_answers: correct,
+                    current_question_index: this.currentQuestionIndex || 0
+                })
+                .eq('id', this.activeSessionId);
+            
+            if (error) {
+                console.warn('⚠️ Heartbeat failed:', error);
+            } else {
+                this.lastProgressUpdate = Date.now();
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Heartbeat error:', error);
+        }
+    }
+    
+    async endActiveSession() {
+        if (!this.activeSessionId) return;
+        
+        try {
+            console.log('🏁 Ending active test session:', this.activeSessionId);
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
+            
+            const { error } = await supabase
+                .from('active_test_sessions')
+                .update({
+                    is_active: false,
+                    ended_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', this.activeSessionId);
+            
+            if (error) {
+                console.warn('⚠️ Failed to end session:', error);
+            } else {
+                console.log('✅ Active session ended');
+            }
+            
+            document.dispatchEvent(new CustomEvent('studentTestFinished', {
+                detail: {
+                    userId: this.userId,
+                    sessionId: this.activeSessionId,
+                    courseId: this.currentCourseForTest?.id
+                }
+            }));
+            
+            this.activeSessionId = null;
+            this.testStartTime = null;
+            
+        } catch (error) {
+            console.error('❌ Error ending session:', error);
+        }
+    }
+    
+    async updateProgressForAdmin() {
+        if (!this.activeSessionId) return;
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            let answered = 0;
+            let correct = 0;
+            
+            if (this.userTestAnswers) {
+                for (const [key, answer] of Object.entries(this.userTestAnswers)) {
+                    if (answer && answer.answered) {
+                        answered++;
+                        if (answer.correct) correct++;
+                    }
+                }
+            }
+            
+            const { error } = await supabase
+                .from('active_test_sessions')
+                .update({
+                    answered_questions: answered,
+                    correct_answers: correct,
+                    current_question_index: this.currentQuestionIndex || 0,
+                    last_activity: new Date().toISOString()
+                })
+                .eq('id', this.activeSessionId);
+            
+            if (error) {
+                console.warn('⚠️ Failed to update progress:', error);
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Progress update error:', error);
+        }
+    }
+    
+    // ============================================
+    // INITIALIZATION
+    // ============================================
     
     async initializeElements() {
         console.log('🔍 Initializing NurseIQ...');
@@ -174,7 +676,6 @@ class NurseIQModule {
             this.userId = getCurrentUserId();
             console.log('👤 User ID:', this.userId);
             
-            // Store the correct user ID in localStorage for persistence
             if (this.userId && !this.userId.startsWith('anonymous_')) {
                 localStorage.setItem('userId', this.userId);
                 localStorage.setItem('currentUserId', this.userId);
@@ -182,68 +683,159 @@ class NurseIQModule {
             }
             
             await this.initializeElements();
+            this.detectUserProgram();
             await this.loadUserProgress();
-            
-            // 🔥 AUTO-MIGRATE old progress from localStorage to database
             await this.migrateOldProgress();
-            
             await this.loadQuestionBankCards();
-            this.initialized = true;
             
+            this.initialized = true;
             this.updateDashboardMetrics();
             
-            // Set up auto-save on page unload
             window.addEventListener('beforeunload', () => {
+                if (this.activeSessionId) {
+                    this.endActiveSession();
+                }
                 if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
                     this.saveProgressToDatabase();
                 }
             });
             
-            // Set up periodic auto-save every 30 seconds
             setInterval(() => {
                 if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
                     this.saveProgressToDatabase();
                 }
+                if (this.activeSessionId) {
+                    this.updateProgressForAdmin();
+                }
             }, 30000);
             
-            console.log('✅ NurseIQ Module initialized with auto-save and migration');
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && this.activeSessionId) {
+                    this.sendHeartbeat();
+                }
+            });
+            
+            console.log('✅ NurseIQ Module initialized with active test tracking');
         } catch (error) {
             console.error('❌ Failed to initialize:', error);
         }
     }
     
-    // 🔥 NEW METHOD: Auto-migrate old progress from localStorage to database
+    // ============================================
+    // USER PROGRESS
+    // ============================================
+    
+    async loadUserProgress() {
+        try {
+            const savedProgress = localStorage.getItem(this.storageKey);
+            if (savedProgress) {
+                const parsed = JSON.parse(savedProgress);
+                if (parsed.version === this.progressVersion && parsed.answers) {
+                    this.userTestAnswers = parsed.answers;
+                } else {
+                    this.userTestAnswers = parsed;
+                }
+                console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
+            }
+            
+            if (this.userId && !this.userId.startsWith('anonymous_')) {
+                const supabase = this.getSupabaseClient();
+                if (supabase) {
+                    await this.ensureUserExistsInProfileTable();
+                    
+                    const { data, error } = await supabase
+                        .from('user_progress')
+                        .select('progress_data')
+                        .eq('user_id', this.userId)
+                        .maybeSingle();
+                    
+                    if (!error && data && data.progress_data) {
+                        const dbAnswers = data.progress_data.answers || {};
+                        this.userTestAnswers = { ...dbAnswers, ...this.userTestAnswers };
+                        console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
+                        this.saveUserProgress();
+                    }
+                }
+            }
+            
+            this.updateDashboardMetrics();
+            
+        } catch (error) {
+            console.warn('Could not load user progress:', error);
+        }
+    }
+    
+    async ensureUserExistsInProfileTable() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            const userEmail = localStorage.getItem('userEmail') || 
+                             sessionStorage.getItem('userEmail') || 
+                             `${this.userId}@student.nurseiq.com`;
+            
+            const userName = localStorage.getItem('userName') || 
+                            sessionStorage.getItem('userName') || 
+                            'Student';
+            
+            const studentId = localStorage.getItem('studentId') || 
+                             sessionStorage.getItem('studentId') || 
+                             null;
+            
+            const { data: existingUser, error: checkError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('user_id', this.userId)
+                .maybeSingle();
+            
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.error('Error checking user existence:', checkError);
+                return;
+            }
+            
+            if (!existingUser) {
+                const { error: insertError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert({
+                        user_id: this.userId,
+                        email: userEmail,
+                        full_name: userName,
+                        role: 'student',
+                        student_id: studentId,
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                
+                if (insertError) {
+                    console.error('❌ Failed to create user profile:', insertError);
+                } else {
+                    console.log('✅ User profile created successfully');
+                }
+            }
+            
+        } catch (error) {
+            console.error('❌ Error ensuring user exists:', error);
+        }
+    }
+    
     async migrateOldProgress() {
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                console.warn('⚠️ No Supabase client available for migration');
-                return;
-            }
+            if (!supabase) return;
             
-            if (!this.userId || this.userId.startsWith('anonymous_')) {
-                console.warn('⚠️ Anonymous user, skipping migration');
-                return;
-            }
+            if (!this.userId || this.userId.startsWith('anonymous_')) return;
             
-            // Check if user has progress in localStorage
             const localProgress = localStorage.getItem(this.storageKey);
-            if (!localProgress) {
-                console.log('📭 No localStorage progress found for migration');
-                return;
-            }
+            if (!localProgress) return;
             
             const parsedProgress = JSON.parse(localProgress);
             const hasAnswers = parsedProgress.answers && Object.keys(parsedProgress.answers).length > 0;
             
-            if (!hasAnswers) {
-                console.log('📭 localStorage has no answers to migrate');
-                return;
-            }
+            if (!hasAnswers) return;
             
             console.log('📦 Found localStorage progress, checking database...');
             
-            // Check if user already has progress in database
             const { data: existingProgress, error: checkError } = await supabase
                 .from('user_progress')
                 .select('user_id')
@@ -255,9 +847,8 @@ class NurseIQModule {
                 return;
             }
             
-            // If no database progress exists, migrate localStorage data
             if (!existingProgress) {
-                console.log('🔄 Migrating old progress from localStorage to database for:', this.userId);
+                console.log('🔄 Migrating old progress from localStorage to database');
                 
                 const progressData = {
                     version: this.progressVersion,
@@ -281,132 +872,17 @@ class NurseIQModule {
                     console.log('✅ Old progress migrated successfully!');
                     this.showNotification('Your previous progress has been saved to the cloud!', 'success');
                     
-                    // Update local answers with the migrated data
                     if (parsedProgress.answers) {
                         this.userTestAnswers = { ...this.userTestAnswers, ...parsedProgress.answers };
                         this.saveUserProgress();
                     }
                 }
-            } else {
-                console.log('✅ Database progress already exists, no migration needed');
             }
             
         } catch (error) {
             console.error('❌ Migration error:', error);
         }
     }
-    
-    async loadUserProgress() {
-        try {
-            // First load from localStorage
-            const savedProgress = localStorage.getItem(this.storageKey);
-            if (savedProgress) {
-                const parsed = JSON.parse(savedProgress);
-                if (parsed.version === this.progressVersion && parsed.answers) {
-                    this.userTestAnswers = parsed.answers;
-                } else {
-                    this.userTestAnswers = parsed;
-                }
-                console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
-            }
-            
-            // Then load from database
-            if (this.userId && !this.userId.startsWith('anonymous_')) {
-                const supabase = this.getSupabaseClient();
-                if (supabase) {
-                    // First ensure user exists in profile table
-                    await this.ensureUserExistsInProfileTable();
-                    
-                    const { data, error } = await supabase
-                        .from('user_progress')
-                        .select('progress_data')
-                        .eq('user_id', this.userId)
-                        .maybeSingle();
-                    
-                    if (!error && data && data.progress_data) {
-                        // Merge database progress (localStorage takes precedence for recent answers)
-                        const dbAnswers = data.progress_data.answers || {};
-                        this.userTestAnswers = { ...dbAnswers, ...this.userTestAnswers };
-                        console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
-                        
-                        // Save merged data back to localStorage
-                        this.saveUserProgress();
-                    }
-                }
-            }
-            
-            this.updateDashboardMetrics();
-            
-        } catch (error) {
-            console.warn('Could not load user progress:', error);
-        }
-    }
-    
-  // Ensure user exists in consolidated_user_profiles_table
-async ensureUserExistsInProfileTable() {
-    try {
-        const supabase = this.getSupabaseClient();
-        if (!supabase) return;
-        
-        // Get user info from various sources
-        const userEmail = localStorage.getItem('userEmail') || 
-                         sessionStorage.getItem('userEmail') || 
-                         document.querySelector('meta[name="user-email"]')?.content ||
-                         `${this.userId}@student.nurseiq.com`;
-        
-        const userName = localStorage.getItem('userName') || 
-                        sessionStorage.getItem('userName') || 
-                        sessionStorage.getItem('studentName') ||
-                        document.querySelector('meta[name="user-name"]')?.content ||
-                        'Student';
-        
-        // Try to get student ID from storage
-        const studentId = localStorage.getItem('studentId') || 
-                         sessionStorage.getItem('studentId') || 
-                         null;
-        
-        console.log('📝 Ensuring user exists in consolidated_user_profiles_table:', this.userId);
-        
-        // ✅ FIX: Use 'user_id' column, not 'id'!
-        const { data: existingUser, error: checkError } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id')
-            .eq('user_id', this.userId)  // ← 'user_id' column
-            .maybeSingle();
-        
-        if (checkError && checkError.code !== 'PGRST116') {
-            console.error('Error checking user existence:', checkError);
-            return;
-        }
-        
-        if (!existingUser) {
-            // ✅ FIX: Use 'user_id' column, not 'id'!
-            const { error: insertError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .insert({
-                    user_id: this.userId,  // ← THIS IS THE CORRECT COLUMN NAME!
-                    email: userEmail,
-                    full_name: userName,
-                    role: 'student',
-                    student_id: studentId,
-                    status: 'active',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-            
-            if (insertError) {
-                console.error('❌ Failed to create user profile:', insertError);
-            } else {
-                console.log('✅ User profile created successfully in consolidated_user_profiles_table');
-            }
-        } else {
-            console.log('✅ User already exists in profile table');
-        }
-        
-    } catch (error) {
-        console.error('❌ Error ensuring user exists:', error);
-    }
-}
     
     saveUserProgress() {
         try {
@@ -428,13 +904,10 @@ async ensureUserExistsInProfileTable() {
                 localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
             }
             
-            // Auto-save to database with debounce
             if (this.userId && !this.userId.startsWith('anonymous_')) {
-                // Clear existing timeout
                 if (this.saveTimeout) {
                     clearTimeout(this.saveTimeout);
                 }
-                // Debounce save to avoid too many requests
                 this.saveTimeout = setTimeout(() => {
                     this.saveProgressToDatabase();
                 }, 1000);
@@ -442,9 +915,59 @@ async ensureUserExistsInProfileTable() {
             
             this.updateDashboardMetrics();
             
-            console.log('💾 Progress saved to localStorage and queued for database');
         } catch (error) {
             console.warn('Could not save progress:', error);
+        }
+    }
+    
+    async saveProgressToDatabase() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            if (!this.userId || this.userId.startsWith('anonymous_')) return;
+            
+            const progressData = {
+                version: this.progressVersion,
+                answers: this.userTestAnswers,
+                lastSaved: new Date().toISOString()
+            };
+            
+            const { data, error } = await supabase
+                .from('user_progress')
+                .upsert({
+                    user_id: this.userId,
+                    progress_data: progressData,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            
+            if (error) {
+                console.error('❌ Database save error:', error);
+                
+                if (error.code === '23503') {
+                    console.log('🔄 Foreign key error - attempting to ensure user exists...');
+                    await this.ensureUserExistsInProfileTable();
+                    
+                    const { error: retryError } = await supabase
+                        .from('user_progress')
+                        .upsert({
+                            user_id: this.userId,
+                            progress_data: progressData,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'user_id' });
+                    
+                    if (retryError) {
+                        console.error('❌ Retry failed:', retryError);
+                    } else {
+                        console.log('✅ Progress saved after user creation');
+                    }
+                }
+            } else {
+                console.log('✅ Progress saved to database successfully');
+            }
+            
+        } catch (error) {
+            console.error('❌ Exception in saveProgressToDatabase:', error);
         }
     }
     
@@ -468,68 +991,9 @@ async ensureUserExistsInProfileTable() {
         }
     }
     
-    // saveProgressToDatabase with foreign key handling
-    async saveProgressToDatabase() {
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                console.warn('⚠️ No Supabase client available');
-                return;
-            }
-            
-            if (!this.userId || this.userId.startsWith('anonymous_')) {
-                console.warn('⚠️ Anonymous user, skipping database save');
-                return;
-            }
-            
-            // Prepare progress data
-            const progressData = {
-                version: this.progressVersion,
-                answers: this.userTestAnswers,
-                lastSaved: new Date().toISOString()
-            };
-            
-            console.log('💾 Saving progress to database for user:', this.userId);
-            
-            const { data, error } = await supabase
-                .from('user_progress')
-                .upsert({
-                    user_id: this.userId,
-                    progress_data: progressData,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
-            
-            if (error) {
-                console.error('❌ Database save error:', error);
-                
-                // If foreign key error (user not in consolidated table), try to fix
-                if (error.code === '23503') {
-                    console.log('🔄 Foreign key error - attempting to ensure user exists...');
-                    await this.ensureUserExistsInProfileTable();
-                    
-                    // Retry the save
-                    const { error: retryError } = await supabase
-                        .from('user_progress')
-                        .upsert({
-                            user_id: this.userId,
-                            progress_data: progressData,
-                            updated_at: new Date().toISOString()
-                        }, { onConflict: 'user_id' });
-                    
-                    if (retryError) {
-                        console.error('❌ Retry failed:', retryError);
-                    } else {
-                        console.log('✅ Progress saved after user creation');
-                    }
-                }
-            } else {
-                console.log('✅ Progress saved to database successfully');
-            }
-            
-        } catch (error) {
-            console.error('❌ Exception in saveProgressToDatabase:', error);
-        }
-    }
+    // ============================================
+    // DASHBOARD METRICS
+    // ============================================
     
     getNurseIQDashboardMetrics() {
         try {
@@ -596,8 +1060,8 @@ async ensureUserExistsInProfileTable() {
             };
             
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
-            
             return metrics;
+            
         } catch (error) {
             console.error('Error calculating NurseIQ metrics:', error);
             return this.getDefaultDashboardMetrics();
@@ -682,7 +1146,6 @@ async ensureUserExistsInProfileTable() {
             const metrics = this.getNurseIQDashboardMetrics();
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
             this.dispatchDashboardUpdateEvent(metrics);
-            console.log('📊 Dashboard metrics updated:', metrics);
         } catch (error) {
             console.error('Error updating dashboard metrics:', error);
         }
@@ -731,6 +1194,10 @@ async ensureUserExistsInProfileTable() {
         }
     }
     
+    // ============================================
+    // COURSE USER STATS
+    // ============================================
+    
     getCourseUserStats(courseId, questions) {
         const courseQuestions = questions.filter(q => q.course_id === courseId);
         let answered = 0;
@@ -774,6 +1241,10 @@ async ensureUserExistsInProfileTable() {
             difficulty: difficultyStats
         };
     }
+    
+    // ============================================
+    // LOAD QUESTION BANK
+    // ============================================
     
     async loadQuestionBankCards() {
         try {
@@ -841,6 +1312,10 @@ async ensureUserExistsInProfileTable() {
             this.hideLoading();
         }
     }
+    
+    // ============================================
+    // DISPLAY QUESTION BANK CARDS
+    // ============================================
     
     displayQuestionBankCards(courses) {
         if (!this.studentQuestionBankContent) return;
@@ -1055,12 +1530,21 @@ async ensureUserExistsInProfileTable() {
         return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
     }
     
+    // ============================================
+    // START COURSE TEST
+    // ============================================
+    
     async startCourseTest(courseId, courseName, startIndex = 0) {
         try {
             console.log(`Starting test for course: ${courseName}`);
             this.showLoading();
             
-            const { data: questions, error } = await this.getSupabaseClient()
+            await this.trackActiveSession(courseId, courseName);
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('No database connection');
+            
+            const { data: questions, error } = await supabase
                 .from('medical_assessments')
                 .select(`*, courses (id, course_name, unit_code, color)`)
                 .eq('course_id', courseId)
@@ -1069,8 +1553,6 @@ async ensureUserExistsInProfileTable() {
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
-            
-            console.log(`Fetched ${questions?.length || 0} questions`);
             
             if (!questions || questions.length === 0) {
                 this.showNotification('No questions available for this course yet.', 'warning');
@@ -1102,6 +1584,8 @@ async ensureUserExistsInProfileTable() {
             
             this.displayInteractiveQuestions(courseName, questions);
             
+            await this.updateProgressForAdmin();
+            
         } catch (error) {
             console.error('Error starting test:', error);
             this.showNotification('Failed to start test. Please try again.', 'error');
@@ -1111,207 +1595,214 @@ async ensureUserExistsInProfileTable() {
         }
     }
     
-   displayInteractiveQuestions(courseName, questions) {
-    if (!this.studentQuestionBankContent) return;
+    // ============================================
+    // DISPLAY INTERACTIVE QUESTIONS
+    // ============================================
     
-    const courseColor = questions[0]?.courses?.color || '#4f46e5';
-    const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
-    
-    let html = `
-        <div class="interactive-questions-container">
-            <div class="questions-header-bar">
-                <div class="header-content">
-                    <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
-                        <i class="fas fa-arrow-left"></i> Back to Courses
-                    </button>
-                    
-                    <div class="header-course-info">
-                        <h2 class="course-name">${courseName}</h2>
-                        <p class="practice-mode">Interactive Q&A Practice Mode</p>
-                    </div>
-                    
-                    <div class="header-progress-stats">
-                        <div class="progress-stat-top">
-                            <div class="progress-label-top">Question</div>
-                            <div class="progress-value-top">
-                                <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
+    displayInteractiveQuestions(courseName, questions) {
+        if (!this.studentQuestionBankContent) return;
+        
+        const courseColor = questions[0]?.courses?.color || '#4f46e5';
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
+        
+        let html = `
+            <div class="interactive-questions-container">
+                <div class="questions-header-bar">
+                    <div class="header-content">
+                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
+                            <i class="fas fa-arrow-left"></i> Back to Courses
+                        </button>
+                        
+                        <div class="header-course-info">
+                            <h2 class="course-name">${courseName}</h2>
+                            <p class="practice-mode">Interactive Q&A Practice Mode</p>
+                        </div>
+                        
+                        <div class="header-progress-stats">
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Question</div>
+                                <div class="progress-value-top">
+                                    <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="progress-stat-top">
-                            <div class="progress-label-top">Answered</div>
-                            <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
-                        </div>
-                        <div class="progress-stat-top">
-                            <div class="progress-label-top">Correct</div>
-                            <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
-                        </div>
-                        <div class="progress-stat-top">
-                            <div class="progress-label-top">Accuracy</div>
-                            <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="questions-main-container">
-                <div class="question-panel">
-                    <div class="question-header">
-                        <div class="question-meta">
-                            <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
-                            <span class="question-type">Multiple Choice</span>
-                            <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
-                        </div>
-                        
-                        <div class="mini-navigation">
-                            <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="mini-dots" id="miniDotsContainer">
-                                ${this.generateMiniDots(questions.length)}
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Answered</div>
+                                <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
                             </div>
-                            <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="question-card">
-                        <div class="question-text" id="questionText">Loading question...</div>
-                    </div>
-                    
-                    <div class="options-panel">
-                        <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
-                        <div id="optionsContainer" class="options-container-improved"></div>
-                    </div>
-                    
-                    <!-- ACTION BUTTONS - HORIZONTAL LAYOUT (ALL IN ONE ROW) -->
-                    <div class="action-buttons-panel-horizontal">
-                        <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn-horizontal primary-action-btn">
-                            <i class="fas fa-check-circle"></i> Check Answer
-                        </button>
-                        <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn-horizontal secondary-action-btn">
-                            <i class="fas fa-redo"></i> Reset
-                        </button>
-                        <button onclick="window.markForReview()" id="markBtn" class="action-btn-horizontal warning-action-btn">
-                            <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
-                        </button>
-                    </div>
-                    
-                    <div class="compact-navigation">
-                        <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
-                            <i class="fas fa-chevron-left"></i> Previous
-                        </button>
-                        
-                        <div class="compact-progress">
-                            <div class="compact-progress-bar">
-                                <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Correct</div>
+                                <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
                             </div>
-                            <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
-                        </div>
-                        
-                        <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
-                            Next <i class="fas fa-chevron-right"></i>
-                        </button>
-                        
-                        <button onclick="window.finishPractice()" class="compact-nav-btn compact-nav-finish">
-                            <i class="fas fa-flag-checkered"></i> Finish
-                        </button>
-                    </div>
-                    
-                    <!-- Answer & Explanation Section -->
-                    <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
-                        <div class="answer-header">
-                            <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
-                            <button onclick="window.hideAnswer()" class="hide-answer-btn">
-                                <i class="fas fa-times"></i> Hide
-                            </button>
-                        </div>
-                        
-                        <div class="correct-answer-box">
-                            <div class="correct-answer-label">
-                                <i class="fas fa-check-circle"></i> Correct Answer:
-                            </div>
-                            <div class="correct-answer-text" id="correctAnswerText">Loading...</div>
-                        </div>
-                        
-                        <div class="explanation-box">
-                            <div class="explanation-label">
-                                <i class="fas fa-info-circle"></i> Explanation:
-                            </div>
-                            <div class="explanation-content">
-                                <div class="explanation-text" id="explanationText">Select an option and click "Check Answer" to see the explanation.</div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Accuracy</div>
+                                <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stats-panel">
-                    <div class="horizontal-nav-card">
-                        <h3 class="nav-title"><i class="fas fa-list-ol"></i> Questions Navigator</h3>
-                        <div class="horizontal-question-grid" id="questionGridContainer"></div>
-                        <div class="grid-controls">
-                            <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
-                                <i class="fas fa-chevron-left"></i>
+                <div class="questions-main-container">
+                    <div class="question-panel">
+                        <div class="question-header">
+                            <div class="question-meta">
+                                <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
+                                <span class="question-type">Multiple Choice</span>
+                                <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
+                            </div>
+                            
+                            <div class="mini-navigation">
+                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="mini-dots" id="miniDotsContainer">
+                                    ${this.generateMiniDots(questions.length)}
+                                </div>
+                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="question-card">
+                            <div class="question-text" id="questionText">Loading question...</div>
+                        </div>
+                        
+                        <div class="options-panel">
+                            <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
+                            <div id="optionsContainer" class="options-container-improved"></div>
+                        </div>
+                        
+                        <div class="action-buttons-panel-horizontal">
+                            <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn-horizontal primary-action-btn">
+                                <i class="fas fa-check-circle"></i> Check Answer
                             </button>
-                            <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
-                                Jump to Question
+                            <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn-horizontal secondary-action-btn">
+                                <i class="fas fa-redo"></i> Reset
                             </button>
-                            <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
-                                <i class="fas fa-chevron-right"></i>
+                            <button onclick="window.markForReview()" id="markBtn" class="action-btn-horizontal warning-action-btn">
+                                <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
                             </button>
+                        </div>
+                        
+                        <div class="compact-navigation">
+                            <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+                            
+                            <div class="compact-progress">
+                                <div class="compact-progress-bar">
+                                    <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
+                                </div>
+                                <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
+                            </div>
+                            
+                            <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </button>
+                            
+                            <button onclick="window.finishPractice()" class="compact-nav-btn compact-nav-finish">
+                                <i class="fas fa-flag-checkered"></i> Finish
+                            </button>
+                        </div>
+                        
+                        <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
+                            <div class="answer-header">
+                                <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
+                                <button onclick="window.hideAnswer()" class="hide-answer-btn">
+                                    <i class="fas fa-times"></i> Hide
+                                </button>
+                            </div>
+                            
+                            <div class="correct-answer-box">
+                                <div class="correct-answer-label">
+                                    <i class="fas fa-check-circle"></i> Correct Answer:
+                                </div>
+                                <div class="correct-answer-text" id="correctAnswerText">Loading...</div>
+                            </div>
+                            
+                            <div class="explanation-box">
+                                <div class="explanation-label">
+                                    <i class="fas fa-info-circle"></i> Explanation:
+                                </div>
+                                <div class="explanation-content">
+                                    <div class="explanation-text" id="explanationText">Select an option and click "Check Answer" to see the explanation.</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="course-overview-card">
-                        <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
-                        <div class="overview-stats">
-                            <div class="overview-stat">
-                                <div class="overview-value">${userStats.completion}%</div>
-                                <div class="overview-label">Completion</div>
-                            </div>
-                            <div class="overview-stat">
-                                <div class="overview-value">${userStats.accuracy}%</div>
-                                <div class="overview-label">Accuracy</div>
-                            </div>
-                            <div class="overview-stat">
-                                <div class="overview-value">${userStats.answered}</div>
-                                <div class="overview-label">Answered</div>
-                            </div>
-                            <div class="overview-stat">
-                                <div class="overview-value">${questions.length}</div>
-                                <div class="overview-label">Total</div>
+                    <div class="stats-panel">
+                        <div class="horizontal-nav-card">
+                            <h3 class="nav-title"><i class="fas fa-list-ol"></i> Questions Navigator</h3>
+                            <div class="horizontal-question-grid" id="questionGridContainer"></div>
+                            <div class="grid-controls">
+                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
+                                    Jump to Question
+                                </button>
+                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
+                        
+                        <div class="course-overview-card">
+                            <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
+                            <div class="overview-stats">
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.completion}%</div>
+                                    <div class="overview-label">Completion</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.accuracy}%</div>
+                                    <div class="overview-label">Accuracy</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.answered}</div>
+                                    <div class="overview-label">Answered</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${questions.length}</div>
+                                    <div class="overview-label">Total</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="tips-card">
-                        <h3 class="tips-title"><i class="fas fa-graduation-cap"></i> Study Tips</h3>
-                        <ul class="tips-list">
-                            <li><i class="fas fa-check"></i> Read each question carefully</li>
-                            <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
-                            <li><i class="fas fa-check"></i> Mark difficult questions</li>
-                            <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
-                        </ul>
+                        
+                        <div class="tips-card">
+                            <h3 class="tips-title"><i class="fas fa-graduation-cap"></i> Study Tips</h3>
+                            <ul class="tips-list">
+                                <li><i class="fas fa-check"></i> Read each question carefully</li>
+                                <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
+                                <li><i class="fas fa-check"></i> Mark difficult questions</li>
+                                <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
+        
+        this.studentQuestionBankContent.innerHTML = html;
+        
+        setTimeout(() => {
+            this.loadCurrentInteractiveQuestion();
+            this.updateQuestionGrid();
+            this.updateProgressBar();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
+            this.updateNavigationButtons();
+        }, 100);
+    }
     
-    this.studentQuestionBankContent.innerHTML = html;
+    // ============================================
+    // LOAD CURRENT INTERACTIVE QUESTION
+    // ============================================
     
-    setTimeout(() => {
-        this.loadCurrentInteractiveQuestion();
-        this.updateQuestionGrid();
-        this.updateProgressBar();
-        this.updateMiniDots();
-        this.updateTopProgressStats();
-        this.updateNavigationButtons();
-    }, 100);
-}
     loadCurrentInteractiveQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
@@ -1340,12 +1831,10 @@ async ensureUserExistsInProfileTable() {
         this.updateNavigationButtons();
         this.updateMarkButton();
         
-        // Check if we should show answer section from saved answer
         const savedAnswer = this.userTestAnswers[question.id];
         const answerRevealSection = document.getElementById('answerRevealSection');
         
         if (savedAnswer?.answered) {
-            // Load saved answer for display
             this.userTestAnswers[this.currentQuestionIndex] = {
                 ...savedAnswer,
                 selectedOption: savedAnswer.selectedOption,
@@ -1354,16 +1843,21 @@ async ensureUserExistsInProfileTable() {
                 correct: savedAnswer.correct
             };
             this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
-            // ALWAYS show the explanation if the question was answered - IT STAYS VISIBLE
-            this.showAnswerRevealSection();
+            if (answerRevealSection) {
+                answerRevealSection.style.display = 'block';
+                this.showAnswerRevealSection();
+            }
         } else {
-            // Only hide explanation for unanswered questions
             if (answerRevealSection) answerRevealSection.style.display = 'none';
             this.resetOptionSelection();
         }
         
         this.highlightCurrentQuestionInGrid();
     }
+    
+    // ============================================
+    // LOAD ANSWER OPTIONS
+    // ============================================
     
     loadAnswerOptions(question) {
         const optionsContainer = document.getElementById('optionsContainer');
@@ -1406,7 +1900,6 @@ async ensureUserExistsInProfileTable() {
             item.addEventListener('click', () => this.selectOption(item));
         });
         
-        // Check for saved answer
         const savedAnswer = this.userTestAnswers[question.id];
         if (savedAnswer?.answered) {
             optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
@@ -1417,6 +1910,10 @@ async ensureUserExistsInProfileTable() {
             });
         }
     }
+    
+    // ============================================
+    // SELECT OPTION
+    // ============================================
     
     selectOption(optionItem) {
         this.resetOptionSelection();
@@ -1448,6 +1945,79 @@ async ensureUserExistsInProfileTable() {
         }
     }
     
+    // ============================================
+    // CHECK ANSWER - UPDATED WITH TRACKING
+    // ============================================
+    
+    checkAnswer() {
+        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        if (!userAnswer || !userAnswer.selectedOption) {
+            this.showNotification('Please select an answer first!', 'warning');
+            return;
+        }
+        
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        const correctAnswer = question.correct_answer || '';
+        const isCorrect = userAnswer.selectedOption === correctAnswer;
+        
+        userAnswer.answered = true;
+        userAnswer.correct = isCorrect;
+        userAnswer.timestamp = new Date().toISOString();
+        userAnswer.correctAnswer = correctAnswer;
+        userAnswer.courseId = question.course_id;
+        userAnswer.courseName = this.currentCourseForTest.name;
+        userAnswer.questionText = question.question_text;
+        userAnswer.difficulty = question.difficulty;
+        
+        this.userTestAnswers[question.id] = {
+            selectedOption: userAnswer.selectedOption,
+            selectedOptionIndex: userAnswer.selectedOptionIndex,
+            answered: true,
+            correct: isCorrect,
+            correctAnswer: correctAnswer,
+            timestamp: userAnswer.timestamp,
+            questionText: question.question_text,
+            courseId: question.course_id,
+            courseName: this.currentCourseForTest.name,
+            difficulty: question.difficulty,
+            explanationViewed: true
+        };
+        
+        this.showUserAnswer(userAnswer);
+        this.updateCounters();
+        this.updateTopProgressStats();
+        this.showAnswerRevealSection();
+        this.updateQuestionGrid();
+        this.showFeedbackNotification(isCorrect);
+        this.saveUserProgress();
+        
+        // Send progress update to admin
+        this.updateProgressForAdmin();
+        
+        // Dispatch progress event
+        document.dispatchEvent(new CustomEvent('studentTestProgress', {
+            detail: {
+                userId: this.userId,
+                sessionId: this.activeSessionId,
+                questionIndex: this.currentQuestionIndex,
+                isCorrect: isCorrect,
+                answered: Object.values(this.userTestAnswers).filter(a => a?.answered).length,
+                total: this.currentCourseQuestions.length
+            }
+        }));
+        
+        // Auto-advance to next question after 2 seconds
+        if (this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 2000);
+        }
+    }
+    
+    // ============================================
+    // SHOW USER ANSWER
+    // ============================================
+    
     showUserAnswer(userAnswer) {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
@@ -1475,53 +2045,9 @@ async ensureUserExistsInProfileTable() {
         });
     }
     
-    checkAnswer() {
-        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (!userAnswer || !userAnswer.selectedOption) {
-            this.showNotification('Please select an answer first!', 'warning');
-            return;
-        }
-        
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        const correctAnswer = question.correct_answer || '';
-        const isCorrect = userAnswer.selectedOption === correctAnswer;
-        
-        // Update current session
-        userAnswer.answered = true;
-        userAnswer.correct = isCorrect;
-        userAnswer.timestamp = new Date().toISOString();
-        userAnswer.correctAnswer = correctAnswer;
-        userAnswer.courseId = question.course_id;
-        userAnswer.courseName = this.currentCourseForTest.name;
-        userAnswer.questionText = question.question_text;
-        userAnswer.difficulty = question.difficulty;
-        
-        // Save to permanent storage by question ID
-        this.userTestAnswers[question.id] = {
-            selectedOption: userAnswer.selectedOption,
-            selectedOptionIndex: userAnswer.selectedOptionIndex,
-            answered: true,
-            correct: isCorrect,
-            correctAnswer: correctAnswer,
-            timestamp: userAnswer.timestamp,
-            questionText: question.question_text,
-            courseId: question.course_id,
-            courseName: this.currentCourseForTest.name,
-            difficulty: question.difficulty,
-            explanationViewed: true
-        };
-        
-        this.showUserAnswer(userAnswer);
-        this.updateCounters();
-        this.updateTopProgressStats();
-        this.showAnswerRevealSection(); // This shows and STAYS visible
-        this.updateQuestionGrid();
-        this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress();
-        
-        // REMOVED: Auto-navigation that was hiding the explanation
-        // The explanation will remain visible until user manually navigates
-    }
+    // ============================================
+    // SHOW ANSWER REVEAL SECTION
+    // ============================================
     
     showAnswerRevealSection() {
         const answerRevealSection = document.getElementById('answerRevealSection');
@@ -1539,22 +2065,28 @@ async ensureUserExistsInProfileTable() {
             explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available for this question.</div>';
         }
         
-        // Make sure it's visible and stays visible
         answerRevealSection.style.display = 'block';
         answerRevealSection.style.opacity = '1';
         answerRevealSection.style.visibility = 'visible';
         
-        // Add a visual indicator that this question has been answered
         const questionCard = document.querySelector('.question-card');
         if (questionCard && this.userTestAnswers[this.currentCourseQuestions[this.currentQuestionIndex]?.id]?.answered) {
             questionCard.classList.add('has-answer');
         }
     }
     
+    // ============================================
+    // HIDE ANSWER
+    // ============================================
+    
     hideAnswer() {
         const answerRevealSection = document.getElementById('answerRevealSection');
         if (answerRevealSection) answerRevealSection.style.display = 'none';
     }
+    
+    // ============================================
+    // SHOW FEEDBACK NOTIFICATION
+    // ============================================
     
     showFeedbackNotification(isCorrect) {
         const notification = document.createElement('div');
@@ -1568,6 +2100,10 @@ async ensureUserExistsInProfileTable() {
         }, 3000);
     }
     
+    // ============================================
+    // SHOW NOTIFICATION
+    // ============================================
+    
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `toast toast-${type}`;
@@ -1576,6 +2112,10 @@ async ensureUserExistsInProfileTable() {
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 3000);
     }
+    
+    // ============================================
+    // RESET QUESTION
+    // ============================================
     
     resetQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
@@ -1593,23 +2133,9 @@ async ensureUserExistsInProfileTable() {
         this.updateTopProgressStats();
     }
     
-    showAnswer() {
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
-        const correctAnswer = question.correct_answer || '';
-        const optionsContainer = document.getElementById('optionsContainer');
-        if (optionsContainer) {
-            optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
-                const optionText = item.querySelector('.option-text-improved')?.textContent || '';
-                if (optionText === correctAnswer) item.classList.add('correct-improved');
-            });
-        }
-        this.showAnswerRevealSection();
-        this.userTestAnswers[this.currentQuestionIndex] = {
-            ...this.userTestAnswers[this.currentQuestionIndex],
-            viewed: true
-        };
-    }
+    // ============================================
+    // MARK FOR REVIEW
+    // ============================================
     
     markForReview() {
         const currentIndex = this.currentQuestionIndex;
@@ -1653,6 +2179,10 @@ async ensureUserExistsInProfileTable() {
             markBtnText.textContent = 'Mark for Review';
         }
     }
+    
+    // ============================================
+    // NAVIGATION
+    // ============================================
     
     prevQuestion() {
         if (this.currentQuestionIndex > 0) {
@@ -1698,28 +2228,90 @@ async ensureUserExistsInProfileTable() {
         this.goToQuestion(questionNum - 1);
     }
     
+    // ============================================
+    // FINISH PRACTICE - UPDATED TO END SESSION
+    // ============================================
+    
     async finishPractice() {
         const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
         const answeredCount = userStats.answered;
         const correctCount = userStats.correct;
         const accuracy = userStats.accuracy;
+        const totalQuestions = this.currentCourseQuestions.length;
         
-        const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
+        const allAnswered = answeredCount === totalQuestions;
+        const warningMessage = allAnswered ? 
+            '' : 
+            `⚠️ You have ${totalQuestions - answeredCount} unanswered questions. Continue?`;
+        
+        const confirmFinish = confirm(
+            `Finish Practice Session?\n\n` +
+            `📊 Summary:\n` +
+            `✅ Answered: ${answeredCount}/${totalQuestions}\n` +
+            `🎯 Correct: ${correctCount}\n` +
+            `📈 Accuracy: ${accuracy}%\n` +
+            `${warningMessage}\n\n` +
+            `Click OK to finish and see your results.`
+        );
+        
         if (confirmFinish) {
-            await this.saveAttemptToDatabase(correctCount, this.currentCourseQuestions.length);
+            // End the active session
+            await this.endActiveSession();
+            
+            // Show results summary
+            this.showPracticeSummary(correctCount, totalQuestions, accuracy);
+            await this.saveAttemptToDatabase(correctCount, totalQuestions);
             this.saveUserProgress();
-            this.loadQuestionBankCards();
         }
     }
     
-    scrollQuestions(direction) {
-        const gridContainer = document.getElementById('questionGridContainer');
-        if (!gridContainer) return;
-        const scrollAmount = 300;
-        const currentScroll = gridContainer.scrollLeft;
-        if (direction === 'left') gridContainer.scrollLeft = currentScroll - scrollAmount;
-        else gridContainer.scrollLeft = currentScroll + scrollAmount;
+    showPracticeSummary(correct, total, accuracy) {
+        const isPass = accuracy >= 60;
+        const grade = accuracy >= 85 ? 'Distinction' : 
+                      accuracy >= 75 ? 'Credit' : 
+                      accuracy >= 60 ? 'Pass' : 'Fail';
+        
+        const summaryHTML = `
+            <div class="practice-summary-overlay">
+                <div class="practice-summary-card ${isPass ? 'passed' : 'failed'}">
+                    <div class="summary-icon">
+                        <i class="fas ${isPass ? 'fa-trophy' : 'fa-book'}"></i>
+                    </div>
+                    <h2>${isPass ? '🎉 Practice Complete!' : '📚 Keep Practicing!'}</h2>
+                    <div class="summary-stats">
+                        <div class="stat">
+                            <span class="value">${correct}/${total}</span>
+                            <span class="label">Correct</span>
+                        </div>
+                        <div class="stat">
+                            <span class="value">${accuracy}%</span>
+                            <span class="label">Accuracy</span>
+                        </div>
+                        <div class="stat">
+                            <span class="value">${grade}</span>
+                            <span class="label">Grade</span>
+                        </div>
+                    </div>
+                    <div class="summary-actions">
+                        <button onclick="window.loadQuestionBankCards()" class="btn-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Courses
+                        </button>
+                        <button onclick="window.startCourseTest('${this.currentCourseForTest.id}', '${this.currentCourseForTest.name.replace(/'/g, "\\'")}', 0)" class="btn-secondary">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (this.studentQuestionBankContent) {
+            this.studentQuestionBankContent.innerHTML = summaryHTML;
+        }
     }
+    
+    // ============================================
+    // UPDATE METHODS
+    // ============================================
     
     updateCounters() {
         const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
@@ -1882,12 +2474,29 @@ async ensureUserExistsInProfileTable() {
         return dotsHtml;
     }
     
+    scrollQuestions(direction) {
+        const gridContainer = document.getElementById('questionGridContainer');
+        if (!gridContainer) return;
+        const scrollAmount = 300;
+        const currentScroll = gridContainer.scrollLeft;
+        if (direction === 'left') gridContainer.scrollLeft = currentScroll - scrollAmount;
+        else gridContainer.scrollLeft = currentScroll + scrollAmount;
+    }
+    
+    // ============================================
+    // CLEAR SEARCH
+    // ============================================
+    
     clearQuestionBankSearch() {
         if (this.studentQuestionBankSearch) {
             this.studentQuestionBankSearch.value = '';
             this.loadQuestionBankCards();
         }
     }
+    
+    // ============================================
+    // LOADING / ERROR STATES
+    // ============================================
     
     showLoading() {
         if (this.studentQuestionBankLoading) this.studentQuestionBankLoading.style.display = 'block';
@@ -1928,6 +2537,10 @@ async ensureUserExistsInProfileTable() {
         }
     }
     
+    // ============================================
+    // CLEAR ALL PROGRESS
+    // ============================================
+    
     clearAllProgress() {
         if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
             localStorage.removeItem(this.storageKey);
@@ -1942,7 +2555,7 @@ async ensureUserExistsInProfileTable() {
 }
 
 // ============================================
-// GLOBAL FUNCTIONS AND INITIALIZATION
+// GLOBAL FUNCTIONS
 // ============================================
 
 window.NurseIQModule = NurseIQModule;
@@ -2035,4 +2648,4 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
-console.log('✅ NurseIQ module loaded - Fixed with auto-migration for all students');
+console.log('✅ NurseIQ module loaded - Complete with TVET detection and active test tracking!');
