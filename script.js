@@ -13384,6 +13384,252 @@ document.getElementById('ns_nck_sheet')?.addEventListener('change', function() {
 });
 
 console.log('✅ Nursing School System module loaded');
+// ============================================
+// 👇👇👇 INSERT DOCUMENT VIEWER FUNCTIONS HERE 👇👇👇
+// ============================================
+
+let currentDocument = {
+    url: '',
+    userId: '',
+    docType: '',
+    fileName: '',
+    docId: ''
+};
+
+// View a document
+window.viewDocument = async function(userId, docType) {
+    console.log('📄 Viewing document:', { userId, docType });
+    
+    const modal = document.getElementById('documentViewerModal');
+    const content = document.getElementById('docViewerContent');
+    const title = document.getElementById('docViewerTitle');
+    
+    if (!modal) {
+        showFeedback('Document viewer modal not found', 'error');
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    content.innerHTML = '<div class="loading-spinner"></div><p>Loading document...</p>';
+    
+    try {
+        let docUrl = '';
+        let fileName = '';
+        let docId = '';
+        let studentName = '';
+        let profilePhotoUrl = '';
+        
+        // Get student profile
+        const { data: profile, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, profile_photo_url')
+            .eq('user_id', userId)
+            .single();
+            
+        if (profileError) {
+            console.warn('Profile fetch error:', profileError);
+            studentName = 'Student';
+        } else {
+            studentName = profile?.full_name || 'Student';
+            profilePhotoUrl = profile?.profile_photo_url;
+        }
+        
+        if (docType === 'photo') {
+            // View profile photo
+            if (profilePhotoUrl) {
+                docUrl = `${SUPABASE_URL}/storage/v1/object/public/user-documents/${profilePhotoUrl}`;
+                fileName = `profile_photo_${userId}.jpg`;
+                title.textContent = `📸 Profile Photo - ${studentName}`;
+            } else {
+                content.innerHTML = '<p style="color: #6b7280; padding: 40px;">📸 No profile photo uploaded</p>';
+                return;
+            }
+        } else {
+            // View document from user_documents table
+            const { data: doc, error: docError } = await sb
+                .from('user_documents')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('document_type', docType)
+                .maybeSingle();
+                
+            if (docError) {
+                console.error('Document fetch error:', docError);
+                content.innerHTML = `<p style="color: #dc2626;">Error loading document: ${docError.message}</p>`;
+                return;
+            }
+            
+            if (doc?.file_path) {
+                docUrl = `${SUPABASE_URL}/storage/v1/object/public/user-documents/${doc.file_path}`;
+                fileName = doc.file_name || `${docType}_${userId}.pdf`;
+                docId = doc.id;
+                currentDocument.docId = docId;
+                
+                const docLabels = {
+                    'kcse': '📄 KCSE Certificate',
+                    'id': '🪪 ID/Passport'
+                };
+                title.textContent = `${docLabels[docType] || docType} - ${studentName}`;
+            } else {
+                const docLabels = {
+                    'kcse': 'KCSE certificate',
+                    'id': 'ID/Passport'
+                };
+                content.innerHTML = `<p style="color: #6b7280; padding: 40px;">No ${docLabels[docType] || docType} document uploaded</p>`;
+                return;
+            }
+        }
+        
+        // Store for download/verify
+        currentDocument = {
+            url: docUrl,
+            userId: userId,
+            docType: docType,
+            fileName: fileName,
+            docId: docId
+        };
+        
+        // Display the document
+        const isImage = docUrl.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
+        const isPDF = docUrl.match(/\.pdf$/i);
+        
+        if (isImage) {
+            content.innerHTML = `
+                <img src="${docUrl}" alt="Document" 
+                     style="max-width:100%;max-height:70vh;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                <p style="display:none;color:#dc2626;padding:40px;">❌ Failed to load image</p>
+                <p style="margin-top:10px;color:#6b7280;font-size:12px;">
+                    <i class="fas fa-info-circle"></i> Click download to save
+                </p>
+            `;
+        } else if (isPDF) {
+            content.innerHTML = `
+                <iframe src="${docUrl}" style="width:100%;height:70vh;border:none;border-radius:8px;" 
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='block';"></iframe>
+                <p style="display:none;color:#dc2626;padding:40px;">❌ Failed to load PDF</p>
+                <p style="margin-top:10px;color:#6b7280;font-size:12px;">
+                    <i class="fas fa-info-circle"></i> Use controls to view or download
+                </p>
+            `;
+        } else {
+            content.innerHTML = `
+                <div style="padding:40px;background:#f8f9fa;border-radius:8px;">
+                    <i class="fas fa-file" style="font-size:48px;color:#4C1D95;"></i>
+                    <p style="margin-top:10px;">${fileName}</p>
+                    <a href="${docUrl}" target="_blank" class="btn-action" style="display:inline-block;padding:10px 20px;">
+                        <i class="fas fa-external-link-alt"></i> Open Document
+                    </a>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading document:', error);
+        content.innerHTML = `<p style="color:#dc2626;">❌ Error loading document: ${error.message}</p>`;
+    }
+};
+
+// Download current document
+window.downloadCurrentDocument = function() {
+    if (currentDocument.url) {
+        const link = document.createElement('a');
+        link.href = currentDocument.url;
+        link.download = currentDocument.fileName || 'document';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showFeedback('📥 Downloading document...', 'success');
+    } else {
+        showFeedback('❌ No document to download', 'error');
+    }
+};
+
+// Verify document
+window.verifyCurrentDocument = async function() {
+    if (!currentDocument.userId || !currentDocument.docType) {
+        showFeedback('❌ No document selected', 'error');
+        return;
+    }
+    
+    if (currentDocument.docType === 'photo') {
+        showFeedback('ℹ️ Profile photos cannot be verified', 'info');
+        return;
+    }
+    
+    if (!confirm(`Verify this ${currentDocument.docType.toUpperCase()} document?`)) return;
+    
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        
+        const { error } = await sb
+            .from('user_documents')
+            .update({ 
+                status: 'verified',
+                verified_by: user?.id || null,
+                verified_at: new Date().toISOString()
+            })
+            .eq('id', currentDocument.docId);
+            
+        if (error) throw error;
+        
+        showFeedback('✅ Document verified successfully!', 'success');
+        closeModal('documentViewerModal');
+        
+        if (typeof loadAllUsers === 'function') loadAllUsers();
+        if (typeof loadPendingApprovals === 'function') loadPendingApprovals();
+        
+    } catch (error) {
+        console.error('Verification error:', error);
+        showFeedback(`❌ Error: ${error.message}`, 'error');
+    }
+};
+
+// Reject document
+window.rejectCurrentDocument = async function() {
+    if (!currentDocument.userId || !currentDocument.docType) {
+        showFeedback('❌ No document selected', 'error');
+        return;
+    }
+    
+    if (currentDocument.docType === 'photo') {
+        showFeedback('ℹ️ Profile photos cannot be rejected', 'info');
+        return;
+    }
+    
+    const reason = prompt('Please provide a reason for rejection:');
+    if (reason === null) return;
+    
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        
+        const { error } = await sb
+            .from('user_documents')
+            .update({ 
+                status: 'rejected',
+                verified_by: user?.id || null,
+                verified_at: new Date().toISOString(),
+                rejection_reason: reason
+            })
+            .eq('id', currentDocument.docId);
+            
+        if (error) throw error;
+        
+        showFeedback(`❌ Document rejected. Reason: ${reason}`, 'warning');
+        closeModal('documentViewerModal');
+        
+        if (typeof loadAllUsers === 'function') loadAllUsers();
+        if (typeof loadPendingApprovals === 'function') loadPendingApprovals();
+        
+    } catch (error) {
+        console.error('Rejection error:', error);
+        showFeedback(`❌ Error: ${error.message}`, 'error');
+    }
+};
+
+console.log('✅ Document Viewer functions loaded');
+
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
