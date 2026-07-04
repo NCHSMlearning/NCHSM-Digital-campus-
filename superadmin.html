@@ -697,6 +697,92 @@
     </div>
 </section>
 
+            <!-- ============================================ -->
+<!-- STUDENT STATISTICS - NURSING VS TVET -->
+<!-- ============================================ -->
+<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+    <h2 style="font-size: 1.3rem; color: #1e293b; margin-bottom: 15px;">
+        <i class="fas fa-graduation-cap"></i> Student Enrollment Statistics
+    </h2>
+    
+    <!-- Summary Cards -->
+    <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="card" style="background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">Total Students</h3>
+            <p class="data" id="statsTotalStudents" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">All programs combined</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">🎓 KRCHN Nursing</h3>
+            <p class="data" id="statsKrchnCount" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Nursing students</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #d97706, #f59e0b); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">🔧 TVET Programs</h3>
+            <p class="data" id="statsTvetCount" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">All TVET students</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">📊 Total Programs</h3>
+            <p class="data" id="statsProgramCount" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Active programs</p>
+        </div>
+    </div>
+    
+    <!-- Gender Breakdown -->
+    <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top: 15px;">
+        <div class="card" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">👨 Male Students</h3>
+            <p class="data" id="statsMaleTotal" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Across all programs</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #be185d, #ec4899); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">👩 Female Students</h3>
+            <p class="data" id="statsFemaleTotal" style="color: white;">0</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Across all programs</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">📈 Male %</h3>
+            <p class="data" id="statsMalePercent" style="color: white;">0%</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Of total students</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #db2777, #f472b6); color: white; border: none;">
+            <h3 style="color: rgba(255,255,255,0.8);">📊 Female %</h3>
+            <p class="data" id="statsFemalePercent" style="color: white;">0%</p>
+            <p class="minor-data" style="color: rgba(255,255,255,0.7);">Of total students</p>
+        </div>
+    </div>
+    
+    <!-- Per-Program Breakdown Table -->
+    <div style="margin-top: 20px; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h3 style="font-size: 1.1rem; margin-bottom: 15px;">
+            <i class="fas fa-table"></i> Program-wise Breakdown
+        </h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #1e293b;">Program</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">Type</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">Total</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">👨 Male</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">👩 Female</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">M/F Ratio</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #1e293b;">% of Total</th>
+                    </tr>
+                </thead>
+                <tbody id="statsProgramBreakdown">
+                    <tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">
+                        <div class="loading-spinner"></div> Loading statistics...
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #6b7280; text-align: right;">
+            Last updated: <span id="statsLastUpdated">--:--:--</span>
+        </div>
+    </div>
+</div>
            <!-- UNIT REGISTRATION MANAGEMENT SECTION - FULLY UPDATED -->
 <section id="unit-management" class="tab-content">
     <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
