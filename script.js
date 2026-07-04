@@ -5531,6 +5531,10 @@ async function handleSendMessage(e) {
     }
 }
 
+// ============================================
+// LOAD ADMIN MESSAGES - FIXED
+// ============================================
+
 async function loadAdminMessages() {
     const tbody = $('adminMessagesTableBody');
     if (!tbody) return;
@@ -5538,47 +5542,87 @@ async function loadAdminMessages() {
     tbody.innerHTML = '<tr><td colspan="6">Loading admin messages...</td></tr>';
 
     try {
-        const { data: messages, error } = await sb.from('notifications')
-            .select('*, sender:sender_id(full_name)')
+        // ✅ Get messages WITHOUT the join
+        const { data: messages, error } = await sb
+            .from('notifications')
+            .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Error loading messages:', error);
+            tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
+            return;
+        }
 
         if (!messages || messages.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6">No messages found.</td></tr>';
             return;
         }
 
+        // ✅ Get sender names from users table (not profiles)
+        const senderIds = [...new Set(messages.map(m => m.sender_id).filter(id => id))];
+        let senderNames = {};
+        
+        if (senderIds.length > 0) {
+            try {
+                // Use the users table directly
+                const { data: users } = await sb
+                    .from('users')
+                    .select('id, email')
+                    .in('id', senderIds);
+                
+                if (users) {
+                    users.forEach(u => {
+                        senderNames[u.id] = u.email || 'User';
+                    });
+                }
+                
+                // Also try to get full names from profiles
+                const { data: profiles } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name')
+                    .in('user_id', senderIds);
+                
+                if (profiles) {
+                    profiles.forEach(p => {
+                        senderNames[p.user_id] = p.full_name || senderNames[p.user_id] || 'User';
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not fetch sender names:', e);
+            }
+        }
+
         const fragment = document.createDocumentFragment();
 
         messages.forEach(msg => {
             const recipient = msg.target_program || 'ALL Students';
-            const senderName = msg.sender?.full_name || 'System';
+            const senderName = senderNames[msg.sender_id] || 'System';
             const sendDate = msg.created_at ? new Date(msg.created_at).toLocaleString() : 'Unknown';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-            <td>${escapeHtml(recipient)}</td>
-            <td>${escapeHtml(senderName)}</td>
-            <td>${escapeHtml(msg.subject || '')}</td>
-            <td>${escapeHtml(msg.message.substring(0, 80) + (msg.message.length > 80 ? '...' : ''))}</td>
-            <td>${sendDate}</td>
-            <td>
-                <button class="btn-action" onclick="editNotification('${msg.id}')">Edit</button>
-                <button class="btn btn-delete" onclick="deleteNotification('${msg.id}')">Delete</button>
-            </td>
+                <td>${escapeHtml(recipient)}</td>
+                <td>${escapeHtml(senderName)}</td>
+                <td>${escapeHtml(msg.subject || '')}</td>
+                <td>${escapeHtml(msg.message ? msg.message.substring(0, 80) + (msg.message.length > 80 ? '...' : '') : '')}</td>
+                <td>${sendDate}</td>
+                <td>
+                    <button class="btn-action" onclick="editNotification('${msg.id}')">Edit</button>
+                    <button class="btn btn-delete" onclick="deleteNotification('${msg.id}')">Delete</button>
+                </td>
             `;
             fragment.appendChild(tr);
         });
 
         tbody.innerHTML = '';
         tbody.appendChild(fragment);
-    } catch (err) {
-        console.error('Failed to load admin messages:', err);
-        tbody.innerHTML = `<tr><td colspan="6">Error loading messages: ${err.message}</td></tr>`;
+
+    } catch (error) {
+        console.error('Error loading messages:', error);
+        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
     }
 }
-
 async function editNotification(id) {
     try {
         const { data, error } = await sb.from('notifications')
@@ -11642,7 +11686,7 @@ async function loadAllStaff() {
     
     const tbody = document.getElementById('staffTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="14"><div class="loading-spinner"></div> Loading staff...<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="14"><div class="loading-spinner"></div> Loading staff...</td></tr>';
     }
     
     try {
@@ -11651,16 +11695,25 @@ async function loadAllStaff() {
             .select('*')
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            // Check if table exists
+            if (error.code === '42P01') {
+                throw new Error('Table "staff_records" does not exist. Please create it in Supabase.');
+            }
+            throw error;
+        }
         
         staffRecords = data || [];
         updateStaffStats();
         renderStaffTable();
         
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error loading staff:', error);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="14" style="color: red;">Error: Table "staff_records" not found. Please create it in Supabase.<\/td><\/tr>`;
+            tbody.innerHTML = `<tr><td colspan="14" style="color: red; padding: 40px; text-align: center;">
+                ❌ Error: ${error.message}<br>
+                <small>Please create the staff_records table in Supabase.</small>
+            </td></tr>`;
         }
     }
 }
@@ -11711,7 +11764,7 @@ function renderStaffTable() {
     }
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 40px;">No staff records found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 40px; color: #6b7280;">No staff records found</td></tr>';
         return;
     }
     
@@ -11724,33 +11777,39 @@ function renderStaffTable() {
         
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px;">${escapeHtml(staff.title || '')}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.first_name)}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.department)}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.email)}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.phone)}<\/td>
-                <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}<\/strong><\/td>
-                <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.bank_name || '-')}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.bank_account || '-')}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.shif_number || '-')}<\/td>
-                <td style="padding: 12px;">${escapeHtml(staff.nsrf_number || '-')}<\/td>
-                <td style="padding: 12px;">${loginStatus}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.first_name)}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.department)}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
+                <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}</strong></td>
+                <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.bank_name || '-')}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.bank_account || '-')}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.shif_number || '-')}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.nsrf_number || '-')}</td>
+                <td style="padding: 12px;">${loginStatus}</td>
                 <td style="padding: 12px;">
                     <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Edit</button>
                     <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Reset Pwd</button>
                     <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Delete</button>
-                <\/td>
-            <\/tr>
+                </td>
+            </tr>
         `;
     });
 }
 
 // Open Add Staff Modal
 function openAddStaffModal() {
+    console.log('🔧 Opening Add Staff Modal...');
+    
     const modal = document.getElementById('staffModal');
-    if (!modal) return;
+    if (!modal) {
+        console.error('❌ staffModal not found in HTML!');
+        alert('Staff modal not found. Please check the HTML.');
+        return;
+    }
     
     document.getElementById('staffForm')?.reset();
     document.getElementById('editStaffId').value = '';
@@ -11760,6 +11819,7 @@ function openAddStaffModal() {
     if (passwordSection) passwordSection.style.display = 'none';
     
     modal.style.display = 'flex';
+    console.log('✅ Modal opened successfully');
 }
 
 // Close modal
@@ -11780,6 +11840,8 @@ function toggleStaffPasswordField() {
 
 // Save staff to database
 async function saveStaff() {
+    console.log('🔧 Saving staff...');
+    
     const editId = document.getElementById('editStaffId').value;
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
@@ -11820,7 +11882,7 @@ async function saveStaff() {
     };
     
     if (!staffData.first_name || !staffData.department || !staffData.email || !staffData.phone) {
-        alert('Please fill required fields');
+        alert('Please fill all required fields (First Name, Department, Email, Phone)');
         return;
     }
     
@@ -11837,7 +11899,7 @@ async function saveStaff() {
                 .eq('id', editId);
             
             if (error) throw error;
-            alert(`Staff ${staffData.first_name} updated!`);
+            alert(`✅ Staff ${staffData.first_name} updated!`);
             
         } else {
             // Create new - generate staff ID
@@ -11853,24 +11915,33 @@ async function saveStaff() {
             }
             staffData.created_at = new Date().toISOString();
             
-            const { error } = await sb.from('staff_records').insert([staffData]);
+            const { error, data } = await sb
+                .from('staff_records')
+                .insert([staffData])
+                .select();
+            
             if (error) throw error;
-            alert(`Staff ${staffData.first_name} registered! ID: ${staffId}`);
+            
+            console.log('✅ Staff saved:', data);
+            alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
         }
         
         closeStaffModal();
         loadAllStaff();
         
     } catch (error) {
-        console.error('Save error:', error);
-        alert(`Error: ${error.message}`);
+        console.error('❌ Save error:', error);
+        alert(`❌ Error: ${error.message}`);
     }
 }
 
 // Edit staff
 async function editStaff(staffId) {
     const staff = staffRecords.find(s => s.id === staffId);
-    if (!staff) return;
+    if (!staff) {
+        alert('Staff record not found');
+        return;
+    }
     
     document.getElementById('editStaffId').value = staff.id;
     document.getElementById('staffTitle').value = staff.title || '';
@@ -11929,27 +12000,27 @@ async function resetStaffPassword(staffId, staffName) {
         
         if (error) throw error;
         
-        alert(`Password for ${staffName} reset successfully!`);
+        alert(`✅ Password for ${staffName} reset successfully!`);
         loadAllStaff();
         
     } catch (error) {
-        alert(`Error: ${error.message}`);
+        alert(`❌ Error: ${error.message}`);
     }
 }
 
 // Delete staff
 async function deleteStaff(staffId, staffName) {
-    if (!confirm(`Delete staff "${staffName}"? This cannot be undone.`)) return;
+    if (!confirm(`⚠️ Delete staff "${staffName}"? This cannot be undone.`)) return;
     
     try {
         const { error } = await sb.from('staff_records').delete().eq('id', staffId);
         if (error) throw error;
         
-        alert(`Staff ${staffName} deleted!`);
+        alert(`✅ Staff ${staffName} deleted!`);
         loadAllStaff();
         
     } catch (error) {
-        alert(`Error: ${error.message}`);
+        alert(`❌ Error: ${error.message}`);
     }
 }
 
@@ -11979,6 +12050,135 @@ function exportStaffToCSV() {
     link.download = `staff_export_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
+}
+
+// ============================================
+// IMPORT STAFF FROM CSV - NEW FUNCTION
+// ============================================
+
+function importStaffFromCSV() {
+    console.log('🔧 Import Staff from CSV...');
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.style.display = 'none';
+    
+    fileInput.onchange = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                
+                // Get headers
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                
+                // Validate required fields
+                const required = ['first_name', 'email', 'phone', 'department'];
+                const missing = required.filter(f => !headers.includes(f));
+                
+                if (missing.length > 0) {
+                    alert(`❌ CSV must contain: ${required.join(', ')}\nMissing: ${missing.join(', ')}`);
+                    return;
+                }
+                
+                let imported = 0;
+                let errors = [];
+                let skipped = 0;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    const values = lines[i].split(',').map(v => v.trim());
+                    const row = {};
+                    headers.forEach((h, idx) => {
+                        row[h] = values[idx] || '';
+                    });
+                    
+                    // Skip empty rows
+                    if (!row.first_name && !row.email) {
+                        skipped++;
+                        continue;
+                    }
+                    
+                    // Generate staff ID
+                    const staffId = `STAFF${String(Date.now()).slice(-6)}${String(i).padStart(3, '0')}`;
+                    
+                    // Check if staff already exists
+                    const { data: existing } = await sb
+                        .from('staff_records')
+                        .select('id')
+                        .eq('email', row.email)
+                        .maybeSingle();
+                    
+                    if (existing) {
+                        errors.push(`Duplicate email: ${row.email}`);
+                        continue;
+                    }
+                    
+                    const staffData = {
+                        id: staffId,
+                        title: row.title || '',
+                        first_name: row.first_name || '',
+                        other_names: row.other_names || '',
+                        department: row.department || '',
+                        designation: row.designation || '',
+                        email: row.email || '',
+                        phone: row.phone || '',
+                        national_id: row.national_id || '',
+                        gender: row.gender || '',
+                        bank_name: row.bank_name || '',
+                        bank_account: row.bank_account || '',
+                        shif_number: row.shif_number || '',
+                        nsrf_number: row.nsrf_number || '',
+                        tax_pin: row.tax_pin || '',
+                        login_enabled: row.login_enabled === 'true' || row.login_enabled === 'TRUE' || false,
+                        status: row.status || 'active',
+                        created_at: new Date().toISOString()
+                    };
+                    
+                    try {
+                        const { error } = await sb.from('staff_records').insert([staffData]);
+                        if (error) {
+                            errors.push(`${staffData.first_name}: ${error.message}`);
+                        } else {
+                            imported++;
+                        }
+                    } catch (err) {
+                        errors.push(`${staffData.first_name}: ${err.message}`);
+                    }
+                }
+                
+                // Show results
+                let message = `✅ Import complete!\n\n`;
+                message += `📥 Imported: ${imported} staff\n`;
+                if (skipped > 0) message += `⏭️ Skipped: ${skipped} empty rows\n`;
+                if (errors.length > 0) {
+                    message += `❌ Errors: ${errors.length}\n\n`;
+                    message += `Errors:\n${errors.slice(0, 10).join('\n')}`;
+                    if (errors.length > 10) message += `\n... and ${errors.length - 10} more`;
+                }
+                
+                alert(message);
+                
+                // Refresh staff list
+                loadAllStaff();
+                
+            } catch (error) {
+                alert('❌ Error importing CSV: ' + error.message);
+                console.error('Import error:', error);
+            }
+        };
+        reader.readAsText(file);
+    };
+    
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
 }
 
 // Staff login function
@@ -12036,6 +12236,7 @@ window.resetStaffPassword = resetStaffPassword;
 window.deleteStaff = deleteStaff;
 window.filterStaffTable = filterStaffTable;
 window.exportStaffToCSV = exportStaffToCSV;
+window.importStaffFromCSV = importStaffFromCSV;
 window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
