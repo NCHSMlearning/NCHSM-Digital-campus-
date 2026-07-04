@@ -210,34 +210,37 @@ class NurseIQModule {
         return 'nursing';
     }
     
-    // ============================================
-    // UPDATE UI BASED ON PROGRAM
-    // ============================================
-    updateUIForProgram() {
-        const isNursing = this.currentProgram === 'nursing';
-        const isTVET = this.currentProgram === 'tvet';
-        
-        console.log(`🔄 Updating UI for: ${this.currentProgram} (${this.programDisplayName})`);
-        
-        const titleEl = document.getElementById('nurseiqTitle');
-        const subtitleEl = document.getElementById('nurseiqSubtitle');
-        const badgeEl = document.getElementById('nurseiqSubtitleBadge');
-        const iconEl = document.getElementById('nurseiqIcon');
-        const welcomeIcon = document.getElementById('welcomeIconElement');
-        const welcomeTitle = document.getElementById('welcomeTitle');
-        const welcomeText = document.getElementById('welcomeText');
-        const loadBtnText = document.getElementById('loadBtnText');
-        const indicatorText = document.getElementById('indicatorText');
-        const indicatorIcon = document.getElementById('indicatorIcon');
-        const switchNoteText = document.getElementById('switchNoteText');
-        const programIndicator = document.getElementById('nurseiqProgramIndicator');
-        
-        if (titleEl) titleEl.textContent = isNursing ? 'NurseIQ' : 'TVETIQ';
-        if (iconEl) iconEl.className = isNursing ? 'fas fa-brain' : 'fas fa-tools';
-        
+   // ============================================
+// UPDATE MODULE NAME DYNAMICALLY - MATCHES YOUR HTML
+// ============================================
+
+updateUIForProgram() {
+    const isNursing = this.currentProgram === 'nursing';
+    const isTVET = this.currentProgram === 'tvet';
+    
+    console.log(`🔄 Updating UI for: ${this.currentProgram} (${this.programDisplayName})`);
+    
+    // Get all dynamic elements - MATCHING YOUR HTML IDS
+    const titleEl = document.getElementById('nurseiqTitle');
+    const subtitleEl = document.getElementById('nurseiqSubtitle');
+    const badgeEl = document.getElementById('nurseiqSubtitleBadge');
+    const iconEl = document.getElementById('nurseiqIcon');
+    const welcomeIcon = document.getElementById('welcomeIconElement');
+    const welcomeTitle = document.getElementById('welcomeTitle');
+    const welcomeText = document.getElementById('welcomeText');
+    const loadBtnText = document.getElementById('loadBtnText');
+    const indicatorText = document.getElementById('indicatorText');
+    const indicatorIcon = document.getElementById('indicatorIcon');
+    const switchNoteText = document.getElementById('switchNoteText');
+    const programIndicator = document.getElementById('nurseiqProgramIndicator');
+    
+    if (isNursing) {
+        // 🔥 NURSING MODE
+        if (titleEl) titleEl.textContent = 'NurseIQ';
+        if (iconEl) iconEl.className = 'fas fa-brain';
         if (badgeEl) {
-            badgeEl.textContent = isNursing ? 'KRCHN' : 'TVET';
-            badgeEl.style.background = isNursing ? '#4C1D95' : '#1a7a5a';
+            badgeEl.textContent = 'KRCHN';
+            badgeEl.style.background = '#4C1D95';
             badgeEl.style.color = 'white';
             badgeEl.style.padding = '4px 12px';
             badgeEl.style.borderRadius = '20px';
@@ -246,62 +249,83 @@ class NurseIQModule {
             badgeEl.style.display = 'inline-block';
             badgeEl.style.marginLeft = '10px';
         }
-        
         if (subtitleEl) {
-            if (isNursing) {
-                subtitleEl.textContent = 'NSCHEQ Curriculum practice questions for Kenya Registered Community Health Nursing program';
-            } else if (isTVET) {
-                subtitleEl.textContent = `NITA/TVET Curriculum practice questions for ${this.programDisplayName}`;
-            }
+            subtitleEl.textContent = 'NSCHEQ Curriculum practice questions for Kenya Registered Community Health Nursing program';
         }
-        
-        if (welcomeIcon) welcomeIcon.className = isNursing ? 'fas fa-book-medical' : 'fas fa-tools';
-        if (welcomeTitle) welcomeTitle.textContent = isNursing ? 'NurseIQ Question Bank' : 'TVETIQ Question Bank';
-        
+        if (indicatorText) indicatorText.textContent = 'Nursing Mode';
+        if (indicatorIcon) indicatorIcon.className = 'fas fa-user-md';
+        if (switchNoteText) switchNoteText.textContent = `Auto-detected: ${this.programDisplayName || 'KRCHN Nursing'}`;
+        if (welcomeIcon) welcomeIcon.className = 'fas fa-book-medical';
+        if (welcomeTitle) welcomeTitle.textContent = 'NurseIQ Question Bank';
         if (welcomeText) {
-            if (isNursing) {
-                welcomeText.textContent = 'Access practice questions organized by NSCHEQ curriculum courses.';
-            } else if (isTVET) {
-                welcomeText.textContent = `Access practice questions organized by NITA/TVET curriculum courses for ${this.programDisplayName}.`;
-            }
+            welcomeText.textContent = 'Access practice questions organized by NSCHEQ curriculum courses.';
         }
-        
-        if (loadBtnText) loadBtnText.textContent = isNursing ? 'Load Nursing Courses' : 'Load TVET Courses';
-        
-        if (indicatorText) {
-            indicatorText.textContent = isNursing ? 'Nursing Mode' : `TVET Mode (${this.programDisplayName})`;
-        }
-        if (indicatorIcon) indicatorIcon.className = isNursing ? 'fas fa-user-md' : 'fas fa-tools';
-        if (switchNoteText) switchNoteText.textContent = `Auto-detected: ${this.programDisplayName}`;
-        
+        if (loadBtnText) loadBtnText.textContent = 'Load Nursing Courses';
         if (programIndicator) {
-            if (isTVET) {
-                programIndicator.classList.add('tvet-mode');
-                programIndicator.classList.remove('nursing-mode');
-                programIndicator.style.borderColor = '#1a7a5a';
-            } else {
-                programIndicator.classList.add('nursing-mode');
-                programIndicator.classList.remove('tvet-mode');
-                programIndicator.style.borderColor = '#4C1D95';
-            }
+            programIndicator.classList.add('nursing-mode');
+            programIndicator.classList.remove('tvet-mode');
+            programIndicator.style.borderColor = '#4C1D95';
         }
         
-        this.updateFilterOptions();
+        // Update page title
+        document.title = 'NurseIQ - Nursing Question Bank';
         
-        localStorage.setItem('nurseiq_program_mode', this.currentProgram);
-        localStorage.setItem('nurseiq_program_display', this.programDisplayName);
+    } else if (isTVET) {
+        // 🔥 TVET MODE
+        if (titleEl) titleEl.textContent = 'TVETIQ';
+        if (iconEl) iconEl.className = 'fas fa-tools';
+        if (badgeEl) {
+            badgeEl.textContent = 'TVET';
+            badgeEl.style.background = '#1a7a5a';
+            badgeEl.style.color = 'white';
+            badgeEl.style.padding = '4px 12px';
+            badgeEl.style.borderRadius = '20px';
+            badgeEl.style.fontSize = '14px';
+            badgeEl.style.fontWeight = '600';
+            badgeEl.style.display = 'inline-block';
+            badgeEl.style.marginLeft = '10px';
+        }
+        if (subtitleEl) {
+            subtitleEl.textContent = `NITA/TVET Curriculum practice questions for ${this.programDisplayName || 'TVET Program'}`;
+        }
+        if (indicatorText) indicatorText.textContent = `TVET Mode (${this.programDisplayName || 'TVET'})`;
+        if (indicatorIcon) indicatorIcon.className = 'fas fa-tools';
+        if (switchNoteText) switchNoteText.textContent = `Auto-detected: ${this.programDisplayName || 'TVET Program'}`;
+        if (welcomeIcon) welcomeIcon.className = 'fas fa-tools';
+        if (welcomeTitle) welcomeTitle.textContent = 'TVETIQ Question Bank';
+        if (welcomeText) {
+            welcomeText.textContent = `Access practice questions organized by NITA/TVET curriculum courses for ${this.programDisplayName || 'TVET Program'}.`;
+        }
+        if (loadBtnText) loadBtnText.textContent = 'Load TVET Courses';
+        if (programIndicator) {
+            programIndicator.classList.add('tvet-mode');
+            programIndicator.classList.remove('nursing-mode');
+            programIndicator.style.borderColor = '#1a7a5a';
+        }
         
-        document.dispatchEvent(new CustomEvent('nurseiqProgramChanged', {
-            detail: { 
-                program: this.currentProgram,
-                displayName: this.programDisplayName,
-                isTVET: isTVET,
-                isNursing: isNursing
-            }
-        }));
-        
-        console.log('✅ UI updated for program:', this.currentProgram, '-', this.programDisplayName);
+        // Update page title
+        document.title = 'TVETIQ - TVET Question Bank';
     }
+    
+    // Update filter options
+    this.updateFilterOptions();
+    
+    // Store preference
+    localStorage.setItem('nurseiq_program_mode', this.currentProgram);
+    localStorage.setItem('nurseiq_program_display', this.programDisplayName);
+    
+    // Dispatch event for other modules
+    document.dispatchEvent(new CustomEvent('nurseiqProgramChanged', {
+        detail: { 
+            program: this.currentProgram,
+            displayName: this.programDisplayName,
+            isTVET: isTVET,
+            isNursing: isNursing
+        }
+    }));
+    
+    console.log('✅ UI updated for program:', this.currentProgram, '-', this.programDisplayName);
+}
     
     updateFilterOptions() {
         const isTVET = this.currentProgram === 'tvet';
@@ -1313,223 +1337,314 @@ class NurseIQModule {
         }
     }
     
-    // ============================================
-    // DISPLAY QUESTION BANK CARDS
-    // ============================================
-    
-    displayQuestionBankCards(courses) {
-        if (!this.studentQuestionBankContent) return;
-        
-        const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
-        let filteredCourses = courses;
-        
-        if (searchTerm) {
-            filteredCourses = courses.filter(course => 
-                course.name.toLowerCase().includes(searchTerm) ||
-                course.unit_code.toLowerCase().includes(searchTerm) ||
-                course.description.toLowerCase().includes(searchTerm)
-            );
-        }
-        
-        function formatDate(date) {
-            if (!date) return 'Never';
-            if (typeof date === 'string') date = new Date(date);
-            const now = new Date();
-            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-            if (diffDays === 0) return 'Today';
-            if (diffDays === 1) return 'Yesterday';
-            if (diffDays < 7) return `${diffDays} days ago`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-        
-        let html = `<div class="question-bank-container">`;
-        
-        const lastProgress = this.getLastCourseProgress();
-        if (lastProgress) {
-            const lastCourse = courses.find(c => c.id === lastProgress.courseId);
-            if (lastCourse) {
-                const userStats = lastCourse.userStats;
-                html += `
-                    <div class="resume-card">
-                        <div class="resume-header">
-                            <i class="fas fa-history"></i>
-                            <h3>Continue Where You Left Off</h3>
+   // ============================================
+// DISPLAY QUESTION BANK CARDS - WITH PROGRAM FILTERING
+// ============================================
+
+displayQuestionBankCards(courses) {
+    if (!this.studentQuestionBankContent) return;
+
+    // 🔥 DETECT PROGRAM MODE
+    const isTVET = this.currentProgram === 'tvet';
+    const isNursing = this.currentProgram === 'nursing';
+    const moduleName = isTVET ? 'TVETIQ' : 'NurseIQ';
+    const iconClass = isTVET ? 'fa-tools' : 'fa-graduation-cap';
+    const color = isTVET ? '#1a7a5a' : '#4C1D95';
+
+    // 🔥 FILTER COURSES BASED ON PROGRAM
+    let filteredCourses = courses;
+
+    if (isTVET) {
+        // TVET course keywords
+        const tvetKeywords = [
+            'tvet', 'cdacc', 'nita', 'vocational', 'technical',
+            'craft', 'artisan', 'trade', 'occupational',
+            'dipott', 'cch', 'chrit', 'cpc', 'csl', 'csw', 'ccjs', 'cag', 'chss', 'cict',
+            'dpott', 'dch', 'dhr', 'dsl', 'dsw', 'dcjs', 'dhss', 'dict', 'dme',
+            'ach', 'aag', 'asw', 'cca', 'pte'
+        ];
+
+        filteredCourses = courses.filter(course => {
+            const courseName = course.name.toLowerCase();
+            const unitCode = (course.unit_code || '').toLowerCase();
+
+            for (const keyword of tvetKeywords) {
+                if (courseName.includes(keyword) || unitCode.includes(keyword)) {
+                    return true;
+                }
+            }
+            if (course.description && course.description.toLowerCase().includes('tvet')) {
+                return true;
+            }
+            return false;
+        });
+
+        console.log(`📊 Filtered to ${filteredCourses.length} TVET courses out of ${courses.length}`);
+    }
+
+    if (isNursing) {
+        // Nursing course keywords
+        const nursingKeywords = [
+            'nursing', 'krchn', 'health', 'medical', 'clinical',
+            'midwifery', 'pediatric', 'anatomy', 'physiology',
+            'surgical', 'medical surgical', 'immunization',
+            'leadership', 'management', 'pharmacology',
+            'obstetrics', 'gynecology', 'psychiatry', 'mental health',
+            'public health', 'epidemiology', 'nutrition',
+            'nchsgn', 'nchsm', 'nchsch'
+        ];
+
+        filteredCourses = courses.filter(course => {
+            const courseName = course.name.toLowerCase();
+            const unitCode = (course.unit_code || '').toLowerCase();
+
+            for (const keyword of nursingKeywords) {
+                if (courseName.includes(keyword) || unitCode.includes(keyword)) {
+                    return true;
+                }
+            }
+            if (course.description) {
+                const desc = course.description.toLowerCase();
+                if (desc.includes('nursing') || desc.includes('health') || desc.includes('clinical')) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        console.log(`📊 Filtered to ${filteredCourses.length} Nursing courses out of ${courses.length}`);
+    }
+
+    // Apply search filter
+    const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
+    if (searchTerm) {
+        filteredCourses = filteredCourses.filter(course =>
+            course.name.toLowerCase().includes(searchTerm) ||
+            course.unit_code.toLowerCase().includes(searchTerm) ||
+            course.description.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    function formatDate(date) {
+        if (!date) return 'Never';
+        if (typeof date === 'string') date = new Date(date);
+        const now = new Date();
+        const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    let html = `<div class="question-bank-container">`;
+
+    // 🔥 PROGRAM INFO BANNER - SHOWS DYNAMIC MODULE NAME
+    html += `
+        <div class="program-info-banner ${isTVET ? 'tvet' : 'nursing'}" 
+             style="background: ${color}15; border-left: 4px solid ${color}; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <i class="fas ${iconClass}" style="color: ${color}; font-size: 18px;"></i>
+            <span style="font-weight: 600; color: ${color};">${moduleName} Mode</span>
+            <span style="color: #64748b; margin-left: 4px;">| Showing ${filteredCourses.length} ${isTVET ? 'TVET' : 'Nursing'} courses</span>
+            ${filteredCourses.length === 0 ? `<span style="color: #dc2626; margin-left: 8px;">⚠️ No ${isTVET ? 'TVET' : 'Nursing'} courses available</span>` : ''}
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-user"></i> ${isTVET ? this.programDisplayName || 'TVET Student' : 'KRCHN Student'}
+            </span>
+        </div>
+    `;
+
+    // Resume card for last course
+    const lastProgress = this.getLastCourseProgress();
+    if (lastProgress) {
+        const lastCourse = filteredCourses.find(c => c.id === lastProgress.courseId);
+        if (lastCourse) {
+            const userStats = lastCourse.userStats;
+            html += `
+                <div class="resume-card" style="background: ${color}10; border: 1px solid ${color}30; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+                    <div class="resume-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <i class="fas fa-history" style="color: ${color};"></i>
+                        <h3 style="margin: 0; font-size: 16px;">Continue Where You Left Off</h3>
+                    </div>
+                    <div class="resume-content" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div class="resume-course">
+                            <span class="resume-course-name" style="font-weight: 600;">${lastCourse.name}</span>
+                            <span class="resume-progress" style="font-size: 13px; color: #64748b; margin-left: 12px;">
+                                <i class="fas fa-chart-line"></i> 
+                                Question ${lastProgress.currentIndex + 1} of ${lastProgress.totalQuestions}
+                            </span>
+                            <div class="resume-stats" style="margin-top: 4px; display: flex; gap: 16px; font-size: 13px;">
+                                <span class="resume-stat"><i class="fas fa-check-circle" style="color: #10b981;"></i> ${userStats.answered}/${userStats.total} answered</span>
+                                <span class="resume-stat"><i class="fas fa-trophy" style="color: #f59e0b;"></i> ${userStats.accuracy}% accuracy</span>
+                            </div>
                         </div>
-                        <div class="resume-content">
-                            <div class="resume-course">
-                                <span class="resume-course-name">${lastCourse.name}</span>
-                                <span class="resume-progress">
-                                    <i class="fas fa-chart-line"></i> 
-                                    Question ${lastProgress.currentIndex + 1} of ${lastProgress.totalQuestions}
-                                </span>
-                                <div class="resume-stats">
-                                    <span class="resume-stat"><i class="fas fa-check-circle"></i> ${userStats.answered}/${userStats.total} answered</span>
-                                    <span class="resume-stat"><i class="fas fa-trophy"></i> ${userStats.accuracy}% accuracy</span>
-                                </div>
-                            </div>
-                            <div class="resume-actions">
-                                <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', ${lastProgress.currentIndex})" 
-                                        class="resume-btn btn-primary">
-                                    <i class="fas fa-play"></i> Resume Practice
-                                </button>
-                                <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', 0)" 
-                                        class="resume-btn btn-secondary">
-                                    <i class="fas fa-redo"></i> Start Over
-                                </button>
-                            </div>
+                        <div class="resume-actions" style="display: flex; gap: 8px;">
+                            <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', ${lastProgress.currentIndex})" 
+                                    class="resume-btn btn-primary" style="background: ${color}; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-play"></i> Resume
+                            </button>
+                            <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', 0)" 
+                                    class="resume-btn btn-secondary" style="background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-redo"></i> Start Over
+                            </button>
                         </div>
                     </div>
-                `;
-            }
-        }
-        
-        if (filteredCourses.length === 0) {
-            html += `
-                <div class="empty-state">
-                    <i class="fas fa-search"></i>
-                    <h3>No Courses Found</h3>
-                    <p>No courses match your search "${searchTerm}". Try a different search term.</p>
-                    <button onclick="window.clearQuestionBankSearch()" class="btn btn-primary mt-2">
-                        <i class="fas fa-times"></i> Clear Search
-                    </button>
                 </div>
             `;
-        } else {
-            html += `<div class="courses-grid">`;
-            
-            filteredCourses.forEach(course => {
-                const courseColor = course.color || '#4f46e5';
-                const lastUpdated = formatDate(course.stats.lastUpdated);
-                const userStats = course.userStats;
-                const hasProgress = userStats.answered > 0;
-                
-                html += `
-                    <div class="course-card">
-                        <div class="course-header" style="border-color: ${courseColor}20;">
-                            <div class="course-title">
-                                <div>
-                                    <h3>${course.name}</h3>
-                                    <div class="course-subtitle">
-                                        <span class="unit-code" style="background: ${courseColor}30; color: ${courseColor};">
-                                            ${course.unit_code}
-                                        </span>
-                                        <span class="question-count">
-                                            <i class="fas fa-question-circle"></i> ${course.stats.total} questions
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="course-icon" style="background: ${courseColor};">
-                                    <i class="fas fa-book-medical"></i>
+        }
+    }
+
+    if (filteredCourses.length === 0) {
+        html += `
+            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                <i class="fas fa-search" style="font-size: 48px; color: #d1d5db;"></i>
+                <h3 style="margin-top: 16px;">No ${isTVET ? 'TVET' : 'Nursing'} Courses Found</h3>
+                <p style="color: #6b7280;">${searchTerm ? `No courses match your search "${searchTerm}".` : `No ${isTVET ? 'TVET' : 'Nursing'} courses available in the question bank yet.`}</p>
+                ${searchTerm ? `<button onclick="window.clearQuestionBankSearch()" class="btn btn-primary mt-2" style="margin-top: 12px; padding: 8px 20px; background: ${color}; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    <i class="fas fa-times"></i> Clear Search
+                </button>` : ''}
+            </div>
+        `;
+    } else {
+        html += `<div class="courses-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">`;
+
+        filteredCourses.forEach(course => {
+            const courseColor = course.color || color;
+            const lastUpdated = formatDate(course.stats.lastUpdated);
+            const userStats = course.userStats;
+            const hasProgress = userStats.answered > 0;
+
+            html += `
+                <div class="course-card" style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e2e8f0; transition: all 0.2s; cursor: pointer;" 
+                     onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" 
+                     onmouseout="this.style.boxShadow='none'">
+                    <div class="course-header" style="border-bottom: 2px solid ${courseColor}20; padding-bottom: 12px; margin-bottom: 12px;">
+                        <div class="course-title" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${course.name}</h3>
+                                <div class="course-subtitle" style="display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+                                    <span class="unit-code" style="background: ${courseColor}30; color: ${courseColor}; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                        ${course.unit_code}
+                                    </span>
+                                    <span class="question-count" style="color: #64748b; font-size: 13px;">
+                                        <i class="fas fa-question-circle"></i> ${course.stats.total} questions
+                                    </span>
+                                    ${isTVET ? `<span style="background: #1a7a5a20; color: #1a7a5a; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">TVET</span>` : ''}
                                 </div>
                             </div>
-                            ${hasProgress ? `
-                                <div class="progress-badge" style="background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)});">
-                                    <i class="fas fa-chart-line"></i> ${userStats.completion}% Complete
-                                </div>
-                            ` : `
-                                <div class="active-badge">
-                                    <i class="fas fa-check-circle"></i> Active Questions
-                                </div>
-                            `}
+                            <div class="course-icon" style="width: 40px; height: 40px; background: ${courseColor}; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="fas fa-book-medical"></i>
+                            </div>
                         </div>
-                        
-                        <div class="course-stats">
-                            ${hasProgress ? `
-                                <div class="user-progress-section">
-                                    <div class="progress-title"><i class="fas fa-chart-bar"></i> Your Progress</div>
-                                    <div class="progress-grid">
-                                        <div class="progress-item">
-                                            <div class="progress-value" style="color: ${courseColor};">${userStats.answered}/${userStats.total}</div>
-                                            <div class="progress-label">Answered</div>
-                                        </div>
-                                        <div class="progress-item">
-                                            <div class="progress-value" style="color: #10b981;">${userStats.correct}</div>
-                                            <div class="progress-label">Correct</div>
-                                        </div>
-                                        <div class="progress-item">
-                                            <div class="progress-value" style="color: #f59e0b;">${userStats.accuracy}%</div>
-                                            <div class="progress-label">Accuracy</div>
-                                        </div>
-                                        <div class="progress-item">
-                                            <div class="progress-value" style="color: #8b5cf6;">${userStats.completion}%</div>
-                                            <div class="progress-label">Complete</div>
-                                        </div>
+                        ${hasProgress ? `
+                            <div class="progress-badge" style="margin-top: 8px; background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)}); color: white; padding: 4px 12px; border-radius: 12px; display: inline-block; font-size: 12px; font-weight: 600;">
+                                <i class="fas fa-chart-line"></i> ${userStats.completion}% Complete
+                            </div>
+                        ` : `
+                            <div class="active-badge" style="margin-top: 8px; color: #10b981; font-size: 13px;">
+                                <i class="fas fa-check-circle"></i> Active Questions
+                            </div>
+                        `}
+                    </div>
+
+                    <div class="course-stats">
+                        ${hasProgress ? `
+                            <div class="user-progress-section" style="margin-bottom: 12px;">
+                                <div class="progress-title" style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 8px;">
+                                    <i class="fas fa-chart-bar"></i> Your Progress
+                                </div>
+                                <div class="progress-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                                    <div class="progress-item" style="text-align: center;">
+                                        <div class="progress-value" style="font-weight: 700; color: ${courseColor};">${userStats.answered}/${userStats.total}</div>
+                                        <div class="progress-label" style="font-size: 10px; color: #94a3b8;">Answered</div>
+                                    </div>
+                                    <div class="progress-item" style="text-align: center;">
+                                        <div class="progress-value" style="font-weight: 700; color: #10b981;">${userStats.correct}</div>
+                                        <div class="progress-label" style="font-size: 10px; color: #94a3b8;">Correct</div>
+                                    </div>
+                                    <div class="progress-item" style="text-align: center;">
+                                        <div class="progress-value" style="font-weight: 700; color: #f59e0b;">${userStats.accuracy}%</div>
+                                        <div class="progress-label" style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+                                    </div>
+                                    <div class="progress-item" style="text-align: center;">
+                                        <div class="progress-value" style="font-weight: 700; color: #8b5cf6;">${userStats.completion}%</div>
+                                        <div class="progress-label" style="font-size: 10px; color: #94a3b8;">Complete</div>
                                     </div>
                                 </div>
-                            ` : ''}
-                            
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <div class="stat-value text-primary">${course.stats.total}</div>
-                                    <div class="stat-label">TOTAL</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value text-danger">${course.stats.hard}</div>
-                                    <div class="stat-label">HARD</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value text-warning">${course.stats.medium}</div>
-                                    <div class="stat-label">MEDIUM</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-date-label">UPDATED</div>
-                                    <div class="stat-date text-primary">${lastUpdated}</div>
-                                </div>
                             </div>
-                            
-                            <button class="start-test-btn" 
-                                    onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}', ${hasProgress ? -1 : 0})" 
-                                    style="background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)});">
-                                <i class="fas fa-play-circle"></i> ${hasProgress ? 'CONTINUE PRACTICE' : 'START PRACTICE TEST'}
-                            </button>
-                            
-                            <div class="quick-stats">
-                                <div class="quick-stat">
-                                    <div class="quick-value text-success">${course.stats.easy}</div>
-                                    <div class="quick-label">Easy</div>
-                                </div>
-                                <div class="quick-stat">
-                                    <div class="quick-value text-warning">${course.stats.medium}</div>
-                                    <div class="quick-label">Medium</div>
-                                </div>
-                                <div class="quick-stat">
-                                    <div class="quick-value text-danger">${course.stats.hard}</div>
-                                    <div class="quick-label">Hard</div>
-                                </div>
+                        ` : ''}
+
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
+                            <div class="stat-item" style="text-align: center;">
+                                <div class="stat-value" style="font-weight: 700; color: #4C1D95; font-size: 18px;">${course.stats.total}</div>
+                                <div class="stat-label" style="font-size: 10px; color: #94a3b8;">TOTAL</div>
+                            </div>
+                            <div class="stat-item" style="text-align: center;">
+                                <div class="stat-value" style="font-weight: 700; color: #dc2626; font-size: 18px;">${course.stats.hard}</div>
+                                <div class="stat-label" style="font-size: 10px; color: #94a3b8;">HARD</div>
+                            </div>
+                            <div class="stat-item" style="text-align: center;">
+                                <div class="stat-value" style="font-weight: 700; color: #f59e0b; font-size: 18px;">${course.stats.medium}</div>
+                                <div class="stat-label" style="font-size: 10px; color: #94a3b8;">MEDIUM</div>
+                            </div>
+                            <div class="stat-item" style="text-align: center;">
+                                <div class="stat-date-label" style="font-size: 10px; color: #94a3b8;">UPDATED</div>
+                                <div class="stat-date" style="font-size: 12px; font-weight: 600; color: ${courseColor};">${lastUpdated}</div>
+                            </div>
+                        </div>
+
+                        <button class="start-test-btn" 
+                                onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}', ${hasProgress ? -1 : 0})" 
+                                style="width: 100%; padding: 10px; background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)}); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;"
+                                onmouseover="this.style.transform='scale(1.02)'" 
+                                onmouseout="this.style.transform='scale(1)'">
+                            <i class="fas fa-play-circle"></i> ${hasProgress ? 'CONTINUE PRACTICE' : 'START PRACTICE TEST'}
+                        </button>
+
+                        <div class="quick-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;">
+                            <div class="quick-stat" style="text-align: center;">
+                                <div class="quick-value" style="font-weight: 600; color: #10b981; font-size: 14px;">${course.stats.easy}</div>
+                                <div class="quick-label" style="font-size: 10px; color: #94a3b8;">Easy</div>
+                            </div>
+                            <div class="quick-stat" style="text-align: center;">
+                                <div class="quick-value" style="font-weight: 600; color: #f59e0b; font-size: 14px;">${course.stats.medium}</div>
+                                <div class="quick-label" style="font-size: 10px; color: #94a3b8;">Medium</div>
+                            </div>
+                            <div class="quick-stat" style="text-align: center;">
+                                <div class="quick-value" style="font-weight: 600; color: #dc2626; font-size: 14px;">${course.stats.hard}</div>
+                                <div class="quick-label" style="font-size: 10px; color: #94a3b8;">Hard</div>
                             </div>
                         </div>
                     </div>
-                `;
-            });
-            
-            html += `</div>`;
-        }
-        
+                </div>
+            `;
+        });
+
         html += `</div>`;
-        this.studentQuestionBankContent.innerHTML = html;
-        console.log('✅ Question bank displayed');
     }
-    
-    adjustColor(color, amount) {
-        let usePound = false;
-        if (color[0] === "#") {
-            color = color.slice(1);
-            usePound = true;
-        }
-        const num = parseInt(color, 16);
-        let r = (num >> 16) + amount;
-        if (r > 255) r = 255;
-        else if (r < 0) r = 0;
-        let b = ((num >> 8) & 0x00FF) + amount;
-        if (b > 255) b = 255;
-        else if (b < 0) b = 0;
-        let g = (num & 0x0000FF) + amount;
-        if (g > 255) g = 255;
-        else if (g < 0) g = 0;
-        return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+
+    html += `</div>`;
+    this.studentQuestionBankContent.innerHTML = html;
+    console.log(`✅ ${filteredCourses.length} courses displayed for ${isTVET ? 'TVET' : 'Nursing'} mode`);
+}
+
+adjustColor(color, amount) {
+    let usePound = false;
+    if (color[0] === "#") {
+        color = color.slice(1);
+        usePound = true;
     }
-    
+    const num = parseInt(color, 16);
+    let r = (num >> 16) + amount;
+    if (r > 255) r = 255;
+    else if (r < 0) r = 0;
+    let b = ((num >> 8) & 0x00FF) + amount;
+    if (b > 255) b = 255;
+    else if (b < 0) b = 0;
+    let g = (num & 0x0000FF) + amount;
+    if (g > 255) g = 255;
+    else if (g < 0) g = 0;
+    return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+}
     // ============================================
     // START COURSE TEST
     // ============================================
