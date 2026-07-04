@@ -2719,26 +2719,46 @@ function getDisplayIntake(program, year) {
     }
 }
 // ============================================
-// UPDATED loadAllUsers() - WITH DISPLAY INTAKE
+// UPDATED loadAllUsers() - WITH DOCUMENT COLUMNS
 // ============================================
 async function loadAllUsers() {
     const tbody = $('users-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="8">Loading all users...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">Loading all users...</td></tr>';
 
     const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
         .select('*')
         .order('full_name', { ascending: true });
     
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="8">Error loading users: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11">Error loading users: ${error.message}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
     
-    users.forEach(u => {
+    for (const u of users) {
+        // ✅ FETCH DOCUMENTS FOR THIS USER
+        const { data: docs } = await sb
+            .from('user_documents')
+            .select('document_type, status, file_path')
+            .eq('user_id', u.user_id);
+        
+        const docStatus = {};
+        docs?.forEach(d => { docStatus[d.document_type] = d.status; });
+        
+        // Document status badges
+        const kcseStatus = docStatus['kcse'] || 'pending';
+        const idStatus = docStatus['id'] || 'pending';
+        
+        const statusColors = {
+            'pending': 'badge-warning',
+            'uploaded': 'badge-info',
+            'verified': 'badge-success',
+            'rejected': 'badge-danger'
+        };
+        
         const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
             .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
 
@@ -2752,11 +2772,11 @@ async function loadAllUsers() {
         const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
         const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
         
-        // ✅ FIX: Show intake_year + intake_month
         const intakeDisplay = u.intake_year ? 
             `${u.intake_year}${u.intake_month ? ' ' + u.intake_month : ''}` : 
             'N/A';
 
+        // ✅ BUILD ROW WITH DOCUMENT COLUMNS (11 columns total)
         tbody.innerHTML += `
             <tr>
                 <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
@@ -2775,7 +2795,36 @@ async function loadAllUsers() {
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
-                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ✅ Updated -->
+                <td>${escapeHtml(intakeDisplay)}</td>
+                <!-- 📄 KCSE Column -->
+                <td>
+                    <span class="badge ${statusColors[kcseStatus]}" 
+                          style="cursor:pointer;" 
+                          onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
+                        ${kcseStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
+                    </span>
+                </td>
+                <!-- 🪪 ID/Passport Column -->
+                <td>
+                    <span class="badge ${statusColors[idStatus]}" 
+                          style="cursor:pointer;" 
+                          onclick="viewDocument('${escapeHtml(u.user_id)}','id')">
+                        ${idStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
+                    </span>
+                </td>
+                <!-- 📸 Photo Column -->
+                <td>
+                    ${u.profile_photo_url ? 
+                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
+                              alt="Photo" 
+                              style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                              onclick="viewDocument('${escapeHtml(u.user_id)}','photo')"
+                              onerror="this.style.display='none';">` :
+                        `<span class="badge badge-secondary" style="cursor:pointer;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
+                    }
+                </td>
                 <td class="${statusClass}">${statusText}</td>
                 <td>
                     <button class="btn btn-map" onclick="openEditUserModal('${escapeHtml(u.user_id)}')">Edit</button>
@@ -2783,12 +2832,12 @@ async function loadAllUsers() {
                     <button class="btn btn-delete" onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')">Delete</button>
                 </td>
             </tr>`;
-    });
+    }
 
     filterTable('user-search', 'users-table', [1, 2, 4]);
 }
 // ============================================
-// UPDATED loadPendingApprovals() - WITH DISPLAY INTAKE
+// UPDATED loadPendingApprovals() - WITH DOCUMENT COLUMNS
 // ============================================
 async function loadPendingApprovals() {
     const tbody = $('pending-table');
@@ -2797,7 +2846,7 @@ async function loadPendingApprovals() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">Loading pending approvals...</td></tr>';
 
     const { data: pending, error } = await sb
         .from(USER_PROFILE_TABLE)
@@ -2806,19 +2855,37 @@ async function loadPendingApprovals() {
         .order('created_at', { ascending: true });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11">Error: ${error.message}</td></tr>`;
         return;
     }
 
     if (!pending || pending.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11">No pending approvals.</td></tr>';
         return;
     }
 
     tbody.innerHTML = '';
 
-    pending.forEach(u => {
-        // Escape HTML for security
+    for (const u of pending) {
+        // ✅ FETCH DOCUMENTS FOR THIS USER
+        const { data: docs } = await sb
+            .from('user_documents')
+            .select('document_type, status, file_path')
+            .eq('user_id', u.user_id);
+        
+        const docStatus = {};
+        docs?.forEach(d => { docStatus[d.document_type] = d.status; });
+        
+        const kcseStatus = docStatus['kcse'] || 'pending';
+        const idStatus = docStatus['id'] || 'pending';
+        
+        const statusColors = {
+            'pending': 'badge-warning',
+            'uploaded': 'badge-info',
+            'verified': 'badge-success',
+            'rejected': 'badge-danger'
+        };
+        
         const escapedName = escapeHtml(u.full_name);
         const escapedUserId = escapeHtml(u.user_id);
         const escapedStudentId = escapeHtml(u.student_id || '');
@@ -2826,17 +2893,14 @@ async function loadPendingApprovals() {
         const escapedRole = escapeHtml(u.role || 'student');
         const escapedProgram = escapeHtml(u.program || 'N/A');
         
-        // Get program info for display
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
         const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
         const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
         
-        // ============================================
-        // FIX: Use display intake function
-        // ============================================
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
         
+        // ✅ BUILD ROW WITH DOCUMENT COLUMNS (11 columns total)
         tbody.innerHTML += `
             <tr>
                 <td>${escapedName}</td>
@@ -2848,8 +2912,37 @@ async function loadPendingApprovals() {
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
-                <td>${escapeHtml(intakeDisplay)}</td>  <!-- ← FIXED: Shows full intake string -->
+                <td>${escapeHtml(intakeDisplay)}</td>
                 <td>${escapedStudentId || 'N/A'}</td>
+                <!-- 📄 KCSE Column -->
+                <td>
+                    <span class="badge ${statusColors[kcseStatus]}" 
+                          style="cursor:pointer;" 
+                          onclick="viewDocument('${escapedUserId}','kcse')">
+                        ${kcseStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
+                    </span>
+                </td>
+                <!-- 🪪 ID/Passport Column -->
+                <td>
+                    <span class="badge ${statusColors[idStatus]}" 
+                          style="cursor:pointer;" 
+                          onclick="viewDocument('${escapedUserId}','id')">
+                        ${idStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
+                    </span>
+                </td>
+                <!-- 📸 Photo Column -->
+                <td>
+                    ${u.profile_photo_url ? 
+                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
+                              alt="Photo" 
+                              style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                              onclick="viewDocument('${escapedUserId}','photo')"
+                              onerror="this.style.display='none';">` :
+                        `<span class="badge badge-secondary" style="cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
+                    }
+                </td>
                 <td>${new Date(u.created_at).toLocaleDateString()}</td>
                 <td>
                     <button class="btn btn-approve" 
@@ -2862,7 +2955,7 @@ async function loadPendingApprovals() {
                     </button>
                 </td>
             </tr>`;
-    });
+    }
 }
 // ============================================
 // 👥 LOAD STUDENTS FOR ENROLLMENT TAB
