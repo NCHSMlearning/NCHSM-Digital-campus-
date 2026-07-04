@@ -1595,119 +1595,7 @@
             </tbody>
         </table>
     </div>
-      <!-- ADD / EDIT STAFF MODAL -->
-            <div id="staffModal" class="modal" style="display: none;">
-                <div class="modal-content" style="max-width: 900px; width: 90%;">
-                    <div class="modal-header">
-                        <h3 id="modalTitle" style="color: #4C1D95;"><i class="fas fa-user-plus"></i> Register New Staff</h3>
-                        <span class="close" onclick="closeStaffModal()">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <form id="staffForm" onsubmit="event.preventDefault(); saveStaff();">
-                            <input type="hidden" id="editStaffId" value="">
-                            
-                            <!-- Staff Department & Designation -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-                                <div>
-                                    <label style="font-weight: 600;">Staff department *</label>
-                                    <select id="staffDept" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                        <option value="">SELECT DEPARTMENT</option>
-                                        <option value="Tutors">Tutors (Academic)</option>
-                                        <option value="Front Desk">Front Desk</option>
-                                        <option value="Administration">Administration</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="ICT">ICT</option>
-                                        <option value="Library">Library</option>
-                                        <option value="Clinical">Clinical Instructors</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style="font-weight: 600;">Staff Designation</label>
-                                    <select id="staffDesignation" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                        <option value="">Select Designation</option>
-                                        <option value="Senior Lecturer">Senior Lecturer</option>
-                                        <option value="Lecturer">Lecturer</option>
-                                        <option value="Tutor">Tutor</option>
-                                        <option value="Clinical Instructor">Clinical Instructor</option>
-                                        <option value="Admin Officer">Admin Officer</option>
-                                        <option value="Finance Officer">Finance Officer</option>
-                                        <option value="IT Support">IT Support</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Personal Details -->
-                            <h4 style="margin: 15px 0 10px 0; color: #4C1D95;">Personal & Contact Details</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
-                                <select id="staffTitle" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                    <option value="">Title</option>
-                                    <option value="Mr">Mr</option>
-                                    <option value="Ms">Ms</option>
-                                    <option value="Mrs">Mrs</option>
-                                    <option value="Dr">Dr</option>
-                                    <option value="Prof">Prof</option>
-                                </select>
-                                <input type="text" id="staffFirstName" placeholder="First name *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffOtherNames" placeholder="Other names" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <select id="staffGender" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                    <option value="">Gender</option>
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                </select>
-                            </div>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px;">
-                                <input type="email" id="staffEmail" placeholder="Email address *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="tel" id="staffPhone" placeholder="Phone number *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffNationalId" placeholder="National ID / Passport No." style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffShif" placeholder="SHIF Number (optional)" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                            </div>
-                            
-                            <!-- Bank & Numbers -->
-                            <h4 style="margin: 15px 0 10px 0; color: #4C1D95;">Bank & Government Numbers</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
-                                <input type="text" id="staffBankName" placeholder="Bank Name" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffBankAcc" placeholder="Bank Account No." style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffNsrf" placeholder="NSRF Number (optional)" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                <input type="text" id="staffTaxPin" placeholder="Tax PIN" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                            </div>
-                            
-                            <!-- Staff ID & Login -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 15px;">
-                                <div>
-                                    <label>Staff ID (Leave blank to auto-generate)</label>
-                                    <input type="text" id="staffId" placeholder="e.g., T76" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="staffEnableLogin" style="width: 18px; height: 18px;">
-                                    <label style="font-weight: 500;">Enable login for this staff member</label>
-                                </div>
-                            </div>
-                            
-                            <!-- Password Section (shown only when login enabled) -->
-                            <div id="staffPasswordSection" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-                                <h4 style="margin-bottom: 10px; color: #4C1D95;"><i class="fas fa-lock"></i> Login Credentials</h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div>
-                                        <label style="font-weight: 600;">Password *</label>
-                                        <input type="password" id="staffPassword" placeholder="Enter password (min 6 chars)" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                    </div>
-                                    <div>
-                                        <label style="font-weight: 600;">Confirm Password *</label>
-                                        <input type="password" id="staffConfirmPassword" placeholder="Confirm password" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                                    </div>
-                                </div>
-                                <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> Staff will use their Staff ID or Email with this password to login</small>
-                            </div>
-                            
-                            <div class="modal-actions" style="margin-top: 20px;">
-                                <button type="button" onclick="closeStaffModal()" class="btn" style="background: #6b7280; color: white; padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer;">Cancel</button>
-                                <button type="submit" class="btn-action" style="background: #4C1D95; padding: 8px 20px;">Save Staff</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+    
     <!-- Payment History Modal -->
     <div id="paymentHistoryModal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 800px;">
@@ -3896,6 +3784,120 @@
             </form>
         </div>
     </div>
+
+                      <!-- ADD / EDIT STAFF MODAL -->
+            <div id="staffModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 900px; width: 90%;">
+                    <div class="modal-header">
+                        <h3 id="modalTitle" style="color: #4C1D95;"><i class="fas fa-user-plus"></i> Register New Staff</h3>
+                        <span class="close" onclick="closeStaffModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="staffForm" onsubmit="event.preventDefault(); saveStaff();">
+                            <input type="hidden" id="editStaffId" value="">
+                            
+                            <!-- Staff Department & Designation -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="font-weight: 600;">Staff department *</label>
+                                    <select id="staffDept" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                        <option value="">SELECT DEPARTMENT</option>
+                                        <option value="Tutors">Tutors (Academic)</option>
+                                        <option value="Front Desk">Front Desk</option>
+                                        <option value="Administration">Administration</option>
+                                        <option value="Finance">Finance</option>
+                                        <option value="ICT">ICT</option>
+                                        <option value="Library">Library</option>
+                                        <option value="Clinical">Clinical Instructors</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-weight: 600;">Staff Designation</label>
+                                    <select id="staffDesignation" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                        <option value="">Select Designation</option>
+                                        <option value="Senior Lecturer">Senior Lecturer</option>
+                                        <option value="Lecturer">Lecturer</option>
+                                        <option value="Tutor">Tutor</option>
+                                        <option value="Clinical Instructor">Clinical Instructor</option>
+                                        <option value="Admin Officer">Admin Officer</option>
+                                        <option value="Finance Officer">Finance Officer</option>
+                                        <option value="IT Support">IT Support</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Personal Details -->
+                            <h4 style="margin: 15px 0 10px 0; color: #4C1D95;">Personal & Contact Details</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                                <select id="staffTitle" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                    <option value="">Title</option>
+                                    <option value="Mr">Mr</option>
+                                    <option value="Ms">Ms</option>
+                                    <option value="Mrs">Mrs</option>
+                                    <option value="Dr">Dr</option>
+                                    <option value="Prof">Prof</option>
+                                </select>
+                                <input type="text" id="staffFirstName" placeholder="First name *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffOtherNames" placeholder="Other names" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <select id="staffGender" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                    <option value="">Gender</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                </select>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                                <input type="email" id="staffEmail" placeholder="Email address *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="tel" id="staffPhone" placeholder="Phone number *" required style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffNationalId" placeholder="National ID / Passport No." style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffShif" placeholder="SHIF Number (optional)" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            </div>
+                            
+                            <!-- Bank & Numbers -->
+                            <h4 style="margin: 15px 0 10px 0; color: #4C1D95;">Bank & Government Numbers</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                                <input type="text" id="staffBankName" placeholder="Bank Name" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffBankAcc" placeholder="Bank Account No." style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffNsrf" placeholder="NSRF Number (optional)" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <input type="text" id="staffTaxPin" placeholder="Tax PIN" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            </div>
+                            
+                            <!-- Staff ID & Login -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 15px;">
+                                <div>
+                                    <label>Staff ID (Leave blank to auto-generate)</label>
+                                    <input type="text" id="staffId" placeholder="e.g., T76" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="staffEnableLogin" style="width: 18px; height: 18px;">
+                                    <label style="font-weight: 500;">Enable login for this staff member</label>
+                                </div>
+                            </div>
+                            
+                            <!-- Password Section (shown only when login enabled) -->
+                            <div id="staffPasswordSection" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                                <h4 style="margin-bottom: 10px; color: #4C1D95;"><i class="fas fa-lock"></i> Login Credentials</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <label style="font-weight: 600;">Password *</label>
+                                        <input type="password" id="staffPassword" placeholder="Enter password (min 6 chars)" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                    </div>
+                                    <div>
+                                        <label style="font-weight: 600;">Confirm Password *</label>
+                                        <input type="password" id="staffConfirmPassword" placeholder="Confirm password" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                    </div>
+                                </div>
+                                <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> Staff will use their Staff ID or Email with this password to login</small>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 20px;">
+                                <button type="button" onclick="closeStaffModal()" class="btn" style="background: #6b7280; color: white; padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer;">Cancel</button>
+                                <button type="submit" class="btn-action" style="background: #4C1D95; padding: 8px 20px;">Save Staff</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
                      <!-- Document Viewer Modal -->
     <div id="documentViewerModal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
