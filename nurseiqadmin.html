@@ -130,10 +130,11 @@
     <div id="admin-section" class="hidden">
         <div class="admin-container">
             <aside class="sidebar">
-                <div class="sidebar-header">
-                    <h2><i class="fas fa-graduation-cap"></i> NurseIQ</h2>
-                    <p class="sidebar-subtitle">Admin Control Panel</p>
-                </div>
+               <!-- Inside sidebar-header -->
+<div class="sidebar-header">
+    <h2><i class="fas fa-graduation-cap" id="adminModuleIcon"></i> <span id="adminModuleName">NurseIQ</span></h2>
+    <p class="sidebar-subtitle">Admin Control Panel</p>
+</div>
                 <div class="sidebar-stats">
                     <div class="stat-badge"><div class="stat-badge-value" id="stat-questions">0</div><div class="stat-badge-label">Total</div></div>
                     <div class="stat-badge"><div class="stat-badge-value" id="stat-approved">0</div><div class="stat-badge-label">Approved</div></div>
@@ -141,36 +142,54 @@
                     <div class="stat-badge"><div class="stat-badge-value" id="stat-students">0</div><div class="stat-badge-label">Students</div></div>
                 </div>
                 <div class="sidebar-nav">
-                    <div class="nav-section">
-                        <div class="nav-section-title"><i class="fas fa-chart-line"></i> MAIN</div>
-                        <button onclick="showPage('dashboard')" class="sidebar-nav-item"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
-                    </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title"><i class="fas fa-database"></i> QUESTION BANK</div>
-                        <button onclick="showPage('question-bank')" class="sidebar-nav-item"><i class="fas fa-list"></i> All Questions</button>
-                        <button onclick="showPage('add-question')" class="sidebar-nav-item" id="nav-add-question"><i class="fas fa-plus-circle"></i> Add Question</button>
-                        <button onclick="showPage('bulk-import')" class="sidebar-nav-item" id="nav-bulk-import"><i class="fas fa-upload"></i> Bulk Import</button>
-                        <button onclick="showPage('pending-approval')" class="sidebar-nav-item" id="nav-pending"><i class="fas fa-clock"></i> Pending Approval</button>
-                    </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
-                        <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
-                        <button onclick="showPage('students')" class="sidebar-nav-item" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
-                    </div>
                    <div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-chart-line"></i> MAIN</div>
+    <button onclick="showPage('dashboard')" class="sidebar-nav-item"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
+</div>
+
+<div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-database"></i> QUESTION BANK</div>
+    <button onclick="showPage('question-bank')" class="sidebar-nav-item"><i class="fas fa-list"></i> All Questions</button>
+    <button onclick="showPage('add-question')" class="sidebar-nav-item" id="nav-add-question"><i class="fas fa-plus-circle"></i> Add Question</button>
+    <button onclick="showPage('bulk-import')" class="sidebar-nav-item" id="nav-bulk-import"><i class="fas fa-upload"></i> Bulk Import</button>
+    <button onclick="showPage('pending-approval')" class="sidebar-nav-item" id="nav-pending"><i class="fas fa-clock"></i> Pending Approval</button>
+</div>
+
+<div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
+    <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
+    <button onclick="showPage('students')" class="sidebar-nav-item" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
+</div>
+
+<div class="nav-section">
     <div class="nav-section-title"><i class="fas fa-chart-simple"></i> PROGRESS</div>
     <button onclick="showPage('individual-progress')" class="sidebar-nav-item"><i class="fas fa-user-chart"></i> Student Progress</button>
     <button onclick="showPage('marked-review')" class="sidebar-nav-item"><i class="fas fa-flag-checkered"></i> Marked for Review</button>
     <button onclick="showPage('attempts')" class="sidebar-nav-item"><i class="fas fa-history"></i> Progress Summary</button>
 </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title"><i class="fas fa-cog"></i> SYSTEM</div>
-                        <button onclick="showPage('settings')" class="sidebar-nav-item superadmin-only" id="nav-settings"><i class="fas fa-sliders-h"></i> Settings</button>
-                        <button onclick="showPage('user-management')" class="sidebar-nav-item superadmin-only" id="nav-user-mgmt"><i class="fas fa-users-cog"></i> User Management</button>
-                    </div>
-                </div>
-            </aside>
 
+<!-- 🔥 NEW: TVETIQ SECTION -->
+<div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-tools" style="color: #1a7a5a;"></i> TVETIQ</div>
+    <button onclick="showPage('tvetiq-dashboard')" class="sidebar-nav-item" id="nav-tvetiq">
+        <i class="fas fa-tachometer-alt" style="color: #1a7a5a;"></i> TVETIQ Dashboard
+        <span class="badge" style="background: #1a7a5a; color: white; font-size: 10px; margin-left: auto;" id="tvetiq-count">0</span>
+    </button>
+    <button onclick="showPage('tvetiq-students')" class="sidebar-nav-item" id="nav-tvetiq-students">
+        <i class="fas fa-users" style="color: #1a7a5a;"></i> TVET Students
+        <span class="badge" style="background: #1a7a5a; color: white; font-size: 10px; margin-left: auto;" id="tvetiq-student-count">0</span>
+    </button>
+    <button onclick="showPage('tvetiq-questions')" class="sidebar-nav-item" id="nav-tvetiq-questions">
+        <i class="fas fa-question-circle" style="color: #1a7a5a;"></i> TVET Questions
+        <span class="badge" style="background: #1a7a5a; color: white; font-size: 10px; margin-left: auto;" id="tvetiq-question-count">0</span>
+    </button>
+</div>
+
+<div class="nav-section">
+    <div class="nav-section-title"><i class="fas fa-cog"></i> SYSTEM</div>
+    <button onclick="showPage('settings')" class="sidebar-nav-item superadmin-only" id="nav-settings"><i class="fas fa-sliders-h"></i> Settings</button>
+    <button onclick="showPage('user-management')" class="sidebar-nav-item superadmin-only" id="nav-user-mgmt"><i class="fas fa-users-cog"></i> User Management</button>
+</div>
             <main class="main-content">
                 <div class="top-bar">
                     <div class="welcome-text">
@@ -259,20 +278,25 @@
     }
 
     async function loadAllData() {
-        const { data: q } = await sb.from('medical_assessments').select('*, courses(course_name)'); 
-        allQuestions = q || [];
-        const { data: s } = await sb.from('consolidated_user_profiles_table').select('*'); 
-        allStudents = s || [];
-        const { data: c } = await sb.from('courses').select('*'); 
-        allCourses = c || [];
-        const { data: prog } = await sb.from('user_progress').select('*'); 
-        userProgress = {};
-        if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
-        document.getElementById('stat-questions').innerText = allQuestions.length;
-        document.getElementById('stat-approved').innerText = allQuestions.filter(q => q.status === 'approved').length;
-        document.getElementById('stat-pending').innerText = allQuestions.filter(q => q.status === 'pending').length;
-        document.getElementById('stat-students').innerText = allStudents.length;
-    }
+    const { data: q } = await sb.from('medical_assessments').select('*, courses(course_name)'); 
+    allQuestions = q || [];
+    const { data: s } = await sb.from('consolidated_user_profiles_table').select('*'); 
+    allStudents = s || [];
+    const { data: c } = await sb.from('courses').select('*'); 
+    allCourses = c || [];
+    const { data: prog } = await sb.from('user_progress').select('*'); 
+    userProgress = {};
+    if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
+    
+    document.getElementById('stat-questions').innerText = allQuestions.length;
+    document.getElementById('stat-approved').innerText = allQuestions.filter(q => q.status === 'approved').length;
+    document.getElementById('stat-pending').innerText = allQuestions.filter(q => q.status === 'pending').length;
+    document.getElementById('stat-students').innerText = allStudents.length;
+    
+    // 🔥 Update TVETIQ counts
+    updateTVETIQCounts();
+    updateAdminModuleName();
+}
 
     function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
     const panel = document.getElementById('main-panel');
@@ -356,7 +380,374 @@
             else { alert('Question updated and sent for approval!'); modal.remove(); await loadAllData(); renderLecturerDashboard(); showToast('Question updated! Pending approval.', 'success'); }
         });
     };
+// ============================================
+// UPDATE TVETIQ COUNTS IN SIDEBAR
+// ============================================
+function updateTVETIQCounts() {
+    const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
+    const tvetQuestions = allQuestions.filter(q => {
+        const course = allCourses.find(c => c.id === q.course_id);
+        return course && course.course_name && 
+               (course.course_name.toLowerCase().includes('tvet') || 
+                course.course_name.toLowerCase().includes('cdacc') ||
+                course.course_name.toLowerCase().includes('nita') ||
+                course.unit_code?.toLowerCase().includes('tvet'));
+    });
+    
+    const countEl = document.getElementById('tvetiq-count');
+    const studentCountEl = document.getElementById('tvetiq-student-count');
+    const questionCountEl = document.getElementById('tvetiq-question-count');
+    
+    if (countEl) countEl.textContent = tvetStudents.length;
+    if (studentCountEl) studentCountEl.textContent = tvetStudents.length;
+    if (questionCountEl) questionCountEl.textContent = tvetQuestions.length;
+}
 
+// ============================================
+// TVETIQ STUDENTS PAGE
+// ============================================
+async function renderTVETIQStudents() {
+    const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
+    
+    panel.innerHTML = `
+        <div style="margin-bottom:24px;">
+            <h2 style="color:#1a7a5a;"><i class="fas fa-users"></i> TVETIQ Students</h2>
+            <p style="color:#64748b;">Manage and monitor TVET students</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>TVET Students (${tvetStudents.length})</h3>
+            </div>
+            <input type="text" id="tvet-student-search" class="search-input" placeholder="Search TVET students...">
+            <div id="tvet-students-list"></div>
+        </div>
+    `;
+    
+    document.getElementById('tvet-student-search').addEventListener('input', () => filterTVETStudentsList());
+    filterTVETStudentsList();
+}
+
+function filterTVETStudentsList() {
+    const search = document.getElementById('tvet-student-search')?.value.toLowerCase() || '';
+    const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
+    const filtered = tvetStudents.filter(s => 
+        s.full_name?.toLowerCase().includes(search) || 
+        s.email?.toLowerCase().includes(search)
+    );
+    
+    const container = document.getElementById('tvet-students-list');
+    if(!container) return;
+    
+    container.innerHTML = filtered.map(s => { 
+        const prog = getStudentProgress(s.id);
+        const programDisplay = getProgramDisplayName(s);
+        
+        return `
+            <div class="student-progress-card" style="border-left: 4px solid #1a7a5a;">
+                <div>
+                    <strong>${s.full_name || 'Unknown'}</strong>
+                    <span class="badge" style="background:#1a7a5a;color:white;">TVET</span>
+                    <span class="badge badge-primary" style="font-size:10px;">${programDisplay}</span>
+                    <span class="badge ${prog.accuracy >= 70 ? 'badge-success' : prog.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${prog.accuracy}%</span>
+                </div>
+                <div><small>${s.email}</small></div>
+                <div><span>${prog.totalAnswered} answered | ${prog.markedQuestions.length} marked</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${prog.accuracy}%; background: #1a7a5a;"></div>
+                </div>
+                <div style="margin-top:10px;">
+                    <button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View Progress</button>
+                    <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button>
+                </div>
+            </div>
+        `; 
+    }).join('');
+    
+    if (filtered.length === 0) container.innerHTML = '<div class="empty-state">No TVET students found</div>';
+}
+
+// ============================================
+// TVETIQ QUESTIONS PAGE
+// ============================================
+async function renderTVETIQQuestions() {
+    const tvetQuestions = allQuestions.filter(q => {
+        const course = allCourses.find(c => c.id === q.course_id);
+        return course && course.course_name && 
+               (course.course_name.toLowerCase().includes('tvet') || 
+                course.course_name.toLowerCase().includes('cdacc') ||
+                course.course_name.toLowerCase().includes('nita') ||
+                course.unit_code?.toLowerCase().includes('tvet'));
+    });
+    
+    panel.innerHTML = `
+        <div style="margin-bottom:24px;">
+            <h2 style="color:#1a7a5a;"><i class="fas fa-question-circle"></i> TVETIQ Questions</h2>
+            <p style="color:#64748b;">Manage TVET-specific questions</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>TVET Questions (${tvetQuestions.length})</h3>
+                <button onclick="showPage('add-question')" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus"></i> Add TVET Question
+                </button>
+            </div>
+            ${tvetQuestions.length === 0 ? 
+                '<div class="empty-state">No TVET questions created yet</div>' :
+                tvetQuestions.map(q => `
+                    <div class="question-item" style="border-left: 4px solid #1a7a5a;">
+                        <div class="question-status">
+                            <span class="badge ${q.status === 'approved' ? 'badge-approved' : q.status === 'pending' ? 'badge-pending' : 'badge-danger'}">
+                                ${q.status?.toUpperCase() || 'PENDING'}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span>
+                            <span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">
+                                ${q.difficulty || 'medium'}
+                            </span>
+                            <span class="badge" style="background:#1a7a5a;color:white;">TVET</span>
+                        </div>
+                        <div style="margin:10px 0;">
+                            <strong>${escapeHtml(q.question_text)}</strong>
+                        </div>
+                        <div class="preview-options">
+                            <div>A: ${escapeHtml(q.option_a || 'N/A')}</div>
+                            <div>B: ${escapeHtml(q.option_b || 'N/A')}</div>
+                            <div>C: ${escapeHtml(q.option_c || 'N/A')}</div>
+                            <div>D: ${escapeHtml(q.option_d || 'N/A')}</div>
+                        </div>
+                        <div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div>
+                        <div class="approval-actions" style="margin-top:10px;">
+                            <button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('')
+            }
+        </div>
+    `;
+}
+
+// ============================================
+// UPDATE showPage FUNCTION
+// ============================================
+window.showPage = (page) => {
+    if(page === 'dashboard') renderDashboard();
+    else if(page === 'question-bank') renderQuestionBank();
+    else if(page === 'add-question') renderAddQuestion();
+    else if(page === 'bulk-import') renderBulkImport();
+    else if(page === 'pending-approval') renderPendingApproval();
+    else if(page === 'courses') renderCourses();
+    else if(page === 'students') renderStudents();
+    else if(page === 'individual-progress') renderIndividualProgress();
+    else if(page === 'marked-review') renderMarkedReview();
+    else if(page === 'attempts') renderAttempts();
+    else if(page === 'settings') renderSettings();
+    else if(page === 'user-management') renderSuperAdminDashboard();
+    else if(page === 'tvetiq-dashboard') renderTVETIQDashboard();
+    else if(page === 'tvetiq-students') renderTVETIQStudents();
+    else if(page === 'tvetiq-questions') renderTVETIQQuestions();
+};
+
+    // ============================================
+// TVET PROGRAM CODES & DETECTION
+// ============================================
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+function getStudentProgram(student) {
+    if (!student) return 'nursing';
+    
+    const programCode = String(student.program || '').toUpperCase().trim();
+    if (TVET_PROGRAMS.includes(programCode)) {
+        return 'tvet';
+    }
+    
+    const progLower = String(student.program || '').toLowerCase();
+    if (progLower.includes('nursing') || progLower.includes('krchn') || 
+        progLower.includes('health') || progLower.includes('medical')) {
+        return 'nursing';
+    }
+    
+    const typeLower = String(student.program_type || '').toLowerCase();
+    if (typeLower === 'tvet' || typeLower === 'vocational' || typeLower === 'technical') {
+        return 'tvet';
+    }
+    
+    return 'nursing';
+}
+
+function getProgramDisplayName(student) {
+    if (!student) return 'KRCHN Nursing';
+    
+    const programCode = String(student.program || '').toUpperCase().trim();
+    const displayNames = {
+        'DPOTT': 'Diploma in Perioperative Theatre Technology',
+        'DCH': 'Diploma in Community Health',
+        'DHRIT': 'Diploma in Health Records and IT',
+        'DSL': 'Diploma in Science Lab',
+        'DSW': 'Diploma in Social Work & Community Development',
+        'DCJS': 'Diploma in Criminal Justice',
+        'DHSS': 'Diploma in Health Support Services',
+        'DICT': 'Diploma in ICT',
+        'DME': 'Diploma in Medical Engineering',
+        'CPOTT': 'Certificate in Perioperative Theatre Technology',
+        'CCH': 'Certificate in Community Health',
+        'CHRIT': 'Certificate in Health Records and IT',
+        'CPC': 'Certificate in Patient Care',
+        'CSL': 'Certificate in Science Lab',
+        'CSW': 'Certificate in Social Work & Community Development',
+        'CCJS': 'Certificate in Criminal Justice',
+        'CAG': 'Certificate in Agriculture',
+        'CHSS': 'Certificate in Health Support Services',
+        'CICT': 'Certificate in ICT',
+        'ACH': 'Artisan in Community Health',
+        'AAG': 'Artisan in Agriculture',
+        'ASW': 'Artisan in Social Work & Community Development',
+        'CCA': 'Certificate in Computer Applications',
+        'PTE': 'TVET/CDACC (PTE)'
+    };
+    return displayNames[programCode] || programCode;
+}
+
+// ============================================
+// UPDATE TVETIQ COUNTS IN SIDEBAR
+// ============================================
+function updateTVETIQCounts() {
+    const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
+    const tvetQuestions = allQuestions.filter(q => {
+        const course = allCourses.find(c => c.id === q.course_id);
+        return course && course.course_name && 
+               (course.course_name.toLowerCase().includes('tvet') || 
+                course.course_name.toLowerCase().includes('cdacc') ||
+                course.course_name.toLowerCase().includes('nita') ||
+                course.unit_code?.toLowerCase().includes('tvet'));
+    });
+    
+    const countEl = document.getElementById('tvetiq-count');
+    const studentCountEl = document.getElementById('tvetiq-student-count');
+    const questionCountEl = document.getElementById('tvetiq-question-count');
+    
+    if (countEl) countEl.textContent = tvetStudents.length;
+    if (studentCountEl) studentCountEl.textContent = tvetStudents.length;
+    if (questionCountEl) questionCountEl.textContent = tvetQuestions.length;
+}
+
+// ============================================
+// UPDATE ADMIN MODULE NAME
+// ============================================
+function updateAdminModuleName() {
+    const hasTVETStudents = allStudents.some(s => getStudentProgram(s) === 'tvet');
+    const hasNursingStudents = allStudents.some(s => getStudentProgram(s) === 'nursing');
+    
+    const moduleNameEl = document.getElementById('adminModuleName');
+    const moduleIconEl = document.getElementById('adminModuleIcon');
+    
+    if (moduleNameEl) {
+        if (hasTVETStudents && !hasNursingStudents) {
+            moduleNameEl.textContent = 'TVETIQ';
+            if (moduleIconEl) moduleIconEl.className = 'fas fa-tools';
+        } else if (hasNursingStudents && !hasTVETStudents) {
+            moduleNameEl.textContent = 'NurseIQ';
+            if (moduleIconEl) moduleIconEl.className = 'fas fa-graduation-cap';
+        } else {
+            moduleNameEl.textContent = 'NurseIQ / TVETIQ';
+            if (moduleIconEl) moduleIconEl.className = 'fas fa-layer-group';
+        }
+    }
+}
+
+// ============================================
+// TVETIQ DASHBOARD PAGE
+// ============================================
+async function renderTVETIQDashboard() {
+    const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
+    const tvetQuestions = allQuestions.filter(q => {
+        const course = allCourses.find(c => c.id === q.course_id);
+        return course && course.course_name && 
+               (course.course_name.toLowerCase().includes('tvet') || 
+                course.course_name.toLowerCase().includes('cdacc') ||
+                course.course_name.toLowerCase().includes('nita') ||
+                course.unit_code?.toLowerCase().includes('tvet'));
+    });
+    
+    // Get TVET progress
+    let tvetProgress = {};
+    for (const student of tvetStudents) {
+        const progress = userProgress[student.id] || {};
+        const answers = progress.answers ? Object.values(progress.answers).filter(a => a.answered) : [];
+        const correct = answers.filter(a => a.correct).length;
+        const total = answers.length;
+        tvetProgress[student.id] = {
+            totalAnswered: total,
+            correctCount: correct,
+            accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+            marked: progress.markedForReview ? Object.keys(progress.markedForReview).length : 0
+        };
+    }
+    
+    const totalAnswered = Object.values(tvetProgress).reduce((sum, p) => sum + p.totalAnswered, 0);
+    const totalCorrect = Object.values(tvetProgress).reduce((sum, p) => sum + p.correctCount, 0);
+    const overallAccuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+    
+    panel.innerHTML = `
+        <div style="margin-bottom:24px;">
+            <h2 style="color:#1a7a5a;"><i class="fas fa-tools"></i> TVETIQ Dashboard</h2>
+            <p style="color:#64748b;">Monitor TVET student progress and performance</p>
+        </div>
+        
+        <div class="stats-grid-main">
+            <div class="stat-card-main" style="border-left: 4px solid #1a7a5a;">
+                <div class="stat-value-main" style="color:#1a7a5a;">${tvetStudents.length}</div>
+                <div class="stat-label-main">TVET Students</div>
+            </div>
+            <div class="stat-card-main" style="border-left: 4px solid #1a7a5a;">
+                <div class="stat-value-main" style="color:#1a7a5a;">${tvetQuestions.length}</div>
+                <div class="stat-label-main">TVET Questions</div>
+            </div>
+            <div class="stat-card-main" style="border-left: 4px solid #1a7a5a;">
+                <div class="stat-value-main" style="color:#1a7a5a;">${totalAnswered}</div>
+                <div class="stat-label-main">Total Answers</div>
+            </div>
+            <div class="stat-card-main" style="border-left: 4px solid #1a7a5a;">
+                <div class="stat-value-main" style="color:#1a7a5a;">${overallAccuracy}%</div>
+                <div class="stat-label-main">Overall Accuracy</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-users"></i> TVET Students Progress</h3>
+            </div>
+            ${tvetStudents.length === 0 ? 
+                '<div class="empty-state">No TVET students registered yet</div>' :
+                tvetStudents.map(s => {
+                    const prog = tvetProgress[s.id] || { totalAnswered: 0, correctCount: 0, accuracy: 0, marked: 0 };
+                    return `
+                        <div class="student-progress-card" onclick="viewStudentDetails('${s.id}')" style="border-left: 4px solid #1a7a5a;">
+                            <div>
+                                <strong>${s.full_name || 'Unknown'}</strong>
+                                <span class="badge" style="background:#1a7a5a;color:white;">${getProgramDisplayName(s)}</span>
+                                <span class="badge ${prog.accuracy >= 70 ? 'badge-success' : prog.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${prog.accuracy}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${prog.accuracy}%; background: #1a7a5a;"></div>
+                            </div>
+                            <div>
+                                <small>${prog.correctCount}/${prog.totalAnswered} correct | ${prog.marked} marked</small>
+                            </div>
+                        </div>
+                    `;
+                }).join('')
+            }
+        </div>
+    `;
+}
     async function renderPendingApproval() {
         const pendingQuestions = allQuestions.filter(q => q.status === 'pending');
         panel.innerHTML = `<div class="card"><div class="card-header"><h2>Pending Approval (${pendingQuestions.length})</h2></div>${pendingQuestions.length === 0 ? '<div class="empty-state">No pending questions</div>' : pendingQuestions.map(q => `<div class="question-item"><div><strong>${escapeHtml(q.question_text)}</strong></div><div class="preview-options" style="margin-top:10px;"><div>A: ${escapeHtml(q.option_a || 'N/A')}</div><div>B: ${escapeHtml(q.option_b || 'N/A')}</div><div>C: ${escapeHtml(q.option_c || 'N/A')}</div><div>D: ${escapeHtml(q.option_d || 'N/A')}</div></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div><div class="approval-actions"><button class="btn btn-success btn-sm" onclick="approveQuestion('${q.id}')"><i class="fas fa-check"></i> Approve</button><button class="btn btn-danger btn-sm" onclick="rejectQuestion('${q.id}')"><i class="fas fa-times"></i> Reject</button></div></div>`).join('')}</div>`;
@@ -718,20 +1109,23 @@ window.toggleStudentMarked = toggleStudentMarked;
     function escapeHtml(text) { if(!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     function showToast(msg, type) { const toast = document.createElement('div'); toast.className = 'toast'; toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
 
-    window.showPage = (page) => {
-        if(page === 'dashboard') renderDashboard();
-        else if(page === 'question-bank') renderQuestionBank();
-        else if(page === 'add-question') renderAddQuestion();
-        else if(page === 'bulk-import') renderBulkImport();
-        else if(page === 'pending-approval') renderPendingApproval();
-        else if(page === 'courses') renderCourses();
-        else if(page === 'students') renderStudents();
-        else if(page === 'individual-progress') renderIndividualProgress();
-        else if(page === 'attempts') renderAttempts();
-        else if(page === 'settings') renderSettings();
-            else if(page === 'marked-review') renderMarkedReview();
-        else if(page === 'user-management') renderSuperAdminDashboard();
-    };
+   window.showPage = (page) => {
+    if(page === 'dashboard') renderDashboard();
+    else if(page === 'question-bank') renderQuestionBank();
+    else if(page === 'add-question') renderAddQuestion();
+    else if(page === 'bulk-import') renderBulkImport();
+    else if(page === 'pending-approval') renderPendingApproval();
+    else if(page === 'courses') renderCourses();
+    else if(page === 'students') renderStudents();
+    else if(page === 'individual-progress') renderIndividualProgress();
+    else if(page === 'marked-review') renderMarkedReview();
+    else if(page === 'attempts') renderAttempts();
+    else if(page === 'settings') renderSettings();
+    else if(page === 'user-management') renderSuperAdminDashboard();
+    else if(page === 'tvetiq-dashboard') renderTVETIQDashboard();  // 🔥 NEW
+    else if(page === 'tvetiq-students') renderTVETIQStudents();    // 🔥 NEW
+    else if(page === 'tvetiq-questions') renderTVETIQQuestions();  // 🔥 NEW
+};
     window.logout = logout;
     window.toggleSelectAll = toggleSelectAll;
     window.openDeleteModal = openDeleteModal;
