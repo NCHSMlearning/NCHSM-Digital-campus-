@@ -890,64 +890,6 @@
         </div>
     </div>
 
-    <!-- ========== COMPACT 2x2 GRID LAYOUT ========== -->
-    <div class="quick-actions-grid">
-        <button id="view-all-assessments" class="action-btn active">
-            <i class="fas fa-list"></i> View All
-            <span class="btn-badge">All</span>
-        </button>
-        <button id="view-current-only" class="action-btn">
-            <i class="fas fa-spinner"></i> Current Only
-            <span class="btn-badge">Pending</span>
-        </button>
-        <button id="view-completed-only" class="action-btn">
-            <i class="fas fa-check-circle"></i> Completed Only
-            <span class="btn-badge">Done</span>
-        </button>
-        <button id="view-transcript" class="action-btn">
-            <i class="fas fa-file-pdf"></i> Transcript
-            <span class="btn-badge">PDF</span>
-        </button>
-        <button id="refresh-assessments" class="action-btn refresh">
-            <i class="fas fa-sync-alt"></i> Refresh
-            <span class="btn-badge">Sync</span>
-        </button>
-    </div>
-
-   <!-- ==================== EXAMS & GRADES TAB ==================== -->
-<section id="cats" class="tab-content" hidden>
-
-    <!-- ========== EXAMS HEADER ========== -->
-    <div class="exams-header">
-        <div class="header-content">
-            <h2><i class="fas fa-chart-bar"></i> Assessments & Grades</h2>
-            <p class="subtitle">Track your CATS, exams, and assessment results</p>
-        </div>
-        <div class="header-stats">
-            <div class="stat-card">
-                <div class="stat-icon active"><i class="fas fa-spinner"></i></div>
-                <div class="stat-info">
-                    <span class="stat-value" id="current-assessments-count">0</span>
-                    <span class="stat-label">Current</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon completed"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-info">
-                    <span class="stat-value" id="completed-assessments-count">0</span>
-                    <span class="stat-label">Completed</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon average"><i class="fas fa-percentage"></i></div>
-                <div class="stat-info">
-                    <span class="stat-value" id="overall-average">--</span>
-                    <span class="stat-label">Avg Score</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ========== QUICK ACTIONS - SPREAD EVENLY ========== -->
     <div class="quick-actions-grid">
         <button id="view-all-assessments" class="action-btn active">
@@ -1178,6 +1120,8 @@
 
 </section>
 <!-- END EXAMS & GRADES -->
+
+  
             <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
             <section id="academic-reports" class="tab-content" hidden>
                 <div class="reports-header"><div class="header-content"><h2><i class="fas fa-chart-line"></i> Academic Reports</h2><p class="subtitle">View your academic performance, transcripts, and progress reports</p></div><div class="header-actions"><button id="download-transcript-pdf" class="btn-primary"><i class="fas fa-download"></i> Download Full Transcript</button><button id="print-report" class="btn-secondary"><i class="fas fa-print"></i> Print Report</button></div></div>
@@ -1482,9 +1426,9 @@
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
 <section id="nurseiq" class="tab-content" hidden>
     <div class="nurseiq-container">
+        <!-- HEADER -->
         <div class="nurseiq-header">
             <div class="header-left">
-                <!-- 🔥 DYNAMIC TITLE BASED ON USER PROFILE -->
                 <h1>
                     <i class="fas fa-brain" id="nurseiqIcon"></i> 
                     <span id="nurseiqTitle">NurseIQ</span> 
@@ -1493,7 +1437,6 @@
                 <p class="subtitle" id="nurseiqSubtitle">Practice questions for Kenya Registered Community Health Nursing program</p>
             </div>
             
-            <!-- 🔥 PROGRAM INDICATOR - SHOWS CURRENT MODE -->
             <div class="program-indicator" id="nurseiqProgramIndicator">
                 <div class="indicator-badge" id="programIndicatorBadge">
                     <i class="fas fa-user-md" id="indicatorIcon"></i>
@@ -1506,16 +1449,17 @@
             </div>
         </div>
         
+        <!-- ===== QUESTION BANK MODE ===== -->
         <div id="questionBankModeContent">
             <div class="question-bank-section">
-                <!-- ENHANCED SEARCH WITH SMART FILTERS -->
+                
+                <!-- SEARCH SECTION -->
                 <div class="search-section">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" id="studentQuestionBankSearch" placeholder="Search courses, units, or topics...">
                     </div>
                     
-                    <!-- Level Filter -->
                     <div class="filter-group">
                         <select id="nurseiqLevelFilter" class="filter-select">
                             <option value="all">📚 All Levels</option>
@@ -1526,7 +1470,6 @@
                         </select>
                     </div>
                     
-                    <!-- Year Filter -->
                     <div class="filter-group">
                         <select id="nurseiqYearFilter" class="filter-select">
                             <option value="all">📅 All Years</option>
@@ -1537,7 +1480,6 @@
                         </select>
                     </div>
                     
-                    <!-- Category Filter -->
                     <div class="filter-group">
                         <select id="nurseiqCategoryFilter" class="filter-select">
                             <option value="all">📂 All Categories</option>
@@ -1575,11 +1517,13 @@
                     </div>
                 </div>
                 
+                <!-- LOADING -->
                 <div id="studentQuestionBankLoading" style="display: none;">
                     <div class="loading-spinner"></div>
                     <p>Loading questions...</p>
                 </div>
                 
+                <!-- WELCOME CONTENT -->
                 <div id="studentQuestionBankContent">
                     <div class="welcome-content">
                         <div class="welcome-icon" id="welcomeIcon">
@@ -1593,6 +1537,31 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- ===== COURSE CATALOG GRID ===== -->
+                <div id="courseCatalogGrid" style="display: none; margin-top: 20px;">
+                    <div class="catalog-header">
+                        <h3><i class="fas fa-book"></i> Course Catalog</h3>
+                        <span id="catalogCount">0 courses</span>
+                    </div>
+                    <div id="courseCatalogCards" class="course-catalog-grid">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+                
+                <!-- ===== QUESTION VIEW ===== -->
+                <div id="questionView" style="display: none; margin-top: 20px;">
+                    <div class="question-header">
+                        <button id="backToCatalogBtn" class="btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Catalog
+                        </button>
+                        <h3 id="questionCourseTitle">Course Questions</h3>
+                    </div>
+                    <div id="questionList" class="question-list">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+                
             </div>
         </div>
     </div>
