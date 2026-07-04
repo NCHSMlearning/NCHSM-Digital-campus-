@@ -1243,530 +1243,245 @@
   // ======================= IMPROVED TRANSCRIPT MODEL =======================
   // Global store for student data
   window._studentDataCache = null;
+  window._studentList = null;
 
-  // ===== ENHANCED: Generate transcript for a specific student =====
-  function generateStudentTranscriptPDF(studentData, reportData) {
-    if (!studentData) {
-        showNotification('No student data available', true);
-        return;
-    }
+  // ===== FIXED: generateSelectedStudentPDF =====
+  window.generateSelectedStudentPDF = function() {
+      const select = document.getElementById('studentSelectForReport');
+      if (!select) {
+          showNotification('Student selection not found. Please refresh the page.', true);
+          return;
+      }
+      
+      const admission = select.value;
+      if (!admission) {
+          showNotification('Please select a student from the dropdown', true);
+          return;
+      }
 
-    // Ensure we have proper data structure
-    const student = {
-        name: studentData.name || 'Unknown Student',
-        admission: studentData.admission || 'N/A',
-        subjects: studentData.subjects || [],
-        overallAvg: studentData.overallAvg || 0,
-        subjectCount: studentData.subjectCount || 0,
-        cat1Scores: studentData.cat1Scores || [],
-        cat2Scores: studentData.cat2Scores || [],
-        examScores: studentData.examScores || []
-    };
+      // Try multiple sources for student data
+      let student = null;
+      
+      // 1. Check window._studentDataCache
+      if (window._studentDataCache) {
+          student = window._studentDataCache[admission];
+      }
+      
+      // 2. Check window.reportData.studentMap
+      if (!student && window.reportData && window.reportData.studentMap) {
+          student = window.reportData.studentMap[admission];
+      }
+      
+      // 3. Check window._studentList
+      if (!student && window._studentList) {
+          student = window._studentList.find(s => s.admission === admission);
+      }
+      
+      // 4. Check reportData.students
+      if (!student && window.reportData && window.reportData.students) {
+          student = window.reportData.students.find(s => s.admission === admission);
+      }
 
-    // Calculate additional metrics
-    const sortedSubjects = [...student.subjects].sort((a, b) => b.score - a.score);
-    const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
-    const failedSubjects = sortedSubjects.filter(s => s.score < 60 && s.score > 0);
-    const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
-    const overallAvg = student.overallAvg || 0;
-    const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
-    
-    let gradeLetter = 'F';
-    if (overallAvg >= 80) gradeLetter = 'A';
-    else if (overallAvg >= 70) gradeLetter = 'B';
-    else if (overallAvg >= 60) gradeLetter = 'C';
-    else if (overallAvg >= 50) gradeLetter = 'D';
-    
-    const cgpa = overallAvg > 0 ? (overallAvg / 20).toFixed(2) : '0.00';
+      if (!student) {
+          showNotification(`Student "${admission}" not found. Please refresh the reports page.`, true);
+          return;
+      }
 
-    // Build subjects table
-    let subjectsHtml = '';
-    if (sortedSubjects.length > 0) {
-        subjectsHtml = sortedSubjects.map((subj, idx) => {
-            const isPass = subj.score >= 60;
-            const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px 8px; text-align: center;">${idx + 1}</td>
-                    <td style="padding: 10px 8px;"><strong>${safeName}</strong></td>
-                    <td style="padding: 10px 8px; text-align: center;">${subj.block ? subj.block.replace('_', ' ') : 'N/A'}</td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="font-weight: 700; ${isPass ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
-                            ${isPass ? '✓ PASS' : '✗ FAIL'}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    } else {
-        subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 40px;">📚 No subjects completed yet</td></tr>';
-    }
+      // Build enhanced student object with all needed fields
+      const enhancedStudent = {
+          name: student.name || 'Unknown Student',
+          admission: student.admission || admission,
+          subjects: student.subjects || [],
+          overallAvg: student.overallAvg || 0,
+          subjectCount: student.subjectCount || 0,
+          cat1Scores: student.cat1Scores || [],
+          cat2Scores: student.cat2Scores || [],
+          examScores: student.examScores || []
+      };
 
-    const safeStudentName = (student.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const safeAdmission = (student.admission || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const year = reportData?.currentYear || currentYear || '2026';
+      generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
+  };
 
-    // Generate the PDF HTML with professional styling
-    const content = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Academic Transcript - ${safeStudentName}</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-                    background: white;
-                    padding: 30px;
-                    font-size: 13px;
-                    line-height: 1.6;
-                }
-                .transcript-container {
-                    max-width: 1100px;
-                    margin: 0 auto;
-                    background: white;
-                    border-radius: 16px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-                    overflow: hidden;
-                }
-                .header {
-                    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                    color: white;
-                    padding: 35px 40px;
-                    text-align: center;
-                    position: relative;
-                }
-                .header::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    height: 4px;
-                    background: linear-gradient(90deg, #667eea, #764ba2);
-                }
-                .logo-icon { font-size: 42px; margin-bottom: 8px; display: block; }
-                .institution-name { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
-                .institution-tagline { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-                .accreditation {
-                    background: rgba(255,255,255,0.12);
-                    display: inline-block;
-                    padding: 4px 14px;
-                    border-radius: 20px;
-                    font-size: 10px;
-                    margin-top: 10px;
-                    letter-spacing: 0.5px;
-                }
-                .title-section {
-                    text-align: center;
-                    padding: 24px;
-                    background: #f8fafc;
-                    border-bottom: 2px solid #e2e8f0;
-                }
-                .transcript-title {
-                    font-size: 22px;
-                    font-weight: 800;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    -webkit-background-clip: text;
-                    background-clip: text;
-                    color: transparent;
-                    letter-spacing: 2px;
-                }
-                .transcript-subtitle {
-                    font-size: 11px;
-                    color: #64748b;
-                    margin-top: 4px;
-                }
-                .student-info-card {
-                    background: white;
-                    margin: 25px 30px;
-                    padding: 24px 28px;
-                    border-radius: 14px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-                    border-left: 5px solid #6366f1;
-                }
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 12px 20px;
-                }
-                .info-field { display: flex; align-items: baseline; flex-wrap: wrap; }
-                .info-label { font-weight: 700; color: #475569; min-width: 120px; font-size: 12px; }
-                .info-value { color: #1e293b; font-weight: 600; }
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 14px;
-                    margin: 0 30px 25px 30px;
-                }
-                .stat-card {
-                    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-                    padding: 14px 12px;
-                    border-radius: 12px;
-                    text-align: center;
-                    border: 1px solid #e2e8f0;
-                }
-                .stat-value {
-                    font-size: 26px;
-                    font-weight: 800;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    -webkit-background-clip: text;
-                    background-clip: text;
-                    color: transparent;
-                }
-                .stat-label { font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-                .results-table { margin: 0 30px 25px 30px; overflow-x: auto; }
-                .results-table h3 { margin-bottom: 14px; color: #1e293b; font-size: 16px; }
-                table { width: 100%; border-collapse: collapse; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
-                th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 10px; font-weight: 600; font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: 0.5px; }
-                td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-                tr:last-child td { border-bottom: none; }
-                .result-banner {
-                    margin: 0 30px 25px 30px;
-                    padding: 22px 25px;
-                    border-radius: 14px;
-                    text-align: center;
-                    background: ${status === 'PASS' ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)'};
-                }
-                .result-status {
-                    font-size: 24px;
-                    font-weight: 800;
-                    color: ${status === 'PASS' ? '#065f46' : '#991b1b'};
-                }
-                .result-message {
-                    font-size: 12px;
-                    margin-top: 6px;
-                    color: ${status === 'PASS' ? '#065f46' : '#991b1b'};
-                }
-                .result-details {
-                    margin-top: 12px;
-                    font-size: 13px;
-                    display: flex;
-                    justify-content: center;
-                    gap: 30px;
-                    flex-wrap: wrap;
-                }
-                .result-details span { font-weight: 600; }
-                .footer {
-                    background: #f8fafc;
-                    padding: 20px 30px;
-                    text-align: center;
-                    border-top: 1px solid #e2e8f0;
-                    font-size: 10px;
-                    color: #94a3b8;
-                }
-                .signature-line {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-top: 18px;
-                    padding-top: 18px;
-                    border-top: 1px dashed #cbd5e1;
-                }
-                .signature-line div { font-size: 11px; text-align: center; }
-                .signature-line div span { display: block; margin-top: 4px; font-weight: 600; color: #475569; }
-                @media print {
-                    body { padding: 0; margin: 0; }
-                    .transcript-container { box-shadow: none; border-radius: 0; }
-                }
-                @media (max-width: 600px) {
-                    .info-grid { grid-template-columns: 1fr; }
-                    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-                    .student-info-card { margin: 15px; padding: 16px; }
-                    .results-table { margin: 0 15px 20px 15px; }
-                    .result-banner { margin: 0 15px 20px 15px; }
-                    .header { padding: 25px 20px; }
-                    .institution-name { font-size: 20px; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="transcript-container">
-                <div class="header">
-                    <span class="logo-icon">🏥</span>
-                    <div class="institution-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                    <div class="institution-tagline">Excellence in Nursing Education &amp; Clinical Practice</div>
-                    <div class="accreditation">⭐ FULLY ACCREDITED BY THE NURSING COUNCIL OF KENYA (NCK) ⭐</div>
-                </div>
-                
-                <div class="title-section">
-                    <div class="transcript-title">OFFICIAL ACADEMIC TRANSCRIPT</div>
-                    <div class="transcript-subtitle">This document certifies the academic record of the student named below</div>
-                </div>
-                
-                <div class="student-info-card">
-                    <div class="info-grid">
-                        <div class="info-field"><span class="info-label">Student Name:</span><span class="info-value">${safeStudentName}</span></div>
-                        <div class="info-field"><span class="info-label">Admission Number:</span><span class="info-value">${safeAdmission}</span></div>
-                        <div class="info-field"><span class="info-label">Programme:</span><span class="info-value">Bachelor of Science in Nursing (BScN)</span></div>
-                        <div class="info-field"><span class="info-label">Academic Year:</span><span class="info-value">March ${year}</span></div>
-                        <div class="info-field"><span class="info-label">Pass Mark:</span><span class="info-value">60% (NCK Standard)</span></div>
-                        <div class="info-field"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-                    </div>
-                </div>
-                
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-value">${student.subjectCount || 0}</div><div class="stat-label">Subjects</div></div>
-                    <div class="stat-card"><div class="stat-value">${passedSubjects.length}</div><div class="stat-label">Passed</div></div>
-                    <div class="stat-card"><div class="stat-value">${passRate}%</div><div class="stat-label">Pass Rate</div></div>
-                    <div class="stat-card"><div class="stat-value">${gradeLetter}</div><div class="stat-label">Grade</div></div>
-                </div>
-                
-                <div class="results-table">
-                    <h3>📚 Academic Performance by Subject</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 50px;">#</th>
-                                <th>Subject / Course Unit</th>
-                                <th style="width: 100px;">Block</th>
-                                <th style="width: 80px;">Score</th>
-                                <th style="width: 90px;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>${subjectsHtml}</tbody>
-                    </table>
-                </div>
-                
-                <div class="result-banner">
-                    <div class="result-status">${status === 'PASS' ? '✅ ACADEMIC PROGRESS: SATISFACTORY' : (status === 'FAIL' ? '⚠️ ACADEMIC PROGRESS: NEEDS IMPROVEMENT' : '⏳ PROGRESS: INCOMPLETE')}</div>
-                    <div class="result-message">
-                        ${status === 'PASS' ? 
-                            'The student has met the minimum passing requirements and is in good academic standing.' : 
-                            (status === 'FAIL' ? 
-                                'The student is advised to seek academic support and remedial classes.' : 
-                                'Awaiting completion of pending assessments.')}
-                    </div>
-                    <div class="result-details">
-                        <span>Overall Average: ${overallAvg}%</span>
-                        <span>CGPA: ${cgpa} / 5.00</span>
-                        <span>Status: ${status}</span>
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <div class="signature-line">
-                        <div>_________________________<br><span>Registrar, Academic Affairs</span></div>
-                        <div>_________________________<br><span>Dean, School of Nursing</span></div>
-                        <div>_________________________<br><span>NCK Accredited Officer</span></div>
-                    </div>
-                    <p style="margin-top: 18px;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
-                    <p>© ${new Date().getFullYear()} Nakuru College of Health Sciences - All Rights Reserved</p>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
+  // ===== FIXED: generateStudentTranscriptPDF (SINGLE VERSION - REMOVED DUPLICATE) =====
+  function generateStudentTranscriptPDF(student, reportData) {
+      if (!student) {
+          showNotification('No student data available', true);
+          return;
+      }
 
-    // Generate PDF
-    const element = document.createElement('div');
-    element.innerHTML = content;
-    element.style.position = 'absolute';
-    element.style.left = '-9999px';
-    element.style.top = '-9999px';
-    document.body.appendChild(element);
+      showLoading('Generating transcript...');
 
-    const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `TRANSCRIPT_${student.admission}_${year}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, letterRendering: true, useCORS: true },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
+      // Calculate metrics
+      const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
+      const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
+      const overallAvg = student.overallAvg || 0;
+      const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
+      
+      let gradeLetter = 'F';
+      if (overallAvg >= 80) gradeLetter = 'A';
+      else if (overallAvg >= 70) gradeLetter = 'B';
+      else if (overallAvg >= 60) gradeLetter = 'C';
+      else if (overallAvg >= 50) gradeLetter = 'D';
+      
+      const cgpa = overallAvg > 0 ? (overallAvg / 20).toFixed(2) : '0.00';
+      const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
+      const year = reportData?.currentYear || currentYear || '2026';
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        document.body.removeChild(element);
-        hideLoading();
-        showNotification(`🎓 Transcript for ${student.name} generated successfully!`, false);
-    }).catch(err => {
-        document.body.removeChild(element);
-        hideLoading();
-        showNotification('Error generating transcript: ' + err.message, true);
-    });
+      // Build subjects table
+      let subjectsHtml = '';
+      if (sortedSubjects.length > 0) {
+          subjectsHtml = sortedSubjects.map((subj, idx) => {
+              const isPass = subj.score >= 60;
+              const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              return `
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                      <td style="padding: 10px 8px; text-align: center;">${idx + 1}</td>
+                      <td style="padding: 10px 8px;"><strong>${safeName}</strong></td>
+                      <td style="padding: 10px 8px; text-align: center;">${subj.block ? subj.block.replace('_', ' ') : 'N/A'}</td>
+                      <td style="padding: 10px 8px; text-align: center;">
+                          <span style="font-weight: 700; ${isPass ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</span>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center;">
+                          <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                              ${isPass ? '✓ PASS' : '✗ FAIL'}
+                          </span>
+                      </td>
+                  </tr>
+              `;
+          }).join('');
+      } else {
+          subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 40px;">📚 No subjects completed yet</td></tr>';
+      }
+
+      const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      // Generate PDF HTML
+      const content = `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="UTF-8"><title>Academic Transcript</title>
+          <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Inter', Arial, sans-serif; background: white; padding: 30px; font-size: 13px; line-height: 1.6; }
+              .transcript-container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; }
+              .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 35px 40px; text-align: center; }
+              .header::after { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); margin-top: 20px; }
+              .logo-icon { font-size: 42px; display: block; margin-bottom: 8px; }
+              .institution-name { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+              .institution-tagline { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+              .accreditation { background: rgba(255,255,255,0.12); display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 10px; margin-top: 10px; }
+              .title-section { text-align: center; padding: 24px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+              .transcript-title { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 2px; }
+              .transcript-subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
+              .student-info-card { background: white; margin: 25px 30px; padding: 24px 28px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-left: 5px solid #6366f1; }
+              .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 20px; }
+              .info-field { display: flex; align-items: baseline; flex-wrap: wrap; }
+              .info-label { font-weight: 700; color: #475569; min-width: 120px; font-size: 12px; }
+              .info-value { color: #1e293b; font-weight: 600; }
+              .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0 30px 25px 30px; }
+              .stat-card { background: #f8fafc; padding: 14px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+              .stat-value { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+              .stat-label { font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; }
+              .results-table { margin: 0 30px 25px 30px; overflow-x: auto; }
+              .results-table h3 { margin-bottom: 14px; color: #1e293b; font-size: 16px; }
+              table { width: 100%; border-collapse: collapse; border-radius: 10px; overflow: hidden; }
+              th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 10px; font-weight: 600; font-size: 11px; text-align: left; text-transform: uppercase; }
+              td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+              tr:last-child td { border-bottom: none; }
+              .result-banner { margin: 0 30px 25px 30px; padding: 22px 25px; border-radius: 14px; text-align: center; background: ${status === 'PASS' ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)'}; }
+              .result-status { font-size: 24px; font-weight: 800; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
+              .result-message { font-size: 12px; margin-top: 6px; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
+              .result-details { margin-top: 12px; font-size: 13px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+              .result-details span { font-weight: 600; }
+              .footer { background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; }
+              .signature-line { display: flex; justify-content: space-between; margin-top: 18px; padding-top: 18px; border-top: 1px dashed #cbd5e1; }
+              .signature-line div { font-size: 11px; text-align: center; }
+              .signature-line div span { display: block; margin-top: 4px; font-weight: 600; color: #475569; }
+              @media print { body { padding: 0; margin: 0; } .transcript-container { box-shadow: none; border-radius: 0; } }
+          </style>
+          </head>
+          <body>
+              <div class="transcript-container">
+                  <div class="header">
+                      <span class="logo-icon">🏥</span>
+                      <div class="institution-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                      <div class="institution-tagline">Excellence in Nursing Education &amp; Clinical Practice</div>
+                      <div class="accreditation">⭐ FULLY ACCREDITED BY THE NURSING COUNCIL OF KENYA (NCK) ⭐</div>
+                  </div>
+                  <div class="title-section">
+                      <div class="transcript-title">OFFICIAL ACADEMIC TRANSCRIPT</div>
+                      <div class="transcript-subtitle">This document certifies the academic record of the student named below</div>
+                  </div>
+                  <div class="student-info-card">
+                      <div class="info-grid">
+                          <div class="info-field"><span class="info-label">Student Name:</span><span class="info-value">${safeStudentName}</span></div>
+                          <div class="info-field"><span class="info-label">Admission Number:</span><span class="info-value">${safeAdmission}</span></div>
+                          <div class="info-field"><span class="info-label">Programme:</span><span class="info-value">Bachelor of Science in Nursing (BScN)</span></div>
+                          <div class="info-field"><span class="info-label">Academic Year:</span><span class="info-value">March ${year}</span></div>
+                          <div class="info-field"><span class="info-label">Pass Mark:</span><span class="info-value">60% (NCK Standard)</span></div>
+                          <div class="info-field"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+                      </div>
+                  </div>
+                  <div class="stats-grid">
+                      <div class="stat-card"><div class="stat-value">${student.subjectCount || 0}</div><div class="stat-label">Subjects</div></div>
+                      <div class="stat-card"><div class="stat-value">${passedSubjects.length}</div><div class="stat-label">Passed</div></div>
+                      <div class="stat-card"><div class="stat-value">${passRate}%</div><div class="stat-label">Pass Rate</div></div>
+                      <div class="stat-card"><div class="stat-value">${gradeLetter}</div><div class="stat-label">Grade</div></div>
+                  </div>
+                  <div class="results-table">
+                      <h3>📚 Academic Performance by Subject</h3>
+                      <table>
+                          <thead><tr><th style="width:50px;">#</th><th>Subject / Course Unit</th><th style="width:100px;">Block</th><th style="width:80px;">Score</th><th style="width:90px;">Status</th></tr></thead>
+                          <tbody>${subjectsHtml}</tbody>
+                      </table>
+                  </div>
+                  <div class="result-banner">
+                      <div class="result-status">${status === 'PASS' ? '✅ ACADEMIC PROGRESS: SATISFACTORY' : (status === 'FAIL' ? '⚠️ ACADEMIC PROGRESS: NEEDS IMPROVEMENT' : '⏳ PROGRESS: INCOMPLETE')}</div>
+                      <div class="result-message">${status === 'PASS' ? 'The student has met the minimum passing requirements and is in good academic standing.' : (status === 'FAIL' ? 'The student is advised to seek academic support and remedial classes.' : 'Awaiting completion of pending assessments.')}</div>
+                      <div class="result-details"><span>Overall Average: ${overallAvg}%</span><span>CGPA: ${cgpa} / 5.00</span><span>Status: ${status}</span></div>
+                  </div>
+                  <div class="footer">
+                      <div class="signature-line">
+                          <div>_________________________<br><span>Registrar, Academic Affairs</span></div>
+                          <div>_________________________<br><span>Dean, School of Nursing</span></div>
+                          <div>_________________________<br><span>NCK Accredited Officer</span></div>
+                      </div>
+                      <p style="margin-top:18px;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
+                      <p>© ${new Date().getFullYear()} Nakuru College of Health Sciences - All Rights Reserved</p>
+                  </div>
+              </div>
+          </body>
+          </html>
+      `;
+
+      // Generate PDF
+      const element = document.createElement('div');
+      element.innerHTML = content;
+      element.style.position = 'absolute';
+      element.style.left = '-9999px';
+      element.style.top = '-9999px';
+      document.body.appendChild(element);
+
+      const opt = {
+          margin: [0.3, 0.3, 0.3, 0.3],
+          filename: `TRANSCRIPT_${student.admission}_${year}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, letterRendering: true, useCORS: true },
+          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+          document.body.removeChild(element);
+          hideLoading();
+          showNotification(`🎓 Transcript for ${student.name} generated successfully!`, false);
+      }).catch(err => {
+          document.body.removeChild(element);
+          hideLoading();
+          showNotification('Error: ' + err.message, true);
+      });
   }
 
-// ===== FIXED: SINGLE generateStudentTranscriptPDF function =====
-function generateStudentTranscriptPDF(student, reportData) {
-    if (!student) {
-        showNotification('No student data available', true);
-        return;
-    }
-
-    showLoading('Generating transcript...');
-
-    // Calculate metrics
-    const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
-    const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
-    const overallAvg = student.overallAvg || 0;
-    const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
-    
-    let gradeLetter = 'F';
-    if (overallAvg >= 80) gradeLetter = 'A';
-    else if (overallAvg >= 70) gradeLetter = 'B';
-    else if (overallAvg >= 60) gradeLetter = 'C';
-    else if (overallAvg >= 50) gradeLetter = 'D';
-    
-    const cgpa = overallAvg > 0 ? (overallAvg / 20).toFixed(2) : '0.00';
-    const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
-    const year = reportData?.currentYear || currentYear || '2026';
-
-    // Build subjects table
-    let subjectsHtml = '';
-    if (sortedSubjects.length > 0) {
-        subjectsHtml = sortedSubjects.map((subj, idx) => {
-            const isPass = subj.score >= 60;
-            const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px 8px; text-align: center;">${idx + 1}</td>
-                    <td style="padding: 10px 8px;"><strong>${safeName}</strong></td>
-                    <td style="padding: 10px 8px; text-align: center;">${subj.block ? subj.block.replace('_', ' ') : 'N/A'}</td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="font-weight: 700; ${isPass ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}%</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
-                            ${isPass ? '✓ PASS' : '✗ FAIL'}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    } else {
-        subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 40px;">📚 No subjects completed yet</td></tr>';
-    }
-
-    const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    // Generate PDF HTML
-    const content = `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Academic Transcript</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Inter', Arial, sans-serif; background: white; padding: 30px; font-size: 13px; line-height: 1.6; }
-            .transcript-container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; }
-            .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 35px 40px; text-align: center; }
-            .header::after { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); margin-top: 20px; }
-            .logo-icon { font-size: 42px; display: block; margin-bottom: 8px; }
-            .institution-name { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
-            .institution-tagline { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-            .accreditation { background: rgba(255,255,255,0.12); display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 10px; margin-top: 10px; }
-            .title-section { text-align: center; padding: 24px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
-            .transcript-title { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 2px; }
-            .transcript-subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
-            .student-info-card { background: white; margin: 25px 30px; padding: 24px 28px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-left: 5px solid #6366f1; }
-            .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 20px; }
-            .info-field { display: flex; align-items: baseline; flex-wrap: wrap; }
-            .info-label { font-weight: 700; color: #475569; min-width: 120px; font-size: 12px; }
-            .info-value { color: #1e293b; font-weight: 600; }
-            .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0 30px 25px 30px; }
-            .stat-card { background: #f8fafc; padding: 14px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
-            .stat-value { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
-            .stat-label { font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; }
-            .results-table { margin: 0 30px 25px 30px; overflow-x: auto; }
-            .results-table h3 { margin-bottom: 14px; color: #1e293b; font-size: 16px; }
-            table { width: 100%; border-collapse: collapse; border-radius: 10px; overflow: hidden; }
-            th { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 10px; font-weight: 600; font-size: 11px; text-align: left; text-transform: uppercase; }
-            td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
-            tr:last-child td { border-bottom: none; }
-            .result-banner { margin: 0 30px 25px 30px; padding: 22px 25px; border-radius: 14px; text-align: center; background: ${status === 'PASS' ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)'}; }
-            .result-status { font-size: 24px; font-weight: 800; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
-            .result-message { font-size: 12px; margin-top: 6px; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
-            .result-details { margin-top: 12px; font-size: 13px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
-            .result-details span { font-weight: 600; }
-            .footer { background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; }
-            .signature-line { display: flex; justify-content: space-between; margin-top: 18px; padding-top: 18px; border-top: 1px dashed #cbd5e1; }
-            .signature-line div { font-size: 11px; text-align: center; }
-            .signature-line div span { display: block; margin-top: 4px; font-weight: 600; color: #475569; }
-            @media print { body { padding: 0; margin: 0; } .transcript-container { box-shadow: none; border-radius: 0; } }
-        </style>
-        </head>
-        <body>
-            <div class="transcript-container">
-                <div class="header">
-                    <span class="logo-icon">🏥</span>
-                    <div class="institution-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                    <div class="institution-tagline">Excellence in Nursing Education &amp; Clinical Practice</div>
-                    <div class="accreditation">⭐ FULLY ACCREDITED BY THE NURSING COUNCIL OF KENYA (NCK) ⭐</div>
-                </div>
-                <div class="title-section">
-                    <div class="transcript-title">OFFICIAL ACADEMIC TRANSCRIPT</div>
-                    <div class="transcript-subtitle">This document certifies the academic record of the student named below</div>
-                </div>
-                <div class="student-info-card">
-                    <div class="info-grid">
-                        <div class="info-field"><span class="info-label">Student Name:</span><span class="info-value">${safeStudentName}</span></div>
-                        <div class="info-field"><span class="info-label">Admission Number:</span><span class="info-value">${safeAdmission}</span></div>
-                        <div class="info-field"><span class="info-label">Programme:</span><span class="info-value">Bachelor of Science in Nursing (BScN)</span></div>
-                        <div class="info-field"><span class="info-label">Academic Year:</span><span class="info-value">March ${year}</span></div>
-                        <div class="info-field"><span class="info-label">Pass Mark:</span><span class="info-value">60% (NCK Standard)</span></div>
-                        <div class="info-field"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-                    </div>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-value">${student.subjectCount || 0}</div><div class="stat-label">Subjects</div></div>
-                    <div class="stat-card"><div class="stat-value">${passedSubjects.length}</div><div class="stat-label">Passed</div></div>
-                    <div class="stat-card"><div class="stat-value">${passRate}%</div><div class="stat-label">Pass Rate</div></div>
-                    <div class="stat-card"><div class="stat-value">${gradeLetter}</div><div class="stat-label">Grade</div></div>
-                </div>
-                <div class="results-table">
-                    <h3>📚 Academic Performance by Subject</h3>
-                    <table>
-                        <thead><tr><th style="width:50px;">#</th><th>Subject / Course Unit</th><th style="width:100px;">Block</th><th style="width:80px;">Score</th><th style="width:90px;">Status</th></tr></thead>
-                        <tbody>${subjectsHtml}</tbody>
-                    </table>
-                </div>
-                <div class="result-banner">
-                    <div class="result-status">${status === 'PASS' ? '✅ ACADEMIC PROGRESS: SATISFACTORY' : (status === 'FAIL' ? '⚠️ ACADEMIC PROGRESS: NEEDS IMPROVEMENT' : '⏳ PROGRESS: INCOMPLETE')}</div>
-                    <div class="result-message">${status === 'PASS' ? 'The student has met the minimum passing requirements and is in good academic standing.' : (status === 'FAIL' ? 'The student is advised to seek academic support and remedial classes.' : 'Awaiting completion of pending assessments.')}</div>
-                    <div class="result-details"><span>Overall Average: ${overallAvg}%</span><span>CGPA: ${cgpa} / 5.00</span><span>Status: ${status}</span></div>
-                </div>
-                <div class="footer">
-                    <div class="signature-line">
-                        <div>_________________________<br><span>Registrar, Academic Affairs</span></div>
-                        <div>_________________________<br><span>Dean, School of Nursing</span></div>
-                        <div>_________________________<br><span>NCK Accredited Officer</span></div>
-                    </div>
-                    <p style="margin-top:18px;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
-                    <p>© ${new Date().getFullYear()} Nakuru College of Health Sciences - All Rights Reserved</p>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-
-    // Generate PDF
-    const element = document.createElement('div');
-    element.innerHTML = content;
-    element.style.position = 'absolute';
-    element.style.left = '-9999px';
-    element.style.top = '-9999px';
-    document.body.appendChild(element);
-
-    const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `TRANSCRIPT_${student.admission}_${year}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, letterRendering: true, useCORS: true },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save().then(() => {
-        document.body.removeChild(element);
-        hideLoading();
-        showNotification(`🎓 Transcript for ${student.name} generated successfully!`, false);
-    }).catch(err => {
-        document.body.removeChild(element);
-        hideLoading();
-        showNotification('Error: ' + err.message, true);
-    });
-}
 
   // ===== ENHANCED: Show Full Reports with improved student data =====
   async function showFullReports() {
