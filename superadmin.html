@@ -1904,52 +1904,80 @@
             </section>
 
            <!-- Users Section -->
+<!-- Users Section - WITH DOCUMENTS -->
 <section id="users" class="tab-content">
-    <h2>System Users</h2>
+    <h2><i class="fas fa-users"></i> System Users</h2>
     <div class="toolbar">
         <input type="text" id="user-search" placeholder="Search by Name or Email..." onkeyup="filterTable('user-search', 'users-table', [1, 2, 4])">
         <button onclick="exportTableToCSV('users-table', 'System_Users_Export.csv')" class="btn-action export-btn">Export Users (CSV)</button>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Program</th>
-                <th>Intake</th>      <!-- ← NEW COLUMN -->
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="users-table">
-            <tr><td colspan="8">Loading users...</td></tr>
-        </tbody>
-    </table>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Program</th>
+                    <th>Intake</th>
+                    <th>📄 KCSE</th>
+                    <th>🪪 ID/Passport</th>
+                    <th>📸 Photo</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-table">
+                <tr><td colspan="11">Loading users...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </section>
           <!-- Pending Approvals Section -->
+<!-- Pending Approvals Section - WITH DOCUMENTS -->
 <section id="pending" class="tab-content">
-    <h2>Pending Approvals</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Program</th>
-                <th>Intake</th>      <!-- ← NEW COLUMN -->
-                <th>Student ID</th>
-                <th>Registered</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="pending-table">
-            <tr><td colspan="8">Loading pending users...</td></tr>
-        </tbody>
-    </table>
+    <h2><i class="fas fa-clock"></i> Pending Approvals</h2>
+    <p>Review pending student registrations and their uploaded documents before approving.</p>
+    
+    <!-- Stats -->
+    <div class="cards" style="margin-bottom: 20px;">
+        <div class="card">
+            <h3>⏳ Pending</h3>
+            <p class="data" id="pendingCount">0</p>
+            <p class="minor-data">Awaiting approval</p>
+        </div>
+        <div class="card">
+            <h3>📄 Docs Pending</h3>
+            <p class="data" id="pendingDocsCount">0</p>
+            <p class="minor-data">Documents to verify</p>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Program</th>
+                    <th>Intake</th>
+                    <th>Student ID</th>
+                    <th>📄 KCSE</th>
+                    <th>🪪 ID/Passport</th>
+                    <th>📸 Photo</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="pending-table">
+                <tr><td colspan="11">Loading pending users...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </section>
-
          <!-- Enroll Accounts Section -->
 <section id="enroll" class="tab-content">
     <h2>Enroll Accounts</h2>
@@ -3740,6 +3768,34 @@
             </form>
         </div>
     </div>
+                     <!-- Document Viewer Modal -->
+    <div id="documentViewerModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-alt"></i> <span id="docViewerTitle">Document Viewer</span></h3>
+                <span class="close" onclick="closeModal('documentViewerModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="docViewerBody">
+                <div id="docViewerContent" style="text-align: center; padding: 20px;">
+                    <div class="loading-spinner"></div>
+                    <p>Loading document...</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="downloadCurrentDocument()" class="btn-action" style="background: #059669;">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button onclick="verifyCurrentDocument()" class="btn-action" style="background: #4C1D95;">
+                    <i class="fas fa-check-circle"></i> Verify
+                </button>
+                <button onclick="rejectCurrentDocument()" class="btn-action" style="background: #dc2626;">
+                    <i class="fas fa-times-circle"></i> Reject
+                </button>
+                <button onclick="closeModal('documentViewerModal')" class="btn" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+            <button onclick="verifyCurrent
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
