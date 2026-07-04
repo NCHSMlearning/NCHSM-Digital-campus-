@@ -1259,25 +1259,20 @@
           return;
       }
 
-      // Try multiple sources for student data
       let student = null;
       
-      // 1. Check window._studentDataCache
       if (window._studentDataCache) {
           student = window._studentDataCache[admission];
       }
       
-      // 2. Check window.reportData.studentMap
       if (!student && window.reportData && window.reportData.studentMap) {
           student = window.reportData.studentMap[admission];
       }
       
-      // 3. Check window._studentList
       if (!student && window._studentList) {
           student = window._studentList.find(s => s.admission === admission);
       }
       
-      // 4. Check reportData.students
       if (!student && window.reportData && window.reportData.students) {
           student = window.reportData.students.find(s => s.admission === admission);
       }
@@ -1287,7 +1282,6 @@
           return;
       }
 
-      // Build enhanced student object with all needed fields
       const enhancedStudent = {
           name: student.name || 'Unknown Student',
           admission: student.admission || admission,
@@ -1302,7 +1296,7 @@
       generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
   };
 
-  // ===== FIXED: generateStudentTranscriptPDF (SINGLE VERSION - REMOVED DUPLICATE) =====
+  // ===== FIXED: SINGLE generateStudentTranscriptPDF =====
   function generateStudentTranscriptPDF(student, reportData) {
       if (!student) {
           showNotification('No student data available', true);
@@ -1311,7 +1305,6 @@
 
       showLoading('Generating transcript...');
 
-      // Calculate metrics
       const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
       const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
       const overallAvg = student.overallAvg || 0;
@@ -1327,7 +1320,6 @@
       const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
       const year = reportData?.currentYear || currentYear || '2026';
 
-      // Build subjects table
       let subjectsHtml = '';
       if (sortedSubjects.length > 0) {
           subjectsHtml = sortedSubjects.map((subj, idx) => {
@@ -1356,7 +1348,6 @@
       const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-      // Generate PDF HTML
       const content = `
           <!DOCTYPE html>
           <html>
@@ -1455,7 +1446,6 @@
           </html>
       `;
 
-      // Generate PDF
       const element = document.createElement('div');
       element.innerHTML = content;
       element.style.position = 'absolute';
@@ -1481,7 +1471,6 @@
           showNotification('Error: ' + err.message, true);
       });
   }
-
 
   // ===== ENHANCED: Show Full Reports with improved student data =====
   async function showFullReports() {
