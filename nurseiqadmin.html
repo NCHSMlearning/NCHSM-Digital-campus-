@@ -714,26 +714,210 @@
         });
     }
 
-    // ============================================
-    // BULK IMPORT
-    // ============================================
-    function renderBulkImport() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Bulk Import</h2></div><div class="form-group"><label>Course</label><select id="bulk-course" class="form-control"><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Paste Questions</label><textarea id="bulk-text" class="form-control" rows="12" placeholder="1. Question?&#10;A. Option&#10;B. Option ✓&#10;Answer is B: Explanation"></textarea></div><div style="display:flex; gap:12px; margin-bottom:20px;"><button onclick="previewBulkImport()" class="btn btn-info">Preview</button><button id="confirm-import-btn" class="btn btn-primary hidden" onclick="confirmBulkImport()">Confirm Import</button></div><div id="preview-area" style="display:none;"><h4>Preview</h4><div id="preview-container" class="preview-container"></div></div><div id="bulk-result"></div></div>`;
-    }
+  // ============================================
+// BULK IMPORT - WITH INSTRUCTIONS & SQL SUPPORT
+// ============================================
 
-    window.previewBulkImport = () => {
-        const courseId = document.getElementById('bulk-course').value;
-        if (!courseId) { alert('Select course'); return; }
-        const raw = document.getElementById('bulk-text').value;
-        if (!raw.trim()) { alert('Paste content'); return; }
+function renderBulkImport() {
+    panel.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-upload"></i> Bulk Import Questions</h2>
+            </div>
+            
+            <!-- 🔥 INSTRUCTIONS SECTION -->
+            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+                <h4 style="color: #065f46; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-info-circle"></i> How to Bulk Import Questions
+                </h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 14px;">
+                    <!-- Method 1: Text Format -->
+                    <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
+                        <h5 style="color: #0f3b5c; margin-bottom: 10px;">
+                            <i class="fas fa-file-alt" style="color: #3b82f6;"></i> Method 1: Text Format
+                        </h5>
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">Paste questions in this format:</p>
+                        <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto;">
+1. Question text here?
+A. Option A
+B. Option B ✓
+C. Option C
+D. Option D
+Answer is B: Explanation text here
+
+2. Another question?
+A. Option A ✓
+B. Option B
+C. Option C
+D. Option D
+Answer is A: Explanation text here</pre>
+                        <ul style="font-size: 12px; color: #64748b; margin-top: 8px; list-style: none; padding-left: 0;">
+                            <li>✅ Use <strong>✓</strong> or <strong>✔</strong> to mark correct answer</li>
+                            <li>✅ Format: <strong>Answer is X:</strong> Explanation</li>
+                            <li>✅ Separate questions with blank lines</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Method 2: SQL Format -->
+                    <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
+                        <h5 style="color: #0f3b5c; margin-bottom: 10px;">
+                            <i class="fas fa-database" style="color: #10b981;"></i> Method 2: SQL Format
+                        </h5>
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">Paste SQL INSERT statements:</p>
+                        <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto;">
+INSERT INTO medical_assessments (id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, course_id, difficulty, question_type, curriculum, is_active, is_published, created_at, status)
+VALUES 
+(gen_random_uuid(), 'Question text?', 'Option A', 'Option B', 'Option C', 'Option D', 'Option B', 'Explanation here', 'course-uuid', 'medium', 'multiple_choice', 'KRCHN', true, true, NOW(), 'approved');</pre>
+                        <ul style="font-size: 12px; color: #64748b; margin-top: 8px; list-style: none; padding-left: 0;">
+                            <li>✅ Use <strong>gen_random_uuid()</strong> for IDs</li>
+                            <li>✅ Separate INSERT statements with semicolons</li>
+                            <li>✅ Ensure <strong>course_id</strong> matches selected course</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 13px; color: #92400e;">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Tip:</strong> Select the course first, then paste your questions. Questions will be auto-approved for admins.
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Select Course <span style="color: #dc2626;">*</span></label>
+                <select id="bulk-course" class="form-control" required>
+                    <option value="">-- Select Course --</option>
+                    ${allCourses.map(c => `<option value="${c.id}">${c.course_name} (${c.unit_code || 'N/A'})</option>`).join('')}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Paste Questions <span style="color: #dc2626;">*</span></label>
+                <textarea id="bulk-text" class="form-control" rows="12" placeholder="Paste your questions here in text format or SQL INSERT statements..."></textarea>
+                <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #94a3b8;">
+                    <span>Supports: Text format (with ✓) or SQL INSERT statements</span>
+                    <span id="question-counter">0 questions detected</span>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap: wrap;">
+                <button onclick="previewBulkImport()" class="btn btn-info">
+                    <i class="fas fa-eye"></i> Preview Questions
+                </button>
+                <button id="confirm-import-btn" class="btn btn-primary hidden" onclick="confirmBulkImport()">
+                    <i class="fas fa-check-circle"></i> Confirm Import
+                </button>
+                <button onclick="document.getElementById('bulk-text').value = ''; document.getElementById('preview-area').style.display = 'none'; document.getElementById('confirm-import-btn').classList.add('hidden'); document.getElementById('bulk-result').innerHTML = '';" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+                <button onclick="showBulkImportExample()" class="btn btn-warning">
+                    <i class="fas fa-file-import"></i> Load Example
+                </button>
+            </div>
+            
+            <div id="preview-area" style="display:none;">
+                <h4><i class="fas fa-list"></i> Preview Questions</h4>
+                <div id="preview-container" class="preview-container"></div>
+                <div id="bulk-result"></div>
+            </div>
+        </div>
+    `;
+    
+    // Add counter to textarea
+    document.getElementById('bulk-text').addEventListener('input', function() {
+        const text = this.value;
+        const counter = document.getElementById('question-counter');
+        if (text.trim().toUpperCase().includes('INSERT INTO medical_assessments')) {
+            const count = (text.match(/INSERT INTO medical_assessments/gi) || []).length;
+            counter.textContent = `${count} SQL statements detected`;
+        } else {
+            const count = (text.match(/\d+\./g) || []).length;
+            counter.textContent = `${count} questions detected`;
+        }
+    });
+}
+
+// ============================================
+// SHOW BULK IMPORT EXAMPLE
+// ============================================
+function showBulkImportExample() {
+    const example = `1. The ossicles of the middle ear include all of the following EXCEPT:
+A. Malleus (hammer)
+B. Incus (anvil)
+C. Stapes (stirrup)
+D. Cochlea ✓
+Answer is D: The three auditory ossicles are the malleus, incus, and stapes. The cochlea is part of the inner ear, not an ossicle.
+
+2. Which part of the ear is responsible for maintaining balance and equilibrium?
+A. Cochlea
+B. Vestibular apparatus (semicircular canals, utricle, saccule) ✓
+C. Eustachian tube
+D. Tympanic membrane
+Answer is B: The vestibular apparatus detects head position and movement, maintaining balance.
+
+3. The eustachian tube connects the middle ear to the:
+A. External auditory meatus
+B. Nasopharynx ✓
+C. Inner ear
+D. Mastoid air cells
+Answer is B: The eustachian tube connects the middle ear to the nasopharynx, equalizing pressure.
+
+4. A nurse is assessing a patient's hearing using the Rinne test. Which finding indicates normal hearing?
+A. Air conduction < Bone conduction (negative Rinne)
+B. Air conduction > Bone conduction (positive Rinne) ✓
+C. Air conduction equals bone conduction
+D. No sound heard at all
+Answer is B: In a positive Rinne test, air conduction is heard longer than bone conduction (AC > BC).
+
+5. During the Weber test, sound lateralizes to the affected ear. This finding suggests:
+A. Sensorineural hearing loss
+B. Conductive hearing loss in the affected ear ✓
+C. Normal hearing
+D. Mixed hearing loss
+Answer is B: In conductive hearing loss, sound lateralizes to the affected ear.`;
+    
+    document.getElementById('bulk-text').value = example;
+    document.getElementById('question-counter').textContent = '5 questions detected';
+    showToast('✅ Example loaded! Click "Preview Questions" to see the questions.', 'success');
+}
+
+// ============================================
+// PREVIEW BULK IMPORT - WITH SQL SUPPORT
+// ============================================
+window.previewBulkImport = () => {
+    const courseId = document.getElementById('bulk-course').value;
+    if (!courseId) { 
+        showToast('⚠️ Please select a course first!', 'error');
+        return; 
+    }
+    
+    const raw = document.getElementById('bulk-text').value;
+    if (!raw.trim()) { 
+        showToast('⚠️ Please paste some content!', 'error');
+        return; 
+    }
+    
+    let extracted = [];
+    let format = 'text';
+    
+    // 🔥 DETECT SQL FORMAT
+    if (raw.trim().toUpperCase().includes('INSERT INTO medical_assessments')) {
+        format = 'sql';
+        extracted = parseSQLQuestions(raw);
+        if (extracted.length === 0) {
+            document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">Could not parse SQL. Check format and try again.</div>';
+            return;
+        }
+    } else {
+        // 🔥 TEXT FORMAT PARSING
         const blocks = raw.split(/\n(?=\d+\.)/);
-        const extracted = [];
         for (let block of blocks) {
             if (!block.trim()) continue;
             const qMatch = block.match(/^\s*\d+\.\s*(.+?)(?:\n|$)/);
             if (!qMatch) continue;
             const options = { A: '', B: '', C: '', D: '' };
             let correctLetter = '', explanation = '';
+            
             const optionLines = block.match(/([A-D])[\.\)]\s*([^\n]+)/gi);
             if (optionLines) {
                 for (let opt of optionLines) {
@@ -741,41 +925,238 @@
                     if (!letterMatch) continue;
                     const letter = letterMatch[1].toUpperCase();
                     let optText = opt.replace(/^[A-D][\.\)]\s*/i, '').trim();
-                    const isCorrect = optText.includes('✓');
+                    const isCorrect = optText.includes('✓') || optText.includes('✔');
                     optText = optText.replace(/[✓✔]/g, '').trim();
                     options[letter] = optText;
                     if (isCorrect) correctLetter = letter;
                 }
             }
+            
             const answerMatch = block.match(/Answer\s+is\s+([A-D])[:\s-]*([^\n]*)/i);
-            if (answerMatch) { correctLetter = answerMatch[1].toUpperCase(); explanation = answerMatch[2]?.trim() || ''; }
+            if (answerMatch) { 
+                correctLetter = answerMatch[1].toUpperCase(); 
+                explanation = answerMatch[2]?.trim() || ''; 
+            }
+            
             if (!correctLetter) correctLetter = 'A';
             if (!explanation) explanation = `The correct answer is ${correctLetter}: ${options[correctLetter]}`;
-            extracted.push({ question: qMatch[1].trim(), options, correctLetter, correctText: options[correctLetter], explanation });
+            
+            extracted.push({ 
+                question: qMatch[1].trim(), 
+                options, 
+                correctLetter, 
+                correctText: options[correctLetter], 
+                explanation 
+            });
         }
-        if (extracted.length === 0) { document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">No questions found</div>'; return; }
-        pendingImportData = extracted;
-        document.getElementById('preview-area').style.display = 'block';
-        document.getElementById('preview-container').innerHTML = extracted.map((q, idx) => `<div class="preview-item"><div class="preview-question">${idx+1}. ${escapeHtml(q.question)}</div><div class="preview-options"><div><span class="badge ${q.correctLetter === 'A' ? 'badge-success' : 'badge-primary'}">A.</span> ${escapeHtml(q.options.A)}</div><div><span class="badge ${q.correctLetter === 'B' ? 'badge-success' : 'badge-primary'}">B.</span> ${escapeHtml(q.options.B)}</div><div><span class="badge ${q.correctLetter === 'C' ? 'badge-success' : 'badge-primary'}">C.</span> ${escapeHtml(q.options.C)}</div><div><span class="badge ${q.correctLetter === 'D' ? 'badge-success' : 'badge-primary'}">D.</span> ${escapeHtml(q.options.D)}</div></div><div class="preview-correct">Correct: ${escapeHtml(q.correctText)}</div><div class="preview-explanation">${escapeHtml(q.explanation)}</div></div>`).join('');
-        document.getElementById('confirm-import-btn').classList.remove('hidden');
-        document.getElementById('bulk-result').innerHTML = `<div class="alert alert-info">Found ${extracted.length} questions. Review and confirm.</div>`;
-    };
+    }
+    
+    if (extracted.length === 0) { 
+        document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">No questions found. Check your format.</div>'; 
+        return; 
+    }
+    
+    pendingImportData = extracted;
+    document.getElementById('preview-area').style.display = 'block';
+    document.getElementById('preview-container').innerHTML = extracted.map((q, idx) => `
+        <div class="preview-item">
+            <div class="preview-question">${idx+1}. ${escapeHtml(q.question)}</div>
+            <div class="preview-options">
+                <div><span class="badge ${q.correctLetter === 'A' ? 'badge-success' : 'badge-primary'}">A.</span> ${escapeHtml(q.options.A)}</div>
+                <div><span class="badge ${q.correctLetter === 'B' ? 'badge-success' : 'badge-primary'}">B.</span> ${escapeHtml(q.options.B)}</div>
+                <div><span class="badge ${q.correctLetter === 'C' ? 'badge-success' : 'badge-primary'}">C.</span> ${escapeHtml(q.options.C)}</div>
+                <div><span class="badge ${q.correctLetter === 'D' ? 'badge-success' : 'badge-primary'}">D.</span> ${escapeHtml(q.options.D)}</div>
+            </div>
+            <div class="preview-correct">✅ Correct: ${escapeHtml(q.correctText)}</div>
+            <div class="preview-explanation">💡 ${escapeHtml(q.explanation)}</div>
+        </div>
+    `).join('');
+    
+    document.getElementById('confirm-import-btn').classList.remove('hidden');
+    document.getElementById('bulk-result').innerHTML = `
+        <div class="alert alert-info" style="margin-top: 12px;">
+            <i class="fas fa-info-circle"></i> 
+            Found <strong>${extracted.length}</strong> questions from ${format === 'sql' ? 'SQL' : 'text'} format. 
+            Review and click <strong>"Confirm Import"</strong> to save.
+            ${format === 'sql' ? ' ✅ SQL detected and parsed successfully!' : ''}
+        </div>
+    `;
+};
 
-    window.confirmBulkImport = async () => {
-        if (pendingImportData.length === 0) { alert('Preview first'); return; }
-        const courseId = document.getElementById('bulk-course').value;
-        if (!courseId) { alert('Select course'); return; }
-        const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
-        let saved = 0;
-        for (let q of pendingImportData) {
-            const payload = { question_text: q.question, option_a: q.options.A, option_b: q.options.B, option_c: q.options.C, option_d: q.options.D, correct_answer: q.correctText, explanation: q.explanation.substring(0,1000), course_id: courseId, difficulty: 'medium', question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString(), status: isAdmin ? 'approved' : 'pending', created_by: currentAdmin.id };
+// ============================================
+// PARSE SQL QUESTIONS
+// ============================================
+function parseSQLQuestions(sql) {
+    const extracted = [];
+    
+    // Find all INSERT statements
+    const insertPattern = /INSERT INTO medical_assessments\s*\([^)]*\)\s*VALUES\s*\(([^)]*)\)/gi;
+    const matches = sql.matchAll(insertPattern);
+    
+    for (const match of matches) {
+        try {
+            const values = match[1];
+            // Parse values - this is a simplified parser
+            // For complex SQL, you might need a more robust parser
+            
+            // Extract question_text
+            const qMatch = values.match(/'([^']*(?:''[^']*)*)'/g);
+            if (!qMatch) continue;
+            
+            // Clean up the values
+            const cleanedValues = qMatch.map(v => v.replace(/^'|'$/g, '').replace(/''/g, "'"));
+            
+            // Expected order: id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation
+            if (cleanedValues.length >= 8) {
+                // Check if it's a valid question (has question text)
+                const questionText = cleanedValues[1] || '';
+                if (questionText.trim().length > 5) {
+                    extracted.push({
+                        question: questionText,
+                        options: {
+                            A: cleanedValues[2] || '',
+                            B: cleanedValues[3] || '',
+                            C: cleanedValues[4] || '',
+                            D: cleanedValues[5] || ''
+                        },
+                        correctLetter: 'A',
+                        correctText: cleanedValues[6] || '',
+                        explanation: cleanedValues[7] || ''
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('Error parsing SQL statement:', e);
+        }
+    }
+    
+    // If no questions extracted, try alternative parsing
+    if (extracted.length === 0) {
+        // Try to find question patterns in the SQL
+        const qPattern = /'([^']*(?:''[^']*)*)'/g;
+        const allTexts = [];
+        let textMatch;
+        while ((textMatch = qPattern.exec(sql)) !== null) {
+            allTexts.push(textMatch[1].replace(/''/g, "'"));
+        }
+        
+        // If we have at least 8 items, try to group them
+        if (allTexts.length >= 8) {
+            const grouped = [];
+            for (let i = 0; i < allTexts.length; i += 8) {
+                if (i + 7 < allTexts.length) {
+                    grouped.push(allTexts.slice(i, i + 8));
+                }
+            }
+            
+            for (const group of grouped) {
+                if (group[1] && group[1].trim().length > 5) {
+                    extracted.push({
+                        question: group[1],
+                        options: { A: group[2] || '', B: group[3] || '', C: group[4] || '', D: group[5] || '' },
+                        correctLetter: 'A',
+                        correctText: group[6] || '',
+                        explanation: group[7] || ''
+                    });
+                }
+            }
+        }
+    }
+    
+    return extracted;
+}
+
+// ============================================
+// CONFIRM BULK IMPORT
+// ============================================
+window.confirmBulkImport = async () => {
+    if (pendingImportData.length === 0) { 
+        showToast('⚠️ No questions to import. Preview first!', 'error');
+        return; 
+    }
+    
+    const courseId = document.getElementById('bulk-course').value;
+    if (!courseId) { 
+        showToast('⚠️ Please select a course!', 'error');
+        return; 
+    }
+    
+    const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
+    let saved = 0;
+    let errors = [];
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('confirm-import-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+    
+    for (let q of pendingImportData) {
+        try {
+            const payload = { 
+                question_text: q.question, 
+                option_a: q.options.A || '', 
+                option_b: q.options.B || '', 
+                option_c: q.options.C || '', 
+                option_d: q.options.D || '', 
+                correct_answer: q.correctText || '', 
+                explanation: (q.explanation || '').substring(0, 1000), 
+                course_id: courseId, 
+                difficulty: 'medium', 
+                question_type: 'multiple_choice', 
+                curriculum: 'KRCHN', 
+                is_active: true, 
+                is_published: true, 
+                created_at: new Date().toISOString(), 
+                status: isAdmin ? 'approved' : 'pending', 
+                created_by: currentAdmin.id 
+            };
+            
             const { error } = await sb.from('medical_assessments').insert([payload]);
-            if (!error) saved++;
+            if (error) {
+                errors.push(`Question "${q.question.substring(0, 30)}...": ${error.message}`);
+            } else {
+                saved++;
+            }
+        } catch (e) {
+            errors.push(`Question "${q.question.substring(0, 30)}...": ${e.message}`);
         }
-        if (saved > 0) { await loadAllData(); showToast(`${saved} questions imported! ${isAdmin ? '' : 'Pending admin approval.'}`, 'success'); document.getElementById('bulk-text').value = ''; document.getElementById('preview-area').style.display = 'none'; document.getElementById('confirm-import-btn').classList.add('hidden'); pendingImportData = []; }
-        else document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">Import failed</div>';
-    };
-
+    }
+    
+    // Reset button
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm Import';
+    
+    if (saved > 0) { 
+        await loadAllData(); 
+        const statusMsg = isAdmin ? '' : 'Pending admin approval.';
+        const errorMsg = errors.length > 0 ? ` (${errors.length} failed)` : '';
+        showToast(`✅ ${saved} questions imported successfully! ${statusMsg}${errorMsg}`, 'success');
+        
+        // Show errors if any
+        if (errors.length > 0) {
+            document.getElementById('bulk-result').innerHTML = `
+                <div class="alert alert-error" style="margin-top: 12px;">
+                    <strong>⚠️ ${errors.length} errors occurred:</strong>
+                    <ul style="margin-top: 8px; padding-left: 20px; font-size: 13px;">
+                        ${errors.slice(0, 5).map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+                        ${errors.length > 5 ? `<li>... and ${errors.length - 5} more errors</li>` : ''}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        document.getElementById('bulk-text').value = ''; 
+        document.getElementById('preview-area').style.display = 'none'; 
+        document.getElementById('confirm-import-btn').classList.add('hidden'); 
+        document.getElementById('question-counter').textContent = '0 questions detected';
+        pendingImportData = []; 
+    } else { 
+        document.getElementById('bulk-result').innerHTML = `
+            <div class="alert alert-error">❌ Import failed. ${errors.length > 0 ? errors.join('; ') : 'Please try again.'}</div>
+        `;
+        showToast('❌ Import failed. See details below.', 'error');
+    }
+};
     // ============================================
     // PENDING APPROVAL
     // ============================================
