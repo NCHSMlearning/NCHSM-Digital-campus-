@@ -914,6 +914,64 @@
         </button>
     </div>
 
+   <!-- ==================== EXAMS & GRADES TAB ==================== -->
+<section id="cats" class="tab-content" hidden>
+
+    <!-- ========== EXAMS HEADER ========== -->
+    <div class="exams-header">
+        <div class="header-content">
+            <h2><i class="fas fa-chart-bar"></i> Assessments & Grades</h2>
+            <p class="subtitle">Track your CATS, exams, and assessment results</p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-card">
+                <div class="stat-icon active"><i class="fas fa-spinner"></i></div>
+                <div class="stat-info">
+                    <span class="stat-value" id="current-assessments-count">0</span>
+                    <span class="stat-label">Current</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon completed"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <span class="stat-value" id="completed-assessments-count">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon average"><i class="fas fa-percentage"></i></div>
+                <div class="stat-info">
+                    <span class="stat-value" id="overall-average">--</span>
+                    <span class="stat-label">Avg Score</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== QUICK ACTIONS - SPREAD EVENLY ========== -->
+    <div class="quick-actions-grid">
+        <button id="view-all-assessments" class="action-btn active">
+            <i class="fas fa-list"></i> View All
+            <span class="btn-badge">All</span>
+        </button>
+        <button id="view-current-only" class="action-btn">
+            <i class="fas fa-spinner"></i> Current Only
+            <span class="btn-badge">Pending</span>
+        </button>
+        <button id="view-completed-only" class="action-btn">
+            <i class="fas fa-check-circle"></i> Completed Only
+            <span class="btn-badge">Done</span>
+        </button>
+        <button id="view-transcript" class="action-btn">
+            <i class="fas fa-file-pdf"></i> Transcript
+            <span class="btn-badge">PDF</span>
+        </button>
+        <button id="refresh-assessments" class="action-btn refresh">
+            <i class="fas fa-sync-alt"></i> Refresh
+            <span class="btn-badge">Sync</span>
+        </button>
+    </div>
+
     <!-- ========== CURRENT ASSESSMENTS ========== -->
     <div class="assessments-section current-section">
         <div class="section-header">
@@ -927,19 +985,18 @@
             <table class="assessments-table">
                 <thead>
                     <tr>
-                        <th style="width:35%">Assessment</th>
-                        <th style="width:12%" class="text-center">Due Date</th>
-                        <th style="width:12%" class="text-center">Status</th>
-                        <th style="width:10%" class="text-center">CAT 1</th>
-                        <th style="width:10%" class="text-center">CAT 2</th>
-                        <th style="width:10%" class="text-center">Final</th>
-                        <th style="width:11%" class="text-center">Total</th>
-                        <th style="width:10%" class="text-center">Action</th>
+                        <th>Assessment & Due Date</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">CAT 1</th>
+                        <th class="text-center">CAT 2</th>
+                        <th class="text-center">Final</th>
+                        <th class="text-center">Total</th>
+                        <th class="text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody id="current-assessments-table">
                     <tr class="loading">
-                        <td colspan="8">
+                        <td colspan="7">
                             <div class="loading-content">
                                 <div class="loading-spinner"></div>
                                 <p>Loading current assessments...</p>
@@ -969,19 +1026,18 @@
             <table class="assessments-table">
                 <thead>
                     <tr>
-                        <th style="width:35%">Assessment</th>
-                        <th style="width:12%" class="text-center">Graded Date</th>
-                        <th style="width:12%" class="text-center">Status</th>
-                        <th style="width:10%" class="text-center">CAT 1</th>
-                        <th style="width:10%" class="text-center">CAT 2</th>
-                        <th style="width:10%" class="text-center">Final</th>
-                        <th style="width:11%" class="text-center">Total</th>
-                        <th style="width:10%" class="text-center">Grade</th>
+                        <th>Assessment & Graded Date</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">CAT 1</th>
+                        <th class="text-center">CAT 2</th>
+                        <th class="text-center">Final</th>
+                        <th class="text-center">Total</th>
+                        <th class="text-center">Grade</th>
                     </tr>
                 </thead>
                 <tbody id="completed-assessments-table">
                     <tr class="loading">
-                        <td colspan="8">
+                        <td colspan="7">
                             <div class="loading-content">
                                 <div class="loading-spinner"></div>
                                 <p>Loading completed assessments...</p>
@@ -1122,7 +1178,6 @@
 
 </section>
 <!-- END EXAMS & GRADES -->
-
             <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
             <section id="academic-reports" class="tab-content" hidden>
                 <div class="reports-header"><div class="header-content"><h2><i class="fas fa-chart-line"></i> Academic Reports</h2><p class="subtitle">View your academic performance, transcripts, and progress reports</p></div><div class="header-actions"><button id="download-transcript-pdf" class="btn-primary"><i class="fas fa-download"></i> Download Full Transcript</button><button id="print-report" class="btn-secondary"><i class="fas fa-print"></i> Print Report</button></div></div>
