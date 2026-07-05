@@ -5890,7 +5890,7 @@ function generateStudentTranscriptPDF(student, reportData) {
         console.error('PDF Error:', err);
     });
 }
-// ===== GENERATE SELECTED STUDENT PDF - FORCE FRESH DATA =====
+// ===== GENERATE SELECTED STUDENT PDF - CACHE FIRST =====
 function generateSelectedStudentPDF(type) {
     console.log('🔄 generateSelectedStudentPDF called with type:', type || 'transcript');
     const select = document.getElementById('studentSelectForReport');
@@ -5905,20 +5905,91 @@ function generateSelectedStudentPDF(type) {
         return;
     }
 
-    showLoading('Loading fresh student data from Google Sheet...');
+    // ✅ STEP 1: Try CACHE FIRST (no API call)
+    let student = null;
     
-    // ✅ FORCE: Get fresh data directly from API
+    // Normalize admission function
+    function normalizeAdm(adm) {
+        if (!adm) return '';
+        let a = adm.toString().trim().toUpperCase();
+        a = a.replace(/MAR\/(\d{2})(?![0-9])/g, 'MAR/20$1');
+        a = a.replace(/\/(\d{2})(?![0-9])/g, (match, year) => {
+            if (year >= 24 && year <= 26) return `/20${year}`;
+            return match;
+        });
+        return a;
+    }
+    
+    const normAdmission = normalizeAdm(admission);
+    console.log('🔍 Looking for student in cache:', admission);
+    console.log('📡 Normalized:', normAdmission);
+    
+    // Try to find in cache
+    if (window._studentDataCache) {
+        // Try direct match
+        if (window._studentDataCache[admission]) {
+            student = window._studentDataCache[admission];
+            console.log('✅ Found in cache (direct):', student.name);
+        }
+        // Try normalized match
+        if (!student) {
+            for (const key in window._studentDataCache) {
+                if (normalizeAdm(key) === normAdmission) {
+                    student = window._studentDataCache[key];
+                    console.log('✅ Found in cache (normalized):', student.name, 'key:', key);
+                    break;
+                }
+            }
+        }
+        // Try partial match by ID number
+        if (!student) {
+            const parts = admission.split('/');
+            const admNumber = parts.length > 1 ? parts[1] : '';
+            for (const key in window._studentDataCache) {
+                if (key.includes(admNumber)) {
+                    student = window._studentDataCache[key];
+                    console.log('✅ Found in cache (partial):', student.name, 'key:', key);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // If found in cache, generate PDF immediately
+    if (student) {
+        console.log('✅ Using cached student data for:', student.name);
+        console.log('📊 Subjects:', student.subjects ? student.subjects.length : 0);
+        
+        const enhancedStudent = {
+            name: student.name || 'Unknown Student',
+            admission: student.admission || admission,
+            subjects: student.subjects || [],
+            overallAvg: student.overallAvg || 0,
+            subjectCount: student.subjectCount || 0,
+            cat1Scores: student.cat1Scores || [],
+            cat2Scores: student.cat2Scores || [],
+            examScores: student.examScores || []
+        };
+        
+        if (type === 'result_slip') {
+            generateResultSlip(enhancedStudent, window.reportData || { currentYear: currentYear });
+        } else {
+            generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
+        }
+        return;
+    }
+    
+    // ✅ STEP 2: If NOT in cache, try API (fallback)
+    console.log('⚠️ Student not in cache, trying API...');
+    showLoading('Loading student data from server...');
+    
     fetchFreshStudentData(admission).then(freshStudent => {
         hideLoading();
         if (freshStudent) {
             console.log('✅ Fresh student data loaded:', freshStudent.name);
-            console.log('📊 Subjects:', freshStudent.subjects.length);
-            console.log('📊 Average:', freshStudent.overallAvg);
-            
             if (type === 'result_slip') {
                 generateResultSlip(freshStudent, window.reportData || { currentYear: currentYear });
             } else {
-                // ✅ Use the correct function signature
                 generateStudentTranscriptPDF(freshStudent, window.reportData || { currentYear: currentYear });
             }
         } else {
