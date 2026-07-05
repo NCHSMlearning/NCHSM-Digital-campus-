@@ -705,37 +705,433 @@ class ResourcesModule {
         modal.style.display = 'flex';
     }
     
-    addPDFModalStyles() {
-        if (document.getElementById('pdf-modal-styles')) return;
+   addPDFModalStyles() {
+    if (document.getElementById('pdf-modal-styles')) return;
+    
+    const styles = document.createElement('style');
+    styles.id = 'pdf-modal-styles';
+    styles.textContent = `
+        .pdf-viewer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+        }
         
-        const styles = document.createElement('style');
-        styles.id = 'pdf-modal-styles';
-        styles.textContent = `
-            .pdf-viewer-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);display:none;justify-content:center;align-items:center;z-index:100000;}
-            .pdf-modal-container{width:95%;height:90%;background:#1a1a2e;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);}
-            .pdf-modal-header{padding:12px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;}
-            .pdf-modal-title{display:flex;align-items:center;gap:10px;color:white;font-weight:500;}
-            .pdf-modal-title i{font-size:20px;color:#ef4444;}
-            .pdf-modal-actions{display:flex;gap:10px;}
-            .pdf-modal-btn{background:rgba(255,255,255,0.1);border:none;color:white;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;}
-            .pdf-modal-btn:hover{background:#4C1D95;}
-            .pdf-modal-body{flex:1;overflow:auto;background:#2d2d3a;position:relative;}
-            .pdf-viewer-modal-area{display:flex;justify-content:center;padding:20px;min-height:100%;}
-            .pdf-canvas-modal{box-shadow:0 4px 20px rgba(0,0,0,0.3);background:white;border-radius:4px;max-width:100%;height:auto;}
-            .pdf-modal-footer{padding:12px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
-            .pdf-nav-controls,.pdf-zoom-controls{display:flex;align-items:center;gap:8px;}
-            .pdf-nav-btn,.pdf-zoom-btn{background:rgba(255,255,255,0.1);border:none;color:white;width:36px;height:36px;border-radius:6px;cursor:pointer;}
-            .pdf-nav-btn:hover,.pdf-zoom-btn:hover{background:#4C1D95;}
-            .pdf-page-info{display:flex;align-items:center;gap:8px;color:white;}
-            #pdf-page-modal{width:50px;padding:6px;border-radius:6px;border:none;text-align:center;}
-            .pdf-protected-badge{background:rgba(76,29,149,0.3);padding:6px 12px;border-radius:20px;color:#a78bfa;font-size:12px;}
-            .loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#4C1D95;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px;}
-            @keyframes spin{to{transform:rotate(360deg);}}
-            @keyframes fadeInUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
-            @media (max-width:768px){.pdf-modal-container{width:98%;height:95%;}.pdf-nav-btn,.pdf-zoom-btn{width:32px;height:32px;}.pdf-modal-footer{padding:10px 15px;}}
-        `;
-        document.head.appendChild(styles);
-    }
+        .pdf-modal-container {
+            width: 95%;
+            height: 90%;
+            background: #1a1a2e;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        
+        .pdf-modal-header {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #16213e, #1a1a2e);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .pdf-modal-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            min-width: 0;
+        }
+        
+        .pdf-modal-title span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .pdf-modal-title i {
+            font-size: 20px;
+            color: #ef4444;
+            flex-shrink: 0;
+        }
+        
+        .pdf-modal-actions {
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .pdf-modal-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pdf-modal-btn:hover {
+            background: #4C1D95;
+        }
+        
+        .pdf-modal-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .pdf-modal-body {
+            flex: 1;
+            overflow: auto;
+            background: #2d2d3a;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .pdf-viewer-modal-area {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100%;
+            align-items: flex-start;
+        }
+        
+        /* 🔥 IMPROVED: Better canvas rendering */
+        .pdf-canvas-modal {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            background: white;
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto;
+            /* Improved rendering */
+            image-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .pdf-modal-footer {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #16213e, #1a1a2e);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .pdf-nav-controls,
+        .pdf-zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pdf-nav-btn,
+        .pdf-zoom-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pdf-nav-btn:hover,
+        .pdf-zoom-btn:hover {
+            background: #4C1D95;
+        }
+        
+        .pdf-nav-btn:active,
+        .pdf-zoom-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .pdf-nav-btn:disabled,
+        .pdf-zoom-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .pdf-page-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        #pdf-page-modal {
+            width: 50px;
+            padding: 6px;
+            border-radius: 6px;
+            border: none;
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        #pdf-page-modal:focus {
+            outline: 2px solid #4C1D95;
+        }
+        
+        .pdf-protected-badge {
+            background: rgba(76,29,149,0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #a78bfa;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #4C1D95;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        .pdf-loading-modal,
+        .pdf-error-modal {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: white;
+            padding: 20px;
+        }
+        
+        .pdf-error-modal i {
+            font-size: 48px;
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+        
+        .pdf-error-modal h3 {
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        
+        .pdf-error-modal p {
+            color: #9ca3af;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* ========== MOBILE OPTIMIZATIONS ========== */
+        
+        /* Tablets and small screens */
+        @media (max-width: 768px) {
+            .pdf-modal-container {
+                width: 98%;
+                height: 95%;
+                border-radius: 12px;
+            }
+            
+            .pdf-modal-header {
+                padding: 10px 15px;
+            }
+            
+            .pdf-modal-title {
+                font-size: 13px;
+                max-width: 60%;
+            }
+            
+            .pdf-modal-title i {
+                font-size: 18px;
+            }
+            
+            .pdf-nav-btn,
+            .pdf-zoom-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .pdf-modal-footer {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .pdf-nav-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .pdf-page-info {
+                font-size: 13px;
+            }
+            
+            #pdf-page-modal {
+                width: 40px;
+                padding: 4px 6px;
+                font-size: 13px;
+            }
+            
+            .pdf-protected-badge {
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+            
+            .pdf-viewer-modal-area {
+                padding: 10px;
+            }
+            
+            /* 🔥 IMPROVED: Better mobile rendering */
+            .pdf-canvas-modal {
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+        }
+        
+        /* Small phones */
+        @media (max-width: 480px) {
+            .pdf-modal-container {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+            
+            .pdf-modal-header {
+                padding: 8px 12px;
+            }
+            
+            .pdf-modal-title {
+                font-size: 12px;
+                max-width: 55%;
+            }
+            
+            .pdf-modal-title i {
+                font-size: 16px;
+            }
+            
+            .pdf-modal-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+            
+            .pdf-nav-btn,
+            .pdf-zoom-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+            
+            .pdf-modal-footer {
+                padding: 8px 10px;
+            }
+            
+            .pdf-page-info {
+                font-size: 12px;
+            }
+            
+            #pdf-page-modal {
+                width: 35px;
+                padding: 3px 4px;
+                font-size: 12px;
+            }
+            
+            .pdf-viewer-modal-area {
+                padding: 5px;
+            }
+            
+            .pdf-protected-badge {
+                font-size: 10px;
+                padding: 3px 8px;
+            }
+        }
+        
+        /* Landscape phones */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .pdf-modal-container {
+                height: 92%;
+                width: 97%;
+            }
+            
+            .pdf-modal-header {
+                padding: 6px 12px;
+            }
+            
+            .pdf-modal-title {
+                font-size: 12px;
+            }
+            
+            .pdf-modal-footer {
+                padding: 6px 12px;
+            }
+            
+            .pdf-viewer-modal-area {
+                padding: 5px 10px;
+            }
+        }
+        
+        /* High DPI screens (Retina) */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .pdf-canvas-modal {
+                image-rendering: auto;
+            }
+        }
+        
+        /* Dark mode support for system preference */
+        @media (prefers-color-scheme: dark) {
+            .pdf-modal-body {
+                background: #1a1a2e;
+            }
+        }
+    `;
+    document.head.appendChild(styles);
+}
     
     setupPDFModalEvents() {
         const modal = document.getElementById('pdf-viewer-modal');
@@ -769,80 +1165,147 @@ class ResourcesModule {
         }
     }
     
-    async loadPDFInModal(pdfUrl) {
-        try {
-            const loadingDiv = document.getElementById('pdf-loading-modal');
-            const errorDiv = document.getElementById('pdf-error-modal');
-            const viewerDiv = document.getElementById('pdf-viewer-modal-area');
-            
-            if (loadingDiv) loadingDiv.style.display = 'flex';
-            if (errorDiv) errorDiv.style.display = 'none';
-            if (viewerDiv) viewerDiv.style.display = 'none';
-            
-            const loadingTask = this.pdfjsLib.getDocument({ 
-                url: pdfUrl, 
-                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-                cMapPacked: true,
-                verbosity: 0
-            });
-            this.currentPDFDoc = await loadingTask.promise;
-            this.totalPDFPages = this.currentPDFDoc.numPages;
-            
-            const totalSpan = document.getElementById('pdf-total-modal');
-            const pageInput = document.getElementById('pdf-page-modal');
-            if (totalSpan) totalSpan.textContent = this.totalPDFPages;
-            if (pageInput) pageInput.max = this.totalPDFPages;
-            
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (viewerDiv) viewerDiv.style.display = 'flex';
-            this.pdfScale = 1.0;
-            this.updateZoomDisplay();
-            await this.renderPDFPage(1);
-        } catch (error) {
-            console.error('PDF loading error:', error);
-            const loadingDiv = document.getElementById('pdf-loading-modal');
-            const errorDiv = document.getElementById('pdf-error-modal');
-            const errorMsg = document.getElementById('pdf-error-message-modal');
-            const retryBtn = document.getElementById('retry-pdf-modal');
-            
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (errorDiv) errorDiv.style.display = 'flex';
-            if (errorMsg) errorMsg.textContent = error.message;
-            if (retryBtn) retryBtn.onclick = () => this.loadPDFInModal(pdfUrl);
+   async loadPDFInModal(pdfUrl) {
+    try {
+        const loadingDiv = document.getElementById('pdf-loading-modal');
+        const errorDiv = document.getElementById('pdf-error-modal');
+        const viewerDiv = document.getElementById('pdf-viewer-modal-area');
+        
+        if (loadingDiv) loadingDiv.style.display = 'flex';
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (viewerDiv) viewerDiv.style.display = 'none';
+        
+        // Enhanced PDF loading with better quality settings
+        const loadingTask = this.pdfjsLib.getDocument({
+            url: pdfUrl,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true,
+            verbosity: 0,
+            // 🔥 NEW: Better quality settings
+            useSystemFonts: true,
+            standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+            enableXfa: false, // Disable XFA for better performance
+            disableFontFace: false, // Use native fonts
+            fontExtraProperties: false, // Reduce font data
+        });
+        
+        this.currentPDFDoc = await loadingTask.promise;
+        this.totalPDFPages = this.currentPDFDoc.numPages;
+        
+        const totalSpan = document.getElementById('pdf-total-modal');
+        const pageInput = document.getElementById('pdf-page-modal');
+        if (totalSpan) totalSpan.textContent = this.totalPDFPages;
+        if (pageInput) pageInput.max = this.totalPDFPages;
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (viewerDiv) viewerDiv.style.display = 'flex';
+        
+        // 🔥 NEW: Set initial scale based on device
+        const isMobile = window.innerWidth < 768;
+        this.pdfScale = isMobile ? 1.2 : 1.0;
+        this.updateZoomDisplay();
+        
+        await this.renderPDFPage(1);
+        
+    } catch (error) {
+        console.error('PDF loading error:', error);
+        const loadingDiv = document.getElementById('pdf-loading-modal');
+        const errorDiv = document.getElementById('pdf-error-modal');
+        const errorMsg = document.getElementById('pdf-error-message-modal');
+        const retryBtn = document.getElementById('retry-pdf-modal');
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'flex';
+        if (errorMsg) errorMsg.textContent = error.message;
+        if (retryBtn) retryBtn.onclick = () => this.loadPDFInModal(pdfUrl);
+    }
+}
+    
+   async renderPDFPage(pageNum) {
+    if (!this.currentPDFDoc || pageNum < 1 || pageNum > this.totalPDFPages) return;
+    if (this.pageRendering) { this.pageNumPending = pageNum; return; }
+    this.pageRendering = true;
+    
+    try {
+        const page = await this.currentPDFDoc.getPage(pageNum);
+        const canvas = document.getElementById('pdf-canvas-modal');
+        if (!canvas) { this.pageRendering = false; return; }
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        // Get container width for responsive sizing
+        const viewerArea = document.getElementById('pdf-viewer-modal-area');
+        const containerWidth = viewerArea ? viewerArea.clientWidth - 40 : window.innerWidth - 40;
+        const maxWidth = Math.min(containerWidth, 1200);
+        
+        // Calculate base viewport
+        const viewport = page.getViewport({ scale: 1 });
+        
+        // Determine optimal scale
+        let scale = this.pdfScale;
+        const isMobile = window.innerWidth < 768;
+        
+        // Auto-fit on mobile with better quality
+        if (isMobile && this.pdfScale === 1.0) {
+            // Use 1.2x scale for better text clarity on mobile
+            const fitScale = ((maxWidth - 20) / viewport.width) * 1.2;
+            scale = Math.min(fitScale, 1.8);
+        } else if (!isMobile) {
+            // Desktop: use higher base scale for crisp text
+            scale = Math.max(this.pdfScale, 1.2);
         }
+        
+        const scaledViewport = page.getViewport({ scale: scale });
+        
+        // SMART DPR handling
+        const dpr = window.devicePixelRatio || 1;
+        let effectiveDPR;
+        
+        if (isMobile) {
+            // Mobile: balance quality and performance
+            effectiveDPR = Math.min(dpr, 1.5); // Cap at 1.5x for performance
+        } else {
+            // Desktop: use full DPR but cap at 2x for performance
+            effectiveDPR = Math.min(dpr, 2);
+        }
+        
+        // Set canvas with optimal resolution
+        canvas.width = scaledViewport.width * effectiveDPR;
+        canvas.height = scaledViewport.height * effectiveDPR;
+        canvas.style.width = scaledViewport.width + 'px';
+        canvas.style.height = scaledViewport.height + 'px';
+        
+        // Configure canvas for crisp rendering
+        ctx.setTransform(effectiveDPR, 0, 0, effectiveDPR, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = isMobile ? 'high' : 'high';
+        
+        // Render with optimized settings
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: scaledViewport,
+            background: 'white',
+            enableWebGL: false,
+            renderInteractiveForms: false,
+            useSystemFonts: true,
+        };
+        
+        await page.render(renderContext).promise;
+        
+        this.currentPDFPage = pageNum;
+        const pageInput = document.getElementById('pdf-page-modal');
+        if (pageInput) pageInput.value = pageNum;
+        this.updatePDFNavButtons();
+        
+    } catch (error) {
+        console.error('Render error:', error);
     }
     
-    async renderPDFPage(pageNum) {
-        if (!this.currentPDFDoc || pageNum < 1 || pageNum > this.totalPDFPages) return;
-        if (this.pageRendering) { this.pageNumPending = pageNum; return; }
-        this.pageRendering = true;
-        
-        try {
-            const page = await this.currentPDFDoc.getPage(pageNum);
-            const canvas = document.getElementById('pdf-canvas-modal');
-            if (!canvas) { this.pageRendering = false; return; }
-            const ctx = canvas.getContext('2d', { alpha: false });
-            const viewport = page.getViewport({ scale: this.pdfScale });
-            const pixelRatio = window.devicePixelRatio || 1;
-            canvas.width = viewport.width * pixelRatio;
-            canvas.height = viewport.height * pixelRatio;
-            canvas.style.width = viewport.width + 'px';
-            canvas.style.height = viewport.height + 'px';
-            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-            
-            await page.render({ canvasContext: ctx, viewport: viewport, background: 'white' }).promise;
-            
-            this.currentPDFPage = pageNum;
-            const pageInput = document.getElementById('pdf-page-modal');
-            if (pageInput) pageInput.value = pageNum;
-            this.updatePDFNavButtons();
-        } catch (error) {
-            console.error('Render error:', error);
-        }
-        
-        this.pageRendering = false;
-        if (this.pageNumPending !== null) { this.renderPDFPage(this.pageNumPending); this.pageNumPending = null; }
+    this.pageRendering = false;
+    if (this.pageNumPending !== null) {
+        this.renderPDFPage(this.pageNumPending);
+        this.pageNumPending = null;
     }
+}
     
     goToPDFPage(pageNum) {
         if (pageNum < 1) pageNum = 1;
