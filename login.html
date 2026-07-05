@@ -4,53 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Portal - Login</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png">
+    
+    <!-- Preconnect for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     
     <!-- External CSS -->
     <link rel="stylesheet" href="login-styles.css">
     
-    <!-- Only load Feather Icons in head -->
+    <!-- Feather Icons -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    
-    <style>
-        /* Additional inline styles to ensure the image is properly displayed */
-        .left-panel {
-            background: linear-gradient(135deg, rgba(2, 48, 32, 0.88), rgba(1, 33, 22, 0.85)), 
-                        url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg');
-            background-size: cover;
-            background-position: center 30%;
-            background-repeat: no-repeat;
-        }
-        
-        /* Ensure responsive behavior */
-        @media (max-width: 768px) {
-            .left-panel {
-                display: none;
-            }
-        }
-    </style>
 </head>
 <body>
     <!-- Skip to content link -->
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
     
     <div class="container">
-        <!-- Left Panel for Desktop with NEW IMAGE -->
+        <!-- Left Panel for Desktop -->
         <div class="left-panel">
             <div class="panel-content">
+                <!-- Logo -->
                 <div class="logo-wrapper">
                     <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                        <img src="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
-                    <h1 class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
+                    <h1 class="college-name">
+                        NAKURU COLLEGE OF <br><span class="gold">HEALTH SCIENCES</span><br>
+                        AND MANAGEMENT
+                    </h1>
+                    <p class="motto">"Excellence in Healthcare Education Since 1978"</p>
                 </div>
                 
+                <!-- Welcome Section -->
                 <div class="welcome-section">
                     <h2>Welcome to NCHSM Digital Portal</h2>
                     <p class="tagline">Your gateway to excellence in healthcare education</p>
                     
+                    <!-- Features -->
                     <div class="features-list">
                         <div class="feature">
                             <i data-feather="book-open"></i>
@@ -83,6 +78,14 @@
                     </div>
                 </div>
                 
+                <!-- Accreditation Badges -->
+                <div class="accreditation-badges">
+                    <span class="badge gold">✓ TVET Accredited</span>
+                    <span class="badge">✓ Nursing Council of Kenya</span>
+                    <span class="badge">✓ KNQA Certified</span>
+                </div>
+                
+                <!-- Stats -->
                 <div class="stats">
                     <div class="stat">
                         <span class="number">2,500+</span>
@@ -100,13 +103,13 @@
             </div>
         </div>
 
-        <!-- Right Panel / Main Content -->
+        <!-- Right Panel -->
         <div class="right-panel">
             <!-- Mobile Header -->
             <header class="mobile-header">
                 <div class="header-content">
                     <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                        <img src="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
@@ -120,20 +123,24 @@
             <!-- Main Content -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
+                    <!-- Welcome -->
                     <div class="welcome-section">
                         <div class="welcome-icon">
                             <i data-feather="lock"></i>
                         </div>
-                        <h2 class="welcome-title">Welcome Back</h2>
+                        <h2 class="welcome-title">Welcome <span class="gold">Back</span></h2>
                         <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                     </div>
                     
+                    <!-- Error Message -->
                     <div id="errorMsg" class="error-message" role="alert" aria-live="assertive">
                         <i data-feather="alert-circle" class="error-icon"></i>
                         <span class="error-text"></span>
                     </div>
                     
+                    <!-- Login Form -->
                     <form id="loginForm" class="login-form" novalidate>
+                        <!-- Email -->
                         <div class="form-group">
                             <label for="email" class="form-label">
                                 <i data-feather="mail" width="16" height="16"></i>
@@ -152,6 +159,7 @@
                             <small id="emailHelp" class="sr-only">Enter your college email address</small>
                         </div>
                         
+                        <!-- Password -->
                         <div class="form-group">
                             <label for="password" class="form-label">
                                 <i data-feather="lock" width="16" height="16"></i>
@@ -176,6 +184,7 @@
                             <small id="passwordHelp" class="sr-only">Enter your password</small>
                         </div>
                         
+                        <!-- Options -->
                         <div class="form-options">
                             <label class="remember-me">
                                 <div class="checkbox-wrapper">
@@ -194,18 +203,23 @@
                             </a>
                         </div>
                         
+                        <!-- Login Button -->
                         <button type="submit" 
                                 id="loginButton" 
                                 class="login-button"
                                 aria-live="polite">
-                            <span id="button-text">Sign In</span>
+                            <span class="button-content">
+                                <span class="button-text">Sign In</span>
+                            </span>
                         </button>
                     </form>
                     
+                    <!-- Divider -->
                     <div class="divider">
                         <span>Don't have an account?</span>
                     </div>
                     
+                    <!-- Signup -->
                     <div class="signup-section">
                         <a href="register.html" class="signup-link">
                             <i data-feather="user-plus"></i>
@@ -213,6 +227,7 @@
                         </a>
                     </div>
                     
+                    <!-- Quick Links -->
                     <div class="quick-links">
                         <a href="help.html" class="quick-link">
                             <i data-feather="help-circle"></i>
@@ -241,12 +256,12 @@
         </div>
     </div>
 
-    <!-- Load scripts at the END (EXACTLY as original) -->
+    <!-- External Scripts -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="login-script.js"></script>
     
     <script>
-        // Hides the .html extension in the URL
+        // Remove .html extension from URL
         if (window.location.pathname.endsWith('.html')) {
             const cleanPath = window.location.pathname.replace(/\.html$/, '');
             window.history.replaceState({}, '', cleanPath);
