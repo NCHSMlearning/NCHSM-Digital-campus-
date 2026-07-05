@@ -272,38 +272,40 @@ class DashboardModule {
         }
     }
     
-    async initialize(userId, userProfile) {
-        console.log('👤 Dashboard initializing...');
-        
-        this.userId = userId;
-        this.userProfile = userProfile;
-        this.cacheKey = `dashboard_${this.userId}`;
-        
-        if (!userId || !userProfile) return false;
-        
-        if (this.elements.welcomeStudentName && userProfile.full_name) {
-            this.elements.welcomeStudentName.innerText = userProfile.full_name;
-        }
-        
-        // ✅ Update with Kenya time
-        this.updateTimeGreeting();
-        this.updateLastLoginDisplay();
-        
-        if (this.elements.currentBlock) {
-            this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
-        }
-        if (this.elements.programName) {
-            this.elements.programName.innerText = userProfile.program || 'KRCHN';
-        }
-        if (this.elements.intakeYear) {
-            this.elements.intakeYear.innerText = userProfile.intake_year || '2026';
-        }
-        
-        await this.loadAllMetrics();
-        this.startAutoRefresh();
-        
-        return true;
+   async initialize(userId, userProfile) {
+    console.log('👤 Dashboard initializing...');
+    
+    this.userId = userId;
+    this.userProfile = userProfile;
+    this.cacheKey = `dashboard_${this.userId}`;
+    
+    if (!userId || !userProfile) return false;
+    
+    if (this.elements.welcomeStudentName && userProfile.full_name) {
+        this.elements.welcomeStudentName.innerText = userProfile.full_name;
     }
+    
+    // ✅ Update with Kenya time
+    this.updateTimeGreeting();
+    
+    // ✅ UPDATE LAST LOGIN FROM DATABASE
+    this.updateLastLoginDisplay();  // ← MAKE SURE THIS IS CALLED
+    
+    if (this.elements.currentBlock) {
+        this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
+    }
+    if (this.elements.programName) {
+        this.elements.programName.innerText = userProfile.program || 'KRCHN';
+    }
+    if (this.elements.intakeYear) {
+        this.elements.intakeYear.innerText = userProfile.intake_year || '2026';
+    }
+    
+    await this.loadAllMetrics();
+    this.startAutoRefresh();
+    
+    return true;
+}
     
     // ============================================================
     // 🕐 UPDATE TIME GREETING (KENYA TIME)
@@ -325,23 +327,73 @@ class DashboardModule {
         }
     }
     
-    // ============================================================
-    // 🕐 UPDATE LAST LOGIN DISPLAY (KENYA TIME)
-    // ============================================================
-    updateLastLoginDisplay() {
-        const element = this.elements.lastLoginTime;
-        if (!element) return;
-        
-        const lastLogin = this.userProfile?.last_login || this.userProfile?.updated_at;
-        const timeAgo = this.getTimeAgo(lastLogin);
-        element.textContent = timeAgo;
-        
-        // ✅ Set tooltip with full Kenya time
-        if (lastLogin) {
-            const fullTime = this.formatKenyaDateTime(lastLogin);
-            element.title = `Last login: ${fullTime}`;
-        }
+  // ============================================================
+// 🕐 UPDATE LAST LOGIN DISPLAY (KENYA TIME)
+// ============================================================
+updateLastLoginDisplay() {
+    const element = this.elements.lastLoginTime;
+    if (!element) return;
+    
+    const userProfile = this.userProfile;
+    const userEmail = userProfile?.email;
+    
+    if (!userEmail) {
+        element.textContent = 'Loading...';
+        return;
     }
+    
+    console.log('🔍 Fetching last login from database for:', userEmail);
+    
+    // ✅ Query the user_sessions table for the most recent session
+    this.sb
+        .from('user_sessions')
+        .select('login_time, device_info')
+        .eq('user_id', this.userId)
+        .order('login_time', { ascending: false })
+        .limit(1)
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('❌ Error fetching last login:', error);
+                element.textContent = 'Error loading';
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                element.textContent = 'First login';
+                element.title = 'Welcome! This is your first login.';
+                return;
+            }
+            
+            const loginTime = data[0].login_time;
+            const deviceInfo = data[0].device_info || 'Unknown Device';
+            
+            // ✅ Format in Kenya Time (EAT - UTC+3)
+            const loginDate = new Date(loginTime);
+            
+            const timeStr = loginDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Nairobi'
+            });
+            const dateStr = loginDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Africa/Nairobi'
+            });
+            
+            // ✅ Show on the dashboard
+            element.textContent = `${dateStr} at ${timeStr} from ${deviceInfo}`;
+            element.title = `Last login: ${dateStr} at ${timeStr} from ${deviceInfo}`;
+            
+            console.log('✅ Last login displayed:', `${dateStr} at ${timeStr} from ${deviceInfo}`);
+        })
+        .catch((err) => {
+            console.error('❌ Error:', err);
+            element.textContent = 'Could not load';
+        });
+}
     
     // ============================================================
     // 📊 ONE API CALL WITH CACHING
@@ -372,83 +424,81 @@ class DashboardModule {
     }
     
     // Separate function for fresh data
-    async loadFreshData() {
-        console.log('📊 Loading fresh dashboard data...');
+   async loadFreshData() {
+    console.log('📊 Loading fresh dashboard data...');
+    
+    try {
+        const { data, error } = await this.sb.rpc('get_student_dashboard', {
+            p_user_id: this.userId
+        });
         
-        try {
-            // Try RPC first
-            const { data, error } = await this.sb.rpc('get_student_dashboard', {
-                p_user_id: this.userId
-            });
-            
-            if (error) throw error;
-            
-            // Update metrics
-            this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
-            this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
-            
-            this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
-            this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
-            this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) : 0;
-            this.metrics.exams = data.exam?.title || 'No upcoming exams';
-            this.metrics.resources = data.resources || 0;
-            this.metrics.courses = data.examCard?.approved || 0;
-            
-            // Update XP
-            const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
-            const nurseIQPoints = this.metrics.nurseiq.questions || 0;
-            const totalXP = attendancePoints + nurseIQPoints;
-            const maxXP = 100;
-            const currentXP = totalXP % maxXP;
-            const level = Math.floor(totalXP / maxXP) + 1;
-            const percent = (currentXP / maxXP) * 100;
-            this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
-            
-            // Save to cache
-            this.saveToCache();
-            
-            // Update UI
-            this.updateUIFromMetrics();
-            
-            // Update announcement
-            if (this.elements.announcementText && data.announcement) {
-                this.elements.announcementText.innerHTML = data.announcement;
-            } else if (this.elements.announcementText) {
-                this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
-            }
-            
-            // Update XP elements
-            if (this.elements.userLevel) this.elements.userLevel.innerText = level;
-            if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
-            if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
-            if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
-            
-            // Update exam status
-            const approved = this.metrics.examCard?.approved || 0;
-            if (this.elements.examStatus) {
-                this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
-            }
-            if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
-            if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-            
-            // ✅ Updated: Call the standalone exam update
-            await this.updateExamsMetric();
-            
-            console.log('✅ Dashboard loaded from DATABASE');
-            
-            // Load secondary data
-            await Promise.all([
-                this.loadLeaderboardData('all'),
-                this.loadQuickNextClass()
-            ]);
-            
-        } catch (error) {
-            console.error('Dashboard error:', error);
-            // Fallback: load individually if batch fails
-            await this.loadIndividualMetrics();
+        if (error) throw error;
+        
+        // Update metrics
+        this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
+        this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
+        
+        this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
+        this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
+        this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) : 0;
+        this.metrics.exams = data.exam?.title || 'No upcoming exams';
+        this.metrics.resources = data.resources || 0;
+        this.metrics.courses = data.examCard?.approved || 0;
+        
+        // Update XP
+        const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
+        const nurseIQPoints = this.metrics.nurseiq.questions || 0;
+        const totalXP = attendancePoints + nurseIQPoints;
+        const maxXP = 100;
+        const currentXP = totalXP % maxXP;
+        const level = Math.floor(totalXP / maxXP) + 1;
+        const percent = (currentXP / maxXP) * 100;
+        this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
+        
+        // Save to cache
+        this.saveToCache();
+        
+        // Update UI
+        this.updateUIFromMetrics();
+        
+        // Update announcement
+        if (this.elements.announcementText && data.announcement) {
+            this.elements.announcementText.innerHTML = data.announcement;
+        } else if (this.elements.announcementText) {
+            this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
         }
+        
+        // Update XP elements
+        if (this.elements.userLevel) this.elements.userLevel.innerText = level;
+        if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
+        if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
+        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
+        
+        // Update exam status
+        const approved = this.metrics.examCard?.approved || 0;
+        if (this.elements.examStatus) {
+            this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+        }
+        if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
+        if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
+        
+        // Update exams
+        await this.updateExamsMetric();
+        
+        console.log('✅ Dashboard loaded from DATABASE');
+        
+        // Load secondary data
+        await Promise.all([
+            this.loadLeaderboardData('all'),
+            this.loadQuickNextClass()
+        ]);
+        
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        await this.loadIndividualMetrics();
     }
+}
     
     // Save metrics to cache
     saveToCache() {
