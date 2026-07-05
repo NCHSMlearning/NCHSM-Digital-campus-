@@ -4817,24 +4817,36 @@ async function showTranscriptsPage() {
             </button>
         </div>
         
-        <!-- ===== TAB 1: SINGLE STUDENT ===== -->
-        <div id="singlePanel" class="transcript-panel active">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-user-graduate"></i> Generate Single Student Transcript</div>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 10px 0;">
-                    <label style="font-weight: 600; font-size: 14px;">Select Student:</label>
-                    <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;">
-                        <option value="">-- Select a student --</option>
-                        ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
-                            `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg}%</option>`
-                        ).join('')}
-                    </select>
-                    <button class="save-btn" onclick="generateSelectedStudentPDF()" style="padding: 12px 28px;">
-                        <i class="fas fa-file-pdf"></i> Generate Transcript
-                    </button>
-                </div>
+       <!-- ===== TAB 1: SINGLE STUDENT ===== -->
+<div id="singlePanel" class="transcript-panel active">
+    <div class="card">
+        <div class="card-title"><i class="fas fa-user-graduate"></i> Generate Single Student Transcript</div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 10px 0;">
+            <label style="font-weight: 600; font-size: 14px;">Select Student:</label>
+            <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;" onchange="updateTranscriptPreview()">
+                <option value="">-- Select a student --</option>
+                ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
+                    `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg}%</option>`
+                ).join('')}
+            </select>
+            <button class="save-btn" onclick="generateSelectedStudentPDF()" style="padding: 12px 28px;">
+                <i class="fas fa-file-pdf"></i> Generate Transcript
+            </button>
+        </div>
+    </div>
+    
+    <!-- ===== LIVE PREVIEW SECTION ===== -->
+    <div class="card" id="previewCard">
+        <div class="card-title"><i class="fas fa-eye"></i> Live Preview</div>
+        <div id="reportPreview" style="min-height: 200px;">
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-user-graduate" style="font-size: 64px; color: #6366f1; margin-bottom: 16px; display: block;"></i>
+                <h4>Select a student to preview</h4>
+                <p style="color: var(--gray);">Choose a student from the dropdown above</p>
             </div>
         </div>
+    </div>
+</div>
         
         <!-- ===== TAB 2: MASS PRODUCTION ===== -->
         <div id="massPanel" class="transcript-panel">
@@ -4986,7 +4998,130 @@ async function showTranscriptsPage() {
         }
     });
 }
-
+// ===== UPDATE TRANSCRIPT PREVIEW =====
+function updateTranscriptPreview() {
+    const select = document.getElementById('studentSelectForReport');
+    const previewDiv = document.getElementById('reportPreview');
+    
+    if (!select || !previewDiv) return;
+    
+    const admission = select.value;
+    if (!admission) {
+        previewDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-user-graduate" style="font-size: 64px; color: #6366f1; margin-bottom: 16px; display: block;"></i>
+                <h4>Select a student to preview</h4>
+                <p style="color: var(--gray);">Choose a student from the dropdown above</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Get student data
+    let student = null;
+    if (window._studentDataCache) {
+        student = window._studentDataCache[admission];
+    }
+    if (!student && window.reportData && window.reportData.studentMap) {
+        student = window.reportData.studentMap[admission];
+    }
+    if (!student && window._studentList) {
+        student = window._studentList.find(s => s.admission === admission);
+    }
+    
+    if (!student) {
+        previewDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                <h4>Student data not found</h4>
+                <p style="color: var(--gray);">Please refresh the page and try again</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Calculate metrics
+    const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
+    const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
+    const overallAvg = student.overallAvg || 0;
+    const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
+    const subjectCount = student.subjectCount || 0;
+    
+    // Build subjects preview
+    let subjectsPreview = '';
+    if (sortedSubjects.length > 0) {
+        subjectsPreview = sortedSubjects.slice(0, 5).map((subj, idx) => {
+            const isPass = subj.score >= 60;
+            return `
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
+                    <span>${idx + 1}. ${subj.name}</span>
+                    <span style="font-weight: 600; ${isPass ? 'color: #10b981;' : 'color: #ef4444;'}">${subj.score}% ${isPass ? '✅' : '❌'}</span>
+                </div>
+            `;
+        }).join('');
+        if (sortedSubjects.length > 5) {
+            subjectsPreview += `<div style="padding: 6px 0; color: #94a3b8; font-size: 12px;">... and ${sortedSubjects.length - 5} more subjects</div>`;
+        }
+    } else {
+        subjectsPreview = '<div style="padding: 12px 0; color: #94a3b8;">No subjects completed yet</div>';
+    }
+    
+    const statusClass = status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-pending');
+    
+    previewDiv.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px;">
+            <div style="background: #f8fafc; border-radius: 12px; padding: 20px;">
+                <h5 style="margin-bottom: 12px; color: #1e293b;">📋 Student Information</h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div><strong>Name:</strong></div>
+                    <div>${student.name || 'N/A'}</div>
+                    <div><strong>Admission:</strong></div>
+                    <div>${student.admission || 'N/A'}</div>
+                    <div><strong>Block:</strong></div>
+                    <div>${student.block || 'N/A'}</div>
+                    <div><strong>Subjects:</strong></div>
+                    <div>${subjectCount}</div>
+                    <div><strong>Average:</strong></div>
+                    <div style="font-weight: 700; ${overallAvg >= 60 ? 'color: #10b981;' : 'color: #ef4444;'}">${overallAvg}%</div>
+                    <div><strong>Status:</strong></div>
+                    <div><span class="badge ${statusClass}">${status}</span></div>
+                    <div><strong>Passed:</strong></div>
+                    <div>${passedSubjects.length} / ${subjectCount}</div>
+                    <div><strong>Grade:</strong></div>
+                    <div>
+                        ${overallAvg >= 80 ? 'A' : (overallAvg >= 70 ? 'B' : (overallAvg >= 60 ? 'C' : (overallAvg >= 50 ? 'D' : 'F')))}
+                        ${overallAvg >= 60 ? ' ✅' : ' ❌'}
+                    </div>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 20px;">
+                <h5 style="margin-bottom: 12px; color: #1e293b;">📚 Subjects Preview</h5>
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                    ${subjectsPreview}
+                </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <span style="background: #d1fae5; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #065f46;">
+                        ✅ ${passedSubjects.length} Passed
+                    </span>
+                    <span style="background: #fee2e2; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #991b1b;">
+                        ❌ ${subjectCount - passedSubjects.length} Failed
+                    </span>
+                    <span style="background: #fef3c7; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #92400e;">
+                        📊 ${passRate}% Pass Rate
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div style="padding: 12px 20px; background: #f1f5f9; border-radius: 0 0 12px 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 12px; color: #64748b;">
+                <i class="fas fa-info-circle"></i> Click "Generate Transcript" to download full PDF
+            </span>
+            <span style="font-size: 11px; color: #94a3b8;">
+                March ${currentYear} | NCK Accredited Format
+            </span>
+        </div>
+    `;
+}
 // ===== TAB SWITCHING =====
 function switchTranscriptTab(tabName) {
     document.querySelectorAll('.transcript-tab').forEach(t => t.classList.remove('active'));
