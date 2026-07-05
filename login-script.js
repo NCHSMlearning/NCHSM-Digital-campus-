@@ -73,85 +73,87 @@ window.NCHSMLogin = {
     // ===== STAFF RECORDS =====
     staffRecords: [],
     
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-    init: function() {
-        if (this.state.isInitialized) {
-            console.log('⚠️ NCHSMLogin already initialized');
-            return;
-        }
-        
-        console.log('🚀 Initializing NCHSMLogin v4.0...');
-        console.log('🛡️ Ultimate Security Edition');
-        console.log('🌓 Theme Toggle + Session Tracking Fixed');
-        
-        // Hide console from hackers
-        this.disableDeveloperTools();
-        
-        // Initialize Feather Icons
-        if (typeof feather !== 'undefined') {
-            feather.replace();
-        }
-        
-        // Generate CSRF token
-        this.generateCSRFToken();
-        
-        // Check for trusted device
-        this.checkTrustedDevice();
-        
-        // Initialize password toggle
-        this.initPasswordToggle();
-        
-        // Initialize login form
-        this.initLoginForm();
-        
-        // Initialize modals
-        this.initModals();
-        
-        // Focus management
-        this.initFocusManagement();
-        
-        // Virtual keyboard handler
-        this.initVirtualKeyboardHandler();
-        
-        // Initialize Supabase
-        this.initSupabase();
-        
-        // Load staff records
-        this.loadStaffRecords();
-        
-        // Clear URL parameters
-        this.clearURLParameters();
-        
-        // Add honeypot
-        this.addHoneypot();
-        
-        // Start session monitoring
-        this.startSessionMonitoring();
-        
-        // Network status
-        this.initNetworkStatus();
-        
-        // OTP input handling
-        this.initOTPInputs();
-        
-        // Ripple effect on buttons
-        this.initRippleEffect();
-        
-        // Hide skeleton loader
-        this.hideSkeletonLoader();
-        
-        // ✅ INITIALIZE THEME TOGGLE
-        this.initThemeToggle();
-        
-        // Mark as initialized
-        this.state.isInitialized = true;
-        
-        console.log('✅ NCHSMLogin v4.0 initialized');
-        console.log(`🕐 ${new Date().toLocaleString()}`);
-    },
+  // ============================================
+// INITIALIZATION
+// ============================================
+init: function() {
+    if (this.state.isInitialized) {
+        console.log('⚠️ NCHSMLogin already initialized');
+        return;
+    }
     
+    console.log('🚀 Initializing NCHSMLogin v4.0...');
+    console.log('🛡️ Ultimate Security Edition');
+    console.log('🌓 Theme Toggle + Session Tracking Fixed');
+    
+    // Hide console from hackers
+    this.disableDeveloperTools();
+    
+    // Initialize Feather Icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Generate CSRF token
+    this.generateCSRFToken();
+    
+    // Check for trusted device
+    this.checkTrustedDevice();
+    
+    // Initialize password toggle
+    this.initPasswordToggle();
+    
+    // ✅ INITIALIZE PASSWORD STRENGTH METER
+    this.initPasswordStrength();  // ← ADD THIS LINE
+    
+    // Initialize login form
+    this.initLoginForm();
+    
+    // Initialize modals
+    this.initModals();
+    
+    // Focus management
+    this.initFocusManagement();
+    
+    // Virtual keyboard handler
+    this.initVirtualKeyboardHandler();
+    
+    // Initialize Supabase
+    this.initSupabase();
+    
+    // Load staff records
+    this.loadStaffRecords();
+    
+    // Clear URL parameters
+    this.clearURLParameters();
+    
+    // Add honeypot
+    this.addHoneypot();
+    
+    // Start session monitoring
+    this.startSessionMonitoring();
+    
+    // Network status
+    this.initNetworkStatus();
+    
+    // OTP input handling
+    this.initOTPInputs();
+    
+    // Ripple effect on buttons
+    this.initRippleEffect();
+    
+    // Hide skeleton loader
+    this.hideSkeletonLoader();
+    
+    // ✅ INITIALIZE THEME TOGGLE
+    this.initThemeToggle();
+    
+    // Mark as initialized
+    this.state.isInitialized = true;
+    
+    console.log('✅ NCHSMLogin v4.0 initialized');
+    console.log(`🕐 ${new Date().toLocaleString()}`);
+},
     // ============================================
     // THEME TOGGLE - FIXED
     // ============================================
@@ -750,7 +752,61 @@ window.NCHSMLogin = {
             }
         });
     },
+    // ============================================
+// PASSWORD STRENGTH METER - FIXED
+// ============================================
+initPasswordStrength: function() {
+    const passwordInput = document.getElementById('password');
+    const strengthProgress = document.getElementById('strengthProgress');
+    const strengthText = document.getElementById('strengthText');
     
+    if (!passwordInput || !strengthProgress || !strengthText) {
+        console.warn('⚠️ Password strength elements not found');
+        return;
+    }
+    
+    console.log('✅ Password strength meter initialized');
+    
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        
+        // Check password criteria
+        if (password.length >= 6) strength++;
+        if (password.length >= 10) strength++;
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[a-z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[^A-Za-z0-9]/.test(password)) strength++;
+        
+        // Define strength levels
+        const levels = [
+            { text: 'Very Weak', color: '#ef4444', width: '20%' },
+            { text: 'Weak', color: '#ef4444', width: '40%' },
+            { text: 'Fair', color: '#f59e0b', width: '60%' },
+            { text: 'Good', color: '#3b82f6', width: '80%' },
+            { text: 'Strong', color: '#10b981', width: '100%' }
+        ];
+        
+        // Calculate level (0-4)
+        const level = Math.min(Math.floor(strength / 1.5), 4);
+        const result = levels[level] || levels[0];
+        
+        // Update UI
+        strengthProgress.style.width = result.width;
+        strengthProgress.style.background = result.color;
+        
+        if (password.length === 0) {
+            strengthText.textContent = 'Enter a strong password';
+            strengthText.style.color = '#94a3b8';
+            strengthProgress.style.width = '0%';
+            strengthProgress.style.background = '#94a3b8';
+        } else {
+            strengthText.textContent = `Strength: ${result.text}`;
+            strengthText.style.color = result.color;
+        }
+    });
+},
     // ============================================
     // LOGIN FORM
     // ============================================
