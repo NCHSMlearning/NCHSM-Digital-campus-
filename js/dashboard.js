@@ -7,7 +7,7 @@ class DashboardModule {
         this.userId = null;
         this.userProfile = null;
         this.autoRefreshInterval = null;
-        
+         
         // 🔥 Cache configuration
         this.CACHE_DURATION = 120000; // 2 minutes
         this.cacheKey = null;
