@@ -12,6 +12,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     
+    <!-- Preload background image -->
+    <link rel="preload" 
+          as="image" 
+          href="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg">
+    
     <!-- External CSS -->
     <link rel="stylesheet" href="login-styles.css">
     
@@ -21,6 +26,17 @@
 <body>
     <!-- Skip to content link -->
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
+    
+    <!-- ===== PARTICLES BACKGROUND ===== -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- ===== LOADING SKELETON ===== -->
+    <div class="skeleton-loader" id="skeletonLoader">
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-button"></div>
+    </div>
     
     <div class="container">
         <!-- ===== LEFT PANEL ===== -->
@@ -78,25 +94,30 @@
                     </div>
                 </div>
                 
-                <!-- Accreditation Badges -->
-                <div class="accreditation-badges">
-                    <span class="badge gold">✓ TVET Accredited</span>
-                    <span class="badge">✓ Nursing Council of Kenya</span>
-                    <span class="badge">✓ KNQA Certified</span>
+                <!-- Rotating Accreditation Badges -->
+                <div class="accreditation-scroll">
+                    <div class="badge-track">
+                        <span class="badge gold">✓ TVET Accredited</span>
+                        <span class="badge">✓ Nursing Council of Kenya</span>
+                        <span class="badge">✓ KNQA Certified</span>
+                        <span class="badge gold">✓ ISO 9001:2015</span>
+                        <span class="badge">✓ Ministry of Health</span>
+                        <span class="badge">✓ Kenya Red Cross</span>
+                    </div>
                 </div>
                 
-                <!-- Stats -->
-                <div class="stats">
+                <!-- Stats with Animation -->
+                <div class="stats" id="statsSection">
                     <div class="stat">
-                        <span class="number">2,500+</span>
+                        <span class="number" data-target="2500">2,500+</span>
                         <span class="label">Students</span>
                     </div>
                     <div class="stat">
-                        <span class="number">150+</span>
+                        <span class="number" data-target="150">150+</span>
                         <span class="label">Faculty</span>
                     </div>
                     <div class="stat">
-                        <span class="number">98%</span>
+                        <span class="number" data-target="98">98%</span>
                         <span class="label">Satisfaction</span>
                     </div>
                 </div>
@@ -132,10 +153,28 @@
                         <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                     </div>
                     
+                    <!-- Last Login Info -->
+                    <div class="last-login-info" id="lastLoginInfo">
+                        <i data-feather="clock"></i>
+                        <span>Last login: Today at 2:30 PM from Chrome on Windows</span>
+                    </div>
+                    
+                    <!-- Attempts Remaining -->
+                    <div class="attempts-info" id="attemptsInfo">
+                        <i data-feather="alert-triangle"></i>
+                        <span id="attemptsText">5 attempts remaining</span>
+                    </div>
+                    
                     <!-- Error Message -->
                     <div id="errorMsg" class="error-message" role="alert" aria-live="assertive">
                         <i data-feather="alert-circle" class="error-icon"></i>
                         <span class="error-text"></span>
+                    </div>
+                    
+                    <!-- Success Message -->
+                    <div id="successMsg" class="success-message" role="status" aria-live="polite">
+                        <i data-feather="check-circle" class="success-icon"></i>
+                        <span class="success-text"></span>
                     </div>
                     
                     <!-- Login Form -->
@@ -159,7 +198,7 @@
                             <small id="emailHelp" class="sr-only">Enter your college email address</small>
                         </div>
                         
-                        <!-- Password -->
+                        <!-- Password with Strength Meter -->
                         <div class="form-group">
                             <label for="password" class="form-label">
                                 <i data-feather="lock" width="16" height="16"></i>
@@ -182,21 +221,24 @@
                                     <i data-feather="eye-off" id="toggle-icon"></i>
                                 </button>
                             </div>
+                            <div class="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-progress" id="strengthProgress"></div>
+                                </div>
+                                <span class="strength-text" id="strengthText">Enter a strong password</span>
+                            </div>
                             <small id="passwordHelp" class="sr-only">Enter your password</small>
                         </div>
                         
                         <!-- Options -->
                         <div class="form-options">
-                            <label class="remember-me">
-                                <div class="checkbox-wrapper">
-                                    <input type="checkbox" 
-                                           id="rememberMe" 
-                                           class="remember-checkbox"
-                                           aria-label="Remember me on this device">
-                                    <span class="checkbox-custom"></span>
+                            <div class="stay-signed-in">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="staySignedIn">
+                                    <label for="staySignedIn">Stay signed in</label>
                                 </div>
-                                <span class="remember-label">Remember me</span>
-                            </label>
+                                <span class="tooltip" title="We'll keep you signed in for 30 days">ⓘ</span>
+                            </div>
                             <a href="forgot-password.html" 
                                class="forgot-link"
                                aria-label="Forgot password?">
@@ -204,7 +246,7 @@
                             </a>
                         </div>
                         
-                        <!-- Login Button -->
+                        <!-- Login Button with Ripple -->
                         <button type="submit" 
                                 id="loginButton" 
                                 class="login-button"
@@ -214,6 +256,27 @@
                             </span>
                         </button>
                     </form>
+                    
+                    <!-- Divider -->
+                    <div class="divider">
+                        <span>or continue with</span>
+                    </div>
+                    
+                    <!-- SSO Options -->
+                    <div class="sso-options">
+                        <button class="sso-btn google" aria-label="Sign in with Google">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="24" height="24">
+                            <span>Google</span>
+                        </button>
+                        <button class="sso-btn microsoft" aria-label="Sign in with Microsoft">
+                            <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft" width="24" height="24">
+                            <span>Microsoft</span>
+                        </button>
+                        <button class="sso-btn apple" aria-label="Sign in with Apple">
+                            <i data-feather="apple"></i>
+                            <span>Apple</span>
+                        </button>
+                    </div>
                     
                     <!-- Divider -->
                     <div class="divider">
@@ -228,16 +291,10 @@
                         </a>
                     </div>
                     
-                    <!-- Quick Links -->
-                    <div class="quick-links">
-                        <a href="help.html" class="quick-link">
-                            <i data-feather="help-circle"></i>
-                            Need Help?
-                        </a>
-                        <a href="contact.html" class="quick-link">
-                            <i data-feather="phone"></i>
-                            Contact Support
-                        </a>
+                    <!-- Keyboard Shortcuts -->
+                    <div class="keyboard-hints" aria-hidden="true">
+                        <kbd>Ctrl + ↵</kbd> to submit
+                        <kbd>Ctrl + R</kbd> to reset
                     </div>
                 </div>
             </main>
@@ -257,6 +314,37 @@
         </div>
     </div>
 
+    <!-- ===== 2FA MODAL ===== -->
+    <div class="modal-overlay" id="twoFactorModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('twoFactorModal')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i data-feather="shield"></i>
+                </div>
+                <h2 class="modal-title">🔐 Two-Factor Authentication</h2>
+                <p class="modal-subtitle">Enter the 6-digit code from your authenticator app</p>
+            </div>
+            <div class="modal-body">
+                <div class="otp-input-group">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus>
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5">
+                </div>
+                <div class="otp-actions">
+                    <button class="verify-otp btn-primary">Verify Code</button>
+                    <button class="resend-otp btn-secondary">Resend Code</button>
+                </div>
+                <div class="otp-help">
+                    <span>Didn't receive code? <a href="#" onclick="resendOTP()">Resend</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== SESSION WARNING ===== -->
     <div id="sessionWarning" class="session-warning">
         <div class="warning-content">
@@ -271,20 +359,5 @@
     <!-- ===== EXTERNAL SCRIPTS ===== -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="login-script.js"></script>
-    
-    <script>
-        // Remove .html extension from URL
-        if (window.location.pathname.endsWith('.html')) {
-            const cleanPath = window.location.pathname.replace(/\.html$/, '');
-            window.history.replaceState({}, '', cleanPath);
-        }
-        
-        // Initialize Feather Icons
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof feather !== 'undefined') {
-                feather.replace();
-            }
-        });
-    </script>
 </body>
 </html>
