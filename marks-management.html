@@ -4530,7 +4530,7 @@ async function showTranscriptsPage() {
         // ============================================================
         // ✅ STEP 3: FORCE FRESH CONFIG FROM GOOGLE SHEET
         // ============================================================
-        const config = await getConfig(true); // ✅ forceRefresh = true
+        const config = await getConfig(true);
         console.log('📚 Config loaded fresh:', Object.keys(config).length, 'blocks');
         
         let allStudentPerformance = {};
@@ -4547,7 +4547,6 @@ async function showTranscriptsPage() {
             console.log(`📚 Processing ${block}: ${subjects.length} subjects`);
             
             for (let subject of subjects) {
-                // ✅ apiCall() already adds _t=${Date.now()} for cache busting
                 const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
                 
                 if (marks && marks.length) {
@@ -4558,9 +4557,17 @@ async function showTranscriptsPage() {
                         const admission = mark.admission;
                         if (!admission) continue;
                         
+                        // ✅ SAFE: Convert name to string, handle any type
+                        let studentName = 'Unknown Student';
+                        if (mark.name !== undefined && mark.name !== null) {
+                            studentName = String(mark.name);
+                        } else if (mark.student_name !== undefined && mark.student_name !== null) {
+                            studentName = String(mark.student_name);
+                        }
+                        
                         if (!allStudentPerformance[admission]) {
                             allStudentPerformance[admission] = {
-                                name: mark.name || 'Unknown',
+                                name: studentName,
                                 admission: admission,
                                 block: mark.block || block,
                                 subjects: [],
@@ -4617,7 +4624,7 @@ async function showTranscriptsPage() {
                             subjectPerformance[subject.name].scores.push(finalScore);
                             subjectPerformance[subject.name].students.push({
                                 admission: admission,
-                                name: mark.name || 'Unknown',
+                                name: studentName,
                                 score: finalScore
                             });
                             blockPerformance[block].scores.push(finalScore);
@@ -4640,7 +4647,6 @@ async function showTranscriptsPage() {
             student.status = student.overallAvg >= 60 ? 'PASS' : 
                 (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
             
-            // Calculate block averages
             student.blockAverages = {};
             for (let block in student.blockScores) {
                 const scores = student.blockScores[block];
@@ -4656,8 +4662,13 @@ async function showTranscriptsPage() {
         for (let student of students) {
             const admission = student.admission;
             if (!allStudentPerformance[admission]) {
+                // ✅ SAFE: Convert name to string
+                let studentName = 'Unknown Student';
+                if (student.name !== undefined && student.name !== null) {
+                    studentName = String(student.name);
+                }
                 allStudentPerformance[admission] = {
-                    name: student.name || 'Unknown',
+                    name: studentName,
                     admission: admission,
                     block: student.block || 'BLOCK_0',
                     subjects: [],
@@ -4755,7 +4766,24 @@ async function showTranscriptsPage() {
         });
         
         // ============================================================
-        // ✅ STEP 11: BUILD THE HTML
+        // ✅ STEP 11: SAFELY SORT STUDENTS
+        // ============================================================
+        // ✅ CRITICAL FIX: Convert all names to strings before sorting
+        const sortedStudents = [...studentList].sort((a, b) => {
+            const nameA = String(a.name || 'Unknown Student').toLowerCase();
+            const nameB = String(b.name || 'Unknown Student').toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        
+        // Log any students with non-string names
+        studentList.forEach((s, i) => {
+            if (typeof s.name !== 'string') {
+                console.warn(`⚠️ Student ${i} (${s.admission}) has non-string name:`, s.name, typeof s.name);
+            }
+        });
+        
+        // ============================================================
+        // ✅ STEP 12: BUILD THE HTML
         // ============================================================
         const blockOptions = blocks.map(b => 
             `<option value="${b}">${b.replace('_', ' ')}</option>`
@@ -4798,7 +4826,6 @@ async function showTranscriptsPage() {
                 <p>Generate official academic transcripts for students | March ${currentYear} Class</p>
             </div>
             
-            <!-- ===== FRESH DATA STATS BAR ===== -->
             <div class="refresh-stats">
                 <span><span class="label">📚 Students:</span> <span class="value">${studentList.length}</span></span>
                 <span><span class="label">📖 Subjects:</span> <span class="value">${subjectAverages.length}</span></span>
@@ -4814,7 +4841,6 @@ async function showTranscriptsPage() {
                 </button>
             </div>
             
-            <!-- ===== TABS ===== -->
             <div class="transcript-tabs">
                 <button class="transcript-tab active" data-tab="single" onclick="switchTranscriptTab('single')">
                     <i class="fas fa-user"></i> Single Student
@@ -4838,9 +4864,11 @@ async function showTranscriptsPage() {
                         <label style="font-weight: 600; font-size: 14px;">Select Student:</label>
                         <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;" onchange="updateTranscriptPreview()">
                             <option value="">-- Select a student --</option>
-                            ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
-                                `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg || 0}%</option>`
-                            ).join('')}
+                            ${sortedStudents.map(s => {
+                                const safeName = String(s.name || 'Unknown Student');
+                                const avg = s.overallAvg || 0;
+                                return `<option value="${s.admission}">${safeName} (${s.admission}) - ${avg}%</option>`;
+                            }).join('')}
                         </select>
                         <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
                             <i class="fas fa-eye"></i> Preview
@@ -4854,7 +4882,6 @@ async function showTranscriptsPage() {
                     </div>
                 </div>
                 
-                <!-- ===== LIVE PREVIEW SECTION ===== -->
                 <div class="card" id="previewCard">
                     <div class="card-title"><i class="fas fa-eye"></i> Live Preview</div>
                     <div id="reportPreview" style="min-height: 200px;">
@@ -4900,13 +4927,19 @@ async function showTranscriptsPage() {
                     </div>
                     
                     <div class="student-checkbox-grid" id="massStudentList">
-                        ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
-                            <label class="student-checkbox-item" data-block="${s.block || 'BLOCK_0'}" data-status="${s.status || 'PENDING'}">
-                                <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${s.name}" data-avg="${s.overallAvg || 0}" data-status="${s.status || 'PENDING'}">
-                                <span><strong>${s.name}</strong> <span style="font-size: 11px; color: #64748b;">(${s.overallAvg || 0}%)</span></span>
-                                <span class="badge ${s.overallAvg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending')}" style="font-size: 9px; margin-left: auto;">${s.status || 'PENDING'}</span>
-                            </label>
-                        `).join('')}
+                        ${sortedStudents.map(s => {
+                            const safeName = String(s.name || 'Unknown Student');
+                            const avg = s.overallAvg || 0;
+                            const status = s.status || 'PENDING';
+                            const statusClass = avg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending');
+                            return `
+                                <label class="student-checkbox-item" data-block="${s.block || 'BLOCK_0'}" data-status="${status}">
+                                    <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${safeName}" data-avg="${avg}" data-status="${status}">
+                                    <span><strong>${safeName}</strong> <span style="font-size: 11px; color: #64748b;">(${avg}%)</span></span>
+                                    <span class="badge ${statusClass}" style="font-size: 9px; margin-left: auto;">${status}</span>
+                                </label>
+                            `;
+                        }).join('')}
                     </div>
                     
                     <div style="display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; align-items: center;">
@@ -4992,19 +5025,19 @@ async function showTranscriptsPage() {
         hideLoading();
         
         // ============================================================
-        // ✅ STEP 12: AUTO-SELECT FIRST STUDENT
+        // ✅ STEP 13: AUTO-SELECT FIRST STUDENT
         // ============================================================
         setTimeout(function() {
             const select = document.getElementById('studentSelectForReport');
-            if (select && studentList.length > 0 && select.options.length > 1) {
-                select.value = studentList[0].admission;
+            if (select && sortedStudents.length > 0 && select.options.length > 1) {
+                select.value = sortedStudents[0].admission;
                 updateTranscriptPreview();
-                console.log('✅ Auto-selected first student:', studentList[0].name);
+                console.log('✅ Auto-selected first student:', sortedStudents[0].name || 'Unknown');
             }
         }, 500);
         
         // ============================================================
-        // ✅ STEP 13: ATTACH EVENT LISTENERS FOR FILTERS
+        // ✅ STEP 14: ATTACH EVENT LISTENERS FOR FILTERS
         // ============================================================
         window.filterMassStudents = function() {
             const statusFilter = document.getElementById('massStatusFilter')?.value || 'all';
@@ -5052,7 +5085,6 @@ async function showTranscriptsPage() {
         showNotification('Error loading transcripts: ' + error.message, true);
         hideLoading();
         
-        // Show error state
         updateContentArea(`
             <div class="card" style="text-align: center; padding: 60px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #ef4444; margin-bottom: 16px;"></i>
