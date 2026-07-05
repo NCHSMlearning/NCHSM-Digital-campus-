@@ -5,7 +5,17 @@ const { google } = require('googleapis');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+// ===== FORCE NO-CACHE FOR ALL RESPONSES =====
+app.use((req, res, next) => {
+    // Disable caching for all API responses
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 // ===== ✅ MASTER SPREADSHEET CONFIGURATION =====
 // ALL data is now in ONE master spreadsheet
 const MASTER_SPREADSHEET_ID = '1btqWNKQ1HNMOvhDKDScQAFu2NijB8sbs04eH64z6pE4';
@@ -217,7 +227,6 @@ app.post('/api/mark-entry/toggle-subject', (req, res) => {
 });
 
 // ========== SUBJECTS ENDPOINT ==========
-// ========== SUBJECTS ENDPOINT ==========
 app.get('/api/subjects/:block', async (req, res) => {
   try {
     const { block } = req.params;
@@ -232,6 +241,7 @@ app.get('/api/subjects/:block', async (req, res) => {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
         range: 'CONFIG!A:D',
+        valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS
       });
       const config = response.data.values || [];
       const subjects = [];
@@ -250,7 +260,6 @@ app.get('/api/subjects/:block', async (req, res) => {
     res.json([]);
   }
 });
-
 // ========== GET MARKS ENDPOINT - WITH NCK YEAR FILTERING ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
   try {
@@ -268,9 +277,10 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       
       try {
         const response = await sheets.spreadsheets.values.get({
-           spreadsheetId: req.spreadsheetId,
-  range: `${sheetName}!A:AB`,  // ✅ Includes YEAR column
-});
+          spreadsheetId: req.spreadsheetId,
+          range: `${sheetName}!A:AB`,
+          valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS TO FORCE FRESH
+        });
         
         const data = response.data.values || [];
         console.log(`[GET NCK] Raw data rows: ${data.length}`);
@@ -388,6 +398,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
         range: `${sheetName}!A:I`,
+        valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS TO FORCE FRESH
       });
       
       const data = response.data.values || [];
@@ -397,6 +408,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
       const studentsResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: req.spreadsheetId,
         range: 'STUDENTS!A:E',
+        valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS TO FORCE FRESH
       });
       const studentsData = studentsResponse.data.values || [];
       
@@ -1017,7 +1029,8 @@ app.get('/api/students', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
-      range: 'STUDENTS!A:E',  // ✅ Updated to include YEAR column
+      range: 'STUDENTS!A:E',
+      valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS
     });
     const data = response.data.values || [];
     const students = [];
@@ -1031,13 +1044,15 @@ app.get('/api/students', async (req, res) => {
           admission, 
           name: row[1] || '', 
           block: row[2] || 'BLOCK_0', 
-          year: row[3] || '',  // ✅ Include year
+          year: row[3] || '', 
           status: row[4] || 'ACTIVE' 
         });
       }
     }
+    console.log(`[GET STUDENTS] Found ${students.length} students`);
     res.json(students);
   } catch (error) {
+    console.error('Error in /api/students:', error);
     res.json([]);
   }
 });
@@ -1304,6 +1319,7 @@ app.get('/api/units', async (req, res) => {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: req.spreadsheetId,
       range: 'CONFIG!A:D',
+      valueRenderOption: 'UNFORMATTED_VALUE'  // ✅ ADD THIS
     });
     const data = response.data.values || [];
     const units = {};
@@ -1316,10 +1332,10 @@ app.get('/api/units', async (req, res) => {
     }
     res.json(units);
   } catch (error) {
+    console.error('Error in /api/units:', error);
     res.json({});
   }
 });
-
 app.post('/api/add-unit', async (req, res) => {
   try {
     const { block, name, assessmentType } = req.body;
@@ -2318,6 +2334,61 @@ app.post('/api/transcripts/bulk', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
+// =====================================================
+// ===== ADD THE REFRESH ENDPOINT HERE =====
+// =====================================================
+app.post('/api/refresh', async (req, res) => {
+  try {
+    console.log('🔄 Refreshing data from master spreadsheet...');
+    
+    // Clear in-memory caches
+    publishedScores = new Map();
+    
+    // Force fresh read from STUDENTS sheet
+    const studentsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SPREADSHEET_ID,
+      range: 'STUDENTS!A:E',
+      valueRenderOption: 'UNFORMATTED_VALUE'
+    });
+    
+    // Force fresh read from CONFIG sheet
+    const configResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SPREADSHEET_ID,
+      range: 'CONFIG!A:D',
+      valueRenderOption: 'UNFORMATTED_VALUE'
+    });
+    
+    // Force fresh read from LECTURERS sheet
+    const lecturersResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SPREADSHEET_ID,
+      range: 'LECTURERS!A:G',
+      valueRenderOption: 'UNFORMATTED_VALUE'
+    });
+    
+    // Reload published scores
+    await loadPublishedScores(MASTER_SPREADSHEET_ID);
+    
+    const studentData = studentsResponse.data.values || [];
+    const configData = configResponse.data.values || [];
+    const lecturerData = lecturersResponse.data.values || [];
+    
+    console.log(`[REFRESH] Students: ${studentData.length - 1}, Config: ${configData.length - 1}, Lecturers: ${lecturerData.length - 1}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Data refreshed from master spreadsheet.',
+      stats: {
+        students: studentData.length - 1,
+        config: configData.length - 1,
+        lecturers: lecturerData.length - 1,
+        published: publishedScores.size
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Refresh error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
