@@ -1379,14 +1379,15 @@ app.post('/api/add-unit', async (req, res) => {
   }
 });
 
-// ===== CREATE MARKSHEET WITH STUDENTS =====
-async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType) {
+// ===== CREATE MARKSHEET WITH STUDENTS - WITH YEAR AND BLOCK FILTERING =====
+async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType, year = '2024') {
   try {
-    console.log(`📝 Creating marksheet for ${block} - ${subject}`);
+    console.log(`📝 Creating marksheet for ${block} - ${subject} (${year})`);
     
     const studentsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetId,
       range: 'STUDENTS!A:E',
+      valueRenderOption: 'UNFORMATTED_VALUE'
     });
     const students = studentsResponse.data.values || [];
     console.log(`📊 Found ${students.length - 1} students in STUDENTS sheet`);
@@ -1401,6 +1402,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       const existingResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: `${sheetName}!A:A`,
+        valueRenderOption: 'UNFORMATTED_VALUE'
       });
       const existingData = existingResponse.data.values || [];
       sheetExists = true;
@@ -1408,12 +1410,6 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       for (let i = 1; i < existingData.length; i++) {
         if (existingData[i] && existingData[i][0]) {
           let admission = existingData[i][0].trim().toUpperCase();
-          admission = admission.replace(/\/24(?![0-9])/g, '/2024');
-          admission = admission.replace(/\/25(?![0-9])/g, '/2025');
-          admission = admission.replace(/\/26(?![0-9])/g, '/2026');
-          admission = admission.replace(/MAR\/24(?![0-9])/g, 'MAR/2024');
-          admission = admission.replace(/MAR\/25(?![0-9])/g, 'MAR/2025');
-          admission = admission.replace(/MAR\/26(?![0-9])/g, 'MAR/2026');
           existingAdmissions.add(admission);
         }
       }
@@ -1426,17 +1422,29 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE']];
     let addedCount = 0;
     let skippedCount = 0;
+    let wrongBlockCount = 0;
+    let wrongYearCount = 0;
     
     for (let i = 1; i < students.length; i++) {
       const row = students[i];
       if (row && row[0] && row[0].trim() !== '' && row[4] !== 'INACTIVE') {
+        // ✅ Check if student matches the block
+        const studentBlock = row[2] ? row[2].toString().trim() : '';
+        if (studentBlock !== block) {
+          wrongBlockCount++;
+          console.log(`⏭️ Skipping ${row[0]} (block: ${studentBlock}) - not ${block}`);
+          continue;
+        }
+        
+        // ✅ Check if student matches the year
+        const studentYear = row[3] ? row[3].toString().trim() : '2024';
+        if (studentYear !== year) {
+          wrongYearCount++;
+          console.log(`⏭️ Skipping ${row[0]} (year: ${studentYear}) - not ${year}`);
+          continue;
+        }
+        
         let admission = row[0].trim().toUpperCase();
-        admission = admission.replace(/\/24(?![0-9])/g, '/2024');
-        admission = admission.replace(/\/25(?![0-9])/g, '/2025');
-        admission = admission.replace(/\/26(?![0-9])/g, '/2026');
-        admission = admission.replace(/MAR\/24(?![0-9])/g, 'MAR/2024');
-        admission = admission.replace(/MAR\/25(?![0-9])/g, 'MAR/2025');
-        admission = admission.replace(/MAR\/26(?![0-9])/g, 'MAR/2026');
         
         if (existingAdmissions.has(admission)) {
           skippedCount++;
@@ -1460,7 +1468,8 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       }
     }
     
-    console.log(`👥 Adding ${addedCount} new students, skipping ${skippedCount} existing`);
+    console.log(`👥 Adding ${addedCount} new students (${block}, ${year} only)`);
+    console.log(`   Skipped: ${skippedCount} existing, ${wrongBlockCount} wrong block, ${wrongYearCount} wrong year`);
     
     if (sheetExists && addedCount === 0) {
       console.log(`✅ No new students to add. Sheet already has ${existingAdmissions.size} students.`);
@@ -1471,6 +1480,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       const currentResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: `${sheetName}!A:I`,
+        valueRenderOption: 'UNFORMATTED_VALUE'
       });
       const currentData = currentResponse.data.values || [];
       const lastRow = currentData.length;
@@ -1503,7 +1513,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
       requestBody: { values: rows }
     });
     
-    console.log(`✅ Created new marksheet ${sheetName} with ${rows.length - 1} students (${addedCount} new)`);
+    console.log(`✅ Created new marksheet ${sheetName} with ${rows.length - 1} students (${addedCount} new, ${block}, ${year} only)`);
     return { success: true, studentCount: rows.length - 1, newStudents: addedCount };
     
   } catch (error) {
@@ -1511,29 +1521,53 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     return { success: false, error: error.message };
   }
 }
-
-app.post('/api/update-unit', async (req, res) => {
+app.post('/api/add-unit', async (req, res) => {
   try {
-    const { block, oldName, newName, assessmentType } = req.body;
+    const { block, name, assessmentType } = req.body;
+    const year = req.headers['x-year'] || '2024';  // ✅ Get year from headers
+    const spreadsheetId = req.spreadsheetId;
+    
+    console.log(`📅 Adding unit: ${block} - ${name} (${year})`);
+    
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: req.spreadsheetId,
+      spreadsheetId: spreadsheetId,
       range: 'CONFIG!A:D',
+      valueRenderOption: 'UNFORMATTED_VALUE'
     });
     const data = response.data.values || [];
+    let nextRow = data.length + 1;
+    
     for (let i = 1; i < data.length; i++) {
-      if (data[i] && data[i][0] === block && data[i][1] === oldName) {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: req.spreadsheetId,
-          range: `CONFIG!B${i+1}:D${i+1}`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [[newName, 'YES', assessmentType]] }
-        });
-        res.json({ success: true, message: 'Unit updated successfully' });
-        return;
+      if (data[i][0] === block && data[i][1] === name) {
+        if (data[i][2] === 'YES') {
+          return res.json({ success: false, message: 'Unit already exists' });
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: spreadsheetId,
+            range: `CONFIG!C${i+1}:D${i+1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [['YES', assessmentType]] }
+          });
+          // ✅ Pass year to the function
+          await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, year);
+          return res.json({ success: true, message: 'Unit reactivated successfully' });
+        }
       }
     }
-    res.json({ success: false, message: 'Unit not found' });
+    
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId,
+      range: `CONFIG!A${nextRow}:D${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[block, name, 'YES', assessmentType]] }
+    });
+    
+    // ✅ Pass year to the function
+    await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, year);
+    
+    res.json({ success: true, message: 'Unit added successfully' });
   } catch (error) {
+    console.error('Error adding unit:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
