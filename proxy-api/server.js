@@ -2046,43 +2046,113 @@ app.get('/api/nck-student/:admission', async (req, res) => {
     }
 });
 
+// ========== STUDENT ENDPOINT - WITH FORMAT FIX ==========
 app.get('/api/student/:admission', async (req, res) => {
-    try {
-        const { admission } = req.params;
-        const year = req.headers['x-year'] || '2026';
-        const spreadsheetId = MASTER_SPREADSHEET_ID;  // ✅ Use master
-        
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: spreadsheetId,
-            range: 'STUDENTS!A:E',
-        });
-        
-        const data = response.data.values || [];
-        let student = null;
-        
-        for (let i = 1; i < data.length; i++) {
-            if (data[i] && data[i][0] === admission) {
-                student = {
-                    admission: data[i][0],
-                    name: data[i][1],
-                    block: data[i][2],
-                    year: data[i][3],
-                    status: data[i][4]
-                };
-                break;
-            }
+  try {
+    let { admission } = req.params;
+    const year = req.headers['x-year'] || '2026';
+    const spreadsheetId = MASTER_SPREADSHEET_ID;
+    
+    console.log(`🔍 Looking for student: ${admission}`);
+    
+    // ✅ Function to standardize admission format
+    function standardizeAdm(adm) {
+      if (!adm) return '';
+      let a = adm.toString().trim().toUpperCase();
+      // Convert MAR/24 to MAR/2024
+      a = a.replace(/MAR\/(\d{2})(?![0-9])/g, 'MAR/20$1');
+      // Convert /24 to /2024, /25 to /2025, /26 to /2026
+      a = a.replace(/\/(\d{2})(?![0-9])/g, (match, year) => {
+        if (year >= 24 && year <= 26) {
+          return `/20${year}`;
         }
-        
-        if (student) {
-            res.json({ success: true, student });
-        } else {
-            res.json({ success: false, message: 'Student not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        return match;
+      });
+      return a;
     }
+    
+    // Get all students
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'STUDENTS!A:E',
+    });
+    
+    const data = response.data.values || [];
+    let student = null;
+    
+    // ✅ Try multiple formats for matching
+    const formats = [
+      admission,                          // Original
+      standardizeAdm(admission),          // Standardized
+      admission.replace(/03\//g, 'MAR/'), // 03/2024 -> MAR/2024
+      admission.replace(/MAR\//g, '03/'), // MAR/2024 -> 03/2024
+      admission.replace(/\/2024/g, '/24'), // /2024 -> /24
+      admission.replace(/\/2025/g, '/25'), // /2025 -> /25
+      admission.replace(/\/2026/g, '/26'), // /2026 -> /26
+    ];
+    
+    // Remove duplicates
+    const uniqueFormats = [...new Set(formats)];
+    console.log(`📡 Trying formats:`, uniqueFormats);
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || !row[0]) continue;
+      
+      const sheetAdm = row[0].toString().trim();
+      const sheetAdmStd = standardizeAdm(sheetAdm);
+      
+      // Check if any format matches
+      for (const format of uniqueFormats) {
+        const formatStd = standardizeAdm(format);
+        if (sheetAdm === format || sheetAdmStd === formatStd || sheetAdm === formatStd) {
+          student = {
+            admission: row[0],
+            name: row[1] || 'Unknown',
+            block: row[2] || 'BLOCK_0',
+            year: row[3] || '2024',
+            status: row[4] || 'ACTIVE'
+          };
+          console.log(`✅ Found student: ${student.name} (${student.admission})`);
+          break;
+        }
+      }
+      if (student) break;
+    }
+    
+    // ✅ If not found, try case-insensitive search
+    if (!student) {
+      const searchAdm = admission.toUpperCase().trim();
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row || !row[0]) continue;
+        
+        const sheetAdm = row[0].toString().toUpperCase().trim();
+        if (sheetAdm.includes(searchAdm) || searchAdm.includes(sheetAdm)) {
+          student = {
+            admission: row[0],
+            name: row[1] || 'Unknown',
+            block: row[2] || 'BLOCK_0',
+            year: row[3] || '2024',
+            status: row[4] || 'ACTIVE'
+          };
+          console.log(`✅ Found student by partial match: ${student.name} (${student.admission})`);
+          break;
+        }
+      }
+    }
+    
+    if (student) {
+      res.json({ success: true, student });
+    } else {
+      console.log(`❌ Student not found: ${admission}`);
+      res.json({ success: false, message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error in /api/student:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
-
 // ========== TRANSCRIPT GENERATION ENDPOINTS ==========
 app.get('/api/transcript/:admission', async (req, res) => {
   try {
