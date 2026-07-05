@@ -4322,255 +4322,168 @@ document.querySelectorAll('.nav-item').forEach(el => {
     updateContentArea(html); 
     hideLoading(); 
   }
- // ===== GENERATE SELECTED STUDENT PDF (For Single Student Tab) =====
-function generateSelectedStudentPDF() {
-    const select = document.getElementById('studentSelectForReport');
-    if (!select) {
-        showNotification('Student selection not found. Please refresh the page.', true);
-        return;
-    }
-    
-    const admission = select.value;
-    if (!admission) {
-        showNotification('Please select a student from the dropdown', true);
-        return;
-    }
 
-    // Try to get student data from multiple sources
-    let student = null;
-    
-    // 1. Check window._studentDataCache (set in showTranscriptsPage)
-    if (window._studentDataCache) {
-        student = window._studentDataCache[admission];
-    }
-    
-    // 2. Check window.reportData.studentMap
-    if (!student && window.reportData && window.reportData.studentMap) {
-        student = window.reportData.studentMap[admission];
-    }
-    
-    // 3. Check window._studentList
-    if (!student && window._studentList) {
-        student = window._studentList.find(s => s.admission === admission);
-    }
-    
-    // 4. Check reportData.students
-    if (!student && window.reportData && window.reportData.students) {
-        student = window.reportData.students.find(s => s.admission === admission);
-    }
-
-    if (!student) {
-        showNotification(`Student "${admission}" not found. Please refresh the reports page.`, true);
-        return;
-    }
-
-    // Build enhanced student object
-    const enhancedStudent = {
-        name: student.name || 'Unknown Student',
-        admission: student.admission || admission,
-        subjects: student.subjects || [],
-        overallAvg: student.overallAvg || 0,
-        subjectCount: student.subjectCount || 0,
-        cat1Scores: student.cat1Scores || [],
-        cat2Scores: student.cat2Scores || [],
-        examScores: student.examScores || []
-    };
-
-    generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
-}
-// ===== GENERATE STUDENT TRANSCRIPT PDF (SIMPLIFIED - WORKS EVERY TIME) =====
-function generateStudentTranscriptPDF(student, reportData) {
+// ===== GENERATE RESULT SLIP - WITH FRESH DATA =====
+function generateResultSlip(student, reportData) {
     if (!student) {
         showNotification('No student data available', true);
         return;
     }
 
-    showLoading('Generating transcript...');
+    showLoading('Generating result slip from latest data...');
 
     const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
-    const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
     const overallAvg = student.overallAvg || 0;
-    const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
-    
-    let gradeLetter = 'F';
-    let gradeLabel = 'FAIL';
-    if (overallAvg >= 80) { gradeLetter = 'A'; gradeLabel = 'DISTINCTION'; }
-    else if (overallAvg >= 70) { gradeLetter = 'B'; gradeLabel = 'CREDIT'; }
-    else if (overallAvg >= 60) { gradeLetter = 'C'; gradeLabel = 'PASS'; }
-    else if (overallAvg >= 50) { gradeLetter = 'D'; gradeLabel = 'REFERRAL'; }
-    
-    const cgpa = overallAvg > 0 ? (overallAvg / 20).toFixed(2) : '0.00';
-    const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
     const year = reportData?.currentYear || currentYear || '2026';
     const issueDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const generatedAt = new Date().toISOString();
+
+    function getGrade(score) {
+        if (score >= 75) return 'A';
+        else if (score >= 69) return 'B+';
+        else if (score >= 60) return 'B';
+        else if (score >= 54) return 'C+';
+        else if (score >= 50) return 'C';
+        else return 'E';
+    }
 
     let subjectsHtml = '';
     if (sortedSubjects.length > 0) {
         subjectsHtml = sortedSubjects.map((subj, idx) => {
-            const isPass = subj.score >= 60;
             const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const grade = getGrade(subj.score);
             const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
             return `
                 <tr>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${idx + 1}</td>
-                    <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0;"><strong>${safeName}</strong></td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${blockDisplay}</td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700; ${isPass ? 'color: #065f46;' : 'color: #991b1b;'}">${subj.score}%</td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                        <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                            ${isPass ? '✓ PASS' : '✗ FAIL'}
-                        </span>
-                    </td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${idx + 1}</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px;"><strong>${safeName}</strong></td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${blockDisplay}</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${subj.score}%</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 700; text-align: center; color: ${grade === 'E' ? '#991b1b' : '#065f46'};">${grade}</td>
                 </tr>
             `;
         }).join('');
     } else {
-        subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">📚 No subjects completed yet</td></tr>';
+        subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">📚 No subjects completed yet</td></tr>';
     }
 
     const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // SIMPLIFIED HTML - Uses basic styling that html2pdf renders reliably
     const content = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Academic Transcript - ${safeStudentName}</title>
+    <title>Result Slip - ${safeStudentName}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: white; }
-        .container { max-width: 1000px; margin: 0 auto; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
-        .header { background: #1a1a2e; color: white; padding: 20px 30px; text-align: center; }
-        .header h1 { font-size: 22px; margin: 0; letter-spacing: 1px; }
-        .header p { font-size: 11px; opacity: 0.8; margin: 4px 0 0; }
-        .header .accred { background: rgba(255,255,255,0.1); display: inline-block; padding: 3px 14px; border-radius: 20px; font-size: 9px; margin-top: 6px; }
-        .title-section { text-align: center; padding: 15px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
-        .title-section h2 { font-size: 18px; margin: 0; color: #0f172a; }
-        .title-section p { font-size: 10px; color: #64748b; margin: 4px 0 0; }
-        .info-card { padding: 15px 20px; margin: 15px 20px; border: 1px solid #e2e8f0; border-left: 4px solid #6366f1; border-radius: 6px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px; }
-        .info-field { display: flex; font-size: 12px; }
-        .info-label { font-weight: 700; color: #475569; min-width: 100px; }
-        .info-value { color: #1e293b; font-weight: 600; }
-        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 0 20px 15px; }
-        .stat-box { background: #f8fafc; padding: 10px; text-align: center; border: 1px solid #e2e8f0; border-radius: 6px; }
-        .stat-box .num { font-size: 20px; font-weight: 800; color: #6366f1; }
-        .stat-box .label { font-size: 8px; color: #64748b; text-transform: uppercase; }
-        .table-section { margin: 0 20px 15px; }
-        .table-section h3 { font-size: 14px; margin: 0 0 10px; color: #0f172a; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background: #1a1a2e; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
-        td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
-        .result-banner { margin: 0 20px 15px; padding: 15px 20px; border-radius: 6px; text-align: center; border: 2px solid ${status === 'PASS' ? '#10b981' : '#ef4444'}; background: ${status === 'PASS' ? '#ecfdf5' : '#fef2f2'}; }
-        .result-banner .status { font-size: 16px; font-weight: 800; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
-        .result-banner .msg { font-size: 10px; margin-top: 3px; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; }
-        .result-banner .details { margin-top: 8px; font-size: 11px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-        .footer { padding: 15px 20px; text-align: center; border-top: 2px solid #e2e8f0; font-size: 9px; color: #94a3b8; background: #f8fafc; }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; }
-        .signatures .line { border-bottom: 1px solid #475569; width: 80%; margin: 0 auto 3px; height: 25px; }
-        .signatures .title { font-weight: 600; color: #1e293b; font-size: 10px; }
-        .signatures .sub { font-size: 8px; color: #94a3b8; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: white; }
+        .container { max-width: 800px; margin: 0 auto; border: 2px solid #1a1a2e; border-radius: 4px; overflow: hidden; }
+        .header { background: #1a1a2e; color: white; padding: 12px 20px; text-align: center; }
+        .header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; font-weight: 700; }
+        .header p { font-size: 9px; opacity: 0.8; margin: 2px 0 0; }
+        .header .fresh-badge { background: #10b981; display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 7px; margin-top: 2px; }
+        .student-info { padding: 10px 15px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 15px; font-size: 10px; }
+        .student-info .label { font-weight: 700; color: #475569; }
+        .student-info .value { color: #1e293b; font-weight: 600; }
+        .table-section { padding: 8px 15px; }
+        .table-section h3 { font-size: 12px; margin: 0 0 6px; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #1a1a2e; color: white; padding: 5px 8px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+        .grade-scale { padding: 6px 15px; background: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; }
+        .grade-scale .title { font-size: 9px; font-weight: 700; color: #475569; margin-bottom: 2px; }
+        .grade-scale .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 15px; font-size: 9px; color: #475569; }
+        .grade-scale .grid strong { font-weight: 700; }
+        .footer { padding: 8px 15px; text-align: center; font-size: 8px; color: #94a3b8; background: #f8fafc; border-top: 2px solid #e2e8f0; }
+        .footer .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 6px 0; }
+        .footer .signatures .line { border-bottom: 1px solid #475569; width: 70%; margin: 0 auto 2px; height: 18px; }
+        .footer .signatures .title { font-weight: 600; color: #1e293b; font-size: 8px; }
+        .footer .signatures .sub { font-size: 7px; color: #94a3b8; }
+        .footer .stamp-note { font-size: 7px; color: #991b1b; font-weight: 600; margin-top: 3px; }
+        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+        .status-pass { background: #d1fae5; color: #065f46; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .timestamp { font-size: 7px; color: #94a3b8; margin-top: 3px; }
         @media print { body { padding: 0; } .container { border: none; border-radius: 0; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="header">
-            <div style="font-size: 30px;">🏥</div>
-            <h1>NAKURU COLLEGE OF HEALTH SCIENCES</h1>
-            <p>Excellence in Nursing Education &amp; Clinical Practice</p>
-            <div class="accred">⭐ FULLY ACCREDITED BY THE NURSING COUNCIL OF KENYA (NCK) ⭐</div>
+            <h1>OFFICE OF THE REGISTRAR - ACADEMICS</h1>
+            <p>RESULT SLIP</p>
+            <div class="fresh-badge">📊 Fresh data as of ${new Date().toLocaleTimeString()}</div>
         </div>
         
-        <!-- TITLE -->
-        <div class="title-section">
-            <h2>OFFICIAL ACADEMIC TRANSCRIPT</h2>
-            <p>This document certifies the academic record of the student named below</p>
+        <div class="student-info">
+            <div><span class="label">Name:</span> <span class="value">${safeStudentName}</span></div>
+            <div><span class="label">Reg No:</span> <span class="value">${safeAdmission}</span></div>
+            <div><span class="label">School:</span> <span class="value">School of Medicine and Health Sciences</span></div>
+            <div><span class="label">Program:</span> <span class="value">BSc. Nursing (BScN)</span></div>
+            <div><span class="label">Admission Year:</span> <span class="value">${year}</span></div>
+            <div><span class="label">Year of Study:</span> <span class="value">${student.subjectCount > 0 ? 'Year ' + Math.ceil(student.subjectCount / 5) : 'N/A'}</span></div>
         </div>
         
-        <!-- STUDENT INFO -->
-        <div class="info-card">
-            <div class="info-grid">
-                <div class="info-field"><span class="info-label">Student Name:</span><span class="info-value">${safeStudentName}</span></div>
-                <div class="info-field"><span class="info-label">Admission Number:</span><span class="info-value">${safeAdmission}</span></div>
-                <div class="info-field"><span class="info-label">Programme:</span><span class="info-value">Bachelor of Science in Nursing (BScN)</span></div>
-                <div class="info-field"><span class="info-label">Academic Year:</span><span class="info-value">March ${year}</span></div>
-                <div class="info-field"><span class="info-label">Pass Mark:</span><span class="info-value">60% (NCK Standard)</span></div>
-                <div class="info-field"><span class="info-label">Issue Date:</span><span class="info-value">${issueDate}</span></div>
-            </div>
-        </div>
-        
-        <!-- STATS -->
-        <div class="stats">
-            <div class="stat-box"><div class="num">${student.subjectCount || 0}</div><div class="label">Subjects</div></div>
-            <div class="stat-box"><div class="num">${passedSubjects.length}</div><div class="label">Passed</div></div>
-            <div class="stat-box"><div class="num">${passRate}%</div><div class="label">Pass Rate</div></div>
-            <div class="stat-box"><div class="num">${gradeLetter}</div><div class="label">Grade</div></div>
-            <div class="stat-box"><div class="num">${cgpa}</div><div class="label">CGPA</div></div>
-        </div>
-        
-        <!-- TABLE -->
         <div class="table-section">
-            <h3>📚 Academic Performance by Subject</h3>
+            <h3>📚 Academic Performance</h3>
             <table>
-                <thead><tr><th>#</th><th>Subject / Course Unit</th><th>Block</th><th>Score</th><th>Status</th></tr></thead>
+                <thead><tr><th style="width:30px;">#</th><th>Subject</th><th style="width:70px;">Block</th><th style="width:60px;">Score</th><th style="width:40px;">Grade</th></tr></thead>
                 <tbody>${subjectsHtml}</tbody>
             </table>
-        </div>
-        
-        <!-- RESULT -->
-        <div class="result-banner">
-            <div class="status">${status === 'PASS' ? '✅ ACADEMIC PROGRESS: SATISFACTORY' : (status === 'FAIL' ? '⚠️ ACADEMIC PROGRESS: NEEDS IMPROVEMENT' : '⏳ PROGRESS: INCOMPLETE')}</div>
-            <div class="msg">${status === 'PASS' ? 'The student has met the minimum passing requirements and is in good academic standing.' : (status === 'FAIL' ? 'The student is advised to seek academic support and remedial classes.' : 'Awaiting completion of pending assessments.')}</div>
-            <div class="details">
-                <span>Overall Average: <strong>${overallAvg}%</strong></span>
-                <span>CGPA: <strong>${cgpa} / 5.00</strong></span>
-                <span>Classification: <strong>${gradeLabel}</strong></span>
+            <div style="margin-top: 6px; text-align: right; font-size: 10px; font-weight: 600;">
+                Overall Average: ${overallAvg}% 
+                <span class="status-badge ${overallAvg >= 60 ? 'status-pass' : 'status-fail'}">${overallAvg >= 60 ? 'PASS' : 'FAIL'}</span>
             </div>
         </div>
         
-        <!-- FOOTER WITH SIGNATURES -->
+        <div class="grade-scale">
+            <div class="title">📊 Grade Points</div>
+            <div class="grid">
+                <div><strong>A</strong> 75-100%</div>
+                <div><strong>B+</strong> 69-74%</div>
+                <div><strong>B</strong> 60-68%</div>
+                <div><strong>C+</strong> 54-59%</div>
+                <div><strong>C</strong> 50-53%</div>
+                <div><strong>E</strong> 0-49%</div>
+            </div>
+        </div>
+        
         <div class="footer">
             <div class="signatures">
-                <div><div class="line"></div><div class="title">Principal</div><div class="sub">Signature &amp; Date</div></div>
-                <div><div class="line"></div><div class="title">HOD - School of Nursing</div><div class="sub">Signature &amp; Date</div></div>
+                <div><div class="line"></div><div class="title">Head of Department</div><div class="sub">Signature &amp; Date</div></div>
+                <div><div class="line"></div><div class="title">Academic Registrar</div><div class="sub">Signature &amp; Date</div></div>
                 <div><div class="line"></div><div class="title">Student's Signature</div><div class="sub">Date: ${issueDate}</div></div>
             </div>
-            <p style="margin-top: 8px;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
-            <p>© ${new Date().getFullYear()} Nakuru College of Health Sciences - All Rights Reserved</p>
+            <div class="stamp-note">📌 This result slip is issued without any erasures or alterations. Not Valid without Official Stamp</div>
+            <div class="timestamp">✅ Generated from latest academic records at ${generatedAt}</div>
+            <p style="margin-top: 4px;">© ${new Date().getFullYear()} Nakuru College of Health Sciences</p>
         </div>
     </div>
 </body>
 </html>`;
 
-    // Generate PDF
     const element = document.createElement('div');
     element.innerHTML = content;
     element.style.position = 'absolute';
     element.style.left = '-9999px';
     element.style.top = '-9999px';
-    element.style.width = '1000px';
+    element.style.width = '800px';
     document.body.appendChild(element);
 
     const opt = {
         margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `TRANSCRIPT_${student.admission}_${year}.pdf`,
+        filename: `RESULT_SLIP_${student.admission}_${year}_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-            scale: 2, 
-            letterRendering: true, 
-            useCORS: true,
-            width: 1000
-        },
+        html2canvas: { scale: 2, letterRendering: true, useCORS: true, width: 800 },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
         document.body.removeChild(element);
         hideLoading();
-        showNotification(`🎓 Official transcript for ${student.name} generated successfully!`, false);
+        showNotification(`📄 Result slip for ${student.name} generated from latest data!`, false);
     }).catch(err => {
         document.body.removeChild(element);
         hideLoading();
@@ -4578,403 +4491,582 @@ function generateStudentTranscriptPDF(student, reportData) {
         console.error('PDF Error:', err);
     });
 }
-// ===== ADMIN ONLY: Comprehensive Transcripts Page =====
+// ===== ADMIN ONLY: Comprehensive Transcripts Page - FORCE FRESH =====
 async function showTranscriptsPage() {
     if (currentUser?.role !== 'admin') {
         showNotification('Only administrators can access transcripts', true);
         return;
     }
     
-    showLoading('Loading transcripts...');
+    showLoading('Loading fresh transcripts from Google Sheet...');
     
-    // ✅ FIRST: Get students data
-    const students = await apiCall('/api/students', {});
-    console.log('📚 Students loaded:', students ? students.length : 0);
+    // ============================================================
+    // ✅ STEP 1: FORCE CLEAR ALL CACHES
+    // ============================================================
+    console.log('🧹 Clearing all caches...');
+    window._studentDataCache = null;
+    window._studentList = null;
+    window.reportData = null;
+    configCache = null;
+    window._transcriptCache = null;
+    window._marksCache = {};
+    window._subjectPerformance = null;
     
-    if (!students || students.length === 0) {
-        showNotification('No students found. Please add students first.', true);
-        hideLoading();
-        return;
-    }
-    
-    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
-    const config = await getConfig();
-    
-    let allStudentPerformance = {};
-    let subjectPerformance = {};
-    let blockPerformance = {};
-    
-    // Collect all performance data
-    for (let block of blocks) {
-        blockPerformance[block] = { scores: [], subjects: [] };
-        const subjects = config[block] || [];
-        for (let subject of subjects) {
-            const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
-            if (marks && marks.length) {
-                for (let mark of marks) {
-                    const admission = mark.admission;
-                    if (!allStudentPerformance[admission]) {
-                        allStudentPerformance[admission] = {
-                            name: mark.name,
-                            admission: admission,
-                            block: mark.block || block,
-                            subjects: [],
-                            totalScore: 0,
-                            subjectCount: 0,
-                            cat1Scores: [],
-                            cat2Scores: [],
-                            examScores: []
-                        };
-                    }
+    try {
+        // ============================================================
+        // ✅ STEP 2: GET FRESH STUDENTS FROM GOOGLE SHEET
+        // ============================================================
+        const students = await apiCall('/api/students', {});
+        console.log('📚 Students loaded from Google Sheet:', students ? students.length : 0);
+        
+        if (!students || students.length === 0) {
+            showNotification('No students found. Please add students first.', true);
+            hideLoading();
+            return;
+        }
+        
+        const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+        
+        // ============================================================
+        // ✅ STEP 3: FORCE FRESH CONFIG FROM GOOGLE SHEET
+        // ============================================================
+        const config = await getConfig(true); // ✅ forceRefresh = true
+        console.log('📚 Config loaded fresh:', Object.keys(config).length, 'blocks');
+        
+        let allStudentPerformance = {};
+        let subjectPerformance = {};
+        let blockPerformance = {};
+        let totalMarksProcessed = 0;
+        
+        // ============================================================
+        // ✅ STEP 4: COLLECT FRESH MARKS FOR EACH SUBJECT
+        // ============================================================
+        for (let block of blocks) {
+            blockPerformance[block] = { scores: [], subjects: [] };
+            const subjects = config[block] || [];
+            console.log(`📚 Processing ${block}: ${subjects.length} subjects`);
+            
+            for (let subject of subjects) {
+                // ✅ apiCall() already adds _t=${Date.now()} for cache busting
+                const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+                
+                if (marks && marks.length) {
+                    console.log(`   ${subject.name}: ${marks.length} records`);
+                    totalMarksProcessed += marks.length;
                     
-                    let finalScore = 0;
-                    let cat1 = parseFloat(mark.cat1) || 0;
-                    let cat2 = parseFloat(mark.cat2) || 0;
-                    let exam = parseFloat(mark.exam) || 0;
-                    
-                    if (subject.assessmentType === 'full') {
-                        finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-                        if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-                        if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
-                        if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                    } else if (subject.assessmentType === 'single_cat') {
-                        finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-                        if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-                        if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                    } else {
-                        finalScore = Math.round(Math.min(exam,100) * 10) / 10;
-                        if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                    }
-                    
-                    if (finalScore > 0) {
-                        allStudentPerformance[admission].subjects.push({ 
-                            name: subject.name, 
-                            score: finalScore, 
-                            block: block 
-                        });
-                        allStudentPerformance[admission].totalScore += finalScore;
-                        allStudentPerformance[admission].subjectCount++;
+                    for (let mark of marks) {
+                        const admission = mark.admission;
+                        if (!admission) continue;
                         
-                        if (!subjectPerformance[subject.name]) {
-                            subjectPerformance[subject.name] = { 
-                                scores: [], 
-                                block: block, 
-                                assessmentType: subject.assessmentType,
-                                students: []
+                        if (!allStudentPerformance[admission]) {
+                            allStudentPerformance[admission] = {
+                                name: mark.name || 'Unknown',
+                                admission: admission,
+                                block: mark.block || block,
+                                subjects: [],
+                                totalScore: 0,
+                                subjectCount: 0,
+                                cat1Scores: [],
+                                cat2Scores: [],
+                                examScores: [],
+                                blockScores: {}
                             };
                         }
-                        subjectPerformance[subject.name].scores.push(finalScore);
-                        subjectPerformance[subject.name].students.push({
-                            admission: admission,
-                            name: mark.name,
-                            score: finalScore
-                        });
+                        
+                        let finalScore = 0;
+                        let cat1 = parseFloat(mark.cat1) || 0;
+                        let cat2 = parseFloat(mark.cat2) || 0;
+                        let exam = parseFloat(mark.exam) || 0;
+                        
+                        if (subject.assessmentType === 'full') {
+                            finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+                            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+                            if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
+                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                        } else if (subject.assessmentType === 'single_cat') {
+                            finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+                            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                        } else {
+                            finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                        }
+                        
+                        if (finalScore > 0) {
+                            allStudentPerformance[admission].subjects.push({ 
+                                name: subject.name, 
+                                score: finalScore, 
+                                block: block 
+                            });
+                            allStudentPerformance[admission].totalScore += finalScore;
+                            allStudentPerformance[admission].subjectCount++;
+                            
+                            if (!allStudentPerformance[admission].blockScores[block]) {
+                                allStudentPerformance[admission].blockScores[block] = [];
+                            }
+                            allStudentPerformance[admission].blockScores[block].push(finalScore);
+                            
+                            if (!subjectPerformance[subject.name]) {
+                                subjectPerformance[subject.name] = { 
+                                    scores: [], 
+                                    block: block, 
+                                    assessmentType: subject.assessmentType,
+                                    students: []
+                                };
+                            }
+                            subjectPerformance[subject.name].scores.push(finalScore);
+                            subjectPerformance[subject.name].students.push({
+                                admission: admission,
+                                name: mark.name || 'Unknown',
+                                score: finalScore
+                            });
+                            blockPerformance[block].scores.push(finalScore);
+                        }
                     }
                 }
             }
         }
-    }
-    
-    // Calculate averages
-    for (let adm in allStudentPerformance) {
-        let student = allStudentPerformance[adm];
-        student.overallAvg = student.subjectCount > 0 ? 
-            parseFloat((student.totalScore / student.subjectCount).toFixed(2)) : 0;
-        student.status = student.overallAvg >= 60 ? 'PASS' : 
-            (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
-    }
-    
-    // ✅ Ensure we have a student list even if no marks exist
-    // Add all students from the API that might not have marks yet
-    for (let student of students) {
-        const admission = student.admission;
-        if (!allStudentPerformance[admission]) {
-            allStudentPerformance[admission] = {
-                name: student.name || 'Unknown',
-                admission: admission,
-                block: student.block || 'BLOCK_0',
-                subjects: [],
-                totalScore: 0,
-                subjectCount: 0,
-                cat1Scores: [],
-                cat2Scores: [],
-                examScores: [],
-                overallAvg: 0,
-                status: 'PENDING'
-            };
+        
+        console.log('📊 Total marks processed:', totalMarksProcessed);
+        console.log('📊 Students with data:', Object.keys(allStudentPerformance).length);
+        
+        // ============================================================
+        // ✅ STEP 5: CALCULATE AVERAGES
+        // ============================================================
+        for (let adm in allStudentPerformance) {
+            let student = allStudentPerformance[adm];
+            student.overallAvg = student.subjectCount > 0 ? 
+                parseFloat((student.totalScore / student.subjectCount).toFixed(2)) : 0;
+            student.status = student.overallAvg >= 60 ? 'PASS' : 
+                (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
+            
+            // Calculate block averages
+            student.blockAverages = {};
+            for (let block in student.blockScores) {
+                const scores = student.blockScores[block];
+                student.blockAverages[block] = scores.length > 0 ? 
+                    parseFloat((scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(2)) : 0;
+            }
         }
-    }
-    
-    // Store data globally
-    window._studentDataCache = allStudentPerformance;
-    window._studentList = Object.values(allStudentPerformance);
-    window._subjectPerformance = subjectPerformance;
-    window.reportData = {
-        students: window._studentList,
-        currentYear: currentYear,
-        studentMap: allStudentPerformance,
-        subjectPerformance: subjectPerformance,
-        blocks: blocks
-    };
-    
-    const studentList = window._studentList;
-    console.log('✅ Student list for dropdown:', studentList.length, 'students');
-    
-    // ✅ Check if studentList has data
-    if (!studentList || studentList.length === 0) {
-        showNotification('No student data available. Please add students.', true);
-        hideLoading();
-        return;
-    }
-    
-    const subjectList = Object.keys(subjectPerformance).sort();
-    
-    // Build block options for the select
-    const blockOptions = blocks.map(b => 
-        `<option value="${b}">${b.replace('_', ' ')}</option>`
-    ).join('');
-    
-    const html = `
-        <style>
-            .transcript-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; flex-wrap: wrap; }
-            .transcript-tab { padding: 10px 24px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 40px; transition: all 0.3s; font-size: 14px; }
-            .transcript-tab:hover { background: rgba(99,102,241,0.1); }
-            .transcript-tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-            .transcript-panel { display: none; }
-            .transcript-panel.active { display: block; }
-            .mass-select-wrapper { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; background: #f8fafc; border-radius: 12px; margin-bottom: 16px; }
-            .mass-select-wrapper select, .mass-select-wrapper input { padding: 10px 16px; border-radius: 40px; border: 1px solid #e2e8f0; }
-            .student-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; padding: 10px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; }
-            .student-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-            .student-checkbox-item:hover { background: #f1f5f9; }
-            .student-checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-            .progress-text { font-size: 12px; color: #64748b; }
-        </style>
         
-        <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+        // ============================================================
+        // ✅ STEP 6: ADD STUDENTS WITH NO MARKS
+        // ============================================================
+        let studentsWithNoMarks = 0;
+        for (let student of students) {
+            const admission = student.admission;
+            if (!allStudentPerformance[admission]) {
+                allStudentPerformance[admission] = {
+                    name: student.name || 'Unknown',
+                    admission: admission,
+                    block: student.block || 'BLOCK_0',
+                    subjects: [],
+                    totalScore: 0,
+                    subjectCount: 0,
+                    cat1Scores: [],
+                    cat2Scores: [],
+                    examScores: [],
+                    blockScores: {},
+                    blockAverages: {},
+                    overallAvg: 0,
+                    status: 'PENDING'
+                };
+                studentsWithNoMarks++;
+            }
+        }
+        console.log('📊 Students with NO marks:', studentsWithNoMarks);
         
-        <div class="header" style="margin-top: 16px;">
-            <h3><i class="fas fa-file-pdf"></i> Comprehensive Transcript Generator</h3>
-            <p>Generate official academic transcripts for students | March ${currentYear} Class</p>
-        </div>
+        // ============================================================
+        // ✅ STEP 7: CALCULATE SUBJECT AVERAGES
+        // ============================================================
+        let subjectAverages = [];
+        for (let subjName in subjectPerformance) {
+            let data = subjectPerformance[subjName];
+            const avg = data.scores.length > 0 ? 
+                parseFloat((data.scores.reduce((a,b) => a+b, 0) / data.scores.length).toFixed(2)) : 0;
+            const passCount = data.scores.filter(s => s >= 60).length;
+            const passRate = data.scores.length > 0 ? 
+                parseFloat(((passCount / data.scores.length) * 100).toFixed(1)) : 0;
+            subjectAverages.push({
+                name: subjName,
+                average: avg,
+                passRate: passRate,
+                studentCount: data.scores.length,
+                block: data.block,
+                assessmentType: data.assessmentType
+            });
+        }
+        subjectAverages.sort((a, b) => b.average - a.average);
         
-        <div class="transcript-tabs">
-            <button class="transcript-tab active" data-tab="single" onclick="switchTranscriptTab('single')">
-                <i class="fas fa-user"></i> Single Student
-            </button>
-            <button class="transcript-tab" data-tab="mass" onclick="switchTranscriptTab('mass')">
-                <i class="fas fa-users"></i> Mass Production
-            </button>
-            <button class="transcript-tab" data-tab="block" onclick="switchTranscriptTab('block')">
-                <i class="fas fa-layer-group"></i> By Block
-            </button>
-            <button class="transcript-tab" data-tab="subject" onclick="switchTranscriptTab('subject')">
-                <i class="fas fa-book"></i> By Subject
-            </button>
-        </div>
+        // ============================================================
+        // ✅ STEP 8: CALCULATE BLOCK AVERAGES
+        // ============================================================
+        let blockAverages = {};
+        for (let block in blockPerformance) {
+            let scores = blockPerformance[block].scores;
+            blockAverages[block] = scores.length > 0 ? 
+                parseFloat((scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(2)) : 0;
+        }
         
-        <!-- ===== TAB 1: SINGLE STUDENT ===== -->
-        <div id="singlePanel" class="transcript-panel active">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-user-graduate"></i> Generate Single Student Transcript</div>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 10px 0;">
-                    <label style="font-weight: 600; font-size: 14px;">Select Student:</label>
-                    <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;" onchange="updateTranscriptPreview()">
-                        <option value="">-- Select a student --</option>
-                        ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
-                            `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg || 0}%</option>`
-                        ).join('')}
-                    </select>
-                    <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
-                        <i class="fas fa-eye"></i> Preview
-                    </button>
-                    <button class="save-btn" onclick="generateSelectedStudentPDF('transcript')" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
-                        <i class="fas fa-file-pdf"></i> Full Transcript
-                    </button>
-                    <button class="save-btn" onclick="generateSelectedStudentPDF('result_slip')" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706);">
-                        <i class="fas fa-receipt"></i> Result Slip
-                    </button>
+        // ============================================================
+        // ✅ STEP 9: PREPARE FINAL DATA
+        // ============================================================
+        const studentList = Object.values(allStudentPerformance);
+        const passCount = studentList.filter(s => s.overallAvg >= 60).length;
+        const failCount = studentList.filter(s => s.overallAvg < 60 && s.overallAvg > 0).length;
+        const pendingCount = studentList.filter(s => s.overallAvg === 0).length;
+        const overallClassAvg = studentList.filter(s => s.overallAvg > 0).length > 0 ? 
+            parseFloat((studentList.filter(s => s.overallAvg > 0).reduce((a,b) => a + b.overallAvg, 0) / 
+            studentList.filter(s => s.overallAvg > 0).length).toFixed(2)) : 0;
+        
+        // ============================================================
+        // ✅ STEP 10: STORE FRESH DATA GLOBALLY
+        // ============================================================
+        window._studentDataCache = allStudentPerformance;
+        window._studentList = studentList;
+        window._subjectPerformance = subjectPerformance;
+        window._subjectAverages = subjectAverages;
+        window._blockAverages = blockAverages;
+        window._dataLoadTimestamp = new Date().toISOString();
+        window.reportData = {
+            students: studentList,
+            currentYear: currentYear,
+            studentMap: allStudentPerformance,
+            subjectPerformance: subjectPerformance,
+            subjectAverages: subjectAverages,
+            blockAverages: blockAverages,
+            blocks: blocks,
+            totalStudents: studentList.length,
+            passCount: passCount,
+            failCount: failCount,
+            pendingCount: pendingCount,
+            overallClassAvg: overallClassAvg,
+            totalMarksProcessed: totalMarksProcessed,
+            loadedAt: window._dataLoadTimestamp
+        };
+        
+        console.log('✅ Report data ready:', {
+            students: studentList.length,
+            subjects: subjectAverages.length,
+            passCount: passCount,
+            failCount: failCount,
+            classAvg: overallClassAvg,
+            loadedAt: window._dataLoadTimestamp
+        });
+        
+        // ============================================================
+        // ✅ STEP 11: BUILD THE HTML
+        // ============================================================
+        const blockOptions = blocks.map(b => 
+            `<option value="${b}">${b.replace('_', ' ')}</option>`
+        ).join('');
+        
+        const subjectList = subjectAverages.map(s => s.name).sort();
+        const loadTime = new Date(window._dataLoadTimestamp).toLocaleString();
+        
+        const html = `
+            <style>
+                .transcript-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; flex-wrap: wrap; }
+                .transcript-tab { padding: 10px 24px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 40px; transition: all 0.3s; font-size: 14px; }
+                .transcript-tab:hover { background: rgba(99,102,241,0.1); }
+                .transcript-tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+                .transcript-panel { display: none; }
+                .transcript-panel.active { display: block; }
+                .mass-select-wrapper { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; background: #f8fafc; border-radius: 12px; margin-bottom: 16px; }
+                .mass-select-wrapper select, .mass-select-wrapper input { padding: 10px 16px; border-radius: 40px; border: 1px solid #e2e8f0; }
+                .student-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; padding: 10px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; }
+                .student-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+                .student-checkbox-item:hover { background: #f1f5f9; }
+                .student-checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+                .progress-text { font-size: 12px; color: #64748b; }
+                .refresh-stats { background: #f0fdf4; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; border-left: 4px solid #10b981; align-items: center; }
+                .refresh-stats span { display: flex; align-items: center; gap: 6px; }
+                .refresh-stats .label { color: #64748b; }
+                .refresh-stats .value { font-weight: 700; color: #1e293b; }
+                .refresh-stats .badge-green { color: #10b981; font-weight: 700; }
+                .refresh-stats .badge-red { color: #ef4444; font-weight: 700; }
+                .refresh-stats .badge-yellow { color: #f59e0b; font-weight: 700; }
+                .btn-refresh-transcript { padding: 8px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; }
+                .btn-refresh-transcript:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(59,130,246,0.3); }
+                .btn-refresh-transcript i { margin-right: 6px; }
+            </style>
+            
+            <button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+            
+            <div class="header" style="margin-top: 16px;">
+                <h3><i class="fas fa-file-pdf"></i> Comprehensive Transcript Generator</h3>
+                <p>Generate official academic transcripts for students | March ${currentYear} Class</p>
+            </div>
+            
+            <!-- ===== FRESH DATA STATS BAR ===== -->
+            <div class="refresh-stats">
+                <span><span class="label">📚 Students:</span> <span class="value">${studentList.length}</span></span>
+                <span><span class="label">📖 Subjects:</span> <span class="value">${subjectAverages.length}</span></span>
+                <span><span class="label">✅ Passing:</span> <span class="badge-green">${passCount}</span></span>
+                <span><span class="label">❌ Failing:</span> <span class="badge-red">${failCount}</span></span>
+                <span><span class="label">⏳ Pending:</span> <span class="badge-yellow">${pendingCount}</span></span>
+                <span><span class="label">📊 Class Avg:</span> <span class="value">${overallClassAvg}%</span></span>
+                <span style="font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-clock"></i> ${loadTime}
+                </span>
+                <button class="btn-refresh-transcript" onclick="forceRefreshTranscriptData()">
+                    <i class="fas fa-sync-alt"></i> Refresh from Sheet
+                </button>
+            </div>
+            
+            <!-- ===== TABS ===== -->
+            <div class="transcript-tabs">
+                <button class="transcript-tab active" data-tab="single" onclick="switchTranscriptTab('single')">
+                    <i class="fas fa-user"></i> Single Student
+                </button>
+                <button class="transcript-tab" data-tab="mass" onclick="switchTranscriptTab('mass')">
+                    <i class="fas fa-users"></i> Mass Production
+                </button>
+                <button class="transcript-tab" data-tab="block" onclick="switchTranscriptTab('block')">
+                    <i class="fas fa-layer-group"></i> By Block
+                </button>
+                <button class="transcript-tab" data-tab="subject" onclick="switchTranscriptTab('subject')">
+                    <i class="fas fa-book"></i> By Subject
+                </button>
+            </div>
+            
+            <!-- ===== TAB 1: SINGLE STUDENT ===== -->
+            <div id="singlePanel" class="transcript-panel active">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-user-graduate"></i> Generate Single Student Transcript</div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 10px 0;">
+                        <label style="font-weight: 600; font-size: 14px;">Select Student:</label>
+                        <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;" onchange="updateTranscriptPreview()">
+                            <option value="">-- Select a student --</option>
+                            ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
+                                `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg || 0}%</option>`
+                            ).join('')}
+                        </select>
+                        <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        <button class="save-btn" onclick="generateSelectedStudentPDF('transcript')" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
+                            <i class="fas fa-file-pdf"></i> Full Transcript
+                        </button>
+                        <button class="save-btn" onclick="generateSelectedStudentPDF('result_slip')" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            <i class="fas fa-receipt"></i> Result Slip
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- ===== LIVE PREVIEW SECTION ===== -->
+                <div class="card" id="previewCard">
+                    <div class="card-title"><i class="fas fa-eye"></i> Live Preview</div>
+                    <div id="reportPreview" style="min-height: 200px;">
+                        <div style="text-align: center; padding: 40px;">
+                            <i class="fas fa-user-graduate" style="font-size: 64px; color: #6366f1; margin-bottom: 16px; display: block;"></i>
+                            <h4>Select a student to preview</h4>
+                            <p style="color: var(--gray);">Choose a student from the dropdown above</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <!-- ===== LIVE PREVIEW SECTION ===== -->
-            <div class="card" id="previewCard">
-                <div class="card-title"><i class="fas fa-eye"></i> Live Preview</div>
-                <div id="reportPreview" style="min-height: 200px;">
-                    <div style="text-align: center; padding: 40px;">
-                        <i class="fas fa-user-graduate" style="font-size: 64px; color: #6366f1; margin-bottom: 16px; display: block;"></i>
-                        <h4>Select a student to preview</h4>
-                        <p style="color: var(--gray);">Choose a student from the dropdown above</p>
+            <!-- ===== TAB 2: MASS PRODUCTION ===== -->
+            <div id="massPanel" class="transcript-panel">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-users"></i> Mass Transcript Production</div>
+                    
+                    <div class="mass-select-wrapper">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Block:</label>
+                            <select id="massBlockSelect" style="width: 100%;" onchange="filterMassStudents()">
+                                <option value="all">All Blocks</option>
+                                ${blockOptions}
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Filter by Status:</label>
+                            <select id="massStatusFilter" style="width: 100%;" onchange="filterMassStudents()">
+                                <option value="all">All Students</option>
+                                <option value="PASS">Passing (≥60%)</option>
+                                <option value="FAIL">Failing (<60%)</option>
+                                <option value="PENDING">Pending (No Scores)</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: flex-end;">
+                            <button class="save-btn" onclick="selectAllMassStudents()" style="padding: 8px 16px;">
+                                <i class="fas fa-check-double"></i> Select All
+                            </button>
+                            <button class="back-btn" onclick="deselectAllMassStudents()" style="padding: 8px 16px;">
+                                <i class="fas fa-times"></i> Deselect All
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- ===== TAB 2: MASS PRODUCTION ===== -->
-        <div id="massPanel" class="transcript-panel">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-users"></i> Mass Transcript Production</div>
-                
-                <div class="mass-select-wrapper">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Block:</label>
-                        <select id="massBlockSelect" style="width: 100%;">
-                            <option value="all">All Blocks</option>
-                            ${blockOptions}
-                        </select>
+                    
+                    <div class="student-checkbox-grid" id="massStudentList">
+                        ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
+                            <label class="student-checkbox-item" data-block="${s.block || 'BLOCK_0'}" data-status="${s.status || 'PENDING'}">
+                                <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${s.name}" data-avg="${s.overallAvg || 0}" data-status="${s.status || 'PENDING'}">
+                                <span><strong>${s.name}</strong> <span style="font-size: 11px; color: #64748b;">(${s.overallAvg || 0}%)</span></span>
+                                <span class="badge ${s.overallAvg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending')}" style="font-size: 9px; margin-left: auto;">${s.status || 'PENDING'}</span>
+                            </label>
+                        `).join('')}
                     </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Filter by Status:</label>
-                        <select id="massStatusFilter" style="width: 100%;">
-                            <option value="all">All Students</option>
-                            <option value="PASS">Passing (≥60%)</option>
-                            <option value="FAIL">Failing (<60%)</option>
-                            <option value="PENDING">Pending (No Scores)</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: flex-end;">
-                        <button class="save-btn" onclick="selectAllMassStudents()" style="padding: 8px 16px;">
-                            <i class="fas fa-check-double"></i> Select All
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; align-items: center;">
+                        <span id="massSelectedCount" style="font-weight: 600;">0</span> students selected
+                        <div style="flex: 1;"></div>
+                        <button class="save-btn" onclick="generateMassTranscripts()" style="padding: 12px 28px;">
+                            <i class="fas fa-file-pdf"></i> Generate Selected Transcripts
                         </button>
-                        <button class="back-btn" onclick="deselectAllMassStudents()" style="padding: 8px 16px;">
-                            <i class="fas fa-times"></i> Deselect All
+                        <button class="btn-warning" onclick="generateMassTranscriptsZip()" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 40px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-file-archive"></i> Download as ZIP
                         </button>
                     </div>
                 </div>
-                
-                <div class="student-checkbox-grid" id="massStudentList">
-                    ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
-                        <label class="student-checkbox-item">
-                            <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${s.name}" data-avg="${s.overallAvg || 0}" data-status="${s.status || 'PENDING'}">
-                            <span><strong>${s.name}</strong> <span style="font-size: 11px; color: #64748b;">(${s.overallAvg || 0}%)</span></span>
-                            <span class="badge ${s.overallAvg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending')}" style="font-size: 9px; margin-left: auto;">${s.status || 'PENDING'}</span>
-                        </label>
-                    `).join('')}
-                </div>
-                
-                <div style="display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; align-items: center;">
-                    <span id="massSelectedCount" style="font-weight: 600;">0</span> students selected
-                    <div style="flex: 1;"></div>
-                    <button class="save-btn" onclick="generateMassTranscripts()" style="padding: 12px 28px;">
-                        <i class="fas fa-file-pdf"></i> Generate Selected Transcripts
-                    </button>
-                    <button class="btn-warning" onclick="generateMassTranscriptsZip()" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 40px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-file-archive"></i> Download as ZIP
-                    </button>
+            </div>
+            
+            <!-- ===== TAB 3: BY BLOCK ===== -->
+            <div id="blockPanel" class="transcript-panel">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-layer-group"></i> Generate Transcripts by Block</div>
+                    <div class="mass-select-wrapper">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Block:</label>
+                            <select id="blockTranscriptSelect" style="width: 100%;" onchange="updateBlockPreview()">
+                                <option value="">-- Select Block --</option>
+                                ${blockOptions}
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Include:</label>
+                            <select id="blockTranscriptScope" style="width: 100%;">
+                                <option value="all">All Students in Block</option>
+                                <option value="passing">Only Passing Students</option>
+                                <option value="failing">Only Failing Students</option>
+                            </select>
+                        </div>
+                        <button class="save-btn" onclick="generateBlockTranscripts()" style="padding: 12px 28px; margin-top: 20px;">
+                            <i class="fas fa-file-pdf"></i> Generate Block Transcripts
+                        </button>
+                    </div>
+                    <div id="blockStudentPreview" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; display: none;">
+                        <p id="blockStudentCount">0 students in this block</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- ===== TAB 3: BY BLOCK ===== -->
-        <div id="blockPanel" class="transcript-panel">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-layer-group"></i> Generate Transcripts by Block</div>
-                <div class="mass-select-wrapper">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Block:</label>
-                        <select id="blockTranscriptSelect" style="width: 100%;">
-                            <option value="">-- Select Block --</option>
-                            ${blockOptions}
-                        </select>
+            
+            <!-- ===== TAB 4: BY SUBJECT ===== -->
+            <div id="subjectPanel" class="transcript-panel">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-book"></i> Generate Transcripts by Subject</div>
+                    <div class="mass-select-wrapper">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Subject:</label>
+                            <select id="subjectTranscriptSelect" style="width: 100%;" onchange="updateSubjectPreview()">
+                                <option value="">-- Select Subject --</option>
+                                ${subjectList.map(s => `<option value="${s}">${s}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Students:</label>
+                            <select id="subjectTranscriptScope" style="width: 100%;">
+                                <option value="all">All Students (With Scores)</option>
+                                <option value="passing">Only Passing (≥60%)</option>
+                                <option value="failing">Only Failing (<60%)</option>
+                            </select>
+                        </div>
+                        <button class="save-btn" onclick="generateSubjectTranscripts()" style="padding: 12px 28px; margin-top: 20px;">
+                            <i class="fas fa-file-pdf"></i> Generate Subject Transcripts
+                        </button>
                     </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Include:</label>
-                        <select id="blockTranscriptScope" style="width: 100%;">
-                            <option value="all">All Students in Block</option>
-                            <option value="passing">Only Passing Students</option>
-                            <option value="failing">Only Failing Students</option>
-                        </select>
+                    <div id="subjectStudentPreview" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; display: none;">
+                        <p id="subjectStudentCount">0 students for this subject</p>
                     </div>
-                    <button class="save-btn" onclick="generateBlockTranscripts()" style="padding: 12px 28px; margin-top: 20px;">
-                        <i class="fas fa-file-pdf"></i> Generate Block Transcripts
-                    </button>
-                </div>
-                <div id="blockStudentPreview" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; display: none;">
-                    <p id="blockStudentCount">0 students in this block</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- ===== TAB 4: BY SUBJECT ===== -->
-        <div id="subjectPanel" class="transcript-panel">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-book"></i> Generate Transcripts by Subject</div>
-                <div class="mass-select-wrapper">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select Subject:</label>
-                        <select id="subjectTranscriptSelect" style="width: 100%;">
-                            <option value="">-- Select Subject --</option>
-                            ${subjectList.map(s => `<option value="${s}">${s}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Students:</label>
-                        <select id="subjectTranscriptScope" style="width: 100%;">
-                            <option value="all">All Students (With Scores)</option>
-                            <option value="passing">Only Passing (≥60%)</option>
-                            <option value="failing">Only Failing (<60%)</option>
-                        </select>
-                    </div>
-                    <button class="save-btn" onclick="generateSubjectTranscripts()" style="padding: 12px 28px; margin-top: 20px;">
-                        <i class="fas fa-file-pdf"></i> Generate Subject Transcripts
-                    </button>
-                </div>
-                <div id="subjectStudentPreview" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; display: none;">
-                    <p id="subjectStudentCount">0 students for this subject</p>
                 </div>
             </div>
-        </div>
+            
+            <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
+                <p>📄 Official transcripts generated with NCK accreditation format</p>
+                <p>🔄 Data loaded from Google Sheet at ${loadTime}</p>
+            </div>
+        `;
         
-        <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
-            <p>📄 Official transcripts generated with NCK accreditation format</p>
-        </div>
-    `;
-    
-    updateContentArea(html);
-    hideLoading();
-    
-    // ✅ Force the dropdown to be populated
-    setTimeout(function() {
-        const select = document.getElementById('studentSelectForReport');
-        if (select) {
-            console.log('✅ Dropdown found, options:', select.options.length);
-            // Trigger preview for first student if available
-            if (studentList.length > 0 && select.options.length > 1) {
-                // Select first student
+        updateContentArea(html);
+        hideLoading();
+        
+        // ============================================================
+        // ✅ STEP 12: AUTO-SELECT FIRST STUDENT
+        // ============================================================
+        setTimeout(function() {
+            const select = document.getElementById('studentSelectForReport');
+            if (select && studentList.length > 0 && select.options.length > 1) {
                 select.value = studentList[0].admission;
                 updateTranscriptPreview();
+                console.log('✅ Auto-selected first student:', studentList[0].name);
             }
-        } else {
-            console.log('❌ Dropdown not found');
-        }
-    }, 500);
-    
-    // Add event listeners for dynamic previews
-    document.getElementById('blockTranscriptSelect')?.addEventListener('change', function() {
-        const block = this.value;
-        const preview = document.getElementById('blockStudentPreview');
-        const countEl = document.getElementById('blockStudentCount');
-        if (block && preview) {
-            const studentsInBlock = studentList.filter(s => s.block === block);
-            preview.style.display = 'block';
-            countEl.textContent = `${studentsInBlock.length} students in ${block.replace('_', ' ')}`;
-        } else if (preview) {
-            preview.style.display = 'none';
-        }
-    });
-    
-    document.getElementById('subjectTranscriptSelect')?.addEventListener('change', function() {
-        const subject = this.value;
-        const preview = document.getElementById('subjectStudentPreview');
-        const countEl = document.getElementById('subjectStudentCount');
-        if (subject && preview && window._subjectPerformance[subject]) {
-            const data = window._subjectPerformance[subject];
-            preview.style.display = 'block';
-            countEl.textContent = `${data.students.length} students with scores for ${subject}`;
-        } else if (preview) {
-            preview.style.display = 'none';
-        }
-    });
+        }, 500);
+        
+        // ============================================================
+        // ✅ STEP 13: ATTACH EVENT LISTENERS FOR FILTERS
+        // ============================================================
+        window.filterMassStudents = function() {
+            const statusFilter = document.getElementById('massStatusFilter')?.value || 'all';
+            const blockFilter = document.getElementById('massBlockSelect')?.value || 'all';
+            const items = document.querySelectorAll('.student-checkbox-item');
+            items.forEach(item => {
+                const status = item.dataset.status || '';
+                const block = item.dataset.block || '';
+                let visible = true;
+                if (statusFilter !== 'all' && status !== statusFilter) visible = false;
+                if (blockFilter !== 'all' && block !== blockFilter) visible = false;
+                item.style.display = visible ? '' : 'none';
+            });
+            updateMassSelectedCount();
+        };
+        
+        window.updateBlockPreview = function() {
+            const block = document.getElementById('blockTranscriptSelect')?.value;
+            const preview = document.getElementById('blockStudentPreview');
+            const countEl = document.getElementById('blockStudentCount');
+            if (block && preview) {
+                const studentsInBlock = studentList.filter(s => s.block === block);
+                preview.style.display = 'block';
+                countEl.textContent = `${studentsInBlock.length} students in ${block.replace('_', ' ')}`;
+            } else if (preview) {
+                preview.style.display = 'none';
+            }
+        };
+        
+        window.updateSubjectPreview = function() {
+            const subject = document.getElementById('subjectTranscriptSelect')?.value;
+            const preview = document.getElementById('subjectStudentPreview');
+            const countEl = document.getElementById('subjectStudentCount');
+            if (subject && preview && window._subjectPerformance && window._subjectPerformance[subject]) {
+                const data = window._subjectPerformance[subject];
+                preview.style.display = 'block';
+                countEl.textContent = `${data.students.length} students with scores for ${subject}`;
+            } else if (preview) {
+                preview.style.display = 'none';
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ Error loading transcripts page:', error);
+        showNotification('Error loading transcripts: ' + error.message, true);
+        hideLoading();
+        
+        // Show error state
+        updateContentArea(`
+            <div class="card" style="text-align: center; padding: 60px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #ef4444; margin-bottom: 16px;"></i>
+                <h4>Failed to load transcripts</h4>
+                <p style="color: var(--gray);">${error.message}</p>
+                <button class="save-btn" onclick="showTranscriptsPage()" style="margin-top: 12px;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+                <button class="back-btn" onclick="showMain()" style="margin-top: 12px; margin-left: 10px;">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </button>
+            </div>
+        `);
+    }
 }
 // ===== UPDATE TRANSCRIPT PREVIEW =====
 function updateTranscriptPreview() {
@@ -5516,9 +5608,50 @@ function generateResultSlip(student, reportData) {
         console.error('PDF Error:', err);
     });
 }
-  
-  // ===== GENERATE SELECTED STUDENT PDF =====
-// ===== GENERATE SELECTED STUDENT PDF (Handles both Transcript and Result Slip) =====
+  // ===== FORCE REFRESH TRANSCRIPT DATA =====
+async function forceRefreshTranscriptData() {
+    const select = document.getElementById('studentSelectForReport');
+    if (!select || !select.value) {
+        showNotification('Please select a student first', true);
+        return;
+    }
+    
+    showLoading('Refreshing transcript data from Google Sheet...');
+    
+    try {
+        // ✅ Clear all caches
+        window._studentDataCache = null;
+        window._studentList = null;
+        window.reportData = null;
+        configCache = null;
+        window._transcriptCache = null;
+        window._marksCache = {};
+        
+        // ✅ Force refresh the entire transcript page
+        await showTranscriptsPage();
+        
+        // ✅ Re-select the previously selected student
+        const newSelect = document.getElementById('studentSelectForReport');
+        if (newSelect && select.value) {
+            const options = Array.from(newSelect.options).map(o => o.value);
+            if (options.includes(select.value)) {
+                newSelect.value = select.value;
+                updateTranscriptPreview();
+            } else if (options.length > 1) {
+                newSelect.value = options[1];
+                updateTranscriptPreview();
+            }
+        }
+        
+        showNotification('✅ Transcript data refreshed from Google Sheet!');
+    } catch (error) {
+        console.error('❌ Refresh error:', error);
+        showNotification('Error refreshing data: ' + error.message, true);
+    } finally {
+        hideLoading();
+    }
+}
+// ===== GENERATE SELECTED STUDENT PDF - FORCE FRESH DATA =====
 function generateSelectedStudentPDF(type) {
     console.log('🔄 generateSelectedStudentPDF called with type:', type || 'transcript');
     const select = document.getElementById('studentSelectForReport');
@@ -5533,44 +5666,126 @@ function generateSelectedStudentPDF(type) {
         return;
     }
 
-    // Try to get student data from multiple sources
-    let student = null;
+    showLoading('Loading fresh student data from Google Sheet...');
     
-    if (window._studentDataCache) {
-        student = window._studentDataCache[admission];
-    }
-    if (!student && window.reportData && window.reportData.studentMap) {
-        student = window.reportData.studentMap[admission];
-    }
-    if (!student && window._studentList) {
-        student = window._studentList.find(s => s.admission === admission);
-    }
-    if (!student && window.reportData && window.reportData.students) {
-        student = window.reportData.students.find(s => s.admission === admission);
-    }
+    // ✅ FORCE: Get fresh data directly from API
+    fetchFreshStudentData(admission).then(freshStudent => {
+        hideLoading();
+        if (freshStudent) {
+            console.log('✅ Fresh student data loaded:', freshStudent.name);
+            console.log('📊 Subjects:', freshStudent.subjects.length);
+            console.log('📊 Average:', freshStudent.overallAvg);
+            
+            if (type === 'result_slip') {
+                generateResultSlip(freshStudent, window.reportData || { currentYear: currentYear });
+            } else {
+                // ✅ Use the correct function signature
+                generateStudentTranscriptPDF(freshStudent, window.reportData || { currentYear: currentYear });
+            }
+        } else {
+            showNotification(`Student "${admission}" not found. Please refresh the page.`, true);
+        }
+    }).catch(err => {
+        hideLoading();
+        showNotification('Error loading student data: ' + err.message, true);
+        console.error('❌ Error:', err);
+    });
+}
 
-    if (!student) {
-        showNotification(`Student "${admission}" not found. Please refresh the page.`, true);
-        return;
-    }
-
-    console.log('✅ Student found:', student.name);
-    
-    const enhancedStudent = {
-        name: student.name || 'Unknown Student',
-        admission: student.admission || admission,
-        subjects: student.subjects || [],
-        overallAvg: student.overallAvg || 0,
-        subjectCount: student.subjectCount || 0,
-        cat1Scores: student.cat1Scores || [],
-        cat2Scores: student.cat2Scores || [],
-        examScores: student.examScores || []
-    };
-
-    if (type === 'result_slip') {
-        generateResultSlip(enhancedStudent, window.reportData || { currentYear: currentYear });
-    } else {
-        generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
+// ===== FETCH FRESH STUDENT DATA DIRECTLY FROM API =====
+async function fetchFreshStudentData(admission) {
+    try {
+        console.log('📡 Fetching fresh data for student:', admission);
+        
+        // ✅ Get student info
+        const studentInfo = await apiCall(`/api/student/${admission}`, {});
+        console.log('📡 Student info response:', studentInfo);
+        
+        if (!studentInfo || !studentInfo.success) {
+            console.error('❌ Student not found:', studentInfo);
+            return null;
+        }
+        
+        // ✅ Get config
+        const config = await getConfig(true);
+        const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+        const subjects = [];
+        let totalScore = 0;
+        let subjectCount = 0;
+        let cat1Scores = [];
+        let cat2Scores = [];
+        let examScores = [];
+        
+        // ✅ Get marks for each subject
+        for (let block of blocks) {
+            const blockSubjects = config[block] || [];
+            for (let subject of blockSubjects) {
+                const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+                if (marks && marks.length) {
+                    for (let mark of marks) {
+                        if (mark.admission === admission) {
+                            console.log(`📡 Found marks for ${subject.name}:`, mark);
+                            
+                            let finalScore = 0;
+                            let cat1 = parseFloat(mark.cat1) || 0;
+                            let cat2 = parseFloat(mark.cat2) || 0;
+                            let exam = parseFloat(mark.exam) || 0;
+                            
+                            if (subject.assessmentType === 'full') {
+                                finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+                                if (cat1 > 0) cat1Scores.push(cat1);
+                                if (cat2 > 0) cat2Scores.push(cat2);
+                                if (exam > 0) examScores.push(exam);
+                            } else if (subject.assessmentType === 'single_cat') {
+                                finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+                                if (cat1 > 0) cat1Scores.push(cat1);
+                                if (exam > 0) examScores.push(exam);
+                            } else {
+                                finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+                                if (exam > 0) examScores.push(exam);
+                            }
+                            
+                            if (finalScore > 0) {
+                                subjects.push({ 
+                                    name: subject.name, 
+                                    score: finalScore, 
+                                    block: block 
+                                });
+                                totalScore += finalScore;
+                                subjectCount++;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        const overallAvg = subjectCount > 0 ? parseFloat((totalScore / subjectCount).toFixed(2)) : 0;
+        
+        const studentData = {
+            name: studentInfo.student?.name || 'Unknown',
+            admission: admission,
+            block: studentInfo.student?.block || 'BLOCK_0',
+            subjects: subjects,
+            totalScore: totalScore,
+            subjectCount: subjectCount,
+            cat1Scores: cat1Scores,
+            cat2Scores: cat2Scores,
+            examScores: examScores,
+            overallAvg: overallAvg,
+            status: overallAvg >= 60 ? 'PASS' : (subjectCount > 0 ? 'FAIL' : 'PENDING')
+        };
+        
+        console.log('✅ Fresh student data assembled:', studentData);
+        console.log('📊 Subjects count:', studentData.subjects.length);
+        console.log('📊 Overall average:', studentData.overallAvg);
+        
+        return studentData;
+        
+    } catch (error) {
+        console.error('❌ Error fetching fresh student data:', error);
+        return null;
     }
 }
 // ===== TAB SWITCHING =====
