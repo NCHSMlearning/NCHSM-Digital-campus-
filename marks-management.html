@@ -5766,7 +5766,184 @@ function generateMassTranscriptsZip() {
       }
     }
   }
+// ======================= AUTO-REFRESH SYSTEM =======================
 
+// 1. Refresh on tab focus - detects when user comes back to the page
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        console.log('🔄 Tab focused - refreshing data...');
+        refreshAllData();
+    }
+});
+
+// 2. Periodic auto-refresh (every 30 seconds)
+let autoRefreshInterval = null;
+
+function startAutoRefresh(intervalSeconds = 30) {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(() => {
+        // Only refresh if page is visible to avoid unnecessary API calls
+        if (document.visibilityState === 'visible') {
+            console.log('🔄 Auto-refreshing data...');
+            refreshAllData();
+        }
+    }, intervalSeconds * 1000);
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
+// 3. Last updated tracking
+let lastUpdatedTime = null;
+
+function updateLastUpdatedTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    const dateString = now.toLocaleDateString();
+    lastUpdatedTime = now;
+    
+    const indicators = document.querySelectorAll('.last-updated');
+    indicators.forEach(el => {
+        el.textContent = `📅 Last updated: ${dateString} ${timeString}`;
+    });
+}
+
+// 4. Enhanced refresh with visual feedback
+const originalRefreshAllData = refreshAllData;
+refreshAllData = async function() {
+    console.log('🔄 Refreshing all data from server...');
+    
+    // Show refresh indicator
+    const refreshBtns = document.querySelectorAll('.global-refresh-btn, .refresh-btn');
+    refreshBtns.forEach(btn => {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        btn.disabled = true;
+    });
+    
+    showLoading('Refreshing data...');
+    
+    configCache = null;
+    currentAdminMarks = null;
+    currentMarksData = null;
+    currentNCKMarks = null;
+    
+    const stats = await apiCall('/api/stats', {});
+    console.log('📊 Stats refreshed:', stats);
+    
+    // Reload current view
+    if (window.currentAdminBlock && window.currentAdminSubject) {
+        await loadAdminMarks(
+            window.currentAdminBlock,
+            window.currentAdminSubject,
+            window.currentAdminAssessmentType
+        );
+    } else if (currentUser?.role === 'lecturer') {
+        await showLecturerSubjects();
+    } else if (document.getElementById('nckSheetSelect')) {
+        await loadNCKMarks();
+    } else if (document.getElementById('studentSelectForReport')) {
+        // If on transcripts page, reload it
+        await showTranscriptsPage();
+    } else {
+        await showMain();
+    }
+    
+    hideLoading();
+    updateLastUpdatedTime();
+    
+    // Restore refresh buttons
+    refreshBtns.forEach(btn => {
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        btn.disabled = false;
+    });
+    
+    showNotification('✅ Data refreshed from server!', false);
+};
+
+// 5. Toggle auto-refresh
+function toggleAutoRefresh() {
+    const statusEl = document.getElementById('refreshStatus');
+    const btn = document.querySelector('[onclick="toggleAutoRefresh()"]');
+    
+    if (autoRefreshInterval) {
+        stopAutoRefresh();
+        if (statusEl) statusEl.textContent = 'OFF';
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-play"></i> Resume';
+            btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        }
+        showNotification('⏸️ Auto-refresh paused', false);
+    } else {
+        startAutoRefresh(30);
+        if (statusEl) statusEl.textContent = 'ON (30s)';
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+        }
+        showNotification('▶️ Auto-refresh resumed', false);
+    }
+}
+
+// 6. Start auto-refresh on page load
+document.addEventListener('DOMContentLoaded', function() {
+    startAutoRefresh(30);
+    updateLastUpdatedTime();
+});
+
+// 7. Stop auto-refresh when user logs out
+const originalLogout = logout;
+logout = function() {
+    stopAutoRefresh();
+    originalLogout();
+};
+
+// 8. Add refresh controls to dashboard
+function addRefreshControls() {
+    // Remove existing controls to avoid duplicates
+    const existing = document.querySelector('.refresh-controls');
+    if (existing) existing.remove();
+    
+    const controls = document.createElement('div');
+    controls.className = 'refresh-controls';
+    controls.style.cssText = 'display: flex; gap: 10px; align-items: center; padding: 8px 16px; background: #f8fafc; border-radius: 12px; margin-bottom: 12px; flex-wrap: wrap; border: 1px solid #e2e8f0;';
+    controls.innerHTML = `
+        <span style="font-size: 12px; color: #64748b;">
+            <i class="fas fa-sync-alt"></i> Auto-refresh: <span id="refreshStatus" style="font-weight: 600; color: #10b981;">ON (30s)</span>
+        </span>
+        <button onclick="toggleAutoRefresh()" class="save-btn" style="padding: 4px 14px; font-size: 11px; background: linear-gradient(135deg, #ef4444, #dc2626);">
+            <i class="fas fa-pause"></i> Pause
+        </button>
+        <button onclick="refreshAllData()" class="save-btn" style="padding: 4px 14px; font-size: 11px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+            <i class="fas fa-sync-alt"></i> Refresh Now
+        </button>
+        <span class="last-updated" style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+            📅 Last updated: ${new Date().toLocaleTimeString()}
+        </span>
+    `;
+    
+    // Add after the user-info section
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo) {
+        userInfo.parentNode.insertBefore(controls, userInfo.nextSibling);
+    } else {
+        // Fallback: add after stats grid
+        const statsGrid = document.querySelector('.stats-grid');
+        if (statsGrid) {
+            statsGrid.parentNode.insertBefore(controls, statsGrid.nextSibling);
+        }
+    }
+}
+
+// 9. Override showMain to add refresh controls
+const originalShowMain = showMain;
+showMain = async function() {
+    await originalShowMain();
+    setTimeout(addRefreshControls, 500);
+};
   // ======================= INITIALIZATION =======================
   let sy = localStorage.getItem('selectedYear'); 
   if(sy && INTAKE_YEARS.includes(sy)) currentYear = sy; 
