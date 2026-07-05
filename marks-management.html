@@ -2864,56 +2864,129 @@ document.querySelectorAll('.nav-item').forEach(el => {
     hideLoading(); 
   }
 
-  async function loadAdminMarks(block, subject, at) { 
+ async function loadAdminMarks(block, subject, at) { 
     showLoading('Loading marks...'); 
-    const marks = await apiCall(`/api/marks/${block}/${subject}`, {}); 
-    let html = `<div class="export-bar" style="margin-bottom:16px;"><button class="export-btn" onclick="exportAdminMarks()">Export CSV</button><button class="btn-info" onclick="fillDownValues()" style="margin-left:10px;">Fill Down</button></div>
-      <div style="overflow-x:auto;"><table style="width:100%"><thead><tr style="background:#667eea;color:white"><th>Admission</th><th>Name</th>`;
-    if(at === 'full') html += '<th>CAT1 (0-30)</th><th>CAT2 (0-30)</th><th>Exam (0-70)</th>';
-    else if(at === 'single_cat') html += '<th>CAT (0-30)</th><th>Exam (0-70)</th>';
-    else html += '<th>Exam (0-100)</th>';
-    html += '<th>Total</th><th>Status</th><th>Graded By</th></tr></thead><tbody>';
+    
+    // ✅ FORCE FRESH DATA - Add timestamp to URL
+    const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+    
+    console.log('📊 Admin marks loaded:', marks);
+    console.log('📊 Number of records:', marks ? marks.length : 0);
+    console.log('📊 First record:', marks && marks.length > 0 ? marks[0] : 'No data');
+    
+    if (!marks || marks.length === 0) {
+        document.getElementById('marksTable').innerHTML = `
+            <div class="card" style="text-align:center; padding: 40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px;"></i>
+                <h4>No marks found for ${subject}</h4>
+                <p style="color: #64748b;">No student data available for this subject. Please check if students are assigned to this block.</p>
+                <button class="save-btn" onclick="refreshAllData()" style="margin-top: 12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+        `;
+        hideLoading();
+        return;
+    }
+    
+    let html = `<div class="export-bar" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-file-export"></i> Export CSV</button>
+        <button class="btn-info" onclick="fillDownValues()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#2563eb);">
+            <i class="fas fa-arrow-down"></i> Fill Down
+        </button>
+        <button class="btn-warning" onclick="refreshAllData()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span style="font-size:12px;color:#64748b;padding:8px 12px;background:#f1f5f9;border-radius:40px;">
+            📅 ${currentYear} Class | ${marks.length} students
+        </span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+                <tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+                    <th style="padding:12px 8px;text-align:left;">Admission</th>
+                    <th style="padding:12px 8px;text-align:left;">Name</th>`;
+    
+    if(at === 'full') {
+        html += '<th style="padding:12px 8px;text-align:center;">CAT1 (0-30)</th><th style="padding:12px 8px;text-align:center;">CAT2 (0-30)</th><th style="padding:12px 8px;text-align:center;">Exam (0-70)</th>';
+    } else if(at === 'single_cat') {
+        html += '<th style="padding:12px 8px;text-align:center;">CAT (0-30)</th><th style="padding:12px 8px;text-align:center;">Exam (0-70)</th>';
+    } else {
+        html += '<th style="padding:12px 8px;text-align:center;">Exam (0-100)</th>';
+    }
+    
+    html += `<th style="padding:12px 8px;text-align:center;">Total</th>
+                    <th style="padding:12px 8px;text-align:center;">Status</th>
+                    <th style="padding:12px 8px;text-align:center;">Graded By</th>
+                </tr>
+            </thead>
+            <tbody>`;
+    
     window.currentAdminMarks = marks; 
     window.currentAdminAssessmentType = at; 
     window.currentAdminBlock = block; 
     window.currentAdminSubject = subject; 
     window.currentSaveFunction = saveAdminMarks;
+    
     for(let i = 0; i < marks.length; i++){ 
-      const m = marks[i]; 
-      const cat1 = m.cat1 || ''; 
-      const cat2 = m.cat2 || ''; 
-      const exam = m.exam || ''; 
-      let ncat1 = parseFloat(cat1) || 0; 
-      let ncat2 = parseFloat(cat2) || 0; 
-      let nexam = parseFloat(exam) || 0; 
-      let total = 0; 
-      if(at === 'full') total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
-      else if(at === 'single_cat') total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
-      else total = Math.round(Math.min(nexam,100) * 10) / 10;
-      const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
-      const rowClass = total >= 60 ? 'pass-row' : 'fail-row';
-      html += `<tr class="${rowClass}"><td style="padding:10px;">${m.admission}</td><td style="padding:10px;"><strong>${m.name}</strong></td>`;
-      if(at === 'full'){ 
-        html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>
-          <td style="padding:10px;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>
-          <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; 
-      } else if(at === 'single_cat'){ 
-        html += `<td style="padding:10px;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" onchange="updateAdminTotal(${i})"></td>
-          <td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" onchange="updateAdminTotal(${i})"></td>`; 
-      } else { 
-        html += `<td style="padding:10px;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" onchange="updateAdminTotal(${i})"></td>`; 
-      } 
-      html += `<td id="atotal_${i}" style="font-weight:bold;">${total}</td>
-        <td id="astatus_${i}">${status}</td>
-        <td style="padding:10px;">${m.gradedBy || '-'}</td></tr>`; 
+        const m = marks[i]; 
+        const cat1 = m.cat1 || ''; 
+        const cat2 = m.cat2 || ''; 
+        const exam = m.exam || ''; 
+        let ncat1 = parseFloat(cat1) || 0; 
+        let ncat2 = parseFloat(cat2) || 0; 
+        let nexam = parseFloat(exam) || 0; 
+        let total = 0; 
+        
+        if(at === 'full') {
+            total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
+        } else if(at === 'single_cat') {
+            total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
+        } else {
+            total = Math.round(Math.min(nexam,100) * 10) / 10;
+        }
+        
+        const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : ''); 
+        const rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : 'pending-row');
+        
+        html += `<tr class="${rowClass}">
+            <td style="padding:10px 8px;font-weight:500;">${m.admission || 'N/A'}</td>
+            <td style="padding:10px 8px;"><strong>${m.name || 'Unknown'}</strong></td>`;
+        
+        if(at === 'full'){ 
+            html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>
+                <td style="padding:8px;text-align:center;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>
+                <td style="padding:8px;text-align:center;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`; 
+        } else if(at === 'single_cat'){ 
+            html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>
+                <td style="padding:8px;text-align:center;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="70" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`; 
+        } else { 
+            html += `<td style="padding:8px;text-align:center;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="100" step="0.5" style="width:65px;padding:6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`; 
+        } 
+        
+        html += `<td id="atotal_${i}" style="padding:10px 8px;text-align:center;font-weight:bold;${total >= 60 ? 'color:#065f46;' : (total > 0 ? 'color:#991b1b;' : 'color:#f59e0b;')}">${total}</td>
+            <td id="astatus_${i}" style="padding:10px 8px;text-align:center;">
+                ${status ? `<span class="badge ${status === 'PASS' ? 'badge-pass' : 'badge-fail'}">${status}</span>` : '<span class="badge badge-pending">PENDING</span>'}
+            </td>
+            <td style="padding:10px 8px;text-align:center;font-size:12px;color:#64748b;">${m.gradedBy || '-'}</td>
+        </tr>`; 
     } 
+    
     html += `</tbody></table></div>
-      <div style="text-align:center;margin-top:20px"><button class="save-btn" onclick="saveAdminMarks()">💾 Save All Marks</button></div>`; 
+        <div style="text-align:center;margin-top:20px;">
+            <button class="save-btn" onclick="saveAdminMarks()" style="padding:12px 32px;font-size:16px;">
+                <i class="fas fa-save"></i> 💾 Save All Marks
+            </button>
+            <button class="btn-warning" onclick="refreshAllData()" style="padding:12px 32px;font-size:16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);margin-left:10px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>`; 
+    
     document.getElementById('marksTable').innerHTML = html; 
     hideLoading(); 
     startAutoSave(saveAdminMarks, 30000);
-  }
-
+}
   window.updateAdminTotal = function(idx){ 
     const at = window.currentAdminAssessmentType || 'full'; 
     let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0; 
