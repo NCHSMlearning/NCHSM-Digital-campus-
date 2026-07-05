@@ -1,6 +1,6 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 3.0 - All Features Included
+// Version: 4.0 - Fixed Session + Theme Toggle
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
 
@@ -82,8 +82,9 @@ window.NCHSMLogin = {
             return;
         }
         
-        console.log('🚀 Initializing NCHSMLogin v3.0...');
+        console.log('🚀 Initializing NCHSMLogin v4.0...');
         console.log('🛡️ Ultimate Security Edition');
+        console.log('🌓 Theme Toggle + Session Tracking Fixed');
         
         // Hide console from hackers
         this.disableDeveloperTools();
@@ -141,11 +142,252 @@ window.NCHSMLogin = {
         // Hide skeleton loader
         this.hideSkeletonLoader();
         
+        // ✅ INITIALIZE THEME TOGGLE
+        this.initThemeToggle();
+        
         // Mark as initialized
         this.state.isInitialized = true;
         
-        console.log('✅ NCHSMLogin v3.0 initialized');
+        console.log('✅ NCHSMLogin v4.0 initialized');
         console.log(`🕐 ${new Date().toLocaleString()}`);
+    },
+    
+    // ============================================
+    // THEME TOGGLE - FIXED
+    // ============================================
+    initThemeToggle: function() {
+        const toggleBtn = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+        
+        if (!toggleBtn) {
+            console.warn('⚠️ Theme toggle button not found');
+            return;
+        }
+        
+        // Check saved preference
+        const savedTheme = localStorage.getItem('nchsm_theme') || 'light';
+        console.log('🌓 Saved theme:', savedTheme);
+        
+        // Apply saved theme
+        this.applyTheme(savedTheme);
+        
+        // Toggle on click
+        toggleBtn.addEventListener('click', () => {
+            const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            this.applyTheme(newTheme);
+            localStorage.setItem('nchsm_theme', newTheme);
+            console.log('🌓 Theme changed to:', newTheme);
+        });
+        
+        console.log('✅ Theme toggle initialized');
+    },
+    
+    applyTheme: function(theme) {
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+        
+        if (theme === 'dark') {
+            document.body.classList.add('dark-theme');
+            document.body.classList.remove('light-theme');
+            if (themeIcon) {
+                themeIcon.setAttribute('data-feather', 'moon');
+            }
+            if (themeLabel) {
+                themeLabel.textContent = 'Dark';
+            }
+            console.log('🌙 Dark mode applied');
+        } else {
+            document.body.classList.add('light-theme');
+            document.body.classList.remove('dark-theme');
+            if (themeIcon) {
+                themeIcon.setAttribute('data-feather', 'sun');
+            }
+            if (themeLabel) {
+                themeLabel.textContent = 'Light';
+            }
+            console.log('☀️ Light mode applied');
+        }
+        
+        // Re-render Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    },
+    
+    // ============================================
+    // SESSION TRACKING - FIXED VERSION
+    // ============================================
+    trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
+        console.log('🔍 TRACKING SESSION STARTED');
+        console.log('👤 User ID:', userId);
+        console.log('📧 Email:', email);
+        console.log('📝 Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+        console.log('👔 Is Staff:', isStaff);
+        
+        try {
+            // Check if supabase is available
+            if (!this.supabase) {
+                console.error('❌ Supabase not initialized!');
+                return null;
+            }
+            
+            // Get IP address
+            let ipAddress = 'unknown';
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                ipAddress = ipData.ip;
+                console.log('🌐 IP Address:', ipAddress);
+            } catch (ipError) {
+                console.warn('⚠️ Could not get IP, using "unknown"');
+            }
+            
+            // Parse device info
+            const deviceInfo = this.parseUserAgent(userAgent);
+            console.log('📱 Device Info:', deviceInfo);
+            
+            // Set expiry (24 hours from now)
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            console.log('⏰ Expires At:', expiresAt.toISOString());
+            
+            // Hash the token (for security)
+            const hashedToken = await this.hashToken(sessionToken);
+            console.log('🔐 Token hashed successfully');
+            
+            // Prepare session data
+            const sessionData = {
+                user_id: userId,
+                session_token: hashedToken,
+                ip_address: ipAddress,
+                user_agent: userAgent || 'Unknown',
+                device_info: deviceInfo,
+                login_time: new Date().toISOString(),
+                last_activity: new Date().toISOString(),
+                expires_at: expiresAt.toISOString(),
+                is_active: true,
+                login_type: isStaff ? 'staff' : 'user',
+                created_at: new Date().toISOString()
+            };
+            
+            console.log('📦 Inserting session data...');
+            
+            // Insert session
+            const { data, error } = await this.supabase
+                .from('user_sessions')
+                .insert(sessionData)
+                .select();
+            
+            if (error) {
+                console.error('❌ Session insert ERROR:', error);
+                console.error('❌ Error details:', JSON.stringify(error, null, 2));
+                
+                // Try insert without select
+                console.log('🔄 Retrying without .select()...');
+                const { error: insertError } = await this.supabase
+                    .from('user_sessions')
+                    .insert(sessionData);
+                
+                if (insertError) {
+                    console.error('❌ Second attempt failed:', insertError);
+                    return null;
+                }
+                console.log('✅ Session inserted successfully (without select)');
+                return { id: 'inserted' };
+            }
+            
+            console.log('✅ Session tracked successfully!');
+            console.log('📊 Session ID:', data?.[0]?.id);
+            
+            // Store session ID in local storage
+            if (data && data[0]) {
+                localStorage.setItem('session_id', data[0].id);
+            }
+            
+            return data?.[0];
+            
+        } catch (error) {
+            console.error('❌ Session tracking ERROR:', error);
+            console.error('❌ Error stack:', error.stack);
+            // Don't block login if session tracking fails
+            return null;
+        }
+    },
+    
+    // ============================================
+    // COMPLETE LOGIN - WITH SESSION TRACKING FIX
+    // ============================================
+    completeLogin: async function(profileData, sessionToken, isStaff = false) {
+        console.log('🎉 COMPLETE LOGIN STARTED');
+        console.log('📊 Profile Data:', profileData);
+        console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+        console.log('👔 Is Staff:', isStaff);
+        
+        try {
+            // 1. Update last login (non-blocking)
+            if (!isStaff) {
+                console.log('📝 Updating last login...');
+                this.updateLastLogin(profileData.user_id, profileData.email).catch((err) => {
+                    console.warn('⚠️ Last login update failed:', err);
+                });
+            }
+            
+            // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
+            console.log('🔍 Attempting to track session...');
+            const sessionResult = await this.trackUserSession(
+                profileData.user_id, 
+                profileData.email, 
+                sessionToken, 
+                navigator.userAgent, 
+                isStaff
+            );
+            
+            if (sessionResult) {
+                console.log('✅ Session tracked successfully!');
+            } else {
+                console.warn('⚠️ Session tracking returned null/undefined');
+            }
+            
+            // 3. Store profile (minimal)
+            const safeProfile = {
+                user_id: profileData.user_id,
+                email: profileData.email,
+                full_name: profileData.full_name,
+                role: profileData.role,
+                program: profileData.program || profileData.department,
+                is_staff: isStaff || false
+            };
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            console.log('💾 Profile stored in localStorage');
+            
+            // 4. Store session expiry
+            if (!isStaff && this.supabase) {
+                try {
+                    const { data: { session } } = await this.supabase.auth.getSession();
+                    if (session) {
+                        localStorage.setItem('session_expires', session.expires_at);
+                        console.log('⏰ Session expiry stored:', session.expires_at);
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Could not get session expiry:', err);
+                }
+            }
+            
+            // 5. Update last login info on page
+            this.updateLastLoginInfo();
+            
+            // 6. Redirect
+            console.log('🚀 Redirecting to dashboard...');
+            this.redirectToDashboard(profileData);
+            
+        } catch (error) {
+            console.error('❌ Complete login error:', error);
+            console.error('❌ Error stack:', error.stack);
+            // Still redirect even if tracking fails
+            this.redirectToDashboard(profileData);
+        }
     },
     
     // ============================================
@@ -164,7 +406,7 @@ window.NCHSMLogin = {
     // RIPPLE EFFECT
     // ============================================
     initRippleEffect: function() {
-        document.querySelectorAll('.login-button, .sso-btn, .btn-primary').forEach(button => {
+        document.querySelectorAll('.login-button, .sso-btn, .btn-primary, .theme-toggle-btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 const rect = this.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -192,7 +434,6 @@ window.NCHSMLogin = {
                 if (this.value.length === 1 && index < inputs.length - 1) {
                     inputs[index + 1].focus();
                 }
-                // Auto-submit when all digits filled
                 const allFilled = Array.from(inputs).every(inp => inp.value.length === 1);
                 if (allFilled) {
                     document.querySelector('.verify-otp')?.click();
@@ -206,7 +447,6 @@ window.NCHSMLogin = {
                 if (e.key === 'Enter') {
                     document.querySelector('.verify-otp')?.click();
                 }
-                // Arrow key navigation
                 if (e.key === 'ArrowRight' && index < inputs.length - 1) {
                     inputs[index + 1].focus();
                 }
@@ -215,7 +455,6 @@ window.NCHSMLogin = {
                 }
             });
             
-            // Auto-focus next on paste
             input.addEventListener('paste', function(e) {
                 const paste = (e.clipboardData || window.clipboardData).getData('text');
                 if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
@@ -255,13 +494,11 @@ window.NCHSMLogin = {
     // DISABLE DEVELOPER TOOLS
     // ============================================
     disableDeveloperTools: function() {
-        // Disable right-click
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             return false;
         });
         
-        // Disable keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.key === 'F12' || 
                 (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
@@ -272,7 +509,6 @@ window.NCHSMLogin = {
             }
         });
         
-        // Protect console.log
         const originalConsoleLog = console.log;
         console.log = function() {
             const args = Array.from(arguments);
@@ -284,7 +520,6 @@ window.NCHSMLogin = {
             originalConsoleLog.apply(console, args);
         };
         
-        // Protect console.table
         const originalConsoleTable = console.table;
         console.table = function() {
             const args = Array.from(arguments);
@@ -543,7 +778,6 @@ window.NCHSMLogin = {
                     e.preventDefault();
                     loginForm.dispatchEvent(new Event('submit'));
                 }
-                // Ctrl+Enter to submit
                 if (e.ctrlKey && e.key === 'Enter') {
                     e.preventDefault();
                     loginForm.dispatchEvent(new Event('submit'));
@@ -551,7 +785,6 @@ window.NCHSMLogin = {
             });
         }
         
-        // Keyboard shortcut: Ctrl+R to reset
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
@@ -653,7 +886,6 @@ window.NCHSMLogin = {
             modal.classList.add('active');
             modal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
-            // Focus first input
             const firstInput = modal.querySelector('input, button');
             if (firstInput) {
                 setTimeout(() => firstInput.focus(), 100);
@@ -1032,60 +1264,6 @@ window.NCHSMLogin = {
         }, 2000);
     },
     
-    // ============================================
-    // TRACK SESSION
-    // ============================================
-    trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
-        try {
-            let ipAddress = 'unknown';
-            try {
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                ipAddress = ipData.ip;
-            } catch (ipError) {
-                // Silent fail
-            }
-            
-            const deviceInfo = this.parseUserAgent(userAgent);
-            
-            const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + 24);
-            
-            const hashedToken = await this.hashToken(sessionToken);
-            
-            const { data, error } = await this.supabase
-                .from('user_sessions')
-                .insert({
-                    user_id: userId,
-                    session_token_hash: hashedToken,
-                    ip_address: ipAddress,
-                    user_agent: userAgent,
-                    device_info: deviceInfo,
-                    login_time: new Date().toISOString(),
-                    last_activity: new Date().toISOString(),
-                    expires_at: expiresAt.toISOString(),
-                    is_active: true,
-                    login_type: isStaff ? 'staff' : 'user'
-                })
-                .select();
-            
-            if (error) {
-                console.error('❌ Session tracking failed');
-                return null;
-            }
-            
-            if (data && data[0]) {
-                localStorage.setItem('session_id', data[0].id);
-            }
-            
-            return data?.[0];
-            
-        } catch (error) {
-            console.error('❌ Session tracking error');
-            return null;
-        }
-    },
-    
     hashToken: async function(token) {
         const encoder = new TextEncoder();
         const data = encoder.encode(token);
@@ -1152,52 +1330,6 @@ window.NCHSMLogin = {
             
         } catch (error) {
             return false;
-        }
-    },
-    
-    // ============================================
-    // COMPLETE LOGIN
-    // ============================================
-    completeLogin: async function(profileData, sessionToken, isStaff = false) {
-        console.log('🎉 Completing login...');
-        
-        try {
-            if (!isStaff) {
-                this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
-            }
-            this.trackUserSession(
-                profileData.user_id, 
-                profileData.email, 
-                sessionToken, 
-                navigator.userAgent, 
-                isStaff
-            ).catch(() => {});
-            
-            const safeProfile = {
-                user_id: profileData.user_id,
-                email: profileData.email,
-                full_name: profileData.full_name,
-                role: profileData.role,
-                program: profileData.program || profileData.department,
-                is_staff: isStaff || false
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            
-            if (!isStaff && this.supabase) {
-                const { data: { session } } = await this.supabase.auth.getSession();
-                if (session) {
-                    localStorage.setItem('session_expires', session.expires_at);
-                }
-            }
-            
-            // Update last login info
-            this.updateLastLoginInfo();
-            
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error');
-            this.redirectToDashboard(profileData);
         }
     },
     
@@ -1394,5 +1526,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-console.log('📦 NCHSM Login v3.0 loaded');
+console.log('📦 NCHSM Login v4.0 loaded');
 console.log(`🕐 ${new Date().toLocaleString()}`);
