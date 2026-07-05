@@ -1333,30 +1333,133 @@ window.NCHSMLogin = {
         }
     },
     
-    // ============================================
-    // UPDATE LAST LOGIN INFO
-    // ============================================
-    updateLastLoginInfo: function() {
-        const info = document.getElementById('lastLoginInfo');
-        if (info) {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            const dateStr = now.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            const browser = this.parseUserAgent(navigator.userAgent);
+  // ============================================
+// UPDATE LAST LOGIN INFO - FROM DATABASE
+// ============================================
+updateLastLoginInfo: function() {
+    const info = document.getElementById('lastLoginInfo');
+    if (!info) return;
+    
+    // Show loading state
+    info.innerHTML = `
+        <i data-feather="clock"></i>
+        <span>Loading last login...</span>
+    `;
+    feather.replace();
+    
+    // Get user profile from localStorage
+    const userProfile = localStorage.getItem('userProfile');
+    if (!userProfile) {
+        info.innerHTML = `
+            <i data-feather="clock"></i>
+            <span>Welcome! Please log in to see your activity.</span>
+        `;
+        feather.replace();
+        return;
+    }
+    
+    try {
+        const profile = JSON.parse(userProfile);
+        const userId = profile.user_id;
+        const userEmail = profile.email;
+        
+        if (!userId) {
             info.innerHTML = `
                 <i data-feather="clock"></i>
-                <span>Last login: ${dateStr} at ${timeStr} from ${browser}</span>
+                <span>Welcome! Please log in to see your activity.</span>
             `;
             feather.replace();
+            return;
         }
-    },
+        
+        console.log('🔍 Fetching last login for user:', userId);
+        
+        // Query the database for last login
+        this.supabase
+            .from('user_sessions')
+            .select('login_time, device_info, ip_address')
+            .eq('user_id', userId)
+            .order('login_time', { ascending: false })
+            .limit(2) // Get last 2 logins to show previous one
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('❌ Error fetching last login:', error);
+                    this.showCurrentLoginInfo(info);
+                    return;
+                }
+                
+                console.log('📊 Login data:', data);
+                
+                if (!data || data.length === 0) {
+                    info.innerHTML = `
+                        <i data-feather="clock"></i>
+                        <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
+                    `;
+                    feather.replace();
+                    return;
+                }
+                
+                // data[0] is the current login, data[1] is the previous login
+                if (data.length >= 2 && data[1]) {
+                    // Show previous login
+                    const previousLogin = data[1];
+                    const loginDate = new Date(previousLogin.login_time);
+                    const timeStr = loginDate.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    const dateStr = loginDate.toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    const device = previousLogin.device_info || 'Unknown Device';
+                    const ip = previousLogin.ip_address || '';
+                    
+                    info.innerHTML = `
+                        <i data-feather="clock"></i>
+                        <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
+                    `;
+                } else {
+                    // Only one login - first time
+                    info.innerHTML = `
+                        <i data-feather="clock"></i>
+                        <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
+                    `;
+                }
+                feather.replace();
+            })
+            .catch((err) => {
+                console.error('❌ Error:', err);
+                this.showCurrentLoginInfo(info);
+            });
+            
+    } catch (error) {
+        console.error('❌ Error parsing profile:', error);
+        this.showCurrentLoginInfo(info);
+    }
+},
+
+// ===== FALLBACK: Show current login info =====
+showCurrentLoginInfo: function(info) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    const dateStr = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    const device = this.parseUserAgent(navigator.userAgent);
+    
+    info.innerHTML = `
+        <i data-feather="clock"></i>
+        <span>Logged in: ${dateStr} at ${timeStr} from ${device}</span>
+    `;
+    feather.replace();
+},
     
     // ============================================
     // REDIRECT TO DASHBOARD
