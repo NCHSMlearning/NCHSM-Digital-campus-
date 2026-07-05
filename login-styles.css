@@ -66,6 +66,7 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ============================================
@@ -82,6 +83,7 @@ body::before {
                 url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg') center center / cover no-repeat fixed;
     background-size: cover;
     z-index: -2;
+    transition: all 0.3s ease;
 }
 
 body::after {
@@ -194,6 +196,7 @@ body::after {
     background: rgba(5, 46, 31, 0.6);
     backdrop-filter: blur(10px);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
 }
 
 /* Animated shimmer effect */
@@ -247,6 +250,7 @@ body::after {
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     border-left: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background 0.3s ease;
 }
 
 /* ===== MOBILE HEADER ===== */
@@ -258,6 +262,7 @@ body::after {
     display: flex;
     align-items: center;
     box-shadow: var(--shadow-sm);
+    transition: background 0.3s ease;
 }
 
 .header-content {
@@ -524,7 +529,7 @@ body::after {
     transform: translateY(-2px);
 }
 
-/* Gradient border */
+/* Gold accent line on top */
 .login-card::before {
     content: '';
     position: absolute;
@@ -546,6 +551,52 @@ body::after {
     background: var(--gradient-gold);
     z-index: -1;
     opacity: 0.15;
+}
+
+/* ============================================
+   THEME TOGGLE BUTTON
+   ============================================ */
+.theme-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+}
+
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: var(--nchsm-gray);
+    border: 1px solid var(--nchsm-gray-light);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--nchsm-gray-dark);
+    font-family: inherit;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--nchsm-gray-light);
+    transform: scale(1.05);
+    box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.theme-toggle-btn i {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle-btn:hover i {
+    transform: rotate(30deg);
 }
 
 /* ===== WELCOME SECTION ===== */
@@ -578,6 +629,7 @@ body::after {
     font-weight: 800;
     color: var(--nchsm-green-dark);
     margin-bottom: 0.25rem;
+    transition: color 0.3s ease;
 }
 
 .welcome-title .gold {
@@ -589,6 +641,7 @@ body::after {
     color: var(--nchsm-gray-dark);
     opacity: 0.7;
     line-height: 1.6;
+    transition: color 0.3s ease;
 }
 
 /* ===== FORM STYLES ===== */
@@ -622,6 +675,7 @@ body::after {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    transition: color 0.3s ease;
 }
 
 .input-wrapper {
@@ -762,6 +816,7 @@ body::after {
     font-weight: 500;
     cursor: pointer;
     margin-bottom: 0;
+    transition: color 0.3s ease;
 }
 
 .tooltip {
@@ -916,6 +971,7 @@ body::after {
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--nchsm-gray-dark);
+    font-family: inherit;
 }
 
 .sso-btn:hover {
@@ -1013,6 +1069,7 @@ body::after {
     background: rgba(13, 107, 62, 0.05);
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
+    transition: all 0.3s ease;
 }
 
 .last-login-info i {
@@ -1163,6 +1220,8 @@ body::after {
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     font-family: monospace;
+    background: var(--nchsm-white);
+    color: var(--nchsm-gray-dark);
 }
 
 .otp-digit:focus {
@@ -1186,6 +1245,7 @@ body::after {
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-base);
+    font-family: inherit;
 }
 
 .otp-actions .btn-primary:hover {
@@ -1202,6 +1262,7 @@ body::after {
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-base);
+    font-family: inherit;
 }
 
 .otp-actions .btn-secondary:hover {
@@ -1290,6 +1351,7 @@ body::after {
     cursor: pointer;
     transition: all var(--transition-fast);
     flex-shrink: 0;
+    font-family: inherit;
 }
 
 .btn-extend:hover {
@@ -1303,6 +1365,7 @@ body::after {
     backdrop-filter: blur(10px);
     border-top: 2px solid rgba(255, 255, 255, 0.3);
     padding: 1rem;
+    transition: background 0.3s ease;
 }
 
 .footer-content {
@@ -1444,7 +1507,205 @@ body::after {
     padding: 1.5rem 2rem 2rem;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
+/* ============================================
+   DARK MODE - CLASS-BASED (Manual Toggle)
+   ============================================ */
+body.dark-theme {
+    --nchsm-white: #1a1a2e;
+    --nchsm-gray: #2d2d44;
+    --nchsm-gray-light: #3d3d5c;
+    --nchsm-gray-dark: #e8e8e8;
+}
+
+body.dark-theme .right-panel {
+    background: rgba(26, 26, 46, 0.92);
+}
+
+body.dark-theme .mobile-header {
+    background: rgba(45, 45, 68, 0.95);
+    border-bottom-color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .mobile-header .college-name {
+    color: var(--nchsm-gold);
+}
+
+body.dark-theme .login-card {
+    background: rgba(45, 45, 68, 0.95);
+    border-color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .login-card::before {
+    background: var(--gradient-gold);
+}
+
+body.dark-theme .login-card::after {
+    opacity: 0.3;
+}
+
+body.dark-theme .welcome-title {
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .welcome-subtitle {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .form-label {
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .form-input {
+    background: var(--nchsm-white);
+    border-color: var(--nchsm-gray-light);
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .form-input:focus {
+    border-color: var(--nchsm-gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+body.dark-theme .stay-signed-in label {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .forgot-link {
+    color: var(--nchsm-gold);
+}
+
+body.dark-theme .signup-link {
+    background: var(--nchsm-gray);
+    border-color: var(--nchsm-gray-light);
+    color: var(--nchsm-gold);
+}
+
+body.dark-theme .signup-link:hover {
+    background: var(--nchsm-gray-light);
+}
+
+body.dark-theme .sso-btn {
+    background: var(--nchsm-gray);
+    border-color: var(--nchsm-gray-light);
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .sso-btn:hover {
+    background: var(--nchsm-gray-light);
+}
+
+body.dark-theme .quick-link {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .footer {
+    background: rgba(45, 45, 68, 0.8);
+    border-top-color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .copyright {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .footer-link {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .modal-content {
+    background: var(--nchsm-gray);
+}
+
+body.dark-theme .modal-title {
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .modal-subtitle {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .modal-header {
+    border-bottom-color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .session-warning {
+    background: var(--nchsm-gray);
+    border-left-color: #f59e0b;
+}
+
+body.dark-theme .session-warning .warning-text {
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .session-warning .warning-text strong {
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .last-login-info {
+    background: rgba(212, 175, 55, 0.05);
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .attempts-info {
+    background: rgba(245, 158, 11, 0.05);
+    color: var(--nchsm-gray-light);
+}
+
+body.dark-theme .otp-digit {
+    background: var(--nchsm-white);
+    border-color: var(--nchsm-gray-light);
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .otp-digit:focus {
+    border-color: var(--nchsm-gold);
+}
+
+body.dark-theme .otp-actions .btn-secondary {
+    background: var(--nchsm-gray-light);
+    color: var(--nchsm-white);
+}
+
+body.dark-theme .keyboard-hints kbd {
+    background: var(--nchsm-gray-light);
+    color: var(--nchsm-white);
+    border-color: var(--nchsm-gray);
+}
+
+body.dark-theme .skeleton-loader {
+    background: var(--nchsm-gray);
+}
+
+body.dark-theme .skeleton-loader .skeleton-line,
+body.dark-theme .skeleton-loader .skeleton-button {
+    background: var(--nchsm-gray-light);
+}
+
+body.dark-theme .theme-toggle-btn {
+    background: var(--nchsm-gray-light);
+    color: var(--nchsm-white);
+    border-color: var(--nchsm-gray);
+}
+
+body.dark-theme .theme-toggle-btn:hover {
+    background: var(--nchsm-gray);
+}
+
+/* ============================================
+   LIGHT MODE - CLASS-BASED (Manual Toggle)
+   ============================================ */
+body.light-theme .theme-toggle-btn {
+    background: var(--nchsm-gray);
+    color: var(--nchsm-gray-dark);
+    border-color: var(--nchsm-gray-light);
+}
+
+body.light-theme .theme-toggle-btn:hover {
+    background: var(--nchsm-gray-light);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
 @media (min-width: 768px) {
     .left-panel {
         display: flex;
@@ -1554,176 +1815,20 @@ body::after {
         width: 90%;
         max-width: 380px;
     }
-}
-
-/* ===== DARK MODE ===== */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --nchsm-white: #1a1a2e;
-        --nchsm-gray: #2d2d44;
-        --nchsm-gray-light: #3d3d5c;
-        --nchsm-gray-dark: #e8e8e8;
+    
+    .theme-controls {
+        top: 0.5rem;
+        right: 0.5rem;
     }
     
-    .right-panel {
-        background: rgba(26, 26, 46, 0.92);
+    .theme-toggle-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.65rem;
     }
     
-    .mobile-header {
-        background: rgba(45, 45, 68, 0.95);
-        border-bottom-color: var(--nchsm-gray-light);
-    }
-    
-    .mobile-header .college-name {
-        color: var(--nchsm-gold);
-    }
-    
-    .login-card {
-        background: rgba(45, 45, 68, 0.95);
-        border-color: var(--nchsm-gray-light);
-    }
-    
-    .login-card::before {
-        background: var(--gradient-gold);
-    }
-    
-    .login-card::after {
-        opacity: 0.3;
-    }
-    
-    .welcome-title {
-        color: var(--nchsm-white);
-    }
-    
-    .welcome-subtitle {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .form-label {
-        color: var(--nchsm-white);
-    }
-    
-    .form-input {
-        background: var(--nchsm-white);
-        border-color: var(--nchsm-gray-light);
-        color: var(--nchsm-white);
-    }
-    
-    .form-input:focus {
-        border-color: var(--nchsm-gold);
-        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
-    }
-    
-    .stay-signed-in label {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .forgot-link {
-        color: var(--nchsm-gold);
-    }
-    
-    .signup-link {
-        background: var(--nchsm-gray);
-        border-color: var(--nchsm-gray-light);
-        color: var(--nchsm-gold);
-    }
-    
-    .signup-link:hover {
-        background: var(--nchsm-gray-light);
-    }
-    
-    .sso-btn {
-        background: var(--nchsm-gray);
-        border-color: var(--nchsm-gray-light);
-        color: var(--nchsm-gray-light);
-    }
-    
-    .sso-btn:hover {
-        background: var(--nchsm-gray-light);
-    }
-    
-    .quick-link {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .footer {
-        background: rgba(45, 45, 68, 0.8);
-        border-top-color: var(--nchsm-gray-light);
-    }
-    
-    .copyright {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .footer-link {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .modal-content {
-        background: var(--nchsm-gray);
-    }
-    
-    .modal-title {
-        color: var(--nchsm-white);
-    }
-    
-    .modal-subtitle {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .modal-header {
-        border-bottom-color: var(--nchsm-gray-light);
-    }
-    
-    .session-warning {
-        background: var(--nchsm-gray);
-        border-left-color: #f59e0b;
-    }
-    
-    .session-warning .warning-text {
-        color: var(--nchsm-gray-light);
-    }
-    
-    .session-warning .warning-text strong {
-        color: var(--nchsm-white);
-    }
-    
-    .last-login-info {
-        background: rgba(212, 175, 55, 0.05);
-    }
-    
-    .attempts-info {
-        background: rgba(245, 158, 11, 0.05);
-    }
-    
-    .otp-digit {
-        background: var(--nchsm-white);
-        border-color: var(--nchsm-gray-light);
-        color: var(--nchsm-white);
-    }
-    
-    .otp-digit:focus {
-        border-color: var(--nchsm-gold);
-    }
-    
-    .otp-actions .btn-secondary {
-        background: var(--nchsm-gray-light);
-        color: var(--nchsm-white);
-    }
-    
-    .keyboard-hints kbd {
-        background: var(--nchsm-gray-light);
-        color: var(--nchsm-white);
-        border-color: var(--nchsm-gray);
-    }
-    
-    .skeleton-loader {
-        background: var(--nchsm-gray);
-    }
-    
-    .skeleton-loader .skeleton-line,
-    .skeleton-loader .skeleton-button {
-        background: var(--nchsm-gray-light);
+    .theme-toggle-btn i {
+        width: 14px;
+        height: 14px;
     }
 }
 
@@ -1731,7 +1836,8 @@ body::after {
 @media print {
     body::before,
     body::after,
-    .particles {
+    .particles,
+    .theme-controls {
         display: none !important;
     }
     
