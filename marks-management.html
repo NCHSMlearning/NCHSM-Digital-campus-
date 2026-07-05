@@ -4305,8 +4305,6 @@ function generateSelectedStudentPDF() {
 
     generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
 }
-
-// ===== GENERATE STUDENT TRANSCRIPT PDF (PROFESSIONAL OFFICIAL VERSION) =====
 // ===== GENERATE STUDENT TRANSCRIPT PDF (SIMPLIFIED - WORKS EVERY TIME) =====
 function generateStudentTranscriptPDF(student, reportData) {
     if (!student) {
@@ -4676,12 +4674,15 @@ async function showTranscriptsPage() {
                             `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg}%</option>`
                         ).join('')}
                     </select>
-                    <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
-                        <i class="fas fa-eye"></i> Preview PDF
-                    </button>
-                    <button class="save-btn" onclick="generateSelectedStudentPDF()" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
-                        <i class="fas fa-download"></i> Download PDF
-                    </button>
+                   <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+    <i class="fas fa-eye"></i> Preview
+</button>
+<button class="save-btn" onclick="generateSelectedStudentPDF('transcript')" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
+    <i class="fas fa-file-pdf"></i> Full Transcript
+</button>
+<button class="save-btn" onclick="generateSelectedStudentPDF('result_slip')" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706);">
+    <i class="fas fa-receipt"></i> Result Slip
+</button>
                 </div>
             </div>
             
@@ -5225,9 +5226,174 @@ function generatePDFPreview() {
     hideLoading();
     showNotification('📄 PDF preview generated! Click "Download PDF" to save.', false);
 }
-// ===== GENERATE SELECTED STUDENT PDF =====
-function generateSelectedStudentPDF() {
-    console.log('🔄 generateSelectedStudentPDF called');
+// ===== GENERATE RESULT SLIP (Compact format) =====
+function generateResultSlip(student, reportData) {
+    if (!student) {
+        showNotification('No student data available', true);
+        return;
+    }
+
+    showLoading('Generating result slip...');
+
+    const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
+    const overallAvg = student.overallAvg || 0;
+    const year = reportData?.currentYear || currentYear || '2026';
+    const issueDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    function getGrade(score) {
+        if (score >= 75) return 'A';
+        else if (score >= 69) return 'B+';
+        else if (score >= 60) return 'B';
+        else if (score >= 54) return 'C+';
+        else if (score >= 50) return 'C';
+        else return 'E';
+    }
+
+    let subjectsHtml = '';
+    if (sortedSubjects.length > 0) {
+        subjectsHtml = sortedSubjects.map((subj, idx) => {
+            const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const grade = getGrade(subj.score);
+            const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
+            return `
+                <tr>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${idx + 1}</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px;"><strong>${safeName}</strong></td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${blockDisplay}</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center;">${subj.score}%</td>
+                    <td style="padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 700; text-align: center; color: ${grade === 'E' ? '#991b1b' : '#065f46'};">${grade}</td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        subjectsHtml = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">📚 No subjects completed yet</td></tr>';
+    }
+
+    const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const content = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Result Slip - ${safeStudentName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: white; }
+        .container { max-width: 800px; margin: 0 auto; border: 2px solid #1a1a2e; border-radius: 4px; overflow: hidden; }
+        .header { background: #1a1a2e; color: white; padding: 12px 20px; text-align: center; }
+        .header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; font-weight: 700; }
+        .header p { font-size: 9px; opacity: 0.8; margin: 2px 0 0; }
+        .student-info { padding: 10px 15px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 15px; font-size: 10px; }
+        .student-info .label { font-weight: 700; color: #475569; }
+        .student-info .value { color: #1e293b; font-weight: 600; }
+        .table-section { padding: 8px 15px; }
+        .table-section h3 { font-size: 12px; margin: 0 0 6px; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #1a1a2e; color: white; padding: 5px 8px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+        .grade-scale { padding: 6px 15px; background: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; }
+        .grade-scale .title { font-size: 9px; font-weight: 700; color: #475569; margin-bottom: 2px; }
+        .grade-scale .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 15px; font-size: 9px; color: #475569; }
+        .grade-scale .grid strong { font-weight: 700; }
+        .footer { padding: 8px 15px; text-align: center; font-size: 8px; color: #94a3b8; background: #f8fafc; border-top: 2px solid #e2e8f0; }
+        .footer .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 6px 0; }
+        .footer .signatures .line { border-bottom: 1px solid #475569; width: 70%; margin: 0 auto 2px; height: 18px; }
+        .footer .signatures .title { font-weight: 600; color: #1e293b; font-size: 8px; }
+        .footer .signatures .sub { font-size: 7px; color: #94a3b8; }
+        .footer .stamp-note { font-size: 7px; color: #991b1b; font-weight: 600; margin-top: 3px; }
+        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+        .status-pass { background: #d1fae5; color: #065f46; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        @media print { body { padding: 0; } .container { border: none; border-radius: 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>OFFICE OF THE REGISTRAR - ACADEMICS</h1>
+            <p>RESULT SLIP</p>
+        </div>
+        
+        <div class="student-info">
+            <div><span class="label">Name:</span> <span class="value">${safeStudentName}</span></div>
+            <div><span class="label">Reg No:</span> <span class="value">${safeAdmission}</span></div>
+            <div><span class="label">School:</span> <span class="value">School of Medicine and Health Sciences</span></div>
+            <div><span class="label">Program:</span> <span class="value">BSc. Nursing (BScN)</span></div>
+            <div><span class="label">Admission Year:</span> <span class="value">${year}</span></div>
+            <div><span class="label">Year of Study:</span> <span class="value">${student.subjectCount > 0 ? 'Year ' + Math.ceil(student.subjectCount / 5) : 'N/A'}</span></div>
+        </div>
+        
+        <div class="table-section">
+            <h3>📚 Academic Performance</h3>
+            <table>
+                <thead><tr><th style="width:30px;">#</th><th>Subject</th><th style="width:70px;">Block</th><th style="width:60px;">Score</th><th style="width:40px;">Grade</th></tr></thead>
+                <tbody>${subjectsHtml}</tbody>
+            </table>
+            <div style="margin-top: 6px; text-align: right; font-size: 10px; font-weight: 600;">
+                Overall Average: ${overallAvg}% 
+                <span class="status-badge ${overallAvg >= 60 ? 'status-pass' : 'status-fail'}">${overallAvg >= 60 ? 'PASS' : 'FAIL'}</span>
+            </div>
+        </div>
+        
+        <div class="grade-scale">
+            <div class="title">📊 Grade Points</div>
+            <div class="grid">
+                <div><strong>A</strong> 75-100%</div>
+                <div><strong>B+</strong> 69-74%</div>
+                <div><strong>B</strong> 60-68%</div>
+                <div><strong>C+</strong> 54-59%</div>
+                <div><strong>C</strong> 50-53%</div>
+                <div><strong>E</strong> 0-49%</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="signatures">
+                <div><div class="line"></div><div class="title">Head of Department</div><div class="sub">Signature &amp; Date</div></div>
+                <div><div class="line"></div><div class="title">Academic Registrar</div><div class="sub">Signature &amp; Date</div></div>
+                <div><div class="line"></div><div class="title">Student's Signature</div><div class="sub">Date: ${issueDate}</div></div>
+            </div>
+            <div class="stamp-note">📌 This result slip is issued without any erasures or alterations. Not Valid without Official Stamp</div>
+            <p style="margin-top: 4px;">© ${new Date().getFullYear()} Nakuru College of Health Sciences</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    const element = document.createElement('div');
+    element.innerHTML = content;
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    element.style.width = '800px';
+    document.body.appendChild(element);
+
+    const opt = {
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename: `RESULT_SLIP_${student.admission}_${year}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, letterRendering: true, useCORS: true, width: 800 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        document.body.removeChild(element);
+        hideLoading();
+        showNotification(`📄 Result slip for ${student.name} generated successfully!`, false);
+    }).catch(err => {
+        document.body.removeChild(element);
+        hideLoading();
+        showNotification('Error: ' + err.message, true);
+        console.error('PDF Error:', err);
+    });
+}
+  
+  // ===== GENERATE SELECTED STUDENT PDF =====
+// ===== GENERATE SELECTED STUDENT PDF (Handles both Transcript and Result Slip) =====
+function generateSelectedStudentPDF(type) {
+    console.log('🔄 generateSelectedStudentPDF called with type:', type || 'transcript');
     const select = document.getElementById('studentSelectForReport');
     if (!select) {
         showNotification('Student selection not found. Please refresh the page.', true);
@@ -5240,26 +5406,20 @@ function generateSelectedStudentPDF() {
         return;
     }
 
-    console.log('📌 Generating transcript for:', admission);
-    
     // Try to get student data from multiple sources
     let student = null;
     
     if (window._studentDataCache) {
         student = window._studentDataCache[admission];
-        console.log('📊 Found in _studentDataCache:', student ? 'Yes' : 'No');
     }
     if (!student && window.reportData && window.reportData.studentMap) {
         student = window.reportData.studentMap[admission];
-        console.log('📊 Found in reportData.studentMap:', student ? 'Yes' : 'No');
     }
     if (!student && window._studentList) {
         student = window._studentList.find(s => s.admission === admission);
-        console.log('📊 Found in _studentList:', student ? 'Yes' : 'No');
     }
     if (!student && window.reportData && window.reportData.students) {
         student = window.reportData.students.find(s => s.admission === admission);
-        console.log('📊 Found in reportData.students:', student ? 'Yes' : 'No');
     }
 
     if (!student) {
@@ -5269,7 +5429,6 @@ function generateSelectedStudentPDF() {
 
     console.log('✅ Student found:', student.name);
     
-    // Build enhanced student object
     const enhancedStudent = {
         name: student.name || 'Unknown Student',
         admission: student.admission || admission,
@@ -5281,7 +5440,11 @@ function generateSelectedStudentPDF() {
         examScores: student.examScores || []
     };
 
-    generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
+    if (type === 'result_slip') {
+        generateResultSlip(enhancedStudent, window.reportData || { currentYear: currentYear });
+    } else {
+        generateStudentTranscriptPDF(enhancedStudent, window.reportData || { currentYear: currentYear });
+    }
 }
 // ===== TAB SWITCHING =====
 function switchTranscriptTab(tabName) {
