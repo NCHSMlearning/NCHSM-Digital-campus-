@@ -68,7 +68,9 @@ body {
     position: relative;
 }
 
-/* ===== FULL PAGE BACKGROUND - SAME AS REGISTER PAGE ===== */
+/* ============================================
+   ✅ FULL PAGE BACKGROUND - SAME AS REGISTER
+   ============================================ */
 body::before {
     content: "";
     position: fixed;
@@ -137,7 +139,7 @@ body::after {
     min-height: 100vh;
 }
 
-/* ===== LEFT PANEL - Now with glass effect ===== */
+/* ===== LEFT PANEL - Glass effect ===== */
 .left-panel {
     display: none;
     width: 45%;
