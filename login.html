@@ -6,7 +6,7 @@
     <title>NCHSM Digital Portal - Login</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
     <!-- Preconnect for faster loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -23,13 +23,13 @@
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
     
     <div class="container">
-        <!-- Left Panel for Desktop -->
+        <!-- ===== LEFT PANEL ===== -->
         <div class="left-panel">
             <div class="panel-content">
                 <!-- Logo -->
                 <div class="logo-wrapper">
                     <div class="logo">
-                        <img src="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png" 
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
@@ -103,13 +103,13 @@
             </div>
         </div>
 
-        <!-- Right Panel -->
+        <!-- ===== RIGHT PANEL ===== -->
         <div class="right-panel">
             <!-- Mobile Header -->
             <header class="mobile-header">
                 <div class="header-content">
                     <div class="logo">
-                        <img src="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png" 
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
@@ -120,7 +120,7 @@
                 </div>
             </header>
 
-            <!-- Main Content -->
+            <!-- ===== MAIN CONTENT ===== -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
                     <!-- Welcome -->
@@ -177,7 +177,8 @@
                                 <button type="button" 
                                         id="password-toggle-btn" 
                                         class="password-toggle"
-                                        aria-label="Toggle password visibility">
+                                        aria-label="Toggle password visibility"
+                                        aria-pressed="false">
                                     <i data-feather="eye-off" id="toggle-icon"></i>
                                 </button>
                             </div>
@@ -241,7 +242,7 @@
                 </div>
             </main>
 
-            <!-- Footer -->
+            <!-- ===== FOOTER ===== -->
             <footer class="footer">
                 <div class="footer-content">
                     <p class="copyright">© 2026 Nakuru College of Health Sciences and Management</p>
@@ -256,7 +257,18 @@
         </div>
     </div>
 
-    <!-- External Scripts -->
+    <!-- ===== SESSION WARNING ===== -->
+    <div id="sessionWarning" class="session-warning">
+        <div class="warning-content">
+            <i data-feather="clock" class="warning-icon"></i>
+            <span class="warning-text">
+                Your session will expire in <strong id="sessionTimer">5:00</strong>
+            </span>
+            <button id="extendSessionBtn" class="btn-extend">Extend</button>
+        </div>
+    </div>
+
+    <!-- ===== EXTERNAL SCRIPTS ===== -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="login-script.js"></script>
     
