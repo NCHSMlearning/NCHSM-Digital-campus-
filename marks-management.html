@@ -4514,8 +4514,16 @@ async function showTranscriptsPage() {
     
     showLoading('Loading transcripts...');
     
-    // Get all data
+    // ✅ FIRST: Get students data
     const students = await apiCall('/api/students', {});
+    console.log('📚 Students loaded:', students ? students.length : 0);
+    
+    if (!students || students.length === 0) {
+        showNotification('No students found. Please add students first.', true);
+        hideLoading();
+        return;
+    }
+    
     const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
     const config = await getConfig();
     
@@ -4603,6 +4611,27 @@ async function showTranscriptsPage() {
             (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
     }
     
+    // ✅ Ensure we have a student list even if no marks exist
+    // Add all students from the API that might not have marks yet
+    for (let student of students) {
+        const admission = student.admission;
+        if (!allStudentPerformance[admission]) {
+            allStudentPerformance[admission] = {
+                name: student.name || 'Unknown',
+                admission: admission,
+                block: student.block || 'BLOCK_0',
+                subjects: [],
+                totalScore: 0,
+                subjectCount: 0,
+                cat1Scores: [],
+                cat2Scores: [],
+                examScores: [],
+                overallAvg: 0,
+                status: 'PENDING'
+            };
+        }
+    }
+    
     // Store data globally
     window._studentDataCache = allStudentPerformance;
     window._studentList = Object.values(allStudentPerformance);
@@ -4616,6 +4645,15 @@ async function showTranscriptsPage() {
     };
     
     const studentList = window._studentList;
+    console.log('✅ Student list for dropdown:', studentList.length, 'students');
+    
+    // ✅ Check if studentList has data
+    if (!studentList || studentList.length === 0) {
+        showNotification('No student data available. Please add students.', true);
+        hideLoading();
+        return;
+    }
+    
     const subjectList = Object.keys(subjectPerformance).sort();
     
     // Build block options for the select
@@ -4671,18 +4709,18 @@ async function showTranscriptsPage() {
                     <select id="studentSelectForReport" style="flex: 1; min-width: 300px; padding: 12px 20px; border-radius: 40px; border: 2px solid #e2e8f0;" onchange="updateTranscriptPreview()">
                         <option value="">-- Select a student --</option>
                         ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => 
-                            `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg}%</option>`
+                            `<option value="${s.admission}">${s.name} (${s.admission}) - ${s.overallAvg || 0}%</option>`
                         ).join('')}
                     </select>
-                   <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
-    <i class="fas fa-eye"></i> Preview
-</button>
-<button class="save-btn" onclick="generateSelectedStudentPDF('transcript')" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
-    <i class="fas fa-file-pdf"></i> Full Transcript
-</button>
-<button class="save-btn" onclick="generateSelectedStudentPDF('result_slip')" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706);">
-    <i class="fas fa-receipt"></i> Result Slip
-</button>
+                    <button class="save-btn" onclick="generatePDFPreview()" style="padding: 12px 28px; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="save-btn" onclick="generateSelectedStudentPDF('transcript')" style="padding: 12px 28px; background: linear-gradient(135deg, #10b981, #059669);">
+                        <i class="fas fa-file-pdf"></i> Full Transcript
+                    </button>
+                    <button class="save-btn" onclick="generateSelectedStudentPDF('result_slip')" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <i class="fas fa-receipt"></i> Result Slip
+                    </button>
                 </div>
             </div>
             
@@ -4734,9 +4772,9 @@ async function showTranscriptsPage() {
                 <div class="student-checkbox-grid" id="massStudentList">
                     ${studentList.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
                         <label class="student-checkbox-item">
-                            <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${s.name}" data-avg="${s.overallAvg}" data-status="${s.status}">
-                            <span><strong>${s.name}</strong> <span style="font-size: 11px; color: #64748b;">(${s.overallAvg}%)</span></span>
-                            <span class="badge ${s.overallAvg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending')}" style="font-size: 9px; margin-left: auto;">${s.status}</span>
+                            <input type="checkbox" class="mass-student-checkbox" data-admission="${s.admission}" data-name="${s.name}" data-avg="${s.overallAvg || 0}" data-status="${s.status || 'PENDING'}">
+                            <span><strong>${s.name}</strong> <span style="font-size: 11px; color: #64748b;">(${s.overallAvg || 0}%)</span></span>
+                            <span class="badge ${s.overallAvg >= 60 ? 'badge-pass' : (s.subjectCount > 0 ? 'badge-fail' : 'badge-pending')}" style="font-size: 9px; margin-left: auto;">${s.status || 'PENDING'}</span>
                         </label>
                     `).join('')}
                 </div>
@@ -4821,6 +4859,22 @@ async function showTranscriptsPage() {
     
     updateContentArea(html);
     hideLoading();
+    
+    // ✅ Force the dropdown to be populated
+    setTimeout(function() {
+        const select = document.getElementById('studentSelectForReport');
+        if (select) {
+            console.log('✅ Dropdown found, options:', select.options.length);
+            // Trigger preview for first student if available
+            if (studentList.length > 0 && select.options.length > 1) {
+                // Select first student
+                select.value = studentList[0].admission;
+                updateTranscriptPreview();
+            }
+        } else {
+            console.log('❌ Dropdown not found');
+        }
+    }, 500);
     
     // Add event listeners for dynamic previews
     document.getElementById('blockTranscriptSelect')?.addEventListener('change', function() {
