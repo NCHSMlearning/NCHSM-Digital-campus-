@@ -1389,8 +1389,8 @@ initPasswordStrength: function() {
         }
     },
     
-  // ============================================
-// UPDATE LAST LOGIN INFO - FROM DATABASE
+ // ============================================
+// UPDATE LAST LOGIN INFO - WITH CORRECT TIMEZONE
 // ============================================
 updateLastLoginInfo: function() {
     const info = document.getElementById('lastLoginInfo');
@@ -1417,7 +1417,6 @@ updateLastLoginInfo: function() {
     try {
         const profile = JSON.parse(userProfile);
         const userId = profile.user_id;
-        const userEmail = profile.email;
         
         if (!userId) {
             info.innerHTML = `
@@ -1436,15 +1435,13 @@ updateLastLoginInfo: function() {
             .select('login_time, device_info, ip_address')
             .eq('user_id', userId)
             .order('login_time', { ascending: false })
-            .limit(2) // Get last 2 logins to show previous one
+            .limit(2)
             .then(({ data, error }) => {
                 if (error) {
                     console.error('❌ Error fetching last login:', error);
                     this.showCurrentLoginInfo(info);
                     return;
                 }
-                
-                console.log('📊 Login data:', data);
                 
                 if (!data || data.length === 0) {
                     info.innerHTML = `
@@ -1457,27 +1454,31 @@ updateLastLoginInfo: function() {
                 
                 // data[0] is the current login, data[1] is the previous login
                 if (data.length >= 2 && data[1]) {
-                    // Show previous login
                     const previousLogin = data[1];
+                    
+                    // ✅ FIX: Create date and add 3 hours for EAT timezone
                     const loginDate = new Date(previousLogin.login_time);
+                    
+                    // Format the time correctly
                     const timeStr = loginDate.toLocaleTimeString('en-US', { 
                         hour: '2-digit', 
-                        minute: '2-digit' 
+                        minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
                     });
                     const dateStr = loginDate.toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         month: 'long', 
-                        day: 'numeric' 
+                        day: 'numeric',
+                        timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
                     });
                     const device = previousLogin.device_info || 'Unknown Device';
-                    const ip = previousLogin.ip_address || '';
                     
                     info.innerHTML = `
                         <i data-feather="clock"></i>
                         <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
                     `;
                 } else {
-                    // Only one login - first time
                     info.innerHTML = `
                         <i data-feather="clock"></i>
                         <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
@@ -1501,12 +1502,15 @@ showCurrentLoginInfo: function(info) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Africa/Nairobi'
     });
     const dateStr = now.toLocaleDateString('en-US', { 
         weekday: 'long', 
         month: 'long', 
-        day: 'numeric' 
+        day: 'numeric',
+        timeZone: 'Africa/Nairobi'
     });
     const device = this.parseUserAgent(navigator.userAgent);
     
