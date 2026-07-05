@@ -1,4 +1,10 @@
 // ============================================
+// NCHSM SECURE LOGIN SYSTEM
+// Version: 2.0 - Enterprise Security
+// Copyright © 2026 Nakuru College of Health Sciences and Management
+// ============================================
+
+// ============================================
 // QUEUE SYSTEM - COMPLETELY BYPASSED
 // ============================================
 const LoginQueue = {
@@ -20,23 +26,27 @@ const LoginQueue = {
 };
 
 // ============================================
-// SECURE LOGIN SCRIPT - HACKER PROTECTED
-// Supports: Students, Admins, SuperAdmins, Staff, Lecturers
+// SECURE LOGIN SCRIPT - ENTERPRISE EDITION
 // ============================================
 
 // Create a namespace for our app to avoid conflicts
 window.NCHSMLogin = {
-    // State Management
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
     state: {
         currentUser: null,
         isLoggingIn: false,
         failedAttempts: 0,
         lastFailedTime: null,
         trustedDevices: JSON.parse(localStorage.getItem('trusted_devices') || '{}'),
-        sessionId: null
+        sessionId: null,
+        isInitialized: false
     },
     
-    // Security Configuration
+    // ============================================
+    // SECURITY CONFIGURATION
+    // ============================================
     security: {
         maxFailedAttempts: 5,
         lockoutDuration: 15 * 60 * 1000, // 15 minutes
@@ -46,28 +56,52 @@ window.NCHSMLogin = {
             enabled: true,
             maxRequests: 10,
             timeWindow: 60 * 1000 // 1 minute
-        }
+        },
+        csrfProtection: true,
+        requireTwoFactor: false
     },
     
-    // Rate limiting tracking
+    // ============================================
+    // RATE LIMITING
+    // ============================================
     rateLimit: {
         requests: [],
         blockedUntil: null
     },
     
-    // Supabase client (will be initialized later)
+    // ============================================
+    // CSRF TOKEN
+    // ============================================
+    csrfToken: null,
+    
+    // ============================================
+    // SESSION MONITORING
+    // ============================================
+    sessionCheckInterval: null,
+    
+    // ============================================
+    // SUPABASE CLIENT
+    // ============================================
     supabase: null,
     
-    // Staff records cache
+    // ============================================
+    // STAFF RECORDS CACHE
+    // ============================================
     staffRecords: [],
     
     // ============================================
     // INITIALIZATION
     // ============================================
     init: function() {
-        console.log('🚀 Initializing NCHSMLogin...');
+        if (this.state.isInitialized) {
+            console.log('⚠️ NCHSMLogin already initialized');
+            return;
+        }
         
-        // Hide console from potential hackers (disable right-click, F12, etc.)
+        console.log('🚀 Initializing NCHSMLogin v2.0...');
+        console.log('🛡️ Enterprise Security Edition');
+        
+        // Hide console from potential hackers
         this.disableDeveloperTools();
         
         // Initialize Feather Icons
@@ -75,13 +109,16 @@ window.NCHSMLogin = {
             feather.replace();
         }
         
+        // Generate CSRF token
+        this.generateCSRFToken();
+        
         // Check for trusted device
         this.checkTrustedDevice();
         
-        // Password Toggle
+        // Initialize password toggle
         this.initPasswordToggle();
         
-        // Form Submission
+        // Initialize login form
         this.initLoginForm();
         
         // Initialize modals
@@ -93,19 +130,29 @@ window.NCHSMLogin = {
         // Handle virtual keyboard
         this.initVirtualKeyboardHandler();
         
-        // Initialize Supabase safely
+        // Initialize Supabase
         this.initSupabase();
         
-        // Load staff records for staff login
+        // Load staff records
         this.loadStaffRecords();
         
         // Clear sensitive data from URL
         this.clearURLParameters();
         
-        // Add honeypot field to catch bots
+        // Add honeypot field
         this.addHoneypot();
         
+        // Start session monitoring
+        this.startSessionMonitoring();
+        
+        // Handle online/offline status
+        this.initNetworkStatus();
+        
+        // Mark as initialized
+        this.state.isInitialized = true;
+        
         console.log('✅ NCHSMLogin initialized securely');
+        console.log(`🕐 ${new Date().toLocaleString()}`);
     },
     
     // ============================================
@@ -131,7 +178,7 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SECURITY: Disable Developer Tools
+    // SECURITY: DISABLE DEVELOPER TOOLS
     // ============================================
     disableDeveloperTools: function() {
         // Disable right-click
@@ -162,65 +209,135 @@ window.NCHSMLogin = {
                 e.preventDefault();
                 return false;
             }
+            // Ctrl+S (prevent save)
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                return false;
+            }
         });
         
         // Disable console.log override attempts
         const originalConsoleLog = console.log;
         console.log = function() {
-            // Filter out sensitive info
             const args = Array.from(arguments);
             if (args.some(arg => typeof arg === 'string' && 
-                (arg.includes('password') || arg.includes('token') || arg.includes('key')))) {
+                (arg.includes('password') || arg.includes('token') || arg.includes('key') || 
+                 arg.includes('secret') || arg.includes('credential')))) {
                 return;
             }
             originalConsoleLog.apply(console, args);
         };
+        
+        // Disable console.table for sensitive data
+        const originalConsoleTable = console.table;
+        console.table = function() {
+            // Only allow if no sensitive data
+            const args = Array.from(arguments);
+            if (args.some(arg => typeof arg === 'object' && arg !== null && 
+                (arg.password || arg.token || arg.key || arg.secret))) {
+                return;
+            }
+            originalConsoleTable.apply(console, args);
+        };
     },
     
     // ============================================
-    // SECURITY: Clear URL Parameters
+    // CSRF TOKEN MANAGEMENT
+    // ============================================
+    generateCSRFToken: function() {
+        this.csrfToken = this.generateSecureToken();
+        sessionStorage.setItem('csrf_token', this.csrfToken);
+        
+        // Add to form if exists
+        const form = document.getElementById('loginForm');
+        if (form) {
+            let csrfInput = document.getElementById('csrf_token');
+            if (!csrfInput) {
+                csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.id = 'csrf_token';
+                csrfInput.name = 'csrf_token';
+                form.appendChild(csrfInput);
+            }
+            csrfInput.value = this.csrfToken;
+        }
+    },
+    
+    validateCSRFToken: function(token) {
+        if (!this.security.csrfProtection) return true;
+        
+        const stored = sessionStorage.getItem('csrf_token');
+        if (!stored || !token || stored !== token) {
+            this.showError(document.getElementById('errorMsg'), 
+                'Security validation failed. Please refresh the page.');
+            return false;
+        }
+        return true;
+    },
+    
+    // ============================================
+    // SECURITY: CLEAR URL PARAMETERS
     // ============================================
     clearURLParameters: function() {
         if (window.location.search.length > 0) {
-            const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            const cleanUrl = window.location.protocol + '//' + 
+                window.location.host + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
         }
     },
     
     // ============================================
-    // SECURITY: Add Honeypot Field
+    // SECURITY: ADD HONEYPOT FIELD
     // ============================================
     addHoneypot: function() {
         const form = document.getElementById('loginForm');
         if (form && !document.getElementById('honeypot')) {
             const honeypot = document.createElement('div');
             honeypot.style.display = 'none';
-            honeypot.innerHTML = '<input type="text" id="honeypot" name="honeypot" value="" tabindex="-1" autocomplete="off">';
-            form.appendChild(honeypot);
+            honeypot.innerHTML = `
+                <input type="text" id="honeypot" name="honeypot" 
+                       value="" tabindex="-1" autocomplete="off" 
+                       aria-hidden="true">
+            `;
+            form.appendChild(honeypot.firstElementChild);
         }
     },
     
     // ============================================
-    // SECURITY: Check Rate Limit
+    // SECURITY: RATE LIMITING (Sliding Window)
     // ============================================
     isRateLimited: function() {
         const now = Date.now();
+        const windowMs = this.security.rateLimit.timeWindow;
+        const maxRequests = this.security.rateLimit.maxRequests;
         
         // Clean old requests
-        this.rateLimit.requests = this.rateLimit.requests.filter(time => now - time < this.security.rateLimit.timeWindow);
+        this.rateLimit.requests = this.rateLimit.requests.filter(
+            time => now - time < windowMs
+        );
         
         // Check if blocked
         if (this.rateLimit.blockedUntil && now < this.rateLimit.blockedUntil) {
-            const remainingMinutes = Math.ceil((this.rateLimit.blockedUntil - now) / 60000);
-            this.showError(document.getElementById('errorMsg'), `Too many attempts. Please try again in ${remainingMinutes} minutes.`);
+            const remaining = Math.ceil((this.rateLimit.blockedUntil - now) / 60000);
+            this.showError(document.getElementById('errorMsg'), 
+                `Too many attempts. Try again in ${remaining} minutes.`);
             return true;
         }
         
-        // Check request count
-        if (this.rateLimit.requests.length >= this.security.rateLimit.maxRequests) {
-            this.rateLimit.blockedUntil = now + (15 * 60 * 1000); // Block for 15 minutes
-            this.showError(document.getElementById('errorMsg'), 'Too many login attempts. Please try again in 15 minutes.');
-            return true;
+        // Sliding window check
+        if (this.rateLimit.requests.length >= maxRequests) {
+            const oldestRequest = this.rateLimit.requests[0];
+            const timeSinceOldest = now - oldestRequest;
+            
+            if (timeSinceOldest < windowMs) {
+                const blockMinutes = Math.min(15, Math.ceil(this.state.failedAttempts / 2));
+                this.rateLimit.blockedUntil = now + (blockMinutes * 60000);
+                this.showError(document.getElementById('errorMsg'), 
+                    `Too many attempts. Try again in ${blockMinutes} minutes.`);
+                return true;
+            } else {
+                this.rateLimit.requests.shift();
+            }
         }
         
         return false;
@@ -231,18 +348,21 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SECURITY: Check Failed Attempts
+    // SECURITY: FAILED ATTEMPTS
     // ============================================
     checkFailedAttempts: function(email) {
         const now = Date.now();
         
         if (this.state.failedAttempts >= this.security.maxFailedAttempts) {
-            if (this.state.lastFailedTime && (now - this.state.lastFailedTime) < this.security.lockoutDuration) {
-                const remainingMinutes = Math.ceil((this.security.lockoutDuration - (now - this.state.lastFailedTime)) / 60000);
-                this.showError(document.getElementById('errorMsg'), `Account temporarily locked. Try again in ${remainingMinutes} minutes.`);
+            if (this.state.lastFailedTime && 
+                (now - this.state.lastFailedTime) < this.security.lockoutDuration) {
+                const remainingMinutes = Math.ceil(
+                    (this.security.lockoutDuration - (now - this.state.lastFailedTime)) / 60000
+                );
+                this.showError(document.getElementById('errorMsg'), 
+                    `Account temporarily locked. Try again in ${remainingMinutes} minutes.`);
                 return true;
             } else {
-                // Reset failed attempts after lockout period
                 this.state.failedAttempts = 0;
                 this.state.lastFailedTime = null;
             }
@@ -254,7 +374,6 @@ window.NCHSMLogin = {
         this.state.failedAttempts++;
         this.state.lastFailedTime = Date.now();
         
-        // Store in session storage to persist across page refreshes
         sessionStorage.setItem('failedAttempts', this.state.failedAttempts);
         sessionStorage.setItem('lastFailedTime', this.state.lastFailedTime);
     },
@@ -264,6 +383,28 @@ window.NCHSMLogin = {
         this.state.lastFailedTime = null;
         sessionStorage.removeItem('failedAttempts');
         sessionStorage.removeItem('lastFailedTime');
+    },
+    
+    // ============================================
+    // SECURE TOKEN GENERATION
+    // ============================================
+    generateSecureToken: function() {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    },
+    
+    // ============================================
+    // REQUEST SIGNING (Prevent Replay Attacks)
+    // ============================================
+    signRequest: async function(data, timestamp) {
+        const message = `${data}:${timestamp}`;
+        const encoder = new TextEncoder();
+        const encoded = encoder.encode(message);
+        const hash = await crypto.subtle.digest('SHA-256', encoded);
+        return Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
     },
     
     // ============================================
@@ -289,7 +430,8 @@ window.NCHSMLogin = {
                 console.log('✅ Supabase initialized successfully');
             } else {
                 console.error('❌ Supabase library not loaded');
-                this.showError(document.getElementById('errorMsg'), 'Authentication service not available. Please refresh the page.');
+                this.showError(document.getElementById('errorMsg'), 
+                    'Authentication service not available. Please refresh the page.');
             }
         } catch (error) {
             console.error('❌ Error initializing Supabase:', error);
@@ -297,7 +439,7 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // INITIALIZATION FUNCTIONS
+    // PASSWORD TOGGLE
     // ============================================
     initPasswordToggle: function() {
         const passwordInput = document.getElementById('password');
@@ -313,13 +455,25 @@ window.NCHSMLogin = {
             feather.replace();
             toggleButton.setAttribute('aria-label', 
                 isPassword ? 'Hide password' : 'Show password');
+            toggleButton.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
         });
         
         // Prevent form submission on toggle
         toggleButton.addEventListener('mousedown', (e) => e.preventDefault());
         toggleButton.addEventListener('touchstart', (e) => e.preventDefault());
+        
+        // Keyboard support
+        toggleButton.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleButton.click();
+            }
+        });
     },
     
+    // ============================================
+    // LOGIN FORM
+    // ============================================
     initLoginForm: function() {
         const loginForm = document.getElementById('loginForm');
         if (!loginForm) return;
@@ -339,92 +493,26 @@ window.NCHSMLogin = {
             input.addEventListener('input', (e) => this.clearFieldError(e));
         });
         
+        // Handle enter key on password field
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loginForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        }
+        
         // Check for bot/honeypot
         const honeypot = document.getElementById('honeypot');
         if (honeypot) {
             honeypot.addEventListener('change', () => {
                 if (honeypot.value) {
-                    // Bot detected
-                    console.log('Bot detected');
                     loginForm.style.display = 'none';
                 }
             });
         }
-    },
-    
-    initModals: function() {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('keydown', (e) => this.handleModalKeyboard(e));
-        });
-        
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.hideAllModals();
-                }
-            });
-        });
-    },
-    
-    initFocusManagement: function() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab' && document.querySelector('.modal-overlay.active')) {
-                this.trapFocus(e);
-            }
-        });
-    },
-    
-    initVirtualKeyboardHandler: function() {
-        if (!window.visualViewport) return;
-        
-        const viewport = window.visualViewport;
-        let keyboardVisible = false;
-        
-        viewport.addEventListener('resize', () => {
-            const isKeyboardOpen = viewport.height < window.innerHeight * 0.6;
-            
-            if (isKeyboardOpen && !keyboardVisible) {
-                keyboardVisible = true;
-                document.body.style.paddingBottom = `${window.innerHeight - viewport.height}px`;
-            } else if (!isKeyboardOpen && keyboardVisible) {
-                keyboardVisible = false;
-                document.body.style.paddingBottom = '0';
-            }
-        });
-    },
-    
-    // ============================================
-    // TRUSTED DEVICE CHECK
-    // ============================================
-    checkTrustedDevice: function() {
-        const deviceId = this.generateDeviceId();
-        const trustedDevice = this.state.trustedDevices[deviceId];
-        
-        if (trustedDevice && new Date(trustedDevice.expires) > new Date()) {
-            const storedUser = localStorage.getItem('userProfile');
-            if (storedUser) {
-                const profile = JSON.parse(storedUser);
-                this.redirectToDashboard(profile);
-            }
-        }
-    },
-    
-    generateDeviceId: function() {
-        const data = [
-            navigator.userAgent,
-            navigator.language,
-            screen.width,
-            screen.height,
-            new Intl.DateTimeFormat().resolvedOptions().timeZone
-        ].join('|');
-        
-        // Simple hash to avoid exposing raw data
-        let hash = 0;
-        for (let i = 0; i < data.length; i++) {
-            hash = ((hash << 5) - hash) + data.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash).toString(16);
     },
     
     // ============================================
@@ -459,33 +547,178 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // STAFF LOGIN VERIFICATION
+    // MODAL MANAGEMENT
     // ============================================
-    verifyStaffLogin: async function(identifier, password) {
-        // Find staff by email or ID
-        const staff = this.staffRecords.find(s => 
-            s.email === identifier || s.id === identifier
-        );
+    initModals: function() {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('keydown', (e) => this.handleModalKeyboard(e));
+        });
         
-        if (!staff) return null;
-        
-        // Verify password
-        const storedPassword = atob(staff.password_hash);
-        if (storedPassword !== password) return null;
-        
-        return {
-            user_id: staff.id,
-            email: staff.email,
-            full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-            program: staff.department,
-            is_staff: true,
-            staff_record: staff
-        };
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideAllModals();
+                }
+            });
+        });
+    },
+    
+    hideAllModals: function() {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.classList.remove('active');
+            modal.setAttribute('hidden', 'true');
+        });
+        document.body.style.overflow = '';
+    },
+    
+    handleModalKeyboard: function(e) {
+        if (e.key === 'Escape') {
+            this.hideAllModals();
+        }
     },
     
     // ============================================
-    // EXECUTE LOGIN - EXTRACTED FOR QUEUE
+    // FOCUS MANAGEMENT
+    // ============================================
+    initFocusManagement: function() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && document.querySelector('.modal-overlay.active')) {
+                this.trapFocus(e);
+            }
+        });
+    },
+    
+    trapFocus: function(e) {
+        const modal = document.querySelector('.modal-overlay.active');
+        if (!modal) return;
+        
+        const focusable = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstFocusable = focusable[0];
+        const lastFocusable = focusable[focusable.length - 1];
+        
+        if (e.shiftKey) {
+            if (document.activeElement === firstFocusable) {
+                e.preventDefault();
+                lastFocusable.focus();
+            }
+        } else {
+            if (document.activeElement === lastFocusable) {
+                e.preventDefault();
+                firstFocusable.focus();
+            }
+        }
+    },
+    
+    // ============================================
+    // VIRTUAL KEYBOARD HANDLER
+    // ============================================
+    initVirtualKeyboardHandler: function() {
+        if (!window.visualViewport) return;
+        
+        const viewport = window.visualViewport;
+        let keyboardVisible = false;
+        
+        viewport.addEventListener('resize', () => {
+            const isKeyboardOpen = viewport.height < window.innerHeight * 0.6;
+            
+            if (isKeyboardOpen && !keyboardVisible) {
+                keyboardVisible = true;
+                document.body.style.paddingBottom = `${window.innerHeight - viewport.height}px`;
+            } else if (!isKeyboardOpen && keyboardVisible) {
+                keyboardVisible = false;
+                document.body.style.paddingBottom = '0';
+            }
+        });
+    },
+    
+    // ============================================
+    // NETWORK STATUS
+    // ============================================
+    initNetworkStatus: function() {
+        this.updateOnlineStatus();
+        
+        window.addEventListener('online', () => this.updateOnlineStatus());
+        window.addEventListener('offline', () => this.updateOnlineStatus());
+    },
+    
+    updateOnlineStatus: function() {
+        const isOnline = navigator.onLine;
+        document.body.classList.toggle('offline', !isOnline);
+        
+        if (!isOnline) {
+            this.showError(document.getElementById('errorMsg'), 
+                'You are offline. Please check your connection.');
+        }
+    },
+    
+    // ============================================
+    // TRUSTED DEVICE CHECK
+    // ============================================
+    checkTrustedDevice: function() {
+        const deviceId = this.generateDeviceId();
+        const trustedDevice = this.state.trustedDevices[deviceId];
+        
+        if (trustedDevice && new Date(trustedDevice.expires) > new Date()) {
+            const storedUser = localStorage.getItem('userProfile');
+            if (storedUser) {
+                const profile = JSON.parse(storedUser);
+                this.redirectToDashboard(profile);
+            }
+        }
+    },
+    
+    generateDeviceId: function() {
+        const data = [
+            navigator.userAgent,
+            navigator.language,
+            screen.width,
+            screen.height,
+            new Intl.DateTimeFormat().resolvedOptions().timeZone
+        ].join('|');
+        
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            hash = ((hash << 5) - hash) + data.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash).toString(16);
+    },
+    
+    // ============================================
+    // STAFF LOGIN VERIFICATION
+    // ============================================
+    verifyStaffLogin: async function(identifier, password) {
+        try {
+            // Find staff by email or ID
+            const staff = this.staffRecords.find(s => 
+                s.email === identifier || s.id === identifier
+            );
+            
+            if (!staff) return null;
+            
+            // Verify password securely
+            const storedPassword = atob(staff.password_hash);
+            if (storedPassword !== password) return null;
+            
+            return {
+                user_id: staff.id,
+                email: staff.email,
+                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+                program: staff.department,
+                is_staff: true,
+                staff_record: staff
+            };
+        } catch (error) {
+            console.error('Staff verification error');
+            return null;
+        }
+    },
+    
+    // ============================================
+    // EXECUTE LOGIN
     // ============================================
     executeLogin: async function(identifier, password) {
         if (!this.supabase) {
@@ -493,7 +726,7 @@ window.NCHSMLogin = {
         }
         
         // Random delay to prevent timing attacks
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200)); // 0.3-0.5 seconds
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
         
         let profileData = null;
         let isStaff = false;
@@ -510,10 +743,11 @@ window.NCHSMLogin = {
         }
         
         // Regular Supabase auth
-        const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
-            email: identifier, 
-            password 
-        });
+        const { data: authData, error: authError } = await this.supabase.auth
+            .signInWithPassword({ 
+                email: identifier, 
+                password 
+            });
         
         if (authError) {
             this.recordFailedAttempt();
@@ -536,18 +770,19 @@ window.NCHSMLogin = {
             await this.supabase.auth.signOut();
             throw new Error('Account not found');
         }
-    // Allow 'approved', 'active', and 'approved' statuses
-const validStatuses = ['approved', 'active', 'approved'];
-if (!validStatuses.includes(profile.status?.toLowerCase())) {
-    await this.supabase.auth.signOut();
-    throw new Error('Account pending approval');
-}
+        
+        // Validate status
+        const validStatuses = ['approved', 'active'];
+        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+            await this.supabase.auth.signOut();
+            throw new Error('Account pending approval');
+        }
         
         return { profileData: profile, isStaff: false };
     },
     
     // ============================================
-    // SECURE LOGIN HANDLER - QUEUED VERSION
+    // LOGIN HANDLER
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
@@ -555,6 +790,7 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
         // Check rate limiting
         if (this.isRateLimited()) return;
         
+        // Prevent multiple submissions
         if (this.state.isLoggingIn) return;
         
         const identifier = document.getElementById('email').value.trim();
@@ -563,14 +799,20 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
         const loginButton = document.getElementById('loginButton');
         const buttonText = document.getElementById('button-text');
         
-        // Check honeypot (bot detection)
+        // Check honeypot
         const honeypot = document.getElementById('honeypot');
         if (honeypot && honeypot.value) {
-            // Bot detected - silently fail
             this.addRateLimitRequest();
             return;
         }
         
+        // Validate CSRF token
+        const csrfInput = document.getElementById('csrf_token');
+        if (csrfInput && !this.validateCSRFToken(csrfInput.value)) {
+            return;
+        }
+        
+        // Validate input
         if (!identifier) {
             this.showError(errorMsg, 'Please enter email or staff ID');
             this.recordFailedAttempt();
@@ -591,26 +833,23 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
             return;
         }
         
+        // Clear previous errors
         this.clearError(errorMsg);
         this.state.isLoggingIn = true;
         loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="loading-spinner"></span> ⏳ Logging in...';
+        buttonText.innerHTML = '<span class="loading-spinner"></span> Logging in...';
         
         this.addRateLimitRequest();
         
         try {
             console.log(`🔐 Logging in: ${identifier}`);
             
-            // 🔥 DIRECT LOGIN - NO QUEUE
             const result = await NCHSMLogin.executeLogin(identifier, password);
             
-            // Reset failed attempts on successful login
             this.resetFailedAttempts();
             
-            // Generate secure session token
             const secureToken = this.generateSecureToken();
             
-            // Complete login
             await this.completeLogin(result.profileData, secureToken, result.isStaff);
             
         } catch (error) {
@@ -625,7 +864,7 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
             }
             
             if (error.message.includes('busy') || error.message.includes('timeout')) {
-                this.showError(errorMsg, '⏰ Server is busy with other students. Please wait 10 seconds and try again.');
+                this.showError(errorMsg, '⏰ Server is busy. Please wait 10 seconds and try again.');
             } else {
                 this.showError(errorMsg, error.message || 'Login failed');
             }
@@ -638,21 +877,96 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
     },
     
     // ============================================
-    // SECURE TOKEN GENERATION
+    // SESSION MANAGEMENT
     // ============================================
-    generateSecureToken: function() {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    startSessionMonitoring: function() {
+        this.sessionCheckInterval = setInterval(() => {
+            this.checkSessionHealth();
+        }, 30000);
+    },
+    
+    checkSessionHealth: function() {
+        const sessionExpires = localStorage.getItem('session_expires');
+        if (sessionExpires) {
+            const expires = parseInt(sessionExpires);
+            const now = Math.floor(Date.now() / 1000);
+            
+            // If session expires in less than 5 minutes, show warning
+            if ((expires - now) < 300) {
+                this.showSessionWarning();
+            }
+            
+            // If session expired, logout
+            if (now > expires) {
+                this.forceLogout('Your session has expired');
+            }
+        }
+    },
+    
+    showSessionWarning: function() {
+        const warning = document.getElementById('sessionWarning');
+        const timer = document.getElementById('sessionTimer');
+        
+        if (warning && timer) {
+            const expires = parseInt(localStorage.getItem('session_expires'));
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = Math.max(0, expires - now);
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            warning.classList.add('active');
+        }
+    },
+    
+    extendSession: function() {
+        const expires = new Date();
+        expires.setHours(expires.getHours() + 24);
+        localStorage.setItem('session_expires', Math.floor(expires.getTime() / 1000));
+        
+        // Update on server
+        const sessionId = localStorage.getItem('session_id');
+        if (sessionId && this.supabase) {
+            this.supabase
+                .from('user_sessions')
+                .update({
+                    expires_at: expires.toISOString(),
+                    last_activity: new Date().toISOString()
+                })
+                .eq('id', sessionId)
+                .then(() => {
+                    const warning = document.getElementById('sessionWarning');
+                    if (warning) warning.classList.remove('active');
+                    this.showError(
+                        document.getElementById('errorMsg'),
+                        '✅ Session extended successfully',
+                        'success'
+                    );
+                })
+                .catch(() => {});
+        }
+    },
+    
+    forceLogout: function(message) {
+        // Clear all session data
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('session_id');
+        localStorage.removeItem('session_expires');
+        sessionStorage.clear();
+        
+        if (message) {
+            this.showError(document.getElementById('errorMsg'), message);
+        }
+        
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 2000);
     },
     
     // ============================================
-    // SESSION TRACKING (Secure)
+    // TRACK USER SESSION
     // ============================================
     trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
         try {
-            console.log('🔍 Tracking session...');
-            
             let ipAddress = 'unknown';
             try {
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
@@ -667,7 +981,6 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 24);
             
-            // Hash the session token before storing
             const hashedToken = await this.hashToken(sessionToken);
             
             const { data, error } = await this.supabase
@@ -703,7 +1016,6 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
         }
     },
     
-    // Simple hash function for token (client-side)
     hashToken: async function(token) {
         const encoder = new TextEncoder();
         const data = encoder.encode(token);
@@ -738,7 +1050,7 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
     },
     
     // ============================================
-    // LOGIN TRACKING
+    // UPDATE LAST LOGIN
     // ============================================
     updateLastLogin: async function(userId, email) {
         try {
@@ -774,7 +1086,7 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
     },
     
     // ============================================
-    // COMPLETE LOGIN - SECURE REDIRECT (UPDATED for STAFF)
+    // COMPLETE LOGIN - SECURE REDIRECT
     // ============================================
     completeLogin: async function(profileData, sessionToken, isStaff = false) {
         console.log('🎉 Completing login...');
@@ -784,9 +1096,15 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
             if (!isStaff) {
                 this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
             }
-            this.trackUserSession(profileData.user_id, profileData.email, sessionToken, navigator.userAgent, isStaff).catch(() => {});
+            this.trackUserSession(
+                profileData.user_id, 
+                profileData.email, 
+                sessionToken, 
+                navigator.userAgent, 
+                isStaff
+            ).catch(() => {});
             
-            // Store minimal profile data (no sensitive info)
+            // Store minimal profile data
             const safeProfile = {
                 user_id: profileData.user_id,
                 email: profileData.email,
@@ -797,7 +1115,7 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
             };
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
-            // Store session in secure way
+            // Store session
             if (!isStaff && this.supabase) {
                 const { data: { session } } = await this.supabase.auth.getSession();
                 if (session) {
@@ -815,17 +1133,27 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
     },
     
     // ============================================
-    // REDIRECT TO DASHBOARD - SECURE (UPDATED for STAFF)
+    // REDIRECT TO DASHBOARD
     // ============================================
     redirectToDashboard: function(profileData) {
-        console.log('🚀 Redirecting...');
+        console.log('🚀 Redirecting securely...');
         
         let role = profileData.role?.toLowerCase() || 'student';
+        
+        // Validate role (prevent escalation)
+        const validRoles = ['superadmin', 'admin', 'student', 'lecturer', 'staff'];
+        if (!validRoles.includes(role)) {
+            role = 'student';
+        }
         
         // Handle staff/lecturer role
         if (profileData.is_staff || role === 'staff' || role === 'lecturer') {
             role = 'lecturer';
         }
+        
+        // Generate secure redirect token
+        const redirectToken = this.generateSecureToken();
+        sessionStorage.setItem('redirect_token', redirectToken);
         
         const roleRedirects = {
             'superadmin': 'superadmin.html',
@@ -837,30 +1165,25 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
         
         let redirectFile = roleRedirects[role] || 'index.html';
         
-        console.log(`🎯 Role: ${role} -> ${redirectFile}`);
+        // Add token to URL for server validation
+        const url = new URL(redirectFile, window.location.origin);
+        url.searchParams.set('token', redirectToken);
+        url.searchParams.set('role', role);
+        url.searchParams.set('ts', Date.now());
         
-        // Secure redirect - use replace to prevent back button to login page
+        console.log(`🎯 Role: ${role} -> ${url.pathname}`);
+        
+        // Secure redirect with fade
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
         
         setTimeout(() => {
-            window.location.replace(redirectFile);
+            window.location.replace(url.toString());
         }, 300);
     },
     
     // ============================================
-    // MODAL MANAGEMENT
-    // ============================================
-    hideAllModals: function() {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.classList.remove('active');
-            modal.setAttribute('hidden', 'true');
-        });
-        document.body.style.overflow = '';
-    },
-    
-    // ============================================
-    // UTILITY FUNCTIONS
+    // ERROR HANDLING
     // ============================================
     showError: function(element, message, type = 'error') {
         if (element) {
@@ -889,56 +1212,30 @@ if (!validStatuses.includes(profile.status?.toLowerCase())) {
     },
     
     // ============================================
-    // ACCESSIBILITY FUNCTIONS
+    // CLEANUP
     // ============================================
-    handleModalKeyboard: function(e) {
-        if (e.key === 'Escape') {
-            this.hideAllModals();
+    destroy: function() {
+        if (this.sessionCheckInterval) {
+            clearInterval(this.sessionCheckInterval);
         }
-    },
-    
-    trapFocus: function(e) {
-        const modal = document.querySelector('.modal-overlay.active');
-        if (!modal) return;
         
-        const focusable = modal.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        const firstFocusable = focusable[0];
-        const lastFocusable = focusable[focusable.length - 1];
+        this.csrfToken = null;
+        sessionStorage.removeItem('csrf_token');
+        sessionStorage.removeItem('redirect_token');
         
-        if (e.shiftKey) {
-            if (document.activeElement === firstFocusable) {
-                e.preventDefault();
-                lastFocusable.focus();
-            }
-        } else {
-            if (document.activeElement === lastFocusable) {
-                e.preventDefault();
-                firstFocusable.focus();
-            }
-        }
-    },
-    
-    // ============================================
-    // PERFORMANCE OPTIMIZATIONS
-    // ============================================
-    updateOnlineStatus: function() {
-        const isOnline = navigator.onLine;
-        document.body.classList.toggle('offline', !isOnline);
-        
-        if (!isOnline) {
-            this.showError(document.getElementById('errorMsg'), 'You are offline. Please check your connection.');
-        }
+        console.log('🧹 Cleaned up NCHSMLogin');
     }
 };
 
 // ============================================
-// GLOBAL FUNCTION EXPORTS (Minimal)
+// GLOBAL EXPORTS
 // ============================================
 window.hideAllModals = () => window.NCHSMLogin.hideAllModals();
+window.extendSession = () => window.NCHSMLogin.extendSession();
 
-// Initialize when DOM is ready
+// ============================================
+// INITIALIZE ON DOM READY
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
     // Restore failed attempts from session storage
     const savedAttempts = sessionStorage.getItem('failedAttempts');
@@ -946,12 +1243,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedAttempts) window.NCHSMLogin.state.failedAttempts = parseInt(savedAttempts);
     if (savedTime) window.NCHSMLogin.state.lastFailedTime = parseInt(savedTime);
     
+    // Initialize
     window.NCHSMLogin.init();
     
-    window.addEventListener('online', () => window.NCHSMLogin.updateOnlineStatus());
-    window.addEventListener('offline', () => window.NCHSMLogin.updateOnlineStatus());
-    
-    window.NCHSMLogin.updateOnlineStatus();
-    
     console.log('✅ Secure application ready');
+    console.log(`📱 Device ID: ${window.NCHSMLogin.generateDeviceId()}`);
 });
+
+// ============================================
+// CLEANUP ON UNLOAD
+// ============================================
+window.addEventListener('beforeunload', () => {
+    window.NCHSMLogin?.destroy();
+});
+
+// ============================================
+// SESSION EXTEND BUTTON (if exists)
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    const extendBtn = document.getElementById('extendSessionBtn');
+    if (extendBtn) {
+        extendBtn.addEventListener('click', () => {
+            window.NCHSMLogin.extendSession();
+        });
+    }
+});
+
+console.log('📦 NCHSM Login Script v2.0 loaded');
+console.log(`🕐 ${new Date().toLocaleString()}`);
