@@ -5684,9 +5684,8 @@ async function forceRefreshTranscriptData() {
     }
 }
 
-  // ===== GENERATE STUDENT TRANSCRIPT PDF =====
-function generateStudentTranscriptPDF(student, reportData) {
-    // ✅ Validate student data
+  // ===== GENERATE STUDENT TRANSCRIPT PDF - FIXED =====
+async function generateStudentTranscriptPDF(student, reportData) {
     if (!student) {
         showNotification('No student data available', true);
         return;
@@ -5754,7 +5753,6 @@ function generateStudentTranscriptPDF(student, reportData) {
     const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // Generate PDF content
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -5862,20 +5860,32 @@ function generateStudentTranscriptPDF(student, reportData) {
 </body>
 </html>`;
 
-    // Generate and download PDF
+    // ✅ Generate PDF with better settings
     const element = document.createElement('div');
     element.innerHTML = content;
-    element.style.position = 'absolute';
-    element.style.left = '-9999px';
-    element.style.top = '-9999px';
+    // Make it visible briefly for rendering
+    element.style.position = 'fixed';
+    element.style.left = '0';
+    element.style.top = '0';
     element.style.width = '1000px';
+    element.style.zIndex = '-1';
+    element.style.opacity = '0';
+    element.style.pointerEvents = 'none';
     document.body.appendChild(element);
+
+    // Small delay for rendering
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const opt = {
         margin: [0.3, 0.3, 0.3, 0.3],
         filename: `TRANSCRIPT_${student.admission}_${year}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, letterRendering: true, useCORS: true, width: 1000 },
+        html2canvas: { 
+            scale: 2, 
+            letterRendering: true, 
+            useCORS: true,
+            width: 1000
+        },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
