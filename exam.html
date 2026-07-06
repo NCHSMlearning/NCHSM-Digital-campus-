@@ -114,9 +114,7 @@
                 <button class="btn-retry" id="retryCameraBtn" onclick="testCamera()" style="display:none;">
                     <i class="fas fa-redo"></i> Retry Camera
                 </button>
-                <button class="btn-stop" id="stopCameraBtn" onclick="stopCamera()" style="display:none;">
-                    <i class="fas fa-stop"></i> Stop Camera
-                </button>
+                <!-- NO STOP CAMERA BUTTON IN LOBBY -->
             </div>
 
             <button class="btn-next" id="cameraNextBtn" disabled onclick="goToStep(3)">
@@ -172,7 +170,7 @@
         <div class="page-wrapper">
             
             <!-- ======================================================
-            LEFT PANEL - Student, Timer, Camera
+            LEFT PANEL - Student, Timer, Camera (NO STOP BUTTON)
             ====================================================== -->
             <div class="left-panel">
                 
@@ -204,14 +202,12 @@
                     </div>
                 </div>
 
-                <!-- Camera Controls -->
+                <!-- Camera Controls - ONLY RETRY, NO STOP BUTTON -->
                 <div class="camera-controls-panel">
                     <button class="btn-retry-camera" onclick="retryCameraDuringExam()">
                         <i class="fas fa-camera"></i> Retry Camera
                     </button>
-                    <button class="btn-stop-camera" onclick="stopExamCamera()">
-                        <i class="fas fa-stop"></i> Stop Camera
-                    </button>
+                    <!-- STOP CAMERA BUTTON REMOVED - Student cannot stop camera -->
                 </div>
 
                 <!-- Proctoring Status -->
@@ -548,7 +544,6 @@
         const faceCountDisplay = document.getElementById('faceCountDisplay');
         const testCameraBtn = document.getElementById('testCameraBtn');
         const retryCameraBtn = document.getElementById('retryCameraBtn');
-        const stopCameraBtn = document.getElementById('stopCameraBtn');
         const faceVerifiedCheck = document.getElementById('faceVerifiedCheck');
 
         // ============================================================
@@ -704,7 +699,6 @@
                 cameraStatusText.textContent = 'Camera active - Verifying face...';
                 cameraStatusMessage.className = 'camera-status-text info';
                 cameraStatusMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying face...';
-                stopCameraBtn.style.display = 'flex';
                 retryCameraBtn.style.display = 'none';
                 testCameraBtn.style.display = 'none';
 
@@ -728,6 +722,14 @@
                     cameraNextBtn.disabled = true;
                     updateStartButton();
                     showToast('⚠️ Please look at the camera for face verification', 'warning');
+                    
+                    // Auto-retry after 3 seconds if no face detected
+                    setTimeout(function() {
+                        if (!faceVerified && !isCameraTesting) {
+                            showToast('🔄 Auto-retrying camera...', 'info');
+                            testCamera();
+                        }
+                    }, 3000);
                 }
 
             } catch (error) {
@@ -802,45 +804,31 @@
             }
         }
 
-        function stopCamera() {
-            if (videoStream) {
-                videoStream.getTracks().forEach(function(t) { t.stop(); });
-                videoStream = null;
-            }
-            cameraVideo.srcObject = null;
-            cameraPreview.className = 'camera-preview';
-            cameraStatusDot.className = 'status-dot inactive';
-            cameraStatusText.textContent = 'Camera inactive';
-            cameraStatusMessage.className = 'camera-status-text info';
-            cameraStatusMessage.innerHTML = '<i class="fas fa-info-circle"></i> Camera stopped';
-            stopCameraBtn.style.display = 'none';
-            testCameraBtn.style.display = 'flex';
-            retryCameraBtn.style.display = 'none';
-            cameraWorking = false;
-            faceVerified = false;
-            cameraNextBtn.disabled = true;
-            updateStartButton();
-
-            if (faceDetectionInterval) {
-                clearInterval(faceDetectionInterval);
-                faceDetectionInterval = null;
-            }
-            faceCountDisplay.textContent = '👤 0 faces';
-            faceVerifiedCheck.innerHTML =
-                '<span class="check-icon" style="color:#94A3B8;"><i class="fas fa-circle"></i></span><span>Face not verified</span>';
-        }
-
         // ============================================================
-        // RETRY CAMERA DURING EXAM
+        // RETRY CAMERA DURING EXAM - NO STOP BUTTON
         // ============================================================
 
         async function retryCameraDuringExam() {
             showToast('🔄 Restarting camera...', 'info');
             
             try {
-                if (examVideoStream) {
-                    examVideoStream.getTracks().forEach(function(t) { t.stop(); });
-                    examVideoStream = null;
+                // Keep existing stream - don't stop it completely
+                // Just restart the detection
+                if (!examVideoStream || !examVideoStream.active) {
+                    const constraints = {
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            frameRate: { ideal: 15 }
+                        },
+                        audio: false
+                    };
+
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    examVideoStream = stream;
+                    faceVideo.srcObject = stream;
+                    await faceVideo.play();
                 }
 
                 faceDetectionLostCount = 0;
@@ -854,21 +842,6 @@
                     clearInterval(faceDetectionRecoveryTimer);
                     faceDetectionRecoveryTimer = null;
                 }
-
-                const constraints = {
-                    video: {
-                        facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        frameRate: { ideal: 15 }
-                    },
-                    audio: false
-                };
-
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                examVideoStream = stream;
-                faceVideo.srcObject = stream;
-                await faceVideo.play();
 
                 await startExamFaceDetection();
 
@@ -890,15 +863,7 @@
             }
         }
 
-        function stopExamCamera() {
-            if (examVideoStream) {
-                examVideoStream.getTracks().forEach(function(t) { t.stop(); });
-                examVideoStream = null;
-            }
-            faceVideo.srcObject = null;
-            updateCameraStatus('inactive', 'Camera stopped', '0 faces');
-            showToast('Camera stopped', 'info');
-        }
+        // NO stopExamCamera() function - Students cannot stop camera
 
         function updateCameraStatus(status, text, faceCount) {
             examStatusDot.className = 'status-dot ' + status;
@@ -975,7 +940,7 @@
         }
 
         // ============================================================
-        // START EXAM
+        // START EXAM - CAMERA REQUIRED
         // ============================================================
 
         async function startExam() {
@@ -988,6 +953,12 @@
             var finalVerify = await verifyFaceForLobby();
             if (!finalVerify) {
                 showToast('❌ Face verification failed. Please try again.', 'error');
+                return;
+            }
+
+            // Camera must be working to start exam
+            if (!cameraWorking) {
+                showToast('❌ Camera is required to start the exam. Please test your camera.', 'error');
                 return;
             }
 
@@ -1191,7 +1162,7 @@
         }
 
         // ============================================================
-        // EXAM CAMERA & ENHANCED FACE DETECTION
+        // EXAM CAMERA - CANNOT BE STOPPED
         // ============================================================
 
         async function startExamCamera() {
@@ -2210,9 +2181,10 @@
                 document.getElementById('submission-progress-overlay').classList.remove('active');
                 showCompletionCertificate();
 
-                setTimeout(function() {
-                    window.location.href = 'exam_dashboard.html';
-                }, 5000);
+              if (countdown <= 0) {
+    clearInterval(redirectInterval);
+    window.location.href = 'https://nakurucollegeofhealthelearning.site/student/cats';
+}
 
             } catch (error) {
                 console.error('❌ Submission error:', error);
@@ -2820,10 +2792,8 @@
         window.toggleTermsAgreed = toggleTermsAgreed;
         window.goToStep = goToStep;
         window.testCamera = testCamera;
-        window.stopCamera = stopCamera;
         window.startExam = startExam;
         window.retryCameraDuringExam = retryCameraDuringExam;
-        window.stopExamCamera = stopExamCamera;
         window.returnToExam = returnToExam;
         window.showToast = showToast;
         window.toggleFlagQuestion = toggleFlagQuestion;
