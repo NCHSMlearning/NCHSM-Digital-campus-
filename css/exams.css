@@ -1,5 +1,6 @@
 /* =====================================================
    EXAMS & GRADES SECTION - COMPLETE OPTIMIZED
+   VERSION: 2.0 - VERTICAL LAYOUT + MOBILE CARDS
    ===================================================== */
 
 /* ========== EXAMS HEADER ========== */
@@ -33,7 +34,7 @@
     font-size: 0.9rem;
 }
 
-/* ========== HEADER STATS CARDS - GRID SPREAD ========== */
+/* ========== HEADER STATS CARDS ========== */
 .exams-header .header-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -153,7 +154,7 @@
     animation: cardPulse 0.5s ease-in-out;
 }
 
-/* ========== QUICK ACTIONS - SPREAD EVENLY ========== */
+/* ========== QUICK ACTIONS ========== */
 .quick-actions-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -301,7 +302,7 @@
 }
 
 /* =====================================================
-   TABLE - MERGED COLUMNS (7 columns)
+   TABLE - VERTICAL LAYOUT (7 columns)
    ===================================================== */
 
 .assessments-table-container {
@@ -317,47 +318,48 @@
     font-size: 0.78rem;
 }
 
-/* ========== COLUMN WIDTHS (7 columns) ========== */
+/* ========== COLUMN WIDTHS (7 columns) - FIXED ========== */
 .assessments-table th:nth-child(1),
 .assessments-table td:nth-child(1) {
-    width: 28% !important;
-    min-width: 160px !important;
+    width: 38% !important;  /* Assessment - wider for vertical layout */
+    min-width: 180px !important;
 }
 
 .assessments-table th:nth-child(2),
 .assessments-table td:nth-child(2) {
-    width: 10% !important;
+    width: 10% !important;  /* Status */
     min-width: 60px !important;
 }
 
 .assessments-table th:nth-child(3),
 .assessments-table td:nth-child(3) {
-    width: 8% !important;
-    min-width: 40px !important;
+    width: 9% !important;  /* CAT 1 */
+    min-width: 45px !important;
 }
 
 .assessments-table th:nth-child(4),
 .assessments-table td:nth-child(4) {
-    width: 8% !important;
-    min-width: 40px !important;
+    width: 9% !important;  /* CAT 2 */
+    min-width: 45px !important;
 }
 
 .assessments-table th:nth-child(5),
 .assessments-table td:nth-child(5) {
-    width: 8% !important;
-    min-width: 40px !important;
+    width: 9% !important;  /* Final */
+    min-width: 45px !important;
 }
 
 .assessments-table th:nth-child(6),
 .assessments-table td:nth-child(6) {
-    width: 8% !important;
-    min-width: 40px !important;
+    width: 9% !important;  /* Total */
+    min-width: 45px !important;
 }
 
 .assessments-table th:nth-child(7),
 .assessments-table td:nth-child(7) {
-    width: 30% !important;
-    min-width: 150px !important;
+    width: 16% !important;  /* Action - REDUCED from 30% */
+    min-width: 100px !important;
+    max-width: 160px !important;
 }
 
 /* ========== TABLE HEADER ========== */
@@ -405,69 +407,105 @@
     text-align: center;
 }
 
-/* ========== ASSESSMENT + DATE MERGED ========== */
+/* =====================================================
+   VERTICAL ASSESSMENT CELL - NEW LAYOUT
+   ===================================================== */
+
 .assessment-info-box {
     display: flex;
     flex-direction: column;
-    gap: 2px !important;
+    gap: 3px !important;
+    padding: 4px 0;
+}
+
+/* Row 1: Name + Badge */
+.assessment-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
 }
 
 .assessment-name {
-    font-weight: 700;
-    font-size: 0.78rem !important;
-    color: #1f2937;
     display: flex;
     align-items: center;
+    gap: 6px;
     flex-wrap: wrap;
-    gap: 4px;
+    font-size: 0.78rem !important;
+    font-weight: 700;
+    color: #1f2937;
 }
 
-.assessment-details {
+.assessment-name strong {
+    font-weight: 700;
+    color: #111827;
+}
+
+/* Detail Rows - Vertical */
+.assessment-row-detail {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 4px !important;
+    gap: 4px;
+    padding: 1px 0;
+    font-size: 0.65rem !important;
+    line-height: 1.4;
+}
+
+.detail-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.detail-label {
+    color: #6b7280;
+    font-weight: 500;
+    min-width: 55px;
+    flex-shrink: 0;
     font-size: 0.6rem !important;
 }
 
-.detail-item {
+.detail-value {
+    color: #1f2937;
+    font-weight: 400;
+    word-break: break-word;
+    font-size: 0.65rem !important;
+}
+
+/* Program Badge */
+.program-badge {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    color: #6b7280;
-    background: #f3f4f6;
-    padding: 1px 8px !important;
-    border-radius: 8px;
+    padding: 1px 8px;
+    border-radius: 12px;
     font-size: 0.55rem !important;
-}
-
-.detail-item i {
-    font-size: 0.5rem;
-}
-
-.exam-datetime {
-    font-size: 0.6rem !important;
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-}
-
-.time-remaining {
-    font-size: 0.55rem;
-    color: #059669;
     font-weight: 600;
+    white-space: nowrap;
 }
 
-/* ========== BADGES ========== */
+.badge-krchn {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.badge-tvet {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+/* Badges for CAT/Exam */
 .badge-cat {
     display: inline-block;
     padding: 1px 6px !important;
     border-radius: 8px;
     font-size: 0.5rem !important;
-    font-weight: 600;
+    font-weight: 700;
     background: #FEF3C7;
     color: #92400E;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .badge-final {
@@ -475,28 +513,76 @@
     padding: 1px 6px !important;
     border-radius: 8px;
     font-size: 0.5rem !important;
-    font-weight: 600;
+    font-weight: 700;
     background: #DBEAFE;
     color: #1E40AF;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
+/* Released/Pending Badges */
 .badge-released {
     background: #D1FAE5;
     color: #065F46;
-    font-size: 0.55rem;
-    padding: 1px 8px;
-    border-radius: 10px;
+    font-size: 0.5rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 600;
 }
 
 .badge-pending {
     background: #FEF3C7;
     color: #92400E;
-    font-size: 0.55rem;
-    padding: 1px 8px;
-    border-radius: 10px;
+    font-size: 0.5rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 600;
 }
 
-/* ========== STATUS BADGES ========== */
+/* Exam Date & Time */
+.exam-datetime {
+    font-size: 0.6rem !important;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 0;
+}
+
+/* Countdown Row */
+.assessment-row-countdown {
+    margin-top: 2px;
+    padding-top: 2px;
+}
+
+.time-remaining {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6rem !important;
+    font-weight: 600;
+    color: #DC2626;
+}
+
+.time-remaining i {
+    font-size: 0.65rem;
+}
+
+/* Score Row */
+.score-row .score-value {
+    font-weight: 600;
+    color: #059669;
+}
+
+.pending-row .pending-text {
+    font-weight: 500;
+    color: #D97706;
+}
+
+/* =====================================================
+   STATUS & GRADE BADGES
+   ===================================================== */
+
 .status-badge {
     display: inline-block;
     padding: 2px 10px !important;
@@ -541,7 +627,6 @@
     color: #4B5563;
 }
 
-/* ========== GRADE BADGES ========== */
 .grade-badge {
     display: inline-block;
     padding: 2px 8px !important;
@@ -583,38 +668,39 @@
 }
 
 /* =====================================================
-   ⭐ BIG EXAM LINK BUTTONS ⭐
+   ACTION BUTTONS - SMALL & COMPACT
    ===================================================== */
 
 .exam-link-btn {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 8px 18px !important;
-    border-radius: 8px;
-    font-size: 0.75rem !important;
-    font-weight: 700;
+    gap: 4px;
+    padding: 4px 10px !important;
+    border-radius: 6px;
+    font-size: 0.6rem !important;
+    font-weight: 600;
     text-decoration: none;
     border: none;
     cursor: pointer;
-    width: 90%;
-    max-width: 180px;
+    width: 95%;
+    max-width: 130px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     transition: all 0.3s ease;
     white-space: nowrap;
+    min-height: 26px;
 }
 
 .exam-link-btn.btn-primary {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    box-shadow: 0 3px 15px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
 }
 
 .exam-link-btn.btn-primary:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.7);
+    transform: scale(1.03);
+    box-shadow: 0 4px 18px rgba(102, 126, 234, 0.6);
 }
 
 .exam-link-btn.btn-success {
@@ -624,22 +710,19 @@
 
 .exam-link-btn.btn-success:hover {
     transform: scale(1.03);
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.5);
 }
 
 .exam-link-btn.btn-warning {
     background: linear-gradient(135deg, #F59E0B, #D97706);
     color: white;
-}
-
-.exam-link-btn.btn-warning:hover {
-    transform: scale(1.03);
-    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.5);
+    cursor: default;
 }
 
 .exam-link-btn.btn-danger {
     background: linear-gradient(135deg, #EF4444, #DC2626);
     color: white;
+    cursor: default;
 }
 
 .exam-link-btn.btn-secondary {
@@ -649,21 +732,33 @@
     opacity: 0.6;
 }
 
+.exam-link-btn i {
+    font-size: 0.6rem;
+}
+
 .exam-link-btn::after {
     content: "→";
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: transform 0.3s ease;
 }
 
 .exam-link-btn:hover::after {
-    transform: translateX(4px);
+    transform: translateX(3px);
 }
 
 .exam-link-btn.btn-secondary::after {
     content: "🔒";
 }
 
-/* ========== PERFORMANCE SUMMARY ========== */
+.exam-link-btn.btn-warning::after,
+.exam-link-btn.btn-danger::after {
+    content: "";
+}
+
+/* =====================================================
+   PERFORMANCE SUMMARY
+   ===================================================== */
+
 .performance-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -918,7 +1013,149 @@
 }
 
 /* =====================================================
-   DARK MODE
+   MOBILE CARD VIEW - NO SCROLLING NEEDED
+   ===================================================== */
+
+@media (max-width: 768px) {
+    /* Force table to behave like cards */
+    .assessments-table,
+    .assessments-table tbody,
+    .assessments-table tr,
+    .assessments-table td {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    .assessments-table thead {
+        display: none !important;  /* Hide headers on mobile */
+    }
+    
+    .assessments-table tr {
+        margin-bottom: 16px !important;
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+        border: 1px solid #e5e7eb !important;
+        padding: 12px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+    
+    .assessments-table td {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 6px 8px !important;
+        border: none !important;
+        border-bottom: 1px solid #f3f4f6 !important;
+        font-size: 0.75rem !important;
+        min-height: auto !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    
+    .assessments-table td:last-child {
+        border-bottom: none !important;
+    }
+    
+    /* Add labels before each value */
+    .assessments-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        min-width: 70px;
+        flex-shrink: 0;
+    }
+    
+    /* First cell - Assessment (no label needed) */
+    .assessments-table td:first-child::before {
+        display: none !important;
+    }
+    
+    .assessments-table td:first-child {
+        display: block !important;
+        border-bottom: 2px solid #e5e7eb !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Assessment cell - full width */
+    .assessments-table td:first-child .assessment-info-box {
+        width: 100% !important;
+    }
+    
+    /* Action cell - center the button */
+    .assessments-table td:last-child {
+        justify-content: center !important;
+        padding-top: 8px !important;
+    }
+    
+    .assessments-table td:last-child::before {
+        display: none !important;
+    }
+    
+    .assessments-table td:last-child .exam-link-btn {
+        width: 100% !important;
+        max-width: 200px !important;
+    }
+    
+    /* Status badges - inline with label */
+    .assessments-table td:nth-child(2) .status-badge,
+    .assessments-table td:nth-child(2) .grade-badge {
+        font-size: 0.7rem !important;
+        padding: 3px 12px !important;
+    }
+    
+    /* Dark mode for cards */
+    body.dark-mode .assessments-table tr {
+        background: #1E293B !important;
+        border-color: #334155 !important;
+    }
+    
+    body.dark-mode .assessments-table td {
+        border-bottom-color: #334155 !important;
+    }
+    
+    body.dark-mode .assessments-table td::before {
+        color: #94A3B8 !important;
+    }
+}
+
+/* ========== EXTRA SMALL - Tighter Cards ========== */
+@media (max-width: 480px) {
+    .assessments-table tr {
+        padding: 8px !important;
+        gap: 4px !important;
+    }
+    
+    .assessments-table td {
+        padding: 4px 6px !important;
+        font-size: 0.65rem !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .assessments-table td::before {
+        font-size: 0.55rem !important;
+        min-width: 55px !important;
+    }
+    
+    .assessments-table td:first-child {
+        padding-bottom: 6px !important;
+    }
+    
+    .assessments-table td:last-child .exam-link-btn {
+        max-width: 160px !important;
+        font-size: 0.6rem !important;
+        padding: 6px 12px !important;
+    }
+}
+
+/* =====================================================
+   DARK MODE - FULL SUPPORT
    ===================================================== */
 
 body.dark-mode .exams-header {
@@ -946,6 +1183,10 @@ body.dark-mode .assessments-section .section-header h3 {
     color: #E2E8F0;
 }
 
+body.dark-mode .assessments-section .section-header {
+    border-bottom-color: #334155;
+}
+
 body.dark-mode .assessments-table thead {
     background: #0F172A;
 }
@@ -968,9 +1209,34 @@ body.dark-mode .assessment-name {
     color: #E2E8F0;
 }
 
-body.dark-mode .detail-item {
-    background: #334155;
+body.dark-mode .assessment-name strong {
+    color: #F1F5F9;
+}
+
+body.dark-mode .detail-label {
     color: #94A3B8;
+}
+
+body.dark-mode .detail-value {
+    color: #E2E8F0;
+}
+
+body.dark-mode .program-badge.badge-krchn {
+    background: #1E3A5F;
+    color: #93C5FD;
+}
+
+body.dark-mode .program-badge.badge-tvet {
+    background: #064E3B;
+    color: #6EE7B7;
+}
+
+body.dark-mode .exam-datetime {
+    color: #94A3B8;
+}
+
+body.dark-mode .time-remaining {
+    color: #F87171;
 }
 
 body.dark-mode .summary-card {
@@ -982,13 +1248,30 @@ body.dark-mode .summary-card .card-header h4 {
     color: #E2E8F0;
 }
 
+body.dark-mode .summary-card .card-header {
+    border-bottom-color: #334155;
+}
+
 body.dark-mode .summary-item .value,
 body.dark-mode .timeline-item .value {
     color: #E2E8F0;
 }
 
+body.dark-mode .summary-item .label,
+body.dark-mode .timeline-item .label {
+    color: #94A3B8;
+}
+
 body.dark-mode .distribution-item .value {
     color: #E2E8F0;
+}
+
+body.dark-mode .distribution-item .label {
+    color: #94A3B8;
+}
+
+body.dark-mode .distribution-bar {
+    background: #334155;
 }
 
 body.dark-mode .notes-section {
@@ -1011,6 +1294,10 @@ body.dark-mode .notes-content li {
 }
 
 body.dark-mode .notes-content li strong {
+    color: #E2E8F0;
+}
+
+body.dark-mode .notes-content h5 {
     color: #E2E8F0;
 }
 
@@ -1073,8 +1360,97 @@ body.dark-mode .exam-link-btn.btn-danger {
     background: linear-gradient(135deg, #991B1B, #DC2626);
 }
 
+body.dark-mode .badge-cat {
+    background: #78350F;
+    color: #FCD34D;
+}
+
+body.dark-mode .badge-final {
+    background: #1E3A5F;
+    color: #93C5FD;
+}
+
+body.dark-mode .badge-released {
+    background: #064E3B;
+    color: #6EE7B7;
+}
+
+body.dark-mode .badge-pending {
+    background: #78350F;
+    color: #FCD34D;
+}
+
+body.dark-mode .status-badge.pending {
+    background: #78350F;
+    color: #FCD34D;
+}
+
+body.dark-mode .status-badge.distinction {
+    background: #064E3B;
+    color: #6EE7B7;
+}
+
+body.dark-mode .status-badge.credit {
+    background: #1E3A5F;
+    color: #93C5FD;
+}
+
+body.dark-mode .status-badge.pass {
+    background: #064E3B;
+    color: #6EE7B7;
+}
+
+body.dark-mode .status-badge.fail {
+    background: #7F1D1D;
+    color: #FCA5A5;
+}
+
+body.dark-mode .status-badge.missed {
+    background: #1E293B;
+    color: #94A3B8;
+}
+
+body.dark-mode .status-badge.completed {
+    background: #1E293B;
+    color: #94A3B8;
+}
+
+body.dark-mode .grade-badge.distinction {
+    background: linear-gradient(135deg, #065F46, #059669);
+}
+
+body.dark-mode .grade-badge.credit {
+    background: linear-gradient(135deg, #1E3A5F, #3B82F6);
+}
+
+body.dark-mode .grade-badge.pass {
+    background: linear-gradient(135deg, #78350F, #D97706);
+}
+
+body.dark-mode .grade-badge.fail {
+    background: linear-gradient(135deg, #7F1D1D, #DC2626);
+}
+
+body.dark-mode .grade-badge.pending {
+    background: #1E293B;
+    color: #94A3B8;
+}
+
+body.dark-mode .grade-badge.missed {
+    background: #1E293B;
+    color: #94A3B8;
+}
+
+body.dark-mode .score-row .score-value {
+    color: #6EE7B7;
+}
+
+body.dark-mode .pending-row .pending-text {
+    color: #FCD34D;
+}
+
 /* =====================================================
-   RESPONSIVE
+   RESPONSIVE BREAKPOINTS - LAPTOP/TABLET
    ===================================================== */
 
 @media (max-width: 992px) {
@@ -1107,22 +1483,26 @@ body.dark-mode .exam-link-btn.btn-danger {
     
     .assessments-table th:nth-child(1),
     .assessments-table td:nth-child(1) {
-        width: 25% !important;
-        min-width: 130px !important;
+        width: 30% !important;
+        min-width: 140px !important;
     }
     
     .assessments-table th:nth-child(7),
     .assessments-table td:nth-child(7) {
-        width: 27% !important;
-        min-width: 120px !important;
+        width: 18% !important;
+        min-width: 110px !important;
     }
     
     .exam-link-btn {
-        padding: 6px 12px !important;
-        font-size: 0.65rem !important;
-        max-width: 140px;
+        padding: 4px 8px !important;
+        font-size: 0.55rem !important;
+        max-width: 120px;
     }
 }
+
+/* =====================================================
+   RESPONSIVE - TABLET PORTRAIT
+   ===================================================== */
 
 @media (max-width: 768px) {
     .exams-header {
@@ -1184,76 +1564,11 @@ body.dark-mode .exam-link-btn.btn-danger {
     .notes-content {
         grid-template-columns: 1fr;
     }
-    
-    /* TABLE - MOBILE */
-    .assessments-table {
-        font-size: 0.7rem;
-    }
-    
-    .assessments-table th,
-    .assessments-table td {
-        padding: 6px 4px !important;
-        font-size: 0.6rem;
-    }
-    
-    .assessments-table th:nth-child(1),
-    .assessments-table td:nth-child(1) {
-        width: 22% !important;
-        min-width: 100px !important;
-    }
-    
-    .assessments-table th:nth-child(2),
-    .assessments-table td:nth-child(2) {
-        min-width: 50px !important;
-    }
-    
-    .assessments-table th:nth-child(7),
-    .assessments-table td:nth-child(7) {
-        width: 24% !important;
-        min-width: 100px !important;
-    }
-    
-    .assessment-name {
-        font-size: 0.65rem !important;
-    }
-    
-    .assessment-details {
-        font-size: 0.5rem !important;
-    }
-    
-    .detail-item {
-        font-size: 0.45rem !important;
-        padding: 0px 5px !important;
-    }
-    
-    .exam-link-btn {
-        padding: 5px 10px !important;
-        font-size: 0.55rem !important;
-        max-width: 110px;
-        gap: 4px;
-    }
-    
-    .exam-link-btn::after {
-        font-size: 0.6rem;
-    }
-    
-    .grade-badge {
-        font-size: 0.5rem !important;
-        min-width: 25px !important;
-        padding: 1px 4px !important;
-    }
-    
-    .status-badge {
-        font-size: 0.5rem !important;
-        padding: 1px 6px !important;
-    }
-    
-    .badge-cat,
-    .badge-final {
-        font-size: 0.45rem !important;
-        padding: 1px 4px !important;
-    }
 }
+
+/* =====================================================
+   RESPONSIVE - MOBILE SMALL
+   ===================================================== */
 
 @media (max-width: 480px) {
     .exams-header .header-stats {
@@ -1306,53 +1621,11 @@ body.dark-mode .exam-link-btn.btn-danger {
         font-size: 0.5rem;
         padding: 1px 6px;
     }
-    
-    /* TABLE - MOBILE SMALL */
-    .assessments-table th,
-    .assessments-table td {
-        padding: 4px 2px !important;
-        font-size: 0.5rem;
-    }
-    
-    .assessments-table th:nth-child(1),
-    .assessments-table td:nth-child(1) {
-        width: 18% !important;
-        min-width: 70px !important;
-    }
-    
-    .assessments-table th:nth-child(7),
-    .assessments-table td:nth-child(7) {
-        width: 20% !important;
-        min-width: 80px !important;
-    }
-    
-    .assessment-name {
-        font-size: 0.55rem !important;
-    }
-    
-    .exam-link-btn {
-        padding: 4px 6px !important;
-        font-size: 0.45rem !important;
-        max-width: 70px;
-        gap: 2px;
-        border-radius: 4px;
-    }
-    
-    .exam-link-btn::after {
-        font-size: 0.45rem;
-    }
-    
-    .grade-badge {
-        font-size: 0.4rem !important;
-        min-width: 18px !important;
-        padding: 0px 3px !important;
-    }
-    
-    .status-badge {
-        font-size: 0.4rem !important;
-        padding: 0px 4px !important;
-    }
 }
+
+/* =====================================================
+   RESPONSIVE - MOBILE EXTRA SMALL
+   ===================================================== */
 
 @media (max-width: 360px) {
     .exams-header .header-stats {
@@ -1361,36 +1634,5 @@ body.dark-mode .exam-link-btn.btn-danger {
     
     .quick-actions-grid {
         grid-template-columns: 1fr;
-    }
-    
-    .assessments-table {
-        font-size: 0.45rem;
-    }
-    
-    .assessments-table th,
-    .assessments-table td {
-        padding: 3px 1px !important;
-    }
-    
-    .assessments-table th:nth-child(1),
-    .assessments-table td:nth-child(1) {
-        width: 15% !important;
-        min-width: 50px !important;
-    }
-    
-    .assessments-table th:nth-child(7),
-    .assessments-table td:nth-child(7) {
-        width: 18% !important;
-        min-width: 60px !important;
-    }
-    
-    .exam-link-btn {
-        font-size: 0.4rem !important;
-        padding: 3px 4px !important;
-        max-width: 50px;
-    }
-    
-    .assessment-name {
-        font-size: 0.45rem !important;
     }
 }
