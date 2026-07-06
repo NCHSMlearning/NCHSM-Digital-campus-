@@ -1918,58 +1918,68 @@ adjustColor(color, amount) {
     // LOAD CURRENT INTERACTIVE QUESTION
     // ============================================
     
-    loadCurrentInteractiveQuestion() {
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
-        
-        const questionText = document.getElementById('questionText');
-        if (questionText) {
-            questionText.innerHTML = question.question_text || 'Question text not available';
-        }
-        
-        const difficultyBadge = document.getElementById('difficultyBadge');
-        if (difficultyBadge) {
-            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
-            difficultyBadge.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
-            if (question.difficulty === 'easy') {
-                difficultyBadge.classList.add('difficulty-easy');
-            } else if (question.difficulty === 'hard') {
-                difficultyBadge.classList.add('difficulty-hard');
-            } else {
-                difficultyBadge.classList.add('difficulty-medium');
-            }
-        }
-        
-        this.loadAnswerOptions(question);
-        this.updateCounters();
-        this.updateTopProgressStats();
-        this.updateNavigationButtons();
-        this.updateMarkButton();
-        
-        const savedAnswer = this.userTestAnswers[question.id];
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        
-        if (savedAnswer?.answered) {
-            this.userTestAnswers[this.currentQuestionIndex] = {
-                ...savedAnswer,
-                selectedOption: savedAnswer.selectedOption,
-                selectedOptionIndex: savedAnswer.selectedOptionIndex,
-                answered: true,
-                correct: savedAnswer.correct
-            };
-            this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
-            if (answerRevealSection) {
-                answerRevealSection.style.display = 'block';
-                this.showAnswerRevealSection();
-            }
-        } else {
-            if (answerRevealSection) answerRevealSection.style.display = 'none';
-            this.resetOptionSelection();
-        }
-        
-        this.highlightCurrentQuestionInGrid();
+  // ============================================
+// LOAD CURRENT INTERACTIVE QUESTION - FIXED
+// ============================================
+
+loadCurrentInteractiveQuestion() {
+    const question = this.currentCourseQuestions[this.currentQuestionIndex];
+    if (!question) return;
+    
+    const questionText = document.getElementById('questionText');
+    if (questionText) {
+        questionText.innerHTML = question.question_text || 'Question text not available';
     }
     
+    const difficultyBadge = document.getElementById('difficultyBadge');
+    if (difficultyBadge) {
+        difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
+        difficultyBadge.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+        if (question.difficulty === 'easy') {
+            difficultyBadge.classList.add('difficulty-easy');
+        } else if (question.difficulty === 'hard') {
+            difficultyBadge.classList.add('difficulty-hard');
+        } else {
+            difficultyBadge.classList.add('difficulty-medium');
+        }
+    }
+    
+    this.loadAnswerOptions(question);
+    this.updateCounters();
+    this.updateTopProgressStats();
+    this.updateNavigationButtons();
+    this.updateMarkButton();
+    
+    // Check if this question has been answered
+    const savedAnswer = this.userTestAnswers[question.id];
+    const answerRevealSection = document.getElementById('answerRevealSection');
+    
+    if (savedAnswer?.answered) {
+        // ✅ Question IS answered - SHOW the explanation
+        this.userTestAnswers[this.currentQuestionIndex] = {
+            ...savedAnswer,
+            selectedOption: savedAnswer.selectedOption,
+            selectedOptionIndex: savedAnswer.selectedOptionIndex,
+            answered: true,
+            correct: savedAnswer.correct
+        };
+        this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
+        
+        // 🔥 IMPORTANT: Show the answer reveal section
+        if (answerRevealSection) {
+            answerRevealSection.style.display = 'block';
+            this.showAnswerRevealSection();
+        }
+    } else {
+        // ❌ Question NOT answered - HIDE the explanation
+        if (answerRevealSection) {
+            answerRevealSection.style.display = 'none';
+        }
+        this.resetOptionSelection();
+    }
+    
+    this.highlightCurrentQuestionInGrid();
+}
     // ============================================
     // LOAD ANSWER OPTIONS
     // ============================================
@@ -2061,73 +2071,72 @@ adjustColor(color, amount) {
     }
     
     // ============================================
-    // CHECK ANSWER - UPDATED WITH TRACKING
-    // ============================================
-    
-    checkAnswer() {
-        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (!userAnswer || !userAnswer.selectedOption) {
-            this.showNotification('Please select an answer first!', 'warning');
-            return;
-        }
-        
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        const correctAnswer = question.correct_answer || '';
-        const isCorrect = userAnswer.selectedOption === correctAnswer;
-        
-        userAnswer.answered = true;
-        userAnswer.correct = isCorrect;
-        userAnswer.timestamp = new Date().toISOString();
-        userAnswer.correctAnswer = correctAnswer;
-        userAnswer.courseId = question.course_id;
-        userAnswer.courseName = this.currentCourseForTest.name;
-        userAnswer.questionText = question.question_text;
-        userAnswer.difficulty = question.difficulty;
-        
-        this.userTestAnswers[question.id] = {
-            selectedOption: userAnswer.selectedOption,
-            selectedOptionIndex: userAnswer.selectedOptionIndex,
-            answered: true,
-            correct: isCorrect,
-            correctAnswer: correctAnswer,
-            timestamp: userAnswer.timestamp,
-            questionText: question.question_text,
-            courseId: question.course_id,
-            courseName: this.currentCourseForTest.name,
-            difficulty: question.difficulty,
-            explanationViewed: true
-        };
-        
-        this.showUserAnswer(userAnswer);
-        this.updateCounters();
-        this.updateTopProgressStats();
-        this.showAnswerRevealSection();
-        this.updateQuestionGrid();
-        this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress();
-        
-        // Send progress update to admin
-        this.updateProgressForAdmin();
-        
-        // Dispatch progress event
-        document.dispatchEvent(new CustomEvent('studentTestProgress', {
-            detail: {
-                userId: this.userId,
-                sessionId: this.activeSessionId,
-                questionIndex: this.currentQuestionIndex,
-                isCorrect: isCorrect,
-                answered: Object.values(this.userTestAnswers).filter(a => a?.answered).length,
-                total: this.currentCourseQuestions.length
-            }
-        }));
-        
-        // Auto-advance to next question after 2 seconds
-        if (this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
-            setTimeout(() => {
-                this.nextQuestion();
-            }, 2000);
-        }
+// CHECK ANSWER - FIXED
+// ============================================
+
+checkAnswer() {
+    const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+    if (!userAnswer || !userAnswer.selectedOption) {
+        this.showNotification('Please select an answer first!', 'warning');
+        return;
     }
+    
+    const question = this.currentCourseQuestions[this.currentQuestionIndex];
+    const correctAnswer = question.correct_answer || '';
+    const isCorrect = userAnswer.selectedOption === correctAnswer;
+    
+    userAnswer.answered = true;
+    userAnswer.correct = isCorrect;
+    userAnswer.timestamp = new Date().toISOString();
+    userAnswer.correctAnswer = correctAnswer;
+    userAnswer.courseId = question.course_id;
+    userAnswer.courseName = this.currentCourseForTest.name;
+    userAnswer.questionText = question.question_text;
+    userAnswer.difficulty = question.difficulty;
+    
+    this.userTestAnswers[question.id] = {
+        selectedOption: userAnswer.selectedOption,
+        selectedOptionIndex: userAnswer.selectedOptionIndex,
+        answered: true,
+        correct: isCorrect,
+        correctAnswer: correctAnswer,
+        timestamp: userAnswer.timestamp,
+        questionText: question.question_text,
+        courseId: question.course_id,
+        courseName: this.currentCourseForTest.name,
+        difficulty: question.difficulty,
+        explanationViewed: true
+    };
+    
+    this.showUserAnswer(userAnswer);
+    this.updateCounters();
+    this.updateTopProgressStats();
+    
+    // 🔥 SHOW the explanation and KEEP IT VISIBLE
+    this.showAnswerRevealSection();
+    
+    this.updateQuestionGrid();
+    this.showFeedbackNotification(isCorrect);
+    this.saveUserProgress();
+    
+    // Send progress update to admin
+    this.updateProgressForAdmin();
+    
+    // Dispatch progress event
+    document.dispatchEvent(new CustomEvent('studentTestProgress', {
+        detail: {
+            userId: this.userId,
+            sessionId: this.activeSessionId,
+            questionIndex: this.currentQuestionIndex,
+            isCorrect: isCorrect,
+            answered: Object.values(this.userTestAnswers).filter(a => a?.answered).length,
+            total: this.currentCourseQuestions.length
+        }
+    }));
+    
+    // 🔥 REMOVED the auto-advance so user can read explanation
+    // User will click "Next Question" manually when ready
+}
     
     // ============================================
     // SHOW USER ANSWER
@@ -2160,36 +2169,39 @@ adjustColor(color, amount) {
         });
     }
     
-    // ============================================
-    // SHOW ANSWER REVEAL SECTION
-    // ============================================
+   // ============================================
+// SHOW ANSWER REVEAL SECTION - FIXED
+// ============================================
+
+showAnswerRevealSection() {
+    const answerRevealSection = document.getElementById('answerRevealSection');
+    if (!answerRevealSection) return;
     
-    showAnswerRevealSection() {
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        if (!answerRevealSection) return;
-        
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
-        
-        const correctAnswer = question.correct_answer || 'Correct answer not available';
-        const correctAnswerText = document.getElementById('correctAnswerText');
-        if (correctAnswerText) correctAnswerText.textContent = correctAnswer;
-        
-        const explanationText = document.getElementById('explanationText');
-        if (explanationText) {
-            explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available for this question.</div>';
-        }
-        
-        answerRevealSection.style.display = 'block';
-        answerRevealSection.style.opacity = '1';
-        answerRevealSection.style.visibility = 'visible';
-        
-        const questionCard = document.querySelector('.question-card');
-        if (questionCard && this.userTestAnswers[this.currentCourseQuestions[this.currentQuestionIndex]?.id]?.answered) {
-            questionCard.classList.add('has-answer');
-        }
+    const question = this.currentCourseQuestions[this.currentQuestionIndex];
+    if (!question) return;
+    
+    const correctAnswer = question.correct_answer || 'Correct answer not available';
+    const correctAnswerText = document.getElementById('correctAnswerText');
+    if (correctAnswerText) correctAnswerText.textContent = correctAnswer;
+    
+    const explanationText = document.getElementById('explanationText');
+    if (explanationText) {
+        explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available for this question.</div>';
     }
     
+    // 🔥 ENSURE the section is visible and stays visible
+    answerRevealSection.style.display = 'block';
+    answerRevealSection.style.opacity = '1';
+    answerRevealSection.style.visibility = 'visible';
+    
+    // Scroll to explanation so user sees it
+    answerRevealSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    const questionCard = document.querySelector('.question-card');
+    if (questionCard) {
+        questionCard.classList.add('has-answer');
+    }
+}
     // ============================================
     // HIDE ANSWER
     // ============================================
