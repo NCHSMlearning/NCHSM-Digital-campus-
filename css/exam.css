@@ -171,6 +171,11 @@ label {
     gap: 6px;
 }
 
+.exam-info-card .proctored-badge {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
 .student-info {
     background: #F8FAFC;
     padding: 14px 20px;
@@ -564,9 +569,27 @@ label {
     transform: none;
 }
 
+.ready-container {
+    text-align: center;
+    padding: 15px 0;
+}
+
 .ready-icon {
     font-size: 3.5rem;
     margin-bottom: 15px;
+}
+
+.ready-title {
+    color: #0A3D62;
+    margin-bottom: 6px;
+    font-size: 1.5rem;
+}
+
+.ready-subtitle {
+    color: #64748B;
+    font-size: 0.95rem;
+    max-width: 400px;
+    margin: 0 auto 18px;
 }
 
 .ready-check-list {
@@ -593,8 +616,23 @@ label {
     font-size: 1.1rem;
 }
 
+.start-exam-info {
+    margin-top: 12px;
+    font-size: 0.75rem;
+    color: #94A3B8;
+}
+
+.start-exam-warning {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    color: #DC2626;
+}
+
 /* ============================================================
-   NEW EXAM LAYOUT - QUESTIONS LEFT, CAMERA RIGHT
+   3-COLUMN EXAM LAYOUT
+   LEFT: Student, Timer, Camera
+   MIDDLE: Questions
+   RIGHT: Status
    ============================================================ */
 .exam-interface {
     display: none;
@@ -606,74 +644,44 @@ label {
     display: block;
 }
 
-/* Page Wrapper - New Layout */
 .page-wrapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: 280px 1fr 220px;
+    gap: 16px;
     max-width: 1400px;
     margin: 10px auto;
     height: calc(100vh - 80px);
     min-height: 500px;
 }
 
-/* LEFT PANEL - Questions */
+/* ============================================================
+   LEFT PANEL - Student, Timer, Camera
+   ============================================================ */
 .left-panel {
     background: #FFFFFF;
     border-radius: 16px;
-    padding: 20px;
+    padding: 16px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     order: 1;
+    gap: 10px;
 }
 
-/* RIGHT PANEL - Camera & Proctoring */
-.right-panel {
-    background: #0A0A0A;
-    border-radius: 16px;
-    padding: 15px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    display: flex;
-    flex-direction: column;
-    order: 2;
-    border: 3px solid #38A169;
-    transition: border-color 0.5s ease;
-    min-height: 400px;
-}
-
-.right-panel.face-lost {
-    border-color: #F59E0B;
-}
-
-.right-panel.multiple-faces {
-    border-color: #DC2626;
-    animation: pulseWarning 1s ease-in-out infinite;
-}
-
-.right-panel.face-verified {
-    border-color: #38A169;
-}
-
-@keyframes pulseWarning {
-    0%, 100% { box-shadow: 0 0 20px rgba(220, 38, 38, 0.3); }
-    50% { box-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
-}
-
-/* Student Info Card on Right Panel */
+/* Student Info - Left Panel */
 .student-info-card {
     background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
+    border-radius: 12px;
+    padding: 12px 14px;
     color: white;
+    flex-shrink: 0;
 }
 
 .student-info-card h4 {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     opacity: 0.8;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
 }
 
 .student-info-card p {
@@ -689,17 +697,88 @@ label {
     padding: 2px 8px;
     border-radius: 4px;
     margin-top: 3px;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
 }
 
-/* Camera Container */
+/* Timer - Left Panel */
+.timer-display {
+    background: #FEF3C7;
+    border-radius: 10px;
+    padding: 8px 14px;
+    text-align: center;
+    flex-shrink: 0;
+    border: 2px solid #F59E0B;
+    transition: all 0.3s;
+}
+
+.timer-display .timer-label {
+    font-size: 0.55rem;
+    color: #92400E;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.timer-display .timer-time {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #DC2626;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.timer-display.warning {
+    background: #FEE2E2;
+    border-color: #DC2626;
+    animation: pulse 1s infinite;
+}
+
+.timer-display.danger {
+    background: #DC2626;
+    border-color: #B91C1C;
+}
+
+.timer-display.danger .timer-time {
+    color: #FFFFFF;
+}
+
+.timer-display.danger .timer-label {
+    color: #FEF3C7;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+/* Camera Container - Left Panel */
 .camera-container {
     flex: 1;
     position: relative;
     border-radius: 12px;
     overflow: hidden;
-    background: #000000;
-    min-height: 250px;
+    background: #0A0A0A;
+    min-height: 180px;
+    border: 3px solid #38A169;
+    transition: border-color 0.5s ease;
+}
+
+.camera-container.face-lost {
+    border-color: #F59E0B;
+}
+
+.camera-container.multiple-faces {
+    border-color: #DC2626;
+    animation: pulseWarning 1s ease-in-out infinite;
+}
+
+.camera-container.face-verified {
+    border-color: #38A169;
+}
+
+@keyframes pulseWarning {
+    0%, 100% { box-shadow: 0 0 20px rgba(220, 38, 38, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
 }
 
 .camera-container video {
@@ -718,34 +797,34 @@ label {
     pointer-events: none;
 }
 
-/* Camera Status Overlay */
+/* Camera Status Overlay - Left Panel */
 .camera-status-overlay {
     position: absolute;
-    bottom: 15px;
-    left: 15px;
-    right: 15px;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(8px);
-    padding: 10px 16px;
-    border-radius: 10px;
+    padding: 6px 12px;
+    border-radius: 8px;
     z-index: 10;
 }
 
 .camera-status-overlay .status-badge {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: #FFFFFF;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 500;
 }
 
 .camera-status-overlay .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     display: inline-block;
 }
@@ -771,28 +850,27 @@ label {
 
 .camera-status-overlay .face-count {
     color: #94A3B8;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
 }
 
-/* Camera Controls - Bottom of Right Panel */
+/* Camera Controls - Left Panel */
 .camera-controls-panel {
     display: flex;
-    gap: 10px;
-    margin-top: 12px;
-    flex-wrap: wrap;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .camera-controls-panel button {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 8px;
     border: none;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     cursor: pointer;
     transition: all 0.3s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     justify-content: center;
 }
@@ -817,17 +895,18 @@ label {
     transform: translateY(-2px);
 }
 
-/* Proctoring Status */
+/* Proctoring Status - Left Panel */
 .proctoring-status {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 10px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    background: #F8FAFC;
     border-radius: 8px;
-    font-size: 0.75rem;
-    color: #94A3B8;
+    font-size: 0.65rem;
+    color: #64748B;
+    flex-shrink: 0;
+    border: 1px solid #E2E8F0;
 }
 
 .proctoring-status .status-label {
@@ -851,117 +930,82 @@ label {
     color: #DC2626;
 }
 
-/* Question Nav Header */
-.question-nav-header {
+/* Network Status - Left Panel */
+.network-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #D1FAE5;
+    border-radius: 8px;
+    font-size: 0.6rem;
+    color: #064E3B;
+    flex-shrink: 0;
+}
+
+.network-status.offline {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+/* ============================================================
+   MIDDLE PANEL - Questions
+   ============================================================ */
+.middle-panel {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    order: 2;
+}
+
+/* Question Header */
+.question-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
     gap: 8px;
+    flex-shrink: 0;
 }
 
-.question-nav-header h2 {
+.question-header h2 {
     font-size: 1.1rem;
     color: #0A3D62;
     margin: 0;
 }
 
-.question-nav-header .exam-timer {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #DC2626;
-    background: #FEF3C7;
-    padding: 4px 12px;
-    border-radius: 8px;
-}
-
-.exam-timer.warning {
-    background: #FEE2E2;
-    animation: pulse 1s infinite;
-}
-
-.exam-timer.danger {
-    background: #DC2626;
-    color: white;
-    animation: pulse 0.5s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-/* Question Status Grid */
-.question-status-grid {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 5px;
-    margin-bottom: 12px;
-}
-
-.q-status-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
-    background: #F1F5F9;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #475569;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-}
-
-.q-status-item:hover {
-    background: #E2E8F0;
-    transform: translateY(-1px);
-}
-
-.q-status-item.current {
-    border-color: #0A3D62;
-    background: #E2E8F0;
-    font-weight: 700;
-}
-
-.q-status-item.answered {
-    background: #D1FAE5;
-    border-color: #38A169;
-    color: #064E3B;
-}
-
-.q-status-item.answered::after {
-    content: '✓';
+.flag-btn {
+    background: none;
+    border: none;
     font-size: 0.8rem;
-    margin-left: 2px;
-    color: #38A169;
+    cursor: pointer;
+    color: #94A3B8;
+    transition: color 0.3s;
+    padding: 4px 10px;
+    border-radius: 6px;
 }
 
-.q-status-item.flagged {
-    border-color: #F59E0B !important;
-    background: #FEF3C7 !important;
+.flag-btn:hover {
+    background: #F1F5F9;
 }
 
-.q-status-item.face-lost {
-    border-color: #DC2626 !important;
-    background: #FEE2E2 !important;
-    animation: blink-red 1s infinite;
-}
-
-@keyframes blink-red {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+.flag-btn.flagged {
+    color: #F59E0B;
 }
 
 /* Progress Container */
 .progress-container {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .progress-text {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: #64748B;
     margin-bottom: 4px;
 }
@@ -1059,7 +1103,7 @@ label {
     border-radius: 8px;
     margin: 8px 0;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
 }
 
 /* Navigation Buttons */
@@ -1067,11 +1111,12 @@ label {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 12px;
-    padding-top: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid #E2E8F0;
     flex-wrap: wrap;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .left-nav {
@@ -1086,8 +1131,8 @@ label {
 }
 
 .nav-buttons button {
-    padding: 8px 16px;
-    font-size: 0.8rem;
+    padding: 6px 14px;
+    font-size: 0.75rem;
     border-radius: 8px;
     border: none;
     font-weight: 600;
@@ -1107,29 +1152,10 @@ label {
     transform: translateY(-1px);
 }
 
-#flag-question-btn {
-    background: none;
-    border: none;
-    font-size: 0.85rem;
-    cursor: pointer;
-    color: #94A3B8;
-    transition: color 0.3s;
-    padding: 8px 12px;
-}
-
-#flag-question-btn:hover {
-    background: #F1F5F9;
-    border-radius: 8px;
-}
-
-#flag-question-btn.flagged {
-    color: #F59E0B;
-}
-
 #submit-exam-btn {
     background: #DC2626;
     color: white;
-    min-width: 100px;
+    min-width: 90px;
 }
 
 #submit-exam-btn:hover:enabled {
@@ -1151,14 +1177,15 @@ label {
 /* Auto-save Status */
 .auto-save-status {
     text-align: center;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: #064E3B;
     background: #D1FAE5;
-    padding: 4px 8px;
+    padding: 3px 10px;
     border-radius: 20px;
-    margin-top: 8px;
+    margin-top: 6px;
     display: inline-block;
     align-self: center;
+    flex-shrink: 0;
 }
 
 .auto-save-status.saving {
@@ -1174,21 +1201,208 @@ label {
 /* Keyboard Shortcuts */
 .keyboard-shortcuts {
     display: flex;
-    gap: 15px;
+    gap: 12px;
     justify-content: center;
-    margin-top: 8px;
-    font-size: 0.65rem;
+    margin-top: 6px;
+    font-size: 0.6rem;
     color: #94A3B8;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .keyboard-shortcuts kbd {
     background: #F1F5F9;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: 4px;
     border: 1px solid #E2E8F0;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-family: inherit;
+}
+
+/* ============================================================
+   RIGHT PANEL - Question Status
+   ============================================================ */
+.right-panel {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    order: 3;
+    gap: 10px;
+}
+
+/* Status Title */
+.status-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #073450;
+    border-bottom: 2px solid #E2E8F0;
+    padding-bottom: 6px;
+    flex-shrink: 0;
+}
+
+/* Question Status Grid - Right Panel */
+.question-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.q-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    background: #F1F5F9;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: #475569;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.q-status-item:hover {
+    background: #E2E8F0;
+    transform: translateY(-1px);
+}
+
+.q-status-item.current {
+    border-color: #0A3D62;
+    background: #E2E8F0;
+    font-weight: 700;
+}
+
+.q-status-item.answered {
+    background: #D1FAE5;
+    border-color: #38A169;
+    color: #064E3B;
+}
+
+.q-status-item.answered::after {
+    content: '✓';
+    font-size: 0.7rem;
+    margin-left: 2px;
+    color: #38A169;
+}
+
+.q-status-item.flagged {
+    border-color: #F59E0B !important;
+    background: #FEF3C7 !important;
+}
+
+.q-status-item.face-lost {
+    border-color: #DC2626 !important;
+    background: #FEE2E2 !important;
+    animation: blink-red 1s infinite;
+}
+
+@keyframes blink-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Stats Summary - Right Panel */
+.stats-summary {
+    background: #F8FAFC;
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid #E2E8F0;
+    flex-shrink: 0;
+}
+
+.stats-summary .stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 0.7rem;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.stats-summary .stat-item:last-child {
+    border-bottom: none;
+}
+
+.stats-summary .stat-label {
+    color: #64748B;
+}
+
+.stats-summary .stat-value {
+    font-weight: 600;
+    color: #0A3D62;
+}
+
+/* Review Toggle - Right Panel */
+.review-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 6px 10px;
+    background: #F8FAFC;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    flex-shrink: 0;
+}
+
+.review-toggle input {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* Review Container - Right Panel */
+#review-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 150px;
+}
+
+#review-container::-webkit-scrollbar {
+    width: 3px;
+}
+
+#review-container::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 2px;
+}
+
+#review-container::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 2px;
+}
+
+#review-container .review-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-bottom: 1px solid #F1F5F9;
+    background: #F8FAFC;
+    border-left: 3px solid #38A169;
+    margin-bottom: 2px;
+    cursor: pointer;
+    font-size: 0.65rem;
+    border-radius: 4px;
+}
+
+#review-container .review-item.unanswered {
+    background: #FEF3C7;
+    border-left-color: #F59E0B;
+}
+
+#review-container .review-item.flagged-item {
+    border-left-color: #F59E0B !important;
+    background: #FEF3C7 !important;
+}
+
+#review-container .review-item:hover {
+    background: #E2E8F0;
 }
 
 /* ============================================================
@@ -1240,6 +1454,12 @@ label {
     margin: 0 auto 10px;
 }
 
+#face-block-overlay .block-instruction {
+    color: #FDB913;
+    font-size: 0.9rem;
+    margin: 10px 0;
+}
+
 #face-block-overlay .block-timer {
     font-size: 3rem;
     font-weight: 800;
@@ -1257,6 +1477,12 @@ label {
 #face-block-overlay .block-sub {
     color: #64748B;
     font-size: 0.85rem;
+}
+
+#face-block-overlay .block-save-info {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: #94A3B8;
 }
 
 #face-block-overlay .block-status {
@@ -1298,7 +1524,9 @@ label {
     box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 }
 
-/* Multiple Faces Warning */
+/* ============================================================
+   MULTIPLE FACES WARNING
+   ============================================================ */
 #multiple-faces-warning {
     position: fixed;
     top: 20px;
@@ -1335,6 +1563,32 @@ label {
     }
 }
 
+#multiple-faces-warning .warning-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+#multiple-faces-warning h3 {
+    margin-bottom: 5px;
+    font-size: 1.2rem;
+}
+
+#multiple-faces-warning p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+#multiple-faces-warning .countdown-text {
+    font-size: 1.2rem;
+    margin-top: 10px;
+    color: #FDB913;
+    font-weight: bold;
+}
+
+#multiple-faces-warning .countdown-text span {
+    font-size: 1.5rem;
+}
+
 #multiple-faces-warning .progress-bar-warning {
     margin-top: 15px;
     width: 100%;
@@ -1353,6 +1607,12 @@ label {
     background: #FDB913;
     border-radius: 2px;
     transition: width 1s linear;
+}
+
+#multiple-faces-warning .warning-sub {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    opacity: 0.7;
 }
 
 /* ============================================================
@@ -1385,6 +1645,23 @@ label {
     font-size: 1.8rem;
     color: #FF6B35;
     margin-bottom: 10px;
+}
+
+#app-block-overlay .blocked-items {
+    margin: 15px 0;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#app-block-overlay .blocked-items span {
+    font-size: 0.85rem;
+}
+
+#app-block-overlay .block-sub {
+    font-size: 0.85rem;
+    color: #94A3B8;
 }
 
 #app-block-overlay .return-btn {
@@ -1458,16 +1735,16 @@ label {
     padding: 20px;
 }
 
-#fullscreen-exit-warning h1 {
-    font-size: 2.5rem;
-    color: #FF6B35;
-    margin-bottom: 20px;
-}
-
 #fullscreen-exit-warning .warning-icon {
     font-size: 4rem;
     margin-bottom: 20px;
     animation: pulse 1s infinite;
+}
+
+#fullscreen-exit-warning h1 {
+    font-size: 2.5rem;
+    color: #FF6B35;
+    margin-bottom: 20px;
 }
 
 #fullscreen-exit-warning .countdown-timer {
@@ -1475,6 +1752,11 @@ label {
     font-weight: bold;
     color: #FF6B35;
     margin: 20px 0;
+}
+
+#fullscreen-exit-warning .block-sub {
+    font-size: 0.9rem;
+    color: #94A3B8;
 }
 
 #camera-permission-modal {
@@ -1661,29 +1943,23 @@ label {
     padding: 20px;
 }
 
-/* ============================================================
-   NETWORK INDICATOR
-   ============================================================ */
-#network-indicator {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    background: #D1FAE5;
-    color: #064E3B;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    opacity: 0.8;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.blocked-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
 }
 
-#network-indicator.offline {
-    background: #FEE2E2;
-    color: #991B1B;
+.blocked-content h2 {
+    color: #DC2626;
+}
+
+.blocked-content .try-again-btn {
+    margin-top: 15px;
+    padding: 8px 20px;
+    background: #0A3D62;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 /* ============================================================
@@ -1779,9 +2055,62 @@ label {
     color: #0A3D62;
 }
 
+.completion-note {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: #64748B;
+    text-align: center;
+}
+
+.time-up-message {
+    text-align: center;
+    padding: 40px 20px;
+    background: #FEF3C7;
+    border-radius: 16px;
+    border: 3px solid #F59E0B;
+}
+
+.time-up-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.time-up-message h2 {
+    color: #92400E;
+}
+
+.time-up-message p {
+    color: #78350F;
+    font-size: 1rem;
+    margin: 10px 0;
+}
+
+.submitting-indicator {
+    margin-top: 15px;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+    display: inline-block;
+    font-weight: 600;
+    color: #0A3D62;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #DC2626;
+}
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */
+@media (max-width: 1200px) {
+    .page-wrapper {
+        grid-template-columns: 240px 1fr 200px;
+        gap: 12px;
+    }
+}
+
 @media (max-width: 992px) {
     .page-wrapper {
         grid-template-columns: 1fr;
@@ -1790,14 +2119,82 @@ label {
     }
     
     .left-panel {
+        order: 1;
+        max-height: 50vh;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .left-panel .student-info-card {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .left-panel .timer-display {
+        flex: 0 0 auto;
+        min-width: 120px;
+    }
+    
+    .left-panel .camera-container {
+        flex: 1;
+        min-height: 200px;
+        min-width: 250px;
+        order: 10;
+        width: 100%;
+    }
+    
+    .left-panel .camera-controls-panel {
+        order: 11;
+        width: 100%;
+    }
+    
+    .left-panel .proctoring-status {
+        order: 12;
+    }
+    
+    .left-panel .network-status {
+        order: 13;
+    }
+    
+    .middle-panel {
         order: 2;
         max-height: 60vh;
     }
     
     .right-panel {
-        order: 1;
-        min-height: 300px;
-        max-height: 50vh;
+        order: 3;
+        max-height: 40vh;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .right-panel .status-title {
+        width: 100%;
+    }
+    
+    .right-panel .question-status-grid {
+        flex: 1;
+        min-width: 200px;
+        grid-template-columns: repeat(6, 1fr);
+    }
+    
+    .right-panel .stats-summary {
+        flex: 0 0 auto;
+        min-width: 150px;
+    }
+    
+    .right-panel .review-toggle {
+        flex: 0 0 auto;
+    }
+    
+    #review-container {
+        max-height: 100px;
+        flex: 1;
+        min-width: 150px;
     }
     
     .question-status-grid {
@@ -1846,18 +2243,36 @@ label {
         max-height: 200px;
         padding: 14px 16px;
     }
+    
+    .left-panel {
+        max-height: 45vh;
+    }
+    
+    .left-panel .camera-container {
+        min-height: 150px;
+    }
+    
+    .middle-panel {
+        max-height: 55vh;
+        padding: 15px;
+    }
+    
+    .right-panel {
+        max-height: 35vh;
+    }
+    
+    .right-panel .question-status-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
     .question-status-grid {
         grid-template-columns: repeat(5, 1fr);
     }
+    
     .completion-certificate .summary-grid {
         grid-template-columns: 1fr;
     }
-    #network-indicator {
-        top: 5px;
-        right: 5px;
-        font-size: 0.6rem;
-        padding: 2px 8px;
-    }
+    
     #face-block-overlay .block-status {
         flex-direction: column;
         gap: 10px;
@@ -1865,20 +2280,25 @@ label {
     #face-block-overlay .block-timer {
         font-size: 2.5rem;
     }
+    
     .camera-controls-panel button {
         flex: 1;
         min-width: 80px;
     }
-    .question-nav-header h2 {
+    
+    .question-header h2 {
         font-size: 0.9rem;
     }
+    
     .nav-buttons {
         flex-direction: column;
         align-items: stretch;
     }
+    
     .left-nav {
         justify-content: center;
     }
+    
     .right-nav {
         justify-content: center;
     }
@@ -1908,9 +2328,47 @@ label {
         height: 24px;
         font-size: 0.6rem;
     }
+    
+    .left-panel {
+        max-height: 40vh;
+        padding: 10px;
+    }
+    
+    .left-panel .student-info-card {
+        min-width: 100px;
+        padding: 8px 10px;
+    }
+    
+    .left-panel .student-info-card p {
+        font-size: 0.7rem;
+    }
+    
+    .left-panel .timer-display .timer-time {
+        font-size: 1.3rem;
+    }
+    
+    .left-panel .camera-container {
+        min-height: 120px;
+    }
+    
+    .middle-panel {
+        padding: 12px;
+        max-height: 50vh;
+    }
+    
+    .right-panel {
+        padding: 10px;
+        max-height: 30vh;
+    }
+    
+    .right-panel .question-status-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
     .question-status-grid {
         grid-template-columns: repeat(4, 1fr);
     }
+    
     #face-block-overlay h2 {
         font-size: 1.5rem;
     }
@@ -1926,11 +2384,16 @@ label {
     #multiple-faces-warning h3 {
         font-size: 1rem;
     }
-    .right-panel {
-        min-height: 250px;
-        max-height: 40vh;
+    
+    .camera-status-overlay .status-badge {
+        font-size: 0.55rem;
     }
-    .camera-container {
-        min-height: 150px;
+    
+    .camera-status-overlay .face-count {
+        font-size: 0.55rem;
+    }
+    
+    .stats-summary .stat-item {
+        font-size: 0.6rem;
     }
 }
