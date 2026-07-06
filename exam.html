@@ -497,7 +497,7 @@
         
         // ENHANCED FACE DETECTION - 30 SECOND RECOVERY
         let faceDetectionLostCount = 0;
-        const MAX_FACE_LOST = 10;
+        const MAX_FACE_LOST = 5;  // ⬅️ CHANGED: 5 seconds tolerance
         let faceDetectionRecoveryTimer = null;
         let lastMultipleFacesLogTime = 0;
         let lastFaceLogTime = 0;
