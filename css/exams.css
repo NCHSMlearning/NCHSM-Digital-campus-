@@ -409,30 +409,30 @@
 }
 
 /* =====================================================
-   VERTICAL ASSESSMENT CELL - BIGGER TEXT
+   CLEAN ASSESSMENT CELL - EVEN BIGGER TEXT
    ===================================================== */
 
 .assessment-info-box {
     display: flex;
     flex-direction: column;
-    gap: 2px !important;
-    padding: 3px 0;
+    gap: 4px !important;
+    padding: 5px 0;
 }
 
 .assessment-row-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2px;
-    gap: 6px;
+    margin-bottom: 3px;
+    gap: 8px;
 }
 
 .assessment-name {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
-    font-size: 0.82rem !important;
+    font-size: 1rem !important;  /* ⬆️ BIGGER from 0.82rem */
     font-weight: 700;
     color: #1f2937;
 }
@@ -440,47 +440,48 @@
 .assessment-name strong {
     font-weight: 700;
     color: #111827;
-    font-size: 0.85rem !important;
+    font-size: 1.05rem !important;  /* ⬆️ BIGGER from 0.85rem */
 }
 
 .assessment-row-detail {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px 0;
-    font-size: 0.68rem !important;
-    line-height: 1.3;
+    gap: 5px;
+    padding: 2px 0;
+    font-size: 0.8rem !important;  /* ⬆️ BIGGER from 0.68rem */
+    line-height: 1.4;
 }
 
 .detail-icon {
-    width: 16px;
+    width: 20px;
     text-align: center;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     flex-shrink: 0;
 }
 
 .detail-label {
     color: #6b7280;
     font-weight: 500;
-    min-width: 40px;
+    min-width: 45px;
     flex-shrink: 0;
-    font-size: 0.6rem !important;
+    font-size: 0.7rem !important;  /* ⬆️ BIGGER from 0.6rem */
 }
 
 .detail-value {
     color: #1f2937;
     font-weight: 400;
     word-break: break-word;
-    font-size: 0.68rem !important;
+    font-size: 0.8rem !important;  /* ⬆️ BIGGER from 0.68rem */
 }
 
+/* Program Badge - BIGGER */
 .program-badge {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    padding: 1px 8px;
-    border-radius: 6px;
-    font-size: 0.55rem !important;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 0.65rem !important;  /* ⬆️ BIGGER from 0.55rem */
     font-weight: 600;
     white-space: nowrap;
 }
@@ -495,87 +496,95 @@
     color: #065F46;
 }
 
+/* Badges for CAT/Exam - BIGGER */
 .badge-cat {
     display: inline-block;
-    padding: 1px 6px !important;
-    border-radius: 4px;
-    font-size: 0.5rem !important;
+    padding: 2px 10px !important;  /* ⬆️ BIGGER padding */
+    border-radius: 6px;
+    font-size: 0.6rem !important;  /* ⬆️ BIGGER from 0.5rem */
     font-weight: 700;
     background: #FEF3C7;
     color: #92400E;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
 }
 
 .badge-final {
     display: inline-block;
-    padding: 1px 6px !important;
-    border-radius: 4px;
-    font-size: 0.5rem !important;
+    padding: 2px 10px !important;  /* ⬆️ BIGGER padding */
+    border-radius: 6px;
+    font-size: 0.6rem !important;  /* ⬆️ BIGGER from 0.5rem */
     font-weight: 700;
     background: #DBEAFE;
     color: #1E40AF;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
 }
 
+/* Released/Pending Badges - BIGGER */
 .badge-released {
     background: #D1FAE5;
     color: #065F46;
-    font-size: 0.5rem;
-    padding: 1px 6px;
-    border-radius: 4px;
+    font-size: 0.6rem !important;  /* ⬆️ BIGGER from 0.5rem */
+    padding: 2px 10px !important;
+    border-radius: 6px;
     font-weight: 600;
 }
 
 .badge-pending {
     background: #FEF3C7;
     color: #92400E;
-    font-size: 0.5rem;
-    padding: 1px 6px;
-    border-radius: 4px;
+    font-size: 0.6rem !important;  /* ⬆️ BIGGER from 0.5rem */
+    padding: 2px 10px !important;
+    border-radius: 6px;
     font-weight: 600;
 }
 
+/* Exam Date & Time - BIGGER */
 .exam-datetime {
-    font-size: 0.6rem !important;
+    font-size: 0.75rem !important;  /* ⬆️ BIGGER from 0.6rem */
     color: #6b7280;
     display: flex;
     align-items: center;
-    gap: 3px;
-    padding: 1px 0;
+    gap: 5px;
+    padding: 2px 0;
 }
 
+.exam-datetime i {
+    font-size: 0.75rem;
+}
+
+/* Countdown Row - BIGGER */
 .assessment-row-countdown {
-    margin-top: 2px;
-    padding-top: 2px;
+    margin-top: 3px;
+    padding-top: 3px;
 }
 
 .time-remaining {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.6rem !important;
-    font-weight: 600;
+    gap: 5px;
+    font-size: 0.75rem !important;  /* ⬆️ BIGGER from 0.6rem */
+    font-weight: 700;
     color: #DC2626;
 }
 
 .time-remaining i {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
 }
 
+/* Score Row - BIGGER */
 .score-row .score-value {
     font-weight: 600;
     color: #059669;
-    font-size: 0.68rem !important;
+    font-size: 0.8rem !important;  /* ⬆️ BIGGER from 0.68rem */
 }
 
 .pending-row .pending-text {
     font-weight: 500;
     color: #D97706;
-    font-size: 0.68rem !important;
+    font-size: 0.8rem !important;  /* ⬆️ BIGGER from 0.68rem */
 }
-
 /* =====================================================
    STATUS & GRADE BADGES - BIGGER
    ===================================================== */
