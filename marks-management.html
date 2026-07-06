@@ -5245,7 +5245,7 @@ function updateTranscriptPreview() {
     `;
 }
 // ===== GENERATE PDF PREVIEW (Shows in browser before download) =====
-// ===== GENERATE PDF PREVIEW - UPDATED WITH FULL LETTERHEAD & GRADING KEY =====
+// ===== GENERATE PDF PREVIEW - WITH CORRECT GRADING SYSTEM =====
 function generatePDFPreview() {
     const select = document.getElementById('studentSelectForReport');
     if (!select || !select.value) {
@@ -5279,29 +5279,29 @@ function generatePDFPreview() {
     const overallAvg = student.overallAvg || 0;
     const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
     
-    // ===== GRADE CALCULATION (Matches your grading key: FAIL, C, B, A) =====
-    let gradeLetter = 'FAIL';
+    // ===== GRADE CALCULATION (Correct grading system) =====
+    let gradeLetter = 'D';
     let gradePoints = 0;
     let gradeComment = 'FAIL';
     let gradeLabel = 'FAIL';
     
-    if (overallAvg >= 75) { 
+    if (overallAvg >= 80) { 
         gradeLetter = 'A'; 
         gradePoints = 4; 
-        gradeComment = 'EXCELLENT'; 
-        gradeLabel = 'EXCELLENT';
-    } else if (overallAvg >= 65) { 
+        gradeComment = 'DISTINCTION'; 
+        gradeLabel = 'DISTINCTION';
+    } else if (overallAvg >= 70) { 
         gradeLetter = 'B'; 
         gradePoints = 3; 
-        gradeComment = 'GOOD'; 
-        gradeLabel = 'GOOD';
+        gradeComment = 'CREDIT'; 
+        gradeLabel = 'CREDIT';
     } else if (overallAvg >= 60) { 
         gradeLetter = 'C'; 
         gradePoints = 2; 
-        gradeComment = 'SATISFACTORY'; 
+        gradeComment = 'PASS'; 
         gradeLabel = 'PASS';
     } else { 
-        gradeLetter = 'FAIL'; 
+        gradeLetter = 'D'; 
         gradePoints = 0; 
         gradeComment = 'FAIL'; 
         gradeLabel = 'FAIL';
@@ -5320,9 +5320,9 @@ function generatePDFPreview() {
             const isPass = subj.score >= 60;
             const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
-            let subjGrade = 'FAIL';
-            if (subj.score >= 75) subjGrade = 'A';
-            else if (subj.score >= 65) subjGrade = 'B';
+            let subjGrade = 'D';
+            if (subj.score >= 80) subjGrade = 'A';
+            else if (subj.score >= 70) subjGrade = 'B';
             else if (subj.score >= 60) subjGrade = 'C';
             
             return `
@@ -5353,7 +5353,7 @@ function generatePDFPreview() {
     const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // ===== PREVIEW HTML WITH FULL LETTERHEAD & GRADING KEY =====
+    // ===== PREVIEW HTML =====
     const previewHTML = `
 <div style="max-width: 1100px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; border: 1px solid #d1d5db; font-family: 'Georgia', 'Times New Roman', serif; font-size: 13px; line-height: 1.6; color: #1a1a2e;">
     <!-- TOP BAR -->
@@ -5375,6 +5375,7 @@ function generatePDFPreview() {
                 <div style="font-size: 24px; font-weight: 800; letter-spacing: 1.5px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
                 <div style="font-size: 13px; opacity: 0.85; margin-top: 2px; font-weight: 300; letter-spacing: 0.5px;">&amp; MANAGEMENT</div>
                 <div style="font-size: 11px; font-style: italic; opacity: 0.75; margin-top: 4px; letter-spacing: 0.5px;">Excellence in Health Training, Research &amp; Professional Development</div>
+                <div style="font-size: 10px; font-weight: 600; margin-top: 2px; color: #fbbf24;">NURSING SCHOOL | School Code: 722</div>
             </div>
         </div>
         <div style="font-size: 9px; opacity: 0.7; margin-top: 6px; letter-spacing: 0.3px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
@@ -5398,7 +5399,7 @@ function generatePDFPreview() {
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 20px;">
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Student Name:</span><span style="color: #6366f1; font-weight: 600; font-size: 13px;">${safeStudentName}</span></div>
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Admission Number:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">${safeAdmission}</span></div>
-            <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Programme:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">Diploma in Community Health Nursing</span></div>
+            <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Programme:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">KRCHN - Kenya Registered Community Health Nursing</span></div>
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Academic Year:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">${year}</span></div>
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pass Mark:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">60% (NCK Standard)</span></div>
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Issue Date:</span><span style="color: #1e293b; font-weight: 600; font-size: 13px;">${issueDate}</span></div>
@@ -5420,7 +5421,7 @@ function generatePDFPreview() {
             <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Pass Rate</div>
         </div>
         <div style="background: #f8fafc; padding: 12px 10px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
-            <div style="font-size: 22px; font-weight: 800;"><span style="display: inline-block; padding: 4px 16px; border-radius: 4px; font-weight: 800; font-size: 18px; letter-spacing: 1px; background: ${overallAvg >= 75 ? '#d1fae5' : (overallAvg >= 65 ? '#dbeafe' : (overallAvg >= 60 ? '#fef3c7' : '#fee2e2'))}; color: ${overallAvg >= 75 ? '#065f46' : (overallAvg >= 65 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))};">${gradeLetter}</span></div>
+            <div style="font-size: 22px; font-weight: 800;"><span style="display: inline-block; padding: 4px 16px; border-radius: 4px; font-weight: 800; font-size: 18px; letter-spacing: 1px; background: ${overallAvg >= 80 ? '#d1fae5' : (overallAvg >= 70 ? '#dbeafe' : (overallAvg >= 60 ? '#fef3c7' : '#fee2e2'))}; color: ${overallAvg >= 80 ? '#065f46' : (overallAvg >= 70 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))};">${gradeLetter}</span></div>
             <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Grade</div>
         </div>
         <div style="background: #f8fafc; padding: 12px 10px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
@@ -5470,27 +5471,27 @@ function generatePDFPreview() {
             
             <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 600;">0</div>
             <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 600;">59</div>
-            <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #991b1b;">FAIL</div>
+            <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #991b1b;">D</div>
             <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px;">0</div>
             <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; color: #991b1b;">FAIL</div>
             
             <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">60</div>
-            <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">64</div>
+            <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">69</div>
             <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #92400e;">C</div>
             <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px;">2</div>
-            <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; color: #92400e;">SATISFACTORY</div>
+            <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; color: #92400e;">PASS</div>
             
-            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">65</div>
-            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">74</div>
+            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">70</div>
+            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">79</div>
             <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #1e40af;">B</div>
             <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px;">3</div>
-            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; color: #1e40af;">GOOD</div>
+            <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; color: #1e40af;">CREDIT</div>
             
-            <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">75</div>
+            <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">80</div>
             <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">100</div>
             <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #065f46;">A</div>
             <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px;">4</div>
-            <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; color: #065f46;">EXCELLENT</div>
+            <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; color: #065f46;">DISTINCTION</div>
         </div>
         <div style="font-size: 8px; color: #94a3b8; margin-top: 6px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px;">
             <i class="fas fa-info-circle"></i> Minimum pass mark: <strong>60%</strong> (NCK Standard) | School Code: <strong>722</strong>
@@ -5504,7 +5505,7 @@ function generatePDFPreview() {
         <div style="margin-top: 10px; font-size: 12px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; font-weight: 500;">
             <span>Overall Average: <span style="color: ${overallAvg >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600;">${overallAvg}%</span></span>
             <span>CGPA: <span style="color: #6366f1; font-weight: 600;">${cgpa} / 5.00</span></span>
-            <span>Classification: <span style="color: ${overallAvg >= 75 ? '#065f46' : (overallAvg >= 65 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))}; font-weight: 600;">${gradeLabel}</span></span>
+            <span>Classification: <span style="color: ${overallAvg >= 80 ? '#065f46' : (overallAvg >= 70 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))}; font-weight: 600;">${gradeLabel}</span></span>
         </div>
     </div>
     
@@ -5553,52 +5554,9 @@ function generatePDFPreview() {
     hideLoading();
     showNotification('📄 PDF preview generated! Click "Full Transcript" to download.', false);
 }
-  // ===== FORCE REFRESH TRANSCRIPT DATA =====
-async function forceRefreshTranscriptData() {
-    const select = document.getElementById('studentSelectForReport');
-    if (!select || !select.value) {
-        showNotification('Please select a student first', true);
-        return;
-    }
-    
-    showLoading('Refreshing transcript data from Google Sheet...');
-    
-    try {
-        // ✅ Clear all caches
-        window._studentDataCache = null;
-        window._studentList = null;
-        window.reportData = null;
-        configCache = null;
-        window._transcriptCache = null;
-        window._marksCache = {};
-        
-        // ✅ Force refresh the entire transcript page
-        await showTranscriptsPage();
-        
-        // ✅ Re-select the previously selected student
-        const newSelect = document.getElementById('studentSelectForReport');
-        if (newSelect && select.value) {
-            const options = Array.from(newSelect.options).map(o => o.value);
-            if (options.includes(select.value)) {
-                newSelect.value = select.value;
-                updateTranscriptPreview();
-            } else if (options.length > 1) {
-                newSelect.value = options[1];
-                updateTranscriptPreview();
-            }
-        }
-        
-        showNotification('✅ Transcript data refreshed from Google Sheet!');
-    } catch (error) {
-        console.error('❌ Refresh error:', error);
-        showNotification('Error refreshing data: ' + error.message, true);
-    } finally {
-        hideLoading();
-    }
-}
 
   // ===== GENERATE STUDENT TRANSCRIPT PDF - FIXED =====
-// ===== GENERATE STUDENT TRANSCRIPT PDF - FULLY UPDATED =====
+/// ===== GENERATE STUDENT TRANSCRIPT PDF - WITH CORRECT GRADING SYSTEM =====
 async function generateStudentTranscriptPDF(student, reportData) {
     if (!student) {
         showNotification('No student data available', true);
@@ -5620,29 +5578,29 @@ async function generateStudentTranscriptPDF(student, reportData) {
     const overallAvg = student.overallAvg || 0;
     const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
     
-    // ===== GRADE CALCULATION (Matches your grading key) =====
-    let gradeLetter = 'FAIL';
+    // ===== GRADE CALCULATION (Correct grading system) =====
+    let gradeLetter = 'D';
     let gradePoints = 0;
     let gradeComment = 'FAIL';
     let gradeLabel = 'FAIL';
     
-    if (overallAvg >= 75) { 
+    if (overallAvg >= 80) { 
         gradeLetter = 'A'; 
         gradePoints = 4; 
-        gradeComment = 'EXCELLENT'; 
-        gradeLabel = 'EXCELLENT';
-    } else if (overallAvg >= 65) { 
+        gradeComment = 'DISTINCTION'; 
+        gradeLabel = 'DISTINCTION';
+    } else if (overallAvg >= 70) { 
         gradeLetter = 'B'; 
         gradePoints = 3; 
-        gradeComment = 'GOOD'; 
-        gradeLabel = 'GOOD';
+        gradeComment = 'CREDIT'; 
+        gradeLabel = 'CREDIT';
     } else if (overallAvg >= 60) { 
         gradeLetter = 'C'; 
         gradePoints = 2; 
-        gradeComment = 'SATISFACTORY'; 
+        gradeComment = 'PASS'; 
         gradeLabel = 'PASS';
     } else { 
-        gradeLetter = 'FAIL'; 
+        gradeLetter = 'D'; 
         gradePoints = 0; 
         gradeComment = 'FAIL'; 
         gradeLabel = 'FAIL';
@@ -5662,10 +5620,10 @@ async function generateStudentTranscriptPDF(student, reportData) {
             const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
             
-            // Unit grade based on your grading key
-            let subjGrade = 'FAIL';
-            if (subj.score >= 75) subjGrade = 'A';
-            else if (subj.score >= 65) subjGrade = 'B';
+            // Unit grade based on correct grading key
+            let subjGrade = 'D';
+            if (subj.score >= 80) subjGrade = 'A';
+            else if (subj.score >= 70) subjGrade = 'B';
             else if (subj.score >= 60) subjGrade = 'C';
             
             return `
@@ -5718,6 +5676,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
                         <div style="font-size: 22px; font-weight: 800; letter-spacing: 1.5px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
                         <div style="font-size: 13px; opacity: 0.85; margin-top: 2px; font-weight: 300; letter-spacing: 0.5px;">&amp; MANAGEMENT</div>
                         <div style="font-size: 11px; font-style: italic; opacity: 0.75; margin-top: 4px; letter-spacing: 0.5px;">Excellence in Health Training, Research &amp; Professional Development</div>
+                        <div style="font-size: 10px; font-weight: 600; margin-top: 2px; color: #fbbf24;">NURSING SCHOOL | School Code: 722</div>
                     </div>
                 </div>
                 <div style="font-size: 9px; opacity: 0.7; margin-top: 6px; letter-spacing: 0.3px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
@@ -5740,7 +5699,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px;">
                     <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Student Name:</span><span style="color: #1e293b; font-weight: 600;">${safeStudentName}</span></div>
                     <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Admission Number:</span><span style="color: #1e293b; font-weight: 600;">${safeAdmission}</span></div>
-                    <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Programme:</span><span style="color: #1e293b; font-weight: 600;">Diploma in Community Health Nursing</span></div>
+                    <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Programme:</span><span style="color: #1e293b; font-weight: 600;">KRCHN - Kenya Registered Community Health Nursing</span></div>
                     <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Academic Year:</span><span style="color: #1e293b; font-weight: 600;">${year}</span></div>
                     <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Pass Mark:</span><span style="color: #1e293b; font-weight: 600;">60% (NCK Standard)</span></div>
                     <div style="display: flex; font-size: 12px;"><span style="font-weight: 700; color: #475569; min-width: 110px;">Issue Date:</span><span style="color: #1e293b; font-weight: 600;">${issueDate}</span></div>
@@ -5812,27 +5771,27 @@ async function generateStudentTranscriptPDF(student, reportData) {
                     
                     <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 600;">0</div>
                     <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 600;">59</div>
-                    <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #991b1b;">FAIL</div>
+                    <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #991b1b;">D</div>
                     <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px;">0</div>
                     <div style="background: #fee2e2; padding: 6px 0; border-radius: 4px; color: #991b1b;">FAIL</div>
                     
                     <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">60</div>
-                    <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">64</div>
+                    <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 600;">69</div>
                     <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #92400e;">C</div>
                     <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px;">2</div>
-                    <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; color: #92400e;">SATISFACTORY</div>
+                    <div style="background: #fef3c7; padding: 6px 0; border-radius: 4px; color: #92400e;">PASS</div>
                     
-                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">65</div>
-                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">74</div>
+                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">70</div>
+                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 600;">79</div>
                     <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #1e40af;">B</div>
                     <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px;">3</div>
-                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; color: #1e40af;">GOOD</div>
+                    <div style="background: #dbeafe; padding: 6px 0; border-radius: 4px; color: #1e40af;">CREDIT</div>
                     
-                    <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">75</div>
+                    <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">80</div>
                     <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 600;">100</div>
                     <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; font-weight: 700; color: #065f46;">A</div>
                     <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px;">4</div>
-                    <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; color: #065f46;">EXCELLENT</div>
+                    <div style="background: #d1fae5; padding: 6px 0; border-radius: 4px; color: #065f46;">DISTINCTION</div>
                 </div>
                 <div style="font-size: 8px; color: #94a3b8; margin-top: 6px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px;">
                     <i class="fas fa-info-circle"></i> Minimum pass mark: <strong>60%</strong> (NCK Standard) | School Code: <strong>722</strong>
@@ -5846,7 +5805,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
                 <div style="margin-top: 8px; font-size: 11px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
                     <span>Overall Average: <strong style="color: ${overallAvg >= 60 ? '#065f46' : '#991b1b'};">${overallAvg}%</strong></span>
                     <span>CGPA: <strong style="color: #6366f1;">${cgpa} / 5.00</strong></span>
-                    <span>Classification: <strong style="color: ${overallAvg >= 75 ? '#065f46' : (overallAvg >= 65 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))};">${gradeLabel}</strong></span>
+                    <span>Classification: <strong style="color: ${overallAvg >= 80 ? '#065f46' : (overallAvg >= 70 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))};">${gradeLabel}</strong></span>
                 </div>
             </div>
             
