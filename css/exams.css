@@ -1017,147 +1017,215 @@
 }
 
 /* =====================================================
-   MOBILE CARD VIEW - NO SCROLLING NEEDED
+   MOBILE - HORIZONTAL TABLE WITH COMPACT ASSESSMENT
    ===================================================== */
 
 @media (max-width: 768px) {
-    /* Force table to behave like cards */
-    .assessments-table,
-    .assessments-table tbody,
-    .assessments-table tr,
-    .assessments-table td {
-        display: block !important;
-        width: 100% !important;
+    /* Keep table horizontal - just make it scrollable */
+    .assessments-table-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -8px;
+        padding: 0 8px;
     }
     
-    .assessments-table thead {
-        display: none !important;  /* Hide headers on mobile */
-    }
-    
-    .assessments-table tr {
-        margin-bottom: 16px !important;
-        background: white !important;
-        border-radius: 12px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-        border: 1px solid #e5e7eb !important;
-        padding: 12px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 6px !important;
-    }
-    
-    .assessments-table td {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding: 6px 8px !important;
-        border: none !important;
-        border-bottom: 1px solid #f3f4f6 !important;
-        font-size: 0.75rem !important;
-        min-height: auto !important;
-        width: 100% !important;
-        text-align: left !important;
-    }
-    
-    .assessments-table td:last-child {
-        border-bottom: none !important;
-    }
-    
-    /* Add labels before each value */
-    .assessments-table td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: #6b7280;
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        min-width: 70px;
-        flex-shrink: 0;
-    }
-    
-    /* First cell - Assessment (no label needed) */
-    .assessments-table td:first-child::before {
-        display: none !important;
-    }
-    
-    .assessments-table td:first-child {
-        display: block !important;
-        border-bottom: 2px solid #e5e7eb !important;
-        padding-bottom: 10px !important;
-        margin-bottom: 4px !important;
-    }
-    
-    /* Assessment cell - full width */
-    .assessments-table td:first-child .assessment-info-box {
-        width: 100% !important;
-    }
-    
-    /* Action cell - center the button */
-    .assessments-table td:last-child {
-        justify-content: center !important;
-        padding-top: 8px !important;
-    }
-    
-    .assessments-table td:last-child::before {
-        display: none !important;
-    }
-    
-    .assessments-table td:last-child .exam-link-btn {
-        width: 100% !important;
-        max-width: 200px !important;
-    }
-    
-    /* Status badges - inline with label */
-    .assessments-table td:nth-child(2) .status-badge,
-    .assessments-table td:nth-child(2) .grade-badge {
-        font-size: 0.7rem !important;
-        padding: 3px 12px !important;
-    }
-    
-    /* Dark mode for cards */
-    body.dark-mode .assessments-table tr {
-        background: #1E293B !important;
-        border-color: #334155 !important;
-    }
-    
-    body.dark-mode .assessments-table td {
-        border-bottom-color: #334155 !important;
-    }
-    
-    body.dark-mode .assessments-table td::before {
-        color: #94A3B8 !important;
-    }
-}
-
-/* ========== EXTRA SMALL - Tighter Cards ========== */
-@media (max-width: 480px) {
-    .assessments-table tr {
-        padding: 8px !important;
-        gap: 4px !important;
-    }
-    
-    .assessments-table td {
-        padding: 4px 6px !important;
+    .assessments-table {
+        min-width: 700px !important;  /* Force horizontal scroll */
+        width: 100%;
+        table-layout: fixed;
         font-size: 0.65rem !important;
-        flex-wrap: wrap !important;
     }
     
-    .assessments-table td::before {
+    /* Keep headers visible */
+    .assessments-table thead {
+        display: table-header-group !important;
+    }
+    
+    .assessments-table th {
+        padding: 6px 4px !important;
         font-size: 0.55rem !important;
-        min-width: 55px !important;
+        white-space: nowrap;
+    }
+    
+    /* Keep rows as table rows */
+    .assessments-table tbody tr {
+        display: table-row !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .assessments-table td {
+        display: table-cell !important;
+        padding: 4px 3px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        font-size: 0.6rem !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        min-height: auto !important;
+        width: auto !important;
     }
     
     .assessments-table td:first-child {
-        padding-bottom: 6px !important;
+        text-align: left !important;
+        padding-left: 4px !important;
+        padding-right: 4px !important;
     }
     
-    .assessments-table td:last-child .exam-link-btn {
-        max-width: 160px !important;
+    /* ========== COMPACT ASSESSMENT CELL ON MOBILE ========== */
+    .assessment-info-box {
+        gap: 0px !important;
+        padding: 0px !important;
+    }
+    
+    .assessment-row-top {
+        gap: 2px !important;
+        margin-bottom: 0px !important;
+    }
+    
+    .assessment-name {
         font-size: 0.6rem !important;
-        padding: 6px 12px !important;
+        gap: 2px !important;
+    }
+    
+    .assessment-name strong {
+        font-size: 0.6rem !important;
+    }
+    
+    .assessment-row-detail {
+        font-size: 0.45rem !important;
+        gap: 1px !important;
+        padding: 0px !important;
+        line-height: 1.2;
+    }
+    
+    .detail-icon {
+        width: 10px !important;
+        font-size: 0.4rem !important;
+    }
+    
+    .detail-label {
+        min-width: 20px !important;
+        font-size: 0.4rem !important;
+    }
+    
+    .detail-value {
+        font-size: 0.45rem !important;
+    }
+    
+    .program-badge {
+        font-size: 0.35rem !important;
+        padding: 0px 3px !important;
+        border-radius: 3px !important;
+    }
+    
+    .badge-cat,
+    .badge-final {
+        font-size: 0.35rem !important;
+        padding: 0px 3px !important;
+        border-radius: 2px !important;
+    }
+    
+    .exam-datetime {
+        font-size: 0.4rem !important;
+        gap: 1px !important;
+        padding: 0px !important;
+    }
+    
+    .assessment-row-countdown {
+        margin-top: 0px !important;
+        padding-top: 0px !important;
+    }
+    
+    .time-remaining {
+        font-size: 0.4rem !important;
+        gap: 2px !important;
+    }
+    
+    .time-remaining i {
+        font-size: 0.4rem !important;
+    }
+    
+    /* ========== COMPACT STATUS BADGES ========== */
+    .status-badge {
+        font-size: 0.45rem !important;
+        padding: 1px 4px !important;
+        border-radius: 6px !important;
+    }
+    
+    .grade-badge {
+        font-size: 0.45rem !important;
+        padding: 1px 4px !important;
+        min-width: 20px !important;
+        border-radius: 3px !important;
+    }
+    
+    /* ========== COMPACT ACTION BUTTONS ========== */
+    .exam-link-btn {
+        padding: 2px 6px !important;
+        font-size: 0.45rem !important;
+        max-width: 80px !important;
+        min-height: 18px !important;
+        border-radius: 3px !important;
+        gap: 2px !important;
+    }
+    
+    .exam-link-btn i {
+        font-size: 0.4rem !important;
+    }
+    
+    .exam-link-btn::after {
+        font-size: 0.4rem !important;
+    }
+    
+    /* ========== COLUMN WIDTHS ON MOBILE ========== */
+    .assessments-table th:nth-child(1),
+    .assessments-table td:nth-child(1) {
+        width: 22% !important;
+        min-width: 100px !important;
+        max-width: 160px !important;
+    }
+    
+    .assessments-table th:nth-child(2),
+    .assessments-table td:nth-child(2) {
+        width: 10% !important;
+        min-width: 45px !important;
+    }
+    
+    .assessments-table th:nth-child(3),
+    .assessments-table td:nth-child(3) {
+        width: 9% !important;
+        min-width: 35px !important;
+    }
+    
+    .assessments-table th:nth-child(4),
+    .assessments-table td:nth-child(4) {
+        width: 9% !important;
+        min-width: 35px !important;
+    }
+    
+    .assessments-table th:nth-child(5),
+    .assessments-table td:nth-child(5) {
+        width: 9% !important;
+        min-width: 35px !important;
+    }
+    
+    .assessments-table th:nth-child(6),
+    .assessments-table td:nth-child(6) {
+        width: 9% !important;
+        min-width: 35px !important;
+    }
+    
+    .assessments-table th:nth-child(7),
+    .assessments-table td:nth-child(7) {
+        width: 14% !important;
+        min-width: 65px !important;
+        max-width: 90px !important;
     }
 }
-
 /* =====================================================
    DARK MODE - FULL SUPPORT
    ===================================================== */
