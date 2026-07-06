@@ -1,46 +1,62 @@
-// resources.js - Premium Resource Module with Professional Loading States
-// Supports: Learning Materials & Past Papers with profile-style loading
+// resources.js - Premium Resource Module with Professional Filtering
+// SUPPORTS BOTH TVET AND KRCHN WITH DYNAMIC PROGRAM DETECTION
 
 class ResourcesModule {
     constructor() {
         // DOM Elements
         this.resourcesGrid = null;
+        this.resourcesGridContainer = null;
         this.blockFilter = null;
         this.refreshBtn = null;
         this.searchInput = null;
         this.typeFilter = null;
         this.courseFilter = null;
         this.yearFilter = null;
+        this.resourceTypeTabs = null;
+        this.resourceCount = null;
+        this.programIndicator = null;
         
         // State variables
-        this.currentResources = [];
+        this.allResources = [];
         this.filteredResources = [];
         this.currentBlockFilter = 'all';
         this.currentResourceType = 'all';
+        this.currentSearchTerm = '';
+        this.currentFileType = 'all';
+        this.currentCourse = 'all';
+        this.currentYear = 'all';
         this.isLoading = false;
         this.supabaseClient = null;
         
-        // PDF.js variables
-        this.pdfjsLib = null;
-        this.pdfjsLoaded = false;
-        this.currentPDFDoc = null;
-        this.currentPDFPage = 1;
-        this.totalPDFPages = 0;
-        this.pdfScale = 1.5;
-        this.isRendering = false;
-        this.pageRendering = false;
-        this.pageNumPending = null;
-        this.currentResource = null;
+        // Debounce timers
+        this.searchDebounceTimer = null;
+        this.filterChangeTimer = null;
         
-        // Block mapping
+        // Program detection
+        this.userProgram = 'krchn'; // 'krchn' or 'tvet'
+        this.userProgramDisplay = 'KRCHN Nursing';
+        this.userBlock = 'Introductory';
+        this.userIntakeYear = 2025;
+        this.userId = null;
+        this.isTVETStudent = false;
+        
+        // TVET Program Codes
+        this.TVET_PROGRAMS = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+        ];
+        
+        // Block mapping - Supports both KRCHN and TVET
         this.BLOCK_MAPPING = {
-            'introductory': ['Introductory', 'Intro', 'Foundation', 'Block 0'],
-            'block1': ['Block 1', 'Block1', 'B1'],
-            'block2': ['Block 2', 'Block2', 'B2'],
-            'block3': ['Block 3', 'Block3', 'B3'],
-            'block4': ['Block 4', 'Block4', 'B4'],
-            'block5': ['Block 5', 'Block5', 'B5'],
-            'final': ['Final', 'Final Block', 'Block 6']
+            'all': ['All'],
+            'introductory': ['Introductory', 'Intro', 'Foundation', 'Block 0', 'Term 1', 'Term1'],
+            'block1': ['Block 1', 'Block1', 'B1', 'Term 2', 'Term2'],
+            'block2': ['Block 2', 'Block2', 'B2', 'Term 3', 'Term3'],
+            'block3': ['Block 3', 'Block3', 'B3', 'Term 4', 'Term4'],
+            'block4': ['Block 4', 'Block4', 'B4', 'Term 5', 'Term5'],
+            'block5': ['Block 5', 'Block5', 'B5', 'Term 6', 'Term6'],
+            'final': ['Final', 'Final Block', 'Block 6', 'Final Term', 'Graduating']
         };
         
         this.initializeElements();
@@ -52,84 +68,242 @@ class ResourcesModule {
         this.resourcesGrid = document.getElementById('student-resources-grid');
         if (!this.resourcesGrid) this.resourcesGrid = document.getElementById('resources-grid');
         
+        this.resourcesGridContainer = document.querySelector('.resources-grid-container') || this.resourcesGrid?.parentElement;
+        
         this.blockFilter = document.getElementById('student-block-resource-filter');
         this.refreshBtn = document.getElementById('student-refresh-block-resources');
         this.searchInput = document.getElementById('student-resource-search');
         this.typeFilter = document.getElementById('student-resource-type-filter');
         this.courseFilter = document.getElementById('student-course-filter');
         this.yearFilter = document.getElementById('student-year-filter');
+        this.resourceCount = document.getElementById('resource-count');
+        this.resourceTypeTabs = document.querySelectorAll('.type-tab');
+        this.programIndicator = document.getElementById('resource-program-indicator');
         
         // Setup event listeners
         this.setupEventListeners();
     }
     
     setupEventListeners() {
-        // Refresh button
+        // ============================================
+        // PROFESSIONAL FILTERING - MATCHING AWAY EXAM
+        // ============================================
+        
+        // 1. SEARCH WITH DEBOUNCE
+        if (this.searchInput) {
+            this.searchInput.addEventListener('input', (e) => {
+                clearTimeout(this.searchDebounceTimer);
+                this.searchDebounceTimer = setTimeout(() => {
+                    this.currentSearchTerm = this.searchInput.value.trim();
+                    this.applyFilters();
+                }, 300);
+            });
+            
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.searchInput.value = '';
+                    this.currentSearchTerm = '';
+                    this.applyFilters();
+                }
+            });
+        }
+        
+        // 2. FILTER CHANGES WITH DEBOUNCE
+        const filterElements = [this.typeFilter, this.courseFilter, this.yearFilter, this.blockFilter];
+        filterElements.forEach(filter => {
+            if (filter) {
+                filter.addEventListener('change', () => {
+                    clearTimeout(this.filterChangeTimer);
+                    this.filterChangeTimer = setTimeout(() => {
+                        this.updateFilterStates();
+                        this.applyFilters();
+                    }, 100);
+                });
+            }
+        });
+        
+        // 3. TYPE TABS
+        if (this.resourceTypeTabs) {
+            this.resourceTypeTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const type = tab.getAttribute('data-type') || 'all';
+                    this.filterResourcesByType(type);
+                });
+            });
+        }
+        
+        // 4. REFRESH BUTTON
         if (this.refreshBtn) {
             const newRefreshBtn = this.refreshBtn.cloneNode(true);
             this.refreshBtn.parentNode.replaceChild(newRefreshBtn, this.refreshBtn);
             this.refreshBtn = newRefreshBtn;
             this.refreshBtn.addEventListener('click', () => {
                 if (this.isLoading) return;
-                this.currentBlockFilter = this.blockFilter?.value || 'all';
                 this.showSkeletonCards(6);
                 this.loadResources();
             });
         }
         
-        // Search with debounce
-        if (this.searchInput) {
-            let debounceTimer;
-            this.searchInput.addEventListener('input', () => {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => this.filterResources(), 500);
-            });
+        // 5. Listen for program changes
+        document.addEventListener('nurseiqProgramChanged', (e) => {
+            if (e.detail) {
+                this.userProgram = e.detail.isTVET ? 'tvet' : 'krchn';
+                this.isTVETStudent = e.detail.isTVET || false;
+                this.userProgramDisplay = e.detail.displayName || 'KRCHN Nursing';
+                this.updateProgramIndicator();
+                this.loadResources();
+            }
+        });
+    }
+    
+    // ==================== PROGRAM DETECTION ====================
+    detectUserProgram() {
+        console.log('🔍 Detecting user program for resources...');
+        let profile = null;
+        
+        // Try to get profile from various sources
+        if (window.currentUserProfile) profile = window.currentUserProfile;
+        else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
+        else if (window.userProfile) profile = window.userProfile;
+        else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
+        
+        if (!profile) {
+            try {
+                const savedProfile = localStorage.getItem('userProfile');
+                if (savedProfile) profile = JSON.parse(savedProfile);
+            } catch (e) {}
         }
         
-        // Filter changes
-        if (this.typeFilter) {
-            this.typeFilter.addEventListener('change', () => this.filterResources());
+        if (profile) {
+            console.log('📊 User profile data for resources:', profile);
+            
+            // Get userId
+            this.userId = profile.user_id || profile.id || getCurrentUserId?.() || null;
+            
+            // Get program
+            const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
+            
+            if (this.TVET_PROGRAMS.includes(programCode)) {
+                this.userProgram = 'tvet';
+                this.isTVETStudent = true;
+                this.userProgramDisplay = PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
+                console.log(`✅ Detected TVET: ${programCode} - ${this.userProgramDisplay}`);
+            } else if (programCode === 'KRCHN' || programCode.includes('NURSING')) {
+                this.userProgram = 'krchn';
+                this.isTVETStudent = false;
+                this.userProgramDisplay = 'KRCHN Nursing';
+                console.log('✅ Detected KRCHN Nursing');
+            } else {
+                // Default to KRCHN
+                this.userProgram = 'krchn';
+                this.isTVETStudent = false;
+                this.userProgramDisplay = 'KRCHN Nursing';
+                console.log('⚠️ Defaulting to KRCHN Nursing');
+            }
+            
+            // Get block/term
+            this.userBlock = profile.block || profile.term || profile.current_block || 'Introductory';
+            this.userIntakeYear = profile.intake_year || profile.intake || 2025;
+            
+            console.log(`📋 User: ${this.userProgramDisplay}, Block: ${this.userBlock}, Intake: ${this.userIntakeYear}`);
+            this.updateProgramIndicator();
+            return this.userProgram;
         }
         
-        if (this.courseFilter) {
-            this.courseFilter.addEventListener('change', () => this.filterResources());
+        // Fallback: try to detect from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mode') === 'tvet' || urlParams.get('program') === 'tvet') {
+            this.userProgram = 'tvet';
+            this.isTVETStudent = true;
+            this.userProgramDisplay = 'TVET Program';
+            this.updateProgramIndicator();
+            return 'tvet';
         }
         
-        if (this.yearFilter) {
-            this.yearFilter.addEventListener('change', () => this.filterResources());
+        const storedMode = localStorage.getItem('nurseiq_program_mode');
+        if (storedMode === 'tvet') {
+            this.userProgram = 'tvet';
+            this.isTVETStudent = true;
+            this.userProgramDisplay = 'TVET (Stored)';
+            this.updateProgramIndicator();
+            return 'tvet';
         }
         
-        // Block filter change
-        if (this.blockFilter) {
-            this.blockFilter.addEventListener('change', () => {
-                this.currentBlockFilter = this.blockFilter.value;
-                this.filterResources();
-            });
+        console.log('⚠️ No program detected, defaulting to KRCHN');
+        this.userProgram = 'krchn';
+        this.isTVETStudent = false;
+        this.userProgramDisplay = 'KRCHN Nursing (Default)';
+        this.updateProgramIndicator();
+        return 'krchn';
+    }
+    
+    updateProgramIndicator() {
+        if (!this.programIndicator) {
+            // Try to find or create the indicator
+            this.programIndicator = document.getElementById('resource-program-indicator');
+            if (!this.programIndicator) {
+                const container = document.querySelector('.resource-header') || document.querySelector('.resources-header');
+                if (container) {
+                    const indicator = document.createElement('div');
+                    indicator.id = 'resource-program-indicator';
+                    indicator.style.cssText = 'display: inline-block; margin-left: 12px;';
+                    container.appendChild(indicator);
+                    this.programIndicator = indicator;
+                }
+            }
+        }
+        
+        if (this.programIndicator) {
+            const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+            const badgeClass = isTVET ? 'badge-tvet' : 'badge-krchn';
+            const icon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
+            const color = isTVET ? '#1a7a5a' : '#4C1D95';
+            
+            this.programIndicator.innerHTML = `
+                <span class="${badgeClass}" style="
+                    background: ${color};
+                    color: white;
+                    padding: 4px 14px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                ">
+                    <i class="fas ${icon}"></i>
+                    ${this.userProgramDisplay}
+                    <span style="opacity: 0.7; font-weight: 400; margin-left: 4px;">| ${this.userBlock}</span>
+                </span>
+            `;
         }
     }
     
-    // ==================== SUPABASE CLIENT - FIXED ====================
+    // ==================== FILTER STATE MANAGEMENT ====================
+    updateFilterStates() {
+        this.currentBlockFilter = this.blockFilter?.value || 'all';
+        this.currentFileType = this.typeFilter?.value || 'all';
+        this.currentCourse = this.courseFilter?.value || 'all';
+        this.currentYear = this.yearFilter?.value || 'all';
+    }
+    
+    // ==================== SUPABASE CLIENT ====================
     getSupabaseClient() {
         if (this.supabaseClient) return this.supabaseClient;
         
-        // ============================================
-        // 🔥 FIX: REUSE EXISTING CONNECTION - NO LEAK!
-        // ============================================
-        // Try 1: Use connection from login
         if (window.NCHSMLogin && window.NCHSMLogin.supabase) {
             this.supabaseClient = window.NCHSMLogin.supabase;
             console.log('✅ Resources: Using existing connection from login');
             return this.supabaseClient;
         }
         
-        // Try 2: Use connection from db
         if (window.db && window.db.supabase && typeof window.db.supabase.from === 'function') {
             this.supabaseClient = window.db.supabase;
             console.log('✅ Resources: Using existing connection from db');
             return this.supabaseClient;
         }
         
-        // Try 3: Use global window.supabase
         if (window.supabase && typeof window.supabase.from === 'function') {
             this.supabaseClient = window.supabase;
             if (!window.db) window.db = {};
@@ -138,35 +312,12 @@ class ResourcesModule {
             return this.supabaseClient;
         }
         
-        // Try 4: Use config.js if available (fallback - should not happen on dashboard)
-        if (window.APP_CONFIG?.SUPABASE_URL && window.APP_CONFIG?.SUPABASE_ANON_KEY) {
-            try {
-                const { createClient } = window.supabaseJs || window.supabase || {};
-                if (createClient) {
-                    console.warn('⚠️ Resources: Creating NEW connection (fallback - should not happen)');
-                    this.supabaseClient = createClient(
-                        window.APP_CONFIG.SUPABASE_URL,
-                        window.APP_CONFIG.SUPABASE_ANON_KEY
-                    );
-                    if (!window.db) window.db = {};
-                    window.db.supabase = this.supabaseClient;
-                    return this.supabaseClient;
-                }
-            } catch (e) {
-                console.error('Failed to create Supabase client:', e);
-            }
-        }
-        // ============================================
-        // END FIX
-        // ============================================
-        
         console.error('❌ Cannot initialize Supabase client');
         return null;
     }
     
     // ==================== USER PROFILE ====================
     async getUserProfile() {
-        // First check if already cached
         if (window.currentUserProfile?.program) {
             console.log('📋 Using cached user profile:', window.currentUserProfile);
             return window.currentUserProfile;
@@ -176,7 +327,6 @@ class ResourcesModule {
         if (!supabase) return {};
         
         try {
-            // Try to get from consolidated_user_profiles_table by user_id
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 console.warn('No authenticated user found');
@@ -184,11 +334,11 @@ class ResourcesModule {
             }
             
             console.log('🔍 Fetching profile for user:', user.id);
+            this.userId = user.id;
             
-            // Try to get profile from consolidated_user_profiles_table
             let { data: profile, error } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('program, intake_year, block, full_name, role, student_id')
+                .select('program, intake_year, block, full_name, role, student_id, term, program_type')
                 .eq('user_id', user.id)
                 .maybeSingle();
             
@@ -201,17 +351,19 @@ class ResourcesModule {
                 const correctProfile = {
                     program: profile.program,
                     intake_year: profile.intake_year,
-                    block: profile.block,
+                    block: profile.block || profile.term,
                     full_name: profile.full_name,
                     role: profile.role,
-                    student_id: profile.student_id
+                    student_id: profile.student_id,
+                    term: profile.term,
+                    program_type: profile.program_type
                 };
                 window.currentUserProfile = correctProfile;
                 if (window.db) window.db.currentUserProfile = correctProfile;
                 return correctProfile;
             }
             
-            // Fallback: try to get from profiles table
+            // Fallback
             const { data: fallbackProfile, error: fallbackError } = await supabase
                 .from('profiles')
                 .select('program, intake_year, block, full_name, role, student_id')
@@ -348,7 +500,7 @@ class ResourcesModule {
                 <i class="fas fa-exclamation-triangle"></i>
                 <h3>Unable to Load Resources</h3>
                 <p>${message}</p>
-                ${showRetry ? '<button onclick="location.reload()" class="premium-btn"><i class="fas fa-sync-alt"></i> Refresh Page</button>' : ''}
+                ${showRetry ? '<button onclick="window.resourcesModule?.retryLoad()" class="premium-btn"><i class="fas fa-sync-alt"></i> Retry</button>' : ''}
             </div>
         `;
         
@@ -358,19 +510,38 @@ class ResourcesModule {
     showEmptyState() {
         if (!this.resourcesGrid) return;
         
+        const searchTerm = this.currentSearchTerm || '';
+        const hasFilters = this.currentBlockFilter !== 'all' || 
+                          this.currentFileType !== 'all' || 
+                          this.currentCourse !== 'all' || 
+                          this.currentYear !== 'all';
+        
         let emptyMessage = 'No resources match your current filters.';
+        let subMessage = 'Try adjusting your search or filter criteria.';
+        
         if (this.currentResourceType === 'pastpaper') {
-            emptyMessage = 'No past papers available for your block. Check back later or contact admin.';
+            emptyMessage = `No past papers available for your ${this.isTVETStudent ? 'TVET' : 'KRCHN'} program.`;
+            subMessage = 'Check back later or contact admin for assistance.';
         } else if (this.currentResourceType === 'material') {
-            emptyMessage = 'No learning materials available for your block.';
+            emptyMessage = `No learning materials available for your ${this.isTVETStudent ? 'TVET' : 'KRCHN'} program.`;
+            subMessage = 'New materials may be added soon.';
+        } else if (searchTerm && hasFilters) {
+            emptyMessage = `No resources found matching "${searchTerm}" and selected filters.`;
+            subMessage = 'Try clearing your search or filters.';
+        } else if (searchTerm) {
+            emptyMessage = `No resources found matching "${searchTerm}".`;
+            subMessage = 'Try a different search term.';
+        } else if (hasFilters) {
+            emptyMessage = 'No resources match your selected filters.';
+            subMessage = 'Try adjusting your filter selections.';
         }
         
         this.resourcesGrid.innerHTML = `
             <div class="empty-state-premium">
                 <i class="fas fa-folder-open"></i>
-                <h3>No Resources Found</h3>
-                <p>${emptyMessage}</p>
-                <button onclick="if(window.resourcesModule) window.resourcesModule.resetFilters()" class="premium-btn">
+                <h3>${emptyMessage}</h3>
+                <p>${subMessage}</p>
+                <button onclick="window.resourcesModule?.resetFilters()" class="premium-btn">
                     <i class="fas fa-eye"></i> Reset Filters
                 </button>
             </div>
@@ -404,6 +575,9 @@ class ResourcesModule {
         
         console.log('📁 Loading resources...');
         
+        // Detect program first
+        this.detectUserProgram();
+        
         const userProfile = await this.getUserProfile();
         const supabase = this.getSupabaseClient();
         
@@ -418,34 +592,55 @@ class ResourcesModule {
         this.showSkeletonCards(6);
         
         try {
-            const program = userProfile?.program;
-            const intakeYear = userProfile?.intake_year;
+            let program = userProfile?.program || this.userProgramDisplay;
+            let intakeYear = userProfile?.intake_year || this.userIntakeYear;
             
-            if (!program || !intakeYear) {
-                this.showError('Missing enrollment details. Please contact admin.');
-                this.isLoading = false;
-                return;
-            }
+            // Determine program type for filtering
+            const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
             
-            console.log(`📊 Fetching resources for: ${program} - ${intakeYear}`);
+            console.log(`📊 Fetching resources for: ${program} (${isTVET ? 'TVET' : 'KRCHN'}) - ${intakeYear}`);
             
-            const { data: resources, error } = await supabase
+            // Build query - filter by program type and intake
+            let query = supabase
                 .from('resources')
                 .select('*')
-                .eq('program_type', program)
                 .eq('intake', intakeYear)
                 .order('created_at', { ascending: false });
             
+            // If TVET, filter by TVET program types
+            if (isTVET) {
+                // For TVET, check if program_type is in TVET list or matches the user's program
+                const tvetPrograms = this.TVET_PROGRAMS;
+                query = query.in('program_type', tvetPrograms);
+                
+                // Also try to match by block/term
+                if (this.userBlock) {
+                    const blockPattern = this.userBlock.toLowerCase();
+                    query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
+                }
+            } else {
+                // For KRCHN, filter by KRCHN program type
+                query = query.eq('program_type', 'KRCHN');
+                
+                // Filter by block
+                if (this.userBlock && this.userBlock !== 'General') {
+                    const blockPattern = this.userBlock.toLowerCase();
+                    query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
+                }
+            }
+            
+            const { data: resources, error } = await query;
+            
             if (error) throw error;
             
-            this.currentResources = resources || [];
-            console.log(`✅ Loaded ${this.currentResources.length} resources`);
+            this.allResources = resources || [];
+            console.log(`✅ Loaded ${this.allResources.length} resources for ${isTVET ? 'TVET' : 'KRCHN'}`);
             
             // Update past paper count badge
             this.updatePastPaperCount();
             
-            // Populate course filter
-            this.populateCourseFilter();
+            // Populate filters
+            this.populateFilters();
             
             // Apply filters and render
             this.filterResources();
@@ -461,13 +656,14 @@ class ResourcesModule {
         }
     }
     
+    // ==================== FILTER RESOURCES ====================
     filterResources() {
-        if (!this.currentResources.length) {
+        if (!this.allResources.length) {
             this.showEmptyState();
             return;
         }
         
-        let filtered = [...this.currentResources];
+        let filtered = [...this.allResources];
         
         // Filter by resource type
         if (this.currentResourceType !== 'all') {
@@ -478,42 +674,49 @@ class ResourcesModule {
         if (this.currentBlockFilter !== 'all') {
             const targetKeywords = this.BLOCK_MAPPING[this.currentBlockFilter] || [];
             filtered = filtered.filter(resource => {
-                const resourceBlock = (resource.block || '').toString().toLowerCase();
+                const resourceBlock = (resource.block || resource.block_term || '').toString().toLowerCase();
                 return targetKeywords.some(keyword => resourceBlock.includes(keyword.toLowerCase()));
             });
         }
         
         // Filter by search term
-        const searchTerm = this.searchInput?.value.toLowerCase() || '';
+        const searchTerm = this.currentSearchTerm.toLowerCase();
         if (searchTerm) {
             filtered = filtered.filter(r => {
                 const titleMatch = (r.title || '').toLowerCase().includes(searchTerm);
                 const courseMatch = (r.course_name || '').toLowerCase().includes(searchTerm);
                 const descMatch = (r.description || '').toLowerCase().includes(searchTerm);
-                return titleMatch || courseMatch || descMatch;
+                const blockMatch = (r.block || '').toLowerCase().includes(searchTerm);
+                return titleMatch || courseMatch || descMatch || blockMatch;
             });
         }
         
         // Filter by file type
-        const fileTypeFilter = this.typeFilter?.value || 'all';
+        const fileTypeFilter = this.currentFileType;
         if (fileTypeFilter !== 'all') {
             filtered = filtered.filter(r => this.getFileType(r.file_path) === fileTypeFilter);
         }
         
+        // Filter by course
+        if (this.currentCourse !== 'all') {
+            filtered = filtered.filter(r => (r.course_name || r.program_type) === this.currentCourse);
+        }
+        
         // Filter by year
-        const yearFilter = this.yearFilter?.value || 'all';
-        if (yearFilter !== 'all') {
+        if (this.currentYear !== 'all') {
             if (this.currentResourceType === 'pastpaper') {
-                filtered = filtered.filter(r => r.pastpaper_year == yearFilter);
+                filtered = filtered.filter(r => r.pastpaper_year == this.currentYear);
             } else {
-                filtered = filtered.filter(r => r.intake == yearFilter);
+                filtered = filtered.filter(r => r.intake == this.currentYear);
             }
         }
         
         this.filteredResources = filtered;
         this.renderResources();
+        this.updateResourceCount();
     }
     
+    // ==================== RENDER RESOURCES ====================
     renderResources() {
         if (!this.resourcesGrid) return;
         
@@ -525,13 +728,19 @@ class ResourcesModule {
         let html = '';
         for (const resource of this.filteredResources) {
             const isPastPaper = resource.resource_type === 'pastpaper';
+            const isTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
+            
             const typeBadge = isPastPaper ? 
                 '<span class="pastpaper-badge"><i class="fas fa-history"></i> Past Paper</span>' : 
                 '<span class="material-badge"><i class="fas fa-book"></i> Material</span>';
             
+            const programBadge = isTVET ?
+                `<span class="tvet-badge"><i class="fas fa-tools"></i> TVET</span>` :
+                `<span class="krchn-badge"><i class="fas fa-graduation-cap"></i> KRCHN</span>`;
+            
             const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
             const examTypeDisplay = isPastPaper && resource.exam_type ? this.getExamTypeLabel(resource.exam_type) : '';
-            const courseDisplay = isPastPaper && resource.course_name ? `<small class="course-name">📚 ${this.escapeHtml(resource.course_name)}</small>` : '';
+            const courseDisplay = resource.course_name ? `<small class="course-name">📚 ${this.escapeHtml(resource.course_name)}</small>` : '';
             
             html += `
                 <div class="resource-card" data-id="${resource.id}">
@@ -540,6 +749,7 @@ class ResourcesModule {
                             <i class="${this.getFileIcon(resource.file_path)}"></i>
                         </div>
                         ${typeBadge}
+                        ${programBadge}
                     </div>
                     <div class="resource-details">
                         <h3 class="resource-title">${this.escapeHtml(resource.title)}${courseDisplay ? '<br>' + courseDisplay : ''}</h3>
@@ -577,787 +787,110 @@ class ResourcesModule {
         });
     }
     
-    // ==================== RESOURCE OPENING ====================
-    async openResource(resourceId) {
-        const resource = this.currentResources.find(r => r.id == resourceId);
-        
-        if (!resource) {
-            this.showToast('Resource not found', 'error');
-            return;
-        }
-        
-        this.currentResource = resource;
-        const fileType = this.getFileType(resource.file_path);
-        
-        if (fileType === 'pdf') {
-            await this.openPDFInModal(resource);
-        } else if (fileType === 'image') {
-            this.openImageInModal(resource);
-        } else if (fileType === 'video') {
-            this.openVideoInModal(resource);
-        } else {
-            window.open(resource.file_url, '_blank');
+    updateResourceCount() {
+        const countEl = document.getElementById('resource-count-display') || this.resourceCount;
+        if (countEl) {
+            countEl.textContent = `${this.filteredResources.length} resources`;
         }
     }
     
-    async openPDFInModal(resource) {
-        try {
-            await this.initializePDFJS();
-            this.createPDFViewerModal(resource);
-            await this.loadPDFInModal(resource.file_url);
-        } catch (error) {
-            console.error('PDF error:', error);
-            this.showToast('Failed to load PDF: ' + error.message, 'error');
-        }
-    }
-    
-    // ==================== PDF.JS INITIALIZATION ====================
-    async initializePDFJS() {
-        if (this.pdfjsLoaded) return true;
-        
-        return new Promise((resolve, reject) => {
-            if (typeof window.pdfjsLib !== 'undefined' && window.pdfjsLib) {
-                this.pdfjsLib = window.pdfjsLib;
-                if (this.pdfjsLib.GlobalWorkerOptions) {
-                    this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
-                this.pdfjsLoaded = true;
-                console.log('✅ PDF.js already loaded and configured');
-                resolve(true);
-                return;
-            }
-            
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-            script.onload = () => {
-                this.pdfjsLib = window.pdfjsLib;
-                if (this.pdfjsLib && this.pdfjsLib.GlobalWorkerOptions) {
-                    this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
-                this.pdfjsLoaded = true;
-                console.log('✅ PDF.js loaded and configured from CDN');
-                resolve(true);
-            };
-            script.onerror = () => reject(new Error('Failed to load PDF.js'));
-            document.head.appendChild(script);
-        });
-    }
-    
-    createPDFViewerModal(resource) {
-        const existingModal = document.getElementById('pdf-viewer-modal');
-        if (existingModal) existingModal.remove();
-        
-        const modal = document.createElement('div');
-        modal.id = 'pdf-viewer-modal';
-        modal.className = 'pdf-viewer-modal';
-        modal.innerHTML = `
-            <div class="pdf-modal-container">
-                <div class="pdf-modal-header">
-                    <div class="pdf-modal-title">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>${this.escapeHtml(resource.title)}</span>
-                    </div>
-                    <div class="pdf-modal-actions">
-                        <button class="pdf-modal-btn" id="pdf-fullscreen-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
-                        <button class="pdf-modal-btn close-pdf-modal" title="Close"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>
-                <div class="pdf-modal-body">
-                    <div id="pdf-loading-modal" class="pdf-loading-modal">
-                        <div class="loading-spinner"></div>
-                        <p>Loading document...</p>
-                    </div>
-                    <div id="pdf-error-modal" class="pdf-error-modal" style="display: none;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Failed to Load Document</h3>
-                        <p id="pdf-error-message-modal"></p>
-                        <button id="retry-pdf-modal" class="btn-primary">Retry</button>
-                    </div>
-                    <div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display: none;">
-                        <canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas>
-                    </div>
-                </div>
-                <div class="pdf-modal-footer">
-                    <div class="pdf-nav-controls">
-                        <button class="pdf-nav-btn" id="pdf-first-modal"><i class="fas fa-fast-backward"></i></button>
-                        <button class="pdf-nav-btn" id="pdf-prev-modal"><i class="fas fa-chevron-left"></i></button>
-                        <span class="pdf-page-info">
-                            <input type="number" id="pdf-page-modal" value="1" min="1"> / <span id="pdf-total-modal">1</span>
-                        </span>
-                        <button class="pdf-nav-btn" id="pdf-next-modal"><i class="fas fa-chevron-right"></i></button>
-                        <button class="pdf-nav-btn" id="pdf-last-modal"><i class="fas fa-fast-forward"></i></button>
-                    </div>
-                    <div class="pdf-zoom-controls">
-                        <button class="pdf-zoom-btn" id="pdf-zoom-out-modal"><i class="fas fa-search-minus"></i></button>
-                        <span id="pdf-zoom-percent-modal">100%</span>
-                        <button class="pdf-zoom-btn" id="pdf-zoom-in-modal"><i class="fas fa-search-plus"></i></button>
-                    </div>
-                    <div class="pdf-protected-badge">
-                        <i class="fas fa-lock"></i> Read Only - No Download
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        this.addPDFModalStyles();
-        this.setupPDFModalEvents();
-        modal.style.display = 'flex';
-    }
-    
-   addPDFModalStyles() {
-    if (document.getElementById('pdf-modal-styles')) return;
-    
-    const styles = document.createElement('style');
-    styles.id = 'pdf-modal-styles';
-    styles.textContent = `
-        .pdf-viewer-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100000;
+    // ==================== HELPER FUNCTIONS ====================
+    populateFilters() {
+        // Populate course filter
+        if (this.courseFilter) {
+            const courses = [...new Set(this.allResources.map(r => r.course_name || r.program_type).filter(Boolean))];
+            this.courseFilter.innerHTML = '<option value="all">All Courses</option>';
+            courses.sort().forEach(course => {
+                const option = document.createElement('option');
+                option.value = course;
+                option.textContent = course;
+                this.courseFilter.appendChild(option);
+            });
         }
         
-        .pdf-modal-container {
-            width: 95%;
-            height: 90%;
-            background: #1a1a2e;
-            border-radius: 16px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        }
-        
-        .pdf-modal-header {
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #16213e, #1a1a2e);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        
-        .pdf-modal-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: white;
-            font-weight: 500;
-            font-size: 14px;
-            min-width: 0;
-        }
-        
-        .pdf-modal-title span {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .pdf-modal-title i {
-            font-size: 20px;
-            color: #ef4444;
-            flex-shrink: 0;
-        }
-        
-        .pdf-modal-actions {
-            display: flex;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-        
-        .pdf-modal-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .pdf-modal-btn:hover {
-            background: #4C1D95;
-        }
-        
-        .pdf-modal-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .pdf-modal-body {
-            flex: 1;
-            overflow: auto;
-            background: #2d2d3a;
-            position: relative;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .pdf-viewer-modal-area {
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            min-height: 100%;
-            align-items: flex-start;
-        }
-        
-        /* 🔥 IMPROVED: Better canvas rendering */
-        .pdf-canvas-modal {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            background: white;
-            border-radius: 4px;
-            max-width: 100%;
-            height: auto;
-            /* Improved rendering */
-            image-rendering: auto;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .pdf-modal-footer {
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #16213e, #1a1a2e);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-        
-        .pdf-nav-controls,
-        .pdf-zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .pdf-nav-btn,
-        .pdf-zoom-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .pdf-nav-btn:hover,
-        .pdf-zoom-btn:hover {
-            background: #4C1D95;
-        }
-        
-        .pdf-nav-btn:active,
-        .pdf-zoom-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .pdf-nav-btn:disabled,
-        .pdf-zoom-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .pdf-page-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: white;
-            font-size: 14px;
-        }
-        
-        #pdf-page-modal {
-            width: 50px;
-            padding: 6px;
-            border-radius: 6px;
-            border: none;
-            text-align: center;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        #pdf-page-modal:focus {
-            outline: 2px solid #4C1D95;
-        }
-        
-        .pdf-protected-badge {
-            background: rgba(76,29,149,0.3);
-            padding: 6px 12px;
-            border-radius: 20px;
-            color: #a78bfa;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-        
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255,255,255,0.2);
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        
-        .pdf-loading-modal,
-        .pdf-error-modal {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: white;
-            padding: 20px;
-        }
-        
-        .pdf-error-modal i {
-            font-size: 48px;
-            color: #ef4444;
-            margin-bottom: 15px;
-        }
-        
-        .pdf-error-modal h3 {
-            margin: 10px 0;
-            font-size: 20px;
-        }
-        
-        .pdf-error-modal p {
-            color: #9ca3af;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* ========== MOBILE OPTIMIZATIONS ========== */
-        
-        /* Tablets and small screens */
-        @media (max-width: 768px) {
-            .pdf-modal-container {
-                width: 98%;
-                height: 95%;
-                border-radius: 12px;
-            }
-            
-            .pdf-modal-header {
-                padding: 10px 15px;
-            }
-            
-            .pdf-modal-title {
-                font-size: 13px;
-                max-width: 60%;
-            }
-            
-            .pdf-modal-title i {
-                font-size: 18px;
-            }
-            
-            .pdf-nav-btn,
-            .pdf-zoom-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
-            }
-            
-            .pdf-modal-footer {
-                padding: 10px 15px;
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .pdf-nav-controls {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            
-            .pdf-page-info {
-                font-size: 13px;
-            }
-            
-            #pdf-page-modal {
-                width: 40px;
-                padding: 4px 6px;
-                font-size: 13px;
-            }
-            
-            .pdf-protected-badge {
-                font-size: 11px;
-                padding: 4px 10px;
-            }
-            
-            .pdf-viewer-modal-area {
-                padding: 10px;
-            }
-            
-            /* 🔥 IMPROVED: Better mobile rendering */
-            .pdf-canvas-modal {
-                image-rendering: -webkit-optimize-contrast;
-                image-rendering: crisp-edges;
-                -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
-            }
-        }
-        
-        /* Small phones */
-        @media (max-width: 480px) {
-            .pdf-modal-container {
-                width: 100%;
-                height: 100%;
-                border-radius: 0;
-            }
-            
-            .pdf-modal-header {
-                padding: 8px 12px;
-            }
-            
-            .pdf-modal-title {
-                font-size: 12px;
-                max-width: 55%;
-            }
-            
-            .pdf-modal-title i {
-                font-size: 16px;
-            }
-            
-            .pdf-modal-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 14px;
-            }
-            
-            .pdf-nav-btn,
-            .pdf-zoom-btn {
-                width: 28px;
-                height: 28px;
-                font-size: 12px;
-            }
-            
-            .pdf-modal-footer {
-                padding: 8px 10px;
-            }
-            
-            .pdf-page-info {
-                font-size: 12px;
-            }
-            
-            #pdf-page-modal {
-                width: 35px;
-                padding: 3px 4px;
-                font-size: 12px;
-            }
-            
-            .pdf-viewer-modal-area {
-                padding: 5px;
-            }
-            
-            .pdf-protected-badge {
-                font-size: 10px;
-                padding: 3px 8px;
-            }
-        }
-        
-        /* Landscape phones */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .pdf-modal-container {
-                height: 92%;
-                width: 97%;
-            }
-            
-            .pdf-modal-header {
-                padding: 6px 12px;
-            }
-            
-            .pdf-modal-title {
-                font-size: 12px;
-            }
-            
-            .pdf-modal-footer {
-                padding: 6px 12px;
-            }
-            
-            .pdf-viewer-modal-area {
-                padding: 5px 10px;
-            }
-        }
-        
-        /* High DPI screens (Retina) */
-        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-            .pdf-canvas-modal {
-                image-rendering: auto;
-            }
-        }
-        
-        /* Dark mode support for system preference */
-        @media (prefers-color-scheme: dark) {
-            .pdf-modal-body {
-                background: #1a1a2e;
-            }
-        }
-    `;
-    document.head.appendChild(styles);
-}
-    
-    setupPDFModalEvents() {
-        const modal = document.getElementById('pdf-viewer-modal');
-        const closeBtn = document.querySelector('.close-pdf-modal');
-        const fullscreenBtn = document.getElementById('pdf-fullscreen-btn');
-        
-        if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; this.cleanupPDFModal(); };
-        if (fullscreenBtn) fullscreenBtn.onclick = () => this.togglePDFFullscreen();
-        if (modal) modal.onclick = (e) => { if (e.target === modal) { modal.style.display = 'none'; this.cleanupPDFModal(); } };
-        
-        const firstBtn = document.getElementById('pdf-first-modal');
-        const prevBtn = document.getElementById('pdf-prev-modal');
-        const nextBtn = document.getElementById('pdf-next-modal');
-        const lastBtn = document.getElementById('pdf-last-modal');
-        const zoomInBtn = document.getElementById('pdf-zoom-in-modal');
-        const zoomOutBtn = document.getElementById('pdf-zoom-out-modal');
-        
-        if (firstBtn) firstBtn.onclick = () => this.goToPDFPage(1);
-        if (prevBtn) prevBtn.onclick = () => this.goToPDFPage(this.currentPDFPage - 1);
-        if (nextBtn) nextBtn.onclick = () => this.goToPDFPage(this.currentPDFPage + 1);
-        if (lastBtn) lastBtn.onclick = () => this.goToPDFPage(this.totalPDFPages);
-        if (zoomInBtn) zoomInBtn.onclick = () => this.zoomPDF(1.2);
-        if (zoomOutBtn) zoomOutBtn.onclick = () => this.zoomPDF(0.8);
-        
-        const pageInput = document.getElementById('pdf-page-modal');
-        if (pageInput) {
-            pageInput.addEventListener('change', () => {
-                const page = parseInt(pageInput.value);
-                if (page >= 1 && page <= this.totalPDFPages) this.goToPDFPage(page);
+        // Populate year filter
+        if (this.yearFilter) {
+            const years = [...new Set(this.allResources.map(r => r.intake || r.pastpaper_year).filter(Boolean))];
+            this.yearFilter.innerHTML = '<option value="all">All Years</option>';
+            years.sort((a, b) => b - a).forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                this.yearFilter.appendChild(option);
             });
         }
     }
     
-   async loadPDFInModal(pdfUrl) {
-    try {
-        const loadingDiv = document.getElementById('pdf-loading-modal');
-        const errorDiv = document.getElementById('pdf-error-modal');
-        const viewerDiv = document.getElementById('pdf-viewer-modal-area');
+    updatePastPaperCount() {
+        const pastpaperCount = this.allResources.filter(r => r.resource_type === 'pastpaper').length;
+        const badge = document.getElementById('student-pastpaper-count');
+        if (badge) badge.textContent = pastpaperCount;
+    }
+    
+    updateDashboardResourceCount() {
+        const totalResources = this.allResources.length;
+        const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
+        if (dashboardResourcesEl) {
+            dashboardResourcesEl.innerText = totalResources;
+        }
         
-        if (loadingDiv) loadingDiv.style.display = 'flex';
-        if (errorDiv) errorDiv.style.display = 'none';
-        if (viewerDiv) viewerDiv.style.display = 'none';
+        if (window.dashboardModule && window.dashboardModule.metrics) {
+            window.dashboardModule.metrics.resources = totalResources;
+            if (window.dashboardModule.updateUIFromMetrics) {
+                window.dashboardModule.updateUIFromMetrics();
+            }
+        }
+    }
+    
+    filterResourcesByType(type) {
+        this.currentResourceType = type;
         
-        // Enhanced PDF loading with better quality settings
-        const loadingTask = this.pdfjsLib.getDocument({
-            url: pdfUrl,
-            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-            cMapPacked: true,
-            verbosity: 0,
-            // 🔥 NEW: Better quality settings
-            useSystemFonts: true,
-            standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
-            enableXfa: false, // Disable XFA for better performance
-            disableFontFace: false, // Use native fonts
-            fontExtraProperties: false, // Reduce font data
+        const buttons = document.querySelectorAll('.type-tab');
+        buttons.forEach(btn => {
+            const btnType = btn.getAttribute('data-type');
+            if (btnType === type) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
         });
         
-        this.currentPDFDoc = await loadingTask.promise;
-        this.totalPDFPages = this.currentPDFDoc.numPages;
+        if (this.searchInput) this.searchInput.value = '';
+        this.currentSearchTerm = '';
+        if (this.typeFilter) this.typeFilter.value = 'all';
+        if (this.yearFilter) this.yearFilter.value = 'all';
         
-        const totalSpan = document.getElementById('pdf-total-modal');
-        const pageInput = document.getElementById('pdf-page-modal');
-        if (totalSpan) totalSpan.textContent = this.totalPDFPages;
-        if (pageInput) pageInput.max = this.totalPDFPages;
-        
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        if (viewerDiv) viewerDiv.style.display = 'flex';
-        
-        // 🔥 NEW: Set initial scale based on device
-        const isMobile = window.innerWidth < 768;
-        this.pdfScale = isMobile ? 1.2 : 1.0;
-        this.updateZoomDisplay();
-        
-        await this.renderPDFPage(1);
-        
-    } catch (error) {
-        console.error('PDF loading error:', error);
-        const loadingDiv = document.getElementById('pdf-loading-modal');
-        const errorDiv = document.getElementById('pdf-error-modal');
-        const errorMsg = document.getElementById('pdf-error-message-modal');
-        const retryBtn = document.getElementById('retry-pdf-modal');
-        
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        if (errorDiv) errorDiv.style.display = 'flex';
-        if (errorMsg) errorMsg.textContent = error.message;
-        if (retryBtn) retryBtn.onclick = () => this.loadPDFInModal(pdfUrl);
-    }
-}
-    
-   async renderPDFPage(pageNum) {
-    if (!this.currentPDFDoc || pageNum < 1 || pageNum > this.totalPDFPages) return;
-    if (this.pageRendering) { this.pageNumPending = pageNum; return; }
-    this.pageRendering = true;
-    
-    try {
-        const page = await this.currentPDFDoc.getPage(pageNum);
-        const canvas = document.getElementById('pdf-canvas-modal');
-        if (!canvas) { this.pageRendering = false; return; }
-        const ctx = canvas.getContext('2d', { alpha: false });
-        
-        // Get container width for responsive sizing
-        const viewerArea = document.getElementById('pdf-viewer-modal-area');
-        const containerWidth = viewerArea ? viewerArea.clientWidth - 40 : window.innerWidth - 40;
-        const maxWidth = Math.min(containerWidth, 1200);
-        
-        // Calculate base viewport
-        const viewport = page.getViewport({ scale: 1 });
-        
-        // Determine optimal scale
-        let scale = this.pdfScale;
-        const isMobile = window.innerWidth < 768;
-        
-        // Auto-fit on mobile with better quality
-        if (isMobile && this.pdfScale === 1.0) {
-            // Use 1.2x scale for better text clarity on mobile
-            const fitScale = ((maxWidth - 20) / viewport.width) * 1.2;
-            scale = Math.min(fitScale, 1.8);
-        } else if (!isMobile) {
-            // Desktop: use higher base scale for crisp text
-            scale = Math.max(this.pdfScale, 1.2);
-        }
-        
-        const scaledViewport = page.getViewport({ scale: scale });
-        
-        // SMART DPR handling
-        const dpr = window.devicePixelRatio || 1;
-        let effectiveDPR;
-        
-        if (isMobile) {
-            // Mobile: balance quality and performance
-            effectiveDPR = Math.min(dpr, 1.5); // Cap at 1.5x for performance
-        } else {
-            // Desktop: use full DPR but cap at 2x for performance
-            effectiveDPR = Math.min(dpr, 2);
-        }
-        
-        // Set canvas with optimal resolution
-        canvas.width = scaledViewport.width * effectiveDPR;
-        canvas.height = scaledViewport.height * effectiveDPR;
-        canvas.style.width = scaledViewport.width + 'px';
-        canvas.style.height = scaledViewport.height + 'px';
-        
-        // Configure canvas for crisp rendering
-        ctx.setTransform(effectiveDPR, 0, 0, effectiveDPR, 0, 0);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = isMobile ? 'high' : 'high';
-        
-        // Render with optimized settings
-        const renderContext = {
-            canvasContext: ctx,
-            viewport: scaledViewport,
-            background: 'white',
-            enableWebGL: false,
-            renderInteractiveForms: false,
-            useSystemFonts: true,
-        };
-        
-        await page.render(renderContext).promise;
-        
-        this.currentPDFPage = pageNum;
-        const pageInput = document.getElementById('pdf-page-modal');
-        if (pageInput) pageInput.value = pageNum;
-        this.updatePDFNavButtons();
-        
-    } catch (error) {
-        console.error('Render error:', error);
+        this.filterResources();
     }
     
-    this.pageRendering = false;
-    if (this.pageNumPending !== null) {
-        this.renderPDFPage(this.pageNumPending);
-        this.pageNumPending = null;
-    }
-}
-    
-    goToPDFPage(pageNum) {
-        if (pageNum < 1) pageNum = 1;
-        if (pageNum > this.totalPDFPages) pageNum = this.totalPDFPages;
-        this.renderPDFPage(pageNum);
-    }
-    
-    zoomPDF(factor) {
-        this.pdfScale = this.pdfScale * factor;
-        if (this.pdfScale < 0.5) this.pdfScale = 0.5;
-        if (this.pdfScale > 3.0) this.pdfScale = 3.0;
-        this.updateZoomDisplay();
-        this.renderPDFPage(this.currentPDFPage);
-    }
-    
-    updateZoomDisplay() {
-        const percent = Math.round(this.pdfScale * 100);
-        const zoomDisplay = document.getElementById('pdf-zoom-percent-modal');
-        if (zoomDisplay) zoomDisplay.textContent = percent + '%';
-    }
-    
-    updatePDFNavButtons() {
-        const firstBtn = document.getElementById('pdf-first-modal');
-        const prevBtn = document.getElementById('pdf-prev-modal');
-        const nextBtn = document.getElementById('pdf-next-modal');
-        const lastBtn = document.getElementById('pdf-last-modal');
-        if (firstBtn) firstBtn.disabled = this.currentPDFPage <= 1;
-        if (prevBtn) prevBtn.disabled = this.currentPDFPage <= 1;
-        if (nextBtn) nextBtn.disabled = this.currentPDFPage >= this.totalPDFPages;
-        if (lastBtn) lastBtn.disabled = this.currentPDFPage >= this.totalPDFPages;
+    resetFilters() {
+        if (this.blockFilter) this.blockFilter.value = 'all';
+        if (this.searchInput) this.searchInput.value = '';
+        this.currentSearchTerm = '';
+        if (this.typeFilter) this.typeFilter.value = 'all';
+        if (this.courseFilter) this.courseFilter.value = 'all';
+        if (this.yearFilter) this.yearFilter.value = 'all';
+        
+        this.currentBlockFilter = 'all';
+        this.currentResourceType = 'all';
+        this.currentFileType = 'all';
+        this.currentCourse = 'all';
+        this.currentYear = 'all';
+        
+        const buttons = document.querySelectorAll('.type-tab');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('data-type') === 'all') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        this.filterResources();
     }
     
-    togglePDFFullscreen() {
-        const container = document.querySelector('.pdf-modal-container');
-        if (!container) return;
-        if (!document.fullscreenElement) {
-            container.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
-    }
-    
-    cleanupPDFModal() {
-        if (this.currentPDFDoc) {
-            this.currentPDFDoc.destroy();
-            this.currentPDFDoc = null;
-        }
-        this.currentPDFPage = 1;
-        this.totalPDFPages = 0;
-        this.pdfScale = 1.0;
-        this.pageRendering = false;
-        this.pageNumPending = null;
+    retryLoad() {
+        this.loadResources();
     }
     
     // ==================== UTILITY FUNCTIONS ====================
@@ -1393,12 +926,12 @@ class ResourcesModule {
         if (!block) return 'tag-general';
         const b = block.toLowerCase();
         if (b.includes('intro')) return 'tag-intro';
-        if (b.includes('block 1')) return 'tag-block1';
-        if (b.includes('block 2')) return 'tag-block2';
-        if (b.includes('block 3')) return 'tag-block3';
-        if (b.includes('block 4')) return 'tag-block4';
-        if (b.includes('block 5')) return 'tag-block5';
-        if (b.includes('final')) return 'tag-final';
+        if (b.includes('block 1') || b.includes('term 1')) return 'tag-block1';
+        if (b.includes('block 2') || b.includes('term 2')) return 'tag-block2';
+        if (b.includes('block 3') || b.includes('term 3')) return 'tag-block3';
+        if (b.includes('block 4') || b.includes('term 4')) return 'tag-block4';
+        if (b.includes('block 5') || b.includes('term 5')) return 'tag-block5';
+        if (b.includes('final') || b.includes('graduating')) return 'tag-final';
         return 'tag-general';
     }
     
@@ -1406,12 +939,12 @@ class ResourcesModule {
         if (!block) return 'fa-layer-group';
         const b = block.toLowerCase();
         if (b.includes('intro')) return 'fa-flag-checkered';
-        if (b.includes('block 1')) return 'fa-book';
-        if (b.includes('block 2')) return 'fa-book-open';
-        if (b.includes('block 3')) return 'fa-chalkboard-user';
-        if (b.includes('block 4')) return 'fa-stethoscope';
-        if (b.includes('block 5')) return 'fa-user-nurse';
-        if (b.includes('final')) return 'fa-graduation-cap';
+        if (b.includes('block 1') || b.includes('term 1')) return 'fa-book';
+        if (b.includes('block 2') || b.includes('term 2')) return 'fa-book-open';
+        if (b.includes('block 3') || b.includes('term 3')) return 'fa-chalkboard-user';
+        if (b.includes('block 4') || b.includes('term 4')) return 'fa-stethoscope';
+        if (b.includes('block 5') || b.includes('term 5')) return 'fa-user-nurse';
+        if (b.includes('final') || b.includes('graduating')) return 'fa-graduation-cap';
         return 'fa-layer-group';
     }
     
@@ -1422,89 +955,427 @@ class ResourcesModule {
         return div.innerHTML;
     }
     
-    // ==================== HELPER FUNCTIONS ====================
-    updatePastPaperCount() {
-        const pastpaperCount = this.currentResources.filter(r => r.resource_type === 'pastpaper').length;
-        const badge = document.getElementById('student-pastpaper-count');
-        if (badge) badge.textContent = pastpaperCount;
-    }
-    
-    populateCourseFilter() {
-        if (!this.courseFilter) return;
-        const courses = [...new Set(this.currentResources.map(r => r.program_type).filter(Boolean))];
-        this.courseFilter.innerHTML = '<option value="all">All Courses</option>';
-        courses.forEach(course => {
-            const option = document.createElement('option');
-            option.value = course;
-            option.textContent = course;
-            this.courseFilter.appendChild(option);
-        });
-    }
-    
-    updateDashboardResourceCount() {
-        const totalResources = this.currentResources.length;
-        const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
-        if (dashboardResourcesEl) {
-            dashboardResourcesEl.innerText = totalResources;
+    // ==================== RESOURCE OPENING ====================
+    async openResource(resourceId) {
+        const resource = this.allResources.find(r => r.id == resourceId);
+        
+        if (!resource) {
+            this.showToast('Resource not found', 'error');
+            return;
         }
         
-        if (window.dashboardModule && window.dashboardModule.metrics) {
-            window.dashboardModule.metrics.resources = totalResources;
-            if (window.dashboardModule.updateUIFromMetrics) {
-                window.dashboardModule.updateUIFromMetrics();
-            }
+        this.currentResource = resource;
+        const fileType = this.getFileType(resource.file_path);
+        
+        if (fileType === 'pdf') {
+            await this.openPDFInModal(resource);
+        } else if (fileType === 'image') {
+            this.openImageInModal(resource);
+        } else if (fileType === 'video') {
+            this.openVideoInModal(resource);
+        } else {
+            window.open(resource.file_url, '_blank');
         }
     }
     
-    filterResourcesByType(type) {
-        this.currentResourceType = type;
+    // ==================== PDF VIEWER ====================
+    async openPDFInModal(resource) {
+        try {
+            await this.initializePDFJS();
+            this.createPDFViewerModal(resource);
+            await this.loadPDFInModal(resource.file_url);
+        } catch (error) {
+            console.error('PDF error:', error);
+            this.showToast('Failed to load PDF: ' + error.message, 'error');
+        }
+    }
+    
+    async initializePDFJS() {
+        if (this.pdfjsLoaded) return true;
         
-        // Update button styles
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            const btnType = btn.getAttribute('data-type');
-            if (btnType === type) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+        return new Promise((resolve, reject) => {
+            if (typeof window.pdfjsLib !== 'undefined' && window.pdfjsLib) {
+                this.pdfjsLib = window.pdfjsLib;
+                if (this.pdfjsLib.GlobalWorkerOptions) {
+                    this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                this.pdfjsLoaded = true;
+                console.log('✅ PDF.js already loaded');
+                resolve(true);
+                return;
             }
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.onload = () => {
+                this.pdfjsLib = window.pdfjsLib;
+                if (this.pdfjsLib && this.pdfjsLib.GlobalWorkerOptions) {
+                    this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                this.pdfjsLoaded = true;
+                resolve(true);
+            };
+            script.onerror = () => reject(new Error('Failed to load PDF.js'));
+            document.head.appendChild(script);
         });
-        
-        // Reset search and filters
-        if (this.searchInput) this.searchInput.value = '';
-        if (this.typeFilter) this.typeFilter.value = 'all';
-        if (this.yearFilter) this.yearFilter.value = 'all';
-        
-        this.filterResources();
     }
     
-    resetFilters() {
-        if (this.blockFilter) this.blockFilter.value = 'all';
-        if (this.searchInput) this.searchInput.value = '';
-        if (this.typeFilter) this.typeFilter.value = 'all';
-        if (this.courseFilter) this.courseFilter.value = 'all';
-        if (this.yearFilter) this.yearFilter.value = 'all';
+    createPDFViewerModal(resource) {
+        const existingModal = document.getElementById('pdf-viewer-modal');
+        if (existingModal) existingModal.remove();
         
-        this.currentBlockFilter = 'all';
-        this.currentResourceType = 'all';
+        const modal = document.createElement('div');
+        modal.id = 'pdf-viewer-modal';
+        modal.className = 'pdf-viewer-modal';
+        modal.innerHTML = `
+            <div class="pdf-modal-container">
+                <div class="pdf-modal-header">
+                    <div class="pdf-modal-title">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>${this.escapeHtml(resource.title)}</span>
+                    </div>
+                    <div class="pdf-modal-actions">
+                        <button class="pdf-modal-btn close-pdf-modal" title="Close"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="pdf-modal-body">
+                    <div id="pdf-loading-modal" class="pdf-loading-modal">
+                        <div class="loading-spinner"></div>
+                        <p>Loading document...</p>
+                    </div>
+                    <div id="pdf-error-modal" class="pdf-error-modal" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Failed to Load Document</h3>
+                        <p id="pdf-error-message-modal"></p>
+                        <button id="retry-pdf-modal" class="btn-primary">Retry</button>
+                    </div>
+                    <div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display: none;">
+                        <canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas>
+                    </div>
+                </div>
+                <div class="pdf-modal-footer">
+                    <div class="pdf-nav-controls">
+                        <button class="pdf-nav-btn" id="pdf-prev-modal"><i class="fas fa-chevron-left"></i></button>
+                        <span class="pdf-page-info">
+                            <input type="number" id="pdf-page-modal" value="1" min="1"> / <span id="pdf-total-modal">1</span>
+                        </span>
+                        <button class="pdf-nav-btn" id="pdf-next-modal"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="pdf-protected-badge">
+                        <i class="fas fa-lock"></i> Read Only - No Download
+                    </div>
+                </div>
+            </div>
+        `;
         
-        // Update type tabs
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            if (btn.getAttribute('data-type') === 'all') {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+        document.body.appendChild(modal);
+        this.addPDFModalStyles();
+        this.setupPDFModalEvents();
+        modal.style.display = 'flex';
+    }
+    
+    addPDFModalStyles() {
+        if (document.getElementById('pdf-modal-styles')) return;
+        
+        const styles = document.createElement('style');
+        styles.id = 'pdf-modal-styles';
+        styles.textContent = `
+            .pdf-viewer-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 100000;
             }
-        });
+            .pdf-modal-container {
+                width: 95%;
+                height: 90%;
+                background: #1a1a2e;
+                border-radius: 16px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            }
+            .pdf-modal-header {
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #16213e, #1a1a2e);
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .pdf-modal-title {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: white;
+                font-weight: 500;
+                font-size: 14px;
+            }
+            .pdf-modal-title i {
+                color: #ef4444;
+            }
+            .pdf-modal-actions {
+                display: flex;
+                gap: 10px;
+            }
+            .pdf-modal-btn {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            .pdf-modal-btn:hover {
+                background: #4C1D95;
+            }
+            .pdf-modal-body {
+                flex: 1;
+                overflow: auto;
+                background: #2d2d3a;
+                position: relative;
+            }
+            .pdf-viewer-modal-area {
+                display: flex;
+                justify-content: center;
+                padding: 20px;
+                min-height: 100%;
+                align-items: flex-start;
+            }
+            .pdf-canvas-modal {
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                background: white;
+                border-radius: 4px;
+                max-width: 100%;
+                height: auto;
+            }
+            .pdf-modal-footer {
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #16213e, #1a1a2e);
+                border-top: 1px solid rgba(255,255,255,0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .pdf-nav-controls {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .pdf-nav-btn {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .pdf-nav-btn:hover {
+                background: #4C1D95;
+            }
+            .pdf-page-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: white;
+                font-size: 14px;
+            }
+            #pdf-page-modal {
+                width: 50px;
+                padding: 6px;
+                border-radius: 6px;
+                border: none;
+                text-align: center;
+                background: rgba(255,255,255,0.1);
+                color: white;
+                font-size: 14px;
+            }
+            .pdf-protected-badge {
+                background: rgba(76,29,149,0.3);
+                padding: 6px 12px;
+                border-radius: 20px;
+                color: #a78bfa;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .loading-spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid rgba(255,255,255,0.2);
+                border-top-color: #4C1D95;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 15px;
+            }
+            .pdf-loading-modal, .pdf-error-modal {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                color: white;
+                padding: 20px;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    setupPDFModalEvents() {
+        const modal = document.getElementById('pdf-viewer-modal');
+        const closeBtn = document.querySelector('.close-pdf-modal');
+        const prevBtn = document.getElementById('pdf-prev-modal');
+        const nextBtn = document.getElementById('pdf-next-modal');
+        const pageInput = document.getElementById('pdf-page-modal');
         
-        this.filterResources();
+        if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; this.cleanupPDFModal(); };
+        if (modal) modal.onclick = (e) => { if (e.target === modal) { modal.style.display = 'none'; this.cleanupPDFModal(); } };
+        if (prevBtn) prevBtn.onclick = () => this.goToPDFPage(this.currentPDFPage - 1);
+        if (nextBtn) nextBtn.onclick = () => this.goToPDFPage(this.currentPDFPage + 1);
+        if (pageInput) {
+            pageInput.addEventListener('change', () => {
+                const page = parseInt(pageInput.value);
+                if (page >= 1 && page <= this.totalPDFPages) this.goToPDFPage(page);
+            });
+        }
     }
     
-    retryLoad() {
-        this.loadResources();
+    async loadPDFInModal(pdfUrl) {
+        try {
+            const loadingDiv = document.getElementById('pdf-loading-modal');
+            const errorDiv = document.getElementById('pdf-error-modal');
+            const viewerDiv = document.getElementById('pdf-viewer-modal-area');
+            
+            if (loadingDiv) loadingDiv.style.display = 'flex';
+            if (errorDiv) errorDiv.style.display = 'none';
+            if (viewerDiv) viewerDiv.style.display = 'none';
+            
+            const loadingTask = this.pdfjsLib.getDocument({
+                url: pdfUrl,
+                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                cMapPacked: true,
+                verbosity: 0
+            });
+            
+            this.currentPDFDoc = await loadingTask.promise;
+            this.totalPDFPages = this.currentPDFDoc.numPages;
+            
+            const totalSpan = document.getElementById('pdf-total-modal');
+            const pageInput = document.getElementById('pdf-page-modal');
+            if (totalSpan) totalSpan.textContent = this.totalPDFPages;
+            if (pageInput) pageInput.max = this.totalPDFPages;
+            
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (viewerDiv) viewerDiv.style.display = 'flex';
+            
+            await this.renderPDFPage(1);
+            
+        } catch (error) {
+            console.error('PDF loading error:', error);
+            const loadingDiv = document.getElementById('pdf-loading-modal');
+            const errorDiv = document.getElementById('pdf-error-modal');
+            const errorMsg = document.getElementById('pdf-error-message-modal');
+            const retryBtn = document.getElementById('retry-pdf-modal');
+            
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (errorDiv) errorDiv.style.display = 'flex';
+            if (errorMsg) errorMsg.textContent = error.message;
+            if (retryBtn) retryBtn.onclick = () => this.loadPDFInModal(pdfUrl);
+        }
     }
     
+    async renderPDFPage(pageNum) {
+        if (!this.currentPDFDoc || pageNum < 1 || pageNum > this.totalPDFPages) return;
+        if (this.pageRendering) { this.pageNumPending = pageNum; return; }
+        this.pageRendering = true;
+        
+        try {
+            const page = await this.currentPDFDoc.getPage(pageNum);
+            const canvas = document.getElementById('pdf-canvas-modal');
+            if (!canvas) { this.pageRendering = false; return; }
+            const ctx = canvas.getContext('2d', { alpha: false });
+            
+            const viewerArea = document.getElementById('pdf-viewer-modal-area');
+            const containerWidth = viewerArea ? viewerArea.clientWidth - 40 : window.innerWidth - 40;
+            const maxWidth = Math.min(containerWidth, 1200);
+            
+            const viewport = page.getViewport({ scale: 1 });
+            const scale = Math.min((maxWidth / viewport.width), 1.5);
+            const scaledViewport = page.getViewport({ scale: scale });
+            
+            const dpr = window.devicePixelRatio || 1;
+            const effectiveDPR = Math.min(dpr, 2);
+            
+            canvas.width = scaledViewport.width * effectiveDPR;
+            canvas.height = scaledViewport.height * effectiveDPR;
+            canvas.style.width = scaledViewport.width + 'px';
+            canvas.style.height = scaledViewport.height + 'px';
+            
+            ctx.setTransform(effectiveDPR, 0, 0, effectiveDPR, 0, 0);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: scaledViewport,
+                background: 'white'
+            };
+            
+            await page.render(renderContext).promise;
+            
+            this.currentPDFPage = pageNum;
+            const pageInput = document.getElementById('pdf-page-modal');
+            if (pageInput) pageInput.value = pageNum;
+            
+        } catch (error) {
+            console.error('Render error:', error);
+        }
+        
+        this.pageRendering = false;
+        if (this.pageNumPending !== null) {
+            this.renderPDFPage(this.pageNumPending);
+            this.pageNumPending = null;
+        }
+    }
+    
+    goToPDFPage(pageNum) {
+        if (pageNum < 1) pageNum = 1;
+        if (pageNum > this.totalPDFPages) pageNum = this.totalPDFPages;
+        this.renderPDFPage(pageNum);
+    }
+    
+    cleanupPDFModal() {
+        if (this.currentPDFDoc) {
+            this.currentPDFDoc.destroy();
+            this.currentPDFDoc = null;
+        }
+        this.currentPDFPage = 1;
+        this.totalPDFPages = 0;
+        this.pageRendering = false;
+        this.pageNumPending = null;
+    }
+    
+    // ==================== IMAGE/VIDEO VIEWER ====================
     openImageInModal(resource) {
         const modal = document.createElement('div');
         modal.className = 'image-viewer-modal';
@@ -1556,27 +1427,29 @@ class ResourcesModule {
     
     // ==================== INITIALIZATION ====================
     async initialize() {
-        console.log('📁 Initializing Student Resources Module...');
+        console.log('📁 Initializing Student Resources Module (TVET + KRCHN)...');
         
         let attempts = 0;
         const maxAttempts = 30;
         
-        // First, try to get user profile directly
+        // First, detect program
+        this.detectUserProgram();
+        
+        // Try to get user profile
         const userProfile = await this.getUserProfile();
         
         const checkAndInit = async () => {
             attempts++;
             
-            // Check if we have the necessary data
             const hasDb = window.db && window.db.supabase;
             const hasUserProfile = window.currentUserProfile && window.currentUserProfile.program;
             
             if (hasDb && hasUserProfile) {
                 console.log('✅ Database and user ready, loading resources...');
-                await this.initWithUserProfile(window.currentUserProfile);
+                await this.loadResources();
             } else if (userProfile && userProfile.program) {
                 console.log('✅ User profile found via direct fetch, loading resources...');
-                await this.initWithUserProfile(userProfile);
+                await this.loadResources();
             } else if (attempts < maxAttempts) {
                 console.log(`⏳ Waiting for user profile... (attempt ${attempts}/${maxAttempts})`);
                 setTimeout(checkAndInit, 500);
@@ -1594,8 +1467,6 @@ class ResourcesModule {
                         </div>
                     `;
                 }
-                const blockDisplay = document.getElementById('student-current-user-block');
-                if (blockDisplay) blockDisplay.textContent = 'Error loading';
             }
         };
         
@@ -1609,64 +1480,6 @@ class ResourcesModule {
         }
         
         checkAndInit();
-    }
-    
-    async initWithUserProfile(userProfile) {
-        console.log('👤 User profile loaded:', userProfile);
-        
-        // Update block display
-        const userBlock = userProfile.block || userProfile.current_block || 'Introductory';
-        const blockDisplay = document.getElementById('student-current-user-block');
-        if (blockDisplay) {
-            blockDisplay.textContent = userBlock;
-            console.log('✅ Block display updated to:', userBlock);
-        }
-        
-        // Also update dashboard if needed
-        const dashboardBlock = document.getElementById('dashboard-current-block-value');
-        if (dashboardBlock) {
-            dashboardBlock.textContent = userBlock;
-        }
-        
-        const dashboardProgram = document.getElementById('dashboard-program-name');
-        if (dashboardProgram && userProfile.program) {
-            dashboardProgram.textContent = userProfile.program;
-        }
-        
-        const dashboardIntake = document.getElementById('dashboard-intake-year');
-        if (dashboardIntake && userProfile.intake_year) {
-            dashboardIntake.textContent = userProfile.intake_year;
-        }
-        
-        // Auto-select user's block in filter
-        let userBlockValue = 'all';
-        for (const [value, keywords] of Object.entries(this.BLOCK_MAPPING)) {
-            if (keywords.some(k => userBlock.toLowerCase().includes(k.toLowerCase()))) {
-                userBlockValue = value;
-                break;
-            }
-        }
-        
-        if (this.blockFilter) {
-            if (userBlockValue !== 'all') {
-                this.blockFilter.value = userBlockValue;
-                this.currentBlockFilter = userBlockValue;
-                console.log('✅ Block filter set to:', userBlockValue);
-            } else {
-                // Try to find matching block by exact name
-                const exactMatch = Array.from(this.blockFilter.options).find(opt => 
-                    opt.text.toLowerCase().includes(userBlock.toLowerCase())
-                );
-                if (exactMatch) {
-                    this.blockFilter.value = exactMatch.value;
-                    this.currentBlockFilter = exactMatch.value;
-                    console.log('✅ Block filter set via exact match:', exactMatch.value);
-                }
-            }
-        }
-        
-        // Load resources
-        await this.loadResources();
     }
 }
 
@@ -1714,7 +1527,6 @@ window.resetResourceFilters = () => {
 };
 
 // ==================== AUTO-INITIALIZATION ====================
-// Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => initResourcesModule(), 500);
@@ -1723,9 +1535,8 @@ if (document.readyState === 'loading') {
     setTimeout(() => initResourcesModule(), 500);
 }
 
-// Also initialize when profile is loaded (for dashboard)
 document.addEventListener('appReady', () => {
     setTimeout(() => initResourcesModule(), 300);
 });
 
-console.log('Resources module loaded with Profile-style loading patterns');
+console.log('✅ Resources module loaded - TVET + KRCHN with professional filtering!');
