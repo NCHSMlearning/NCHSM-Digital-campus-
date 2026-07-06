@@ -1959,40 +1959,460 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.loadSnapshots = async function(studentId, examId) {
-        const sid = studentId || currentCameraStudent;
-        const eid = examId || currentCameraExam;
-        if (!sid || !eid) return;
-        
-        try {
-            const { data: snapshots } = await sb
-                .from('exam_proctoring_logs')
-                .select('snapshot_url, timestamp')
-                .eq('student_id', sid)
-                .eq('exam_id', parseInt(eid))
-                .not('snapshot_url', 'is', null)
-                .order('timestamp', { ascending: false })
-                .limit(6);
-            
-            const gallery = document.getElementById('snapshotGallery');
-            const list = document.getElementById('snapshotList');
-            
-            if (!snapshots || snapshots.length === 0) {
-                gallery.style.display = 'none';
-                return;
-            }
-            gallery.style.display = 'block';
-            list.innerHTML = snapshots.map(s => `
-                <div style="min-width:120px; max-width:150px; border-radius:8px; overflow:hidden; cursor:pointer;" onclick="window.open('${s.snapshot_url}', '_blank')">
-                    <img src="${s.snapshot_url}" style="width:100%; height:80px; object-fit:cover;">
-                    <div style="font-size:0.55rem; color:#64748B; padding:4px; text-align:center;">${formatKenyaTime(s.timestamp)}</div>
-                </div>
-            `).join('');
-        } catch (error) {
-            console.error('Error loading snapshots:', error);
-        }
-    };
+  // ============================================
+// 📸 SNAPSHOT MANAGEMENT - FIXED FOR MULTIPLE
+// ============================================
 
+// Global array to store snapshots in memory
+let snapshotCache = [];
+let maxSnapshots = 50;
+
+/**
+ * Load snapshots for a student/exam from database
+ */
+window.loadSnapshots = async function(studentId, examId) {
+    const sid = studentId || currentCameraStudent;
+    const eid = examId || currentCameraExam;
+    if (!sid || !eid) return;
+    
+    try {
+        // Fetch snapshots from database - NOW UP TO 50
+        const { data: snapshots, error } = await sb
+            .from('exam_proctoring_logs')
+            .select('id, snapshot_url, screenshot_data, timestamp, event_type, details')
+            .eq('student_id', sid)
+            .eq('exam_id', parseInt(eid))
+            .not('snapshot_url', 'is', null)
+            .order('timestamp', { ascending: false })
+            .limit(50);
+        
+        if (error) throw error;
+        
+        // Store in cache
+        snapshotCache = snapshots || [];
+        
+        // Render the gallery
+        renderSnapshotGallery();
+        
+        console.log(`📸 Loaded ${snapshotCache.length} snapshots`);
+        
+    } catch (error) {
+        console.error('Error loading snapshots:', error);
+        showToast('Error loading snapshots: ' + error.message, 'error');
+    }
+};
+
+/**
+ * Render the snapshot gallery with all snapshots
+ */
+function renderSnapshotGallery() {
+    const gallery = document.getElementById('snapshotGallery');
+    const list = document.getElementById('snapshotList');
+    const count = document.getElementById('snapshotCount');
+    const empty = document.getElementById('snapshotEmpty');
+    
+    if (!gallery || !list) return;
+    
+    // Update count
+    if (count) count.textContent = snapshotCache.length;
+    
+    if (snapshotCache.length === 0) {
+        gallery.style.display = 'block';
+        list.innerHTML = '';
+        if (empty) {
+            empty.style.display = 'flex';
+            empty.innerHTML = `
+                <i class="fas fa-camera-slash fa-2x"></i>
+                <p style="margin:0;">No snapshots captured yet</p>
+                <p style="margin:0; font-size:0.8rem; color:#94A3B8;">Click "Capture" to take a snapshot</p>
+            `;
+        }
+        return;
+    }
+    
+    gallery.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    
+    // Build the snapshot list
+    list.innerHTML = '';
+    
+    snapshotCache.forEach((snapshot, index) => {
+        const imageUrl = snapshot.snapshot_url || snapshot.screenshot_data;
+        if (!imageUrl) return;
+        
+        const div = document.createElement('div');
+        div.className = 'snapshot-item';
+        div.style.cssText = `
+            flex: 0 0 180px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #E2E8F0;
+            position: relative;
+            background: #000;
+            min-height: 140px;
+            cursor: pointer;
+            transition: all 0.3s;
+        `;
+        div.onmouseenter = function() {
+            this.style.transform = 'scale(1.03)';
+            this.style.borderColor = '#3B82F6';
+            this.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+        };
+        div.onmouseleave = function() {
+            this.style.transform = 'scale(1)';
+            this.style.borderColor = '#E2E8F0';
+            this.style.boxShadow = 'none';
+        };
+        
+        // Image
+        const img = document.createElement('img');
+        img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+        img.alt = `Snapshot ${index + 1}`;
+        img.style.cssText = `
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+        `;
+        img.onerror = function() {
+            this.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.style.cssText = `
+                width: 100%;
+                height: 140px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #1a1a2e;
+                color: #94A3B8;
+                font-size: 0.8rem;
+                flex-direction: column;
+                gap: 8px;
+            `;
+            fallback.innerHTML = `
+                <i class="fas fa-image" style="font-size:2rem; opacity:0.3;"></i>
+                <span>Image unavailable</span>
+            `;
+            this.parentElement.insertBefore(fallback, this);
+            this.remove();
+        };
+        div.appendChild(img);
+        
+        // Click to view fullscreen
+        div.onclick = function() {
+            viewSnapshotFullscreen(imageUrl);
+        };
+        
+        // Overlay with timestamp and delete button
+        const overlay = document.createElement('div');
+        overlay.className = 'snapshot-overlay';
+        overlay.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 8px;
+            font-size: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const timeSpan = document.createElement('span');
+        const date = new Date(snapshot.timestamp);
+        timeSpan.textContent = date.toLocaleTimeString('en-KE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '<i class="fas fa-times"></i>';
+        delBtn.className = 'delete-btn';
+        delBtn.style.cssText = `
+            background: rgba(220,38,38,0.8);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            font-size: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        `;
+        delBtn.onmouseenter = function() {
+            this.style.background = '#DC2626';
+            this.style.transform = 'scale(1.1)';
+        };
+        delBtn.onmouseleave = function() {
+            this.style.background = 'rgba(220,38,38,0.8)';
+            this.style.transform = 'scale(1)';
+        };
+        delBtn.onclick = function(e) {
+            e.stopPropagation();
+            deleteSnapshot(index, snapshot.id);
+        };
+        
+        overlay.appendChild(timeSpan);
+        overlay.appendChild(delBtn);
+        div.appendChild(overlay);
+        
+        list.appendChild(div);
+    });
+}
+
+/**
+ * Delete a snapshot
+ */
+window.deleteSnapshot = async function(index, snapshotId) {
+    if (!confirm('Delete this snapshot?')) return;
+    
+    try {
+        // Remove from database
+        if (snapshotId) {
+            const { error } = await sb
+                .from('exam_proctoring_logs')
+                .update({ snapshot_url: null, screenshot_data: null })
+                .eq('id', snapshotId);
+            
+            if (error) throw error;
+        }
+        
+        // Remove from cache
+        snapshotCache.splice(index, 1);
+        
+        // Re-render
+        renderSnapshotGallery();
+        showToast('Snapshot deleted', 'info');
+        
+    } catch (error) {
+        console.error('Error deleting snapshot:', error);
+        showToast('Error deleting snapshot: ' + error.message, 'error');
+    }
+};
+
+/**
+ * Clear all snapshots
+ */
+window.clearAllSnapshots = function() {
+    if (!confirm('Delete all snapshots for this student?')) return;
+    
+    // Delete from database
+    snapshotCache.forEach(async (snapshot) => {
+        if (snapshot.id) {
+            await sb
+                .from('exam_proctoring_logs')
+                .update({ snapshot_url: null, screenshot_data: null })
+                .eq('id', snapshot.id);
+        }
+    });
+    
+    // Clear cache
+    snapshotCache = [];
+    renderSnapshotGallery();
+    showToast('All snapshots cleared', 'info');
+};
+
+/**
+ * View snapshot in fullscreen
+ */
+window.viewSnapshotFullscreen = function(imageUrl) {
+    const modal = document.createElement('div');
+    modal.className = 'snapshot-fullscreen';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.95);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+    img.style.cssText = `
+        max-width: 95%;
+        max-height: 95%;
+        object-fit: contain;
+        border-radius: 8px;
+    `;
+    
+    modal.appendChild(img);
+    modal.onclick = function() {
+        modal.remove();
+    };
+    
+    // Close with Escape key
+    modal.onkeydown = function(e) {
+        if (e.key === 'Escape') modal.remove();
+    };
+    modal.tabIndex = 0;
+    modal.focus();
+    
+    document.body.appendChild(modal);
+};
+
+/**
+ * Capture a new snapshot - REPLACES OLD VERSION
+ */
+window.captureSnapshot = async function() {
+    const feed = document.getElementById('cameraFeed');
+    if (!feed || !feed.src || feed.src === '' || feed.style.display === 'none') {
+        showToast('No camera feed available. Please refresh first.', 'warning');
+        return;
+    }
+    
+    try {
+        showToast('📸 Capturing snapshot...', 'info');
+        
+        const studentName = document.getElementById('cameraStudentName')?.textContent || 'Student';
+        const examName = document.getElementById('cameraExamName')?.textContent || 'Exam';
+        const studentId = currentCameraStudent || 'unknown';
+        const examId = currentCameraExam || 0;
+        
+        // Create canvas to capture
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        
+        // Load image
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = feed.src;
+        
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            setTimeout(reject, 5000);
+        });
+        
+        // Draw image
+        ctx.drawImage(img, 0, 0, 640, 480);
+        
+        // Add watermark/overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 440, 640, 40);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '14px Poppins, sans-serif';
+        ctx.fillText(`${studentName} - ${examName} - ${new Date().toLocaleString()}`, 10, 468);
+        
+        // Add timestamp
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '12px Poppins, sans-serif';
+        ctx.fillText('NCHSM Proctoring', 540, 16);
+        
+        // Convert to data URL
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Save to database
+        const { data: logData, error: logError } = await sb
+            .from('exam_proctoring_logs')
+            .insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                student_name: studentName,
+                exam_name: examName,
+                event_type: 'admin_snapshot',
+                details: `Admin captured snapshot of ${studentName}`,
+                severity: 'info',
+                screenshot_data: dataUrl,
+                timestamp: new Date().toISOString()
+            })
+            .select('id, timestamp')
+            .single();
+        
+        if (logError) throw logError;
+        
+        // Add to cache
+        const newSnapshot = {
+            id: logData.id,
+            snapshot_url: null,
+            screenshot_data: dataUrl,
+            timestamp: logData.timestamp || new Date().toISOString(),
+            event_type: 'admin_snapshot',
+            details: `Admin captured snapshot`
+        };
+        
+        snapshotCache.unshift(newSnapshot);
+        
+        // Keep only maxSnapshots
+        if (snapshotCache.length > maxSnapshots) {
+            snapshotCache = snapshotCache.slice(0, maxSnapshots);
+        }
+        
+        // Re-render gallery
+        renderSnapshotGallery();
+        
+        showToast(`✅ Snapshot captured! (${snapshotCache.length} total)`, 'success');
+        
+        // Update camera feed with latest
+        feed.src = dataUrl;
+        document.getElementById('cameraTimestamp').textContent = new Date().toLocaleTimeString();
+        
+    } catch (error) {
+        console.error('Capture error:', error);
+        showToast('❌ Failed to capture snapshot: ' + error.message, 'error');
+    }
+};
+
+/**
+ * Open camera modal - UPDATED
+ */
+window.openCameraView = async function(studentId, examId, studentName, examName) {
+    currentCameraStudent = studentId;
+    currentCameraExam = examId;
+    currentCameraStudentName = studentName;
+    currentCameraExamName = examName;
+    
+    // Reset snapshot cache
+    snapshotCache = [];
+    
+    // Set modal title
+    document.getElementById('cameraModalTitle').innerHTML = `<i class="fas fa-video"></i> Live Camera - ${studentName}`;
+    document.getElementById('cameraStudentName').textContent = studentName;
+    document.getElementById('cameraExamName').textContent = examName;
+    document.getElementById('cameraStatus').textContent = '🟢 Connecting...';
+    document.getElementById('cameraStatus').className = 'status-active';
+    
+    // Show modal
+    document.getElementById('cameraModal').style.display = 'flex';
+    
+    // Load data
+    try {
+        await Promise.all([
+            refreshCameraFeed(studentId, examId),
+            loadCameraAlerts(studentId, examId),
+            loadSnapshots(studentId, examId)
+        ]);
+        startCameraAutoRefresh(studentId, examId);
+    } catch (error) {
+        console.error('Error opening camera:', error);
+        showToast('Error loading camera: ' + error.message, 'error');
+    }
+};
+
+/**
+ * Close camera modal - UPDATED
+ */
+window.closeCameraModal = function() {
+    document.getElementById('cameraModal').style.display = 'none';
+    if (cameraInterval) {
+        clearInterval(cameraInterval);
+        cameraInterval = null;
+    }
+    cameraAutoRefresh = true;
+    snapshotCache = [];
+};
     function startCameraAutoRefresh(studentId, examId) {
         if (cameraInterval) clearInterval(cameraInterval);
         cameraInterval = setInterval(() => {
