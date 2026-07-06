@@ -1,4 +1,4 @@
-// js/exam-card.js - v11.0 (TVET/KRCHN Support - Full A4 optimized)
+// js/exam-card.js - v11.2 (TVET/KRCHN Support - Full A4 optimized with Dynamic HOD)
 
 (function() {
     'use strict';
@@ -26,25 +26,6 @@
         'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
         'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
     ];
-    
-    /**
-     * @typedef {Object} UnitRegistration
-     * @property {string} unit_code
-     * @property {string} unit_name
-     * @property {number} credits
-     * @property {string} status
-     */
-    
-    /**
-     * @typedef {Object} PastExamRecord
-     * @property {string} id
-     * @property {string} period
-     * @property {number} units
-     * @property {number} credits
-     * @property {string} date
-     * @property {string} status
-     * @property {Array<UnitRegistration>} units_list
-     */
     
     class ExamCardModule {
         constructor() {
@@ -103,6 +84,44 @@
         }
         
         // ============================================
+        // GET HOD TITLE DYNAMICALLY
+        // ============================================
+        
+        getHODTitle() {
+            if (!this.userProfile) return 'HOD';
+            
+            const program = this.userProfile.program || this.userProfile.program_type || '';
+            const programUpper = program.toUpperCase().trim();
+            
+            // TVET Programs - show HOD + Program Code
+            if (TVET_PROGRAMS.includes(programUpper)) {
+                return `HOD ${programUpper}`;
+            }
+            
+            // KRCHN Nursing
+            if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
+                return 'HOD Nursing';
+            }
+            
+            // Health/Medical Programs with code
+            if (programUpper.includes('HEALTH') || programUpper.includes('MEDICAL') || 
+                programUpper.includes('CLINICAL') || programUpper.includes('PUBLIC')) {
+                if (programUpper.length <= 6) {
+                    return `HOD ${programUpper}`;
+                }
+                const cleanName = program.replace(/DIPLOMA|CERTIFICATE|ARTISAN|IN\s+/gi, '').trim();
+                return cleanName ? `HOD ${cleanName}` : 'HOD';
+            }
+            
+            // Default with program code if short
+            if (programUpper.length <= 6) {
+                return `HOD ${programUpper}`;
+            }
+            
+            return program ? `HOD ${program}` : 'HOD';
+        }
+        
+        // ============================================
         // INITIALIZATION
         // ============================================
         
@@ -121,7 +140,6 @@
         }
         
         setupEventListeners() {
-            // Bound handlers for cleanup
             this._boundHandlers = {
                 appReady: () => this.tryLoadIfLoggedIn(),
                 profileLoaded: (e) => {
@@ -143,7 +161,6 @@
                 link.addEventListener('click', this._boundHandlers.tabClick);
             });
             
-            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'p' && this.loaded) {
                     // Allow native print dialog
@@ -152,16 +169,12 @@
         }
         
         destroy() {
-            // Cleanup event listeners
             document.removeEventListener('appReady', this._boundHandlers.appReady);
             document.removeEventListener('profileLoaded', this._boundHandlers.profileLoaded);
             document.removeEventListener('unitRegistrationReady', this._boundHandlers.unitRegistrationReady);
-            
             document.querySelectorAll('[data-tab="hub-exam-card"]').forEach(link => {
                 link.removeEventListener('click', this._boundHandlers.tabClick);
             });
-            
-            // Clear references for GC
             this.approvedUnits = [];
             this.userProfile = null;
             this.pastExamRecords = [];
@@ -294,8 +307,6 @@
         updateUserData() {
             if (this.userProfile) {
                 this.userId = this.userProfile.user_id || this.userProfile.id || this.userProfile.student_id;
-                
-                // ✅ FIX: Handle both block and term for TVET students
                 this.isTVET = this.isTVETStudent();
                 this.userLevel = this.isTVET ? 'TVET' : 'KRCHN';
                 this.userBlock = this.getBlockValue();
@@ -363,16 +374,13 @@
             }
             
             try {
-                // ✅ FIX: Get actual user ID
                 let actualUserId = this.userId;
                 
-                // For TVET students, use the UUID directly
                 if (this.userProfile?.user_id) {
                     actualUserId = this.userProfile.user_id;
                 } else if (this.userProfile?.id) {
                     actualUserId = this.userProfile.id;
                 } else if (this.userProfile?.student_id) {
-                    // Fallback: try to find by student_id (for older records)
                     const { data: userData } = await supabase
                         .from('consolidated_user_profiles_table')
                         .select('user_id')
@@ -383,7 +391,6 @@
                 
                 console.log('🔍 Fetching approved units for user:', actualUserId);
                 
-                // Fetch with timeout
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Database timeout')), CONFIG.DB_TIMEOUT)
                 );
@@ -426,7 +433,6 @@
                     this.displayPastExams();
                 }
             } catch (error) {
-                // Silently fail - not critical
                 console.debug('Past exams not available:', error);
             }
         }
@@ -546,12 +552,11 @@
             const isEligible = approvedUnits.length > 0;
             const examOver = this.isExamOver();
             
-            // ✅ FIX: Handle TVET vs KRCHN
             const isTVET = this.isTVETStudent();
             const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
             const blockValue = this.getBlockValue();
+            const hodTitle = this.getHODTitle();
             
-            // ✅ FIX: Get correct student ID
             const studentIdDisplay = student?.student_id || 
                                     student?.admission_number || 
                                     student?.user_id?.substring(0, 8) || 
@@ -560,11 +565,9 @@
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            // Calculate optimal table height for A4
             const unitCount = approvedUnits.length;
             const needsCompression = unitCount > CONFIG.MAX_UNITS_DISPLAY;
             
-            // Build table rows with compression if needed
             let tableRows = '';
             let displayUnits = approvedUnits;
             let compressedCount = 0;
@@ -585,12 +588,12 @@
                         <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
                         <td class="signature-cell">
                             <div class="signature-line"></div>
+                            <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
                         </td>
                     </tr>
                 `;
             }).join('');
             
-            // Add compression row if needed
             if (compressedCount > 0) {
                 tableRows += `
                     <tr class="compressed-row">
@@ -601,7 +604,6 @@
                 `;
             }
             
-            // Status badge
             let statusBadge = '';
             if (examOver) {
                 statusBadge = `<div class="status-badge completed">✅ COMPLETED</div>`;
@@ -611,7 +613,6 @@
                 </div>`;
             }
             
-            // ✅ FIX: Add student type badge
             const studentTypeBadge = isTVET ? 
                 `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
                 `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
@@ -634,7 +635,7 @@
                             ${statusBadge}
                         </div>
                         
-                        <!-- Info Grid - FIXED FOR TVET -->
+                        <!-- Info Grid -->
                         <div class="info-grid">
                             <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'Not Available')}</div>
                             <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(studentIdDisplay)}</div>
@@ -670,19 +671,22 @@
                             </table>
                         ` : '<div class="no-units">No approved units found. Please register for units.</div>'}
                         
-                        <!-- Signatures -->
+                        <!-- Signatures with Dynamic HOD -->
                         <div class="signatures-row">
                             <div class="signature">
                                 <div class="sign-line"></div>
-                                <div>HOD Nursing</div>
+                                <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
+                                <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
                             </div>
                             <div class="signature">
                                 <div class="sign-line"></div>
-                                <div>Principal</div>
+                                <div style="font-weight: 600; font-size: 12px;">Principal</div>
+                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
                             </div>
                             <div class="signature">
                                 <div class="sign-line"></div>
-                                <div>Finance Officer</div>
+                                <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
+                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
                             </div>
                         </div>
                         
@@ -736,10 +740,7 @@
             this.examCardContent.innerHTML = html;
             this.addCompactStyles();
             
-            // Setup buttons
             this.setupActionButtons();
-            
-            // Load past exams
             this.loadPastExamRecords();
         }
         
@@ -881,11 +882,20 @@
                 }
                 .text-center { text-align: center; }
                 
-                .signature-cell { padding: 5px 0; }
+                .signature-cell { 
+                    padding: 5px 0; 
+                    text-align: center;
+                    vertical-align: middle;
+                }
                 .signature-line { 
                     width: 90%; 
                     margin: 8px auto; 
-                    border-top: 1px solid #333; 
+                    border-top: 2px solid #000; 
+                    height: 2px;
+                }
+                .signature-cell span {
+                    display: block;
+                    margin-top: 2px;
                 }
                 
                 .total-row { 
@@ -923,7 +933,8 @@
                 .sign-line { 
                     width: 80%; 
                     margin: 8px auto; 
-                    border-top: 1px solid #334155; 
+                    border-top: 2px solid #000; 
+                    height: 2px;
                     padding-top: 12px; 
                 }
                 
@@ -977,8 +988,9 @@
                 .signature-line-inline { 
                     display: inline-block; 
                     flex: 1; 
-                    border-top: 1px solid #333; 
+                    border-top: 2px solid #000; 
                     max-width: 60%; 
+                    height: 2px;
                 }
                 
                 /* Action Buttons */
@@ -1253,7 +1265,6 @@
                 return;
             }
             
-            // Build units list for past exam
             let unitsList = '';
             const units = record.units_list || [];
             if (units.length > 0) {
@@ -1360,8 +1371,6 @@
                 await this.waitForLibraries();
                 
                 const cloneCard = this.prepareCardForPrint(cardElement);
-                
-                // Calculate optimal scale based on content for A4
                 const scale = this.calculateOptimalScale(cloneCard);
                 
                 const tempContainer = this.createTempContainer(cloneCard);
@@ -1393,7 +1402,6 @@
                 
                 pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
                 
-                // Handle multi-page if content overflows
                 if (imgHeight > (pageHeight - margin * 2)) {
                     let position = -(pageHeight - margin * 2);
                     let heightLeft = imgHeight - (pageHeight - margin * 2);
@@ -1405,7 +1413,6 @@
                     }
                 }
                 
-                // Add footer note for historical records
                 if (this.isExamOver()) {
                     pdf.setFontSize(8);
                     pdf.setTextColor(100, 100, 100);
@@ -1439,7 +1446,7 @@
         calculateOptimalScale(element) {
             const contentHeight = element.scrollHeight;
             const contentWidth = element.scrollWidth;
-            const maxHeight = CONFIG.A4.PIXEL_HEIGHT * 1.1; // 10% buffer
+            const maxHeight = CONFIG.A4.PIXEL_HEIGHT * 1.1;
             const maxWidth = CONFIG.A4.PIXEL_WIDTH * 1.1;
             
             let scale = CONFIG.PDF_SCALE;
@@ -1450,25 +1457,21 @@
                 scale = Math.min(heightScale, widthScale, 3);
             }
             
-            return Math.max(scale, 1.5); // Minimum scale
+            return Math.max(scale, 1.5);
         }
         
         prepareCardForPrint(cardElement) {
             const cloneCard = cardElement.cloneNode(true);
             
-            // Remove action buttons
             const actionButtons = cloneCard.querySelectorAll('.action-buttons');
             actionButtons.forEach(btn => btn.remove());
             
-            // Remove all buttons
             const allButtons = cloneCard.querySelectorAll('button');
             allButtons.forEach(btn => btn.style.display = 'none');
             
-            // Remove past exams section
             const pastSection = cloneCard.querySelector('.past-exams-section');
             if (pastSection) pastSection.remove();
             
-            // Ensure signature lines are visible
             const signatureLines = cloneCard.querySelectorAll('.signature-line, .sign-line, .signature-line-inline');
             signatureLines.forEach(line => {
                 line.style.width = '80%';
@@ -1679,7 +1682,6 @@
                 return;
             }
             
-            // Generate a simple PDF for past exam
             try {
                 await this.waitForLibraries();
                 
@@ -1688,7 +1690,6 @@
                 const margin = 20;
                 let y = margin;
                 
-                // Title
                 pdf.setFontSize(18);
                 pdf.setTextColor(30, 58, 95);
                 pdf.text('PAST EXAM RECORD', margin, y);
@@ -1707,7 +1708,6 @@
                 pdf.text(`Status: ${record.status || 'Completed'}`, margin, y);
                 y += 15;
                 
-                // Units list
                 const units = record.units_list || [];
                 if (units.length > 0) {
                     pdf.setFontSize(14);
@@ -1725,13 +1725,11 @@
                     });
                 }
                 
-                // Footer
                 const pageHeight = pdf.internal.pageSize.height;
                 pdf.setFontSize(8);
                 pdf.setTextColor(148, 163, 184);
                 pdf.text('Generated from NCHSM Exam Card System', margin, pageHeight - 10);
                 
-                // Save
                 const studentName = this.userProfile?.full_name || 'Student';
                 const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 pdf.save(`Past_Exam_${safeName}_${record.period || 'record'}.pdf`);
@@ -1759,7 +1757,6 @@
     const examCardModule = new ExamCardModule();
     window.examCardModule = examCardModule;
     
-    // Expose functions globally
     window.loadExamCard = () => examCardModule?.loadExamCard();
     window.printExamCard = () => examCardModule?.printExamCard();
     window.downloadExamCard = () => examCardModule?.downloadExamCardDirect();
@@ -1768,9 +1765,8 @@
     window.viewPastExam = (id) => examCardModule?.viewPastExam(id);
     window.downloadPastExamPDF = (id) => examCardModule?.downloadPastExamPDF(id);
     
-    console.log('✅ Exam Card module v11.0 ready - TVET/KRCHN Support - Full A4 optimized');
+    console.log('✅ Exam Card module v11.2 ready - TVET/KRCHN Support - Dynamic HOD - Full A4 optimized');
     
-    // Export for testing
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = { ExamCardModule };
     }
