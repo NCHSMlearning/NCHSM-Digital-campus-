@@ -639,10 +639,125 @@
     </div>
 
     <!-- ============================================================
-    OVERLAYS (Same as before - kept for brevity)
+    OVERLAYS
     ============================================================ -->
-    <!-- [All overlays remain the same - app-block, timer-warning, fullscreen-exit, face-block, multiple-faces, camera-permission, submission, blocked-screen] -->
-    
+    <!-- Application Block Overlay -->
+    <div id="app-block-overlay">
+        <div class="block-icon">🚫</div>
+        <h2>Application Blocked</h2>
+        <p>To maintain exam integrity, the following have been blocked:</p>
+        <div class="blocked-items">
+            <span>📱 Other Apps</span>
+            <span>🔄 Background Apps</span>
+            <span>📋 Clipboard</span>
+            <span>🔍 Screen Recording</span>
+            <span>⌨️ Shortcuts</span>
+        </div>
+        <p class="block-sub">Return to the exam window to continue.</p>
+        <button class="return-btn" onclick="returnToExam()">🔙 Return to Exam</button>
+    </div>
+
+    <!-- Timer Warning Overlay -->
+    <div id="timer-warning-overlay">
+        <div class="timer-icon">⏰</div>
+        <h2>⚠️ Time is Almost Up!</h2>
+        <p>Your exam will be automatically submitted in:</p>
+        <div class="timer-countdown" id="timer-warning-countdown">10</div>
+        <p>Make sure you have answered all questions.</p>
+    </div>
+
+    <!-- Fullscreen Exit Warning -->
+    <div id="fullscreen-exit-warning">
+        <div class="warning-icon">🚨</div>
+        <h1>VIOLATION DETECTED!</h1>
+        <p>You attempted to exit fullscreen mode.</p>
+        <p>Your exam will be automatically submitted in:</p>
+        <div class="countdown-timer" id="exit-countdown">5</div>
+        <p class="block-sub">Please return to fullscreen mode immediately.</p>
+    </div>
+
+    <!-- FACE BLOCK OVERLAY - 30 SECOND RECOVERY -->
+    <div id="face-block-overlay">
+        <div class="block-icon">⏸️</div>
+        <h2>EXAM PAUSED</h2>
+        <p class="block-reason" id="face-block-reason">Face not detected</p>
+        <p class="block-instruction">Please look at the camera to continue.</p>
+        <div class="block-timer" id="face-recovery-countdown">30</div>
+        <p class="block-sub">Exam will auto-submit if face is not detected</p>
+        <p class="block-save-info"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
+        <button class="btn-retry-camera-block" onclick="retryCameraDuringExam()">
+            <i class="fas fa-camera"></i> Retry Camera
+        </button>
+        <div class="block-status">
+            <div class="status-item">
+                <span class="status-icon">⏱️</span>
+                <span>Time continues</span>
+            </div>
+            <div class="status-item">
+                <span class="status-icon">⚠️</span>
+                <span>30s to recover</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MULTIPLE FACES WARNING -->
+    <div id="multiple-faces-warning">
+        <div class="warning-icon">🚨</div>
+        <h3>Multiple Faces Detected!</h3>
+        <p>Please ensure only you are in the camera frame.</p>
+        <p class="countdown-text">
+            ⏳ Auto-submit in <span id="multiple-faces-countdown">10</span> seconds...
+        </p>
+        <div class="progress-bar-warning">
+            <div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div>
+        </div>
+        <p class="warning-sub">The exam will be automatically submitted if multiple faces persist.</p>
+    </div>
+
+    <!-- Camera Permission Modal -->
+    <div id="camera-permission-modal">
+        <div class="camera-permission-content">
+            <div class="camera-permission-icon">📹</div>
+            <h3>Camera Access Required</h3>
+            <div class="camera-warning"><strong>Mandatory for exam security</strong></div>
+            <p>Camera is needed to verify your identity and monitor exam integrity.</p>
+            <button id="allow-camera-btn">Allow Camera Access</button>
+        </div>
+    </div>
+
+    <!-- Submission Modal -->
+    <div id="submission-modal">
+        <div class="modal-content">
+            <h3>⚠️ Final Submission</h3>
+            <p id="modal-message">Submit your exam?</p>
+            <div class="modal-buttons">
+                <button id="cancel-submit-btn">Cancel</button>
+                <button id="confirm-submit-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submission Progress Overlay -->
+    <div id="submission-progress-overlay">
+        <div class="progress-spinner"><i class="fas fa-spinner fa-spin"></i></div>
+        <h2 class="progress-title">⏳ Submitting your exam...</h2>
+        <p class="progress-message" id="submission-message">Please wait while we save your answers.</p>
+        <div class="progress-track">
+            <div class="progress-fill-submit" id="submission-progress-fill"></div>
+        </div>
+        <p class="progress-percentage" id="submission-percentage">0%</p>
+    </div>
+
+    <!-- Blocked Screen -->
+    <div id="blocked-screen" class="blocked-screen">
+        <div class="blocked-content">
+            <div class="blocked-icon">📹</div>
+            <h2>Camera Required</h2>
+            <p>Please allow camera access to continue with your exam.</p>
+            <button onclick="location.reload()" class="try-again-btn">Try Again</button>
+        </div>
+    </div>
+
     <!-- ============================================================
     JAVASCRIPT
     ============================================================ -->
@@ -1683,9 +1798,15 @@
                                 resumeExam();
                             }
                             
-                            document.querySelectorAll('.q-status-item.face-lost').forEach(function(el) {
-                                el.classList.remove('face-lost');
-                            });
+                            // ✅ FIXED: Null check for face-lost items
+                            const faceLostItems = document.querySelectorAll('.q-status-item.face-lost');
+                            if (faceLostItems && faceLostItems.length > 0) {
+                                faceLostItems.forEach(function(el) {
+                                    if (el && el.classList) {
+                                        el.classList.remove('face-lost');
+                                    }
+                                });
+                            }
                             
                             lastFaceCount = stableCount;
                             return;
@@ -1916,9 +2037,15 @@
             faceDetectionLostCount = 0;
             faceRecoveryCountdown.className = 'block-timer';
 
-            document.querySelectorAll('.q-status-item.face-lost').forEach(function(el) {
-                el.classList.remove('face-lost');
-            });
+            // ✅ FIXED: Null check for face-lost items
+            const faceLostItems = document.querySelectorAll('.q-status-item.face-lost');
+            if (faceLostItems && faceLostItems.length > 0) {
+                faceLostItems.forEach(function(el) {
+                    if (el && el.classList) {
+                        el.classList.remove('face-lost');
+                    }
+                });
+            }
 
             updateCameraStatus('good', '✅ Face detected', '1 face');
             cameraContainer.className = 'camera-container face-verified';
@@ -3027,7 +3154,10 @@
         function handleWindowBlur() {
             if (!isExamActive || isExamPaused) return;
             blurCount++;
-            document.getElementById('app-block-overlay').style.display = 'flex';
+            const overlay = document.getElementById('app-block-overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
             logProctoringEvent('window_blur', 'Window lost focus (' + blurCount + ')', 'warning');
             showToast('⚠️ Please stay on the exam window! (' + blurCount + '/' + MAX_BLUR_COUNT + ')', 'warning');
             captureSnapshot();
@@ -3041,7 +3171,10 @@
         function handleWindowFocus() {
             if (isExamActive) {
                 blurCount = 0;
-                document.getElementById('app-block-overlay').style.display = 'none';
+                const overlay = document.getElementById('app-block-overlay');
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
             }
         }
 
@@ -3086,66 +3219,67 @@
             window.addEventListener('beforeunload', handleBeforeUnload);
         }
 
-       // ============================================================
-// EXAM EVENT LISTENERS - FIXED
-// ============================================================
+        // ============================================================
+        // EXAM EVENT LISTENERS - FIXED
+        // ============================================================
 
-function setupExamEventListeners() {
-    // ✅ Safe prevBtn
-    if (prevBtn) {
-        prevBtn.addEventListener('click', prevQuestion);
-    } else {
-        console.warn('⚠️ prevBtn not found');
-    }
-    
-    // ✅ Safe nextBtn
-    if (nextBtn) {
-        nextBtn.addEventListener('click', nextQuestion);
-    } else {
-        console.warn('⚠️ nextBtn not found');
-    }
-    
-    // ✅ Safe submitBtn
-    if (submitBtn) {
-        submitBtn.addEventListener('click', submitExam);
-    } else {
-        console.warn('⚠️ submitBtn not found');
-    }
-
-    // ✅ Keyboard shortcuts with safe checks
-    document.addEventListener('keydown', function(e) {
-        if (e.target.matches('input, textarea, select')) return;
-        if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) {
-            prevQuestion();
-            e.preventDefault();
-        }
-        if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) {
-            nextQuestion();
-            e.preventDefault();
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            if (!isExamPaused) {
-                saveProgressLocally();
-                showToast('💾 Progress saved manually', 'success');
+        function setupExamEventListeners() {
+            // ✅ Safe prevBtn
+            if (prevBtn) {
+                prevBtn.addEventListener('click', prevQuestion);
             } else {
-                showToast('⛔ Exam is paused. Face not detected.', 'warning');
+                console.warn('⚠️ prevBtn not found');
+            }
+            
+            // ✅ Safe nextBtn
+            if (nextBtn) {
+                nextBtn.addEventListener('click', nextQuestion);
+            } else {
+                console.warn('⚠️ nextBtn not found');
+            }
+            
+            // ✅ Safe submitBtn
+            if (submitBtn) {
+                submitBtn.addEventListener('click', submitExam);
+            } else {
+                console.warn('⚠️ submitBtn not found');
+            }
+
+            // ✅ Keyboard shortcuts with safe checks
+            document.addEventListener('keydown', function(e) {
+                if (e.target.matches('input, textarea, select')) return;
+                if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) {
+                    prevQuestion();
+                    e.preventDefault();
+                }
+                if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) {
+                    nextQuestion();
+                    e.preventDefault();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    if (!isExamPaused) {
+                        saveProgressLocally();
+                        showToast('💾 Progress saved manually', 'success');
+                    } else {
+                        showToast('⛔ Exam is paused. Face not detected.', 'warning');
+                    }
+                }
+                if (e.key === 'Enter' && submitBtn && !submitBtn.disabled) {
+                    submitExam();
+                    e.preventDefault();
+                }
+            });
+
+            // ✅ FIXED: Check if element exists before adding listener
+            const allowCameraBtn = document.getElementById('allow-camera-btn');
+            if (allowCameraBtn) {
+                allowCameraBtn.addEventListener('click', startExamCamera);
+            } else {
+                console.log('ℹ️ allow-camera-btn not found - camera permission modal not needed');
             }
         }
-        if (e.key === 'Enter' && submitBtn && !submitBtn.disabled) {
-            submitExam();
-            e.preventDefault();
-        }
-    });
 
-    // ✅ FIXED: Check if element exists before adding listener
-    const allowCameraBtn = document.getElementById('allow-camera-btn');
-    if (allowCameraBtn) {
-        allowCameraBtn.addEventListener('click', startExamCamera);
-    } else {
-        console.log('ℹ️ allow-camera-btn not found - camera permission modal not needed');
-    }
-}
         // ============================================================
         // INIT
         // ============================================================
