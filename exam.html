@@ -3086,43 +3086,66 @@
             window.addEventListener('beforeunload', handleBeforeUnload);
         }
 
-        // ============================================================
-        // EXAM EVENT LISTENERS
-        // ============================================================
+       // ============================================================
+// EXAM EVENT LISTENERS - FIXED
+// ============================================================
 
-        function setupExamEventListeners() {
-            prevBtn.addEventListener('click', prevQuestion);
-            nextBtn.addEventListener('click', nextQuestion);
-            submitBtn.addEventListener('click', submitExam);
+function setupExamEventListeners() {
+    // ✅ Safe prevBtn
+    if (prevBtn) {
+        prevBtn.addEventListener('click', prevQuestion);
+    } else {
+        console.warn('⚠️ prevBtn not found');
+    }
+    
+    // ✅ Safe nextBtn
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextQuestion);
+    } else {
+        console.warn('⚠️ nextBtn not found');
+    }
+    
+    // ✅ Safe submitBtn
+    if (submitBtn) {
+        submitBtn.addEventListener('click', submitExam);
+    } else {
+        console.warn('⚠️ submitBtn not found');
+    }
 
-            document.addEventListener('keydown', function(e) {
-                if (e.target.matches('input, textarea, select')) return;
-                if (e.key === 'ArrowLeft' && !prevBtn.disabled) {
-                    prevQuestion();
-                    e.preventDefault();
-                }
-                if (e.key === 'ArrowRight' && !nextBtn.disabled) {
-                    nextQuestion();
-                    e.preventDefault();
-                }
-                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                    e.preventDefault();
-                    if (!isExamPaused) {
-                        saveProgressLocally();
-                        showToast('💾 Progress saved manually', 'success');
-                    } else {
-                        showToast('⛔ Exam is paused. Face not detected.', 'warning');
-                    }
-                }
-                if (e.key === 'Enter' && !submitBtn.disabled) {
-                    submitExam();
-                    e.preventDefault();
-                }
-            });
-
-            document.getElementById('allow-camera-btn').addEventListener('click', startExamCamera);
+    // ✅ Keyboard shortcuts with safe checks
+    document.addEventListener('keydown', function(e) {
+        if (e.target.matches('input, textarea, select')) return;
+        if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) {
+            prevQuestion();
+            e.preventDefault();
         }
+        if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) {
+            nextQuestion();
+            e.preventDefault();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (!isExamPaused) {
+                saveProgressLocally();
+                showToast('💾 Progress saved manually', 'success');
+            } else {
+                showToast('⛔ Exam is paused. Face not detected.', 'warning');
+            }
+        }
+        if (e.key === 'Enter' && submitBtn && !submitBtn.disabled) {
+            submitExam();
+            e.preventDefault();
+        }
+    });
 
+    // ✅ FIXED: Check if element exists before adding listener
+    const allowCameraBtn = document.getElementById('allow-camera-btn');
+    if (allowCameraBtn) {
+        allowCameraBtn.addEventListener('click', startExamCamera);
+    } else {
+        console.log('ℹ️ allow-camera-btn not found - camera permission modal not needed');
+    }
+}
         // ============================================================
         // INIT
         // ============================================================
