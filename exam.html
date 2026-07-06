@@ -609,19 +609,19 @@
 
         // Face Detection History - Prevents False Positives
         let faceDetectionHistory = [];
-        const FACE_HISTORY_SIZE = 15; // Increased for better stability
+        const FACE_HISTORY_SIZE = 25; // Increased for better stability
         let consecutiveFaceCount = 0;
         let faceStableCount = 0;
         const FACE_STABLE_THRESHOLD = 3;
         let lastFaceCount = 0;
         let faceCountChangeTime = 0;
-        const FACE_CHANGE_GRACE_PERIOD = 3000; // 3 seconds grace period
+        const FACE_CHANGE_GRACE_PERIOD = 5000; // 5 seconds grace period
         
         // Face detection confidence tracking
         let faceDetectionConfidence = 0;
         let faceDetectionStabilityCount = 0;
         const MIN_FACE_CONFIDENCE = 0.6;
-        const REQUIRED_STABLE_DETECTIONS = 3;
+        const REQUIRED_STABLE_DETECTIONS = 5;
 
         // Camera Stream for Exam
         let examVideoStream = null;
