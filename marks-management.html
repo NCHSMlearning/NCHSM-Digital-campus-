@@ -5244,7 +5244,6 @@ function updateTranscriptPreview() {
         </div>
     `;
 }
-// ===== GENERATE PDF PREVIEW (Shows in browser before download) =====
 // ===== GENERATE PDF PREVIEW - UPDATED DISPLAY ONLY =====
 function generatePDFPreview() {
     const select = document.getElementById('studentSelectForReport');
@@ -5544,11 +5543,16 @@ function generatePDFPreview() {
         </div>
     </div>
 </div>`;
-    
-    // Show in preview
-    const previewDiv = document.getElementById('reportPreview');
+
+    // Show in preview    const previewDiv = document.getElementById('reportPreview');
     if (previewDiv) {
         previewDiv.innerHTML = previewHTML;
+        previewDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    hideLoading();
+    showNotification('📄 PDF preview generated! Click "Full Transcript" to download.', false);
+}
   // ===== GENERATE STUDENT TRANSCRIPT PDF - FIXED =====
 // ===== GENERATE STUDENT TRANSCRIPT PDF - UPDATED DISPLAY ONLY =====
 async function generateStudentTranscriptPDF(student, reportData) {
