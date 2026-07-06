@@ -1466,7 +1466,7 @@
             try {
                 var response = await fetch(base64Image);
                 var blob = await response.blob();
-                var fileName = 'proctoring/' + studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
+               var fileName = studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
 
                 var uploadResult = await sb.storage
                     .from('proctoring')
