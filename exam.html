@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>  
+<head> 
     <meta charset="UTF-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NCHSM Secure Exam - Proctored</title>
@@ -33,7 +33,7 @@
                     <span><i class="fas fa-trophy"></i> Pass: <span id="examPassMark">--</span>%</span>
                 </div>
             </div>
-            <div style="font-size: 0.7rem; opacity: 0.7;">
+            <div class="proctored-badge">
                 <i class="fas fa-shield-alt"></i> Proctored
             </div>
         </div>
@@ -126,10 +126,10 @@
 
         <!-- STEP 3: READY -->
         <div class="step-content" id="stepContent3">
-            <div style="text-align: center; padding: 15px 0;">
+            <div class="ready-container">
                 <div class="ready-icon">✅</div>
-                <h2 style="color: #0A3D62; margin-bottom: 6px;">Ready to Start!</h2>
-                <p style="color: #64748B; font-size: 0.95rem; max-width: 400px; margin: 0 auto 18px;">
+                <h2 class="ready-title">Ready to Start!</h2>
+                <p class="ready-subtitle">
                     Your camera is working and you've accepted the terms.
                     Click below to begin your exam.
                 </p>
@@ -144,7 +144,7 @@
                         <span>Camera working</span>
                     </div>
                     <div class="check-item" id="faceVerifiedCheck">
-                        <span class="check-icon" style="color:#94A3B8;"><i class="fas fa-circle"></i></span>
+                        <span class="check-icon"><i class="fas fa-circle"></i></span>
                         <span>Face verified</span>
                     </div>
                 </div>
@@ -152,10 +152,10 @@
                 <button class="btn-start-exam" id="startExamBtn" onclick="startExam()" disabled>
                     <i class="fas fa-play-circle"></i> Start Exam Now
                 </button>
-                <div style="margin-top: 12px; font-size: 0.75rem; color: #94A3B8;">
+                <div class="start-exam-info">
                     <i class="fas fa-shield-alt"></i> Proctoring will begin immediately
                 </div>
-                <div style="margin-top: 8px; font-size: 0.7rem; color: #DC2626;">
+                <div class="start-exam-warning">
                     <i class="fas fa-exclamation-triangle"></i> Face must be visible at all times
                 </div>
             </div>
@@ -163,77 +163,30 @@
     </div>
 
     <!-- ============================================================
-    EXAM INTERFACE - NEW LAYOUT: QUESTIONS LEFT, CAMERA RIGHT
+    EXAM INTERFACE - 3-COLUMN LAYOUT
+    LEFT: Student, Timer, Camera
+    MIDDLE: Questions
+    RIGHT: Status
     ============================================================ -->
     <div class="exam-interface" id="examInterface">
         <div class="page-wrapper">
             
             <!-- ======================================================
-            LEFT PANEL - QUESTIONS
+            LEFT PANEL - Student, Timer, Camera
             ====================================================== -->
             <div class="left-panel">
-                <!-- Header with Timer -->
-                <div class="question-nav-header">
-                    <h2 id="exam-title">📝 Examination</h2>
-                    <div class="exam-timer" id="timer">⏱️ 00:00</div>
-                </div>
-
-                <!-- Question Status Grid -->
-                <div class="question-status-grid" id="question-status-table"></div>
-
-                <!-- Progress Bar -->
-                <div class="progress-container">
-                    <div class="progress-text">Question <span id="current">0</span> of <span id="total">0</span></div>
-                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-                </div>
-
-                <!-- Question Area - Scrollable -->
-                <div class="question-area-scroll" id="question-area">
-                    <div id="exam-container">Loading question...</div>
-                    <div id="answer-saved">✅ Answer saved!</div>
-                </div>
-
-                <!-- Navigation Buttons -->
-                <div class="nav-buttons">
-                    <div class="left-nav">
-                        <button id="prev-btn" disabled>← Previous</button>
-                        <button id="next-btn" disabled>Next →</button>
-                    </div>
-                    <div class="right-nav">
-                        <button id="flag-question-btn" onclick="toggleFlagQuestion()">
-                            <i class="far fa-flag"></i> Flag
-                        </button>
-                        <button id="submit-exam-btn" disabled>
-                            <span id="submit-text">Submit Exam</span>
-                            <span id="submit-spinner" style="display:none;">
-                                <i class="fas fa-spinner fa-spin"></i>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Auto-save Status -->
-                <div class="auto-save-status" id="auto-save-status">
-                    <i class="fas fa-check-circle"></i> Auto-saved
-                </div>
-
-                <!-- Keyboard Shortcuts -->
-                <div class="keyboard-shortcuts">
-                    <span><kbd>←</kbd> Previous</span>
-                    <span><kbd>→</kbd> Next</span>
-                    <span><kbd>Ctrl+S</kbd> Save</span>
-                </div>
-            </div>
-
-            <!-- ======================================================
-            RIGHT PANEL - CAMERA & PROCTORING
-            ====================================================== -->
-            <div class="right-panel" id="rightPanel">
+                
                 <!-- Student Info -->
                 <div class="student-info-card" id="studentInfoCard">
                     <h4>👤 Student</h4>
                     <p id="examStudentName">Loading...</p>
                     <div class="student-reg" id="examStudentReg">ID: Loading...</div>
+                </div>
+
+                <!-- Timer - LEFT PANEL -->
+                <div class="timer-display" id="timerDisplay">
+                    <div class="timer-label">⏱️ Time Remaining</div>
+                    <div class="timer-time" id="timer">00:00</div>
                 </div>
 
                 <!-- Camera Container -->
@@ -262,10 +215,108 @@
                 </div>
 
                 <!-- Proctoring Status -->
-                <div class="proctoring-status" id="proctoringStatus">
+                <div class="proctoring-status">
                     <span class="status-label">🛡️ Proctoring:</span>
                     <span class="status-value active" id="proctoringStatusText">Active</span>
                 </div>
+
+                <!-- Network Status -->
+                <div class="network-status" id="networkIndicator">
+                    <i class="fas fa-wifi"></i> Online
+                </div>
+            </div>
+
+            <!-- ======================================================
+            MIDDLE PANEL - Questions
+            ====================================================== -->
+            <div class="middle-panel">
+                
+                <!-- Question Header -->
+                <div class="question-header">
+                    <h2 id="exam-title">📝 Examination</h2>
+                    <button class="flag-btn" id="flag-question-btn" onclick="toggleFlagQuestion()">
+                        <i class="far fa-flag"></i> Flag
+                    </button>
+                </div>
+
+                <!-- Progress -->
+                <div class="progress-container">
+                    <div class="progress-text">Question <span id="current">0</span> of <span id="total">0</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                </div>
+
+                <!-- Question Area - Scrollable -->
+                <div class="question-area-scroll" id="question-area">
+                    <div id="exam-container">Loading question...</div>
+                    <div id="answer-saved">✅ Answer saved!</div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="nav-buttons">
+                    <div class="left-nav">
+                        <button id="prev-btn" disabled>← Previous</button>
+                        <button id="next-btn" disabled>Next →</button>
+                    </div>
+                    <div class="right-nav">
+                        <button id="submit-exam-btn" disabled>
+                            <span id="submit-text">Submit Exam</span>
+                            <span id="submit-spinner" style="display:none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Auto-save Status -->
+                <div class="auto-save-status" id="auto-save-status">
+                    <i class="fas fa-check-circle"></i> Auto-saved
+                </div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="keyboard-shortcuts">
+                    <span><kbd>←</kbd> Previous</span>
+                    <span><kbd>→</kbd> Next</span>
+                    <span><kbd>Ctrl+S</kbd> Save</span>
+                </div>
+            </div>
+
+            <!-- ======================================================
+            RIGHT PANEL - Question Status
+            ====================================================== -->
+            <div class="right-panel">
+                
+                <!-- Status Title -->
+                <div class="status-title">📊 Question Status</div>
+
+                <!-- Question Status Grid -->
+                <div class="question-status-grid" id="question-status-table"></div>
+
+                <!-- Stats Summary -->
+                <div class="stats-summary" id="exam-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Answered</span>
+                        <span class="stat-value" id="statsAnswered">0/0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Flagged</span>
+                        <span class="stat-value" id="statsFlagged">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Face</span>
+                        <span class="stat-value" id="statsFace">✅ OK</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Progress</span>
+                        <span class="stat-value" id="statsProgress">0%</span>
+                    </div>
+                </div>
+
+                <!-- Review Toggle -->
+                <div class="review-toggle">
+                    <input type="checkbox" id="review-mode-toggle" onchange="toggleReviewMode()">
+                    <label for="review-mode-toggle">📋 Review All Answers</label>
+                </div>
+                <div id="review-container"></div>
             </div>
         </div>
     </div>
@@ -279,14 +330,14 @@
         <div class="block-icon">🚫</div>
         <h2>Application Blocked</h2>
         <p>To maintain exam integrity, the following have been blocked:</p>
-        <div style="margin:15px 0;display:flex;gap:15px;flex-wrap:wrap;justify-content:center;">
+        <div class="blocked-items">
             <span>📱 Other Apps</span>
             <span>🔄 Background Apps</span>
             <span>📋 Clipboard</span>
             <span>🔍 Screen Recording</span>
             <span>⌨️ Shortcuts</span>
         </div>
-        <p style="font-size: 0.85rem; color: #94A3B8;">Return to the exam window to continue.</p>
+        <p class="block-sub">Return to the exam window to continue.</p>
         <button class="return-btn" onclick="returnToExam()">🔙 Return to Exam</button>
     </div>
 
@@ -306,7 +357,7 @@
         <p>You attempted to exit fullscreen mode.</p>
         <p>Your exam will be automatically submitted in:</p>
         <div class="countdown-timer" id="exit-countdown">5</div>
-        <p style="font-size:0.9rem;color:#94A3B8;">Please return to fullscreen mode immediately.</p>
+        <p class="block-sub">Please return to fullscreen mode immediately.</p>
     </div>
 
     <!-- FACE BLOCK OVERLAY - 30 SECOND RECOVERY -->
@@ -314,24 +365,20 @@
         <div class="block-icon">⏸️</div>
         <h2>EXAM PAUSED</h2>
         <p class="block-reason" id="face-block-reason">Face not detected</p>
-        <p style="color:#FDB913;font-size:0.9rem;margin:10px 0;">
-            Please look at the camera to continue.
-        </p>
+        <p class="block-instruction">Please look at the camera to continue.</p>
         <div class="block-timer" id="face-recovery-countdown">30</div>
         <p class="block-sub">Exam will auto-submit if face is not detected</p>
-        <div style="margin-top: 15px; font-size: 0.8rem; color: #94A3B8;">
-            <i class="fas fa-info-circle"></i> Your answers are being saved
-        </div>
+        <p class="block-save-info"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
         <button class="btn-retry-camera-block" onclick="retryCameraDuringExam()">
             <i class="fas fa-camera"></i> Retry Camera
         </button>
         <div class="block-status">
             <div class="status-item">
-                <span style="color:#F59E0B;">⏱️</span>
+                <span class="status-icon">⏱️</span>
                 <span>Time continues</span>
             </div>
             <div class="status-item">
-                <span style="color:#DC2626;">⚠️</span>
+                <span class="status-icon">⚠️</span>
                 <span>30s to recover</span>
             </div>
         </div>
@@ -339,18 +386,16 @@
 
     <!-- MULTIPLE FACES WARNING -->
     <div id="multiple-faces-warning">
-        <div style="font-size:2rem;margin-bottom:10px;">🚨</div>
-        <h3 style="margin-bottom:5px;">Multiple Faces Detected!</h3>
-        <p style="font-size:0.9rem;opacity:0.9;">Please ensure only you are in the camera frame.</p>
-        <p style="font-size:1.2rem;margin-top:10px;color:#FDB913;font-weight:bold;">
+        <div class="warning-icon">🚨</div>
+        <h3>Multiple Faces Detected!</h3>
+        <p>Please ensure only you are in the camera frame.</p>
+        <p class="countdown-text">
             ⏳ Auto-submit in <span id="multiple-faces-countdown">10</span> seconds...
         </p>
         <div class="progress-bar-warning">
             <div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div>
         </div>
-        <p style="margin-top: 10px; font-size: 0.75rem; opacity: 0.7;">
-            <i class="fas fa-info-circle"></i> The exam will be automatically submitted if multiple faces persist.
-        </p>
+        <p class="warning-sub">The exam will be automatically submitted if multiple faces persist.</p>
     </div>
 
     <!-- Camera Permission Modal -->
@@ -390,16 +435,11 @@
     <!-- Blocked Screen -->
     <div id="blocked-screen" class="blocked-screen">
         <div class="blocked-content">
-            <div style="font-size:4rem;margin-bottom:15px;">📹</div>
-            <h2 style="color: #DC2626;">Camera Required</h2>
+            <div class="blocked-icon">📹</div>
+            <h2>Camera Required</h2>
             <p>Please allow camera access to continue with your exam.</p>
-            <button onclick="location.reload()" style="margin-top:15px;padding:8px 20px;background:#0A3D62;color:white;border:none;border-radius:8px;cursor:pointer;">Try Again</button>
+            <button onclick="location.reload()" class="try-again-btn">Try Again</button>
         </div>
-    </div>
-
-    <!-- Network Indicator -->
-    <div id="network-indicator">
-        <i class="fas fa-wifi"></i> Online
     </div>
 
     <!-- ============================================================
@@ -512,9 +552,10 @@
         const faceVerifiedCheck = document.getElementById('faceVerifiedCheck');
 
         // ============================================================
-        // DOM REFS - EXAM (NEW LAYOUT)
+        // DOM REFS - EXAM (3-COLUMN LAYOUT)
         // ============================================================
         const examTimer = document.getElementById('timer');
+        const timerDisplay = document.getElementById('timerDisplay');
         const examContainer = document.getElementById('exam-container');
         const questionStatusTable = document.getElementById('question-status-table');
         const prevBtn = document.getElementById('prev-btn');
@@ -528,7 +569,7 @@
         const examTitle = document.getElementById('exam-title');
         const faceVideo = document.getElementById('face-video');
         const faceCanvas = document.getElementById('face-canvas');
-        const rightPanel = document.getElementById('rightPanel');
+        const cameraContainer = document.getElementById('cameraContainer');
         const examStatusDot = document.getElementById('examStatusDot');
         const examStatusText = document.getElementById('examStatusText');
         const examFaceCount = document.getElementById('examFaceCount');
@@ -538,6 +579,10 @@
         const faceRecoveryCountdown = document.getElementById('face-recovery-countdown');
         const multipleFacesWarning = document.getElementById('multiple-faces-warning');
         const proctoringStatusText = document.getElementById('proctoringStatusText');
+        const statsAnswered = document.getElementById('statsAnswered');
+        const statsFlagged = document.getElementById('statsFlagged');
+        const statsFace = document.getElementById('statsFace');
+        const statsProgress = document.getElementById('statsProgress');
 
         // ============================================================
         // LOBBY FUNCTIONS
@@ -628,7 +673,7 @@
         }
 
         // ============================================================
-        // CAMERA & FACE VERIFICATION
+        // CAMERA & FACE VERIFICATION (LOBBY)
         // ============================================================
 
         async function testCamera() {
@@ -828,7 +873,7 @@
                 await startExamFaceDetection();
 
                 updateCameraStatus('good', '✅ Camera active', '1 face');
-                rightPanel.className = 'right-panel face-verified';
+                cameraContainer.className = 'camera-container face-verified';
                 proctoringStatusText.textContent = 'Active';
                 proctoringStatusText.className = 'status-value active';
 
@@ -1135,13 +1180,13 @@
 
                 } else {
                     examContainer.innerHTML =
-                        '<div style="text-align:center; padding:40px; color:#DC2626;">❌ No questions found for this exam.</div>';
+                        '<div class="error-message">❌ No questions found for this exam.</div>';
                 }
 
             } catch (error) {
                 console.error('Error initializing exam:', error);
                 examContainer.innerHTML =
-                    '<div style="text-align:center; padding:40px; color:#DC2626;">❌ Error loading exam: ' + error.message + '</div>';
+                    '<div class="error-message">❌ Error loading exam: ' + error.message + '</div>';
             }
         }
 
@@ -1167,7 +1212,7 @@
                 faceVideo.srcObject = stream;
                 await faceVideo.play();
 
-                rightPanel.className = 'right-panel face-verified';
+                cameraContainer.className = 'camera-container face-verified';
                 updateCameraStatus('good', '✅ Active - Detecting face', '0 faces');
 
                 await enterSecureFullscreen();
@@ -1296,9 +1341,11 @@
                             }
                             
                             updateCameraStatus('good', '✅ Face detected', stableCount + ' face');
-                            rightPanel.className = 'right-panel face-verified';
+                            cameraContainer.className = 'camera-container face-verified';
                             proctoringStatusText.textContent = 'Active';
                             proctoringStatusText.className = 'status-value active';
+                            statsFace.textContent = '✅ OK';
+                            statsFace.style.color = '#38A169';
                             
                             if (isExamPaused) {
                                 resumeExam();
@@ -1318,9 +1365,11 @@
                                 faceCountChangeTime = Date.now();
                                 
                                 updateCameraStatus('warning', '⚠️ Multiple faces (' + stableCount + ')', stableCount + ' faces');
-                                rightPanel.className = 'right-panel multiple-faces';
+                                cameraContainer.className = 'camera-container multiple-faces';
                                 proctoringStatusText.textContent = '⚠️ Multiple Faces!';
                                 proctoringStatusText.className = 'status-value warning';
+                                statsFace.textContent = '⚠️ Multiple';
+                                statsFace.style.color = '#F59E0B';
                                 
                                 if (Date.now() - lastMultipleFacesLogTime > 15000 && faceStableCount > 5) {
                                     await logProctoringEvent('multiple_faces_detected',
@@ -1347,7 +1396,7 @@
                                 }
                             } else {
                                 updateCameraStatus('warning', '⏳ Confirming faces...', stableCount + ' faces');
-                                rightPanel.className = 'right-panel';
+                                cameraContainer.className = 'camera-container';
                             }
                             
                             lastFaceCount = stableCount;
@@ -1361,7 +1410,7 @@
                                 handleFaceDetectionLost('No face detected');
                             } else {
                                 updateCameraStatus('warning', '⏳ Looking for face...', '0 faces');
-                                rightPanel.className = 'right-panel';
+                                cameraContainer.className = 'camera-container';
                             }
                             
                             lastFaceCount = stableCount;
@@ -1392,18 +1441,12 @@
 
             warning.classList.add('active');
             warning.innerHTML =
-                '<div style="font-size:2rem;margin-bottom:10px;">🚨</div>' +
-                '<h3 style="margin-bottom:5px;">Multiple Faces Detected!</h3>' +
-                '<p style="font-size:0.9rem;opacity:0.9;">Please ensure only you are in the camera frame.</p>' +
-                '<p style="font-size:1.2rem;margin-top:10px;color:#FDB913;font-weight:bold;">' +
-                '⏳ Auto-submit in <span id="multiple-faces-countdown">' + duration + '</span> seconds...' +
-                '</p>' +
-                '<div style="margin-top:15px;width:100%;max-width:300px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden;margin-left:auto;margin-right:auto;">' +
-                '<div id="multiple-faces-progress" style="width:100%;height:100%;background:#FDB913;border-radius:2px;transition:width 1s linear;"></div>' +
-                '</div>' +
-                '<p style="margin-top: 10px; font-size: 0.75rem; opacity: 0.7;">' +
-                '<i class="fas fa-info-circle"></i> The exam will be automatically submitted if multiple faces persist.' +
-                '</p>';
+                '<div class="warning-icon">🚨</div>' +
+                '<h3>Multiple Faces Detected!</h3>' +
+                '<p>Please ensure only you are in the camera frame.</p>' +
+                '<p class="countdown-text">⏳ Auto-submit in <span id="multiple-faces-countdown">' + duration + '</span> seconds...</p>' +
+                '<div class="progress-bar-warning"><div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div></div>' +
+                '<p class="warning-sub">The exam will be automatically submitted if multiple faces persist.</p>';
 
             var countdown = duration;
             var countdownEl = document.getElementById('multiple-faces-countdown');
@@ -1443,9 +1486,11 @@
             faceDetectionLostCount++;
 
             updateCameraStatus('warning', '⚠️ Face lost (' + faceDetectionLostCount + '/' + MAX_FACE_LOST + ')', '0 faces');
-            rightPanel.className = 'right-panel face-lost';
+            cameraContainer.className = 'camera-container face-lost';
             proctoringStatusText.textContent = '⚠️ Face Lost!';
             proctoringStatusText.className = 'status-value warning';
+            statsFace.textContent = '⚠️ Lost';
+            statsFace.style.color = '#F59E0B';
 
             if (faceDetectionLostCount === 1) {
                 logProctoringEvent('face_lost', 'Face detection lost: ' + reason, 'warning');
@@ -1544,9 +1589,11 @@
             });
 
             updateCameraStatus('good', '✅ Face detected', '1 face');
-            rightPanel.className = 'right-panel face-verified';
+            cameraContainer.className = 'camera-container face-verified';
             proctoringStatusText.textContent = 'Active';
             proctoringStatusText.className = 'status-value active';
+            statsFace.textContent = '✅ OK';
+            statsFace.style.color = '#38A169';
 
             showToast('✅ Face detected! Exam resumed.', 'success');
             logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
@@ -1610,6 +1657,7 @@
 
             updateProgress();
             updateStatusTable();
+            updateExamStats();
 
             questionStartTime = Date.now();
 
@@ -1834,12 +1882,24 @@
         }
 
         // ============================================================
-        // EXAM STATS
+        // UPDATE EXAM STATS (RIGHT PANEL)
         // ============================================================
 
         function updateExamStats() {
-            // Stats are shown via the question status grid
-            // No need for separate stats display
+            var total = questions.length;
+            var answered = Object.keys(answers).length;
+            var flagged = Object.keys(flaggedQuestions).length;
+            var progress = total > 0 ? Math.round((answered / total) * 100) : 0;
+
+            if (statsAnswered) {
+                statsAnswered.textContent = answered + '/' + total;
+            }
+            if (statsFlagged) {
+                statsFlagged.textContent = flagged;
+            }
+            if (statsProgress) {
+                statsProgress.textContent = progress + '%';
+            }
         }
 
         // ============================================================
@@ -1895,46 +1955,46 @@
         }
 
         // ============================================================
-        // TIMER
+        // TIMER - LEFT PANEL
         // ============================================================
 
         function startTimer(seconds) {
             var timerEl = examTimer;
-            timerEl.classList.remove('warning', 'danger');
+            var timerDisplayEl = timerDisplay;
+            timerDisplayEl.classList.remove('warning', 'danger');
 
             var interval = setInterval(function() {
                 var m = Math.floor(seconds / 60);
                 var s = seconds % 60;
                 var timeStr = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-                timerEl.textContent = '⏱️ ' + timeStr;
+                timerEl.textContent = timeStr;
 
                 if (seconds <= 60 && seconds > 0 && !timerWarningShown) {
                     timerWarningShown = true;
-                    timerEl.classList.add('warning');
+                    timerDisplayEl.classList.add('warning');
                     showTimerWarning();
                     showToast('⚠️ 1 minute remaining! Your exam will auto-submit.', 'warning');
                 }
 
                 if (seconds <= 10 && seconds > 0) {
-                    timerEl.classList.remove('warning');
-                    timerEl.classList.add('danger');
+                    timerDisplayEl.classList.remove('warning');
+                    timerDisplayEl.classList.add('danger');
                 }
 
                 if (seconds <= 0) {
                     clearInterval(interval);
-                    timerEl.textContent = '⏱️ 00:00';
-                    timerEl.classList.remove('warning', 'danger');
+                    timerEl.textContent = '00:00';
+                    timerDisplayEl.classList.remove('warning', 'danger');
 
                     logProctoringEvent('exam_auto_submitted', 'Exam was automatically submitted when timer reached 0', 'info');
 
                     examContainer.innerHTML =
-                        '<div style="text-align: center; padding: 40px 20px; background: #FEF3C7; border-radius: 16px; border: 3px solid #F59E0B;">' +
-                        '<div style="font-size: 3rem; margin-bottom: 20px;">⏰</div>' +
-                        '<h2 style="color: #92400E;">Time\'s Up!</h2>' +
-                        '<p style="color: #78350F; font-size: 1rem; margin: 10px 0;">Your exam time has ended. Your answers are being submitted automatically.</p>' +
-                        '<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 8px; display: inline-block;">' +
-                        '<span style="font-weight: 600; color: #0A3D62;">⏳ Submitting...</span>' +
-                        '</div></div>';
+                        '<div class="time-up-message">' +
+                        '<div class="time-up-icon">⏰</div>' +
+                        '<h2>Time\'s Up!</h2>' +
+                        '<p>Your exam time has ended. Your answers are being submitted automatically.</p>' +
+                        '<div class="submitting-indicator">⏳ Submitting...</div>' +
+                        '</div>';
 
                     prevBtn.disabled = true;
                     nextBtn.disabled = true;
@@ -1971,6 +2031,40 @@
             setTimeout(function() {
                 overlay.style.display = 'none';
             }, 10000);
+        }
+
+        // ============================================================
+        // REVIEW MODE
+        // ============================================================
+
+        function toggleReviewMode() {
+            var reviewToggle = document.getElementById('review-mode-toggle');
+            var isReview = reviewToggle ? reviewToggle.checked : false;
+            var container = document.getElementById('review-container');
+
+            if (isReview) {
+                var html = '';
+                questions.forEach(function(q, index) {
+                    var answer = answers[q.id] || 'Not answered';
+                    var isAnswered = !!answers[q.id];
+                    var isFlagged = flaggedQuestions[q.id] || false;
+                    var statusItem = document.getElementById('q-status-' + index);
+                    var isFaceLost = statusItem ? statusItem.classList.contains('face-lost') : false;
+                    var faceLostStyle = isFaceLost ? 'border-left-color:#F59E0B !important;background:#FEF3C7 !important;' : '';
+                    var answeredColor = isAnswered ? '#38A169' : '#DC2626';
+                    var answeredText = isAnswered ? '✅ ' + answer : '⚠️ Not answered';
+                    var flaggedText = isFlagged ? ' 🚩' : '';
+                    var faceLostText = isFaceLost ? ' ⚠️' : '';
+                    html +=
+                        '<div class="review-item ' + (isAnswered ? '' : 'unanswered') + (isFlagged ? ' flagged-item' : '') + '" onclick="renderQuestion(' + index + ')" style="' + faceLostStyle + '">' +
+                        '<span>Q' + (index + 1) + ': ' + q.question_text.substring(0, 40) + (q.question_text.length > 40 ? '...' : '') + faceLostText + '</span>' +
+                        '<span style="font-weight: 600; color: ' + answeredColor + '">' + answeredText + flaggedText + '</span>' +
+                        '</div>';
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '';
+            }
         }
 
         // ============================================================
@@ -2251,7 +2345,7 @@
                 '<div class="summary-item"><div class="label">Completion Rate</div><div class="value">' + percentAnswered + '%</div></div>' +
                 '<div class="summary-item"><div class="label">Status</div><div class="value" style="color: #F59E0B;">⏳ Pending Review</div></div>' +
                 '</div>' +
-                '<p style="margin-top: 15px; font-size: 0.8rem; color: #64748B; text-align: center;">Your results will be available after the exam is reviewed by the admin.</p>' +
+                '<p class="completion-note">Your results will be available after the exam is reviewed by the admin.</p>' +
                 '</div>' +
                 '<div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span> seconds...</div>' +
                 '<a href="exam_dashboard.html" class="dashboard-link">📊 Go to Dashboard Now</a>' +
@@ -2360,6 +2454,7 @@
                             if (hasAnsweredAtLeastOne) submitBtn.disabled = false;
                             renderQuestion(currentIndex);
                             updateStatusTable();
+                            updateExamStats();
                             showToast('✅ Previous progress restored', 'success');
                             return true;
                         }
@@ -2415,7 +2510,7 @@
         }
 
         function setupNetworkQualityMonitor() {
-            var indicator = document.getElementById('network-indicator');
+            var indicator = document.getElementById('networkIndicator');
 
             window.addEventListener('online', function() {
                 indicator.innerHTML = '<i class="fas fa-wifi"></i> Online';
@@ -2732,6 +2827,7 @@
         window.returnToExam = returnToExam;
         window.showToast = showToast;
         window.toggleFlagQuestion = toggleFlagQuestion;
+        window.toggleReviewMode = toggleReviewMode;
         window.renderQuestion = renderQuestion;
         window.prevQuestion = prevQuestion;
         window.nextQuestion = nextQuestion;
