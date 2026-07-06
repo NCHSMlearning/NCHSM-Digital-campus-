@@ -2854,23 +2854,35 @@ document.querySelectorAll('.nav-item').forEach(el => {
     sel.onchange = () => loadAdminSubjects(sel.value); 
   }
 
-  async function loadAdminSubjects(block) { 
+ async function loadAdminSubjects(block) { 
     if(!block) return; 
     showLoading('Loading subjects...'); 
     const subjects = await apiCall(`/api/subjects/${block}`, {}); 
     const sel = document.getElementById('subjectSelect'); 
     sel.style.display = 'block'; 
     sel.innerHTML = '<option value="">-- Select Subject --</option>'; 
-    subjects.forEach(s => sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}">${s.name}</option>`); 
-    sel.onchange = () => { if(sel.value) loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type); }; 
+    subjects.forEach(s => {
+        // ✅ Show unit code in dropdown if available
+        const displayName = s.code ? `${s.code} - ${s.name}` : s.name;
+        sel.innerHTML += `<option value="${s.name}" data-type="${s.assessmentType}" data-code="${s.code || ''}">${displayName}</option>`; 
+    });
+    sel.onchange = () => { 
+        if(sel.value) {
+            loadAdminMarks(block, sel.value, sel.selectedOptions[0].dataset.type);
+        }
+    }; 
     hideLoading(); 
-  }
-
- async function loadAdminMarks(block, subject, at) { 
+}
+async function loadAdminMarks(block, subject, at) { 
     showLoading('Loading marks...'); 
     
     // ✅ FORCE FRESH DATA - Add timestamp to URL
     const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+    
+    // ✅ Get unit code from config
+    const config = await getConfig();
+    const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
+    const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
     console.log('📊 Admin marks loaded:', marks);
     console.log('📊 Number of records:', marks ? marks.length : 0);
@@ -2880,7 +2892,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
         document.getElementById('marksTable').innerHTML = `
             <div class="card" style="text-align:center; padding: 40px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px;"></i>
-                <h4>No marks found for ${subject}</h4>
+                <h4>No marks found for ${displaySubject}</h4>
                 <p style="color: #64748b;">No student data available for this subject. Please check if students are assigned to this block.</p>
                 <button class="save-btn" onclick="refreshAllData()" style="margin-top: 12px;">
                     <i class="fas fa-sync-alt"></i> Refresh Data
@@ -2891,17 +2903,24 @@ document.querySelectorAll('.nav-item').forEach(el => {
         return;
     }
     
-    let html = `<div class="export-bar" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-file-export"></i> Export CSV</button>
-        <button class="btn-info" onclick="fillDownValues()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#2563eb);">
-            <i class="fas fa-arrow-down"></i> Fill Down
-        </button>
-        <button class="btn-warning" onclick="refreshAllData()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
-        <span style="font-size:12px;color:#64748b;padding:8px 12px;background:#f1f5f9;border-radius:40px;">
-            📅 ${currentYear} Class | ${marks.length} students
-        </span>
+    let html = `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+            <h3 style="margin:0; font-size:18px;">📝 ${displaySubject}</h3>
+            ${unitCode ? `<span style="font-size:12px; color:#64748b;">Unit Code: <strong>${unitCode}</strong></span>` : ''}
+            <span style="font-size:12px; color:#64748b; margin-left:12px;">${block.replace('_', ' ')}</span>
+        </div>
+        <div class="export-bar" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-file-export"></i> Export CSV</button>
+            <button class="btn-info" onclick="fillDownValues()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#2563eb);">
+                <i class="fas fa-arrow-down"></i> Fill Down
+            </button>
+            <button class="btn-warning" onclick="refreshAllData()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <span style="font-size:12px;color:#64748b;padding:8px 12px;background:#f1f5f9;border-radius:40px;">
+                📅 ${currentYear} Class | ${marks.length} students
+            </span>
+        </div>
     </div>
     <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -3065,10 +3084,14 @@ document.querySelectorAll('.nav-item').forEach(el => {
       const parts = subj.split('|'); 
       const block = parts[0]; 
       const name = parts[1]; 
-      let atype = 'full'; 
+      let atype = 'full';
+      let unitCode = '';
       if(config && config[block]){ 
         const found = config[block].find(c => c.name === name); 
-        if(found) atype = found.assessmentType || 'full'; 
+        if(found) {
+            atype = found.assessmentType || 'full';
+            unitCode = found.code || '';
+        }
       } 
       let isSubjectOpen = true, closedReason = '';
       if(settings.global && settings.global.enabled === false){ 
@@ -3081,7 +3104,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
         isSubjectOpen = false; 
         closedReason = `Entry closed for this subject`;
       }
-      subjectsByBlock[block].push({ name, assessmentType: atype, isOpen: isSubjectOpen, closedReason }); 
+      subjectsByBlock[block].push({ name, assessmentType: atype, isOpen: isSubjectOpen, closedReason, code: unitCode }); 
     } 
     let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
       <div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks - ${currentYear} Class</p></div>`; 
@@ -3092,10 +3115,15 @@ document.querySelectorAll('.nav-item').forEach(el => {
           const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
           const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
           const statusBadge = s.isOpen ? '<span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>' : '<span class="badge badge-fail"><i class="fas fa-lock"></i> Closed</span>';
+          const displayName = s.code ? `${s.code} - ${s.name}` : s.name;
           const onclickAttr = s.isOpen ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"` : `onclick="showNotification('${s.closedReason}', true)"`;
           html += `<div class="subject-card ${!s.isOpen ? 'closed' : ''}" ${onclickAttr}>
-            <div style="display:flex; justify-content:space-between; align-items:center;"><h4>${typeIcon} ${s.name}</h4>${statusBadge}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4>${typeIcon} ${displayName}</h4>
+                ${statusBadge}
+            </div>
             <p><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')} | ${typeLabel}</p>
+            ${s.code ? `<p style="font-size:12px; color:#64748b;"><i class="fas fa-hashtag"></i> ${s.code}</p>` : ''}
             ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
           </div>`; 
         } 
@@ -3105,7 +3133,6 @@ document.querySelectorAll('.nav-item').forEach(el => {
     updateContentArea(html); 
     hideLoading(); 
   }
-
   window.openMarksEntry = function(block, subject, atype){ 
     currentMarksBlock = block; 
     currentMarksSubject = subject; 
@@ -3113,14 +3140,26 @@ document.querySelectorAll('.nav-item').forEach(el => {
     loadMarksForSubject(block, subject, atype); 
   };
 
-  async function loadMarksForSubject(block, subject, atype){ 
+ async function loadMarksForSubject(block, subject, atype){ 
     showLoading('Loading marks...'); 
     const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {}); 
-    let html = `<button class="back-btn" onclick="showLecturerSubjects()">Back</button><div class="header"><h3>📝 ${subject}</h3><p>${block.replace('_', ' ')} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p></div><div id="marksTableContainer"></div>`; 
+    
+    // ✅ Get unit code from config
+    const config = await getConfig();
+    const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
+    const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
+    
+    let html = `<button class="back-btn" onclick="showLecturerSubjects()">Back</button>
+        <div class="header">
+            <h3>📝 ${displaySubject}</h3>
+            <p>${block.replace('_', ' ')} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p>
+            ${unitCode ? `<p style="font-size:12px; color:#64748b; margin-top:4px;">Unit Code: <strong>${unitCode}</strong></p>` : ''}
+        </div>
+        <div id="marksTableContainer"></div>`; 
     updateContentArea(html);
     displayLecturerMarksTable(marks, block, subject, atype); 
     hideLoading(); 
-  }
+}
 
   function displayLecturerMarksTable(marks, block, subject, atype){ 
     if(!marks || !marks.length){ 
@@ -3387,29 +3426,64 @@ document.querySelectorAll('.nav-item').forEach(el => {
     } 
   }
 
-  // ======================= UNIT MANAGEMENT =======================
-  async function showUnits() { 
+// ======================= UNIT MANAGEMENT - WITH UNIT CODES =======================
+async function showUnits() { 
     const units = await apiCall('/api/units', {}); 
     let html = `<button class="back-btn" onclick="showMain()">Back</button>
       <div class="header"><h3><i class="fas fa-book-open"></i> Manage Units</h3></div>
       <div class="card"><h4><i class="fas fa-plus-circle"></i> Add New Unit</h4>
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
-        <div><label>Block</label><select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select></div>
-        <div><label>Subject Name</label><input type="text" id="newUnitName" placeholder="Subject Name"></div>
-        <div><label>Assessment Type</label><select id="newUnitType"><option value="full">Full (CAT1+CAT2+Exam)</option><option value="single_cat">Single CAT (CAT+Exam)</option><option value="exam_only">Exam Only</option></select></div>
-        <div><button class="save-btn" onclick="addNewUnit()">Add Unit</button></div>
-      </div></div>`; 
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+        <div>
+          <label>Block</label>
+          <select id="newUnitBlock">${['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5'].map(b => `<option>${b}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label>Unit Code</label>
+          <input type="text" id="newUnitCode" placeholder="e.g., NCHSGN 103" style="width:100%;">
+        </div>
+        <div>
+          <label>Unit Name</label>
+          <input type="text" id="newUnitName" placeholder="Unit Name" style="width:100%;">
+        </div>
+        <div>
+          <label>Assessment Type</label>
+          <select id="newUnitType">
+            <option value="full">Full (CAT1+CAT2+Exam)</option>
+            <option value="single_cat">Single CAT (CAT+Exam)</option>
+            <option value="exam_only">Exam Only</option>
+          </select>
+        </div>
+        <div>
+          <button class="save-btn" onclick="addNewUnit()">Add Unit</button>
+        </div>
+      </div>
+      <div style="margin-top:8px; font-size:12px; color:#64748b;">
+        <i class="fas fa-info-circle"></i> Unit Code format: NCHSGN 103, NCHSMW 110, NCHSCH 112, etc.
+      </div>
+      </div>`; 
+    
     for(let b of ['BLOCK_0','BLOCK_1','BLOCK_2','BLOCK_3','BLOCK_4','BLOCK_5']){ 
       const blockUnits = units[b] || []; 
       if(blockUnits.length){ 
         html += `<div style="margin-top:24px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_', ' ')}</h3>
-          <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:12px;">`; 
+          <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:16px; margin-top:12px;">`; 
         blockUnits.forEach(u => { 
           const typeIcon = u.assessmentType === 'full' ? '📊' : (u.assessmentType === 'single_cat' ? '📝' : '📖');
           const typeLabel = u.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (u.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          html += `<div class="unit-card"><div><strong>${typeIcon} ${u.name}</strong><span class="badge" style="margin-left:8px;">${typeLabel}</span></div>
-            <div style="margin-top:12px;"><button class="edit-btn" onclick="showEditUnitModal('${b}', '${u.name.replace(/'/g, "\\'")}', '${u.assessmentType}')">Edit</button>
-            <button class="delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')">Delete</button></div></div>`; 
+          const displayName = u.code ? `${u.code} - ${u.name}` : u.name;
+          html += `<div class="unit-card" style="border-left: 4px solid #6366f1; background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <strong>${typeIcon} ${displayName}</strong>
+                ${u.code ? `<span style="font-size:10px; color:#64748b; margin-left:8px; background:#f1f5f9; padding:2px 8px; border-radius:10px;">${u.code}</span>` : ''}
+                <span class="badge" style="margin-left:8px; font-size:10px;">${typeLabel}</span>
+              </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button class="edit-btn" onclick="showEditUnitModal('${b}', '${u.name.replace(/'/g, "\\'")}', '${u.assessmentType}', '${u.code || ''}')" style="padding:6px 14px; font-size:11px;">Edit</button>
+              <button class="delete-btn" onclick="deleteUnit('${b}', '${u.name.replace(/'/g, "\\'")}')" style="padding:6px 14px; font-size:11px;">Delete</button>
+            </div>
+          </div>`; 
         }); 
         html += `</div></div>`; 
       } 
@@ -3419,50 +3493,124 @@ document.querySelectorAll('.nav-item').forEach(el => {
 
   async function addNewUnit() { 
     const block = document.getElementById('newUnitBlock').value; 
+    const unitCode = document.getElementById('newUnitCode').value.trim().toUpperCase(); 
     const name = document.getElementById('newUnitName').value.trim().toUpperCase(); 
     const type = document.getElementById('newUnitType').value; 
-    if(!name){ showNotification('Enter subject name', true); return; } 
+    
+    if(!name){ 
+        showNotification('Enter unit name', true); 
+        return; 
+    }
+    
+    if(!unitCode){
+        showNotification('Please enter a Unit Code (e.g., NCHSGN 103)', true);
+        return;
+    }
+    
+    // Optional: Validate unit code format
+    const codePattern = /^[A-Z]+\s+\d+$/;
+    if (!codePattern.test(unitCode)) {
+        showNotification('Unit Code format should be like: NCHSGN 103, NCHSMW 110, etc.', true);
+        return;
+    }
+    
     showLoading('Adding unit...'); 
-    const result = await apiCall('/api/add-unit', { method: 'POST', body: JSON.stringify({ block, name, assessmentType: type }) }); 
+    const result = await apiCall('/api/add-unit', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+            block, 
+            name, 
+            unitCode,  // ✅ Include unit code
+            assessmentType: type 
+        }) 
+    }); 
     hideLoading(); 
-    showNotification(result.success ? 'Unit added successfully!' : (result.message || 'Error adding unit'), !result.success); 
-    if(result.success){ configCache = null; showUnits(); } 
+    
+    if(result.success){ 
+        showNotification(`Unit added successfully! Code: ${result.unitCode || unitCode}`, false); 
+        configCache = null; 
+        showUnits(); 
+    } else { 
+        showNotification(result.message || 'Error adding unit', true); 
+    } 
   }
 
-  function showEditUnitModal(block, name, curType) { 
+  function showEditUnitModal(block, name, curType, curCode) { 
     const modal = `<div id="unitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3><i class="fas fa-edit"></i> Edit Unit</h3><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body">
-      <div class="field"><label>Subject Name</label><input type="text" id="editUnitName" value="${name}"></div>
-      <div class="field"><label>Assessment Type</label><select id="editUnitType">
-        <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
-        <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
-        <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
-      </select></div>
-      <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%">Save Changes</button>
+      <div class="field"><label>Unit Code</label>
+        <input type="text" id="editUnitCode" value="${curCode || ''}" placeholder="e.g., NCHSGN 103" style="width:100%;">
+        <small style="color:#64748b; font-size:11px;">Format: Letters + space + number (e.g., NCHSGN 103)</small>
+      </div>
+      <div class="field"><label>Unit Name</label>
+        <input type="text" id="editUnitName" value="${name}" style="width:100%;">
+      </div>
+      <div class="field"><label>Assessment Type</label>
+        <select id="editUnitType" style="width:100%;">
+          <option value="full" ${curType === 'full' ? 'selected' : ''}>Full (CAT1+CAT2+Exam)</option>
+          <option value="single_cat" ${curType === 'single_cat' ? 'selected' : ''}>Single CAT (CAT+Exam)</option>
+          <option value="exam_only" ${curType === 'exam_only' ? 'selected' : ''}>Exam Only</option>
+        </select>
+      </div>
+      <button onclick="updateUnit('${block}', '${name.replace(/'/g, "\\'")}')" class="save-btn" style="width:100%; margin-top:8px;">Save Changes</button>
     </div></div></div>`; 
     document.body.insertAdjacentHTML('beforeend', modal); 
   }
 
   async function updateUnit(block, oldName) { 
+    const newCode = document.getElementById('editUnitCode').value.trim().toUpperCase(); 
     const newName = document.getElementById('editUnitName').value.trim().toUpperCase(); 
     const newType = document.getElementById('editUnitType').value; 
-    if(!newName){ showNotification('Enter subject name', true); return; } 
+    
+    if(!newName){ 
+        showNotification('Enter unit name', true); 
+        return; 
+    }
+    
+    if(!newCode){
+        showNotification('Please enter a Unit Code', true);
+        return;
+    }
+    
     showLoading('Updating unit...'); 
-    const result = await apiCall('/api/update-unit', { method: 'POST', body: JSON.stringify({ block, oldName, newName, assessmentType: newType }) }); 
-    hideLoading(); closeModal(); 
-    showNotification(result.success ? 'Unit updated successfully!' : (result.message || 'Error updating unit'), !result.success); 
-    if(result.success){ configCache = null; showUnits(); } 
+    const result = await apiCall('/api/update-unit', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+            block, 
+            oldName, 
+            newName, 
+            unitCode: newCode,  // ✅ Include unit code
+            assessmentType: newType 
+        }) 
+    }); 
+    hideLoading(); 
+    closeModal(); 
+    
+    if(result.success){ 
+        showNotification('Unit updated successfully!', false); 
+        configCache = null; 
+        showUnits(); 
+    } else { 
+        showNotification(result.message || 'Error updating unit', true); 
+    } 
   }
 
   async function deleteUnit(block, name) { 
     if(confirm(`Delete unit "${name}"? This will delete ALL marks for this subject!`)){ 
       showLoading('Deleting unit...'); 
-      const result = await apiCall('/api/delete-unit', { method: 'POST', body: JSON.stringify({ block, name }) }); 
+      const result = await apiCall('/api/delete-unit', { 
+          method: 'POST', 
+          body: JSON.stringify({ block, name }) 
+      }); 
       hideLoading(); 
-      showNotification(result.success ? 'Unit deleted successfully!' : (result.message || 'Error deleting unit'), !result.success); 
-      if(result.success){ configCache = null; showUnits(); } 
+      if(result.success){ 
+          showNotification('Unit deleted successfully!', false); 
+          configCache = null; 
+          showUnits(); 
+      } else { 
+          showNotification(result.message || 'Error deleting unit', true); 
+      } 
     } 
   }
-
   // ======================= SCORE PUBLISHING CONTROL =======================
   let publishedScores = new Set();
 
@@ -4540,104 +4688,104 @@ async function showTranscriptsPage() {
         let blockPerformance = {};
         let totalMarksProcessed = 0;
         
-        // ============================================================
-        // ✅ STEP 4: COLLECT FRESH MARKS FOR EACH SUBJECT
-        // ============================================================
-        for (let block of blocks) {
-            blockPerformance[block] = { scores: [], subjects: [] };
-            const subjects = config[block] || [];
-            console.log(`📚 Processing ${block}: ${subjects.length} subjects`);
+       // ============================================================
+// ✅ STEP 4: COLLECT FRESH MARKS FOR EACH SUBJECT
+// ============================================================
+for (let block of blocks) {
+    blockPerformance[block] = { scores: [], subjects: [] };
+    const subjects = config[block] || [];
+    console.log(`📚 Processing ${block}: ${subjects.length} subjects`);
+    
+    for (let subject of subjects) {
+        const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+        
+        if (marks && marks.length) {
+            console.log(`   ${subject.name}: ${marks.length} records`);
+            totalMarksProcessed += marks.length;
             
-            for (let subject of subjects) {
-                const marks = await apiCall(`/api/marks/${block}/${subject.name}`, {});
+            for (let mark of marks) {
+                const admission = mark.admission;
+                if (!admission) continue;
                 
-                if (marks && marks.length) {
-                    console.log(`   ${subject.name}: ${marks.length} records`);
-                    totalMarksProcessed += marks.length;
+                let studentName = 'Unknown Student';
+                if (mark.name !== undefined && mark.name !== null) {
+                    studentName = String(mark.name);
+                } else if (mark.student_name !== undefined && mark.student_name !== null) {
+                    studentName = String(mark.student_name);
+                }
+                
+                if (!allStudentPerformance[admission]) {
+                    allStudentPerformance[admission] = {
+                        name: studentName,
+                        admission: admission,
+                        block: mark.block || block,
+                        subjects: [],
+                        totalScore: 0,
+                        subjectCount: 0,
+                        cat1Scores: [],
+                        cat2Scores: [],
+                        examScores: [],
+                        blockScores: {}
+                    };
+                }
+                
+                let finalScore = 0;
+                let cat1 = parseFloat(mark.cat1) || 0;
+                let cat2 = parseFloat(mark.cat2) || 0;
+                let exam = parseFloat(mark.exam) || 0;
+                
+                if (subject.assessmentType === 'full') {
+                    finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+                    if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+                    if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
+                    if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                } else if (subject.assessmentType === 'single_cat') {
+                    finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+                    if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
+                    if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                } else {
+                    finalScore = Math.round(Math.min(exam,100) * 10) / 10;
+                    if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
+                }
+                
+                if (finalScore > 0) {
+                    // ✅ GET THE UNIT CODE FROM THE SUBJECT
+                    const unitCode = subject.code || '';  // <-- ADD THIS
                     
-                    for (let mark of marks) {
-                        const admission = mark.admission;
-                        if (!admission) continue;
-                        
-                        // ✅ SAFE: Convert name to string, handle any type
-                        let studentName = 'Unknown Student';
-                        if (mark.name !== undefined && mark.name !== null) {
-                            studentName = String(mark.name);
-                        } else if (mark.student_name !== undefined && mark.student_name !== null) {
-                            studentName = String(mark.student_name);
-                        }
-                        
-                        if (!allStudentPerformance[admission]) {
-                            allStudentPerformance[admission] = {
-                                name: studentName,
-                                admission: admission,
-                                block: mark.block || block,
-                                subjects: [],
-                                totalScore: 0,
-                                subjectCount: 0,
-                                cat1Scores: [],
-                                cat2Scores: [],
-                                examScores: [],
-                                blockScores: {}
-                            };
-                        }
-                        
-                        let finalScore = 0;
-                        let cat1 = parseFloat(mark.cat1) || 0;
-                        let cat2 = parseFloat(mark.cat2) || 0;
-                        let exam = parseFloat(mark.exam) || 0;
-                        
-                        if (subject.assessmentType === 'full') {
-                            finalScore = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-                            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-                            if (cat2 > 0) allStudentPerformance[admission].cat2Scores.push(cat2);
-                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                        } else if (subject.assessmentType === 'single_cat') {
-                            finalScore = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-                            if (cat1 > 0) allStudentPerformance[admission].cat1Scores.push(cat1);
-                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                        } else {
-                            finalScore = Math.round(Math.min(exam,100) * 10) / 10;
-                            if (exam > 0) allStudentPerformance[admission].examScores.push(exam);
-                        }
-                        
-                        if (finalScore > 0) {
-                            allStudentPerformance[admission].subjects.push({ 
-                                name: subject.name, 
-                                score: finalScore, 
-                                block: block 
-                            });
-                            allStudentPerformance[admission].totalScore += finalScore;
-                            allStudentPerformance[admission].subjectCount++;
-                            
-                            if (!allStudentPerformance[admission].blockScores[block]) {
-                                allStudentPerformance[admission].blockScores[block] = [];
-                            }
-                            allStudentPerformance[admission].blockScores[block].push(finalScore);
-                            
-                            if (!subjectPerformance[subject.name]) {
-                                subjectPerformance[subject.name] = { 
-                                    scores: [], 
-                                    block: block, 
-                                    assessmentType: subject.assessmentType,
-                                    students: []
-                                };
-                            }
-                            subjectPerformance[subject.name].scores.push(finalScore);
-                            subjectPerformance[subject.name].students.push({
-                                admission: admission,
-                                name: studentName,
-                                score: finalScore
-                            });
-                            blockPerformance[block].scores.push(finalScore);
-                        }
+                    allStudentPerformance[admission].subjects.push({ 
+                        name: subject.name,
+                        code: unitCode,  // <-- STORE UNIT CODE
+                        score: finalScore, 
+                        block: block 
+                    });
+                    allStudentPerformance[admission].totalScore += finalScore;
+                    allStudentPerformance[admission].subjectCount++;
+                    
+                    if (!allStudentPerformance[admission].blockScores[block]) {
+                        allStudentPerformance[admission].blockScores[block] = [];
                     }
+                    allStudentPerformance[admission].blockScores[block].push(finalScore);
+                    
+                    if (!subjectPerformance[subject.name]) {
+                        subjectPerformance[subject.name] = { 
+                            scores: [], 
+                            block: block, 
+                            assessmentType: subject.assessmentType,
+                            students: []
+                        };
+                    }
+                    subjectPerformance[subject.name].scores.push(finalScore);
+                    subjectPerformance[subject.name].students.push({
+                        admission: admission,
+                        name: studentName,
+                        score: finalScore
+                    });
+                    blockPerformance[block].scores.push(finalScore);
                 }
             }
         }
-        
-        console.log('📊 Total marks processed:', totalMarksProcessed);
-        console.log('📊 Students with data:', Object.keys(allStudentPerformance).length);
+    }
+}
         
         // ============================================================
         // ✅ STEP 5: CALCULATE AVERAGES
@@ -5244,7 +5392,7 @@ function updateTranscriptPreview() {
         </div>
     `;
 }
-// ===== GENERATE PDF PREVIEW - UPDATED DISPLAY ONLY =====
+// ===== GENERATE PDF PREVIEW - WITH ACTUAL LOGO =====
 function generatePDFPreview() {
     const select = document.getElementById('studentSelectForReport');
     if (!select || !select.value) {
@@ -5255,7 +5403,6 @@ function generatePDFPreview() {
     const admission = select.value;
     let student = null;
     
-    // ===== KEEP THE SAME DATA FETCHING LOGIC =====
     if (window._studentDataCache) {
         student = window._studentDataCache[admission];
     }
@@ -5273,13 +5420,11 @@ function generatePDFPreview() {
     
     showLoading('Generating PDF preview...');
     
-    // ===== USE SAME DATA CALCULATIONS =====
     const sortedSubjects = [...(student.subjects || [])].sort((a, b) => b.score - a.score);
     const passedSubjects = sortedSubjects.filter(s => s.score >= 60);
     const overallAvg = student.overallAvg || 0;
     const status = overallAvg >= 60 ? 'PASS' : (student.subjectCount > 0 ? 'FAIL' : 'PENDING');
     
-    // ===== CORRECT GRADE CALCULATION (Your school's system) =====
     let gradeLetter = 'D';
     let gradePoints = 0;
     let gradeComment = 'FAIL';
@@ -5312,34 +5457,39 @@ function generatePDFPreview() {
     const cgpa = overallAvg > 0 ? (overallAvg / 20).toFixed(2) : '0.00';
     const passRate = student.subjectCount > 0 ? ((passedSubjects.length / student.subjectCount) * 100).toFixed(1) : 0;
     const transcriptId = `NCHS/TRN/2026/${String(Math.floor(1000 + Math.random() * 9000))}`;
+    const LOGO_URL = 'https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png';
     
-    // ===== BUILD UNITS TABLE (updated terminology) =====
-    let subjectsHtml = '';
-    if (sortedSubjects.length > 0) {
-        subjectsHtml = sortedSubjects.map((subj, idx) => {
-            const isPass = subj.score >= 60;
-            const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
-            let subjGrade = 'D';
-            if (subj.score >= 80) subjGrade = 'A';
-            else if (subj.score >= 70) subjGrade = 'B';
-            else if (subj.score >= 60) subjGrade = 'C';
-            
-            return `
-                <tr>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${idx + 1}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px;"><strong>${safeName}</strong></td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${blockDisplay}</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 700; ${isPass ? 'color: #065f46;' : 'color: #991b1b;'}">${subj.score}%</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600;">${subjGrade}</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                        <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; letter-spacing: 0.5px;">
-                            ${isPass ? '✓ PASS' : '✗ FAIL'}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+   // In generatePDFPreview(), find the subjectsHtml section
+let subjectsHtml = '';
+if (sortedSubjects.length > 0) {
+    subjectsHtml = sortedSubjects.map((subj, idx) => {
+        const isPass = subj.score >= 60;
+        const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
+        
+        // ✅ ADD UNIT CODE TO DISPLAY
+        const displayName = subj.code ? `${subj.code} - ${safeName}` : safeName;
+        
+        let subjGrade = 'D';
+        if (subj.score >= 80) subjGrade = 'A';
+        else if (subj.score >= 70) subjGrade = 'B';
+        else if (subj.score >= 60) subjGrade = 'C';
+        
+        return `
+            <tr>
+                <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${idx + 1}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px;"><strong>${displayName}</strong></td>
+                <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${blockDisplay}</td>
+                <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 700; ${isPass ? 'color: #065f46;' : 'color: #991b1b;'}">${subj.score}%</td>
+                <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600;">${subjGrade}</td>
+                <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                    <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; letter-spacing: 0.5px;">
+                        ${isPass ? '✓ PASS' : '✗ FAIL'}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
     } else {
         subjectsHtml = `
             <tr>
@@ -5353,7 +5503,6 @@ function generatePDFPreview() {
     const safeStudentName = (student.name || 'Unknown').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeAdmission = (student.admission || 'N/A').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // ===== PREVIEW HTML WITH UPDATED DISPLAY =====
     const previewHTML = `
 <div style="max-width: 1100px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; border: 1px solid #d1d5db; font-family: 'Georgia', 'Times New Roman', serif; font-size: 13px; line-height: 1.6; color: #1a1a2e;">
     <!-- TOP BAR -->
@@ -5363,14 +5512,10 @@ function generatePDFPreview() {
         <div style="display: flex; align-items: center; gap: 6px;"><span>📅</span> ${issueDate}</div>
     </div>
     
-    <!-- ===== UPDATED LETTERHEAD ===== -->
+    <!-- ===== LETTERHEAD WITH ACTUAL LOGO ===== -->
     <div style="background: #0a2f4d; color: white; padding: 25px 30px 18px; text-align: center; border-bottom: 4px solid #6366f1;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 6px;">
-            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: white; border: 2px solid rgba(255,255,255,0.15); font-family: 'Georgia', serif; line-height: 1.1;">
-                <div style="text-align: center; font-size: 18px; letter-spacing: -1px;">
-                    N<br>C<br>H<br>S<br>M
-                </div>
-            </div>
+            <img src="${LOGO_URL}" alt="NCHSM Logo" style="height: 72px; width: auto; border-radius: 8px; background: rgba(255,255,255,0.05); padding: 4px;">
             <div style="text-align: center;">
                 <div style="font-size: 24px; font-weight: 800; letter-spacing: 1.5px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
                 <div style="font-size: 13px; opacity: 0.85; margin-top: 2px; font-weight: 300; letter-spacing: 0.5px;">&amp; MANAGEMENT</div>
@@ -5394,7 +5539,7 @@ function generatePDFPreview() {
         <div style="font-size: 11px; color: #64748b; margin-top: 6px; font-style: italic;">Issued by the Academic Registry, Nakuru College of Health Sciences</div>
     </div>
     
-    <!-- ===== STUDENT INFO (UPDATED) ===== -->
+    <!-- ===== STUDENT INFO ===== -->
     <div style="background: white; margin: 20px 30px 15px; padding: 20px 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; border-left-width: 5px; border-left-color: #6366f1;">
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 20px;">
             <div style="display: flex; align-items: baseline; flex-wrap: wrap; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 100px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Student Name:</span><span style="color: #6366f1; font-weight: 600; font-size: 13px;">${safeStudentName}</span></div>
@@ -5406,7 +5551,7 @@ function generatePDFPreview() {
         </div>
     </div>
     
-    <!-- ===== STATS (UPDATED: "Units" instead of "Subjects") ===== -->
+    <!-- ===== STATS ===== -->
     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 0 30px 20px;">
         <div style="background: #f8fafc; padding: 12px 10px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
             <div style="font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${student.subjectCount || 0}</div>
@@ -5430,7 +5575,7 @@ function generatePDFPreview() {
         </div>
     </div>
     
-    <!-- ===== UNITS TABLE (UPDATED: "Course Unit" instead of "Subject") ===== -->
+    <!-- ===== UNITS TABLE ===== -->
     <div style="margin: 0 30px 20px; overflow-x: auto;">
         <h3 style="margin-bottom: 12px; color: #0f172a; font-size: 15px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">📚 Academic Performance by Unit</h3>
         <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden;">
@@ -5544,7 +5689,8 @@ function generatePDFPreview() {
     </div>
 </div>`;
 
-    // Show in preview    const previewDiv = document.getElementById('reportPreview');
+    // Show in preview
+    const previewDiv = document.getElementById('reportPreview');
     if (previewDiv) {
         previewDiv.innerHTML = previewHTML;
         previewDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -5612,34 +5758,37 @@ async function generateStudentTranscriptPDF(student, reportData) {
     const transcriptId = `NCHS/TRN/2026/${String(Math.floor(1000 + Math.random() * 9000))}`;
 
     // ===== BUILD UNITS HTML (using same logic, updated terminology) =====
-    let subjectsHtml = '';
-    if (sortedSubjects.length > 0) {
-        subjectsHtml = sortedSubjects.map((subj, idx) => {
-            const isPass = subj.score >= 60;
-            const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
-            
-            // Unit grade based on correct grading key
-            let subjGrade = 'D';
-            if (subj.score >= 80) subjGrade = 'A';
-            else if (subj.score >= 70) subjGrade = 'B';
-            else if (subj.score >= 60) subjGrade = 'C';
-            
-            return `
-                <tr>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${idx + 1}</td>
-                    <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0;"><strong>${safeName}</strong></td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${blockDisplay}</td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700; ${isPass ? 'color: #065f46;' : 'color: #991b1b;'}">${subj.score}%</td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700;">${subjGrade}</td>
-                    <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                        <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                            ${isPass ? '✓ PASS' : '✗ FAIL'}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+  // In generateStudentTranscriptPDF(), find the subjectsHtml section
+let subjectsHtml = '';
+if (sortedSubjects.length > 0) {
+    subjectsHtml = sortedSubjects.map((subj, idx) => {
+        const isPass = subj.score >= 60;
+        const safeName = (subj.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const blockDisplay = subj.block ? subj.block.replace('_', ' ') : 'N/A';
+        
+        // ✅ ADD UNIT CODE TO DISPLAY
+        const displayName = subj.code ? `${subj.code} - ${safeName}` : safeName;
+        
+        let subjGrade = 'D';
+        if (subj.score >= 80) subjGrade = 'A';
+        else if (subj.score >= 70) subjGrade = 'B';
+        else if (subj.score >= 60) subjGrade = 'C';
+        
+        return `
+            <tr>
+                <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${idx + 1}</td>
+                <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0;"><strong>${displayName}</strong></td>
+                <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">${blockDisplay}</td>
+                <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700; ${isPass ? 'color: #065f46;' : 'color: #991b1b;'}">${subj.score}%</td>
+                <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: 700;">${subjGrade}</td>
+                <td style="padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                    <span style="background: ${isPass ? '#d1fae5' : '#fee2e2'}; color: ${isPass ? '#065f46' : '#991b1b'}; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
+                        ${isPass ? '✓ PASS' : '✗ FAIL'}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
     } else {
         subjectsHtml = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">📚 No units completed yet</td></tr>';
     }
