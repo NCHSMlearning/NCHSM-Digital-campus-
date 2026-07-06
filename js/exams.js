@@ -1011,7 +1011,7 @@
             this.updateEmptyStates();
         }
         
-    displayCurrentTable() {
+   displayCurrentTable() {
     if (!this.currentTable) return;
     
     const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
@@ -1070,7 +1070,7 @@
                 const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
                 const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
                 timeRemainingHtml = '<div class="time-remaining">';
-                timeRemainingHtml += '<i class="fas fa-hourglass-half"></i> Time left: ' + minutesLeft + 'm ' + secondsLeft + 's';
+                timeRemainingHtml += '<i class="fas fa-hourglass-half"></i> ' + minutesLeft + 'm ' + secondsLeft + 's';
                 timeRemainingHtml += '</div>';
             }
         } 
@@ -1083,11 +1083,9 @@
         
         let statusHtml = '<span class="status-badge ' + exam.gradeClass + '">' + exam.gradeText + '</span>';
         
-        const courseDisplay = exam.course_code || exam.course || 'General';
-        
-        // ✅ VERTICAL STACKED ASSESSMENT CELL
+        // ✅ CLEAN ASSESSMENT CELL - NO DUPLICATES!
         let assessmentCell = '';
-        assessmentCell += '<div class="assessment-info-box vertical">';
+        assessmentCell += '<div class="assessment-info-box clean">';
         
         // Row 1: Name + Badge
         assessmentCell += '<div class="assessment-row-top">';
@@ -1097,39 +1095,14 @@
         assessmentCell += '</div>';
         assessmentCell += '</div>';
         
-        // Row 2: Course
-        assessmentCell += '<div class="assessment-row-detail">';
-        assessmentCell += '<span class="detail-icon">📚</span>';
-        assessmentCell += '<span class="detail-label">Course:</span>';
-        assessmentCell += '<span class="detail-value">' + this.escapeHtml(courseDisplay) + '</span>';
-        assessmentCell += '</div>';
-        
-        // Row 3: Block/Term
-        assessmentCell += '<div class="assessment-row-detail">';
-        assessmentCell += '<span class="detail-icon">📋</span>';
-        assessmentCell += '<span class="detail-label">Block:</span>';
-        assessmentCell += '<span class="detail-value">' + (exam.block_term || exam.block || 'General') + '</span>';
-        assessmentCell += '</div>';
-        
-        // Row 4: Program
-        assessmentCell += '<div class="assessment-row-detail">';
-        assessmentCell += '<span class="detail-icon">🎯</span>';
-        assessmentCell += '<span class="detail-label">Program:</span>';
-        assessmentCell += '<span class="program-badge ' + exam.programBadgeClass + '">';
-        assessmentCell += '<i class="fas ' + exam.programIcon + '"></i> ' + this.escapeHtml(exam.programDisplay);
-        assessmentCell += '</span>';
-        assessmentCell += '</div>';
-        
-        // Row 5: Date & Time
+        // Row 2: Date (only if available)
         if (exam.formattedExamDateTime !== 'TBA') {
-            assessmentCell += '<div class="assessment-row-detail">';
-            assessmentCell += '<span class="detail-icon">📅</span>';
-            assessmentCell += '<span class="detail-label">Date:</span>';
-            assessmentCell += '<span class="detail-value">' + exam.formattedExamDateTime + '</span>';
+            assessmentCell += '<div class="exam-datetime">';
+            assessmentCell += '<i class="fas fa-calendar-clock"></i> ' + exam.formattedExamDateTime;
             assessmentCell += '</div>';
         }
         
-        // Row 6: Countdown (if available)
+        // Row 3: Countdown (if available)
         if (timeRemainingHtml) {
             assessmentCell += '<div class="assessment-row-countdown">';
             assessmentCell += timeRemainingHtml;
@@ -1138,9 +1111,9 @@
         
         assessmentCell += '</div>';
         
-        // ✅ 7 columns - Assessment cell is now vertical
+        // ✅ 7 columns - Clean assessment cell
         return '<tr class="assessment-row ' + (isCatExam ? 'cat-exam' : 'final-exam') + '" data-exam-id="' + exam.id + '">' +
-            '<td class="assessment-cell">' + assessmentCell + '</td>' +  // 1: Assessment (VERTICAL)
+            '<td class="assessment-cell">' + assessmentCell + '</td>' +  // 1: Assessment (CLEAN)
             '<td class="text-center status-cell">' + statusHtml + '</td>' +  // 2: Status
             '<td class="text-center">' + exam.cat1Display + '</td>' +  // 3: CAT 1
             '<td class="text-center">' + exam.cat2Display + '</td>' +  // 4: CAT 2
@@ -1273,19 +1246,9 @@ displayCompletedTable() {
             statusBadges = '<span class="badge-pending">⏳ Pending</span>';
         }
         
-        let displayProgram = exam.programDisplay || 'KRCHN Program';
-        let badgeClass = exam.programBadgeClass || 'badge-krchn';
-        let iconClass = exam.programIcon || 'fa-graduation-cap';
-        
-        if (this.isTVETStudent) {
-            displayProgram = 'TVET Program';
-            badgeClass = 'badge-tvet';
-            iconClass = 'fa-tools';
-        }
-        
-        // ✅ VERTICAL STACKED ASSESSMENT CELL for Completed
+        // ✅ CLEAN ASSESSMENT CELL FOR COMPLETED - NO DUPLICATES!
         let assessmentCell = `
-            <div class="assessment-info-box vertical">
+            <div class="assessment-info-box clean">
                 <!-- Row 1: Name + Badges -->
                 <div class="assessment-row-top">
                     <div class="assessment-name">
@@ -1295,50 +1258,21 @@ displayCompletedTable() {
                     </div>
                 </div>
                 
-                <!-- Row 2: Course -->
-                <div class="assessment-row-detail">
-                    <span class="detail-icon">📚</span>
-                    <span class="detail-label">Course:</span>
-                    <span class="detail-value">${this.escapeHtml(exam.course || 'General')}</span>
+                <!-- Row 2: Date -->
+                <div class="exam-datetime">
+                    <i class="fas fa-calendar-check"></i> ${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}
                 </div>
                 
-                <!-- Row 3: Block -->
-                <div class="assessment-row-detail">
-                    <span class="detail-icon">📋</span>
-                    <span class="detail-label">Block:</span>
-                    <span class="detail-value">${exam.block_term || 'General'}</span>
-                </div>
-                
-                <!-- Row 4: Program -->
-                <div class="assessment-row-detail">
-                    <span class="detail-icon">🎯</span>
-                    <span class="detail-label">Program:</span>
-                    <span class="program-badge ${badgeClass}">
-                        <i class="fas ${iconClass}"></i> ${this.escapeHtml(displayProgram)}
-                    </span>
-                </div>
-                
-                <!-- Row 5: Date -->
-                <div class="assessment-row-detail">
-                    <span class="detail-icon">📅</span>
-                    <span class="detail-label">Graded:</span>
-                    <span class="detail-value">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}</span>
-                </div>
-                
-                <!-- Row 6: Score (if released) -->
+                <!-- Row 3: Score (if released) -->
                 ${exam.isReleased ? `
-                <div class="assessment-row-detail score-row">
-                    <span class="detail-icon">📊</span>
-                    <span class="detail-label">Score:</span>
-                    <span class="detail-value score-value">${displayScore} / ${totalMarks} marks</span>
+                <div class="exam-score">
+                    📊 ${displayScore} / ${totalMarks} marks
                 </div>` : ''}
                 
-                <!-- Row 7: Pending message -->
+                <!-- Row 4: Pending message -->
                 ${exam.actionState === 'pending_release' ? `
-                <div class="assessment-row-detail pending-row">
-                    <span class="detail-icon">⏳</span>
-                    <span class="detail-label">Status:</span>
-                    <span class="detail-value pending-text">Results pending release</span>
+                <div class="exam-pending">
+                    ⏳ Results pending release
                 </div>` : ''}
             </div>
         `;
@@ -1394,7 +1328,7 @@ displayCompletedTable() {
         } else if (exam.actionState === 'pending_release') {
             actionHtml = `
                 <span class="exam-link-btn btn-warning">
-                    <i class="fas fa-clock"></i> Pending Release
+                    <i class="fas fa-clock"></i> Pending
                 </span>
             `;
         } else if (exam.actionState === 'expired') {
@@ -1419,13 +1353,13 @@ displayCompletedTable() {
         
         return `
             <tr class="${rowClass}" data-exam-id="${exam.id}">
-                <td class="assessment-cell">${assessmentCell}</td>  <!-- 1: Assessment (VERTICAL) -->
-                <td class="text-center status-cell">${gradeBadge}</td>  <!-- 2: Status -->
-                <td class="text-center">${cat1Display}</td>  <!-- 3: CAT 1 -->
-                <td class="text-center">${cat2Display}</td>  <!-- 4: CAT 2 -->
-                <td class="text-center">${finalDisplay}</td>  <!-- 5: Final -->
-                <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>  <!-- 6: Total -->
-                <td class="text-center grade-cell">${actionHtml}</td>  <!-- 7: Action/Grade -->
+                <td class="assessment-cell">${assessmentCell}</td>
+                <td class="text-center status-cell">${gradeBadge}</td>
+                <td class="text-center">${cat1Display}</td>
+                <td class="text-center">${cat2Display}</td>
+                <td class="text-center">${finalDisplay}</td>
+                <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
+                <td class="text-center grade-cell">${actionHtml}</td>
             </tr>
         `;
     }).join('');
