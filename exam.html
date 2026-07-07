@@ -929,39 +929,20 @@
             }
             return shuffled;
         }
-
-      function shuffleQuestionOptions(question) {
+function shuffleQuestionOptions(question) {
+    // ✅ Just return the question as-is - NO OPTION SHUFFLING!
     const shuffledQ = { ...question };
     
-    // ✅ Preserve question_type and max_chars
+    // Preserve question_type and max_chars
     shuffledQ.question_type = question.question_type || 'mcq';
     shuffledQ.max_chars = question.max_chars || 500;
     
-    // Only shuffle MCQ options
-    if (question.question_type === 'mcq') {
-        const options = [];
-        if (question.option_a) options.push({ label: 'A', value: question.option_a });
-        if (question.option_b) options.push({ label: 'B', value: question.option_b });
-        if (question.option_c) options.push({ label: 'C', value: question.option_c });
-        if (question.option_d) options.push({ label: 'D', value: question.option_d });
-        
-        if (options.length > 1) {
-            const shuffledOptions = shuffleArray(options);
-            const labels = ['a', 'b', 'c', 'd'];
-            labels.forEach((label, index) => {
-                const key = 'option_' + label;
-                if (index < shuffledOptions.length) {
-                    shuffledQ[key] = shuffledOptions[index].value;
-                } else {
-                    shuffledQ[key] = null;
-                }
-            });
-        }
-    }
+    // ✅ DO NOT shuffle options - keep them in original order!
+    // The correct_answer (A, B, C, D) will ALWAYS match the options!
+    // Students still get unique exams because QUESTIONS are shuffled
     
     return shuffledQ;
 }
-
         /**
          * Restore shuffled order from localStorage
          */
@@ -2052,11 +2033,7 @@
             logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
         }
 
-        // ============================================================
-        // QUESTION RENDERING
-        // ============================================================
-
-   function renderQuestion(index) {
+       function renderQuestion(index) {
     if (questions.length === 0) return;
 
     if (currentIndex !== index && questions[currentIndex]) {
@@ -2077,32 +2054,34 @@
     var inputHtml = '';
     
     // ============================================================
-    // ✅ MCQ - Multiple Choice Questions
+    // ✅ MCQ - Multiple Choice Questions (NO OPTION SHUFFLING)
     // ============================================================
     if (questionType === 'mcq') {
+        // ✅ Use LETTERS as values (A, B, C, D)
         var optionsHtml = '';
-        if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_a + '"> A: ' + q.option_a + '</label></li>';
-        if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_b + '"> B: ' + q.option_b + '</label></li>';
-        if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_c + '"> C: ' + q.option_c + '</label></li>';
-        if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_d + '"> D: ' + q.option_d + '</label></li>';
+        if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="A"> A: ' + q.option_a + '</label></li>';
+        if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="B"> B: ' + q.option_b + '</label></li>';
+        if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="C"> C: ' + q.option_c + '</label></li>';
+        if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="D"> D: ' + q.option_d + '</label></li>';
         inputHtml = '<ul class="options">' + optionsHtml + '</ul>';
         
-        // Restore saved answer
+        // Restore saved answer (value is "A", "B", "C", or "D")
         if (answers[q.id]) {
             var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
             if (radio) radio.checked = true;
         }
         
-      // In your renderQuestion() function, find the event listener and add this:
-document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
-    radio.addEventListener('change', function(e) {
-        var answer = e.target.value;
-        console.log('📝 Radio selected:', answer, 'for Q' + (currentIndex + 1));  // ← ADD THIS
-        saveAnswer(answer);
-        saveAnswerToDatabase(q.id, answer);
-        saveProgressLocally();
-    });
-});
+        // Event listener
+        document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
+            radio.addEventListener('change', function(e) {
+                var answer = e.target.value; // "A", "B", "C", or "D"
+                console.log('📝 Radio selected:', answer, 'for Q' + (currentIndex + 1));
+                saveAnswer(answer);
+                saveAnswerToDatabase(q.id, answer);
+                saveProgressLocally();
+            });
+        });
+        
     // ============================================================
     // ✅ SHORT ANSWER / FILL IN THE BLANK
     // ============================================================
@@ -2125,7 +2104,6 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             </div>
         `;
         
-        // Add event listener after DOM update
         setTimeout(function() {
             var textarea = document.getElementById('text-answer-' + q.id);
             if (textarea) {
@@ -2163,7 +2141,6 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             </div>
         `;
         
-        // Add event listener after DOM update
         setTimeout(function() {
             var textarea = document.getElementById('essay-answer-' + q.id);
             if (textarea) {
@@ -2275,21 +2252,13 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
                     break;
             }
         }
-
-       function saveAnswer(answer) {
-    console.log('💾 saveAnswer called with:', answer, 'type:', typeof answer);
-    
+function saveAnswer(answer) {
     var q = questions[currentIndex];
-    
-    if (!answer || answer === 'undefined') {
-        console.warn('⚠️ Answer is undefined or null!');
-    }
-    
-    console.log('📚 Storing answer for Q' + (currentIndex + 1) + ':', answer);
-    
     answers[q.id] = answer;
-    
-    console.log('📚 Current answers object:', answers);
+
+    // ✅ ALWAYS enable the submit button when an answer is saved
+    hasAnsweredAtLeastOne = true;
+    submitBtn.disabled = false;
 
     var savedEl = document.getElementById('answer-saved');
     if (savedEl) {
@@ -2298,11 +2267,6 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
     }
 
     saveAnswerToDatabase(q.id, answer);
-
-    if (!hasAnsweredAtLeastOne) {
-        hasAnsweredAtLeastOne = true;
-        submitBtn.disabled = false;
-    }
     updateStatusTable();
     updateExamStats();
     saveProgressLocally();
@@ -2376,7 +2340,7 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             localStorage.setItem('exam_' + EXAM_ID + '_draft_' + studentId, JSON.stringify(saved));
         }
 
-       async function loadSavedAnswers() {
+      async function loadSavedAnswers() {
     try {
         var result = await sb.from('exam_grades')
             .select('question_id, selected_answer')
@@ -2392,27 +2356,40 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
                     loaded++;
                 }
             });
-            
-            // ✅ ADD THIS: Map answers to current question order
-            // This ensures answers are restored even if questions are shuffled
-            questions.forEach(function(q) {
-                if (answers[q.id] !== undefined) {
-                    console.log('✅ Restored answer for Q' + q.question_number + ':', answers[q.id]);
-                }
-            });
-            
             if (loaded > 0) {
                 hasAnsweredAtLeastOne = true;
-                submitBtn.disabled = false;
+                submitBtn.disabled = false;  // ✅ ENABLE SUBMIT BUTTON
                 updateExamStats();
                 updateStatusTable();
-                // ✅ Re-render current question to show selected answer
                 renderQuestion(currentIndex);
+                console.log('✅ Submit button enabled! (' + loaded + ' answers loaded)');
             }
             console.log('✅ Loaded ' + loaded + ' saved answers from database');
             return;
         }
-        // ... rest of function
+
+        var local = localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId);
+        if (local) {
+            var parsed = JSON.parse(local);
+            var restored = 0;
+            for (var qId in parsed) {
+                if (parsed.hasOwnProperty(qId) && parsed[qId].answer) {
+                    answers[qId] = parsed[qId].answer;
+                    restored++;
+                    await saveAnswerToDatabase(qId, parsed[qId].answer);
+                }
+            }
+            if (restored > 0) {
+                hasAnsweredAtLeastOne = true;
+                submitBtn.disabled = false;  // ✅ ENABLE SUBMIT BUTTON
+                updateExamStats();
+                updateStatusTable();
+                renderQuestion(currentIndex);
+                showToast('✅ Restored ' + restored + ' answers from local backup', 'success');
+                localStorage.removeItem('exam_' + EXAM_ID + '_draft_' + studentId);
+            }
+        }
+
     } catch (e) {
         console.warn('Could not load saved answers:', e);
     }
@@ -2909,9 +2886,8 @@ function submitExam() {
         }
 async function calculateAndSaveGrade() {
     try {
-        // Get all questions for this exam
         var qResult = await sb.from('exam_questions')
-            .select('id, question_number, question_text, option_a, option_b, option_c, option_d, correct_answer, marks')
+            .select('id, question_number, question_text, correct_answer, marks')
             .eq('exam_id', parseInt(EXAM_ID));
 
         var questionsData = qResult.data;
@@ -2919,68 +2895,34 @@ async function calculateAndSaveGrade() {
             throw new Error('No questions found');
         }
 
-        // Build a map of question IDs to their correct answer TEXT
-        var questionAnswerMap = {};
-        questionsData.forEach(function(q) {
-            var correctLetter = q.correct_answer;
-            var correctText = '';
-            
-            switch(correctLetter) {
-                case 'A': correctText = q.option_a || ''; break;
-                case 'B': correctText = q.option_b || ''; break;
-                case 'C': correctText = q.option_c || ''; break;
-                case 'D': correctText = q.option_d || ''; break;
-                default: correctText = '';
-            }
-            
-            questionAnswerMap[q.id] = {
-                correctLetter: correctLetter,
-                correctText: correctText,
-                marks: q.marks || 1,
-                question_number: q.question_number
-            };
-        });
-
         var totalEarned = 0;
         var totalPossible = 0;
         var answerRecords = [];
-        var processed = 0;
         var correctCount = 0;
         var wrongCount = 0;
 
-        // Process each question the student answered
+        // ✅ Process each answer - compare LETTER to LETTER!
         for (var questionId in answers) {
             if (!answers.hasOwnProperty(questionId)) continue;
             
-            var studentAnswer = answers[questionId];
-            var questionInfo = questionAnswerMap[questionId];
+            var studentAnswer = answers[questionId]; // "A", "B", "C", or "D"
+            var question = questionsData.find(q => q.id === questionId);
             
-            if (!questionInfo) {
-                console.warn('⚠️ Question not found in map:', questionId);
+            if (!question) {
+                console.warn('⚠️ Question not found:', questionId);
                 continue;
             }
             
-            var marks = questionInfo.marks;
+            var marks = question.marks || 1;
             totalPossible += marks;
             
-            // ✅ FIXED: studentAnswer is already the TEXT!
-            // No need to look up the option text, just compare directly!
-            var selectedText = studentAnswer || '';
-            
-            // ✅ Compare by TEXT!
-            var isCorrect = selectedText === questionInfo.correctText;
+            // ✅ BULLETPROOF: Compare LETTER to LETTER!
+            var isCorrect = studentAnswer === question.correct_answer;
             var earned = isCorrect ? marks : 0;
             totalEarned += earned;
             
             if (isCorrect) correctCount++;
             else wrongCount++;
-
-            console.log('📊 Q' + questionInfo.question_number + ':', {
-                selectedText: selectedText,
-                correctText: questionInfo.correctText,
-                isCorrect: isCorrect,
-                earned: earned
-            });
 
             answerRecords.push({
                 student_id: studentId,
@@ -2990,12 +2932,9 @@ async function calculateAndSaveGrade() {
                 marks: earned,
                 graded_at: new Date().toISOString()
             });
-
-            processed++;
-            updateSubmissionProgress('📊 Calculating results... (' + processed + '/' + questionsData.length + ')');
         }
 
-        // Handle unanswered questions (mark as 0)
+        // Handle unanswered questions
         questionsData.forEach(function(q) {
             if (!answers[q.id]) {
                 answerRecords.push({
@@ -3010,12 +2949,10 @@ async function calculateAndSaveGrade() {
         });
 
         var percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-        
-        // Determine result status
         var passMark = examData ? examData.pass_mark || 60 : 60;
         var resultStatus = percentage >= passMark ? 'PASSED' : 'FAILED';
 
-        // Delete old grades for this student/exam
+        // Delete old grades
         await sb.from('exam_grades')
             .delete()
             .eq('student_id', studentId)
@@ -3030,7 +2967,7 @@ async function calculateAndSaveGrade() {
             }
         }
 
-        // Insert the summary record
+        // Insert summary record
         await sb.from('exam_grades').insert({
             student_id: studentId,
             exam_id: parseInt(EXAM_ID),
@@ -3175,31 +3112,34 @@ async function calculateAndSaveGrade() {
             } catch (e) { /* silent fail */ }
         }
 
-        function checkSavedProgress() {
-            try {
-                var saved = localStorage.getItem('exam_' + EXAM_ID + '_progress_' + studentId);
-                if (saved) {
-                    var data = JSON.parse(saved);
-                    if (Date.now() - data.timestamp < 30 * 60 * 1000) {
-                        if (data.answers && Object.keys(data.answers).length > 0) {
-                            answers = data.answers;
-                            currentIndex = data.currentIndex || 0;
-                            if (data.flaggedQuestions) {
-                                flaggedQuestions = data.flaggedQuestions;
-                            }
-                            hasAnsweredAtLeastOne = Object.keys(answers).length > 0;
-                            if (hasAnsweredAtLeastOne) submitBtn.disabled = false;
-                            renderQuestion(currentIndex);
-                            updateStatusTable();
-                            updateExamStats();
-                            showToast('✅ Previous progress restored', 'success');
-                            return true;
-                        }
+       function checkSavedProgress() {
+    try {
+        var saved = localStorage.getItem('exam_' + EXAM_ID + '_progress_' + studentId);
+        if (saved) {
+            var data = JSON.parse(saved);
+            if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+                if (data.answers && Object.keys(data.answers).length > 0) {
+                    answers = data.answers;
+                    currentIndex = data.currentIndex || 0;
+                    if (data.flaggedQuestions) {
+                        flaggedQuestions = data.flaggedQuestions;
                     }
+                    hasAnsweredAtLeastOne = Object.keys(answers).length > 0;
+                    if (hasAnsweredAtLeastOne) {
+                        submitBtn.disabled = false;  // ✅ ENABLE SUBMIT BUTTON
+                        console.log('✅ Submit button enabled from localStorage!');
+                    }
+                    renderQuestion(currentIndex);
+                    updateStatusTable();
+                    updateExamStats();
+                    showToast('✅ Previous progress restored', 'success');
+                    return true;
                 }
-            } catch (e) { /* silent fail */ }
-            return false;
+            }
         }
+    } catch (e) { /* silent fail */ }
+    return false;
+}
 
         function updateQuestionTimer() {
             var elapsed = (Date.now() - questionStartTime) / 1000;
