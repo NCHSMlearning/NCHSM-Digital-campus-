@@ -2376,55 +2376,47 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             localStorage.setItem('exam_' + EXAM_ID + '_draft_' + studentId, JSON.stringify(saved));
         }
 
-        async function loadSavedAnswers() {
-            try {
-                var result = await sb.from('exam_grades')
-                    .select('question_id, selected_answer')
-                    .eq('student_id', studentId)
-                    .eq('exam_id', parseInt(EXAM_ID))
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
+       async function loadSavedAnswers() {
+    try {
+        var result = await sb.from('exam_grades')
+            .select('question_id, selected_answer')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(EXAM_ID))
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
 
-                if (result.data && result.data.length > 0) {
-                    var loaded = 0;
-                    result.data.forEach(function(row) {
-                        if (row.selected_answer) {
-                            answers[row.question_id] = row.selected_answer;
-                            loaded++;
-                        }
-                    });
-                    if (loaded > 0) {
-                        hasAnsweredAtLeastOne = true;
-                        submitBtn.disabled = false;
-                    }
-                    console.log('✅ Loaded ' + loaded + ' saved answers from database');
-                    return;
+        if (result.data && result.data.length > 0) {
+            var loaded = 0;
+            result.data.forEach(function(row) {
+                if (row.selected_answer) {
+                    answers[row.question_id] = row.selected_answer;
+                    loaded++;
                 }
-
-                var local = localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId);
-                if (local) {
-                    var parsed = JSON.parse(local);
-                    var restored = 0;
-                    for (var qId in parsed) {
-                        if (parsed.hasOwnProperty(qId) && parsed[qId].answer) {
-                            answers[qId] = parsed[qId].answer;
-                            restored++;
-                            await saveAnswerToDatabase(qId, parsed[qId].answer);
-                        }
-                    }
-                    if (restored > 0) {
-                        hasAnsweredAtLeastOne = true;
-                        submitBtn.disabled = false;
-                        showToast('✅ Restored ' + restored + ' answers from local backup', 'success');
-                        localStorage.removeItem('exam_' + EXAM_ID + '_draft_' + studentId);
-                    }
+            });
+            
+            // ✅ ADD THIS: Map answers to current question order
+            // This ensures answers are restored even if questions are shuffled
+            questions.forEach(function(q) {
+                if (answers[q.id] !== undefined) {
+                    console.log('✅ Restored answer for Q' + q.question_number + ':', answers[q.id]);
                 }
-
-            } catch (e) {
-                console.warn('Could not load saved answers:', e);
+            });
+            
+            if (loaded > 0) {
+                hasAnsweredAtLeastOne = true;
+                submitBtn.disabled = false;
+                updateExamStats();
+                updateStatusTable();
+                // ✅ Re-render current question to show selected answer
+                renderQuestion(currentIndex);
             }
+            console.log('✅ Loaded ' + loaded + ' saved answers from database');
+            return;
         }
-
-
+        // ... rest of function
+    } catch (e) {
+        console.warn('Could not load saved answers:', e);
+    }
+}
        //  ============================================================
 // AUTO-SAVE FUNCTIONS (ADD THESE HERE!)
 // ============================================================
