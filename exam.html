@@ -2424,6 +2424,49 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             }
         }
 
+
+       //  ============================================================
+// AUTO-SAVE FUNCTIONS (ADD THESE HERE!)
+// ============================================================
+
+function saveCurrentAnswer() {
+    var q = questions[currentIndex];
+    if (!q) return;
+    
+    var radio = document.querySelector('input[name="q' + q.id + '"]:checked');
+    if (radio) {
+        var answer = radio.value;
+        if (answers[q.id] !== answer) {
+            console.log('💾 Auto-saving answer for Q' + (currentIndex + 1) + ':', answer);
+            answers[q.id] = answer;
+            saveAnswerToDatabase(q.id, answer);
+            saveProgressLocally();
+            updateStatusTable();
+            updateExamStats();
+        }
+    }
+}
+
+function syncPendingAnswers() {
+    var local = localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId);
+    if (local) {
+        var parsed = JSON.parse(local);
+        var synced = 0;
+        for (var qId in parsed) {
+            if (parsed.hasOwnProperty(qId) && parsed[qId].answer) {
+                if (!answers[qId]) {
+                    answers[qId] = parsed[qId].answer;
+                    saveAnswerToDatabase(qId, parsed[qId].answer);
+                    synced++;
+                }
+            }
+        }
+        if (synced > 0) {
+            console.log('✅ Synced ' + synced + ' pending answers before submission');
+            localStorage.removeItem('exam_' + EXAM_ID + '_draft_' + studentId);
+        }
+    }
+}
         // ============================================================
         // QUESTION FLAGGING
         // ============================================================
