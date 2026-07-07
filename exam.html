@@ -2524,15 +2524,49 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             nextBtn.disabled = currentIndex === questions.length - 1 || isExamPaused;
         }
 
-        function prevQuestion() {
-            if (currentIndex > 0 && !isExamPaused) renderQuestion(currentIndex - 1);
-            else if (isExamPaused) showToast('⛔ Exam is paused. Face not detected.', 'warning');
-        }
+       function prevQuestion() {
+    // ✅ Save current answer before moving
+    var q = questions[currentIndex];
+    var currentAnswer = getCurrentAnswer();
+    if (currentAnswer && q) {
+        answers[q.id] = currentAnswer;
+        saveAnswerToDatabase(q.id, currentAnswer);
+        saveProgressLocally();
+    }
+    
+    if (currentIndex > 0 && !isExamPaused) {
+        renderQuestion(currentIndex - 1);
+    } else if (isExamPaused) {
+        showToast('⛔ Exam is paused. Face not detected.', 'warning');
+    }
+}
+function nextQuestion() {
+    // ✅ Save current answer before moving
+    var q = questions[currentIndex];
+    var currentAnswer = getCurrentAnswer();
+    if (currentAnswer && q) {
+        answers[q.id] = currentAnswer;
+        saveAnswerToDatabase(q.id, currentAnswer);
+        saveProgressLocally();
+    }
+    
+    if (currentIndex < questions.length - 1 && !isExamPaused) {
+        renderQuestion(currentIndex + 1);
+    } else if (isExamPaused) {
+        showToast('⛔ Exam is paused. Face not detected.', 'warning');
+    }
+}
 
-        function nextQuestion() {
-            if (currentIndex < questions.length - 1 && !isExamPaused) renderQuestion(currentIndex + 1);
-            else if (isExamPaused) showToast('⛔ Exam is paused. Face not detected.', 'warning');
-        }
+function getCurrentAnswer() {
+    var q = questions[currentIndex];
+    if (!q) return null;
+    
+    var radio = document.querySelector('input[name="q' + q.id + '"]:checked');
+    if (radio) {
+        return radio.value;
+    }
+    return null;
+}
 
         // ============================================================
         // TIMER - LEFT PANEL
@@ -2647,40 +2681,46 @@ document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio)
             }
         }
 
-        // ============================================================
-        // SUBMISSION WITH LOADING STATE
-        // ============================================================
+       // ============================================================
+// SUBMISSION WITH LOADING STATE
+// ============================================================
 
-        function submitExam() {
-            if (isSubmitting) return;
+function submitExam() {
+    if (isSubmitting) return;
 
-            var skipped = questions.filter(function(q) { return !answers[q.id]; }).length;
-            var modalMsg = document.getElementById('modal-message');
-            if (modalMsg) {
-                modalMsg.innerHTML = skipped > 0 ?
-                    '⚠️ ' + skipped + ' question(s) unanswered. Submit anyway?' :
-                    '✅ All ' + questions.length + ' questions answered. Submit now?';
-            }
+    // ✅ FIX: Save current answer before submission
+    saveCurrentAnswer();
+    
+    // ✅ FIX: Also save any pending answers from localStorage
+    syncPendingAnswers();
 
-            document.getElementById('submission-modal').style.display = 'flex';
+    var skipped = questions.filter(function(q) { return !answers[q.id]; }).length;
+    var modalMsg = document.getElementById('modal-message');
+    if (modalMsg) {
+        modalMsg.innerHTML = skipped > 0 ?
+            '⚠️ ' + skipped + ' question(s) unanswered. Submit anyway?' :
+            '✅ All ' + questions.length + ' questions answered. Submit now?';
+    }
 
-            var confirmBtn = document.getElementById('confirm-submit-btn');
-            var cancelBtn = document.getElementById('cancel-submit-btn');
+    document.getElementById('submission-modal').style.display = 'flex';
 
-            var newConfirmBtn = confirmBtn.cloneNode(true);
-            var newCancelBtn = cancelBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    var confirmBtn = document.getElementById('confirm-submit-btn');
+    var cancelBtn = document.getElementById('cancel-submit-btn');
 
-            newConfirmBtn.addEventListener('click', async function() {
-                document.getElementById('submission-modal').style.display = 'none';
-                await executeSubmissionWithLoading();
-            });
+    var newConfirmBtn = confirmBtn.cloneNode(true);
+    var newCancelBtn = cancelBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
 
-            newCancelBtn.addEventListener('click', function() {
-                document.getElementById('submission-modal').style.display = 'none';
-            });
-        }
+    newConfirmBtn.addEventListener('click', async function() {
+        document.getElementById('submission-modal').style.display = 'none';
+        await executeSubmissionWithLoading();
+    });
+
+    newCancelBtn.addEventListener('click', function() {
+        document.getElementById('submission-modal').style.display = 'none';
+    });
+}
 
         function showSubmissionProgress(title, message) {
             var overlay = document.getElementById('submission-progress-overlay');
