@@ -2093,16 +2093,16 @@
             if (radio) radio.checked = true;
         }
         
-        // Add event listeners
-        document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
-            radio.addEventListener('change', function(e) {
-                var answer = e.target.value;
-                saveAnswer(answer);
-                saveAnswerToDatabase(q.id, answer);
-                saveProgressLocally();
-            });
-        });
-        
+      // In your renderQuestion() function, find the event listener and add this:
+document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
+    radio.addEventListener('change', function(e) {
+        var answer = e.target.value;
+        console.log('📝 Radio selected:', answer, 'for Q' + (currentIndex + 1));  // ← ADD THIS
+        saveAnswer(answer);
+        saveAnswerToDatabase(q.id, answer);
+        saveProgressLocally();
+    });
+});
     // ============================================================
     // ✅ SHORT ANSWER / FILL IN THE BLANK
     // ============================================================
@@ -2276,61 +2276,86 @@
             }
         }
 
-        function saveAnswer(answer) {
-            var q = questions[currentIndex];
-            answers[q.id] = answer;
+       function saveAnswer(answer) {
+    console.log('💾 saveAnswer called with:', answer, 'type:', typeof answer);
+    
+    var q = questions[currentIndex];
+    
+    if (!answer || answer === 'undefined') {
+        console.warn('⚠️ Answer is undefined or null!');
+    }
+    
+    console.log('📚 Storing answer for Q' + (currentIndex + 1) + ':', answer);
+    
+    answers[q.id] = answer;
+    
+    console.log('📚 Current answers object:', answers);
 
-            var savedEl = document.getElementById('answer-saved');
-            if (savedEl) {
-                savedEl.style.display = 'block';
-                setTimeout(function() { savedEl.style.display = 'none'; }, 1500);
-            }
+    var savedEl = document.getElementById('answer-saved');
+    if (savedEl) {
+        savedEl.style.display = 'block';
+        setTimeout(function() { savedEl.style.display = 'none'; }, 1500);
+    }
 
-            saveAnswerToDatabase(q.id, answer);
+    saveAnswerToDatabase(q.id, answer);
 
-            if (!hasAnsweredAtLeastOne) {
-                hasAnsweredAtLeastOne = true;
-                submitBtn.disabled = false;
-            }
-            updateStatusTable();
-            updateExamStats();
-            saveProgressLocally();
-        }
+    if (!hasAnsweredAtLeastOne) {
+        hasAnsweredAtLeastOne = true;
+        submitBtn.disabled = false;
+    }
+    updateStatusTable();
+    updateExamStats();
+    saveProgressLocally();
+}
 
-       async function saveAnswerToDatabase(questionId, answer) {
+     async function saveAnswerToDatabase(questionId, answer) {
+    console.log('📤 SAVING TO DB:', {
+        questionId: questionId,
+        answer: answer,
+        answerType: typeof answer,
+        answerLength: answer ? answer.length : 0
+    });
+
     updateAutoSaveStatus('saving');
 
     try {
-        const data = {
+        var result = await sb.from('exam_grades').upsert({
             student_id: studentId,
             exam_id: parseInt(EXAM_ID),
             question_id: questionId,
             selected_answer: answer,
             marks: 0,
             graded_at: new Date().toISOString()
-        };
+        }, { onConflict: 'student_id, exam_id, question_id' });
 
-        // ✅ LOG THE EXACT DATA
-        console.log('📤 Sending data:', JSON.stringify(data, null, 2));
-
-        var result = await sb.from('exam_grades').upsert(data, { 
-            onConflict: 'student_id, exam_id, question_id' 
+        console.log('📥 DB Response:', {
+            data: result.data,
+            error: result.error,
+            status: result.status
         });
 
-        // ✅ LOG THE FULL RESPONSE
-        console.log('📥 Response:', JSON.stringify(result, null, 2));
-
         if (result.error) {
-            console.error('❌ Error details:', result.error);
+            console.error('❌ Upsert error:', result.error);
             throw result.error;
         }
 
         updateAutoSaveStatus('saved', 'Answer saved');
         console.log('✅ Answer saved: Q' + questionId);
 
-        // ... rest of function
+        try {
+            await sb.from('exam_answers').upsert({
+                student_id: studentId,
+                exam_id: parseInt(EXAM_ID),
+                question_id: questionId,
+                selected_answer: answer,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'student_id, exam_id, question_id' });
+        } catch (e) {}
+
+        removeFromLocalStorage(questionId);
+
     } catch (e) {
-        console.error('❌ Save failed:', e);
+        console.warn('⚠️ Save failed, saving locally:', e);
         saveToLocalStorage(questionId, answer);
         updateAutoSaveStatus('error', 'Offline mode');
         showToast('📡 Answer saved locally - will sync when online', 'warning');
