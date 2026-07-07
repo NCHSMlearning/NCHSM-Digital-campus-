@@ -2397,3 +2397,90 @@ label {
         font-size: 0.6rem;
     }
 }
+/* ============================================================
+   SHORT ANSWER & ESSAY STYLES
+   ============================================================ */
+.short-answer-container {
+    margin: 12px 0;
+}
+
+.short-answer-input,
+.essay-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    color: #1A202C;
+    background: #FFFFFF;
+    transition: all 0.3s ease;
+    resize: vertical;
+}
+
+.short-answer-input:focus,
+.essay-input:focus {
+    border-color: #38A169;
+    box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.15);
+    outline: none;
+}
+
+.short-answer-input:disabled,
+.essay-input:disabled {
+    background: #F8FAFC;
+    cursor: not-allowed;
+}
+
+.short-answer-input {
+    min-height: 60px;
+}
+
+.essay-input {
+    min-height: 150px;
+}
+
+.char-counter {
+    text-align: right;
+    font-size: 0.75rem;
+    color: #94A3B8;
+    margin-top: 4px;
+}
+
+.essay-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #94A3B8;
+    margin-top: 4px;
+}
+
+.question-type-badge {
+    display: inline-block;
+    background: #EBF5FF;
+    color: #0A3D62;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 14px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Responsive for text inputs */
+@media (max-width: 600px) {
+    .short-answer-input,
+    .essay-input {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+    }
+    
+    .essay-input {
+        min-height: 120px;
+    }
+    
+    .char-counter,
+    .essay-footer {
+        font-size: 0.65rem;
+    }
+}
