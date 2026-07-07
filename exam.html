@@ -930,26 +930,23 @@
             return shuffled;
         }
 
-        /**
-         * Shuffle options within a question - SAFE
-         * Keeps correct_answer mapping intact for grading
-         */
-        function shuffleQuestionOptions(question) {
-            const shuffledQ = { ...question };
-            
-            // Collect options
-            const options = [];
-            if (question.option_a) options.push({ label: 'A', value: question.option_a });
-            if (question.option_b) options.push({ label: 'B', value: question.option_b });
-            if (question.option_c) options.push({ label: 'C', value: question.option_c });
-            if (question.option_d) options.push({ label: 'D', value: question.option_d });
-            
-            if (options.length <= 1) return shuffledQ;
-            
-            // Shuffle options
+      function shuffleQuestionOptions(question) {
+    const shuffledQ = { ...question };
+    
+    // ✅ Preserve question_type and max_chars
+    shuffledQ.question_type = question.question_type || 'mcq';
+    shuffledQ.max_chars = question.max_chars || 500;
+    
+    // Only shuffle MCQ options
+    if (question.question_type === 'mcq') {
+        const options = [];
+        if (question.option_a) options.push({ label: 'A', value: question.option_a });
+        if (question.option_b) options.push({ label: 'B', value: question.option_b });
+        if (question.option_c) options.push({ label: 'C', value: question.option_c });
+        if (question.option_d) options.push({ label: 'D', value: question.option_d });
+        
+        if (options.length > 1) {
             const shuffledOptions = shuffleArray(options);
-            
-            // Reassign
             const labels = ['a', 'b', 'c', 'd'];
             labels.forEach((label, index) => {
                 const key = 'option_' + label;
@@ -959,14 +956,11 @@
                     shuffledQ[key] = null;
                 }
             });
-            
-            // ✅ Keep original correct_answer - used for grading
-            // The correct_answer is still A, B, C, or D from the database
-            // It still matches the OPTION LABEL (A, B, C, D)
-            // Even if text is shuffled, the LABEL stays the same!
-            
-            return shuffledQ;
         }
+    }
+    
+    return shuffledQ;
+}
 
         /**
          * Restore shuffled order from localStorage
@@ -2062,7 +2056,7 @@
         // QUESTION RENDERING
         // ============================================================
 
-      function renderQuestion(index) {
+   function renderQuestion(index) {
     if (questions.length === 0) return;
 
     if (currentIndex !== index && questions[currentIndex]) {
@@ -2076,18 +2070,130 @@
     questionTimeElapsed = 0;
 
     var isFlagged = flaggedQuestions[q.id] || false;
+    
+    // ✅ GET QUESTION TYPE (default to 'mcq' if not set)
+    var questionType = q.question_type || 'mcq';
+    
+    var inputHtml = '';
+    
+    // ============================================================
+    // ✅ MCQ - Multiple Choice Questions
+    // ============================================================
+    if (questionType === 'mcq') {
+        var optionsHtml = '';
+        if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_a + '"> A: ' + q.option_a + '</label></li>';
+        if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_b + '"> B: ' + q.option_b + '</label></li>';
+        if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_c + '"> C: ' + q.option_c + '</label></li>';
+        if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_d + '"> D: ' + q.option_d + '</label></li>';
+        inputHtml = '<ul class="options">' + optionsHtml + '</ul>';
+        
+        // Restore saved answer
+        if (answers[q.id]) {
+            var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
+            if (radio) radio.checked = true;
+        }
+        
+        // Add event listeners
+        document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
+            radio.addEventListener('change', function(e) {
+                var answer = e.target.value;
+                saveAnswer(answer);
+                saveAnswerToDatabase(q.id, answer);
+                saveProgressLocally();
+            });
+        });
+        
+    // ============================================================
+    // ✅ SHORT ANSWER / FILL IN THE BLANK
+    // ============================================================
+    } else if (questionType === 'short_answer' || questionType === 'fill_blank') {
+        var maxChars = q.max_chars || 100;
+        var currentAnswer = answers[q.id] || '';
+        
+        inputHtml = `
+            <div class="short-answer-container">
+                <textarea 
+                    id="text-answer-${q.id}"
+                    class="short-answer-input"
+                    rows="2"
+                    maxlength="${maxChars}"
+                    placeholder="Type your answer here..."
+                >${currentAnswer}</textarea>
+                <div class="char-counter">
+                    <span id="char-count-${q.id}">${currentAnswer.length}</span> / ${maxChars} characters
+                </div>
+            </div>
+        `;
+        
+        // Add event listener after DOM update
+        setTimeout(function() {
+            var textarea = document.getElementById('text-answer-' + q.id);
+            if (textarea) {
+                textarea.addEventListener('input', function(e) {
+                    var answer = e.target.value;
+                    var charCount = document.getElementById('char-count-' + q.id);
+                    if (charCount) charCount.textContent = answer.length;
+                    saveAnswer(answer);
+                    saveAnswerToDatabase(q.id, answer);
+                    saveProgressLocally();
+                });
+            }
+        }, 100);
+        
+    // ============================================================
+    // ✅ ESSAY QUESTIONS
+    // ============================================================
+    } else if (questionType === 'essay') {
+        var maxChars = q.max_chars || 1000;
+        var currentAnswer = answers[q.id] || '';
+        
+        inputHtml = `
+            <div class="essay-container">
+                <textarea 
+                    id="essay-answer-${q.id}"
+                    class="essay-input"
+                    rows="6"
+                    maxlength="${maxChars}"
+                    placeholder="Write your answer here..."
+                >${currentAnswer}</textarea>
+                <div class="essay-footer">
+                    <span id="word-count-${q.id}">Words: ${currentAnswer.split(/\s+/).filter(w => w.length > 0).length}</span>
+                    <span id="char-count-essay-${q.id}">${currentAnswer.length} / ${maxChars}</span>
+                </div>
+            </div>
+        `;
+        
+        // Add event listener after DOM update
+        setTimeout(function() {
+            var textarea = document.getElementById('essay-answer-' + q.id);
+            if (textarea) {
+                textarea.addEventListener('input', function(e) {
+                    var answer = e.target.value;
+                    var charCount = document.getElementById('char-count-essay-' + q.id);
+                    var wordCount = document.getElementById('word-count-' + q.id);
+                    if (charCount) charCount.textContent = answer.length + ' / ' + maxChars;
+                    if (wordCount) wordCount.textContent = 'Words: ' + answer.split(/\s+/).filter(w => w.length > 0).length;
+                    saveAnswer(answer);
+                    saveAnswerToDatabase(q.id, answer);
+                    saveProgressLocally();
+                });
+            }
+        }, 100);
+    }
 
-    // ✅ FIXED: Store the TEXT, not the letter
-    var optionsHtml = '';
-    if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_a + '"> A: ' + q.option_a + '</label></li>';
-    if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_b + '"> B: ' + q.option_b + '</label></li>';
-    if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_c + '"> C: ' + q.option_c + '</label></li>';
-    if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_d + '"> D: ' + q.option_d + '</label></li>';
+    // ============================================================
+    // ✅ RENDER THE QUESTION
+    // ============================================================
+    var typeBadge = '';
+    if (questionType !== 'mcq') {
+        typeBadge = '<div class="question-type-badge">' + questionType.replace('_', ' ').toUpperCase() + '</div>';
+    }
 
     examContainer.innerHTML =
         '<div class="question"><strong>Q' + (currentIndex + 1) + ':</strong> ' + q.question_text + '</div>' +
+        typeBadge +
         '<div class="question-timer">⏱️ Time: <span id="q-timer">0:00</span></div>' +
-        '<ul class="options">' + optionsHtml + '</ul>' +
+        inputHtml +
         (isFlagged ? '<div class="flagged-label">🚩 Flagged for review</div>' : '');
 
     var flagBtn = document.getElementById('flag-question-btn');
@@ -2101,27 +2207,14 @@
         }
     }
 
-    // ✅ FIXED: Check by TEXT, not letter
-    if (answers[q.id]) {
-        var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
-        if (radio) radio.checked = true;
-    }
-
-    document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
-        radio.addEventListener('change', function(e) {
-            var answer = e.target.value; // This is now the TEXT!
-            saveAnswer(answer);
-            saveAnswerToDatabase(q.id, answer);
-            saveProgressLocally();
-        });
-    });
-
     updateProgress();
     updateStatusTable();
     updateExamStats();
 
     questionStartTime = Date.now();
 
+    // Timer for question
+    if (questionTimerInterval) clearInterval(questionTimerInterval);
     questionTimerInterval = setInterval(function() {
         questionTimeElapsed++;
         var remaining = MAX_TIME_PER_QUESTION - questionTimeElapsed;
