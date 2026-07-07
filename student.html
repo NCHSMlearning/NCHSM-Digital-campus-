@@ -1304,14 +1304,59 @@
 </section>
 <!-- END ATTENDANCE -->
 
-           <!-- ==================== RESOURCES TAB ==================== -->
+         <!-- ==================== RESOURCES TAB ==================== -->
 <section id="resources" class="tab-content" hidden>
     <div class="resources-header">
         <h2><i class="fas fa-folder-open"></i> Learning Resources & Past Papers</h2>
         <p class="subtitle">Access high-quality learning materials and examination past papers - Read Only Mode</p>
     </div>
     
-    <!-- Resource Type Toggle (NEW) -->
+    <!-- ✅ NEW: Dynamic Program Badge -->
+    <div id="program-badge-container" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+        <span id="program-display-badge" style="
+            background: #4C1D95; 
+            color: white; 
+            padding: 6px 16px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        ">
+            <i class="fas fa-graduation-cap"></i>
+            <span id="program-name-display">Loading...</span>
+        </span>
+        <span id="block-term-display" style="
+            background: #e2e8f0; 
+            color: #1e293b; 
+            padding: 6px 16px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        ">
+            <i class="fas fa-layer-group"></i>
+            <span id="block-term-value">Loading...</span>
+        </span>
+        <span id="intake-display" style="
+            background: #f1f5f9; 
+            color: #475569; 
+            padding: 4px 12px; 
+            border-radius: 16px; 
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        ">
+            <i class="fas fa-calendar"></i>
+            <span id="intake-year-value">2026</span>
+        </span>
+    </div>
+    
+    <!-- Resource Type Toggle -->
     <div class="resource-type-tabs">
         <button class="type-tab active" data-type="all" onclick="filterStudentResourceType('all')">
             <i class="fas fa-layer-group"></i> All Resources
@@ -1325,32 +1370,27 @@
         </button>
     </div>
     
-    <!-- Block Filter Card -->
+    <!-- ✅ UPDATED: Dynamic Block/Term Filter -->
     <div class="block-filter-premium">
         <div class="filter-premium-header">
             <div class="filter-premium-title">
                 <div class="title-icon"><i class="fas fa-layer-group"></i></div>
                 <div class="title-text">
-                    <h3>Filter by Block</h3>
-                    <p>Select academic block to view materials</p>
+                    <h3 id="filter-title">Filter by Block</h3>
+                    <p id="filter-subtitle">Select academic block to view materials</p>
                 </div>
             </div>
             <div class="current-block-premium">
                 <i class="fas fa-user-graduate"></i>
-                <span>Your Block: <strong id="student-current-user-block">Loading...</strong></span>
+                <span id="current-block-label">Your Block: </span>
+                <strong id="student-current-user-block">Loading...</strong>
             </div>
         </div>
         <div class="filter-premium-controls">
             <div class="select-premium-wrapper">
+                <!-- ✅ DYNAMIC: Will be populated by JavaScript -->
                 <select id="student-block-resource-filter" class="select-premium">
-                    <option value="all">📚 All Blocks</option>
-                    <option value="introductory">🎓 Introductory Block</option>
-                    <option value="block1">📖 Block 1</option>
-                    <option value="block2">📗 Block 2</option>
-                    <option value="block3">📘 Block 3</option>
-                    <option value="block4">📙 Block 4</option>
-                    <option value="block5">📕 Block 5</option>
-                    <option value="final">🏆 Final Block</option>
+                    <option value="all">Loading...</option>
                 </select>
                 <i class="fas fa-chevron-down select-arrow"></i>
             </div>
@@ -1361,7 +1401,7 @@
         </div>
         <div class="filter-premium-info">
             <i class="fas fa-info-circle"></i>
-            <span>Select a block and click Refresh to load materials</span>
+            <span id="filter-info-text">Select a block and click Refresh to load materials</span>
         </div>
     </div>
     
@@ -1372,20 +1412,21 @@
             <input type="text" id="student-resource-search" placeholder="Search resources by title, course...">
         </div>
         <div class="filter-group-premium">
-            <select id="student-resource-type-filter" class="filter-select" onchange="filterStudentResources()">
+            <select id="student-resource-type-filter" class="filter-select">
                 <option value="all">All File Types</option>
                 <option value="pdf">📄 PDF Documents</option>
                 <option value="image">🖼️ Images</option>
                 <option value="video">🎥 Videos</option>
             </select>
-            <select id="student-course-filter" class="filter-select" onchange="filterStudentResources()">
+            <select id="student-course-filter" class="filter-select">
                 <option value="all">All Courses</option>
             </select>
-            <select id="student-year-filter" class="filter-select" onchange="filterStudentResources()">
+            <select id="student-year-filter" class="filter-select">
                 <option value="all">All Years</option>
                 <option value="2024">2024</option>
                 <option value="2025">2025</option>
                 <option value="2026">2026</option>
+                <option value="2027">2027</option>
             </select>
         </div>
     </div>
