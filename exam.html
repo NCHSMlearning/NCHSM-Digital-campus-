@@ -13,27 +13,22 @@
     <link rel="stylesheet" href="css/exam.css">
     
     <style>
-        /* ============================================================
-        AMAZING READY SCREEN STYLES
-        ============================================================ */
+        /* Ready screen styles inline for fallback */
         .ready-container {
             text-align: center;
             padding: 30px 20px;
             max-width: 650px;
             margin: 0 auto;
         }
-
         .ready-icon {
             font-size: 4rem;
             margin-bottom: 10px;
             animation: float 2s ease-in-out infinite;
         }
-
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-
         .ready-title {
             font-size: 2.2rem;
             font-weight: 800;
@@ -43,14 +38,12 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-
         .ready-subtitle {
             color: #64748B;
             font-size: 1rem;
             max-width: 450px;
             margin: 0 auto 25px;
         }
-
         .ready-check-list {
             background: #F8FAFC;
             border-radius: 16px;
@@ -61,7 +54,6 @@
             border: 2px solid #E2E8F0;
             min-width: 280px;
         }
-
         .ready-check-list .check-item {
             display: flex;
             align-items: center;
@@ -71,25 +63,17 @@
             color: #475569;
             font-weight: 500;
         }
-
         .ready-check-list .check-item .check-icon {
             font-size: 1.2rem;
             width: 28px;
             text-align: center;
         }
-
         .ready-check-list .check-item .check-icon.verified {
             color: #38A169;
         }
-
         .ready-check-list .check-item .check-icon.pending {
             color: #94A3B8;
         }
-
-        .ready-check-list .check-item .check-icon.warning {
-            color: #F59E0B;
-        }
-
         .ready-motivation {
             background: linear-gradient(135deg, #EBF5FF, #D1FAE5);
             border-radius: 16px;
@@ -97,31 +81,15 @@
             margin: 20px 0 25px;
             border-left: 5px solid #38A169;
         }
-
-        .ready-motivation .quote-icon {
-            font-size: 1.8rem;
-            color: #38A169;
-            opacity: 0.5;
-            margin-bottom: 4px;
-        }
-
         .ready-motivation .quote-text {
             font-size: 1.1rem;
             font-weight: 600;
             color: #0A3D62;
             line-height: 1.6;
         }
-
         .ready-motivation .quote-text span {
             color: #38A169;
         }
-
-        .ready-motivation .quote-sub {
-            font-size: 0.8rem;
-            color: #64748B;
-            margin-top: 6px;
-        }
-
         .ready-breath-container {
             display: flex;
             align-items: center;
@@ -130,7 +98,6 @@
             margin: 15px 0 25px;
             flex-wrap: wrap;
         }
-
         .breath-circle {
             width: 70px;
             height: 70px;
@@ -144,22 +111,15 @@
             animation: breathPulse 4s ease-in-out infinite;
             box-shadow: 0 8px 30px rgba(56, 161, 105, 0.3);
         }
-
         @keyframes breathPulse {
             0%, 100% { transform: scale(1); box-shadow: 0 8px 30px rgba(56, 161, 105, 0.3); }
             50% { transform: scale(1.15); box-shadow: 0 8px 50px rgba(56, 161, 105, 0.5); }
         }
-
         .breath-text {
             font-size: 0.85rem;
             color: #475569;
             font-weight: 500;
         }
-
-        .breath-text strong {
-            color: #0A3D62;
-        }
-
         .btn-start-exam {
             background: linear-gradient(135deg, #38A169, #2F855A);
             padding: 18px 50px;
@@ -177,75 +137,31 @@
             box-shadow: 0 8px 30px rgba(56, 161, 105, 0.3);
             width: 100%;
             max-width: 400px;
-            position: relative;
-            overflow: hidden;
         }
-
-        .btn-start-exam::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s;
-        }
-
-        .btn-start-exam:hover:not(:disabled)::before {
-            left: 100%;
-        }
-
         .btn-start-exam:hover:not(:disabled) {
             transform: translateY(-3px) scale(1.02);
             box-shadow: 0 12px 40px rgba(56, 161, 105, 0.4);
         }
-
         .btn-start-exam:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
         }
-
         .btn-start-exam .btn-icon {
             font-size: 1.3rem;
         }
-
         .start-exam-info {
             margin-top: 14px;
             font-size: 0.75rem;
             color: #94A3B8;
         }
-
         .start-exam-warning {
             margin-top: 6px;
             font-size: 0.7rem;
             color: #DC2626;
             font-weight: 500;
         }
-
-        .ready-progress-ring {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            margin: 10px 0;
-        }
-
-        .ready-progress-ring .ring-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #38A169;
-            animation: pulse-dot 1.5s infinite;
-        }
-
-        @keyframes pulse-dot {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.5); opacity: 0.5; }
-        }
-
         .ready-fun-fact {
             background: #F8FAFC;
             border-radius: 12px;
@@ -255,34 +171,29 @@
             color: #64748B;
             border: 1px dashed #CBD5E1;
         }
-
-        .ready-fun-fact i {
-            color: #F59E0B;
-            margin-right: 8px;
+        .ready-progress-ring {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin: 10px 0;
         }
-
-        /* Responsive */
+        .ready-progress-ring .ring-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #38A169;
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
         @media (max-width: 600px) {
-            .ready-title {
-                font-size: 1.6rem;
-            }
-            .ready-motivation .quote-text {
-                font-size: 0.95rem;
-            }
-            .btn-start-exam {
-                font-size: 1rem;
-                padding: 15px 30px;
-            }
-            .ready-check-list {
-                min-width: auto;
-                width: 100%;
-                padding: 16px;
-            }
-            .breath-circle {
-                width: 55px;
-                height: 55px;
-                font-size: 1.4rem;
-            }
+            .ready-title { font-size: 1.6rem; }
+            .ready-motivation .quote-text { font-size: 0.95rem; }
+            .btn-start-exam { font-size: 1rem; padding: 15px 30px; }
+            .ready-check-list { min-width: auto; width: 100%; padding: 16px; }
+            .breath-circle { width: 55px; height: 55px; font-size: 1.4rem; }
         }
     </style>
 </head>
@@ -388,7 +299,6 @@
                 <button class="btn-retry" id="retryCameraBtn" onclick="testCamera()" style="display:none;">
                     <i class="fas fa-redo"></i> Retry Camera
                 </button>
-                <!-- NO STOP CAMERA BUTTON IN LOBBY -->
             </div>
 
             <button class="btn-next" id="cameraNextBtn" disabled onclick="goToStep(3)">
@@ -396,21 +306,13 @@
             </button>
         </div>
 
-        <!-- STEP 3: READY - AMAZING MOTIVATIONAL SCREEN -->
+        <!-- STEP 3: READY -->
         <div class="step-content" id="stepContent3">
             <div class="ready-container">
-                
-                <!-- Animated Icon -->
                 <div class="ready-icon">🚀</div>
-                
-                <!-- Title -->
                 <h2 class="ready-title">You're Almost There!</h2>
-                <p class="ready-subtitle">
-                    Your camera is working and you've accepted the terms.<br>
-                    Take a moment to prepare yourself for success.
-                </p>
+                <p class="ready-subtitle">Your camera is working and you've accepted the terms.<br>Take a moment to prepare yourself for success.</p>
 
-                <!-- Checklist -->
                 <div class="ready-check-list">
                     <div class="check-item">
                         <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
@@ -426,17 +328,14 @@
                     </div>
                 </div>
 
-                <!-- Motivational Quote -->
                 <div class="ready-motivation">
-                    <div class="quote-icon">💪</div>
                     <div class="quote-text">
                         "Believe in yourself! You've prepared for this moment.<br>
                         <span>You are capable, focused, and ready to succeed.</span>"
                     </div>
-                    <div class="quote-sub">— NCHSM Examination Team</div>
+                    <div class="quote-sub" style="font-size:0.8rem;color:#64748B;margin-top:6px;">— NCHSM Examination Team</div>
                 </div>
 
-                <!-- Breath & Relax Section -->
                 <div class="ready-breath-container">
                     <div class="breath-circle">
                         <i class="fas fa-lungs"></i>
@@ -448,7 +347,6 @@
                     </div>
                 </div>
 
-                <!-- Ready Question -->
                 <div style="font-size:1.1rem; font-weight:600; color:#0A3D62; margin-bottom:8px;">
                     🌟 Are you ready, <span id="readyStudentName">Student</span>?
                 </div>
@@ -456,7 +354,6 @@
                     Once you click "Start Exam", your time begins.
                 </div>
 
-                <!-- Start Button -->
                 <button class="btn-start-exam" id="startExamBtn" onclick="startExam()" disabled>
                     <span class="btn-icon">🎯</span>
                     <span>I'm Ready! Start My Exam</span>
@@ -470,13 +367,11 @@
                     <i class="fas fa-exclamation-triangle"></i> Face must be visible at all times
                 </div>
 
-                <!-- Fun Fact -->
                 <div class="ready-fun-fact">
                     <i class="fas fa-lightbulb"></i>
                     <span id="funFact">💡 Did you know? Studies show that a positive mindset before an exam can improve performance by up to 15%!</span>
                 </div>
 
-                <!-- Progress Ring -->
                 <div class="ready-progress-ring">
                     <span class="ring-dot"></span>
                     <span style="font-size:0.75rem; color:#94A3B8;">Ready when you are...</span>
@@ -491,30 +386,22 @@
     <div class="exam-interface" id="examInterface">
         <div class="page-wrapper">
             
-            <!-- ======================================================
-            LEFT PANEL - Student, Timer, Camera
-            ====================================================== -->
+            <!-- LEFT PANEL -->
             <div class="left-panel">
-                
-                <!-- Student Info -->
                 <div class="student-info-card" id="studentInfoCard">
                     <h4>👤 Student</h4>
                     <p id="examStudentName">Loading...</p>
                     <div class="student-reg" id="examStudentReg">ID: Loading...</div>
                 </div>
 
-                <!-- Timer - LEFT PANEL -->
                 <div class="timer-display" id="timerDisplay">
                     <div class="timer-label">⏱️ Time Remaining</div>
                     <div class="timer-time" id="timer">00:00</div>
                 </div>
 
-                <!-- Camera Container -->
                 <div class="camera-container" id="cameraContainer">
                     <video id="face-video" autoplay muted playsinline></video>
                     <canvas id="face-canvas"></canvas>
-                    
-                    <!-- Camera Status Overlay -->
                     <div class="camera-status-overlay">
                         <div class="status-badge">
                             <span class="status-dot inactive" id="examStatusDot"></span>
@@ -524,31 +411,24 @@
                     </div>
                 </div>
 
-                <!-- Camera Controls - ONLY RETRY -->
                 <div class="camera-controls-panel">
                     <button class="btn-retry-camera" onclick="retryCameraDuringExam()">
                         <i class="fas fa-camera"></i> Retry Camera
                     </button>
                 </div>
 
-                <!-- Proctoring Status -->
                 <div class="proctoring-status">
                     <span class="status-label">🛡️ Proctoring:</span>
                     <span class="status-value active" id="proctoringStatusText">Active</span>
                 </div>
 
-                <!-- Network Status -->
                 <div class="network-status" id="networkIndicator">
                     <i class="fas fa-wifi"></i> Online
                 </div>
             </div>
 
-            <!-- ======================================================
-            MIDDLE PANEL - Questions
-            ====================================================== -->
+            <!-- MIDDLE PANEL -->
             <div class="middle-panel">
-                
-                <!-- Question Header -->
                 <div class="question-header">
                     <h2 id="exam-title">📝 Examination</h2>
                     <button class="flag-btn" id="flag-question-btn" onclick="toggleFlagQuestion()">
@@ -556,19 +436,16 @@
                     </button>
                 </div>
 
-                <!-- Progress -->
                 <div class="progress-container">
                     <div class="progress-text">Question <span id="current">0</span> of <span id="total">0</span></div>
                     <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
                 </div>
 
-                <!-- Question Area - Scrollable -->
                 <div class="question-area-scroll" id="question-area">
                     <div id="exam-container">Loading question...</div>
                     <div id="answer-saved">✅ Answer saved!</div>
                 </div>
 
-                <!-- Navigation Buttons -->
                 <div class="nav-buttons">
                     <div class="left-nav">
                         <button id="prev-btn" disabled>← Previous</button>
@@ -584,12 +461,10 @@
                     </div>
                 </div>
 
-                <!-- Auto-save Status -->
                 <div class="auto-save-status" id="auto-save-status">
                     <i class="fas fa-check-circle"></i> Auto-saved
                 </div>
 
-                <!-- Keyboard Shortcuts -->
                 <div class="keyboard-shortcuts">
                     <span><kbd>←</kbd> Previous</span>
                     <span><kbd>→</kbd> Next</span>
@@ -597,18 +472,11 @@
                 </div>
             </div>
 
-            <!-- ======================================================
-            RIGHT PANEL - Question Status
-            ====================================================== -->
+            <!-- RIGHT PANEL -->
             <div class="right-panel">
-                
-                <!-- Status Title -->
                 <div class="status-title">📊 Question Status</div>
-
-                <!-- Question Status Grid -->
                 <div class="question-status-grid" id="question-status-table"></div>
 
-                <!-- Stats Summary -->
                 <div class="stats-summary" id="exam-stats">
                     <div class="stat-item">
                         <span class="stat-label">Answered</span>
@@ -628,7 +496,6 @@
                     </div>
                 </div>
 
-                <!-- Review Toggle -->
                 <div class="review-toggle">
                     <input type="checkbox" id="review-mode-toggle" onchange="toggleReviewMode()">
                     <label for="review-mode-toggle">📋 Review All Answers</label>
@@ -641,7 +508,7 @@
     <!-- ============================================================
     OVERLAYS
     ============================================================ -->
-    <!-- Application Block Overlay -->
+    <!-- App Block Overlay -->
     <div id="app-block-overlay">
         <div class="block-icon">🚫</div>
         <h2>Application Blocked</h2>
@@ -657,7 +524,7 @@
         <button class="return-btn" onclick="returnToExam()">🔙 Return to Exam</button>
     </div>
 
-    <!-- Timer Warning Overlay -->
+    <!-- Timer Warning -->
     <div id="timer-warning-overlay">
         <div class="timer-icon">⏰</div>
         <h2>⚠️ Time is Almost Up!</h2>
@@ -676,7 +543,7 @@
         <p class="block-sub">Please return to fullscreen mode immediately.</p>
     </div>
 
-    <!-- FACE BLOCK OVERLAY - 30 SECOND RECOVERY -->
+    <!-- Face Block Overlay -->
     <div id="face-block-overlay">
         <div class="block-icon">⏸️</div>
         <h2>EXAM PAUSED</h2>
@@ -700,14 +567,12 @@
         </div>
     </div>
 
-    <!-- MULTIPLE FACES WARNING -->
+    <!-- Multiple Faces Warning -->
     <div id="multiple-faces-warning">
         <div class="warning-icon">🚨</div>
         <h3>Multiple Faces Detected!</h3>
         <p>Please ensure only you are in the camera frame.</p>
-        <p class="countdown-text">
-            ⏳ Auto-submit in <span id="multiple-faces-countdown">10</span> seconds...
-        </p>
+        <p class="countdown-text">⏳ Auto-submit in <span id="multiple-faces-countdown">10</span> seconds...</p>
         <div class="progress-bar-warning">
             <div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div>
         </div>
@@ -737,7 +602,7 @@
         </div>
     </div>
 
-    <!-- Submission Progress Overlay -->
+    <!-- Submission Progress -->
     <div id="submission-progress-overlay">
         <div class="progress-spinner"><i class="fas fa-spinner fa-spin"></i></div>
         <h2 class="progress-title">⏳ Submitting your exam...</h2>
@@ -815,12 +680,11 @@
         let flaggedQuestions = {};
         let isExamPaused = false;
         
-        // ENHANCED FACE DETECTION - 30 SECOND RECOVERY
+        // Face Detection
         let faceDetectionLostCount = 0;
         const MAX_FACE_LOST = 5;
         let faceDetectionRecoveryTimer = null;
         let lastMultipleFacesLogTime = 0;
-        let lastFaceLogTime = 0;
         let multipleFacesInterval = null;
         let multipleFacesTimeout = null;
         let faceDetectionInterval = null;
@@ -848,7 +712,7 @@
         let snapshotInterval = null;
 
         // ============================================================
-        // DOM REFS - LOBBY
+        // DOM REFS
         // ============================================================
         const lobbyContainer = document.getElementById('lobbyContainer');
         const examInterface = document.getElementById('examInterface');
@@ -867,9 +731,6 @@
         const faceVerifiedCheck = document.getElementById('faceVerifiedCheck');
         const readyStudentName = document.getElementById('readyStudentName');
 
-        // ============================================================
-        // DOM REFS - EXAM
-        // ============================================================
         const examTimer = document.getElementById('timer');
         const timerDisplay = document.getElementById('timerDisplay');
         const examContainer = document.getElementById('exam-container');
@@ -901,12 +762,9 @@
         const statsProgress = document.getElementById('statsProgress');
 
         // ============================================================
-        // SHUFFLE FUNCTIONS (SAFE - Won't break database)
+        // SHUFFLE FUNCTIONS
         // ============================================================
         
-        /**
-         * Fisher-Yates shuffle algorithm - only shuffles array in memory
-         */
         function shuffleArray(array) {
             const shuffled = [...array];
             for (let i = shuffled.length - 1; i > 0; i--) {
@@ -916,9 +774,6 @@
             return shuffled;
         }
 
-        /**
-         * Seeded shuffle - same student gets same order on page reload
-         */
         function shuffleArrayWithSeed(array, seed) {
             const shuffled = [...array];
             let s = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -931,16 +786,12 @@
         }
 
         function shuffleQuestionOptions(question) {
-            // ✅ Just return the question as-is - NO OPTION SHUFFLING!
             const shuffledQ = { ...question };
             shuffledQ.question_type = question.question_type || 'mcq';
             shuffledQ.max_chars = question.max_chars || 500;
             return shuffledQ;
         }
 
-        /**
-         * Restore shuffled order from localStorage
-         */
         function restoreShuffledOrder() {
             try {
                 const saved = localStorage.getItem('exam_' + EXAM_ID + '_shuffled_' + studentId);
@@ -994,9 +845,7 @@
                             `🌟 ${profile.full_name}, you've got this! Remember, preparation is the key to success.`,
                             `📚 ${profile.full_name}, every great journey begins with a single step. You've already taken yours!`,
                             `💪 ${profile.full_name}, believe in yourself! You are capable of amazing things.`,
-                            `🎯 ${profile.full_name}, focus on the goal, and the path will become clear. You are ready!`,
-                            `✨ ${profile.full_name}, success is not final, failure is not fatal: it's the courage to continue that counts.`,
-                            `🔥 ${profile.full_name}, you've prepared for this moment. Now go and show what you know!`
+                            `🎯 ${profile.full_name}, focus on the goal, and the path will become clear. You are ready!`
                         ];
                         funFact.textContent = facts[Math.floor(Math.random() * facts.length)];
                     }
@@ -1063,13 +912,11 @@
         function updateStartButton() {
             startExamBtn.disabled = !(termsAgreed && cameraWorking && faceVerified);
             if (startExamBtn.disabled) {
-                startExamBtn.title = 'Please complete all steps (Terms, Camera, Face Verification)';
                 startExamBtn.innerHTML = `
                     <span class="btn-icon">⏳</span>
                     <span>Waiting for verification...</span>
                 `;
             } else {
-                startExamBtn.title = '';
                 startExamBtn.innerHTML = `
                     <span class="btn-icon">🎯</span>
                     <span>I'm Ready! Start My Exam</span>
@@ -1079,7 +926,7 @@
         }
 
         // ============================================================
-        // CAMERA & FACE VERIFICATION (LOBBY)
+        // CAMERA & FACE VERIFICATION
         // ============================================================
 
         async function testCamera() {
@@ -1124,9 +971,8 @@
                     cameraNextBtn.disabled = false;
                     updateStartButton();
                     
-                    const faceCheck = document.getElementById('faceVerifiedCheck');
-                    if (faceCheck) {
-                        faceCheck.innerHTML = `
+                    if (faceVerifiedCheck) {
+                        faceVerifiedCheck.innerHTML = `
                             <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
                             <span>✅ Face verified! Looking good 😊</span>
                         `;
@@ -1217,7 +1063,7 @@
         }
 
         // ============================================================
-        // RETRY CAMERA DURING EXAM - NO STOP BUTTON
+        // RETRY CAMERA DURING EXAM
         // ============================================================
 
         async function retryCameraDuringExam() {
@@ -1280,7 +1126,7 @@
         }
 
         // ============================================================
-        // ENHANCED FACE DETECTION - 30 SECOND RECOVERY
+        // FACE DETECTION
         // ============================================================
 
         function updateFaceHistory(faceCount, confidence) {
@@ -1348,7 +1194,7 @@
         }
 
         // ============================================================
-        // START EXAM - CAMERA REQUIRED
+        // START EXAM
         // ============================================================
 
         async function startExam() {
@@ -1429,7 +1275,7 @@
             try {
                 var response = await fetch(base64Image);
                 var blob = await response.blob();
-               var fileName = studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
+                var fileName = studentId + '/' + EXAM_ID + '/' + Date.now() + '.jpg';
 
                 var uploadResult = await sb.storage
                     .from('proctoring')
@@ -1595,7 +1441,7 @@
         }
 
         // ============================================================
-        // EXAM CAMERA - CANNOT BE STOPPED
+        // EXAM CAMERA
         // ============================================================
 
         async function startExamCamera() {
@@ -1637,7 +1483,7 @@
         }
 
         // ============================================================
-        // ENHANCED FACE DETECTION - 30 SECOND RECOVERY
+        // FACE DETECTION
         // ============================================================
 
         async function startExamFaceDetection() {
@@ -1750,7 +1596,7 @@
                                 resumeExam();
                             }
                             
-                            const faceLostItems = document.querySelectorAll('.q-status-item.face-lost');
+                            const faceLostItems = document.querySelectorAll('.status-item.face-lost');
                             if (faceLostItems && faceLostItems.length > 0) {
                                 faceLostItems.forEach(function(el) {
                                     if (el && el.classList) {
@@ -1881,7 +1727,7 @@
         }
 
         // ============================================================
-        // FACE DETECTION LOST HANDLER - 30 SECOND RECOVERY
+        // FACE DETECTION LOST HANDLER
         // ============================================================
 
         function handleFaceDetectionLost(reason) {
@@ -1902,7 +1748,7 @@
                 captureSnapshot();
             }
 
-            var currentStatus = document.querySelector('.q-status-item.current');
+            var currentStatus = document.querySelector('.status-item.current');
             if (currentStatus && !currentStatus.classList.contains('face-lost')) {
                 currentStatus.classList.add('face-lost');
             }
@@ -1914,7 +1760,7 @@
         }
 
         // ============================================================
-        // PAUSE / RESUME EXAM - 30 SECOND RECOVERY
+        // PAUSE / RESUME EXAM
         // ============================================================
 
         function pauseExam(reason) {
@@ -1988,7 +1834,7 @@
             faceDetectionLostCount = 0;
             faceRecoveryCountdown.className = 'block-timer';
 
-            const faceLostItems = document.querySelectorAll('.q-status-item.face-lost');
+            const faceLostItems = document.querySelectorAll('.status-item.face-lost');
             if (faceLostItems && faceLostItems.length > 0) {
                 faceLostItems.forEach(function(el) {
                     if (el && el.classList) {
@@ -2009,95 +1855,96 @@
         }
 
         // ============================================================
-        // ⭐ FIXED: renderQuestion() - Properly restores answers
+        // ⭐ renderQuestion() - ORIGINAL WORKING VERSION
         // ============================================================
-function renderQuestion(index) {
-    if (questions.length === 0) return;
 
-    if (currentIndex !== index && questions[currentIndex]) {
-        updateQuestionTimer();
-    }
+        function renderQuestion(index) {
+            if (questions.length === 0) return;
 
-    currentIndex = index;
-    var q = questions[currentIndex];
-
-    if (questionTimerInterval) clearInterval(questionTimerInterval);
-    questionTimeElapsed = 0;
-
-    var isFlagged = flaggedQuestions[q.id] || false;
-
-    var optionsHtml = '';
-    if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="A"> A: ' + q.option_a + '</label></li>';
-    if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="B"> B: ' + q.option_b + '</label></li>';
-    if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="C"> C: ' + q.option_c + '</label></li>';
-    if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="D"> D: ' + q.option_d + '</label></li>';
-
-    examContainer.innerHTML =
-        '<div class="question"><strong>Q' + (currentIndex + 1) + ':</strong> ' + q.question_text + '</div>' +
-        '<div class="question-timer">⏱️ Time on this question: <span id="q-timer">0:00</span></div>' +
-        '<ul class="options">' + optionsHtml + '</ul>' +
-        (isFlagged ? '<div style="color:#F59E0B;font-size:0.8rem;margin-top:8px;">🚩 Flagged for review</div>' : '');
-
-    var flagBtn = document.getElementById('flag-question-btn');
-    if (flagBtn) {
-        if (isFlagged) {
-            flagBtn.innerHTML = '<i class="fas fa-flag"></i> Flagged';
-            flagBtn.className = 'flagged';
-        } else {
-            flagBtn.innerHTML = '<i class="far fa-flag"></i> Flag for Review';
-            flagBtn.className = '';
-        }
-    }
-
-    // ✅ Restore saved answer - THIS WORKS!
-    if (answers[q.id]) {
-        var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
-        if (radio) radio.checked = true;
-    }
-
-    document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
-        radio.addEventListener('change', function(e) {
-            var answer = e.target.value;
-            saveAnswer(answer);
-            saveAnswerToDatabase(q.id, answer);
-            saveProgressLocally();
-        });
-    });
-
-    updateProgress();
-    updateStatusTable();
-    updateExamStats();
-
-    // Reset question timer
-    questionStartTime = Date.now();
-
-    questionTimerInterval = setInterval(function() {
-        questionTimeElapsed++;
-        var remaining = MAX_TIME_PER_QUESTION - questionTimeElapsed;
-        var mins = Math.floor(remaining / 60);
-        var secs = remaining % 60;
-        var timerEl = document.getElementById('q-timer');
-        if (timerEl) {
-            timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-            if (remaining <= 30) {
-                timerEl.style.color = '#DC2626';
-                timerEl.style.fontWeight = 'bold';
-            } else if (remaining <= 60) {
-                timerEl.style.color = '#F59E0B';
-            } else {
-                timerEl.style.color = '#64748B';
+            if (currentIndex !== index && questions[currentIndex]) {
+                updateQuestionTimer();
             }
+
+            currentIndex = index;
+            var q = questions[currentIndex];
+
+            if (questionTimerInterval) clearInterval(questionTimerInterval);
+            questionTimeElapsed = 0;
+
+            var isFlagged = flaggedQuestions[q.id] || false;
+
+            var optionsHtml = '';
+            if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="A"> A: ' + q.option_a + '</label></li>';
+            if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="B"> B: ' + q.option_b + '</label></li>';
+            if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="C"> C: ' + q.option_c + '</label></li>';
+            if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="D"> D: ' + q.option_d + '</label></li>';
+
+            examContainer.innerHTML =
+                '<div class="question"><strong>Q' + (currentIndex + 1) + ':</strong> ' + q.question_text + '</div>' +
+                '<div class="question-timer">⏱️ Time on this question: <span id="q-timer">0:00</span></div>' +
+                '<ul class="options">' + optionsHtml + '</ul>' +
+                (isFlagged ? '<div style="color:#F59E0B;font-size:0.8rem;margin-top:8px;">🚩 Flagged for review</div>' : '');
+
+            var flagBtn = document.getElementById('flag-question-btn');
+            if (flagBtn) {
+                if (isFlagged) {
+                    flagBtn.innerHTML = '<i class="fas fa-flag"></i> Flagged';
+                    flagBtn.className = 'flagged';
+                } else {
+                    flagBtn.innerHTML = '<i class="far fa-flag"></i> Flag for Review';
+                    flagBtn.className = '';
+                }
+            }
+
+            // ✅ RESTORE SAVED ANSWER - THIS WORKS!
+            if (answers[q.id]) {
+                var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
+                if (radio) radio.checked = true;
+            }
+
+            document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
+                radio.addEventListener('change', function(e) {
+                    var answer = e.target.value;
+                    saveAnswer(answer);
+                    saveAnswerToDatabase(q.id, answer);
+                    saveProgressLocally();
+                });
+            });
+
+            updateProgress();
+            updateStatusTable();
+            updateExamStats();
+
+            questionStartTime = Date.now();
+
+            questionTimerInterval = setInterval(function() {
+                questionTimeElapsed++;
+                var remaining = MAX_TIME_PER_QUESTION - questionTimeElapsed;
+                var mins = Math.floor(remaining / 60);
+                var secs = remaining % 60;
+                var timerEl = document.getElementById('q-timer');
+                if (timerEl) {
+                    timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+                    if (remaining <= 30) {
+                        timerEl.style.color = '#DC2626';
+                        timerEl.style.fontWeight = 'bold';
+                    } else if (remaining <= 60) {
+                        timerEl.style.color = '#F59E0B';
+                    } else {
+                        timerEl.style.color = '#64748B';
+                    }
+                }
+
+                if (questionTimeElapsed >= MAX_TIME_PER_QUESTION) {
+                    clearInterval(questionTimerInterval);
+                    showToast('⏰ Time for this question has expired. Moving to next question.', 'warning');
+                    if (currentIndex < questions.length - 1 && !isExamPaused) {
+                        nextQuestion();
+                    }
+                }
+            }, 1000);
         }
 
-        if (questionTimeElapsed >= MAX_TIME_PER_QUESTION) {
-            clearInterval(questionTimerInterval);
-            showToast('⏰ Time for this question has expired. Moving to next question.', 'warning');
-            if (currentIndex < questions.length - 1 && !isExamPaused) {
-                nextQuestion();
-            }
-        }
-    }, 1000);
-}
         // ============================================================
         // ANSWER SAVING
         // ============================================================
@@ -2152,13 +1999,6 @@ function renderQuestion(index) {
         }
 
         async function saveAnswerToDatabase(questionId, answer) {
-            console.log('📤 SAVING TO DB:', {
-                questionId: questionId,
-                answer: answer,
-                answerType: typeof answer,
-                answerLength: answer ? answer.length : 0
-            });
-
             updateAutoSaveStatus('saving');
 
             try {
@@ -2171,16 +2011,7 @@ function renderQuestion(index) {
                     graded_at: new Date().toISOString()
                 }, { onConflict: 'student_id, exam_id, question_id' });
 
-                console.log('📥 DB Response:', {
-                    data: result.data,
-                    error: result.error,
-                    status: result.status
-                });
-
-                if (result.error) {
-                    console.error('❌ Upsert error:', result.error);
-                    throw result.error;
-                }
+                if (result.error) throw result.error;
 
                 updateAutoSaveStatus('saved', 'Answer saved');
                 console.log('✅ Answer saved: Q' + questionId);
@@ -2220,56 +2051,60 @@ function renderQuestion(index) {
             localStorage.setItem('exam_' + EXAM_ID + '_draft_' + studentId, JSON.stringify(saved));
         }
 
-      async function loadSavedAnswers() {
-    try {
-        var result = await sb.from('exam_grades')
-            .select('question_id, selected_answer')
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(EXAM_ID))
-            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+        // ============================================================
+        // ⭐ loadSavedAnswers() - ORIGINAL WORKING VERSION
+        // ============================================================
 
-        if (result.data && result.data.length > 0) {
-            var loaded = 0;
-            result.data.forEach(function(row) {
-                if (row.selected_answer) {
-                    answers[row.question_id] = row.selected_answer;
-                    loaded++;
+        async function loadSavedAnswers() {
+            try {
+                var result = await sb.from('exam_grades')
+                    .select('question_id, selected_answer')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(EXAM_ID))
+                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
+
+                if (result.data && result.data.length > 0) {
+                    var loaded = 0;
+                    result.data.forEach(function(row) {
+                        if (row.selected_answer) {
+                            answers[row.question_id] = row.selected_answer;
+                            loaded++;
+                        }
+                    });
+                    if (loaded > 0) {
+                        hasAnsweredAtLeastOne = true;
+                        submitBtn.disabled = false;
+                    }
+                    console.log('✅ Loaded ' + loaded + ' saved answers from database');
+                    return;
                 }
-            });
-            if (loaded > 0) {
-                hasAnsweredAtLeastOne = true;
-                submitBtn.disabled = false;
-            }
-            console.log('✅ Loaded ' + loaded + ' saved answers from database');
-            return;
-        }
 
-        var local = localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId);
-        if (local) {
-            var parsed = JSON.parse(local);
-            var restored = 0;
-            for (var qId in parsed) {
-                if (parsed.hasOwnProperty(qId) && parsed[qId].answer) {
-                    answers[qId] = parsed[qId].answer;
-                    restored++;
-                    await saveAnswerToDatabase(qId, parsed[qId].answer);
+                var local = localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId);
+                if (local) {
+                    var parsed = JSON.parse(local);
+                    var restored = 0;
+                    for (var qId in parsed) {
+                        if (parsed.hasOwnProperty(qId) && parsed[qId].answer) {
+                            answers[qId] = parsed[qId].answer;
+                            restored++;
+                            await saveAnswerToDatabase(qId, parsed[qId].answer);
+                        }
+                    }
+                    if (restored > 0) {
+                        hasAnsweredAtLeastOne = true;
+                        submitBtn.disabled = false;
+                        showToast('✅ Restored ' + restored + ' answers from local backup', 'success');
+                        localStorage.removeItem('exam_' + EXAM_ID + '_draft_' + studentId);
+                    }
                 }
-            }
-            if (restored > 0) {
-                hasAnsweredAtLeastOne = true;
-                submitBtn.disabled = false;
-                showToast('✅ Restored ' + restored + ' answers from local backup', 'success');
-                localStorage.removeItem('exam_' + EXAM_ID + '_draft_' + studentId);
+
+            } catch (e) {
+                console.warn('Could not load saved answers:', e);
             }
         }
-
-    } catch (e) {
-        console.warn('Could not load saved answers:', e);
-    }
-}
 
         // ============================================================
-        // AUTO-SAVE FUNCTIONS
+        // saveCurrentAnswer() - For navigation
         // ============================================================
 
         function saveCurrentAnswer() {
@@ -2322,7 +2157,7 @@ function renderQuestion(index) {
             var btn = document.getElementById('flag-question-btn');
             if (flaggedQuestions[q.id]) {
                 delete flaggedQuestions[q.id];
-                btn.innerHTML = '<i class="far fa-flag"></i> Flag';
+                btn.innerHTML = '<i class="far fa-flag"></i> Flag for Review';
                 btn.className = '';
                 showToast('Question unmarked', 'info');
             } else {
@@ -2349,7 +2184,7 @@ function renderQuestion(index) {
         }
 
         // ============================================================
-        // UPDATE EXAM STATS (RIGHT PANEL)
+        // UPDATE EXAM STATS
         // ============================================================
 
         function updateExamStats() {
@@ -2370,41 +2205,45 @@ function renderQuestion(index) {
         }
 
         // ============================================================
-        // NAVIGATION & UI
+        // ⭐ updateStatusTable() - ORIGINAL WORKING VERSION
         // ============================================================
 
-       function renderQuestionStatusTable() {
-    questionStatusTable.innerHTML = '';
-    questions.forEach(function(_, index) {
-        var item = document.createElement('div');
-        item.className = 'status-item';  // ⬅️ Use 'status-item' not 'q-status-item'!
-        item.id = 'q-status-' + index;
-        item.innerHTML = '' + (index + 1);
-        item.onclick = function() {
-            if (!isExamPaused) renderQuestion(index);
-            else showToast('⛔ Exam is paused. Face not detected.', 'warning');
-        };
-        questionStatusTable.appendChild(item);
-    });
-    updateStatusTable();
-}
-
-      function updateStatusTable() {
-    questions.forEach(function(q, index) {
-        var item = document.getElementById('q-status-' + index);
-        if (item) {
-            item.classList.remove('current', 'answered', 'flagged', 'face-lost');
-            if (index === currentIndex) item.classList.add('current');
-            if (answers[q.id]) item.classList.add('answered');
-            if (flaggedQuestions[q.id]) {
-                item.classList.add('flagged');
-                item.innerHTML = (index + 1) + ' <span style="font-size:0.6rem;">🚩</span>';
-            } else {
-                item.innerHTML = '' + (index + 1);
-            }
+        function updateStatusTable() {
+            questions.forEach(function(q, index) {
+                var item = document.getElementById('q-status-' + index);
+                if (item) {
+                    item.classList.remove('current', 'answered', 'flagged', 'face-lost');
+                    if (index === currentIndex) item.classList.add('current');
+                    if (answers[q.id]) item.classList.add('answered');
+                    if (flaggedQuestions[q.id]) {
+                        item.classList.add('flagged');
+                        item.innerHTML = (index + 1) + ' <span style="font-size:0.6rem;">🚩</span>';
+                    } else {
+                        item.innerHTML = '' + (index + 1);
+                    }
+                }
+            });
         }
-    });
-}
+
+        // ============================================================
+        // ⭐ renderQuestionStatusTable() - ORIGINAL WORKING VERSION
+        // ============================================================
+
+        function renderQuestionStatusTable() {
+            questionStatusTable.innerHTML = '';
+            questions.forEach(function(_, index) {
+                var item = document.createElement('div');
+                item.className = 'status-item';
+                item.id = 'q-status-' + index;
+                item.innerHTML = '' + (index + 1);
+                item.onclick = function() {
+                    if (!isExamPaused) renderQuestion(index);
+                    else showToast('⛔ Exam is paused. Face not detected.', 'warning');
+                };
+                questionStatusTable.appendChild(item);
+            });
+            updateStatusTable();
+        }
 
         function updateProgress() {
             currentSpan.textContent = currentIndex + 1;
@@ -2413,6 +2252,10 @@ function renderQuestion(index) {
             prevBtn.disabled = currentIndex === 0 || isExamPaused;
             nextBtn.disabled = currentIndex === questions.length - 1 || isExamPaused;
         }
+
+        // ============================================================
+        // ⭐ prevQuestion() & nextQuestion() - WITH SAVE
+        // ============================================================
 
         function prevQuestion() {
             // ✅ Save current answer before moving
@@ -2436,19 +2279,8 @@ function renderQuestion(index) {
             }
         }
 
-        function getCurrentAnswer() {
-            var q = questions[currentIndex];
-            if (!q) return null;
-            
-            var radio = document.querySelector('input[name="q' + q.id + '"]:checked');
-            if (radio) {
-                return radio.value;
-            }
-            return null;
-        }
-
         // ============================================================
-        // TIMER - LEFT PANEL
+        // TIMER
         // ============================================================
 
         function startTimer(seconds) {
@@ -2543,11 +2375,11 @@ function renderQuestion(index) {
                     var isFlagged = flaggedQuestions[q.id] || false;
                     var statusItem = document.getElementById('q-status-' + index);
                     var isFaceLost = statusItem ? statusItem.classList.contains('face-lost') : false;
-                    var faceLostStyle = isFaceLost ? 'border-left-color:#F59E0B !important;background:#FEF3C7 !important;' : '';
+                    var faceLostStyle = isFaceLost ? 'border-left-color:#DC2626 !important;background:#FEE2E2 !important;' : '';
                     var answeredColor = isAnswered ? '#38A169' : '#DC2626';
                     var answeredText = isAnswered ? '✅ ' + answer : '⚠️ Not answered';
                     var flaggedText = isFlagged ? ' 🚩' : '';
-                    var faceLostText = isFaceLost ? ' ⚠️' : '';
+                    var faceLostText = isFaceLost ? ' 🔴' : '';
                     html +=
                         '<div class="review-item ' + (isAnswered ? '' : 'unanswered') + (isFlagged ? ' flagged-item' : '') + '" onclick="renderQuestion(' + index + ')" style="' + faceLostStyle + '">' +
                         '<span>Q' + (index + 1) + ': ' + q.question_text.substring(0, 40) + (q.question_text.length > 40 ? '...' : '') + faceLostText + '</span>' +
@@ -2561,7 +2393,7 @@ function renderQuestion(index) {
         }
 
         // ============================================================
-        // SUBMISSION WITH LOADING STATE
+        // SUBMISSION
         // ============================================================
 
         function submitExam() {
@@ -2749,128 +2581,111 @@ function renderQuestion(index) {
             return saved;
         }
 
-       async function calculateAndSaveGrade() {
-    try {
-        var qResult = await sb.from('exam_questions')
-            .select('id, question_number, question_text, correct_answer, marks')
-            .eq('exam_id', parseInt(EXAM_ID));
+        // ============================================================
+        // ⭐ calculateAndSaveGrade() - FIXED: PENDING_REVIEW
+        // ============================================================
 
-        var questionsData = qResult.data;
-        if (!questionsData || questionsData.length === 0) {
-            throw new Error('No questions found');
-        }
+        async function calculateAndSaveGrade() {
+            try {
+                var qResult = await sb.from('exam_questions')
+                    .select('id, correct_answer, marks')
+                    .eq('exam_id', parseInt(EXAM_ID));
 
-        var totalEarned = 0;
-        var totalPossible = 0;
-        var answerRecords = [];
-        var correctCount = 0;
-        var wrongCount = 0;
+                var questionsData = qResult.data;
+                if (!questionsData || questionsData.length === 0) {
+                    throw new Error('No questions found');
+                }
 
-        for (var questionId in answers) {
-            if (!answers.hasOwnProperty(questionId)) continue;
-            
-            var studentAnswer = answers[questionId];
-            var question = questionsData.find(q => q.id === questionId);
-            
-            if (!question) {
-                console.warn('⚠️ Question not found:', questionId);
-                continue;
-            }
-            
-            var marks = question.marks || 1;
-            totalPossible += marks;
-            
-            var isCorrect = studentAnswer === question.correct_answer;
-            var earned = isCorrect ? marks : 0;
-            totalEarned += earned;
-            
-            if (isCorrect) correctCount++;
-            else wrongCount++;
+                var totalEarned = 0;
+                var totalPossible = 0;
+                var answerRecords = [];
+                var correctCount = 0;
+                var wrongCount = 0;
 
-            answerRecords.push({
-                student_id: studentId,
-                exam_id: parseInt(EXAM_ID),
-                question_id: questionId,
-                selected_answer: studentAnswer || null,
-                marks: earned,
-                graded_at: new Date().toISOString()
-            });
-        }
+                for (var i = 0; i < questionsData.length; i++) {
+                    var q = questionsData[i];
+                    var marks = q.marks || 1;
+                    totalPossible += marks;
+                    var studentAnswer = answers[q.id];
+                    var isCorrect = studentAnswer === q.correct_answer;
+                    var earned = isCorrect ? marks : 0;
+                    totalEarned += earned;
 
-        questionsData.forEach(function(q) {
-            if (!answers[q.id]) {
-                answerRecords.push({
+                    if (isCorrect) correctCount++;
+                    else wrongCount++;
+
+                    answerRecords.push({
+                        student_id: studentId,
+                        exam_id: parseInt(EXAM_ID),
+                        question_id: q.id,
+                        selected_answer: studentAnswer || null,
+                        marks: earned,
+                        graded_at: new Date().toISOString()
+                    });
+                }
+
+                // Handle unanswered questions
+                questionsData.forEach(function(q) {
+                    if (!answers[q.id]) {
+                        answerRecords.push({
+                            student_id: studentId,
+                            exam_id: parseInt(EXAM_ID),
+                            question_id: q.id,
+                            selected_answer: null,
+                            marks: 0,
+                            graded_at: new Date().toISOString()
+                        });
+                    }
+                });
+
+                var percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
+
+                // ✅ FIXED: Always set to PENDING_REVIEW
+                var resultStatus = 'PENDING_REVIEW';
+
+                await sb.from('exam_grades')
+                    .delete()
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(EXAM_ID));
+
+                if (answerRecords.length > 0) {
+                    const BATCH_SIZE = 50;
+                    for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
+                        const batch = answerRecords.slice(i, i + BATCH_SIZE);
+                        await sb.from('exam_grades').insert(batch);
+                    }
+                }
+
+                // ✅ Insert summary record with PENDING_REVIEW
+                await sb.from('exam_grades').insert({
                     student_id: studentId,
                     exam_id: parseInt(EXAM_ID),
-                    question_id: q.id,
-                    selected_answer: null,
-                    marks: 0,
+                    question_id: '00000000-0000-0000-0000-000000000000',
+                    marks: totalEarned,
+                    total_score: totalEarned,
+                    percentage: percentage,
+                    result_status: resultStatus,
                     graded_at: new Date().toISOString()
                 });
-            }
-        });
 
-        var percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-        
-        // ✅ FIXED: Always set to PENDING_REVIEW - not PASSED/FAILED!
-        // The admin must manually release results
-        var resultStatus = 'PENDING_REVIEW';
+                console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
+                console.log('✅ Correct: ' + correctCount + ', Wrong: ' + wrongCount);
+                console.log('✅ Status: ' + resultStatus + ' (Waiting for admin release)');
+                
+                return { 
+                    totalEarned: totalEarned, 
+                    totalPossible: totalPossible, 
+                    percentage: percentage,
+                    correctCount: correctCount,
+                    wrongCount: wrongCount,
+                    resultStatus: resultStatus
+                };
 
-        // ✅ Store the calculated grade separately for admin review
-        var calculatedGrade = {
-            totalEarned: totalEarned,
-            totalPossible: totalPossible,
-            percentage: percentage,
-            correctCount: correctCount,
-            wrongCount: wrongCount
-        };
-
-        // ✅ Save calculated grade in a separate field for admin to review
-        // Store as JSON in a 'grade_data' column or use the existing structure
-
-        await sb.from('exam_grades')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('exam_id', parseInt(EXAM_ID));
-
-        if (answerRecords.length > 0) {
-            const BATCH_SIZE = 50;
-            for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
-                const batch = answerRecords.slice(i, i + BATCH_SIZE);
-                await sb.from('exam_grades').insert(batch);
+            } catch (error) {
+                console.error('❌ Error calculating grade:', error);
+                throw error;
             }
         }
-
-        // ✅ Insert summary record with PENDING_REVIEW status
-        await sb.from('exam_grades').insert({
-            student_id: studentId,
-            exam_id: parseInt(EXAM_ID),
-            question_id: '00000000-0000-0000-0000-000000000000',
-            marks: totalEarned,
-            total_score: totalEarned,
-            percentage: percentage,
-            result_status: resultStatus,  // ✅ PENDING_REVIEW, not PASSED/FAILED
-            graded_at: new Date().toISOString()
-        });
-
-        console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
-        console.log('✅ Correct: ' + correctCount + ', Wrong: ' + wrongCount);
-        console.log('✅ Status: ' + resultStatus + ' (Waiting for admin release)');
-        
-        return { 
-            totalEarned: totalEarned, 
-            totalPossible: totalPossible, 
-            percentage: percentage,
-            correctCount: correctCount,
-            wrongCount: wrongCount,
-            resultStatus: resultStatus
-        };
-
-    } catch (error) {
-        console.error('❌ Error calculating grade:', error);
-        throw error;
-    }
-}
 
         // ============================================================
         // COMPLETION SCREEN
@@ -2988,33 +2803,34 @@ function renderQuestion(index) {
             } catch (e) { /* silent fail */ }
         }
 
-       function checkSavedProgress() {
-    try {
-        var saved = localStorage.getItem('exam_' + EXAM_ID + '_progress_' + studentId);
-        if (saved) {
-            var data = JSON.parse(saved);
-            if (Date.now() - data.timestamp < 30 * 60 * 1000) {
-                if (data.answers && Object.keys(data.answers).length > 0) {
-                    answers = data.answers;
-                    currentIndex = data.currentIndex || 0;
-                    if (data.flaggedQuestions) {
-                        flaggedQuestions = data.flaggedQuestions;
+        function checkSavedProgress() {
+            try {
+                var saved = localStorage.getItem('exam_' + EXAM_ID + '_progress_' + studentId);
+                if (saved) {
+                    var data = JSON.parse(saved);
+                    if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+                        if (data.answers && Object.keys(data.answers).length > 0) {
+                            answers = data.answers;
+                            currentIndex = data.currentIndex || 0;
+                            if (data.flaggedQuestions) {
+                                flaggedQuestions = data.flaggedQuestions;
+                            }
+                            hasAnsweredAtLeastOne = Object.keys(answers).length > 0;
+                            if (hasAnsweredAtLeastOne) {
+                                submitBtn.disabled = false;
+                            }
+                            renderQuestion(currentIndex);
+                            updateStatusTable();
+                            updateExamStats();
+                            showToast('✅ Previous progress restored', 'success');
+                            return true;
+                        }
                     }
-                    hasAnsweredAtLeastOne = Object.keys(answers).length > 0;
-                    if (hasAnsweredAtLeastOne) {
-                        submitBtn.disabled = false;
-                    }
-                    renderQuestion(currentIndex);
-                    updateStatusTable();
-                    updateExamStats();
-                    showToast('✅ Previous progress restored', 'success');
-                    return true;
                 }
-            }
+            } catch (e) { /* silent fail */ }
+            return false;
         }
-    } catch (e) { /* silent fail */ }
-    return false;
-}
+
         function updateQuestionTimer() {
             var elapsed = (Date.now() - questionStartTime) / 1000;
             var currentQ = questions[currentIndex];
@@ -3246,10 +3062,7 @@ function renderQuestion(index) {
         function handleWindowBlur() {
             if (!isExamActive || isExamPaused) return;
             blurCount++;
-            const overlay = document.getElementById('app-block-overlay');
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
+            document.getElementById('app-block-overlay').style.display = 'flex';
             logProctoringEvent('window_blur', 'Window lost focus (' + blurCount + ')', 'warning');
             showToast('⚠️ Please stay on the exam window! (' + blurCount + '/' + MAX_BLUR_COUNT + ')', 'warning');
             captureSnapshot();
@@ -3263,10 +3076,7 @@ function renderQuestion(index) {
         function handleWindowFocus() {
             if (isExamActive) {
                 blurCount = 0;
-                const overlay = document.getElementById('app-block-overlay');
-                if (overlay) {
-                    overlay.style.display = 'none';
-                }
+                document.getElementById('app-block-overlay').style.display = 'none';
             }
         }
 
@@ -3312,26 +3122,18 @@ function renderQuestion(index) {
         }
 
         // ============================================================
-        // EXAM EVENT LISTENERS - FIXED
+        // EXAM EVENT LISTENERS
         // ============================================================
 
         function setupExamEventListeners() {
             if (prevBtn) {
                 prevBtn.addEventListener('click', prevQuestion);
-            } else {
-                console.warn('⚠️ prevBtn not found');
             }
-            
             if (nextBtn) {
                 nextBtn.addEventListener('click', nextQuestion);
-            } else {
-                console.warn('⚠️ nextBtn not found');
             }
-            
             if (submitBtn) {
                 submitBtn.addEventListener('click', submitExam);
-            } else {
-                console.warn('⚠️ submitBtn not found');
             }
 
             document.addEventListener('keydown', function(e) {
@@ -3362,8 +3164,6 @@ function renderQuestion(index) {
             const allowCameraBtn = document.getElementById('allow-camera-btn');
             if (allowCameraBtn) {
                 allowCameraBtn.addEventListener('click', startExamCamera);
-            } else {
-                console.log('ℹ️ allow-camera-btn not found - camera permission modal not needed');
             }
         }
 
