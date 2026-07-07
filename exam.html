@@ -2712,75 +2712,165 @@
             return saved;
         }
 
-        async function calculateAndSaveGrade() {
-            try {
-                var qResult = await sb.from('exam_questions')
-                    .select('id, correct_answer, marks')
-                    .eq('exam_id', parseInt(EXAM_ID));
+     async function calculateAndSaveGrade() {
+    try {
+        // Get all questions for this exam
+        var qResult = await sb.from('exam_questions')
+            .select('id, question_number, question_text, option_a, option_b, option_c, option_d, correct_answer, marks')
+            .eq('exam_id', parseInt(EXAM_ID));
 
-                var questionsData = qResult.data;
-                if (!questionsData || questionsData.length === 0) {
-                    throw new Error('No questions found');
+        var questionsData = qResult.data;
+        if (!questionsData || questionsData.length === 0) {
+            throw new Error('No questions found');
+        }
+
+        // Build a map of question IDs to their correct answer TEXT
+        // This is CRITICAL for shuffled options!
+        var questionAnswerMap = {};
+        questionsData.forEach(function(q) {
+            // Get the TEXT of the correct answer, not just the letter
+            var correctLetter = q.correct_answer;
+            var correctText = '';
+            
+            // Map the letter to the actual option text
+            switch(correctLetter) {
+                case 'A': correctText = q.option_a || ''; break;
+                case 'B': correctText = q.option_b || ''; break;
+                case 'C': correctText = q.option_c || ''; break;
+                case 'D': correctText = q.option_d || ''; break;
+                default: correctText = '';
+            }
+            
+            questionAnswerMap[q.id] = {
+                correctLetter: correctLetter,
+                correctText: correctText,
+                marks: q.marks || 1,
+                question_number: q.question_number
+            };
+        });
+
+        var totalEarned = 0;
+        var totalPossible = 0;
+        var answerRecords = [];
+        var processed = 0;
+        var correctCount = 0;
+        var wrongCount = 0;
+
+        // Process each question the student answered
+        for (var questionId in answers) {
+            if (!answers.hasOwnProperty(questionId)) continue;
+            
+            var studentAnswer = answers[questionId];
+            var questionInfo = questionAnswerMap[questionId];
+            
+            if (!questionInfo) {
+                console.warn('⚠️ Question not found in map:', questionId);
+                continue;
+            }
+            
+            var marks = questionInfo.marks;
+            totalPossible += marks;
+            
+            // Get the TEXT of the student's selected answer
+            var selectedText = '';
+            // Find the full question to get option text
+            var fullQuestion = questionsData.find(q => q.id === questionId);
+            if (fullQuestion) {
+                switch(studentAnswer) {
+                    case 'A': selectedText = fullQuestion.option_a || ''; break;
+                    case 'B': selectedText = fullQuestion.option_b || ''; break;
+                    case 'C': selectedText = fullQuestion.option_c || ''; break;
+                    case 'D': selectedText = fullQuestion.option_d || ''; break;
+                    default: selectedText = '';
                 }
+            }
+            
+            // ✅ Compare by TEXT, not by LETTER!
+            var isCorrect = selectedText === questionInfo.correctText;
+            var earned = isCorrect ? marks : 0;
+            totalEarned += earned;
+            
+            if (isCorrect) correctCount++;
+            else wrongCount++;
 
-                var totalEarned = 0;
-                var totalPossible = 0;
-                var answerRecords = [];
-                var processed = 0;
+            answerRecords.push({
+                student_id: studentId,
+                exam_id: parseInt(EXAM_ID),
+                question_id: questionId,
+                selected_answer: studentAnswer || null,
+                marks: earned,
+                graded_at: new Date().toISOString()
+            });
 
-                for (var i = 0; i < questionsData.length; i++) {
-                    var q = questionsData[i];
-                    var marks = q.marks || 1;
-                    totalPossible += marks;
-                    var studentAnswer = answers[q.id];
-                    var isCorrect = studentAnswer === q.correct_answer;
-                    var earned = isCorrect ? marks : 0;
-                    totalEarned += earned;
+            processed++;
+            updateSubmissionProgress('📊 Calculating results... (' + processed + '/' + questionsData.length + ')');
+        }
 
-                    answerRecords.push({
-                        student_id: studentId,
-                        exam_id: parseInt(EXAM_ID),
-                        question_id: q.id,
-                        selected_answer: studentAnswer || null,
-                        marks: earned,
-                        graded_at: new Date().toISOString()
-                    });
-
-                    processed++;
-                    updateSubmissionProgress('📊 Calculating results... (' + processed + '/' + questionsData.length + ')');
-                }
-
-                var percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-
-                await sb.from('exam_grades')
-                    .delete()
-                    .eq('student_id', studentId)
-                    .eq('exam_id', parseInt(EXAM_ID));
-
-                if (answerRecords.length > 0) {
-                    await sb.from('exam_grades').insert(answerRecords);
-                }
-
-                await sb.from('exam_grades').insert({
+        // Handle unanswered questions (mark as 0)
+        questionsData.forEach(function(q) {
+            if (!answers[q.id]) {
+                answerRecords.push({
                     student_id: studentId,
                     exam_id: parseInt(EXAM_ID),
-                    question_id: '00000000-0000-0000-0000-000000000000',
-                    marks: totalEarned,
-                    total_score: totalEarned,
-                    percentage: percentage,
-                    result_status: 'PENDING_REVIEW',
+                    question_id: q.id,
+                    selected_answer: null,
+                    marks: 0,
                     graded_at: new Date().toISOString()
                 });
+            }
+        });
 
-                console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
-                return { totalEarned: totalEarned, totalPossible: totalPossible, percentage: percentage };
+        var percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
+        
+        // Determine result status
+        var passMark = examData ? examData.pass_mark || 60 : 60;
+        var resultStatus = percentage >= passMark ? 'PASSED' : 'FAILED';
 
-            } catch (error) {
-                console.error('❌ Error calculating grade:', error);
-                throw error;
+        // Delete old grades for this student/exam
+        await sb.from('exam_grades')
+            .delete()
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(EXAM_ID));
+
+        // Insert individual question grades
+        if (answerRecords.length > 0) {
+            // Insert in batches to avoid rate limiting
+            const BATCH_SIZE = 50;
+            for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
+                const batch = answerRecords.slice(i, i + BATCH_SIZE);
+                await sb.from('exam_grades').insert(batch);
             }
         }
 
+        // Insert the summary record
+        await sb.from('exam_grades').insert({
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            marks: totalEarned,
+            total_score: totalEarned,
+            percentage: percentage,
+            result_status: resultStatus,
+            graded_at: new Date().toISOString()
+        });
+
+        console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
+        console.log('✅ Correct: ' + correctCount + ', Wrong: ' + wrongCount);
+        
+        return { 
+            totalEarned: totalEarned, 
+            totalPossible: totalPossible, 
+            percentage: percentage,
+            correctCount: correctCount,
+            wrongCount: wrongCount,
+            resultStatus: resultStatus
+        };
+
+    } catch (error) {
+        console.error('❌ Error calculating grade:', error);
+        throw error;
+    }
+}
         // ============================================================
         // COMPLETION SCREEN
         // ============================================================
