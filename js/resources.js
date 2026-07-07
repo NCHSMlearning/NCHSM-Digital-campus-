@@ -17,6 +17,17 @@ class ResourcesModule {
         this.programIndicator = null;
         this.filterLabel = null;
         
+        // New UI Elements for dynamic display
+        this.programNameDisplay = null;
+        this.blockTermValue = null;
+        this.blockTermDisplay = null;
+        this.filterTitle = null;
+        this.filterSubtitle = null;
+        this.filterInfoText = null;
+        this.currentBlockLabel = null;
+        this.intakeYearValue = null;
+        this.programDisplayBadge = null;
+        
         // State variables
         this.allResources = [];
         this.filteredResources = [];
@@ -37,7 +48,7 @@ class ResourcesModule {
         this.userProgram = 'krchn'; // 'krchn' or 'tvet'
         this.userProgramDisplay = 'KRCHN Nursing';
         this.userBlock = 'Introductory';
-        this.userTerm = 'Term 1';
+        this.userTerm = 1;
         this.userIntakeYear = 2025;
         this.userId = null;
         this.isTVETStudent = false;
@@ -73,6 +84,17 @@ class ResourcesModule {
             'final': ['Final', 'Final Term', 'Graduating']
         };
         
+        // Term number mapping (for integer term columns)
+        this.TERM_NUMBER_MAP = {
+            'term1': 1,
+            'term2': 2,
+            'term3': 3,
+            'term4': 4,
+            'term5': 5,
+            'term6': 6,
+            'final': 7
+        };
+        
         this.initializeElements();
     }
     
@@ -94,6 +116,18 @@ class ResourcesModule {
         this.resourceTypeTabs = document.querySelectorAll('.type-tab');
         this.programIndicator = document.getElementById('resource-program-indicator');
         this.filterLabel = document.getElementById('block-filter-label');
+        
+        // New UI Elements
+        this.programNameDisplay = document.getElementById('program-name-display');
+        this.blockTermValue = document.getElementById('block-term-value');
+        this.blockTermDisplay = document.getElementById('block-term-display');
+        this.filterTitle = document.getElementById('filter-title');
+        this.filterSubtitle = document.getElementById('filter-subtitle');
+        this.filterInfoText = document.getElementById('filter-info-text');
+        this.currentBlockLabel = document.getElementById('current-block-label');
+        this.intakeYearValue = document.getElementById('intake-year-value');
+        this.programDisplayBadge = document.getElementById('program-display-badge');
+        this.studentCurrentBlock = document.getElementById('student-current-user-block');
         
         // Setup event listeners
         this.setupEventListeners();
@@ -166,7 +200,7 @@ class ResourcesModule {
                 this.userProgram = e.detail.isTVET ? 'tvet' : 'krchn';
                 this.isTVETStudent = e.detail.isTVET || false;
                 this.userProgramDisplay = e.detail.displayName || 'KRCHN Nursing';
-                this.updateProgramIndicator();
+                this.updateUIForProgram();
                 this.updateBlockFilterOptions();
                 this.loadResources();
             }
@@ -204,7 +238,7 @@ class ResourcesModule {
                 this.userProgram = 'tvet';
                 this.isTVETStudent = true;
                 this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
-                this.userTerm = profile.term || profile.block || 'Term 1';
+                this.userTerm = profile.term || 1;
                 this.userBlock = null;
                 console.log(`✅ Detected TVET: ${programCode} - ${this.userProgramDisplay}, Term: ${this.userTerm}`);
             } else if (programCode === 'KRCHN' || programCode.includes('NURSING')) {
@@ -229,8 +263,11 @@ class ResourcesModule {
             
             console.log(`📋 User: ${this.userProgramDisplay}, ${this.isTVETStudent ? 'Term' : 'Block'}: ${this.isTVETStudent ? this.userTerm : this.userBlock}, Intake: ${this.userIntakeYear}`);
             
-            this.updateProgramIndicator();
+            // Update UI
+            this.updateUIForProgram();
             this.updateBlockFilterOptions();
+            this.updateBlockDisplay();
+            
             return this.userProgram;
         }
         
@@ -240,10 +277,11 @@ class ResourcesModule {
             this.userProgram = 'tvet';
             this.isTVETStudent = true;
             this.userProgramDisplay = 'TVET Program';
-            this.userTerm = 'Term 1';
+            this.userTerm = 1;
             this.userBlock = null;
-            this.updateProgramIndicator();
+            this.updateUIForProgram();
             this.updateBlockFilterOptions();
+            this.updateBlockDisplay();
             return 'tvet';
         }
         
@@ -252,10 +290,11 @@ class ResourcesModule {
             this.userProgram = 'tvet';
             this.isTVETStudent = true;
             this.userProgramDisplay = 'TVET (Stored)';
-            this.userTerm = 'Term 1';
+            this.userTerm = 1;
             this.userBlock = null;
-            this.updateProgramIndicator();
+            this.updateUIForProgram();
             this.updateBlockFilterOptions();
+            this.updateBlockDisplay();
             return 'tvet';
         }
         
@@ -265,52 +304,89 @@ class ResourcesModule {
         this.userProgramDisplay = 'KRCHN Nursing (Default)';
         this.userBlock = 'Introductory';
         this.userTerm = null;
-        this.updateProgramIndicator();
+        this.updateUIForProgram();
         this.updateBlockFilterOptions();
+        this.updateBlockDisplay();
         return 'krchn';
     }
     
-    updateProgramIndicator() {
-        if (!this.programIndicator) {
-            // Try to find or create the indicator
-            this.programIndicator = document.getElementById('resource-program-indicator');
-            if (!this.programIndicator) {
-                const container = document.querySelector('.resource-header') || document.querySelector('.resources-header');
-                if (container) {
-                    const indicator = document.createElement('div');
-                    indicator.id = 'resource-program-indicator';
-                    indicator.style.cssText = 'display: inline-block; margin-left: 12px;';
-                    container.appendChild(indicator);
-                    this.programIndicator = indicator;
-                }
+    // ==================== UPDATE UI FOR PROGRAM ====================
+    updateUIForProgram() {
+        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+        
+        console.log(`🔄 Updating UI for: ${isTVET ? 'TVET' : 'KRCHN'}`);
+        
+        // 1. Update program badge
+        if (this.programDisplayBadge) {
+            if (isTVET) {
+                this.programDisplayBadge.style.background = '#1a7a5a';
+                this.programDisplayBadge.innerHTML = `<i class="fas fa-tools"></i> <span id="program-name-display">${this.userProgramDisplay || 'TVET Program'}</span>`;
+            } else {
+                this.programDisplayBadge.style.background = '#4C1D95';
+                this.programDisplayBadge.innerHTML = `<i class="fas fa-graduation-cap"></i> <span id="program-name-display">${this.userProgramDisplay || 'KRCHN Nursing'}</span>`;
             }
         }
         
-        if (this.programIndicator) {
-            const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-            const badgeClass = isTVET ? 'badge-tvet' : 'badge-krchn';
-            const icon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
-            const color = isTVET ? '#1a7a5a' : '#4C1D95';
-            const blockOrTerm = isTVET ? `Term: ${this.userTerm}` : `Block: ${this.userBlock}`;
-            
-            this.programIndicator.innerHTML = `
-                <span class="${badgeClass}" style="
-                    background: ${color};
-                    color: white;
-                    padding: 4px 14px;
-                    border-radius: 20px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                ">
-                    <i class="fas ${icon}"></i>
-                    ${this.userProgramDisplay}
-                    <span style="opacity: 0.7; font-weight: 400; margin-left: 4px;">| ${blockOrTerm}</span>
-                </span>
-            `;
+        // 2. Update program name display
+        if (this.programNameDisplay) {
+            this.programNameDisplay.textContent = this.userProgramDisplay || (isTVET ? 'TVET Program' : 'KRCHN Nursing');
         }
+        
+        // 3. Update block/term display
+        if (this.blockTermDisplay && this.blockTermValue) {
+            if (isTVET) {
+                const termNumber = this.userTerm || 1;
+                this.blockTermDisplay.style.background = '#fef3c7';
+                this.blockTermDisplay.style.color = '#78350f';
+                this.blockTermDisplay.innerHTML = `<i class="fas fa-calendar-alt"></i> <span id="block-term-value">Term ${termNumber}</span>`;
+                this.blockTermValue.textContent = `Term ${termNumber}`;
+            } else {
+                const blockName = this.userBlock || 'Introductory';
+                this.blockTermDisplay.style.background = '#dbeafe';
+                this.blockTermDisplay.style.color = '#1e40af';
+                this.blockTermDisplay.innerHTML = `<i class="fas fa-layer-group"></i> <span id="block-term-value">${blockName}</span>`;
+                this.blockTermValue.textContent = blockName;
+            }
+        }
+        
+        // 4. Update filter title and labels
+        if (this.filterTitle) {
+            this.filterTitle.textContent = isTVET ? 'Filter by Term' : 'Filter by Block';
+        }
+        if (this.filterSubtitle) {
+            this.filterSubtitle.textContent = isTVET ? 'Select academic term to view materials' : 'Select academic block to view materials';
+        }
+        if (this.filterInfoText) {
+            this.filterInfoText.textContent = isTVET ? 'Select a term and click Refresh to load materials' : 'Select a block and click Refresh to load materials';
+        }
+        if (this.currentBlockLabel) {
+            this.currentBlockLabel.textContent = isTVET ? 'Your Term: ' : 'Your Block: ';
+        }
+        
+        // 5. Update intake year
+        if (this.intakeYearValue) {
+            this.intakeYearValue.textContent = this.userIntakeYear || 2026;
+        }
+        
+        console.log(`✅ UI updated for ${isTVET ? 'TVET' : 'KRCHN'}`);
+    }
+    
+    // ==================== UPDATE BLOCK DISPLAY ====================
+    updateBlockDisplay() {
+        const blockDisplay = this.studentCurrentBlock || document.getElementById('student-current-user-block');
+        if (!blockDisplay) return;
+        
+        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+        
+        if (isTVET) {
+            const termNumber = this.userTerm || 1;
+            blockDisplay.textContent = `Term ${termNumber}`;
+        } else {
+            const blockName = this.userBlock || 'Introductory';
+            blockDisplay.textContent = blockName;
+        }
+        
+        console.log('✅ Block display updated to:', blockDisplay.textContent);
     }
     
     // ==================== DYNAMIC BLOCK/TERM FILTER ====================
@@ -319,30 +395,25 @@ class ResourcesModule {
         
         const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
         
-        // Update filter label
-        if (this.filterLabel) {
-            this.filterLabel.textContent = isTVET ? 'Filter by Term:' : 'Filter by Block:';
-        }
-        
         // Clear existing options
         this.blockFilter.innerHTML = '';
         
         // Add "All" option
         const allOption = document.createElement('option');
         allOption.value = 'all';
-        allOption.textContent = isTVET ? 'All Terms' : 'All Blocks';
+        allOption.textContent = isTVET ? '📚 All Terms' : '📚 All Blocks';
         this.blockFilter.appendChild(allOption);
         
         if (isTVET) {
             // TVET Terms
             const terms = [
-                { value: 'term1', label: '📚 Term 1' },
-                { value: 'term2', label: '📚 Term 2' },
-                { value: 'term3', label: '📚 Term 3' },
-                { value: 'term4', label: '📚 Term 4' },
-                { value: 'term5', label: '📚 Term 5' },
-                { value: 'term6', label: '📚 Term 6' },
-                { value: 'final', label: '🎓 Final Term' }
+                { value: 'term1', label: '📘 Term 1' },
+                { value: 'term2', label: '📗 Term 2' },
+                { value: 'term3', label: '📕 Term 3' },
+                { value: 'term4', label: '📙 Term 4' },
+                { value: 'term5', label: '📒 Term 5' },
+                { value: 'term6', label: '📓 Term 6' },
+                { value: 'final', label: '🏆 Final Term' }
             ];
             
             terms.forEach(term => {
@@ -354,13 +425,10 @@ class ResourcesModule {
             
             // Auto-select user's term if available
             if (this.userTerm) {
-                const userTermLower = this.userTerm.toLowerCase();
-                for (const [key, keywords] of Object.entries(this.TERM_MAPPING)) {
-                    if (keywords.some(k => userTermLower.includes(k.toLowerCase()))) {
-                        this.blockFilter.value = key;
-                        this.currentBlockFilter = key;
-                        break;
-                    }
+                const termKey = this.getTermKeyFromNumber(this.userTerm);
+                if (termKey) {
+                    this.blockFilter.value = termKey;
+                    this.currentBlockFilter = termKey;
                 }
             }
             
@@ -371,11 +439,11 @@ class ResourcesModule {
             const blocks = [
                 { value: 'introductory', label: '🚀 Introductory' },
                 { value: 'block1', label: '📖 Block 1' },
-                { value: 'block2', label: '📖 Block 2' },
-                { value: 'block3', label: '📖 Block 3' },
-                { value: 'block4', label: '📖 Block 4' },
-                { value: 'block5', label: '📖 Block 5' },
-                { value: 'final', label: '🎓 Final Block' }
+                { value: 'block2', label: '📗 Block 2' },
+                { value: 'block3', label: '📘 Block 3' },
+                { value: 'block4', label: '📙 Block 4' },
+                { value: 'block5', label: '📕 Block 5' },
+                { value: 'final', label: '🏆 Final Block' }
             ];
             
             blocks.forEach(block => {
@@ -402,6 +470,24 @@ class ResourcesModule {
         
         // Store the current filter value
         this.currentBlockFilter = this.blockFilter.value || 'all';
+    }
+    
+    // ==================== HELPER FUNCTIONS ====================
+    getTermKeyFromNumber(termNumber) {
+        const map = {
+            1: 'term1',
+            2: 'term2',
+            3: 'term3',
+            4: 'term4',
+            5: 'term5',
+            6: 'term6',
+            7: 'final'
+        };
+        return map[termNumber] || null;
+    }
+    
+    getTermNumberFromKey(termKey) {
+        return this.TERM_NUMBER_MAP[termKey] || null;
     }
     
     // ==================== FILTER STATE MANAGEMENT ====================
@@ -475,7 +561,7 @@ class ResourcesModule {
                 const correctProfile = {
                     program: profile.program,
                     intake_year: profile.intake_year,
-                    block: profile.block || profile.term,
+                    block: profile.block,
                     full_name: profile.full_name,
                     role: profile.role,
                     student_id: profile.student_id,
@@ -732,25 +818,23 @@ class ResourcesModule {
             let query = supabase
                 .from('resources')
                 .select('*')
-                .eq('intake', intakeYear)
+                .eq('intake', String(intakeYear))
                 .order('created_at', { ascending: false });
             
             // If TVET, filter by TVET program types
             if (isTVET) {
-                // For TVET, check if program_type is in TVET list or matches the user's program
                 const tvetPrograms = this.TVET_PROGRAMS;
                 query = query.in('program_type', tvetPrograms);
                 
-                // Also try to match by term
+                // Filter by term number (integer)
                 if (this.userTerm) {
-                    const termPattern = this.userTerm.toLowerCase();
-                    query = query.or(`block.ilike.%${termPattern}%, block_term.ilike.%${termPattern}%, term.ilike.%${termPattern}%`);
+                    query = query.eq('term', this.userTerm);
                 }
             } else {
                 // For KRCHN, filter by KRCHN program type
                 query = query.eq('program_type', 'KRCHN');
                 
-                // Filter by block
+                // Filter by block (text)
                 if (this.userBlock && this.userBlock !== 'General') {
                     const blockPattern = this.userBlock.toLowerCase();
                     query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
@@ -804,8 +888,22 @@ class ResourcesModule {
         
         if (this.currentBlockFilter !== 'all') {
             const targetKeywords = mapping[this.currentBlockFilter] || [];
+            const termNumber = isTVET ? this.getTermNumberFromKey(this.currentBlockFilter) : null;
+            
             filtered = filtered.filter(resource => {
-                const resourceBlock = (resource.block || resource.block_term || resource.term || '').toString().toLowerCase();
+                // For TVET, check term number (integer) or term text
+                if (isTVET && termNumber !== null) {
+                    // Check if resource has term number matching
+                    if (resource.term === termNumber) {
+                        return true;
+                    }
+                    // Also check text fields for term keywords
+                    const resourceTerm = (resource.term_text || resource.term_name || resource.block_term || '').toString().toLowerCase();
+                    return targetKeywords.some(keyword => resourceTerm.includes(keyword.toLowerCase()));
+                }
+                
+                // For KRCHN, check block text
+                const resourceBlock = (resource.block || resource.block_term || '').toString().toLowerCase();
                 return targetKeywords.some(keyword => resourceBlock.includes(keyword.toLowerCase()));
             });
         }
@@ -817,7 +915,7 @@ class ResourcesModule {
                 const titleMatch = (r.title || '').toLowerCase().includes(searchTerm);
                 const courseMatch = (r.course_name || '').toLowerCase().includes(searchTerm);
                 const descMatch = (r.description || '').toLowerCase().includes(searchTerm);
-                const blockMatch = (r.block || r.term || '').toLowerCase().includes(searchTerm);
+                const blockMatch = (r.block || r.term || '').toString().toLowerCase().includes(searchTerm);
                 return titleMatch || courseMatch || descMatch || blockMatch;
             });
         }
@@ -1062,54 +1160,54 @@ class ResourcesModule {
     
     getBlockTagClass(blockOrTerm, isTVET = false) {
         if (!blockOrTerm) return 'tag-general';
-        const b = blockOrTerm.toLowerCase();
+        const b = String(blockOrTerm).toLowerCase();
         
         if (isTVET) {
             // TVET Terms
-            if (b.includes('term 1') || b.includes('trimester 1') || b.includes('semester 1')) return 'tag-block1';
-            if (b.includes('term 2') || b.includes('trimester 2') || b.includes('semester 2')) return 'tag-block2';
-            if (b.includes('term 3') || b.includes('trimester 3') || b.includes('semester 3')) return 'tag-block3';
-            if (b.includes('term 4') || b.includes('trimester 4') || b.includes('semester 4')) return 'tag-block4';
-            if (b.includes('term 5') || b.includes('trimester 5') || b.includes('semester 5')) return 'tag-block5';
-            if (b.includes('term 6') || b.includes('trimester 6') || b.includes('semester 6')) return 'tag-block5';
-            if (b.includes('final') || b.includes('graduating')) return 'tag-final';
+            if (b.includes('term 1') || b.includes('trimester 1') || b.includes('semester 1') || b === '1') return 'tag-block1';
+            if (b.includes('term 2') || b.includes('trimester 2') || b.includes('semester 2') || b === '2') return 'tag-block2';
+            if (b.includes('term 3') || b.includes('trimester 3') || b.includes('semester 3') || b === '3') return 'tag-block3';
+            if (b.includes('term 4') || b.includes('trimester 4') || b.includes('semester 4') || b === '4') return 'tag-block4';
+            if (b.includes('term 5') || b.includes('trimester 5') || b.includes('semester 5') || b === '5') return 'tag-block5';
+            if (b.includes('term 6') || b.includes('trimester 6') || b.includes('semester 6') || b === '6') return 'tag-block5';
+            if (b.includes('final') || b.includes('graduating') || b === '7') return 'tag-final';
             return 'tag-general';
         }
         
         // KRCHN Blocks
         if (b.includes('intro')) return 'tag-intro';
-        if (b.includes('block 1')) return 'tag-block1';
-        if (b.includes('block 2')) return 'tag-block2';
-        if (b.includes('block 3')) return 'tag-block3';
-        if (b.includes('block 4')) return 'tag-block4';
-        if (b.includes('block 5')) return 'tag-block5';
-        if (b.includes('final') || b.includes('graduating')) return 'tag-final';
+        if (b.includes('block 1') || b.includes('block1') || b === '1') return 'tag-block1';
+        if (b.includes('block 2') || b.includes('block2') || b === '2') return 'tag-block2';
+        if (b.includes('block 3') || b.includes('block3') || b === '3') return 'tag-block3';
+        if (b.includes('block 4') || b.includes('block4') || b === '4') return 'tag-block4';
+        if (b.includes('block 5') || b.includes('block5') || b === '5') return 'tag-block5';
+        if (b.includes('final') || b.includes('graduating') || b === '6') return 'tag-final';
         return 'tag-general';
     }
     
     getBlockIcon(blockOrTerm, isTVET = false) {
         if (!blockOrTerm) return 'fa-layer-group';
-        const b = blockOrTerm.toLowerCase();
+        const b = String(blockOrTerm).toLowerCase();
         
         if (isTVET) {
             // TVET Terms
-            if (b.includes('term 1') || b.includes('trimester 1')) return 'fa-flag-checkered';
-            if (b.includes('term 2') || b.includes('trimester 2')) return 'fa-book';
-            if (b.includes('term 3') || b.includes('trimester 3')) return 'fa-book-open';
-            if (b.includes('term 4') || b.includes('trimester 4')) return 'fa-chalkboard-user';
-            if (b.includes('term 5') || b.includes('trimester 5')) return 'fa-stethoscope';
-            if (b.includes('term 6') || b.includes('trimester 6')) return 'fa-user-nurse';
-            if (b.includes('final') || b.includes('graduating')) return 'fa-graduation-cap';
+            if (b.includes('term 1') || b.includes('trimester 1') || b === '1') return 'fa-flag-checkered';
+            if (b.includes('term 2') || b.includes('trimester 2') || b === '2') return 'fa-book';
+            if (b.includes('term 3') || b.includes('trimester 3') || b === '3') return 'fa-book-open';
+            if (b.includes('term 4') || b.includes('trimester 4') || b === '4') return 'fa-chalkboard-user';
+            if (b.includes('term 5') || b.includes('trimester 5') || b === '5') return 'fa-stethoscope';
+            if (b.includes('term 6') || b.includes('trimester 6') || b === '6') return 'fa-user-nurse';
+            if (b.includes('final') || b.includes('graduating') || b === '7') return 'fa-graduation-cap';
             return 'fa-layer-group';
         }
         
         // KRCHN Blocks
         if (b.includes('intro')) return 'fa-flag-checkered';
-        if (b.includes('block 1')) return 'fa-book';
-        if (b.includes('block 2')) return 'fa-book-open';
-        if (b.includes('block 3')) return 'fa-chalkboard-user';
-        if (b.includes('block 4')) return 'fa-stethoscope';
-        if (b.includes('block 5')) return 'fa-user-nurse';
+        if (b.includes('block 1') || b.includes('block1') || b === '1') return 'fa-book';
+        if (b.includes('block 2') || b.includes('block2') || b === '2') return 'fa-book-open';
+        if (b.includes('block 3') || b.includes('block3') || b === '3') return 'fa-chalkboard-user';
+        if (b.includes('block 4') || b.includes('block4') || b === '4') return 'fa-stethoscope';
+        if (b.includes('block 5') || b.includes('block5') || b === '5') return 'fa-user-nurse';
         if (b.includes('final')) return 'fa-graduation-cap';
         return 'fa-layer-group';
     }
