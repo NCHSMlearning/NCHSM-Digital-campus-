@@ -2062,91 +2062,93 @@
         // QUESTION RENDERING
         // ============================================================
 
-        function renderQuestion(index) {
-            if (questions.length === 0) return;
+      function renderQuestion(index) {
+    if (questions.length === 0) return;
 
-            if (currentIndex !== index && questions[currentIndex]) {
-                updateQuestionTimer();
-            }
+    if (currentIndex !== index && questions[currentIndex]) {
+        updateQuestionTimer();
+    }
 
-            currentIndex = index;
-            var q = questions[currentIndex];
+    currentIndex = index;
+    var q = questions[currentIndex];
 
-            if (questionTimerInterval) clearInterval(questionTimerInterval);
-            questionTimeElapsed = 0;
+    if (questionTimerInterval) clearInterval(questionTimerInterval);
+    questionTimeElapsed = 0;
 
-            var isFlagged = flaggedQuestions[q.id] || false;
+    var isFlagged = flaggedQuestions[q.id] || false;
 
-            var optionsHtml = '';
-            if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="A"> A: ' + q.option_a + '</label></li>';
-            if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="B"> B: ' + q.option_b + '</label></li>';
-            if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="C"> C: ' + q.option_c + '</label></li>';
-            if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="D"> D: ' + q.option_d + '</label></li>';
+    // ✅ FIXED: Store the TEXT, not the letter
+    var optionsHtml = '';
+    if (q.option_a) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_a + '"> A: ' + q.option_a + '</label></li>';
+    if (q.option_b) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_b + '"> B: ' + q.option_b + '</label></li>';
+    if (q.option_c) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_c + '"> C: ' + q.option_c + '</label></li>';
+    if (q.option_d) optionsHtml += '<li><label><input type="radio" name="q' + q.id + '" value="' + q.option_d + '"> D: ' + q.option_d + '</label></li>';
 
-            examContainer.innerHTML =
-                '<div class="question"><strong>Q' + (currentIndex + 1) + ':</strong> ' + q.question_text + '</div>' +
-                '<div class="question-timer">⏱️ Time: <span id="q-timer">0:00</span></div>' +
-                '<ul class="options">' + optionsHtml + '</ul>' +
-                (isFlagged ? '<div class="flagged-label">🚩 Flagged for review</div>' : '');
+    examContainer.innerHTML =
+        '<div class="question"><strong>Q' + (currentIndex + 1) + ':</strong> ' + q.question_text + '</div>' +
+        '<div class="question-timer">⏱️ Time: <span id="q-timer">0:00</span></div>' +
+        '<ul class="options">' + optionsHtml + '</ul>' +
+        (isFlagged ? '<div class="flagged-label">🚩 Flagged for review</div>' : '');
 
-            var flagBtn = document.getElementById('flag-question-btn');
-            if (flagBtn) {
-                if (isFlagged) {
-                    flagBtn.innerHTML = '<i class="fas fa-flag"></i> Flagged';
-                    flagBtn.className = 'flagged';
-                } else {
-                    flagBtn.innerHTML = '<i class="far fa-flag"></i> Flag';
-                    flagBtn.className = '';
-                }
-            }
-
-            if (answers[q.id]) {
-                var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
-                if (radio) radio.checked = true;
-            }
-
-            document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
-                radio.addEventListener('change', function(e) {
-                    var answer = e.target.value;
-                    saveAnswer(answer);
-                    saveAnswerToDatabase(q.id, answer);
-                    saveProgressLocally();
-                });
-            });
-
-            updateProgress();
-            updateStatusTable();
-            updateExamStats();
-
-            questionStartTime = Date.now();
-
-            questionTimerInterval = setInterval(function() {
-                questionTimeElapsed++;
-                var remaining = MAX_TIME_PER_QUESTION - questionTimeElapsed;
-                var mins = Math.floor(remaining / 60);
-                var secs = remaining % 60;
-                var timerEl = document.getElementById('q-timer');
-                if (timerEl) {
-                    timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-                    if (remaining <= 30) {
-                        timerEl.style.color = '#DC2626';
-                        timerEl.style.fontWeight = 'bold';
-                    } else if (remaining <= 60) {
-                        timerEl.style.color = '#F59E0B';
-                    } else {
-                        timerEl.style.color = '#64748B';
-                    }
-                }
-
-                if (questionTimeElapsed >= MAX_TIME_PER_QUESTION) {
-                    clearInterval(questionTimerInterval);
-                    showToast('⏰ Time for this question has expired. Moving to next question.', 'warning');
-                    if (currentIndex < questions.length - 1 && !isExamPaused) {
-                        nextQuestion();
-                    }
-                }
-            }, 1000);
+    var flagBtn = document.getElementById('flag-question-btn');
+    if (flagBtn) {
+        if (isFlagged) {
+            flagBtn.innerHTML = '<i class="fas fa-flag"></i> Flagged';
+            flagBtn.className = 'flagged';
+        } else {
+            flagBtn.innerHTML = '<i class="far fa-flag"></i> Flag';
+            flagBtn.className = '';
         }
+    }
+
+    // ✅ FIXED: Check by TEXT, not letter
+    if (answers[q.id]) {
+        var radio = document.querySelector('input[name="q' + q.id + '"][value="' + answers[q.id] + '"]');
+        if (radio) radio.checked = true;
+    }
+
+    document.querySelectorAll('input[name="q' + q.id + '"]').forEach(function(radio) {
+        radio.addEventListener('change', function(e) {
+            var answer = e.target.value; // This is now the TEXT!
+            saveAnswer(answer);
+            saveAnswerToDatabase(q.id, answer);
+            saveProgressLocally();
+        });
+    });
+
+    updateProgress();
+    updateStatusTable();
+    updateExamStats();
+
+    questionStartTime = Date.now();
+
+    questionTimerInterval = setInterval(function() {
+        questionTimeElapsed++;
+        var remaining = MAX_TIME_PER_QUESTION - questionTimeElapsed;
+        var mins = Math.floor(remaining / 60);
+        var secs = remaining % 60;
+        var timerEl = document.getElementById('q-timer');
+        if (timerEl) {
+            timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+            if (remaining <= 30) {
+                timerEl.style.color = '#DC2626';
+                timerEl.style.fontWeight = 'bold';
+            } else if (remaining <= 60) {
+                timerEl.style.color = '#F59E0B';
+            } else {
+                timerEl.style.color = '#64748B';
+            }
+        }
+
+        if (questionTimeElapsed >= MAX_TIME_PER_QUESTION) {
+            clearInterval(questionTimerInterval);
+            showToast('⏰ Time for this question has expired. Moving to next question.', 'warning');
+            if (currentIndex < questions.length - 1 && !isExamPaused) {
+                nextQuestion();
+            }
+        }
+    }, 1000);
+}
 
         // ============================================================
         // ANSWER SAVING
