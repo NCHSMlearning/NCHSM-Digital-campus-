@@ -1252,7 +1252,8 @@ label {
     flex-shrink: 0;
 }
 
-.q-status-item {
+/* ✅ FIXED: Changed .q-status-item to .status-item */
+.status-item {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1265,46 +1266,57 @@ label {
     color: #475569;
     border: 2px solid transparent;
     transition: all 0.2s;
+    position: relative;
 }
 
-.q-status-item:hover {
+.status-item:hover {
     background: #E2E8F0;
     transform: translateY(-1px);
 }
 
-.q-status-item.current {
+.status-item.current {
     border-color: #0A3D62;
     background: #E2E8F0;
     font-weight: 700;
+    box-shadow: 0 0 0 2px rgba(10, 61, 98, 0.15);
 }
 
-.q-status-item.answered {
+.status-item.answered {
     background: #D1FAE5;
     border-color: #38A169;
     color: #064E3B;
+    font-weight: 600;
 }
 
-.q-status-item.answered::after {
+.status-item.answered::after {
     content: '✓';
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     margin-left: 2px;
     color: #38A169;
 }
 
-.q-status-item.flagged {
+.status-item.flagged {
     border-color: #F59E0B !important;
     background: #FEF3C7 !important;
+    color: #92400E !important;
 }
 
-.q-status-item.face-lost {
+.status-item.flagged::after {
+    content: '🚩';
+    font-size: 0.5rem;
+    margin-left: 1px;
+}
+
+.status-item.face-lost {
     border-color: #DC2626 !important;
     background: #FEE2E2 !important;
+    color: #991B1B !important;
     animation: blink-red 1s infinite;
 }
 
 @keyframes blink-red {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50% { opacity: 0.6; }
 }
 
 /* Stats Summary - Right Panel */
