@@ -2297,44 +2297,45 @@
             saveProgressLocally();
         }
 
-        async function saveAnswerToDatabase(questionId, answer) {
-            updateAutoSaveStatus('saving');
+       async function saveAnswerToDatabase(questionId, answer) {
+    updateAutoSaveStatus('saving');
 
-            try {
-                var result = await sb.from('exam_grades').upsert({
-                    student_id: studentId,
-                    exam_id: parseInt(EXAM_ID),
-                    question_id: questionId,
-                    selected_answer: answer,
-                    marks: 0,
-                    graded_at: new Date().toISOString()
-                }, { onConflict: 'student_id, exam_id, question_id' });
+    try {
+        const data = {
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            question_id: questionId,
+            selected_answer: answer,
+            marks: 0,
+            graded_at: new Date().toISOString()
+        };
 
-                if (result.error) throw result.error;
+        // ✅ LOG THE EXACT DATA
+        console.log('📤 Sending data:', JSON.stringify(data, null, 2));
 
-                updateAutoSaveStatus('saved', 'Answer saved');
-                console.log('✅ Answer saved: Q' + questionId);
+        var result = await sb.from('exam_grades').upsert(data, { 
+            onConflict: 'student_id, exam_id, question_id' 
+        });
 
-                try {
-                    await sb.from('exam_answers').upsert({
-                        student_id: studentId,
-                        exam_id: parseInt(EXAM_ID),
-                        question_id: questionId,
-                        selected_answer: answer,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'student_id, exam_id, question_id' });
-                } catch (e) {}
+        // ✅ LOG THE FULL RESPONSE
+        console.log('📥 Response:', JSON.stringify(result, null, 2));
 
-                removeFromLocalStorage(questionId);
-
-            } catch (e) {
-                console.warn('⚠️ Save failed, saving locally:', e);
-                saveToLocalStorage(questionId, answer);
-                updateAutoSaveStatus('error', 'Offline mode');
-                showToast('📡 Answer saved locally - will sync when online', 'warning');
-            }
+        if (result.error) {
+            console.error('❌ Error details:', result.error);
+            throw result.error;
         }
 
+        updateAutoSaveStatus('saved', 'Answer saved');
+        console.log('✅ Answer saved: Q' + questionId);
+
+        // ... rest of function
+    } catch (e) {
+        console.error('❌ Save failed:', e);
+        saveToLocalStorage(questionId, answer);
+        updateAutoSaveStatus('error', 'Offline mode');
+        showToast('📡 Answer saved locally - will sync when online', 'warning');
+    }
+}
         function saveToLocalStorage(questionId, answer) {
             var saved = JSON.parse(localStorage.getItem('exam_' + EXAM_ID + '_draft_' + studentId) || '{}');
             saved[questionId] = {
