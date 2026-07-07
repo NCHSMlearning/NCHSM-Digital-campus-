@@ -13,7 +13,9 @@
     <link rel="stylesheet" href="css/exam.css">
     
     <style>
-        /* Ready screen styles inline for fallback */
+        /* ============================================================
+        READY SCREEN STYLES
+        ============================================================ */
         .ready-container {
             text-align: center;
             padding: 30px 20px;
@@ -68,12 +70,8 @@
             width: 28px;
             text-align: center;
         }
-        .ready-check-list .check-item .check-icon.verified {
-            color: #38A169;
-        }
-        .ready-check-list .check-item .check-icon.pending {
-            color: #94A3B8;
-        }
+        .ready-check-list .check-item .check-icon.verified { color: #38A169; }
+        .ready-check-list .check-item .check-icon.pending { color: #94A3B8; }
         .ready-motivation {
             background: linear-gradient(135deg, #EBF5FF, #D1FAE5);
             border-radius: 16px;
@@ -87,9 +85,7 @@
             color: #0A3D62;
             line-height: 1.6;
         }
-        .ready-motivation .quote-text span {
-            color: #38A169;
-        }
+        .ready-motivation .quote-text span { color: #38A169; }
         .ready-breath-container {
             display: flex;
             align-items: center;
@@ -120,6 +116,7 @@
             color: #475569;
             font-weight: 500;
         }
+        .breath-text strong { color: #0A3D62; }
         .btn-start-exam {
             background: linear-gradient(135deg, #38A169, #2F855A);
             padding: 18px 50px;
@@ -147,9 +144,6 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
-        }
-        .btn-start-exam .btn-icon {
-            font-size: 1.3rem;
         }
         .start-exam-info {
             margin-top: 14px;
@@ -188,6 +182,180 @@
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.5); opacity: 0.5; }
         }
+        
+        /* ============================================================
+        ANSWER PREVIEW TOOLTIP
+        ============================================================ */
+        .status-item {
+            position: relative;
+        }
+        .status-item[title] {
+            cursor: help;
+        }
+        .status-item.answered[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1E293B;
+            color: #FFFFFF;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+        .status-item.answered[title]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1E293B;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        @media (max-width: 768px) {
+            .status-item.answered[title]:active::after {
+                content: attr(title);
+                position: fixed;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1E293B;
+                color: #FFFFFF;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 0.8rem;
+                white-space: normal;
+                max-width: 80%;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                pointer-events: none;
+            }
+        }
+        
+        /* ============================================================
+        COLOR LEGEND
+        ============================================================ */
+        .status-legend {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 6px 0;
+            font-size: 0.55rem;
+            color: #64748B;
+            border-bottom: 1px solid #E2E8F0;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+        .status-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+        .status-legend .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 1.5px solid #E2E8F0;
+            flex-shrink: 0;
+        }
+        .status-legend .legend-dot.answered {
+            background: #D1FAE5;
+            border-color: #38A169;
+        }
+        .status-legend .legend-dot.current {
+            background: #E2E8F0;
+            border-color: #0A3D62;
+        }
+        .status-legend .legend-dot.flagged {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+        }
+        .status-legend .legend-dot.unanswered {
+            background: #F1F5F9;
+            border-color: #CBD5E1;
+        }
+        .status-legend .legend-dot.face-lost {
+            background: #FEE2E2;
+            border-color: #DC2626;
+            animation: blink-red 1s infinite;
+        }
+        
+        @keyframes blink-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* ============================================================
+        STATUS ITEM FIX - Using .status-item
+        ============================================================ */
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 30px;
+            background: #F1F5F9;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: #475569;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .status-item:hover {
+            background: #E2E8F0;
+            transform: translateY(-1px);
+        }
+        .status-item.current {
+            border-color: #0A3D62;
+            background: #E2E8F0;
+            font-weight: 700;
+            box-shadow: 0 0 0 2px rgba(10, 61, 98, 0.15);
+        }
+        .status-item.answered {
+            background: #D1FAE5;
+            border-color: #38A169;
+            color: #064E3B;
+            font-weight: 600;
+        }
+        .status-item.answered::after {
+            content: '✓';
+            font-size: 0.6rem;
+            margin-left: 2px;
+            color: #38A169;
+        }
+        .status-item.flagged {
+            border-color: #F59E0B !important;
+            background: #FEF3C7 !important;
+            color: #92400E !important;
+        }
+        .status-item.flagged::after {
+            content: '🚩';
+            font-size: 0.5rem;
+            margin-left: 1px;
+        }
+        .status-item.face-lost {
+            border-color: #DC2626 !important;
+            background: #FEE2E2 !important;
+            color: #991B1B !important;
+            animation: blink-red 1s infinite;
+        }
+        
+        /* ============================================================
+        RESPONSIVE
+        ============================================================ */
         @media (max-width: 600px) {
             .ready-title { font-size: 1.6rem; }
             .ready-motivation .quote-text { font-size: 0.95rem; }
@@ -311,7 +479,10 @@
             <div class="ready-container">
                 <div class="ready-icon">🚀</div>
                 <h2 class="ready-title">You're Almost There!</h2>
-                <p class="ready-subtitle">Your camera is working and you've accepted the terms.<br>Take a moment to prepare yourself for success.</p>
+                <p class="ready-subtitle">
+                    Your camera is working and you've accepted the terms.<br>
+                    Take a moment to prepare yourself for success.
+                </p>
 
                 <div class="ready-check-list">
                     <div class="check-item">
@@ -333,7 +504,7 @@
                         "Believe in yourself! You've prepared for this moment.<br>
                         <span>You are capable, focused, and ready to succeed.</span>"
                     </div>
-                    <div class="quote-sub" style="font-size:0.8rem;color:#64748B;margin-top:6px;">— NCHSM Examination Team</div>
+                    <div style="font-size:0.8rem;color:#64748B;margin-top:6px;">— NCHSM Examination Team</div>
                 </div>
 
                 <div class="ready-breath-container">
@@ -439,6 +610,7 @@
                 <div class="progress-container">
                     <div class="progress-text">Question <span id="current">0</span> of <span id="total">0</span></div>
                     <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    <div class="progress-percentage" id="progress-percentage">0% completed</div>
                 </div>
 
                 <div class="question-area-scroll" id="question-area">
@@ -469,14 +641,40 @@
                     <span><kbd>←</kbd> Previous</span>
                     <span><kbd>→</kbd> Next</span>
                     <span><kbd>Ctrl+S</kbd> Save</span>
+                    <span><kbd>F</kbd> Flag</span>
+                    <span><kbd>Enter</kbd> Submit</span>
+                </div>
+                <div class="keyboard-hint" style="font-size:0.6rem;color:#94A3B8;text-align:center;margin-top:2px;">
+                    💡 Swipe left/right on mobile to navigate
                 </div>
             </div>
 
             <!-- RIGHT PANEL -->
             <div class="right-panel">
                 <div class="status-title">📊 Question Status</div>
+                
+                <!-- ✅ COLOR LEGEND -->
+                <div class="status-legend">
+                    <span class="legend-item">
+                        <span class="legend-dot answered"></span> Answered
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot current"></span> Current
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot flagged"></span> Flagged
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot unanswered"></span> Unanswered
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot face-lost"></span> Face Lost
+                    </span>
+                </div>
+                
                 <div class="question-status-grid" id="question-status-table"></div>
 
+                <!-- ✅ STATS WITH COLORS -->
                 <div class="stats-summary" id="exam-stats">
                     <div class="stat-item">
                         <span class="stat-label">Answered</span>
@@ -493,6 +691,10 @@
                     <div class="stat-item">
                         <span class="stat-label">Progress</span>
                         <span class="stat-value" id="statsProgress">0%</span>
+                    </div>
+                    <div class="stat-item" style="border-top: 1px solid #E2E8F0; margin-top: 4px; padding-top: 4px;">
+                        <span class="stat-label">Unanswered</span>
+                        <span class="stat-value stat-unanswered" id="statsUnanswered" style="color: #DC2626;">0</span>
                     </div>
                 </div>
 
@@ -679,6 +881,7 @@
         let countdownInterval = null;
         let flaggedQuestions = {};
         let isExamPaused = false;
+        let inactivityTimer = null;
         
         // Face Detection
         let faceDetectionLostCount = 0;
@@ -760,11 +963,11 @@
         const statsFlagged = document.getElementById('statsFlagged');
         const statsFace = document.getElementById('statsFace');
         const statsProgress = document.getElementById('statsProgress');
+        const statsUnanswered = document.getElementById('statsUnanswered');
 
         // ============================================================
         // SHUFFLE FUNCTIONS
         // ============================================================
-        
         function shuffleArray(array) {
             const shuffled = [...array];
             for (let i = shuffled.length - 1; i > 0; i--) {
@@ -1407,6 +1610,7 @@
                     setupNetworkMonitoring();
                     setupNetworkQualityMonitor();
                     setupBeforeUnloadHandler();
+                    setupInactivityTimer();
 
                     saveProgressInterval = setInterval(saveProgressLocally, 10000);
                     heartbeatInterval = setInterval(sendHeartbeat, 15000);
@@ -1427,6 +1631,9 @@
 
                     showToast('📝 Exam started! Good luck!', 'success');
                     await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
+                    
+                    // ✅ Show swipe hint on mobile
+                    showSwipeHint();
 
                 } else {
                     examContainer.innerHTML =
@@ -2184,7 +2391,7 @@
         }
 
         // ============================================================
-        // UPDATE EXAM STATS
+        // ⭐ UPDATE EXAM STATS - WITH COLORS
         // ============================================================
 
         function updateExamStats() {
@@ -2192,20 +2399,66 @@
             var answered = Object.keys(answers).length;
             var flagged = Object.keys(flaggedQuestions).length;
             var progress = total > 0 ? Math.round((answered / total) * 100) : 0;
+            var unanswered = total - answered;
 
             if (statsAnswered) {
                 statsAnswered.textContent = answered + '/' + total;
+                if (answered === total) {
+                    statsAnswered.style.color = '#38A169';
+                    statsAnswered.style.fontWeight = '700';
+                } else if (answered > total * 0.5) {
+                    statsAnswered.style.color = '#F59E0B';
+                    statsAnswered.style.fontWeight = '600';
+                } else {
+                    statsAnswered.style.color = '#DC2626';
+                    statsAnswered.style.fontWeight = '600';
+                }
             }
+            
             if (statsFlagged) {
                 statsFlagged.textContent = flagged;
+                statsFlagged.style.color = flagged > 0 ? '#F59E0B' : '#94A3B8';
+                statsFlagged.style.fontWeight = flagged > 0 ? '700' : '400';
             }
+            
             if (statsProgress) {
                 statsProgress.textContent = progress + '%';
+                if (progress === 100) {
+                    statsProgress.style.color = '#38A169';
+                    statsProgress.style.fontWeight = '700';
+                } else if (progress >= 50) {
+                    statsProgress.style.color = '#F59E0B';
+                    statsProgress.style.fontWeight = '600';
+                } else {
+                    statsProgress.style.color = '#DC2626';
+                    statsProgress.style.fontWeight = '600';
+                }
+            }
+            
+            // ✅ Update unanswered count
+            if (statsUnanswered) {
+                statsUnanswered.textContent = unanswered;
+                statsUnanswered.style.color = unanswered > 0 ? '#DC2626' : '#38A169';
+                statsUnanswered.style.fontWeight = unanswered > 0 ? '700' : '500';
+            }
+            
+            // ✅ Update progress percentage
+            var percentEl = document.getElementById('progress-percentage');
+            if (percentEl) {
+                percentEl.textContent = progress + '% completed';
+                if (progress === 100) {
+                    percentEl.style.color = '#38A169';
+                    percentEl.style.fontWeight = '700';
+                } else if (progress >= 50) {
+                    percentEl.style.color = '#F59E0B';
+                } else {
+                    percentEl.style.color = '#64748B';
+                }
             }
         }
 
         // ============================================================
-        // ⭐ updateStatusTable() - ORIGINAL WORKING VERSION
+        // ⭐ updateStatusTable() - WITH ANSWER PREVIEW
         // ============================================================
 
         function updateStatusTable() {
@@ -2214,7 +2467,19 @@
                 if (item) {
                     item.classList.remove('current', 'answered', 'flagged', 'face-lost');
                     if (index === currentIndex) item.classList.add('current');
-                    if (answers[q.id]) item.classList.add('answered');
+                    if (answers[q.id]) {
+                        item.classList.add('answered');
+                        // ✅ Add answer preview
+                        var answerText = answers[q.id];
+                        if (answerText && answerText.length > 20) {
+                            answerText = answerText.substring(0, 20) + '...';
+                        }
+                        item.title = 'Answer: ' + (answers[q.id] || '');
+                        item.dataset.answer = answers[q.id] || '';
+                    } else {
+                        item.title = 'Not answered';
+                        delete item.dataset.answer;
+                    }
                     if (flaggedQuestions[q.id]) {
                         item.classList.add('flagged');
                         item.innerHTML = (index + 1) + ' <span style="font-size:0.6rem;">🚩</span>';
@@ -2226,7 +2491,7 @@
         }
 
         // ============================================================
-        // ⭐ renderQuestionStatusTable() - ORIGINAL WORKING VERSION
+        // ⭐ renderQuestionStatusTable() - WITH ANSWER PREVIEW
         // ============================================================
 
         function renderQuestionStatusTable() {
@@ -2235,7 +2500,21 @@
                 var item = document.createElement('div');
                 item.className = 'status-item';
                 item.id = 'q-status-' + index;
-                item.innerHTML = '' + (index + 1);
+                item.textContent = index + 1;
+                
+                // ✅ Add answer preview
+                var q = questions[index];
+                if (answers[q.id]) {
+                    var answerText = answers[q.id];
+                    if (answerText.length > 20) {
+                        answerText = answerText.substring(0, 20) + '...';
+                    }
+                    item.dataset.answer = 'Answer: ' + answerText;
+                    item.title = 'Answer: ' + answers[q.id];
+                } else {
+                    item.title = 'Not answered';
+                }
+                
                 item.onclick = function() {
                     if (!isExamPaused) renderQuestion(index);
                     else showToast('⛔ Exam is paused. Face not detected.', 'warning');
@@ -2251,6 +2530,23 @@
             progressFill.style.width = percent + '%';
             prevBtn.disabled = currentIndex === 0 || isExamPaused;
             nextBtn.disabled = currentIndex === questions.length - 1 || isExamPaused;
+            
+            // ✅ Update progress percentage
+            var percentEl = document.getElementById('progress-percentage');
+            if (percentEl) {
+                var answered = Object.keys(answers).length;
+                var total = questions.length;
+                var progressPct = total > 0 ? Math.round((answered / total) * 100) : 0;
+                percentEl.textContent = progressPct + '% completed';
+                if (progressPct === 100) {
+                    percentEl.style.color = '#38A169';
+                    percentEl.style.fontWeight = '700';
+                } else if (progressPct >= 50) {
+                    percentEl.style.color = '#F59E0B';
+                } else {
+                    percentEl.style.color = '#64748B';
+                }
+            }
         }
 
         // ============================================================
@@ -2510,6 +2806,10 @@
                 if (multipleFacesTimeout) {
                     clearTimeout(multipleFacesTimeout);
                     multipleFacesTimeout = null;
+                }
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = null;
                 }
 
                 unblockApplications();
@@ -2779,9 +3079,16 @@
             var existing = document.querySelector('.toast');
             if (existing) existing.remove();
 
+            var icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+
             var toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
-            toast.textContent = message;
+            toast.innerHTML = (icons[type] || '') + ' ' + message;
             document.body.appendChild(toast);
 
             setTimeout(function() {
@@ -2837,6 +3144,130 @@
             if (currentQ) {
                 questionTimes[currentQ.id] = elapsed;
             }
+        }
+
+        // ============================================================
+        // ✅ MOBILE SWIPE SUPPORT
+        // ============================================================
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            const middlePanel = document.querySelector('.middle-panel');
+            if (middlePanel && middlePanel.contains(e.target)) {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (touchStartX > 0) {
+                const touch = e.changedTouches[0];
+                const diffX = touchStartX - touch.screenX;
+                const diffY = touchStartY - touch.screenY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 20) {
+                    e.preventDefault();
+                }
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+            if (touchStartX === 0) return;
+            
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            
+            const swipeThreshold = 50;
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
+            
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+                if (diffX > 0 && !nextBtn.disabled && !isExamPaused) {
+                    nextQuestion();
+                    showToast('👈 Swiped to next question', 'info');
+                    if (navigator.vibrate) navigator.vibrate(10);
+                } else if (diffX < 0 && !prevBtn.disabled && !isExamPaused) {
+                    prevQuestion();
+                    showToast('👉 Swiped to previous question', 'info');
+                    if (navigator.vibrate) navigator.vibrate(10);
+                }
+            }
+            
+            touchStartX = 0;
+            touchEndX = 0;
+            touchStartY = 0;
+            touchEndY = 0;
+        }, { passive: true });
+
+        function showSwipeHint() {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile && !sessionStorage.getItem('swipeHintShown')) {
+                setTimeout(function() {
+                    showToast('👆 Swipe left/right to navigate questions', 'info');
+                    sessionStorage.setItem('swipeHintShown', 'true');
+                }, 3000);
+            }
+        }
+
+        // ============================================================
+        // ✅ INACTIVITY TIMER
+        // ============================================================
+
+        function setupInactivityTimer() {
+            resetInactivityTimer();
+            
+            document.addEventListener('click', resetInactivityTimer);
+            document.addEventListener('keydown', resetInactivityTimer);
+            document.addEventListener('touchstart', resetInactivityTimer);
+            document.addEventListener('mousemove', resetInactivityTimer);
+        }
+
+        function resetInactivityTimer() {
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+            inactivityTimer = setTimeout(function() {
+                if (isExamActive && !isSubmitting && !isExamPaused) {
+                    showToast('⏰ Still there? Your exam is waiting for you!', 'warning');
+                    // Log the inactivity
+                    logProctoringEvent('inactivity_warning', 'Student inactive for 30 minutes', 'warning');
+                }
+            }, 30 * 60 * 1000); // 30 minutes
+        }
+
+        // ============================================================
+        // ✅ BETTER LEAVE CONFIRMATION
+        // ============================================================
+
+        function handleBeforeUnload(e) {
+            if (isExamActive && !isSubmitting) {
+                var answered = Object.keys(answers).length;
+                var total = questions.length;
+                var unanswered = total - answered;
+                
+                var message = '⚠️ EXAM IN PROGRESS!\n\n' +
+                              '📊 Progress: ' + answered + '/' + total + ' questions answered\n' +
+                              '⏳ ' + unanswered + ' question(s) remaining\n\n' +
+                              '💾 Your answers are being saved automatically.\n' +
+                              '⚠️ Are you sure you want to leave?\n' +
+                              '   Your progress will be saved.';
+                
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        }
+
+        function setupBeforeUnloadHandler() {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && isExamActive && !isSubmitting) {
+                    logProctoringEvent('page_hide', 'Student minimized or switched apps', 'warning');
+                }
+            });
         }
 
         // ============================================================
@@ -3043,6 +3474,13 @@
                 e.preventDefault();
                 return false;
             }
+            // ✅ F key for flag
+            if (e.key === 'f' || e.key === 'F') {
+                if (!e.target.matches('input, textarea, select')) {
+                    e.preventDefault();
+                    if (!isExamPaused) toggleFlagQuestion();
+                }
+            }
         }
 
         function unblockApplications() {
@@ -3109,18 +3547,6 @@
             }
         }
 
-        function handleBeforeUnload(e) {
-            if (isExamActive && !isSubmitting) {
-                e.preventDefault();
-                e.returnValue = 'You have an exam in progress. Are you sure you want to leave? Your answers will be saved.';
-                return e.returnValue;
-            }
-        }
-
-        function setupBeforeUnloadHandler() {
-            window.addEventListener('beforeunload', handleBeforeUnload);
-        }
-
         // ============================================================
         // EXAM EVENT LISTENERS
         // ============================================================
@@ -3159,6 +3585,7 @@
                     submitExam();
                     e.preventDefault();
                 }
+                // ✅ F key for flag (already handled in blockKeyboardShortcuts)
             });
 
             const allowCameraBtn = document.getElementById('allow-camera-btn');
