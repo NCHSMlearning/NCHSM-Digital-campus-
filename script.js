@@ -2321,7 +2321,7 @@ async function handleMassPromotion(e) {
 }
 
 // ============================================
-// APPROVE USER WITH DETAILS CHECK - ENHANCED
+// APPROVE USER WITH DETAILS CHECK - FIXED
 // ============================================
 
 async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
@@ -2339,6 +2339,7 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
             return;
         }
         
+        // ✅ Call the modal function
         showApprovalModal(user);
         
     } catch (err) {
@@ -2348,51 +2349,59 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL WITH EDITABLE FIELDS
+// SHOW APPROVAL MODAL WITH EDITABLE FIELDS - FIXED
 // ============================================
 
 function showApprovalModal(user) {
-    // Remove existing modal if any
+    console.log('📋 Showing approval modal for:', user.full_name);
+    
+    // Remove existing modal
     const existingModal = document.getElementById('approvalModal');
     if (existingModal) existingModal.remove();
     
-    const programName = getProgramDisplayName(user.program);
     const programType = getProgramType(user.program);
-    const programLevel = getProgramLevel(user.program);
-    const programBadge = programType === 'TVET' ? 'TVET' : 'KRCHN';
+    const isTVET = programType === 'TVET';
     
-    // Build program options for dropdown
+    // Build program options
     const programOptions = `
-        <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>KRCHN Nursing</option>
-        <optgroup label="TVET Diploma Programs">
+        <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>🎓 KRCHN Nursing</option>
+        <optgroup label="🎯 TVET Diploma Programs">
             <option value="DPOTT" ${user.program === 'DPOTT' ? 'selected' : ''}>Diploma in Perioperative Theatre Technology</option>
             <option value="DCH" ${user.program === 'DCH' ? 'selected' : ''}>Diploma in Community Health</option>
             <option value="DHRIT" ${user.program === 'DHRIT' ? 'selected' : ''}>Diploma in Health Records and IT</option>
             <option value="DSL" ${user.program === 'DSL' ? 'selected' : ''}>Diploma in Science Lab</option>
             <option value="DSW" ${user.program === 'DSW' ? 'selected' : ''}>Diploma in Social Work</option>
+            <option value="DCJS" ${user.program === 'DCJS' ? 'selected' : ''}>Diploma in Criminal Justice</option>
+            <option value="DHSS" ${user.program === 'DHSS' ? 'selected' : ''}>Diploma in Health Support Services</option>
             <option value="DICT" ${user.program === 'DICT' ? 'selected' : ''}>Diploma in ICT</option>
             <option value="DME" ${user.program === 'DME' ? 'selected' : ''}>Diploma in Medical Engineering</option>
         </optgroup>
-        <optgroup label="TVET Certificate Programs">
+        <optgroup label="📜 TVET Certificate Programs">
             <option value="CPOTT" ${user.program === 'CPOTT' ? 'selected' : ''}>Certificate in Perioperative Theatre Technology</option>
             <option value="CCH" ${user.program === 'CCH' ? 'selected' : ''}>Certificate in Community Health</option>
             <option value="CHRIT" ${user.program === 'CHRIT' ? 'selected' : ''}>Certificate in Health Records and IT</option>
             <option value="CPC" ${user.program === 'CPC' ? 'selected' : ''}>Certificate in Patient Care</option>
             <option value="CSL" ${user.program === 'CSL' ? 'selected' : ''}>Certificate in Science Lab</option>
             <option value="CSW" ${user.program === 'CSW' ? 'selected' : ''}>Certificate in Social Work</option>
+            <option value="CCJS" ${user.program === 'CCJS' ? 'selected' : ''}>Certificate in Criminal Justice</option>
+            <option value="CAG" ${user.program === 'CAG' ? 'selected' : ''}>Certificate in Agriculture</option>
+            <option value="CHSS" ${user.program === 'CHSS' ? 'selected' : ''}>Certificate in Health Support Services</option>
             <option value="CICT" ${user.program === 'CICT' ? 'selected' : ''}>Certificate in ICT</option>
         </optgroup>
-        <optgroup label="TVET Artisan Programs">
+        <optgroup label="🔧 TVET Artisan Programs">
             <option value="ACH" ${user.program === 'ACH' ? 'selected' : ''}>Artisan in Community Health</option>
             <option value="AAG" ${user.program === 'AAG' ? 'selected' : ''}>Artisan in Agriculture</option>
             <option value="ASW" ${user.program === 'ASW' ? 'selected' : ''}>Artisan in Social Work</option>
         </optgroup>
+        <optgroup label="📊 Other TVET Programs">
+            <option value="CCA" ${user.program === 'CCA' ? 'selected' : ''}>Certificate in Computer Applications</option>
+            <option value="PTE" ${user.program === 'PTE' ? 'selected' : ''}>TVET/CDACC (PTE)</option>
+        </optgroup>
     `;
     
     // Block/Term options based on program type
-    const isTVET = programType === 'TVET';
     const blockOptions = isTVET 
-        ? ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final']
+        ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
     const blockSelectOptions = blockOptions.map(b => 
@@ -2401,7 +2410,6 @@ function showApprovalModal(user) {
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
-    modal.className = 'modal-overlay';
     modal.style.cssText = `
         position: fixed;
         top: 0;
@@ -2415,6 +2423,7 @@ function showApprovalModal(user) {
         justify-content: center;
         z-index: 10000;
         padding: 20px;
+        animation: fadeIn 0.3s ease;
     `;
     
     modal.innerHTML = `
@@ -2439,7 +2448,7 @@ function showApprovalModal(user) {
                         Edit fields below before approving
                     </p>
                 </div>
-                <button onclick="window.closeApprovalModal()" style="
+                <button onclick="closeApprovalModal()" style="
                     background: none;
                     border: none;
                     font-size: 28px;
@@ -2449,7 +2458,7 @@ function showApprovalModal(user) {
                 ">&times;</button>
             </div>
             
-            <form id="approvalForm">
+            <form id="approvalForm" onsubmit="event.preventDefault(); confirmApproveUser();">
                 <!-- Personal Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -2482,6 +2491,15 @@ function showApprovalModal(user) {
                                 <option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option>
                                 <option value="lecturer" ${user.role === 'lecturer' ? 'selected' : ''}>Lecturer</option>
                                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                <option value="superadmin" ${user.role === 'superadmin' ? 'selected' : ''}>Super Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Status</label>
+                            <select id="edit_status" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                <option value="pending" ${user.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="approved" ${user.status === 'approved' ? 'selected' : ''}>Approved</option>
+                                <option value="blocked" ${user.status === 'blocked' ? 'selected' : ''}>Blocked</option>
                             </select>
                         </div>
                     </div>
@@ -2501,7 +2519,7 @@ function showApprovalModal(user) {
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
-                            <input type="text" id="edit_program_type" value="${escapeHtml(programType)}" readonly
+                            <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
                         </div>
                         <div class="form-group">
@@ -2518,10 +2536,10 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
-                <!-- Additional Details (Read-only) -->
+                <!-- Additional Details -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        <i class="fas fa-info-circle"></i> System Information (Read-only)
+                        <i class="fas fa-info-circle"></i> System Information
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
                         <div><strong>User ID:</strong> <span style="font-family: monospace; font-size: 12px;">${escapeHtml(user.user_id || 'N/A')}</span></div>
@@ -2532,7 +2550,7 @@ function showApprovalModal(user) {
                 
                 <!-- Actions -->
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                    <button type="button" onclick="window.confirmApproveUser()" style="
+                    <button type="submit" style="
                         flex: 1;
                         background: linear-gradient(135deg, #10b981, #059669);
                         color: white;
@@ -2547,10 +2565,10 @@ function showApprovalModal(user) {
                         align-items: center;
                         justify-content: center;
                         gap: 10px;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    ">
                         <i class="fas fa-check-circle"></i> Confirm & Approve
                     </button>
-                    <button type="button" onclick="window.closeApprovalModal()" style="
+                    <button type="button" onclick="closeApprovalModal()" style="
                         flex: 0.5;
                         background: #ef4444;
                         color: white;
@@ -2560,12 +2578,11 @@ function showApprovalModal(user) {
                         font-size: 16px;
                         font-weight: 600;
                         cursor: pointer;
-                        transition: all 0.3s;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         gap: 10px;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    ">
                         <i class="fas fa-times"></i> Cancel
                     </button>
                 </div>
@@ -2582,37 +2599,26 @@ function showApprovalModal(user) {
     
     document.body.appendChild(modal);
     
-    // Add slide-in animation
-    const style = document.createElement('style');
-    style.id = 'approval-modal-style';
-    style.textContent = `
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(30px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .form-group label { display: block; margin-bottom: 4px; }
-    `;
-    document.head.appendChild(style);
-    
-    // Store user ID for the confirm function
+    // Store user ID
     modal.dataset.userId = user.user_id;
-    modal.dataset.originalFullName = user.full_name;
 }
 
 // ============================================
-// CLOSE APPROVAL MODAL
+// CLOSE APPROVAL MODAL - FIXED
 // ============================================
 
 function closeApprovalModal() {
     const modal = document.getElementById('approvalModal');
-    if (modal) modal.remove();
-    
-    const style = document.getElementById('approval-modal-style');
-    if (style) style.remove();
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
 }
 
 // ============================================
-// CONFIRM APPROVE USER - WITH EDITED FIELDS
+// CONFIRM APPROVE USER - FIXED
 // ============================================
 
 async function confirmApproveUser() {
@@ -2625,122 +2631,102 @@ async function confirmApproveUser() {
     }
     
     const userId = modal.dataset.userId;
-    const originalName = modal.dataset.originalFullName || 'User';
     
-    // Get edited values from form
-    const fullName = document.getElementById('edit_full_name').value.trim();
-    const email = document.getElementById('edit_email').value.trim();
-    const studentId = document.getElementById('edit_student_id').value.trim();
-    const phone = document.getElementById('edit_phone').value.trim();
-    const role = document.getElementById('edit_role').value;
-    const program = document.getElementById('edit_program').value;
-    const intakeYear = document.getElementById('edit_intake_year').value.trim();
-    const block = document.getElementById('edit_block').value;
+    // Get edited values
+    const fullName = document.getElementById('edit_full_name')?.value?.trim();
+    const email = document.getElementById('edit_email')?.value?.trim();
+    const studentId = document.getElementById('edit_student_id')?.value?.trim();
+    const phone = document.getElementById('edit_phone')?.value?.trim();
+    const role = document.getElementById('edit_role')?.value;
+    const program = document.getElementById('edit_program')?.value;
+    const intakeYear = document.getElementById('edit_intake_year')?.value?.trim();
+    const block = document.getElementById('edit_block')?.value;
+    const status = document.getElementById('edit_status')?.value || 'approved';
     
-    // Validate required fields
+    // Validate
     if (!fullName) {
         showFeedback('❌ Full Name is required', 'error');
-        document.getElementById('edit_full_name').focus();
-        document.getElementById('edit_full_name').style.borderColor = '#DC2626';
+        const nameInput = document.getElementById('edit_full_name');
+        if (nameInput) { nameInput.focus(); nameInput.style.borderColor = '#DC2626'; }
         return;
     }
-    
     if (!email) {
         showFeedback('❌ Email is required', 'error');
-        document.getElementById('edit_email').focus();
-        document.getElementById('edit_email').style.borderColor = '#DC2626';
+        const emailInput = document.getElementById('edit_email');
+        if (emailInput) { emailInput.focus(); emailInput.style.borderColor = '#DC2626'; }
+        return;
+    }
+    if (!program) {
+        showFeedback('❌ Program is required', 'error');
         return;
     }
     
-    // Close the modal first
+    // Close modal first
     closeApprovalModal();
     
-    // Show confirmation with edited details
-    const confirmMsg = `⚠️ Approve User with the following details:\n\n` +
-        `Name: ${fullName}\n` +
-        `Email: ${email}\n` +
-        `Student ID: ${studentId || 'Not set'}\n` +
-        `Program: ${program}\n` +
-        `Block: ${block}\n` +
-        `Intake: ${intakeYear || 'Not set'}\n` +
-        `Role: ${role}\n\n` +
-        `Proceed with approval?`;
-    
-    if (!confirm(confirmMsg)) {
+    // Confirm
+    if (!confirm(`⚠️ Approve User:\n\nName: ${fullName}\nEmail: ${email}\nProgram: ${program}\nBlock: ${block || 'Not set'}\nRole: ${role}\nStatus: ${status}\n\nProceed?`)) {
         return;
     }
     
     try {
-        // Update user profile with edited values
+        const updateData = {
+            full_name: fullName,
+            email: email,
+            role: role,
+            program: program,
+            block: block || null,
+            status: status,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (studentId) updateData.student_id = studentId;
+        if (phone) updateData.phone = phone;
+        if (intakeYear) updateData.intake_year = intakeYear;
+        
         const { error } = await sb
             .from(USER_PROFILE_TABLE)
-            .update({
-                full_name: fullName,
-                email: email,
-                student_id: studentId || userId.substring(0, 8).toUpperCase(),
-                phone: phone || null,
-                role: role,
-                program: program,
-                intake_year: intakeYear || null,
-                block: block,
-                status: 'approved',
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('user_id', userId);
         
-        if (error) {
-            console.error('❌ Error approving user:', error);
-            await logAudit(
-                'USER_APPROVE',
-                `Failed to approve user ${fullName}. Reason: ${error.message}`,
-                userId,
-                'FAILURE'
-            );
-            showFeedback(`❌ Failed to approve: ${error.message}`, 'error');
-            return;
-        }
+        if (error) throw error;
         
-        // Send approval email
-        if (email) {
-            try {
-                await sendApprovalEmail(email, fullName, role);
-            } catch (emailError) {
-                console.warn('⚠️ Approval email failed:', emailError);
-            }
+        // Send email
+        try {
+            await sendApprovalEmail(email, fullName, role);
+        } catch (e) {
+            console.warn('Email error:', e);
         }
         
         showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
         
-        await logAudit(
-            'USER_APPROVE',
-            `User ${fullName} (Student ID: ${studentId || 'N/A'}) approved with edited details.`,
-            userId,
-            'SUCCESS'
-        );
+        await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
         
-        // Refresh all user tables
-        if (typeof loadPendingApprovals === 'function') loadPendingApprovals();
-        if (typeof loadAllUsers === 'function') loadAllUsers();
-        if (typeof loadStudents === 'function') loadStudents();
-        if (typeof loadDashboardData === 'function') loadDashboardData();
+        // Refresh all tables
+        loadPendingApprovals();
+        loadAllUsers();
+        loadStudents();
+        loadDashboardData();
         
     } catch (err) {
-        console.error('❌ Unexpected error in confirmApproveUser:', err);
-        showFeedback(`❌ Unexpected error: ${err.message}`, 'error');
+        console.error('❌ Error:', err);
+        showFeedback(`❌ Failed: ${err.message}`, 'error');
     }
 }
 
 // ============================================
-// ✅ EXPOSE FUNCTIONS TO GLOBAL SCOPE (FIX)
+// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
-// Make approval functions globally accessible
-window.confirmApproveUser = confirmApproveUser;
-window.closeApprovalModal = closeApprovalModal;
 window.approveUser = approveUser;
 window.showApprovalModal = showApprovalModal;
-window.deleteProfile = deleteProfile;
+window.closeApprovalModal = closeApprovalModal;
+window.confirmApproveUser = confirmApproveUser;
 window.loadPendingApprovals = loadPendingApprovals;
+window.loadAllUsers = loadAllUsers;
+window.loadStudents = loadStudents;
+window.deleteProfile = deleteProfile;
+window.updateUserRole = updateUserRole;
 
 console.log('✅ Approval functions exposed to global scope');
 // ============================================
