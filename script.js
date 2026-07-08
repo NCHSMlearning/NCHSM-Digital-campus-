@@ -5876,7 +5876,6 @@ window.deleteAnnouncement = deleteAnnouncement;
 
 let editingResourceId = null;
 let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
-const RESOURCES_BUCKET = 'resources';
 
 // TVET Program Codes are already defined at top of file
 // const TVET_PROGRAMS = [ ... ]; // Already exists
