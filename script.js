@@ -5855,16 +5855,10 @@ window.deleteAnnouncement = deleteAnnouncement;
  *******************************************************/
 
 // =====================================================
-// GLOBALS - allResourcesData & currentResourceType already declared at top
+// GLOBALS - ONLY DECLARE NEW ONES (others exist at top)
 // =====================================================
-// let allResourcesData = [];          // ❌ REMOVED - already declared at line ~330
-// let currentResourceType = 'all';    // ❌ REMOVED - already declared at line ~331
-
 let editingResourceId = null;
 let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
-
-// TVET Program Codes are already defined at top of file
-// const TVET_PROGRAMS = [ ... ]; // Already exists
 
 // =====================================================
 // INITIALIZE RESOURCES SECTION
@@ -5986,7 +5980,6 @@ function switchAdminProgram() {
     showFeedback(`Switched to ${currentAdminProgram.toUpperCase()} mode`, 'info');
     loadAllResources();
 }
-
 
 // =====================================================
 // UPDATE FILTER DROPDOWN
@@ -6246,6 +6239,7 @@ async function editResource(resourceId) {
         document.getElementById('resource_program').value = resource.program_type || '';
         document.getElementById('resource_intake').value = resource.intake || '';
         
+        // Use the global updateBlockTermOptions from Section 3
         updateBlockTermOptions('resource_program', 'resource_block');
         setTimeout(() => {
             document.getElementById('resource_block').value = resource.block || '';
@@ -6530,56 +6524,6 @@ function exportResourcesToCSV() {
 }
 
 // =====================================================
-// UTILITY FUNCTIONS
-// =====================================================
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function getExamTypeLabel(examType) {
-    const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'END_TERM': 'End of Term',
-        'FINAL': 'Final Exam',
-        'SUPPLEMENTARY': 'Supplementary',
-        'SPECIAL': 'Special Exam'
-    };
-    return labels[examType] || examType;
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-function showFeedback(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = message;
-        toast.style.display = 'block';
-        toast.style.backgroundColor = type === 'error' ? '#dc2626' : type === 'success' ? '#10b981' : '#3b82f6';
-        toast.style.color = 'white';
-        toast.style.padding = '12px 20px';
-        toast.style.borderRadius = '8px';
-        toast.style.position = 'fixed';
-        toast.style.bottom = '20px';
-        toast.style.right = '20px';
-        toast.style.zIndex = '1000';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    } else {
-        console.log(message);
-    }
-}
-
-// =====================================================
 // MAKE FUNCTIONS GLOBAL
 // =====================================================
 window.loadAllResources = loadAllResources;
@@ -6593,10 +6537,8 @@ window.initResourcesSection = initResourcesSection;
 window.handleResourceUpload = handleResourceUpload;
 window.switchAdminProgram = switchAdminProgram;
 window.exportResourcesToCSV = exportResourcesToCSV;
-window.updateBlockTermOptions = updateBlockTermOptions;
 
 console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support and Edit functionality!');
-
 /*******************************************************
  * 16. SECURITY & SYSTEM STATUS
  *******************************************************/
