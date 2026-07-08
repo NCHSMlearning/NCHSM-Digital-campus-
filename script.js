@@ -5873,24 +5873,20 @@ function initResourcesSection() {
         resourceProgram.addEventListener('change', () => {
             updateBlockTermOptions('resource_program', 'resource_block');
         });
-        // Initial setup
         setTimeout(() => updateBlockTermOptions('resource_program', 'resource_block'), 100);
     }
     
-    // Set up past paper checkbox toggle
     const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
     if (pastpaperCheckbox) {
         pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
     }
     
-    // Set up form submission
     const uploadForm = document.getElementById('upload-resource-form');
     if (uploadForm) {
         uploadForm.removeEventListener('submit', handleResourceUpload);
         uploadForm.addEventListener('submit', handleResourceUpload);
     }
     
-    // Set up filters with debounce
     const searchInput = document.getElementById('resource-search');
     if (searchInput) {
         searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
@@ -5911,10 +5907,7 @@ function initResourcesSection() {
         programFilter.addEventListener('change', filterResourcesTable);
     }
     
-    // Detect admin program from profile
     detectAdminProgram();
-    
-    // Load resources
     loadAllResources();
     
     console.log('✅ Super Admin Resources Section initialized');
@@ -5966,7 +5959,6 @@ function updateAdminProgramUI(programType, profile) {
         }
     }
     
-    // Update the block/term filter dropdown
     updateFilterDropdown(isTVET);
 }
 
@@ -6025,7 +6017,6 @@ function togglePastPaperFields() {
         pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
     }
     
-    // Update required attributes
     const yearInput = document.getElementById('resource_pastpaper_year');
     const examTypeSelect = document.getElementById('resource_exam_type');
     const courseInput = document.getElementById('resource_course_name');
@@ -6051,7 +6042,6 @@ async function handleResourceUpload(e) {
     const editId = document.getElementById('resource_edit_id')?.value;
     const isEdit = editId && editId !== '';
 
-    // Get form values
     const program = document.getElementById('resource_program')?.value;
     const intake = document.getElementById('resource_intake')?.value;
     const block = document.getElementById('resource_block')?.value;
@@ -6064,7 +6054,6 @@ async function handleResourceUpload(e) {
     const examType = document.getElementById('resource_exam_type')?.value || null;
     const courseName = document.getElementById('resource_course_name')?.value.trim() || null;
 
-    // Validate
     if (!program || !intake || !block || !title) {
         showFeedback('Please fill all required fields.', 'error');
         if (submitButton) {
@@ -6089,7 +6078,6 @@ async function handleResourceUpload(e) {
         let file = null;
         let contentType = 'application/octet-stream';
 
-        // Handle file upload if there's a new file
         if (fileInput && fileInput.files.length > 0) {
             file = fileInput.files[0];
             
@@ -6111,7 +6099,8 @@ async function handleResourceUpload(e) {
                 filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
             }
 
-            const { error: uploadError } = await supabase
+            // ✅ FIXED: supabase → sb
+            const { error: uploadError } = await sb
                 .storage
                 .from(RESOURCES_BUCKET)
                 .upload(filePath, file, {
@@ -6122,7 +6111,8 @@ async function handleResourceUpload(e) {
             
             if (uploadError) throw uploadError;
 
-            const { data: urlData } = supabase
+            // ✅ FIXED: supabase → sb
+            const { data: urlData } = sb
                 .storage
                 .from(RESOURCES_BUCKET)
                 .getPublicUrl(filePath);
@@ -6130,7 +6120,6 @@ async function handleResourceUpload(e) {
             publicUrl = urlData?.publicUrl;
         }
 
-        // Prepare database record
         const dbRecord = {
             title: title,
             description: description,
@@ -6160,7 +6149,8 @@ async function handleResourceUpload(e) {
         let result;
 
         if (isEdit) {
-            result = await supabase
+            // ✅ FIXED: supabase → sb
+            result = await sb
                 .from('resources')
                 .update(dbRecord)
                 .eq('id', editId)
@@ -6171,7 +6161,6 @@ async function handleResourceUpload(e) {
             await logAudit('RESOURCE_UPDATE', `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`, editId, 'SUCCESS');
             showFeedback(`✅ "${title}" updated successfully!`, 'success');
             
-            // Reset edit mode
             document.getElementById('resource_edit_id').value = '';
             document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
             document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
@@ -6186,7 +6175,8 @@ async function handleResourceUpload(e) {
             dbRecord.uploaded_by_name = window.currentUserProfile?.full_name || 'Unknown';
             dbRecord.created_at = new Date().toISOString();
             
-            result = await supabase
+            // ✅ FIXED: supabase → sb
+            result = await sb
                 .from('resources')
                 .insert(dbRecord)
                 .select();
@@ -6222,7 +6212,8 @@ async function handleResourceUpload(e) {
 // =====================================================
 async function editResource(resourceId) {
     try {
-        const { data: resource, error } = await supabase
+        // ✅ FIXED: supabase → sb
+        const { data: resource, error } = await sb
             .from('resources')
             .select('*')
             .eq('id', resourceId)
@@ -6234,12 +6225,10 @@ async function editResource(resourceId) {
             return;
         }
 
-        // Populate form
         document.getElementById('resource_edit_id').value = resource.id;
         document.getElementById('resource_program').value = resource.program_type || '';
         document.getElementById('resource_intake').value = resource.intake || '';
         
-        // Use the global updateBlockTermOptions from Section 3
         updateBlockTermOptions('resource_program', 'resource_block');
         setTimeout(() => {
             document.getElementById('resource_block').value = resource.block || '';
@@ -6304,7 +6293,8 @@ async function loadAllResources() {
     tableBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>';
 
     try {
-        let query = supabase.from('resources').select('*').order('created_at', { ascending: false });
+        // ✅ FIXED: supabase → sb
+        let query = sb.from('resources').select('*').order('created_at', { ascending: false });
         
         if (currentResourceType === 'material') {
             query = query.eq('resource_type', 'material');
@@ -6318,7 +6308,6 @@ async function loadAllResources() {
         
         allResourcesData = resources || [];
         
-        // Update counts
         const pastpaperCount = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
         const materialCount = allResourcesData.filter(r => r.resource_type === 'material').length;
         
@@ -6328,7 +6317,6 @@ async function loadAllResources() {
         if (pastpaperBadge) pastpaperBadge.textContent = pastpaperCount;
         if (materialBadge) materialBadge.textContent = materialCount;
         
-        // Apply filters
         let filtered = [...allResourcesData];
         
         const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
@@ -6438,17 +6426,20 @@ async function deleteResourceItem(resourceId, title) {
     if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
     
     try {
-        const { data: resource } = await supabase
+        // ✅ FIXED: supabase → sb
+        const { data: resource } = await sb
             .from('resources')
             .select('file_path')
             .eq('id', resourceId)
             .single();
         
         if (resource?.file_path) {
-            await supabase.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
+            // ✅ FIXED: supabase → sb
+            await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
         }
         
-        await supabase.from('resources').delete().eq('id', resourceId);
+        // ✅ FIXED: supabase → sb
+        await sb.from('resources').delete().eq('id', resourceId);
         
         await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
         showFeedback(`✅ "${title}" deleted.`, 'success');
