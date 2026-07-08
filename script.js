@@ -5869,20 +5869,17 @@ window.deleteAnnouncement = deleteAnnouncement;
  *******************************************************/
 
 // =====================================================
-// GLOBALS
+// GLOBALS - allResourcesData & currentResourceType already declared at top
 // =====================================================
-let allResourcesData = [];
-let currentResourceType = 'all';
+// let allResourcesData = [];          // ❌ REMOVED - already declared at line ~330
+// let currentResourceType = 'all';    // ❌ REMOVED - already declared at line ~331
+
 let editingResourceId = null;
 let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
 const RESOURCES_BUCKET = 'resources';
 
-// TVET Program Codes
-const TVET_PROGRAMS = [
-    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-];
+// TVET Program Codes are already defined at top of file
+// const TVET_PROGRAMS = [ ... ]; // Already exists
 
 // =====================================================
 // INITIALIZE RESOURCES SECTION
