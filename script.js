@@ -473,10 +473,10 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
         // Other programs - generic blocks
         options = [
             { value: 'Introductory', text: 'Introductory' },
-            { value: 'Block A', text: 'Block A' },
-            { value: 'Block B', text: 'Block B' },
-            { value: 'Block C', text: 'Block C' },
-            { value: 'Block D', text: 'Block D' },
+            { value: 'Block 1', text: 'Block 1' },
+            { value: 'Block 2', text: 'Block 2' },
+            { value: 'Block 3', text: 'Block 3' },
+            { value: 'Block 4', text: 'Block 4' },
             { value: 'Final', text: 'Final' }
         ];
         console.log('Generic options loaded:', options.length);
@@ -11310,7 +11310,7 @@ function setupEventListeners() {
             feeBlock.innerHTML = '';
             
             if (isTVET) {
-                const terms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Block A', 'Block B', 'Block C', 'Final'];
+                const terms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Block 1', 'Block 2', 'Block 3', 'Final'];
                 terms.forEach(term => {
                     const option = document.createElement('option');
                     option.value = term;
@@ -11318,7 +11318,7 @@ function setupEventListeners() {
                     feeBlock.appendChild(option);
                 });
             } else {
-                const blocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+                const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
                 blocks.forEach(block => {
                     const option = document.createElement('option');
                     option.value = block;
