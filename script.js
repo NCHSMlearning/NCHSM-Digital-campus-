@@ -5987,58 +5987,6 @@ function switchAdminProgram() {
     loadAllResources();
 }
 
-// =====================================================
-// UPDATE BLOCK/TERM OPTIONS
-// =====================================================
-function updateBlockTermOptions(programSelectId, blockSelectId) {
-    const programSelect = document.getElementById(programSelectId);
-    const blockSelect = document.getElementById(blockSelectId);
-    
-    if (!programSelect || !blockSelect) return;
-    
-    const program = programSelect.value;
-    const isTVET = TVET_PROGRAMS.includes(program);
-    
-    blockSelect.innerHTML = '';
-    
-    if (isTVET) {
-        // TVET Terms
-        const terms = [
-            { value: 'Term 1', label: '📘 Term 1' },
-            { value: 'Term 2', label: '📗 Term 2' },
-            { value: 'Term 3', label: '📕 Term 3' },
-            { value: 'Term 4', label: '📙 Term 4' },
-            { value: 'Term 5', label: '📒 Term 5' },
-            { value: 'Term 6', label: '📓 Term 6' },
-            { value: 'Final Term', label: '🏆 Final Term' }
-        ];
-        
-        terms.forEach(term => {
-            const option = document.createElement('option');
-            option.value = term.value;
-            option.textContent = term.label;
-            blockSelect.appendChild(option);
-        });
-    } else {
-        // KRCHN Blocks
-        const blocks = [
-            { value: 'Introductory', label: '🚀 Introductory' },
-            { value: 'Block 1', label: '📖 Block 1' },
-            { value: 'Block 2', label: '📗 Block 2' },
-            { value: 'Block 3', label: '📘 Block 3' },
-            { value: 'Block 4', label: '📙 Block 4' },
-            { value: 'Block 5', label: '📕 Block 5' },
-            { value: 'Final', label: '🏆 Final Block' }
-        ];
-        
-        blocks.forEach(block => {
-            const option = document.createElement('option');
-            option.value = block.value;
-            option.textContent = block.label;
-            blockSelect.appendChild(option);
-        });
-    }
-}
 
 // =====================================================
 // UPDATE FILTER DROPDOWN
