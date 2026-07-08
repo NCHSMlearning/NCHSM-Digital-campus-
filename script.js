@@ -5863,84 +5863,349 @@ window.loadAnnouncementsList = loadAnnouncementsList;
 window.toggleAnnouncementStatus = toggleAnnouncementStatus;
 window.deleteAnnouncement = deleteAnnouncement;
 /*******************************************************
- * 15. RESOURCES MANAGEMENT - UNIFIED VERSION
+ * 15. RESOURCES MANAGEMENT - SUPER ADMIN VERSION
  * Handles BOTH Learning Materials AND Past Papers
+ * WITH EDIT, DELETE, TVET/KRCHN SUPPORT
  *******************************************************/
 
 // =====================================================
+// GLOBALS
+// =====================================================
+let allResourcesData = [];
+let currentResourceType = 'all';
+let editingResourceId = null;
+let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
+const RESOURCES_BUCKET = 'resources';
+
+// TVET Program Codes
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+// =====================================================
+// INITIALIZE RESOURCES SECTION
+// =====================================================
+function initResourcesSection() {
+    console.log('📁 Initializing Super Admin Resources Section...');
+    
+    // Set up block/term options
+    const resourceProgram = document.getElementById('resource_program');
+    const resourceBlock = document.getElementById('resource_block');
+    if (resourceProgram && resourceBlock) {
+        resourceProgram.addEventListener('change', () => {
+            updateBlockTermOptions('resource_program', 'resource_block');
+        });
+        // Initial setup
+        setTimeout(() => updateBlockTermOptions('resource_program', 'resource_block'), 100);
+    }
+    
+    // Set up past paper checkbox toggle
+    const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
+    if (pastpaperCheckbox) {
+        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
+    }
+    
+    // Set up form submission
+    const uploadForm = document.getElementById('upload-resource-form');
+    if (uploadForm) {
+        uploadForm.removeEventListener('submit', handleResourceUpload);
+        uploadForm.addEventListener('submit', handleResourceUpload);
+    }
+    
+    // Set up filters with debounce
+    const searchInput = document.getElementById('resource-search');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
+    }
+    
+    const blockFilter = document.getElementById('resource-block-filter');
+    if (blockFilter) {
+        blockFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    const yearFilter = document.getElementById('resource-year-filter');
+    if (yearFilter) {
+        yearFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    const programFilter = document.getElementById('resource-program-filter');
+    if (programFilter) {
+        programFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    // Detect admin program from profile
+    detectAdminProgram();
+    
+    // Load resources
+    loadAllResources();
+    
+    console.log('✅ Super Admin Resources Section initialized');
+}
+
+// =====================================================
+// DETECT ADMIN PROGRAM
+// =====================================================
+function detectAdminProgram() {
+    const profile = window.currentUserProfile || window.db?.currentUserProfile;
+    if (!profile) return;
+    
+    const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
+    
+    if (TVET_PROGRAMS.includes(programCode)) {
+        currentAdminProgram = 'tvet';
+        updateAdminProgramUI('tvet', profile);
+    } else {
+        currentAdminProgram = 'krchn';
+        updateAdminProgramUI('krchn', profile);
+    }
+}
+
+// =====================================================
+// UPDATE ADMIN PROGRAM UI
+// =====================================================
+function updateAdminProgramUI(programType, profile) {
+    const isTVET = programType === 'tvet';
+    const badge = document.getElementById('admin-program-badge');
+    const blockBadge = document.getElementById('admin-block-term-badge');
+    
+    if (badge) {
+        if (isTVET) {
+            badge.style.background = '#1a7a5a';
+            badge.innerHTML = `<i class="fas fa-tools"></i> TVET Mode`;
+        } else {
+            badge.style.background = '#4C1D95';
+            badge.innerHTML = `<i class="fas fa-graduation-cap"></i> KRCHN Nursing`;
+        }
+    }
+    
+    if (blockBadge) {
+        if (isTVET) {
+            const term = profile?.term || 1;
+            blockBadge.innerHTML = `<i class="fas fa-calendar-alt"></i> Term: ${term}`;
+        } else {
+            const block = profile?.block || 'Introductory';
+            blockBadge.innerHTML = `<i class="fas fa-layer-group"></i> Block: ${block}`;
+        }
+    }
+    
+    // Update the block/term filter dropdown
+    updateFilterDropdown(isTVET);
+}
+
+// =====================================================
+// SWITCH ADMIN PROGRAM
+// =====================================================
+function switchAdminProgram() {
+    currentAdminProgram = currentAdminProgram === 'krchn' ? 'tvet' : 'krchn';
+    const profile = window.currentUserProfile || window.db?.currentUserProfile;
+    updateAdminProgramUI(currentAdminProgram, profile);
+    showFeedback(`Switched to ${currentAdminProgram.toUpperCase()} mode`, 'info');
+    loadAllResources();
+}
+
+// =====================================================
+// UPDATE BLOCK/TERM OPTIONS
+// =====================================================
+function updateBlockTermOptions(programSelectId, blockSelectId) {
+    const programSelect = document.getElementById(programSelectId);
+    const blockSelect = document.getElementById(blockSelectId);
+    
+    if (!programSelect || !blockSelect) return;
+    
+    const program = programSelect.value;
+    const isTVET = TVET_PROGRAMS.includes(program);
+    
+    blockSelect.innerHTML = '';
+    
+    if (isTVET) {
+        // TVET Terms
+        const terms = [
+            { value: 'Term 1', label: '📘 Term 1' },
+            { value: 'Term 2', label: '📗 Term 2' },
+            { value: 'Term 3', label: '📕 Term 3' },
+            { value: 'Term 4', label: '📙 Term 4' },
+            { value: 'Term 5', label: '📒 Term 5' },
+            { value: 'Term 6', label: '📓 Term 6' },
+            { value: 'Final Term', label: '🏆 Final Term' }
+        ];
+        
+        terms.forEach(term => {
+            const option = document.createElement('option');
+            option.value = term.value;
+            option.textContent = term.label;
+            blockSelect.appendChild(option);
+        });
+    } else {
+        // KRCHN Blocks
+        const blocks = [
+            { value: 'Introductory', label: '🚀 Introductory' },
+            { value: 'Block 1', label: '📖 Block 1' },
+            { value: 'Block 2', label: '📗 Block 2' },
+            { value: 'Block 3', label: '📘 Block 3' },
+            { value: 'Block 4', label: '📙 Block 4' },
+            { value: 'Block 5', label: '📕 Block 5' },
+            { value: 'Final', label: '🏆 Final Block' }
+        ];
+        
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block.value;
+            option.textContent = block.label;
+            blockSelect.appendChild(option);
+        });
+    }
+}
+
+// =====================================================
+// UPDATE FILTER DROPDOWN
+// =====================================================
+function updateFilterDropdown(isTVET) {
+    const filterSelect = document.getElementById('resource-block-filter');
+    if (!filterSelect) return;
+    
+    filterSelect.innerHTML = '';
+    
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = isTVET ? 'All Terms' : 'All Blocks';
+    filterSelect.appendChild(allOption);
+    
+    if (isTVET) {
+        const terms = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final Term'];
+        terms.forEach(term => {
+            const option = document.createElement('option');
+            option.value = term;
+            option.textContent = term;
+            filterSelect.appendChild(option);
+        });
+    } else {
+        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block;
+            option.textContent = block;
+            filterSelect.appendChild(option);
+        });
+    }
+}
+
+// =====================================================
+// TOGGLE PAST PAPER FIELDS
+// =====================================================
+function togglePastPaperFields() {
+    const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
+    const pastpaperFields = document.getElementById('pastpaper-fields');
+    
+    if (pastpaperFields) {
+        pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
+    }
+    
+    // Update required attributes
+    const yearInput = document.getElementById('resource_pastpaper_year');
+    const examTypeSelect = document.getElementById('resource_exam_type');
+    const courseInput = document.getElementById('resource_course_name');
+    
+    if (yearInput) yearInput.required = isPastPaper;
+    if (examTypeSelect) examTypeSelect.required = isPastPaper;
+    if (courseInput) courseInput.required = isPastPaper;
+}
+
+// =====================================================
 // UNIFIED RESOURCE UPLOAD HANDLER
-// Handles both materials and past papers
 // =====================================================
 async function handleResourceUpload(e) {
     e.preventDefault();
-    const submitButton = e.submitter;
-    const originalText = submitButton.textContent;
-    setButtonLoading(submitButton, true, originalText);
+    const submitButton = e.submitter || document.querySelector('#upload-resource-form button[type="submit"]');
+    const originalText = submitButton?.innerHTML || 'Upload';
+    
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        submitButton.disabled = true;
+    }
+
+    const editId = document.getElementById('resource_edit_id')?.value;
+    const isEdit = editId && editId !== '';
 
     // Get form values
-    const program = $('resource_program').value;
-    const intake = $('resource_intake').value;
-    const block = $('resource_block').value;
-    const fileInput = $('resource-file');
-    const title = $('resource-title').value.trim();
-    const description = $('resource-description')?.value.trim() || '';
+    const program = document.getElementById('resource_program')?.value;
+    const intake = document.getElementById('resource_intake')?.value;
+    const block = document.getElementById('resource_block')?.value;
+    const fileInput = document.getElementById('resource-file');
+    const title = document.getElementById('resource-title')?.value.trim();
+    const description = document.getElementById('resource-description')?.value.trim() || '';
     
-    // Past paper specific fields (optional)
-    const isPastPaper = $('resource_is_pastpaper')?.checked || false;
-    const pastpaperYear = $('resource_pastpaper_year')?.value || null;
-    const examType = $('resource_exam_type')?.value || null;
-    const courseName = $('resource_course_name')?.value.trim() || null;
+    const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
+    const pastpaperYear = document.getElementById('resource_pastpaper_year')?.value || null;
+    const examType = document.getElementById('resource_exam_type')?.value || null;
+    const courseName = document.getElementById('resource_course_name')?.value.trim() || null;
 
-    if (!fileInput.files.length || !program || !intake || !block || !title) {
-        showFeedback('Please select a file and fill all required fields.', 'error');
-        setButtonLoading(submitButton, false, originalText);
+    // Validate
+    if (!program || !intake || !block || !title) {
+        showFeedback('Please fill all required fields.', 'error');
+        if (submitButton) {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        }
         return;
     }
 
-    let file = fileInput.files[0];
-    
-    // ✅ Force correct content type for PDFs
-    let contentType = file.type;
-    const isPDF = file.name.toLowerCase().endsWith('.pdf');
-    
-    if (isPDF) {
-        contentType = 'application/pdf';
-        console.log('📄 PDF detected - forcing Content-Type: application/pdf');
-    }
-
-    // Create unique filename
-    const timestamp = Date.now();
-    const safeTitle = title.replace(/[^\w\-]+/g, '_');
-    const originalExt = file.name.split('.').pop();
-    let finalName = `${safeTitle}_${timestamp}.${originalExt}`;
-    
-    // Determine storage path
-    let filePath;
-    let resourceType = 'material';
-    
-    if (isPastPaper && pastpaperYear && examType && courseName) {
-        resourceType = 'pastpaper';
-        filePath = `past_papers/${program}/${pastpaperYear}/${block}/${finalName}`;
-    } else {
-        resourceType = 'material';
-        filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
+    if (!isEdit && (!fileInput || !fileInput.files.length)) {
+        showFeedback('Please select a file to upload.', 'error');
+        if (submitButton) {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        }
+        return;
     }
 
     try {
-        // Upload to storage with forced content type
-        const { error: uploadError } = await sb.storage
-            .from(RESOURCES_BUCKET)
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: true,
-                contentType: contentType
-            });
-        
-        if (uploadError) throw uploadError;
+        let filePath = null;
+        let publicUrl = null;
+        let file = null;
+        let contentType = 'application/octet-stream';
 
-        const { data: { publicUrl } } = sb.storage
-            .from(RESOURCES_BUCKET)
-            .getPublicUrl(filePath);
+        // Handle file upload if there's a new file
+        if (fileInput && fileInput.files.length > 0) {
+            file = fileInput.files[0];
+            
+            const isPDF = file.name.toLowerCase().endsWith('.pdf');
+            if (isPDF) {
+                contentType = 'application/pdf';
+            } else {
+                contentType = file.type || 'application/octet-stream';
+            }
+
+            const timestamp = Date.now();
+            const safeTitle = title.replace(/[^\w\-]+/g, '_');
+            const originalExt = file.name.split('.').pop();
+            const finalName = `${safeTitle}_${timestamp}.${originalExt}`;
+            
+            if (isPastPaper && pastpaperYear && examType) {
+                filePath = `past_papers/${program}/${pastpaperYear}/${block}/${finalName}`;
+            } else {
+                filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
+            }
+
+            const { error: uploadError } = await supabase
+                .storage
+                .from(RESOURCES_BUCKET)
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true,
+                    contentType: contentType
+                });
+            
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase
+                .storage
+                .from(RESOURCES_BUCKET)
+                .getPublicUrl(filePath);
+            
+            publicUrl = urlData?.publicUrl;
+        }
 
         // Prepare database record
         const dbRecord = {
@@ -5949,81 +6214,173 @@ async function handleResourceUpload(e) {
             program_type: program,
             intake: intake,
             block: block,
-            file_path: filePath,
-            file_name: finalName,
-            file_url: publicUrl,
-            resource_type: resourceType,
-            uploaded_by: currentUserProfile?.id,
-            uploaded_by_name: currentUserProfile?.full_name,
-            created_at: new Date().toISOString()
+            resource_type: isPastPaper ? 'pastpaper' : 'material',
+            updated_at: new Date().toISOString()
         };
-        
-        // Add past paper specific fields
-        if (isPastPaper && pastpaperYear && examType && courseName) {
-            dbRecord.pastpaper_year = parseInt(pastpaperYear);
-            dbRecord.exam_type = examType;
-            dbRecord.course_name = courseName;
-            dbRecord.intake = pastpaperYear; // Use past paper year as intake for filtering
+
+        if (filePath && publicUrl) {
+            dbRecord.file_path = filePath;
+            dbRecord.file_url = publicUrl;
+            dbRecord.file_name = file?.name || null;
         }
 
-        const { error: dbError, data } = await sb
-            .from('resources')
-            .insert(dbRecord)
-            .select('id');
-        
-        if (dbError) throw dbError;
+        if (isPastPaper) {
+            dbRecord.pastpaper_year = pastpaperYear ? parseInt(pastpaperYear) : null;
+            dbRecord.exam_type = examType || null;
+            dbRecord.course_name = courseName || null;
+        } else {
+            dbRecord.pastpaper_year = null;
+            dbRecord.exam_type = null;
+            dbRecord.course_name = null;
+        }
 
-        await logAudit('RESOURCE_UPLOAD', `Uploaded ${resourceType}: ${title}`, data?.[0]?.id, 'SUCCESS');
-        showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
-        
-        // Reset form
-        e.target.reset();
-        if ($('resource_is_pastpaper')) $('resource_is_pastpaper').checked = false;
-        togglePastPaperFields();
-        
+        let result;
+
+        if (isEdit) {
+            result = await supabase
+                .from('resources')
+                .update(dbRecord)
+                .eq('id', editId)
+                .select();
+            
+            if (result.error) throw result.error;
+            
+            await logAudit('RESOURCE_UPDATE', `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`, editId, 'SUCCESS');
+            showFeedback(`✅ "${title}" updated successfully!`, 'success');
+            
+            // Reset edit mode
+            document.getElementById('resource_edit_id').value = '';
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+            document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
+            document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+            document.getElementById('form-cancel-btn').style.display = 'none';
+            document.getElementById('file-edit-info').style.display = 'none';
+            document.getElementById('resource-file').required = false;
+            editingResourceId = null;
+            
+        } else {
+            dbRecord.uploaded_by = window.currentUserProfile?.id || null;
+            dbRecord.uploaded_by_name = window.currentUserProfile?.full_name || 'Unknown';
+            dbRecord.created_at = new Date().toISOString();
+            
+            result = await supabase
+                .from('resources')
+                .insert(dbRecord)
+                .select();
+            
+            if (result.error) throw result.error;
+            
+            await logAudit('RESOURCE_UPLOAD', `Uploaded ${isPastPaper ? 'past paper' : 'material'}: ${title}`, result.data?.[0]?.id, 'SUCCESS');
+            showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
+            
+            document.getElementById('upload-resource-form').reset();
+            if (document.getElementById('resource_is_pastpaper')) {
+                document.getElementById('resource_is_pastpaper').checked = false;
+            }
+            togglePastPaperFields();
+        }
+
         loadAllResources();
         
     } catch (err) {
-        await logAudit('RESOURCE_UPLOAD', `Failed: ${title}. ${err.message}`, null, 'FAILURE');
-        console.error('Upload failed:', err);
-        showFeedback(`❌ Upload failed: ${err.message}`, 'error');
+        console.error('Operation failed:', err);
+        await logAudit('RESOURCE_ERROR', `Failed: ${title}. ${err.message}`, null, 'FAILURE');
+        showFeedback(`❌ ${isEdit ? 'Update' : 'Upload'} failed: ${err.message}`, 'error');
     } finally {
-        setButtonLoading(submitButton, false, originalText);
+        if (submitButton) {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        }
     }
 }
 
 // =====================================================
-// TOGGLE PAST PAPER FIELDS
+// EDIT RESOURCE
 // =====================================================
-function togglePastPaperFields() {
-    const isPastPaper = $('resource_is_pastpaper')?.checked || false;
-    const pastpaperFields = document.getElementById('pastpaper-fields');
-    
-    if (pastpaperFields) {
-        pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
+async function editResource(resourceId) {
+    try {
+        const { data: resource, error } = await supabase
+            .from('resources')
+            .select('*')
+            .eq('id', resourceId)
+            .single();
+        
+        if (error) throw error;
+        if (!resource) {
+            showFeedback('Resource not found', 'error');
+            return;
+        }
+
+        // Populate form
+        document.getElementById('resource_edit_id').value = resource.id;
+        document.getElementById('resource_program').value = resource.program_type || '';
+        document.getElementById('resource_intake').value = resource.intake || '';
+        
+        updateBlockTermOptions('resource_program', 'resource_block');
+        setTimeout(() => {
+            document.getElementById('resource_block').value = resource.block || '';
+        }, 100);
+        
+        document.getElementById('resource-title').value = resource.title || '';
+        document.getElementById('resource-description').value = resource.description || '';
+        
+        const isPastPaper = resource.resource_type === 'pastpaper';
+        document.getElementById('resource_is_pastpaper').checked = isPastPaper;
+        togglePastPaperFields();
+        
+        if (isPastPaper) {
+            document.getElementById('resource_pastpaper_year').value = resource.pastpaper_year || '';
+            document.getElementById('resource_exam_type').value = resource.exam_type || '';
+            document.getElementById('resource_course_name').value = resource.course_name || '';
+        }
+        
+        document.getElementById('form-title').innerHTML = '<i class="fas fa-edit"></i> Edit Resource';
+        document.getElementById('form-subtitle').textContent = `Editing: ${resource.title}`;
+        document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        document.getElementById('form-cancel-btn').style.display = 'inline-block';
+        document.getElementById('file-edit-info').style.display = 'block';
+        document.getElementById('resource-file').required = false;
+        
+        editingResourceId = resourceId;
+        
+        document.getElementById('upload-resource-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        showFeedback('📝 Edit mode activated. Make changes and click Save.', 'info');
+        
+    } catch (error) {
+        console.error('Error loading resource for edit:', error);
+        showFeedback('Failed to load resource data', 'error');
     }
-    
-    // Update required attributes
-    const yearInput = $('resource_pastpaper_year');
-    const examTypeSelect = $('resource_exam_type');
-    const courseInput = $('resource_course_name');
-    
-    if (yearInput) yearInput.required = isPastPaper;
-    if (examTypeSelect) examTypeSelect.required = isPastPaper;
-    if (courseInput) courseInput.required = isPastPaper;
+}
+
+// =====================================================
+// CANCEL EDIT
+// =====================================================
+function cancelEditResource() {
+    document.getElementById('resource_edit_id').value = '';
+    document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
+    document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    document.getElementById('form-cancel-btn').style.display = 'none';
+    document.getElementById('file-edit-info').style.display = 'none';
+    document.getElementById('resource-file').required = true;
+    document.getElementById('upload-resource-form').reset();
+    togglePastPaperFields();
+    editingResourceId = null;
+    showFeedback('Edit cancelled', 'info');
 }
 
 // =====================================================
 // LOAD ALL RESOURCES
 // =====================================================
 async function loadAllResources() {
-    const tableBody = $('resources-list');
+    const tableBody = document.getElementById('resources-list');
     if (!tableBody) return;
 
     tableBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>';
 
     try {
-        let query = sb.from('resources').select('*').order('created_at', { ascending: false });
+        let query = supabase.from('resources').select('*').order('created_at', { ascending: false });
         
         if (currentResourceType === 'material') {
             query = query.eq('resource_type', 'material');
@@ -6041,8 +6398,8 @@ async function loadAllResources() {
         const pastpaperCount = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
         const materialCount = allResourcesData.filter(r => r.resource_type === 'material').length;
         
-        const pastpaperBadge = $('pastpaper-count-badge');
-        const materialBadge = $('material-count-badge');
+        const pastpaperBadge = document.getElementById('pastpaper-count-badge');
+        const materialBadge = document.getElementById('material-count-badge');
         
         if (pastpaperBadge) pastpaperBadge.textContent = pastpaperCount;
         if (materialBadge) materialBadge.textContent = materialCount;
@@ -6050,9 +6407,10 @@ async function loadAllResources() {
         // Apply filters
         let filtered = [...allResourcesData];
         
-        const searchTerm = $('resource-search')?.value.toLowerCase() || '';
-        const blockFilter = $('resource-block-filter')?.value || 'all';
-        const yearFilter = $('resource-year-filter')?.value || 'all';
+        const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
+        const blockFilter = document.getElementById('resource-block-filter')?.value || 'all';
+        const yearFilter = document.getElementById('resource-year-filter')?.value || 'all';
+        const programFilter = document.getElementById('resource-program-filter')?.value || 'all';
         
         if (searchTerm) {
             filtered = filtered.filter(r => 
@@ -6074,11 +6432,15 @@ async function loadAllResources() {
             }
         }
         
+        if (programFilter !== 'all') {
+            filtered = filtered.filter(r => r.program_type === programFilter);
+        }
+        
         renderResourcesTable(filtered);
         
     } catch (error) {
         console.error('Error loading resources:', error);
-        tableBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td><\/tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
         await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE');
     }
 }
@@ -6087,7 +6449,7 @@ async function loadAllResources() {
 // RENDER RESOURCES TABLE
 // =====================================================
 function renderResourcesTable(resources) {
-    const tableBody = $('resources-list');
+    const tableBody = document.getElementById('resources-list');
     if (!tableBody) return;
     
     if (!resources || resources.length === 0) {
@@ -6096,7 +6458,7 @@ function renderResourcesTable(resources) {
             : currentResourceType === 'material'
             ? 'No learning materials found.'
             : 'No resources found.';
-        tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td><\/tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td></tr>`;
         return;
     }
     
@@ -6105,7 +6467,7 @@ function renderResourcesTable(resources) {
     resources.forEach(resource => {
         const isPastPaper = resource.resource_type === 'pastpaper';
         const typeClass = isPastPaper ? 'badge-warning' : 'badge-info';
-        const typeIcon = isPastPaper ? '📄' : '📚';
+        const typeIcon = isPastPaper ? 'fas fa-history' : 'fas fa-book';
         const typeLabel = isPastPaper ? 'Past Paper' : 'Material';
         const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
         
@@ -6116,10 +6478,12 @@ function renderResourcesTable(resources) {
         }
         
         const uploadDate = new Date(resource.created_at).toLocaleDateString();
+        const isTVET = TVET_PROGRAMS.includes(resource.program_type || '');
+        const blockLabel = isTVET ? 'Term' : 'Block';
         
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><span class="badge ${typeClass}"><i class="${isPastPaper ? 'fas fa-history' : 'fas fa-book'}"></i> ${typeLabel}</span></td>
+            <td><span class="badge ${typeClass}"><i class="${typeIcon}"></i> ${typeLabel}</span></td>
             <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
             <td>${escapeHtml(resource.program_type || 'N/A')}</td>
             <td>${escapeHtml(resource.block || 'N/A')}</td>
@@ -6127,9 +6491,16 @@ function renderResourcesTable(resources) {
             <td><small>${escapeHtml((resource.description || '-').substring(0, 50))}</small></td>
             <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
             <td>${uploadDate}</td>
-            <td>
-                <a href="${resource.file_url}" target="_blank" class="btn-action btn-small">View</a>
-                <button onclick="deleteResourceItem(${resource.id}, '${escapeHtml(resource.title)}')" class="btn-delete btn-small">Delete</button>
+            <td style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <a href="${resource.file_url}" target="_blank" class="btn-action btn-small" style="background: #4C1D95; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-eye"></i> View
+                </a>
+                <button onclick="editResource('${resource.id}')" class="btn-action btn-small" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button onclick="deleteResourceItem('${resource.id}', '${escapeHtml(resource.title)}')" class="btn-delete btn-small" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -6143,17 +6514,17 @@ async function deleteResourceItem(resourceId, title) {
     if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
     
     try {
-        const { data: resource } = await sb
+        const { data: resource } = await supabase
             .from('resources')
             .select('file_path')
             .eq('id', resourceId)
             .single();
         
         if (resource?.file_path) {
-            await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
+            await supabase.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
         }
         
-        await sb.from('resources').delete().eq('id', resourceId);
+        await supabase.from('resources').delete().eq('id', resourceId);
         
         await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
         showFeedback(`✅ "${title}" deleted.`, 'success');
@@ -6171,7 +6542,7 @@ function filterResourceType(type) {
     currentResourceType = type;
     
     ['all', 'material', 'pastpaper'].forEach(btnType => {
-        const btn = $(`resource-type-${btnType}`);
+        const btn = document.getElementById(`resource-type-${btnType}`);
         if (btn) {
             if (btnType === type) {
                 btn.style.background = '#4C1D95';
@@ -6183,9 +6554,13 @@ function filterResourceType(type) {
         }
     });
     
-    if ($('resource-search')) $('resource-search').value = '';
-    if ($('resource-block-filter')) $('resource-block-filter').value = 'all';
-    if ($('resource-year-filter')) $('resource-year-filter').value = 'all';
+    const searchInput = document.getElementById('resource-search');
+    const blockFilter = document.getElementById('resource-block-filter');
+    const yearFilter = document.getElementById('resource-year-filter');
+    
+    if (searchInput) searchInput.value = '';
+    if (blockFilter) blockFilter.value = 'all';
+    if (yearFilter) yearFilter.value = 'all';
     
     loadAllResources();
 }
@@ -6195,50 +6570,56 @@ function filterResourcesTable() {
 }
 
 // =====================================================
-// INITIALIZE RESOURCES SECTION
+// EXPORT RESOURCES TO CSV
 // =====================================================
-function initResourcesSection() {
-    console.log('📁 Initializing Unified Resources Section...');
-    
-    // Set up block options
-    const resourceProgram = $('resource_program');
-    const resourceBlock = $('resource_block');
-    if (resourceProgram && resourceBlock) {
-        resourceProgram.addEventListener('change', () => {
-            updateBlockTermOptions('resource_program', 'resource_block');
-        });
+function exportResourcesToCSV() {
+    if (!allResourcesData || allResourcesData.length === 0) {
+        showFeedback('No data to export', 'warning');
+        return;
     }
     
-    // Set up past paper checkbox toggle
-    const pastpaperCheckbox = $('resource_is_pastpaper');
-    if (pastpaperCheckbox) {
-        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
-    }
+    let csv = 'Type,Year,Program,Block,Title,Course,Description,Uploaded By,Date\n';
     
-    // Set up form submission
-    const uploadForm = $('upload-resource-form');
-    if (uploadForm) {
-        uploadForm.removeEventListener('submit', handleResourceUpload);
-        uploadForm.addEventListener('submit', handleResourceUpload);
-    }
+    allResourcesData.forEach(r => {
+        const isPastPaper = r.resource_type === 'pastpaper';
+        const yearDisplay = isPastPaper ? r.pastpaper_year : r.intake;
+        const date = new Date(r.created_at).toLocaleDateString();
+        
+        csv += `${r.resource_type},${yearDisplay},${r.program_type},${r.block},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
+    });
     
-    // Set up filters
-    const searchInput = $('resource-search');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
-    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resources_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
     
-    const blockFilter = $('resource-block-filter');
-    if (blockFilter) {
-        blockFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    const yearFilter = $('resource-year-filter');
-    if (yearFilter) {
-        yearFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    loadAllResources();
+    showFeedback('✅ Resources exported to CSV', 'success');
+}
+
+// =====================================================
+// UTILITY FUNCTIONS
+// =====================================================
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getExamTypeLabel(examType) {
+    const labels = {
+        'CAT_1': 'CAT 1',
+        'CAT_2': 'CAT 2',
+        'CAT': 'CAT',
+        'END_TERM': 'End of Term',
+        'FINAL': 'Final Exam',
+        'SUPPLEMENTARY': 'Supplementary',
+        'SPECIAL': 'Special Exam'
+    };
+    return labels[examType] || examType;
 }
 
 function debounce(func, wait) {
@@ -6249,14 +6630,42 @@ function debounce(func, wait) {
     };
 }
 
-// Make functions global
+function showFeedback(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.style.display = 'block';
+        toast.style.backgroundColor = type === 'error' ? '#dc2626' : type === 'success' ? '#10b981' : '#3b82f6';
+        toast.style.color = 'white';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '8px';
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '1000';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    } else {
+        console.log(message);
+    }
+}
+
+// =====================================================
+// MAKE FUNCTIONS GLOBAL
+// =====================================================
 window.loadAllResources = loadAllResources;
 window.filterResourceType = filterResourceType;
 window.filterResourcesTable = filterResourcesTable;
 window.deleteResourceItem = deleteResourceItem;
+window.editResource = editResource;
+window.cancelEditResource = cancelEditResource;
 window.togglePastPaperFields = togglePastPaperFields;
 window.initResourcesSection = initResourcesSection;
 window.handleResourceUpload = handleResourceUpload;
+window.switchAdminProgram = switchAdminProgram;
+window.exportResourcesToCSV = exportResourcesToCSV;
+window.updateBlockTermOptions = updateBlockTermOptions;
+
+console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support and Edit functionality!');
 
 /*******************************************************
  * 16. SECURITY & SYSTEM STATUS
