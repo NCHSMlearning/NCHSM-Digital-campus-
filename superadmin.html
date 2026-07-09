@@ -474,6 +474,583 @@
             margin: 5px 0;
             transition: 0.3s;
         }
+        /* ============================================
+   SIDEBAR - ULTRA MODERN
+   ============================================ */
+
+/* Sidebar Container */
+.sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    height: 100vh !important;
+    background: linear-gradient(180deg, #0B2A4A 0%, #0A1F35 50%, #051A30 100%) !important;
+    color: #fff !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 1000 !important;
+    transform: translateX(0) !important;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-right: 3px solid #FDB913 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Sidebar Scrollbar */
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #FDB913;
+    border-radius: 10px;
+}
+
+/* Brand Section */
+.sidebar-brand {
+    padding: 24px 20px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    flex-shrink: 0 !important;
+}
+
+.brand-logo {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.brand-logo img {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    object-fit: cover !important;
+    border: 2px solid #FDB913 !important;
+    box-shadow: 0 0 30px rgba(253, 185, 19, 0.15) !important;
+    transition: all 0.3s ease !important;
+}
+
+.brand-status {
+    position: absolute;
+    bottom: -2px;
+    right: -4px;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 8px;
+    font-weight: 700;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid #10b981;
+}
+
+.status-dot {
+    width: 5px;
+    height: 5px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.brand-info h2 {
+    margin: 0 !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    letter-spacing: -0.5px !important;
+    line-height: 1.2 !important;
+}
+
+.brand-info h2 span {
+    color: #FDB913 !important;
+}
+
+.brand-info .brand-sub {
+    font-size: 10px !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+}
+
+/* Search Bar */
+.sidebar-search {
+    margin: 12px 16px !important;
+    padding: 10px 14px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    transition: all 0.3s ease !important;
+    flex-shrink: 0 !important;
+}
+
+.sidebar-search:focus-within {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(253, 185, 19, 0.3) !important;
+}
+
+.sidebar-search i {
+    color: rgba(255, 255, 255, 0.3) !important;
+    font-size: 13px !important;
+}
+
+.sidebar-search input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 13px !important;
+    outline: none !important;
+    font-weight: 400 !important;
+    font-family: inherit !important;
+}
+
+.sidebar-search input::placeholder {
+    color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.sidebar-search kbd {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-radius: 6px !important;
+    color: rgba(255, 255, 255, 0.25) !important;
+    font-family: monospace !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Navigation */
+.sidebar-nav {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 8px 12px 20px !important;
+}
+
+.nav-list {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.nav-list > li {
+    margin-bottom: 2px !important;
+}
+
+/* Nav Links */
+.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 10px 14px !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    text-decoration: none !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    text-align: left !important;
+    position: relative !important;
+}
+
+.nav-icon {
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    font-size: 16px !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    transition: all 0.25s ease !important;
+    border-radius: 8px !important;
+}
+
+.nav-text {
+    flex: 1 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.nav-badge {
+    background: #FDB913 !important;
+    color: #0B2A4A !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 10px !important;
+    border-radius: 20px !important;
+    flex-shrink: 0 !important;
+    min-width: 20px !important;
+    text-align: center !important;
+}
+
+.dropdown-arrow {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.15) !important;
+    transition: transform 0.3s ease !important;
+}
+
+/* Hover */
+.nav-link:hover {
+    background: rgba(253, 185, 19, 0.08) !important;
+    color: #fff !important;
+}
+
+.nav-link:hover .nav-icon {
+    color: #FDB913 !important;
+}
+
+/* Active */
+.nav-link.active {
+    background: rgba(253, 185, 19, 0.1) !important;
+    color: #FDB913 !important;
+}
+
+.nav-link.active .nav-icon {
+    color: #FDB913 !important;
+}
+
+.nav-link.active::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 3px !important;
+    height: 60% !important;
+    background: #FDB913 !important;
+    border-radius: 0 4px 4px 0 !important;
+}
+
+/* Dropdown */
+.nav-dropdown .dropdown-menu {
+    display: none !important;
+    list-style: none !important;
+    padding: 4px 0 !important;
+    margin: 4px 0 4px 20px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 0 8px 8px 0 !important;
+}
+
+.nav-dropdown.open .dropdown-menu {
+    display: block !important;
+    animation: slideDown 0.3s ease !important;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg) !important;
+    color: #FDB913 !important;
+}
+
+.nav-dropdown .dropdown-menu li a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 14px 8px 34px !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    text-decoration: none !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
+}
+
+.nav-dropdown .dropdown-menu li a i {
+    width: 18px !important;
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.nav-dropdown .dropdown-menu li a:hover {
+    background: rgba(253, 185, 19, 0.08) !important;
+    color: #FDB913 !important;
+}
+
+.nav-dropdown .dropdown-menu li a:hover i {
+    color: #FDB913 !important;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    flex-shrink: 0 !important;
+    padding: 12px 16px 16px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.user-card {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    transition: all 0.3s ease !important;
+}
+
+.user-card:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.user-avatar img {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    border: 2px solid #FDB913 !important;
+    object-fit: cover !important;
+}
+
+.user-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.user-name {
+    display: block !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #fff !important;
+    line-height: 1.3 !important;
+}
+
+.user-role {
+    display: block !important;
+    font-size: 10px !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    font-weight: 500 !important;
+}
+
+.user-options {
+    width: 32px !important;
+    height: 32px !important;
+    border: none !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-radius: 8px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+}
+
+.user-options:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+}
+
+.sidebar-version {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+    letter-spacing: 0.5px !important;
+}
+
+.sidebar-version .divider {
+    opacity: 0.3 !important;
+}
+
+/* ============================================
+   MOBILE TOGGLE
+   ============================================ */
+.mobile-nav-toggle {
+    display: none !important;
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 1100 !important;
+    background: #0B2A4A !important;
+    border: 2px solid #FDB913 !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
+    width: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.mobile-nav-toggle:hover {
+    background: #1A3A5A !important;
+    transform: scale(1.05) !important;
+}
+
+.mobile-nav-toggle span {
+    display: block !important;
+    width: 20px !important;
+    height: 2.5px !important;
+    background: #fff !important;
+    transition: all 0.3s ease !important;
+    border-radius: 4px !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(4px, 4px) !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(2) {
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(4px, -4px) !important;
+}
+
+/* ============================================
+   OVERLAY
+   ============================================ */
+.sidebar-overlay {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    z-index: 999 !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.sidebar-overlay.active {
+    display: block !important;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-110%) !important;
+        width: 300px !important;
+        border-right: none !important;
+    }
+
+    .sidebar.active {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 40px rgba(0, 0, 0, 0.5) !important;
+        border-right: 3px solid #FDB913 !important;
+    }
+
+    .mobile-nav-toggle {
+        display: flex !important;
+    }
+
+    .sidebar-overlay.active {
+        display: block !important;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
+        padding: 16px !important;
+        padding-top: 70px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        width: 85vw !important;
+        max-width: 320px !important;
+    }
+
+    .sidebar-brand {
+        padding: 16px 16px 12px !important;
+        gap: 10px !important;
+    }
+
+    .brand-logo img {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+    }
+
+    .brand-info h2 {
+        font-size: 16px !important;
+    }
+
+    .nav-link {
+        padding: 9px 14px !important;
+        font-size: 13px !important;
+    }
+
+    .mobile-nav-toggle {
+        width: 38px !important;
+        height: 38px !important;
+        padding: 8px 10px !important;
+        top: 10px !important;
+        left: 10px !important;
+        border-radius: 10px !important;
+    }
+
+    .mobile-nav-toggle span {
+        width: 17px !important;
+        height: 2px !important;
+    }
+
+    .main-wrapper {
+        padding: 12px !important;
+        padding-top: 60px !important;
+    }
+}
+
+@media (min-width: 993px) {
+    .sidebar {
+        transform: translateX(0) !important;
+    }
+
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    .mobile-nav-toggle {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+    }
+}
     }
 </style>
 </head>
@@ -491,32 +1068,63 @@
     <!-- SIDEBAR - CLEAN VERSION                     -->
     <!-- ============================================ -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
-            <div>
-                <h2>NCHSM <span>Admin</span></h2>
-                <div class="header-subtitle">Super Admin Panel</div>
+    <!-- Brand Section -->
+    <div class="sidebar-brand">
+        <div class="brand-logo">
+            <img src="images/Logo_NCHSM.png" alt="NCHSM" onerror="this.style.display='none'">
+            <div class="brand-status">
+                <span class="status-dot"></span>
+                Live
             </div>
         </div>
+        <div class="brand-info">
+            <h2>NCHSM</h2>
+            <span class="brand-sub">Super Admin</span>
+        </div>
+    </div>
 
-        <ul class="nav" id="mainNav">
-            <!-- DASHBOARD -->
-            <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            
-            <!-- USER MANAGEMENT -->
+    <!-- Search Bar -->
+    <div class="sidebar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Search menu..." id="sidebarSearch">
+        <kbd>⌘K</kbd>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
+            <!-- Dashboard -->
+            <li>
+                <a href="#" data-tab="dashboard" class="nav-link active">
+                    <span class="nav-icon"><i class="fas fa-th-large"></i></span>
+                    <span class="nav-text">Dashboard</span>
+                    <span class="nav-badge">Live</span>
+                </a>
+            </li>
+
+            <!-- User Management -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-users-cog"></i></span>
+                    <span class="nav-text">User Management</span>
+                    <span class="nav-badge">4</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
-                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> All Users</a></li>
                     <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
                     <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
                     <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
                 </ul>
             </li>
-            
-            <!-- ACADEMIC -->
+
+            <!-- Academic -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-graduation-cap"></i></span>
+                    <span class="nav-text">Academic</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
                     <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
@@ -526,20 +1134,29 @@
                     <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 </ul>
             </li>
-            
-            <!-- SCHEDULING -->
+
+            <!-- Scheduling -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-calendar-check"></i></span>
+                    <span class="nav-text">Scheduling</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
                     <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
                     <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
                 </ul>
             </li>
-            
-            <!-- STAFF & COMM -->
+
+            <!-- Staff & Comm -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-headset"></i></span>
+                    <span class="nav-text">Staff & Comm</span>
+                    <span class="nav-badge">3</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
                     <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
@@ -547,13 +1164,22 @@
                     <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
                 </ul>
             </li>
-            
-            <!-- FINANCIAL -->
-            <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
-            
-            <!-- SYSTEM TOOLS -->
+
+            <!-- Fee Accounts -->
+            <li>
+                <a href="#" data-tab="fee-accounts" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="nav-text">Fee Accounts</span>
+                </a>
+            </li>
+
+            <!-- System Tools -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+                    <span class="nav-text">System Tools</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
                     <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
@@ -565,10 +1191,14 @@
                     <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
                 </ul>
             </li>
-            
-            <!-- SECURITY -->
+
+            <!-- Security -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
+                    <span class="nav-text">Security</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
                     <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
@@ -577,18 +1207,41 @@
                     <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
                 </ul>
             </li>
-            
-            <!-- BACKUP -->
-            <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
+
+            <!-- Backup -->
+            <li>
+                <a href="#" data-tab="backup" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-database"></i></span>
+                    <span class="nav-text">Backup & Restore</span>
+                </a>
+            </li>
         </ul>
+    </nav>
 
-        <div class="logout">
-            <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="user-avatar">
+                <img src="https://ui-avatars.com/api/?name=Super+Admin&background=FDB913&color=0B2A4A&size=40" alt="Admin">
+            </div>
+            <div class="user-info">
+                <span class="user-name">Super Admin</span>
+                <span class="user-role">Administrator</span>
+            </div>
+            <button class="user-options" onclick="logout()" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
         </div>
-    </aside>
+        <div class="sidebar-version">
+            <span>v3.2.1</span>
+            <span class="divider">•</span>
+            <span><i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i> Online</span>
+        </div>
+    </div>
+</aside>
 
-    <!-- Mobile Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+<!-- Mobile Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- ============================================ -->
     <!-- MAIN CONTENT WRAPPER                        -->
