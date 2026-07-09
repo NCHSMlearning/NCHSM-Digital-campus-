@@ -354,72 +354,122 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                 res.json([]);
             }
             
-        } else {
-            // ===== INTERNAL MARKS =====
-            let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
-            const sheetName = `${block}_${cleanSubject}`;
-            
-            console.log(`[GET INTERNAL] Reading sheet: ${sheetName}`);
-            
-            const response = await sheets.spreadsheets.values.get({
-                spreadsheetId: req.spreadsheetId,
-                range: `${sheetName}!A:I`,
-                valueRenderOption: 'UNFORMATTED_VALUE'
-            });
-            
-            const data = response.data.values || [];
-            const allMarks = [];
-            
-            // Get student-year mapping from STUDENTS sheet
-            const studentsResponse = await sheets.spreadsheets.values.get({
-                spreadsheetId: req.spreadsheetId,
-                range: 'STUDENTS!A:E',
-                valueRenderOption: 'UNFORMATTED_VALUE'
-            });
-            const studentsData = studentsResponse.data.values || [];
-            
-            // Create map: admission → year
-            const studentYearMap = {};
-            for (let i = 1; i < studentsData.length; i++) {
-                const row = studentsData[i];
-                if (row && row[0]) {
-                    studentYearMap[row[0].trim()] = row[3] || '2024';
+} else {
+    // ===== INTERNAL MARKS - DYNAMIC =====
+    let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+    const sheetName = `${block}_${cleanSubject}`;
+    
+    console.log(`[GET INTERNAL] Reading sheet: ${sheetName}`);
+    
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: `${sheetName}!A:Z`,
+        valueRenderOption: 'UNFORMATTED_VALUE'
+    });
+    
+    const data = response.data.values || [];
+    console.log(`[GET INTERNAL] Raw data rows: ${data.length}`);
+    
+    if (data.length === 0) {
+        console.log(`[GET INTERNAL] No data found in sheet ${sheetName}`);
+        res.json([]);
+        return;
+    }
+    
+    const headers = data[0] || [];
+    console.log(`[GET INTERNAL] Headers:`, headers);
+    
+    // ===== DYNAMIC COLUMN MAPPING =====
+    function findColumnIndex(headers, keywords) {
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
+            for (const keyword of keywords) {
+                if (header.includes(keyword.toUpperCase())) {
+                    return i;
                 }
             }
-            
-            // Filter marks by year
-            for (let i = 1; i < data.length; i++) {
-                if (data[i] && data[i][0]) {
-                    const admission = data[i][0].trim();
-                    const studentYear = studentYearMap[admission] || '2024';
-                    
-                    if (studentYear === year) {
-                        allMarks.push({ 
-                            row: i + 1, 
-                            admission: admission, 
-                            name: data[i][1], 
-                            cat1: data[i][2] || '', 
-                            cat2: data[i][3] || '', 
-                            exam: data[i][4] || '', 
-                            final: data[i][5] || '', 
-                            grade: data[i][6] || '',
-                            gradedBy: data[i][7] || '', 
-                            assessmentType: data[i][8] || 'full' 
-                        });
-                    }
-                }
-            }
-            
-            console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
-            res.json(allMarks);
+        }
+        return -1;
+    }
+    
+    // Find columns dynamically
+    const admIdx = findColumnIndex(headers, ['ADMISSION', 'ADM NO', 'REG NO', 'REGISTRATION']);
+    const nameIdx = findColumnIndex(headers, ['NAME', 'STUDENT NAME', 'FULL NAME']);
+    const cat1Idx = findColumnIndex(headers, ['CAT1', 'CAT 1']);
+    const cat2Idx = findColumnIndex(headers, ['CAT2', 'CAT 2']);
+    const examIdx = findColumnIndex(headers, ['EXAM', 'EXAM SCORE']);
+    const finalIdx = findColumnIndex(headers, ['FINAL', 'TOTAL']);
+    const gradeIdx = findColumnIndex(headers, ['GRADE']);
+    const gradedIdx = findColumnIndex(headers, ['GRADED BY']);
+    const typeIdx = findColumnIndex(headers, ['ASSESSMENT TYPE', 'ASSESSMENT_TYPE']);
+    const yearIdx = findColumnIndex(headers, ['YEAR']);
+    
+    console.log(`[GET INTERNAL] Column mapping:`, {
+        admIdx, nameIdx, cat1Idx, cat2Idx, examIdx, finalIdx, gradeIdx, gradedIdx, typeIdx, yearIdx
+    });
+    
+    // Get student-year mapping from STUDENTS sheet
+    const studentsResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: req.spreadsheetId,
+        range: 'STUDENTS!A:E',
+        valueRenderOption: 'UNFORMATTED_VALUE'
+    });
+    const studentsData = studentsResponse.data.values || [];
+    
+    // Create map: admission → year
+    const studentYearMap = {};
+    for (let i = 1; i < studentsData.length; i++) {
+        const row = studentsData[i];
+        if (row && row[0]) {
+            studentYearMap[row[0].trim()] = row[3] || '2024';
+        }
+    }
+    
+    const allMarks = [];
+    
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row || !row[admIdx]) continue;
+        
+        // Get student year from STUDENTS sheet
+        const admission = row[admIdx] ? row[admIdx].toString().trim() : '';
+        const studentYear = studentYearMap[admission] || '2024';
+        
+        // If year filter is applied, check it
+        if (studentYear !== year) {
+            console.log(`⏭️ Skipping ${admission} (${studentYear}) - not ${year}`);
+            continue;
         }
         
-    } catch (error) {
-        console.error('Error in /api/marks:', error);
-        res.json([]);
+        // Extract values using dynamic column mapping
+        const name = nameIdx !== -1 ? (row[nameIdx] || '').toString().trim() : '';
+        const cat1 = cat1Idx !== -1 ? parseFloat(row[cat1Idx]) || 0 : 0;
+        const cat2 = cat2Idx !== -1 ? parseFloat(row[cat2Idx]) || 0 : 0;
+        const exam = examIdx !== -1 ? parseFloat(row[examIdx]) || 0 : 0;
+        const final = finalIdx !== -1 ? (row[finalIdx] || '').toString().trim() : '';
+        const grade = gradeIdx !== -1 ? (row[gradeIdx] || '').toString().trim() : '';
+        const gradedBy = gradedIdx !== -1 ? (row[gradedIdx] || '').toString().trim() : '';
+        const assessmentType = typeIdx !== -1 ? (row[typeIdx] || '').toString().trim() : 'full';
+        const yearFromSheet = yearIdx !== -1 ? (row[yearIdx] || '').toString().trim() : studentYear;
+        
+        allMarks.push({
+            row: i + 1,
+            admission: admission,
+            name: name || `Student ${i}`,
+            cat1: cat1,
+            cat2: cat2,
+            exam: exam,
+            final: final,
+            grade: grade,
+            gradedBy: gradedBy || '',
+            assessmentType: assessmentType,
+            year: yearFromSheet
+        });
     }
-});
-
+    
+    console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
+    res.json(allMarks);
+}
 // ===== CREATE MARKSHEET WITH STUDENTS =====
 async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType, year = '2024') {
     try {
