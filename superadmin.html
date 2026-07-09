@@ -4491,19 +4491,80 @@
         }
     })();
 
-    // ========== MOBILE NAVIGATION ==========
+    // ========== MOBILE NAVIGATION - FIXED WITH OVERLAY ==========
     document.addEventListener('DOMContentLoaded', function() {
-        const mobileToggle = document.getElementById('mobileNavToggle');
-        if (mobileToggle) {
-            mobileToggle.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.toggle('active');
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('mobileNavToggle');
+        
+        // Create overlay if it doesn't exist
+        let overlayElement = document.getElementById('sidebarOverlay');
+        if (!overlayElement) {
+            const newOverlay = document.createElement('div');
+            newOverlay.id = 'sidebarOverlay';
+            newOverlay.className = 'sidebar-overlay';
+            document.body.appendChild(newOverlay);
+            overlayElement = document.getElementById('sidebarOverlay');
+        }
+        
+        // Toggle sidebar function
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            if (toggleBtn) toggleBtn.classList.toggle('active');
+            if (overlayElement) overlayElement.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+        }
+        
+        // Close sidebar function
+        function closeSidebar() {
+            sidebar.classList.remove('active');
+            if (toggleBtn) toggleBtn.classList.remove('active');
+            if (overlayElement) overlayElement.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        // Toggle button click
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleSidebar();
             });
         }
-        document.querySelectorAll('.nav a').forEach(link => {
+        
+        // Overlay click to close
+        if (overlayElement) {
+            overlayElement.addEventListener('click', function() {
+                closeSidebar();
+            });
+        }
+        
+        // Close sidebar when a nav link is clicked (on mobile)
+        document.querySelectorAll('.sidebar .nav a').forEach(link => {
             link.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.remove('active');
+                if (window.innerWidth <= 992) {
+                    closeSidebar();
+                }
             });
         });
+        
+        // Close sidebar on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
+        });
+        
+        // Handle window resize
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth > 992 && sidebar.classList.contains('active')) {
+                    closeSidebar();
+                }
+            }, 250);
+        });
+        
+        console.log('✅ Sidebar mobile toggle initialized');
     });
     
     console.log('✅ All scripts loaded successfully');
