@@ -216,60 +216,64 @@ class ResourcesModule {
     
     // ==================== PROGRAM DETECTION ====================
     detectUserProgram() {
-        console.log('🔍 Detecting user program...');
+    console.log('🔍 Detecting user program...');
+    
+    let profile = null;
+    if (window.currentUserProfile) profile = window.currentUserProfile;
+    else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
+    else if (window.userProfile) profile = window.userProfile;
+    else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
+    
+    if (!profile) {
+        try {
+            const savedProfile = localStorage.getItem('userProfile');
+            if (savedProfile) profile = JSON.parse(savedProfile);
+        } catch (e) {}
+    }
+    
+    if (profile) {
+        this.userProfile = profile;
+        this.userId = profile.user_id || profile.id || null;
+        const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
         
-        let profile = null;
-        if (window.currentUserProfile) profile = window.currentUserProfile;
-        else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
-        else if (window.userProfile) profile = window.userProfile;
-        else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
-        
-        if (!profile) {
-            try {
-                const savedProfile = localStorage.getItem('userProfile');
-                if (savedProfile) profile = JSON.parse(savedProfile);
-            } catch (e) {}
+        if (this.TVET_PROGRAMS.includes(programCode)) {
+            this.userProgram = 'tvet';
+            this.isTVETStudent = true;
+            this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
+            // ✅ FIXED: Use block for TVET
+            this.userBlock = profile.block || profile.current_block || 'Term1';
+            this.userTerm = 1;
+            console.log(`✅ TVET Student: ${programCode}, Block: ${this.userBlock}`);
+        } else {
+            this.userProgram = 'krchn';
+            this.isTVETStudent = false;
+            this.userProgramDisplay = 'KRCHN Nursing';
+            this.userBlock = profile.block || 'Introductory';
+            this.userTerm = null;
+            console.log(`✅ KRCHN Student: ${programCode}, Block: ${this.userBlock}`);
         }
         
-        if (profile) {
-            this.userProfile = profile;
-            this.userId = profile.user_id || profile.id || null;
-            const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
-            
-            if (this.TVET_PROGRAMS.includes(programCode)) {
-                this.userProgram = 'tvet';
-                this.isTVETStudent = true;
-                this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
-                this.userTerm = profile.term || 1;
-                this.userBlock = null;
-            } else {
-                this.userProgram = 'krchn';
-                this.isTVETStudent = false;
-                this.userProgramDisplay = 'KRCHN Nursing';
-                this.userBlock = profile.block || 'Introductory';
-                this.userTerm = null;
-            }
-            
-            this.userIntakeYear = profile.intake_year || profile.intake || 2025;
-            
-            this.updateUIForProgram();
-            this.updateBlockFilterOptions();
-            this.updateBlockDisplay();
-            return this.userProgram;
-        }
-        
-        this.userProgram = 'krchn';
-        this.isTVETStudent = false;
-        this.userProgramDisplay = 'KRCHN Nursing';
-        this.userBlock = 'Introductory';
-        this.userTerm = null;
-        this.userIntakeYear = 2025;
+        this.userIntakeYear = profile.intake_year || profile.intake || 2025;
         
         this.updateUIForProgram();
         this.updateBlockFilterOptions();
         this.updateBlockDisplay();
-        return 'krchn';
+        return this.userProgram;
     }
+    
+    // Default fallback
+    this.userProgram = 'krchn';
+    this.isTVETStudent = false;
+    this.userProgramDisplay = 'KRCHN Nursing';
+    this.userBlock = 'Introductory';
+    this.userTerm = null;
+    this.userIntakeYear = 2025;
+    
+    this.updateUIForProgram();
+    this.updateBlockFilterOptions();
+    this.updateBlockDisplay();
+    return 'krchn';
+}
     
     // ==================== UPDATE UI ====================
     updateUIForProgram() {
@@ -470,62 +474,70 @@ class ResourcesModule {
     }
     
     // ==================== RESOURCE LOADING ====================
-    async loadResources() {
-        if (this.isLoading) return;
-        this.detectUserProgram();
-        if (!this.userProfile) await this.getUserProfile();
-        
-        const supabase = this.getSupabaseClient();
-        if (!supabase) {
-            this.showError('Database connection error');
-            return;
-        }
-        if (!this.resourcesGrid) return;
-        
-        this.isLoading = true;
-        this.showSkeletonCards(6);
-        
-        try {
-            const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-            const intakeYear = this.userIntakeYear || 2025;
-            
-            let query = supabase
-                .from('resources')
-                .select('*')
-                .eq('intake', String(intakeYear))
-                .order('created_at', { ascending: false });
-            
-            if (isTVET) {
-                const tvetPrograms = this.TVET_PROGRAMS;
-                query = query.in('program_type', tvetPrograms);
-                if (this.userTerm) {
-                    query = query.eq('term', this.userTerm);
-                }
-            } else {
-                query = query.eq('program_type', 'KRCHN');
-                if (this.userBlock && this.userBlock !== 'General') {
-                    const blockPattern = this.userBlock.toLowerCase();
-                    query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
-                }
-            }
-            
-            const { data: resources, error } = await query;
-            if (error) throw error;
-            
-            this.allResources = resources || [];
-            this.updatePastPaperCount();
-            this.populateFilters();
-            this.applyFilters();
-            this.updateDashboardResourceCount();
-            
-        } catch (err) {
-            console.error('Error loading resources:', err);
-            this.showError(err.message);
-        } finally {
-            this.isLoading = false;
-        }
-    }
+   // ==================== RESOURCE LOADING ====================
+async loadResources() {
+    if (this.isLoading) return;
+    this.detectUserProgram();
+    if (!this.userProfile) await this.getUserProfile();
     
+    const supabase = this.getSupabaseClient();
+    if (!supabase) {
+        this.showError('Database connection error');
+        return;
+    }
+    if (!this.resourcesGrid) return;
+    
+    this.isLoading = true;
+    this.showSkeletonCards(6);
+    
+    try {
+        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+        const intakeYear = this.userIntakeYear || 2025;
+        
+        console.log(`📊 Loading resources for: ${isTVET ? 'TVET' : 'KRCHN'}, Intake: ${intakeYear}, Block/Term: ${isTVET ? this.userBlock : this.userBlock}`);
+        
+        let query = supabase
+            .from('resources')
+            .select('*')
+            .eq('intake', String(intakeYear))
+            .order('created_at', { ascending: false });
+        
+        if (isTVET) {
+            const tvetPrograms = this.TVET_PROGRAMS;
+            query = query.in('program_type', tvetPrograms);
+            
+            // ✅ FIXED: Use block for TVET (since term column is empty)
+            if (this.userBlock) {
+                const blockPattern = this.userBlock.toLowerCase();
+                query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
+                console.log(`🔍 Filtering TVET by block: ${this.userBlock}`);
+            }
+        } else {
+            query = query.eq('program_type', 'KRCHN');
+            if (this.userBlock && this.userBlock !== 'General') {
+                const blockPattern = this.userBlock.toLowerCase();
+                query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
+            }
+        }
+        
+        const { data: resources, error } = await query;
+        if (error) throw error;
+        
+        this.allResources = resources || [];
+        console.log(`✅ Loaded ${this.allResources.length} resources`);
+        
+        this.updatePastPaperCount();
+        this.populateFilters();
+        this.applyFilters();
+        this.updateDashboardResourceCount();
+        
+    } catch (err) {
+        console.error('Error loading resources:', err);
+        this.showError(err.message);
+    } finally {
+        this.isLoading = false;
+    }
+}
     // ==================== APPLY FILTERS ====================
     applyFilters() {
         if (!this.allResources.length) {
