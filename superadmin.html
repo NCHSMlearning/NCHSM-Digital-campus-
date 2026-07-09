@@ -507,17 +507,19 @@
         </ul>
     </li>
     
-    <!-- ACADEMIC MANAGEMENT DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-            <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-            <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-           <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School System</a></li>
-            <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-        </ul>
-    </li>
+  <!-- ACADEMIC MANAGEMENT DROPDOWN -->
+<li class="nav-dropdown">
+    <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down" style="float: right;"></i></a>
+    <ul class="dropdown-menu">
+        <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+        <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+        <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+        <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School System</a></li>
+        <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+        <!-- 👇 ADD THIS LINE BELOW 👇 -->
+        <li><a href="#" data-tab="programs"><i class="fas fa-sitemap"></i> Programs</a></li>
+    </ul>
+</li>
     
     <!-- SCHEDULING & ATTENDANCE DROPDOWN -->
     <li class="nav-dropdown">
@@ -1115,6 +1117,287 @@
                 </div>
             </section>
 
+<!-- ============================================ -->
+<!-- PROGRAM MANAGEMENT - COMPLETE SECTION        -->
+<!-- ============================================ -->
+<section id="programs" class="tab-content">
+    <h2><i class="fas fa-sitemap"></i> Program Management</h2>
+    <p>Define and manage all academic programs offered by NCHSM. Programs serve as the foundation for courses, units, and student enrollment.</p>
+    
+    <!-- Stats Cards -->
+    <div class="cards">
+        <div class="card" onclick="filterPrograms('active')" style="cursor: pointer; border-top: 4px solid #059669;">
+            <h3 style="color: #059669;"><i class="fas fa-check-circle"></i> Active Programs</h3>
+            <p class="data" id="activeProgramsCount" style="color: #059669; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Currently running</p>
+        </div>
+        <div class="card" onclick="filterPrograms('inactive')" style="cursor: pointer; border-top: 4px solid #d97706;">
+            <h3 style="color: #d97706;"><i class="fas fa-pause-circle"></i> Inactive</h3>
+            <p class="data" id="inactiveProgramsCount" style="color: #d97706; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Archived/Inactive</p>
+        </div>
+        <div class="card" onclick="showProgramIntakes()" style="cursor: pointer; border-top: 4px solid #4C1D95;">
+            <h3 style="color: #4C1D95;"><i class="fas fa-calendar-plus"></i> Total Intakes</h3>
+            <p class="data" id="totalIntakesCount" style="color: #4C1D95; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Across all programs</p>
+        </div>
+        <div class="card" onclick="showProgramBlocks()" style="cursor: pointer; border-top: 4px solid #2563eb;">
+            <h3 style="color: #2563eb;"><i class="fas fa-layer-group"></i> Total Blocks</h3>
+            <p class="data" id="totalBlocksCount" style="color: #2563eb; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Curriculum blocks</p>
+        </div>
+    </div>
+    
+    <!-- Add New Program Form -->
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 25px; border-radius: 12px; margin-bottom: 25px;">
+        <h3 style="color: #4C1D95; margin-bottom: 5px;"><i class="fas fa-plus-circle"></i> Add New Program</h3>
+        <p style="color: #6b7280; font-size: 13px; margin-top: -5px; margin-bottom: 15px;">Create a new academic program with its core details</p>
+        
+        <form id="add-program-form" onsubmit="event.preventDefault(); createProgram();">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Code *</label>
+                    <input type="text" id="program_code" placeholder="e.g., KRCHN, DPOTT" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Name *</label>
+                    <input type="text" id="program_name" placeholder="Full program name" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Category *</label>
+                    <select id="program_category" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="KRCHN">🎓 KRCHN - Nursing</option>
+                        <option value="TVET">🔧 TVET - Technical/Vocational</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Type *</label>
+                    <select id="program_type" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="diploma">Diploma</option>
+                        <option value="certificate">Certificate</option>
+                        <option value="artisan">Artisan</option>
+                        <option value="degree">Degree</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Duration (Months)</label>
+                    <input type="number" id="program_duration" placeholder="e.g., 24" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Total Credits</label>
+                    <input type="number" id="program_credits" placeholder="e.g., 120" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Description</label>
+                <textarea id="program_description" rows="2" placeholder="Program description..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Status</label>
+                    <select id="program_status" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="active">✅ Active</option>
+                        <option value="inactive">⏸️ Inactive</option>
+                        <option value="archived">📦 Archived</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-action" style="background: #4C1D95; padding: 12px 30px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                <i class="fas fa-save"></i> Create Program
+            </button>
+        </form>
+    </div>
+    
+    <!-- Filter & Search -->
+    <div class="filter-bar">
+        <input type="text" id="program_search" placeholder="🔍 Search programs..." onkeyup="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; flex: 1; min-width: 150px;">
+        <select id="program_category_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Categories</option>
+            <option value="KRCHN">KRCHN</option>
+            <option value="TVET">TVET</option>
+        </select>
+        <select id="program_type_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Types</option>
+            <option value="diploma">Diploma</option>
+            <option value="certificate">Certificate</option>
+            <option value="artisan">Artisan</option>
+            <option value="degree">Degree</option>
+        </select>
+        <select id="program_status_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
+        </select>
+        <button onclick="loadAllPrograms()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button onclick="exportProgramsToCSV()" class="btn-action" style="background: #059669; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-download"></i> Export
+        </button>
+    </div>
+    
+    <!-- Programs Table -->
+    <div class="table-responsive">
+        <table class="data-table" id="programs-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden;">
+            <thead>
+                <tr>
+                    <th style="padding: 12px; text-align: left;">Code</th>
+                    <th style="padding: 12px; text-align: left;">Name</th>
+                    <th style="padding: 12px; text-align: left;">Category</th>
+                    <th style="padding: 12px; text-align: left;">Type</th>
+                    <th style="padding: 12px; text-align: left;">Duration</th>
+                    <th style="padding: 12px; text-align: left;">Credits</th>
+                    <th style="padding: 12px; text-align: left;">Intakes</th>
+                    <th style="padding: 12px; text-align: left;">Blocks</th>
+                    <th style="padding: 12px; text-align: left;">Status</th>
+                    <th style="padding: 12px; text-align: left;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="programs-table-body">
+                <tr><td colspan="10" style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px; color: #6b7280;">Loading programs...</p>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- ====== INTAKE MANAGEMENT ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-calendar-plus"></i> Program Intake Management</h3>
+        <p style="color: #6b7280; font-size: 13px;">Manage student intakes for each program. Intakes define when students join a program.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="intake_program_select" onchange="loadProgramIntakes()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Intake Name</label>
+                    <input type="text" id="intake_name" placeholder="e.g., March 2026 Intake" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Year</label>
+                    <input type="number" id="intake_year" placeholder="2026" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Status</label>
+                    <select id="intake_status" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="upcoming">📅 Upcoming</option>
+                        <option value="active">✅ Active</option>
+                        <option value="completed">📌 Completed</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="addProgramIntake()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Add Intake
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-intakes-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its intakes.</p>
+        </div>
+    </div>
+    
+    <!-- ====== BLOCK MANAGEMENT ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-layer-group"></i> Program Block Structure</h3>
+        <p style="color: #6b7280; font-size: 13px;">Define the curriculum blocks/semesters for each program.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="block_program_select" onchange="loadProgramBlocks()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Block Name</label>
+                    <input type="text" id="block_name" placeholder="e.g., Block 3" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Sequence</label>
+                    <input type="number" id="block_sequence" placeholder="0, 1, 2..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Credit Hours</label>
+                    <input type="number" id="block_credit_hours" placeholder="0" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <button onclick="addProgramBlock()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Add Block
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-blocks-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its blocks.</p>
+        </div>
+    </div>
+    
+    <!-- ====== PROGRAM-COURSE MAPPING ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-link"></i> Program-Course Mapping</h3>
+        <p style="color: #6b7280; font-size: 13px;">Assign courses to programs and optionally to specific blocks.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="mapping_program_select" onchange="loadProgramMappings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Course</label>
+                    <select id="mapping_course_select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Course --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Block (Optional)</label>
+                    <select id="mapping_block_select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Any Block --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Type</label>
+                    <select id="mapping_is_core" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="true">📘 Core (Required)</option>
+                        <option value="false">📗 Elective</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="addProgramCourseMapping()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-link"></i> Map Course
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-mappings-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its course mappings.</p>
+        </div>
+    </div>
+</section>
           <!-- ============================================ -->
 <!-- NURSING SCHOOL SYSTEM - COMPLETE MODULE -->
 <!-- ============================================ -->
