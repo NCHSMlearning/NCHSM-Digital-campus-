@@ -5206,13 +5206,18 @@ let _transcriptStudents = [];
 let _selectedStudents = new Set();
 let _transcriptMode = 'single'; // 'single' | 'all'
 
+// ===== LOAD STUDENTS FOR TRANSCRIPT - FIXED =====
 async function loadTranscriptStudents() {
     const block = document.getElementById('transcriptBlock').value;
     const subject = document.getElementById('transcriptSubject').value;
     const year = document.getElementById('transcriptYear').value;
     
-    if (!block || !subject) {
-        showNotification('Please select both a block and subject (or "All")', true);
+    // Check if "All" is selected
+    const isAllBlocks = block === 'all';
+    const isAllSubjects = subject === 'all';
+    
+    if (isAllBlocks && isAllSubjects) {
+        showNotification('Please select a specific block or subject', true);
         return;
     }
     
@@ -5224,7 +5229,7 @@ async function loadTranscriptStudents() {
         let subjectsToProcess = [];
         
         // Determine which blocks to process
-        if (block === 'all') {
+        if (isAllBlocks) {
             const blocksRes = await apiCall('/api/blocks', {});
             blocksToProcess = blocksRes;
         } else {
@@ -5232,32 +5237,46 @@ async function loadTranscriptStudents() {
         }
         
         // Determine which subjects to process
-        if (subject === 'all') {
+        if (isAllSubjects) {
+            // Load ALL subjects for selected blocks
             const config = await getConfig(true);
             for (let b of blocksToProcess) {
                 if (config[b]) {
-                    subjectsToProcess.push(...config[b].map(s => ({ name: s.name, block: b, assessmentType: s.assessmentType })));
+                    subjectsToProcess.push(...config[b].map(s => ({ 
+                        name: s.name, 
+                        block: b, 
+                        assessmentType: s.assessmentType 
+                    })));
                 }
             }
         } else {
-            // Find the block for this subject
+            // Load specific subject
             const config = await getConfig(true);
             let foundBlock = null;
             let foundSubject = null;
-            for (let b of blocksToProcess) {
+            
+            // If block is 'all', search all blocks
+            const searchBlocks = isAllBlocks ? Object.keys(config) : [block];
+            
+            for (let b of searchBlocks) {
                 if (config[b]) {
                     const s = config[b].find(sub => sub.name === subject);
                     if (s) {
                         foundBlock = b;
-                        foundSubject = s;
+                        foundSubject = { 
+                            name: subject, 
+                            block: b, 
+                            assessmentType: s.assessmentType 
+                        };
                         break;
                     }
                 }
             }
+            
             if (foundSubject) {
-                subjectsToProcess.push({ name: subject, block: foundBlock, assessmentType: foundSubject.assessmentType });
+                subjectsToProcess.push(foundSubject);
             } else {
-                showNotification(`Subject "${subject}" not found`, true);
+                showNotification(`Subject "${subject}" not found in selected blocks`, true);
                 hideLoading();
                 return;
             }
@@ -5268,8 +5287,13 @@ async function loadTranscriptStudents() {
         // Fetch marks for each subject
         for (let subj of subjectsToProcess) {
             try {
-                const marks = await apiCall(`/api/marks/${subj.block}/${subj.name}`, {});
-                if (marks && marks.length > 0) {
+                // ✅ FIX: Use encodeURIComponent for subject name
+                const encodedSubject = encodeURIComponent(subj.name);
+                const marks = await apiCall(`/api/marks/${subj.block}/${encodedSubject}`, {});
+                
+                console.log(`📊 ${subj.name}: ${marks ? (Array.isArray(marks) ? marks.length : 'non-array') : 'null'}`);
+                
+                if (marks && Array.isArray(marks) && marks.length > 0) {
                     marks.forEach(m => {
                         m._subject = subj.name;
                         m._block = subj.block;
@@ -5289,8 +5313,12 @@ async function loadTranscriptStudents() {
             document.getElementById('transcriptResult').innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px; display: block; color: #f59e0b;"></i>
-                    <h4>No students found</h4>
+                    <h4>No marks found</h4>
                     <p>No marks have been entered for the selected criteria</p>
+                    <p style="font-size:12px; margin-top:8px;">Try selecting a different subject or block</p>
+                    <button class="save-btn" onclick="loadTranscriptStudents()" style="margin-top: 12px;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
                 </div>
             `;
             return;
@@ -5305,6 +5333,8 @@ async function loadTranscriptStudents() {
         const studentMarksMap = {};
         allMarks.forEach(mark => {
             const adm = mark.admission;
+            if (!adm) return;
+            
             if (!studentMarksMap[adm]) {
                 studentMarksMap[adm] = {
                     admission: adm,
@@ -5322,9 +5352,11 @@ async function loadTranscriptStudents() {
             let cat2 = parseFloat(mark.cat2) || 0;
             let exam = parseFloat(mark.exam) || 0;
             
-            if (mark._assessmentType === 'full') {
+            const assessmentType = mark._assessmentType || 'full';
+            
+            if (assessmentType === 'full') {
                 total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            } else if (mark._assessmentType === 'single_cat') {
+            } else if (assessmentType === 'single_cat') {
                 total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
             } else {
                 total = Math.round(Math.min(exam,100) * 10) / 10;
@@ -5379,6 +5411,28 @@ async function loadTranscriptStudents() {
         console.error('Error loading students:', error);
         showNotification('Error loading students: ' + error.message, true);
     }
+}
+  // ===== SELECT SINGLE STUDENT (Double-click) =====
+function selectSingleTranscriptStudent(admission) {
+    _selectedStudents.clear();
+    _selectedStudents.add(admission);
+    
+    document.querySelectorAll('.student-item').forEach(el => {
+        const adm = el.dataset.admission;
+        if (adm === admission) {
+            el.classList.add('selected');
+            const checkbox = el.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = true;
+        } else {
+            el.classList.remove('selected');
+            const checkbox = el.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    updateTranscriptButtons();
+    const student = _transcriptStudents.find(s => s.admission === admission);
+    showNotification(`Selected: ${student?.name || 'Student'}`, false);
 }
 
 function displayTranscriptStudents(students) {
