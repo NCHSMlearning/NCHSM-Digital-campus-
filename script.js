@@ -14314,7 +14314,7 @@ window.rejectCurrentDocument = async function() {
 console.log('✅ Document Viewer functions loaded');
 
 // ============================================
-// PROGRAM MANAGEMENT - SUPABASE OPERATIONS
+// PROGRAM MANAGEMENT - COMPLETE WORKING VERSION
 // ============================================
 
 const PROGRAM_TABLE = 'programs';
@@ -14332,21 +14332,23 @@ async function loadAllPrograms() {
         
         if (error) throw error;
         
-        renderProgramsTable(data);
+        await renderProgramsTable(data);
         updateProgramStats(data);
         populateProgramSelectors(data);
         return data;
     } catch (error) {
         console.error('Error loading programs:', error);
-        document.getElementById('programs-table-body').innerHTML = 
-            `<tr><td colspan="10" style="padding: 40px; text-align: center; color: #dc2626;">
+        const tbody = document.getElementById('programs-table-body');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: #dc2626;">
                 ❌ Error loading programs: ${error.message}
             </td></tr>`;
+        }
         return [];
     }
 }
 
-// ✅ CORRECT - make the function async
+// ---------- RENDER PROGRAMS TABLE ----------
 async function renderProgramsTable(programs) {
     const tbody = document.getElementById('programs-table-body');
     if (!tbody) return;
@@ -14361,13 +14363,14 @@ async function renderProgramsTable(programs) {
     tbody.innerHTML = '';
     
     for (const p of programs) {
-        // ✅ Now await works because function is async
-        const { count: intakeCount, error: intakeError } = await sb
+        // Get intake count
+        const { count: intakeCount } = await sb
             .from(INTAKE_TABLE)
             .select('*', { count: 'exact', head: true })
             .eq('program_id', p.id);
         
-        const { count: blockCount, error: blockError } = await sb
+        // Get block count
+        const { count: blockCount } = await sb
             .from(BLOCK_TABLE)
             .select('*', { count: 'exact', head: true })
             .eq('program_id', p.id);
@@ -14377,20 +14380,44 @@ async function renderProgramsTable(programs) {
         
         const categoryClass = p.category === 'KRCHN' ? 'program-badge-krchn' : 'program-badge-tvet';
         
+        // Program type with emoji
+        const typeEmoji = {
+            'diploma': '🎓',
+            'certificate': '📜',
+            'artisan': '🔧',
+            'degree': '🎓',
+            'other': '📊'
+        };
+        const typeDisplay = `${typeEmoji[p.program_type] || '📚'} ${p.program_type}`;
+        
         tbody.innerHTML += `
             <tr>
                 <td><strong>${escapeHtml(p.program_code)}</strong></td>
                 <td>${escapeHtml(p.program_name)}</td>
                 <td><span class="program-badge ${categoryClass}">${escapeHtml(p.category)}</span></td>
-                <td>${escapeHtml(p.program_type)}</td>
+                <td>${typeDisplay}</td>
                 <td>${p.duration_months || '-'} mo</td>
                 <td>${p.total_credits || '-'}</td>
-                <td><span class="badge badge-info" style="cursor:pointer;" onclick="loadIntakesForProgram('${p.id}')">${intakeCount || 0}</span></td>
-                <td><span class="badge badge-info" style="cursor:pointer;" onclick="loadBlocksForProgram('${p.id}')">${blockCount || 0}</span></td>
+                <td>
+                    <span class="badge badge-info" style="cursor:pointer;" onclick="loadIntakesForProgram('${p.id}')">
+                        ${intakeCount || 0} 
+                        <i class="fas fa-calendar-plus" style="font-size:10px;"></i>
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-info" style="cursor:pointer;" onclick="loadBlocksForProgram('${p.id}')">
+                        ${blockCount || 0}
+                        <i class="fas fa-layer-group" style="font-size:10px;"></i>
+                    </span>
+                </td>
                 <td><span class="program-badge ${statusClass}">${escapeHtml(p.status)}</span></td>
                 <td>
-                    <button onclick="editProgram('${p.id}')" class="btn-sm btn-edit"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteProgram('${p.id}')" class="btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                    <button onclick="editProgram('${p.id}')" class="btn-sm btn-edit" title="Edit Program">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteProgram('${p.id}')" class="btn-sm btn-delete" title="Delete Program">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -14432,23 +14459,49 @@ function populateProgramSelectors(programs) {
 
 // ---------- CREATE PROGRAM ----------
 async function createProgram() {
-    const data = {
-        program_code: document.getElementById('program_code').value.trim().toUpperCase(),
-        program_name: document.getElementById('program_name').value.trim(),
-        category: document.getElementById('program_category').value,
-        program_type: document.getElementById('program_type').value,
-        duration_months: parseInt(document.getElementById('program_duration').value) || 0,
-        total_credits: parseInt(document.getElementById('program_credits').value) || 0,
-        description: document.getElementById('program_description').value.trim(),
-        status: document.getElementById('program_status').value,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
+    const programCode = document.getElementById('program_code').value.trim().toUpperCase();
+    const programName = document.getElementById('program_name').value.trim();
+    const category = document.getElementById('program_category').value;
+    const programType = document.getElementById('program_type').value;
+    const durationMonths = parseInt(document.getElementById('program_duration').value) || 0;
+    const totalCredits = parseInt(document.getElementById('program_credits').value) || 0;
+    const description = document.getElementById('program_description').value.trim();
+    const status = document.getElementById('program_status').value;
     
-    if (!data.program_code || !data.program_name) {
+    if (!programCode || !programName) {
         showFeedback('⚠️ Program Code and Name are required!', 'error');
         return;
     }
+    
+    // Check for duplicate program code
+    const { data: existing, error: checkError } = await sb
+        .from(PROGRAM_TABLE)
+        .select('program_code')
+        .eq('program_code', programCode)
+        .maybeSingle();
+    
+    if (checkError) {
+        showFeedback('❌ Error checking for duplicates: ' + checkError.message, 'error');
+        return;
+    }
+    
+    if (existing) {
+        showFeedback(`⚠️ Program code "${programCode}" already exists!`, 'error');
+        return;
+    }
+    
+    const data = {
+        program_code: programCode,
+        program_name: programName,
+        category: category,
+        program_type: programType,
+        duration_months: durationMonths,
+        total_credits: totalCredits,
+        description: description,
+        status: status,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
     
     try {
         const { error } = await sb.from(PROGRAM_TABLE).insert([data]);
@@ -14456,11 +14509,77 @@ async function createProgram() {
         
         showFeedback('✅ Program created successfully!', 'success');
         document.getElementById('add-program-form').reset();
-        loadAllPrograms();
+        await loadAllPrograms();
+        
+        // Auto-create blocks for the new program
+        await autoCreateBlocks(programCode);
         
     } catch (error) {
         console.error('Error creating program:', error);
         showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ---------- AUTO-CREATE BLOCKS FOR NEW PROGRAM ----------
+async function autoCreateBlocks(programCode) {
+    try {
+        // Get the program ID
+        const { data: program, error } = await sb
+            .from(PROGRAM_TABLE)
+            .select('id, category')
+            .eq('program_code', programCode)
+            .single();
+        
+        if (error || !program) {
+            console.error('Could not find program for blocks:', error);
+            return;
+        }
+        
+        const isTVET = program.category === 'TVET';
+        
+        let blocks = [];
+        if (isTVET) {
+            // TVET: Introductory + Term 1-6 + Final
+            blocks = [
+                { block_name: 'Introductory', block_sequence: 0, credit_hours: 12 },
+                { block_name: 'Term 1', block_sequence: 1, credit_hours: 14 },
+                { block_name: 'Term 2', block_sequence: 2, credit_hours: 14 },
+                { block_name: 'Term 3', block_sequence: 3, credit_hours: 14 },
+                { block_name: 'Term 4', block_sequence: 4, credit_hours: 14 },
+                { block_name: 'Term 5', block_sequence: 5, credit_hours: 14 },
+                { block_name: 'Term 6', block_sequence: 6, credit_hours: 14 },
+                { block_name: 'Final', block_sequence: 7, credit_hours: 12 }
+            ];
+        } else {
+            // KRCHN: Introductory + Block 1-5 + Final
+            blocks = [
+                { block_name: 'Introductory', block_sequence: 0, credit_hours: 15 },
+                { block_name: 'Block 1', block_sequence: 1, credit_hours: 18 },
+                { block_name: 'Block 2', block_sequence: 2, credit_hours: 18 },
+                { block_name: 'Block 3', block_sequence: 3, credit_hours: 18 },
+                { block_name: 'Block 4', block_sequence: 4, credit_hours: 18 },
+                { block_name: 'Block 5', block_sequence: 5, credit_hours: 18 },
+                { block_name: 'Final', block_sequence: 6, credit_hours: 15 }
+            ];
+        }
+        
+        // Insert blocks
+        for (const block of blocks) {
+            await sb.from(BLOCK_TABLE).insert([{
+                program_id: program.id,
+                block_name: block.block_name,
+                block_sequence: block.block_sequence,
+                credit_hours: block.credit_hours,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }]);
+        }
+        
+        console.log(`✅ Auto-created ${blocks.length} blocks for ${programCode}`);
+        
+    } catch (error) {
+        console.error('Error auto-creating blocks:', error);
     }
 }
 
@@ -14472,7 +14591,7 @@ async function deleteProgram(id) {
         const { error } = await sb.from(PROGRAM_TABLE).delete().eq('id', id);
         if (error) throw error;
         showFeedback('✅ Program deleted successfully', 'success');
-        loadAllPrograms();
+        await loadAllPrograms();
     } catch (error) {
         showFeedback('❌ Error deleting program: ' + error.message, 'error');
     }
@@ -14561,7 +14680,7 @@ async function updateProgram(id) {
             createProgram();
         };
         
-        loadAllPrograms();
+        await loadAllPrograms();
         
     } catch (error) {
         showFeedback('❌ Error updating program: ' + error.message, 'error');
@@ -14674,8 +14793,8 @@ async function loadIntakesForProgram(programId) {
             </table>
         `;
         
-        // Update total intakes count
-        document.getElementById('totalIntakesCount').textContent = data.length;
+        const totalEl = document.getElementById('totalIntakesCount');
+        if (totalEl) totalEl.textContent = data.length;
         
     } catch (error) {
         console.error('Error loading intakes:', error);
@@ -14691,18 +14810,41 @@ async function addProgramIntake() {
         return;
     }
     
-    const data = {
-        program_id: parseInt(programId),
-        intake_name: document.getElementById('intake_name').value.trim(),
-        intake_year: parseInt(document.getElementById('intake_year').value) || new Date().getFullYear(),
-        status: document.getElementById('intake_status').value,
-        created_at: new Date().toISOString()
-    };
+    const intakeName = document.getElementById('intake_name').value.trim();
+    const intakeYear = parseInt(document.getElementById('intake_year').value) || new Date().getFullYear();
+    const status = document.getElementById('intake_status').value;
     
-    if (!data.intake_name) {
+    if (!intakeName) {
         showFeedback('Please enter an intake name.', 'error');
         return;
     }
+    
+    // Check for duplicate intake
+    const { data: existing, error: checkError } = await sb
+        .from(INTAKE_TABLE)
+        .select('intake_name')
+        .eq('program_id', programId)
+        .eq('intake_name', intakeName)
+        .maybeSingle();
+    
+    if (checkError) {
+        showFeedback('❌ Error checking for duplicates: ' + checkError.message, 'error');
+        return;
+    }
+    
+    if (existing) {
+        showFeedback(`⚠️ Intake "${intakeName}" already exists for this program!`, 'error');
+        return;
+    }
+    
+    const data = {
+        program_id: programId,
+        intake_name: intakeName,
+        intake_year: intakeYear,
+        status: status,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
     
     try {
         const { error } = await sb.from(INTAKE_TABLE).insert([data]);
@@ -14710,7 +14852,7 @@ async function addProgramIntake() {
         showFeedback('✅ Intake added successfully!', 'success');
         document.getElementById('intake_name').value = '';
         document.getElementById('intake_year').value = '';
-        loadProgramIntakes();
+        await loadProgramIntakes();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14721,7 +14863,7 @@ async function deleteIntake(id) {
     try {
         const { error } = await sb.from(INTAKE_TABLE).delete().eq('id', id);
         if (error) throw error;
-        loadProgramIntakes();
+        await loadProgramIntakes();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14787,7 +14929,8 @@ async function loadBlocksForProgram(programId) {
             </table>
         `;
         
-        document.getElementById('totalBlocksCount').textContent = data.length;
+        const totalEl = document.getElementById('totalBlocksCount');
+        if (totalEl) totalEl.textContent = data.length;
         
     } catch (error) {
         console.error('Error loading blocks:', error);
@@ -14803,19 +14946,24 @@ async function addProgramBlock() {
         return;
     }
     
-    const data = {
-        program_id: parseInt(programId),
-        block_name: document.getElementById('block_name').value.trim(),
-        block_sequence: parseInt(document.getElementById('block_sequence').value) || 0,
-        credit_hours: parseInt(document.getElementById('block_credit_hours').value) || 0,
-        status: 'active',
-        created_at: new Date().toISOString()
-    };
+    const blockName = document.getElementById('block_name').value.trim();
+    const blockSequence = parseInt(document.getElementById('block_sequence').value) || 0;
+    const creditHours = parseInt(document.getElementById('block_credit_hours').value) || 0;
     
-    if (!data.block_name) {
+    if (!blockName) {
         showFeedback('Please enter a block name.', 'error');
         return;
     }
+    
+    const data = {
+        program_id: programId,
+        block_name: blockName,
+        block_sequence: blockSequence,
+        credit_hours: creditHours,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
     
     try {
         const { error } = await sb.from(BLOCK_TABLE).insert([data]);
@@ -14824,7 +14972,7 @@ async function addProgramBlock() {
         document.getElementById('block_name').value = '';
         document.getElementById('block_sequence').value = '';
         document.getElementById('block_credit_hours').value = '';
-        loadProgramBlocks();
+        await loadProgramBlocks();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14835,7 +14983,7 @@ async function deleteBlock(id) {
     try {
         const { error } = await sb.from(BLOCK_TABLE).delete().eq('id', id);
         if (error) throw error;
-        loadProgramBlocks();
+        await loadProgramBlocks();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14881,7 +15029,7 @@ async function loadProgramMappings() {
                         <tr>
                             <td style="padding:8px;">${escapeHtml(m.course?.course_name || 'Unknown')}</td>
                             <td style="padding:8px;">${escapeHtml(m.course?.unit_code || '-')}</td>
-                            <td style="padding:8px;">${escapeHtml(m.block || 'Any')}</td>
+                            <td style="padding:8px;">${escapeHtml(m.block_name || 'Any')}</td>
                             <td style="padding:8px;">
                                 <span class="badge ${m.is_core ? 'badge-success' : 'badge-warning'}">
                                     ${m.is_core ? 'Core' : 'Elective'}
@@ -14906,7 +15054,7 @@ async function loadProgramMappings() {
 async function addProgramCourseMapping() {
     const programId = document.getElementById('mapping_program_select')?.value;
     const courseId = document.getElementById('mapping_course_select')?.value;
-    const block = document.getElementById('mapping_block_select')?.value || null;
+    const blockName = document.getElementById('mapping_block_select')?.value || null;
     const isCore = document.getElementById('mapping_is_core')?.value === 'true';
     
     if (!programId || !courseId) {
@@ -14914,18 +15062,37 @@ async function addProgramCourseMapping() {
         return;
     }
     
+    // Check for duplicate mapping
+    const { data: existing, error: checkError } = await sb
+        .from(MAPPING_TABLE)
+        .select('id')
+        .eq('program_id', programId)
+        .eq('course_id', courseId)
+        .maybeSingle();
+    
+    if (checkError) {
+        showFeedback('❌ Error checking for duplicates: ' + checkError.message, 'error');
+        return;
+    }
+    
+    if (existing) {
+        showFeedback('⚠️ This course is already mapped to this program!', 'error');
+        return;
+    }
+    
     try {
         const { error } = await sb.from(MAPPING_TABLE).insert([{
-            program_id: parseInt(programId),
-            course_id: parseInt(courseId),
-            block: block,
+            program_id: programId,
+            course_id: courseId,
+            block_name: blockName,
             is_core: isCore,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         }]);
         
         if (error) throw error;
         showFeedback('✅ Course mapped to program successfully!', 'success');
-        loadProgramMappings();
+        await loadProgramMappings();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14936,7 +15103,7 @@ async function deleteMapping(id) {
     try {
         const { error } = await sb.from(MAPPING_TABLE).delete().eq('id', id);
         if (error) throw error;
-        loadProgramMappings();
+        await loadProgramMappings();
     } catch (error) {
         showFeedback('❌ Error: ' + error.message, 'error');
     }
@@ -14955,12 +15122,14 @@ async function populateCourseSelector() {
         const select = document.getElementById('mapping_course_select');
         if (select) {
             select.innerHTML = '<option value="">-- Select Course --</option>';
-            courses.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = `${c.course_name} (${c.unit_code || 'N/A'})`;
-                select.appendChild(opt);
-            });
+            if (courses) {
+                courses.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.course_name} (${c.unit_code || 'N/A'})`;
+                    select.appendChild(opt);
+                });
+            }
         }
     } catch (error) {
         console.error('Error loading courses:', error);
@@ -14972,8 +15141,9 @@ async function populateBlockSelector(programId) {
     try {
         const { data: blocks, error } = await sb
             .from(BLOCK_TABLE)
-            .select('id, block_name')
+            .select('block_name')
             .eq('program_id', programId)
+            .eq('status', 'active')
             .order('block_sequence', { ascending: true });
         
         if (error) throw error;
@@ -14981,19 +15151,21 @@ async function populateBlockSelector(programId) {
         const select = document.getElementById('mapping_block_select');
         if (select) {
             select.innerHTML = '<option value="">-- Any Block --</option>';
-            blocks.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.block_name;
-                opt.textContent = b.block_name;
-                select.appendChild(opt);
-            });
+            if (blocks) {
+                blocks.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.block_name;
+                    opt.textContent = b.block_name;
+                    select.appendChild(opt);
+                });
+            }
         }
     } catch (error) {
         console.error('Error loading blocks:', error);
     }
 }
 
-// ---------- SHOW INTAKES/BLOCKS ----------
+// ---------- SHOW FUNCTIONS ----------
 function showProgramIntakes() {
     document.getElementById('intake_program_select')?.scrollIntoView({ behavior: 'smooth' });
 }
@@ -15003,10 +15175,16 @@ function showProgramBlocks() {
 }
 
 // ---------- LOAD SECTION DATA ----------
-function loadProgramsSection() {
-    loadAllPrograms();
-    populateCourseSelector();
+async function loadProgramsSection() {
+    await loadAllPrograms();
+    await populateCourseSelector();
 }
+
+// ---------- ADD TO loadSectionData ----------
+// Add this to your existing loadSectionData function:
+// case 'programs': 
+//     loadProgramsSection();
+//     break;
 
 // Make functions globally accessible
 window.loadAllPrograms = loadAllPrograms;
@@ -15033,8 +15211,9 @@ window.populateBlockSelector = populateBlockSelector;
 window.showProgramIntakes = showProgramIntakes;
 window.showProgramBlocks = showProgramBlocks;
 window.loadProgramsSection = loadProgramsSection;
+window.autoCreateBlocks = autoCreateBlocks;
 
-console.log('✅ Program Management module loaded');
+console.log('✅ Program Management module loaded with UUID support!');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
