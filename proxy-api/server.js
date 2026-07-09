@@ -545,10 +545,11 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
     }
 }
 
-// ========== SAVE MARKS ENDPOINT ==========
+// ========== SAVE MARKS ENDPOINT - COMPLETE FIXED VERSION ==========
 app.post('/api/marks', async (req, res) => {
     try {
         console.log('🔍 ===== SAVE REQUEST STARTED =====');
+        
         const { block, subject, marksData, lecturerName } = req.body;
         const examType = req.headers['x-exam-type'] || 'internal';
         const spreadsheetId = req.spreadsheetId;
@@ -560,13 +561,551 @@ app.post('/api/marks', async (req, res) => {
         console.log(`📋 Block: ${block}`);
         console.log(`📋 Exam Type: ${examType}`);
         console.log(`📋 Year: ${year}`);
+        console.log(`📋 Spreadsheet ID: ${spreadsheetId}`);
+        console.log(`📋 Records received: ${marksData?.length || 0}`);
         
-        // ... rest of save marks logic (keep as is) ...
+        // Log first 3 records for debugging
+        if (marksData && marksData.length > 0) {
+            console.log('📋 First 3 records:');
+            for (let i = 0; i < Math.min(3, marksData.length); i++) {
+                console.log(`  [${i}] Admission: ${marksData[i].admission}, CAT1: ${marksData[i].cat1}, CAT2: ${marksData[i].cat2}, EXAM: ${marksData[i].exam}`);
+            }
+        }
         
-        res.json({ success: true, message: 'Marks saved successfully' });
+        // Entry check
+        const isAdmin = (userRole === 'admin' || lecturerName === 'Administrator');
+        console.log(`📋 Is Admin: ${isAdmin}`);
+        
+        if (!isAdmin) {
+            if (markEntrySettings.global && markEntrySettings.global.enabled === false) {
+                console.log('❌ Global entry closed');
+                return res.status(403).json({ success: false, message: '❌ Mark entry is globally closed.' });
+            }
+            const classKey = `${year}_all`;
+            if (markEntrySettings[classKey] && markEntrySettings[classKey].enabled === false) {
+                console.log(`❌ Class entry closed for ${year}`);
+                return res.status(403).json({ success: false, message: `❌ Mark entry is closed for March ${year} class.` });
+            }
+            if (examType === 'internal') {
+                const subjectKey = `${block}_${subject}`;
+                if (markEntrySettings[subjectKey] && markEntrySettings[subjectKey].enabled === false) {
+                    console.log(`❌ Subject entry closed for ${subject}`);
+                    return res.status(403).json({ success: false, message: `❌ Mark entry is closed for ${subject}.` });
+                }
+            }
+        }
+        
+        // Log the save action
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: lecturerName,
+            action: 'save',
+            target: subject,
+            block: block,
+            examType: examType,
+            details: `Saved ${marksData?.length || 0} entries`
+        });
+        if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
+        
+        // ===== SAVE LOGIC =====
+        if (examType === 'nck') {
+            console.log('📋 NCK save - processing...');
+            
+            const sheetName = subject;
+            
+            // Read current data from sheet (include YEAR column)
+            let currentData = [];
+            try {
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId,
+                    range: `${sheetName}!A:AB`,
+                    valueRenderOption: 'UNFORMATTED_VALUE'
+                });
+                currentData = response.data.values || [];
+                console.log(`[SAVE NCK] Sheet ${sheetName} exists with ${currentData.length} rows`);
+            } catch (error) {
+                console.log(`[SAVE NCK] Sheet ${sheetName} does not exist, creating...`);
+                try {
+                    await sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: spreadsheetId,
+                        requestBody: {
+                            requests: [
+                                { addSheet: { properties: { title: sheetName } } }
+                            ]
+                        }
+                    });
+                    
+                    // Headers with YEAR at the end
+                    const headers = ['ADMISSION', 'NAME', 'MED1', 'MED2', 'MED3', 'MCH1', 'MCH2', 'MCH3', 'MAT1', 'MAT2', 'MAT3', 'PEAD1', 'PEAD2', 'SURG1', 'SURG2', 'SURG3', 'OPD', 'NBU1', 'NBU2', 'THEATRE', 'PSYCHIATRY', 'RURALS', 'DISTRICT', 'SPECIAL', 'AVERAGE', 'GRADE', 'GRADED BY', 'YEAR'];
+                    await sheets.spreadsheets.values.update({
+                        spreadsheetId,
+                        range: `${sheetName}!A1:AB1`,
+                        valueInputOption: 'RAW',
+                        requestBody: { values: [headers] }
+                    });
+                    
+                    currentData = [headers];
+                    console.log(`[SAVE NCK] Created new sheet: ${sheetName}`);
+                } catch (createError) {
+                    console.error('[SAVE NCK] Error creating sheet:', createError);
+                    return res.status(500).json({ 
+                        success: false, 
+                        error: `Could not create sheet: ${createError.message}` 
+                    });
+                }
+            }
+            
+            // Build map of existing student names with their row data
+            const existingDataMap = new Map();
+            let maxRow = 1;
+            
+            // Find YEAR column index
+            let yearColIndex = -1;
+            const headers = currentData[0] || [];
+            for (let i = 0; i < headers.length; i++) {
+                if (headers[i] === 'YEAR') {
+                    yearColIndex = i;
+                    break;
+                }
+            }
+            if (yearColIndex === -1) {
+                yearColIndex = headers.length - 1; // Use last column
+            }
+            
+            console.log(`[SAVE NCK] YEAR column at index: ${yearColIndex}`);
+            
+            for (let i = 1; i < currentData.length; i++) {
+                const row = currentData[i];
+                if (row && row[1]) {
+                    const studentName = row[1].toString().trim();
+                    existingDataMap.set(studentName, {
+                        rowNum: i + 1,
+                        scores: [],
+                        gradedBy: row[26] || '',
+                        year: row[yearColIndex] || '2024'
+                    });
+                    
+                    // Extract scores (columns 2-23, indices 2-23)
+                    for (let j = 2; j <= 23 && j < row.length; j++) {
+                        existingDataMap.get(studentName).scores.push(parseFloat(row[j]) || 0);
+                    }
+                    while (existingDataMap.get(studentName).scores.length < 22) {
+                        existingDataMap.get(studentName).scores.push(0);
+                    }
+                    
+                    if (i + 1 > maxRow) maxRow = i + 1;
+                }
+            }
+            
+            console.log(`[SAVE NCK] Found ${existingDataMap.size} existing students`);
+            
+            const rowsToUpdate = [];
+            const rowsToInsert = [];
+            let skippedCount = 0;
+            
+            for (const mark of marksData) {
+                const studentName = mark.name ? mark.name.toString().trim() : '';
+                if (!studentName) {
+                    skippedCount++;
+                    continue;
+                }
+                
+                const scores = mark.scores || [];
+                const gradedBy = mark.gradedBy || lecturerName || '';
+                const yearValue = mark.year || year || '2024';
+                
+                // Pad scores to 22
+                while (scores.length < 22) scores.push(0);
+                
+                // Calculate average
+                const validScores = scores.filter(s => s > 0);
+                const average = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+                const grade = average >= 60 ? 'PASS' : (validScores.length > 0 ? 'FAIL' : 'PENDING');
+                
+                if (existingDataMap.has(studentName)) {
+                    const existing = existingDataMap.get(studentName);
+                    
+                    // Check if scores changed
+                    let changed = false;
+                    for (let i = 0; i < 22; i++) {
+                        if (existing.scores[i] !== scores[i]) {
+                            changed = true;
+                            break;
+                        }
+                    }
+                    
+                    if (changed || existing.year !== yearValue) {
+                        rowsToUpdate.push({
+                            name: studentName,
+                            scores: scores,
+                            average: average,
+                            grade: grade,
+                            gradedBy: gradedBy,
+                            year: yearValue,
+                            rowNum: existing.rowNum
+                        });
+                        console.log(`[SAVE NCK] Updating ${studentName}`);
+                    } else {
+                        skippedCount++;
+                        console.log(`[SAVE NCK] Skipping ${studentName}: No changes`);
+                    }
+                } else {
+                    rowsToInsert.push({
+                        name: studentName,
+                        scores: scores,
+                        average: average,
+                        grade: grade,
+                        gradedBy: gradedBy,
+                        year: yearValue
+                    });
+                    console.log(`[SAVE NCK] Inserting new student: ${studentName} with year ${yearValue}`);
+                }
+            }
+            
+            // Update existing rows
+            for (const mark of rowsToUpdate) {
+                const rowValues = [
+                    '',  // ADMISSION (empty)
+                    mark.name,
+                    ...mark.scores.slice(0, 22),
+                    Math.round(mark.average * 100) / 100,
+                    mark.grade,
+                    mark.gradedBy,
+                    mark.year  // YEAR at the end
+                ];
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId,
+                    range: `${sheetName}!A${mark.rowNum}:AB${mark.rowNum}`,
+                    valueInputOption: 'RAW',
+                    requestBody: { values: [rowValues] }
+                });
+                console.log(`[SAVE NCK] Updated row ${mark.rowNum}`);
+            }
+            
+            // Insert new rows
+            if (rowsToInsert.length > 0) {
+                const valuesToInsert = rowsToInsert.map(mark => [
+                    '',  // ADMISSION (empty)
+                    mark.name,
+                    ...mark.scores.slice(0, 22),
+                    Math.round(mark.average * 100) / 100,
+                    mark.grade,
+                    mark.gradedBy,
+                    mark.year  // YEAR at the end
+                ]);
+                
+                const startRow = maxRow + 1;
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId,
+                    range: `${sheetName}!A${startRow}:AB${startRow + valuesToInsert.length - 1}`,
+                    valueInputOption: 'RAW',
+                    requestBody: { values: valuesToInsert }
+                });
+                console.log(`[SAVE NCK] Inserted ${valuesToInsert.length} new rows starting at ${startRow}`);
+            }
+            
+            console.log(`[SAVE NCK] Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+            
+            res.json({ 
+                success: true, 
+                message: `Saved ${rowsToUpdate.length} updated + ${rowsToInsert.length} new NCK marks`,
+                updated: rowsToUpdate.length,
+                inserted: rowsToInsert.length,
+                skipped: skippedCount
+            });
+            
+        } else {
+            // ===== INTERNAL MARKS SAVE =====
+            let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+            const sheetName = `${block}_${cleanSubject}`;
+            console.log(`📋 Sheet Name: ${sheetName}`);
+            
+            // Get current data from sheet
+            let currentData = [];
+            try {
+                console.log(`📡 Reading sheet: ${sheetName}`);
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId,
+                    range: `${sheetName}!A:I`,
+                    valueRenderOption: 'UNFORMATTED_VALUE'
+                });
+                currentData = response.data.values || [];
+                console.log(`📋 Sheet has ${currentData.length} rows (including header)`);
+            } catch (error) {
+                console.log(`⚠️ Sheet ${sheetName} does not exist, creating...`);
+                console.log(`❌ Error: ${error.message}`);
+                
+                try {
+                    await sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: spreadsheetId,
+                        requestBody: {
+                            requests: [
+                                { addSheet: { properties: { title: sheetName } } }
+                            ]
+                        }
+                    });
+                    
+                    const headers = ['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE'];
+                    await sheets.spreadsheets.values.update({
+                        spreadsheetId,
+                        range: `${sheetName}!A1:I1`,
+                        valueInputOption: 'RAW',
+                        requestBody: { values: [headers] }
+                    });
+                    
+                    currentData = [headers];
+                    console.log(`✅ Created new sheet: ${sheetName}`);
+                } catch (createError) {
+                    console.error('❌ Error creating sheet:', createError);
+                    return res.status(500).json({ 
+                        success: false, 
+                        error: `Could not create sheet: ${createError.message}` 
+                    });
+                }
+            }
+            
+            // Build map of existing admissions with their current data
+            const existingDataMap = new Map();
+            let maxRow = 1;
+            
+            console.log('📋 Building existing data map...');
+            for (let i = 1; i < currentData.length; i++) {
+                const row = currentData[i];
+                if (row && row[0]) {
+                    const admission = row[0].toString().trim();
+                    existingDataMap.set(admission, {
+                        rowNum: i + 1,
+                        name: row[1] || '',
+                        cat1: parseFloat(row[2]) || 0,
+                        cat2: parseFloat(row[3]) || 0,
+                        exam: parseFloat(row[4]) || 0,
+                        final: parseFloat(row[5]) || 0,
+                        grade: row[6] || '',
+                        gradedBy: row[7] || '',
+                        assessmentType: row[8] || 'full'
+                    });
+                    if (i + 1 > maxRow) maxRow = i + 1;
+                }
+            }
+            
+            console.log(`📋 Found ${existingDataMap.size} existing students in sheet`);
+            
+            const rowsToUpdate = [];
+            const rowsToInsert = [];
+            let skippedCount = 0;
+            let processedCount = 0;
+            
+            // Process each mark and compare with existing data
+            console.log('📋 Processing marks...');
+            for (const mark of marksData) {
+                processedCount++;
+                const admission = mark.admission ? mark.admission.toString().trim() : '';
+                if (!admission) {
+                    console.log(`⚠️ [${processedCount}] Skipping: No admission number`);
+                    skippedCount++;
+                    continue;
+                }
+                
+                let cat1 = parseFloat(mark.cat1) || 0;
+                let cat2 = parseFloat(mark.cat2) || 0;
+                let exam = parseFloat(mark.exam) || 0;
+                let name = mark.name || '';
+                
+                console.log(`📋 [${processedCount}] Processing: ${admission} - CAT1: ${cat1}, CAT2: ${cat2}, EXAM: ${exam}`);
+                
+                // Check if student exists
+                if (existingDataMap.has(admission)) {
+                    const existing = existingDataMap.get(admission);
+                    console.log(`📋 [${processedCount}] Found existing: ${admission}`);
+                    console.log(`   Existing: CAT1=${existing.cat1}, CAT2=${existing.cat2}, EXAM=${existing.exam}`);
+                    console.log(`   New:      CAT1=${cat1}, CAT2=${cat2}, EXAM=${exam}`);
+                    
+                    // Get name from existing if not provided
+                    if (!name) name = existing.name;
+                    
+                    // COMPARE VALUES - Check if anything changed
+                    const cat1Changed = Math.abs(existing.cat1 - cat1) > 0.01;
+                    const cat2Changed = Math.abs(existing.cat2 - cat2) > 0.01;
+                    const examChanged = Math.abs(existing.exam - exam) > 0.01;
+                    
+                    console.log(`   Changes: CAT1=${cat1Changed}, CAT2=${cat2Changed}, EXAM=${examChanged}`);
+                    
+                    if (cat1Changed || cat2Changed || examChanged) {
+                        console.log(`✅ [${processedCount}] Will UPDATE ${admission}`);
+                        
+                        // Calculate final score
+                        let finalScore = 0;
+                        const hasCat1 = cat1 > 0;
+                        const hasCat2 = cat2 > 0;
+                        const hasExam = exam > 0;
+                        
+                        // Determine assessment type
+                        let assessmentType = existing.assessmentType || 'full';
+                        
+                        if (assessmentType === 'full') {
+                            if (hasExam && hasCat1 && hasCat2) {
+                                finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30) + Math.min(exam, 70);
+                            } else if (hasExam && hasCat1) {
+                                finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+                            } else if (hasExam) {
+                                finalScore = Math.min(exam, 100);
+                            } else if (hasCat1 && hasCat2) {
+                                finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
+                            } else if (hasCat1) {
+                                finalScore = (Math.min(cat1, 30) / 30) * 100;
+                            }
+                        } else if (assessmentType === 'single_cat') {
+                            if (hasExam && hasCat1) {
+                                finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+                            } else if (hasExam) {
+                                finalScore = Math.min(exam, 100);
+                            } else if (hasCat1) {
+                                finalScore = (Math.min(cat1, 30) / 30) * 100;
+                            }
+                        } else {
+                            if (hasExam) {
+                                finalScore = Math.min(exam, 100);
+                            }
+                        }
+                        finalScore = Math.round(finalScore * 10) / 10;
+                        const grade = await calculateGrade(finalScore);
+                        
+                        rowsToUpdate.push({
+                            admission,
+                            name: name || '',
+                            cat1,
+                            cat2,
+                            exam,
+                            finalScore,
+                            grade,
+                            gradedBy: lecturerName || existing.gradedBy || '',
+                            assessmentType,
+                            rowNum: existing.rowNum
+                        });
+                        console.log(`   Final Score: ${finalScore}, Grade: ${grade}`);
+                    } else {
+                        skippedCount++;
+                        console.log(`⏭️ [${processedCount}] Skipping ${admission}: No changes`);
+                    }
+                } else {
+                    // New student - insert
+                    console.log(`➕ [${processedCount}] Will INSERT new student: ${admission}`);
+                    
+                    // Calculate final score
+                    let finalScore = 0;
+                    const hasCat1 = cat1 > 0;
+                    const hasCat2 = cat2 > 0;
+                    const hasExam = exam > 0;
+                    
+                    let assessmentType = 'full';
+                    if (assessmentType === 'full') {
+                        if (hasExam && hasCat1 && hasCat2) {
+                            finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60 * 30) + Math.min(exam, 70);
+                        } else if (hasExam && hasCat1) {
+                            finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+                        } else if (hasExam) {
+                            finalScore = Math.min(exam, 100);
+                        } else if (hasCat1 && hasCat2) {
+                            finalScore = ((Math.min(cat1, 30) + Math.min(cat2, 30)) / 60) * 100;
+                        } else if (hasCat1) {
+                            finalScore = (Math.min(cat1, 30) / 30) * 100;
+                        }
+                    } else if (assessmentType === 'single_cat') {
+                        if (hasExam && hasCat1) {
+                            finalScore = Math.min(cat1, 30) + Math.min(exam, 70);
+                        } else if (hasExam) {
+                            finalScore = Math.min(exam, 100);
+                        } else if (hasCat1) {
+                            finalScore = (Math.min(cat1, 30) / 30) * 100;
+                        }
+                    } else {
+                        if (hasExam) {
+                            finalScore = Math.min(exam, 100);
+                        }
+                    }
+                    finalScore = Math.round(finalScore * 10) / 10;
+                    const grade = await calculateGrade(finalScore);
+                    
+                    rowsToInsert.push({
+                        admission,
+                        name: name || '',
+                        cat1,
+                        cat2,
+                        exam,
+                        finalScore,
+                        grade,
+                        gradedBy: lecturerName || '',
+                        assessmentType
+                    });
+                    console.log(`   Final Score: ${finalScore}, Grade: ${grade}`);
+                }
+            }
+            
+            console.log(`📋 Summary: Updates=${rowsToUpdate.length}, Inserts=${rowsToInsert.length}, Skipped=${skippedCount}`);
+            
+            // Update existing rows
+            console.log(`📡 Updating ${rowsToUpdate.length} rows...`);
+            for (const mark of rowsToUpdate) {
+                console.log(`   Updating row ${mark.rowNum} for ${mark.admission}: CAT1=${mark.cat1}, CAT2=${mark.cat2}, EXAM=${mark.exam}`);
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId,
+                    range: `${sheetName}!B${mark.rowNum}:H${mark.rowNum}`,
+                    valueInputOption: 'RAW',
+                    requestBody: { 
+                        values: [[mark.name, mark.cat1, mark.cat2, mark.exam, mark.finalScore, mark.grade, mark.gradedBy]] 
+                    }
+                });
+            }
+            
+            // Insert new rows
+            if (rowsToInsert.length > 0) {
+                console.log(`📡 Inserting ${rowsToInsert.length} new rows...`);
+                const valuesToInsert = rowsToInsert.map(mark => [
+                    mark.admission,
+                    mark.name,
+                    mark.cat1,
+                    mark.cat2,
+                    mark.exam,
+                    mark.finalScore,
+                    mark.grade,
+                    mark.gradedBy,
+                    mark.assessmentType
+                ]);
+                
+                const startRow = maxRow + 1;
+                console.log(`   Inserting at row ${startRow}`);
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId,
+                    range: `${sheetName}!A${startRow}:I${startRow + valuesToInsert.length - 1}`,
+                    valueInputOption: 'RAW',
+                    requestBody: { values: valuesToInsert }
+                });
+            }
+            
+            console.log(`✅ SAVE COMPLETE: Updated ${rowsToUpdate.length}, Inserted ${rowsToInsert.length}, Skipped ${skippedCount}`);
+            console.log('🔍 ===== SAVE REQUEST COMPLETED =====');
+            
+            res.json({ 
+                success: true, 
+                message: `Saved ${rowsToUpdate.length} updated + ${rowsToInsert.length} new marks`,
+                updated: rowsToUpdate.length,
+                inserted: rowsToInsert.length,
+                skipped: skippedCount,
+                debug: {
+                    totalReceived: marksData?.length || 0,
+                    existingStudents: existingDataMap.size,
+                    processed: processedCount
+                }
+            });
+        }
     } catch (error) {
         console.error('❌ Error saving marks:', error);
-        res.status(500).json({ success: false, error: error.message });
+        console.error('❌ Stack:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            stack: error.stack 
+        });
     }
 });
 
