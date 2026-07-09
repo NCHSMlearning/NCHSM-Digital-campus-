@@ -6083,7 +6083,7 @@ function generatePDFPreview() {
     hideLoading();
     showNotification('PDF preview generated. Click "Full Transcript" to download.', false);
 }
-// ===== GENERATE STUDENT TRANSCRIPT PDF - COMPLETE =====
+// ===== GENERATE STUDENT TRANSCRIPT PDF - PROFESSIONAL WITH BORDERS =====
 async function generateStudentTranscriptPDF(student, reportData) {
     if (!student) {
         showNotification('No student data available', true);
@@ -6096,7 +6096,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
     }
 
     console.log('📊 Generating transcript for:', student.name);
-    console.log('📚 Subjects:', student.subjects.length);
+    console.log('📚 Units:', student.subjects.length);
 
     showLoading('Generating transcript...');
 
@@ -6142,6 +6142,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
     
     const year = '2026/2027';
     const issueDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const transcriptId = `NCHS/TRN/2026/${String(Math.floor(1000 + Math.random() * 9000))}`;
     const LOGO_URL = 'https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png';
 
     // ===== BUILD UNITS TABLE =====
@@ -6158,18 +6159,18 @@ async function generateStudentTranscriptPDF(student, reportData) {
             
             const unitCode = subj.code || `NRSG ${String(idx + 1).padStart(3, '0')}`;
             const credit = 3;
-            const statusColor = subj.score >= 60 ? '#065f46' : '#991b1b';
-            const statusBg = subj.score >= 60 ? '#d1fae5' : '#fee2e2';
+            const statusColor = subj.score >= 60 ? '#1a5632' : '#8b1a1a';
+            const statusBg = subj.score >= 60 ? '#e8f5e9' : '#ffebee';
             
             return `
                 <tr>
-                    <td style="padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569;">${idx + 1}</td>
-                    <td style="padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: 600; color: #1e293b;">${unitCode}</td>
-                    <td style="padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #1e293b;">${safeName}</td>
-                    <td style="padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569;">${credit}</td>
-                    <td style="padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 700; color: ${subjGrade === 'A' ? '#065f46' : (subjGrade === 'B' ? '#1e40af' : (subjGrade === 'C' ? '#92400e' : '#991b1b'))};">${subjGrade}</td>
-                    <td style="padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">${subjStatus}</span>
+                    <td style="padding: 5px 8px; text-align: center; border: 1px solid #333333; font-size: 10px; color: #333;">${idx + 1}</td>
+                    <td style="padding: 5px 8px; text-align: center; border: 1px solid #333333; font-size: 10px; font-weight: 600; color: #1a1a2e;">${unitCode}</td>
+                    <td style="padding: 5px 8px; border: 1px solid #333333; font-size: 10px; color: #1a1a2e;">${safeName}</td>
+                    <td style="padding: 5px 8px; text-align: center; border: 1px solid #333333; font-size: 10px; color: #333;">${credit}</td>
+                    <td style="padding: 5px 8px; text-align: center; border: 1px solid #333333; font-size: 12px; font-weight: 700; color: ${subjGrade === 'A' ? '#1a5632' : (subjGrade === 'B' ? '#1a3a6b' : (subjGrade === 'C' ? '#8a6d1a' : '#8b1a1a'))};">${subjGrade}</td>
+                    <td style="padding: 5px 8px; text-align: center; border: 1px solid #333333;">
+                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 2px 10px; border-radius: 10px; font-size: 9px; font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px;">${subjStatus}</span>
                     </td>
                 </tr>
             `;
@@ -6177,7 +6178,7 @@ async function generateStudentTranscriptPDF(student, reportData) {
     } else {
         subjectsHtml = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 30px 20px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-size: 13px;">
+                <td colspan="6" style="text-align: center; padding: 30px 20px; border: 1px solid #333333; color: #999; font-size: 12px;">
                     No units completed yet
                 </td>
             </tr>
@@ -6202,62 +6203,65 @@ async function generateStudentTranscriptPDF(student, reportData) {
     `;
     
     container.innerHTML = `
-        <div style="max-width: 1000px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; background: white;">
+        <div style="max-width: 1000px; margin: 0 auto; border: 2px solid #333333; border-radius: 4px; overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            
             <!-- ===== LETTERHEAD ===== -->
-            <div style="background: #1a1a2e; color: white; padding: 12px 24px 8px; text-align: center; border-bottom: 2px solid #cbd5e1;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
-                    <img src="${LOGO_URL}" alt="NCHSM Logo" style="height: 50px; width: auto; border-radius: 4px; background: rgba(255,255,255,0.05); padding: 2px;">
+            <div style="background: #1a1a2e; color: white; padding: 18px 28px 12px; text-align: center; border-bottom: 4px solid #c9a84c;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;">
+                    <img src="${LOGO_URL}" alt="NCHSM Logo" style="height: 55px; width: auto; border-radius: 3px; background: rgba(255,255,255,0.05); padding: 2px;">
                     <div style="text-align: center;">
-                        <div style="font-size: 18px; font-weight: 700; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                        <div style="font-size: 18px; font-weight: 700; letter-spacing: 1.5px; font-family: 'Times New Roman', serif;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
                         <div style="font-size: 11px; opacity: 0.85; margin-top: 1px; font-weight: 300; letter-spacing: 0.5px;">AND MANAGEMENT</div>
                         <div style="font-size: 9px; font-style: italic; opacity: 0.7; margin-top: 2px;">Excellence in Health Training, Research and Professional Development</div>
                     </div>
                 </div>
-                <div style="font-size: 8px; opacity: 0.6; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3px;">
+                <div style="font-size: 7px; opacity: 0.5; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
                     Kiamunyi Campus | P.O. Box 12906 – 20100, Nakuru | Tel: 0745 215594 | 0703 345771
                 </div>
             </div>
             
-            <!-- ===== TITLE ===== -->
-            <div style="text-align: center; padding: 8px 20px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
-                <div style="font-size: 14px; font-weight: 700; color: #0f172a; letter-spacing: 2px; text-transform: uppercase;">OFFICIAL ACADEMIC TRANSCRIPT</div>
+            <!-- ===== TRANSCRIPT TITLE ===== -->
+            <div style="text-align: center; padding: 10px 24px; background: #f5f5f5; border-bottom: 2px solid #333333;">
+                <div style="font-size: 15px; font-weight: 700; color: #1a1a2e; letter-spacing: 2px; text-transform: uppercase; font-family: 'Times New Roman', serif;">Official Academic Transcript</div>
+                <div style="font-size: 9px; color: #666; margin-top: 2px; letter-spacing: 0.3px;">This document certifies the academic record of the student named below</div>
+                <div style="font-size: 8px; color: #888; margin-top: 1px; font-style: italic;">Issued by the Academic Registry</div>
             </div>
             
-            <!-- ===== STUDENT INFO ===== -->
-            <div style="padding: 10px 20px; margin: 10px 20px 8px; border: 1px solid #e2e8f0; border-radius: 2px; background: #fafbfc;">
+            <!-- ===== STUDENT INFORMATION ===== -->
+            <div style="padding: 12px 20px; margin: 12px 20px 10px; border: 2px solid #333333; border-left: 5px solid #c9a84c; background: #fafafa;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; font-size: 11px;">
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Student Name:</span><span style="color: #1e293b; font-weight: 600;">${safeStudentName}</span></div>
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Admission Number:</span><span style="color: #1e293b; font-weight: 600;">${safeAdmission}</span></div>
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Programme:</span><span style="color: #1e293b; font-weight: 600;">Kenya Registered Community Health Nursing (KRCHN)</span></div>
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Academic Year:</span><span style="color: #1e293b; font-weight: 600;">${year}</span></div>
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Year of Study:</span><span style="color: #1e293b; font-weight: 600;">${student.subjectCount > 0 ? 'Year ' + Math.ceil(student.subjectCount / 6) : 'N/A'}</span></div>
-                    <div style="display: flex; padding: 2px 0;"><span style="font-weight: 700; color: #475569; min-width: 90px; font-size: 10px;">Issue Date:</span><span style="color: #1e293b; font-weight: 600;">${issueDate}</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Student Name:</span><span style="color: #1a1a2e; font-weight: 600;">${safeStudentName}</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Admission Number:</span><span style="color: #1a1a2e; font-weight: 600;">${safeAdmission}</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Programme:</span><span style="color: #1a1a2e; font-weight: 600;">Kenya Registered Community Health Nursing (KRCHN)</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Academic Year:</span><span style="color: #1a1a2e; font-weight: 600;">${year}</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Year of Study:</span><span style="color: #1a1a2e; font-weight: 600;">${student.subjectCount > 0 ? 'Year ' + Math.ceil(student.subjectCount / 6) : 'N/A'}</span></div>
+                    <div style="display: flex; padding: 3px 0;"><span style="font-weight: 700; color: #444; min-width: 100px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;">Issue Date:</span><span style="color: #1a1a2e; font-weight: 600;">${issueDate}</span></div>
                 </div>
             </div>
             
             <!-- ===== UNITS TABLE ===== -->
-            <div style="margin: 0 20px 8px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <div style="margin: 0 20px 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; border: 2px solid #333333;">
                     <thead>
-                        <tr style="background: #0f172a;">
-                            <th style="padding: 4px 6px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600; width: 25px;">#</th>
-                            <th style="padding: 4px 6px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600; width: 65px;">Unit Code</th>
-                            <th style="padding: 4px 6px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600;">Unit Name</th>
-                            <th style="padding: 4px 6px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600; width: 45px;">Credits</th>
-                            <th style="padding: 4px 6px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600; width: 45px;">Grade</th>
-                            <th style="padding: 4px 6px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 600; width: 90px;">Status</th>
+                        <tr style="background: #2d2d44;">
+                            <th style="padding: 6px 8px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455; width: 30px;">#</th>
+                            <th style="padding: 6px 8px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455; width: 65px;">Unit Code</th>
+                            <th style="padding: 6px 8px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455;">Unit Name</th>
+                            <th style="padding: 6px 8px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455; width: 45px;">Credits</th>
+                            <th style="padding: 6px 8px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455; width: 45px;">Grade</th>
+                            <th style="padding: 6px 8px; text-align: center; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: white; font-weight: 700; border: 1px solid #444455; width: 90px;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${subjectsHtml}
                         <!-- SUMMARY ROW -->
-                        <tr style="background: #f8fafc; font-weight: 600; border-top: 2px solid #0f172a;">
-                            <td colspan="2" style="text-align: right; padding: 4px 10px; font-size: 10px; color: #0f172a;">SUMMARY:</td>
-                            <td style="text-align: left; padding: 4px 6px; font-size: 10px; color: #0f172a;">${student.subjectCount} Units</td>
-                            <td style="text-align: center; padding: 4px 6px; font-size: 10px; color: #0f172a;">${totalCredits}</td>
-                            <td style="text-align: center; padding: 4px 6px; font-size: 13px; font-weight: 700; color: ${gradeLetter === 'A' ? '#065f46' : (gradeLetter === 'B' ? '#1e40af' : (gradeLetter === 'C' ? '#92400e' : '#991b1b'))};">${gradeLetter}</td>
-                            <td style="text-align: center; padding: 4px 6px;">
-                                <span style="background: ${status === 'PASS' ? '#d1fae5' : '#fee2e2'}; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; display: inline-block;">${classification}</span>
+                        <tr style="background: #f5f5f5; font-weight: 700; border-top: 3px solid #333333;">
+                            <td colspan="2" style="text-align: right; padding: 6px 10px; font-size: 10px; color: #1a1a2e; border: 1px solid #333333;">SUMMARY:</td>
+                            <td style="text-align: left; padding: 6px 8px; font-size: 10px; color: #1a1a2e; border: 1px solid #333333;">${student.subjectCount} Units</td>
+                            <td style="text-align: center; padding: 6px 8px; font-size: 10px; color: #1a1a2e; border: 1px solid #333333;">${totalCredits}</td>
+                            <td style="text-align: center; padding: 6px 8px; font-size: 14px; font-weight: 700; color: ${gradeLetter === 'A' ? '#1a5632' : (gradeLetter === 'B' ? '#1a3a6b' : (gradeLetter === 'C' ? '#8a6d1a' : '#8b1a1a'))}; border: 1px solid #333333;">${gradeLetter}</td>
+                            <td style="text-align: center; padding: 6px 8px; border: 1px solid #333333;">
+                                <span style="background: ${status === 'PASS' ? '#e8f5e9' : '#ffebee'}; color: ${status === 'PASS' ? '#1a5632' : '#8b1a1a'}; padding: 3px 12px; border-radius: 12px; font-size: 10px; font-weight: 700; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px;">${classification}</span>
                             </td>
                         </tr>
                     </tbody>
@@ -6265,57 +6269,96 @@ async function generateStudentTranscriptPDF(student, reportData) {
             </div>
             
             <!-- ===== CREDITS SUMMARY ===== -->
-            <div style="margin: 0 20px 8px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
-                <div style="background: #f8fafc; padding: 5px 10px; text-align: center; border: 1px solid #e2e8f0; border-radius: 2px;">
-                    <div style="font-size: 14px; font-weight: 700; color: #6366f1;">${totalCredits}</div>
-                    <div style="font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">Total Credits</div>
+            <div style="margin: 0 20px 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div style="background: #f5f5f5; padding: 8px 10px; text-align: center; border: 1px solid #333333; border-radius: 3px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #1a1a2e;">${totalCredits}</div>
+                    <div style="font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;">Total Credits</div>
                 </div>
-                <div style="background: #f8fafc; padding: 5px 10px; text-align: center; border: 1px solid #e2e8f0; border-radius: 2px;">
-                    <div style="font-size: 14px; font-weight: 700; color: #10b981;">${creditsPassed}</div>
-                    <div style="font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">Credits Passed</div>
+                <div style="background: #f5f5f5; padding: 8px 10px; text-align: center; border: 1px solid #333333; border-radius: 3px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #1a5632;">${creditsPassed}</div>
+                    <div style="font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;">Credits Passed</div>
                 </div>
-                <div style="background: #f8fafc; padding: 5px 10px; text-align: center; border: 1px solid #e2e8f0; border-radius: 2px;">
-                    <div style="font-size: 14px; font-weight: 700; color: ${creditsFailed > 0 ? '#ef4444' : '#94a3b8'};">${creditsFailed}</div>
-                    <div style="font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">Credits Failed</div>
+                <div style="background: #f5f5f5; padding: 8px 10px; text-align: center; border: 1px solid #333333; border-radius: 3px;">
+                    <div style="font-size: 15px; font-weight: 700; color: ${creditsFailed > 0 ? '#8b1a1a' : '#999'};">${creditsFailed}</div>
+                    <div style="font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;">Credits Failed</div>
                 </div>
             </div>
             
             <!-- ===== RESULT BANNER ===== -->
-            <div style="margin: 0 20px 8px; padding: 6px 12px; border-radius: 2px; text-align: center; border: 2px solid ${status === 'PASS' ? '#10b981' : '#ef4444'}; background: ${status === 'PASS' ? '#ecfdf5' : '#fef2f2'};">
-                <div style="font-size: 11px; font-weight: 700; color: ${status === 'PASS' ? '#065f46' : '#991b1b'}; text-transform: uppercase;">${status === 'PASS' ? 'Academic Progress: Satisfactory' : (status === 'FAIL' ? 'Academic Progress: Needs Improvement' : 'Progress: Incomplete')}</div>
-                <div style="font-size: 9px; margin-top: 2px; color: ${status === 'PASS' ? '#065f46' : '#991b1b'};">
+            <div style="margin: 0 20px 10px; padding: 10px 16px; border-radius: 3px; text-align: center; border: 2px solid ${status === 'PASS' ? '#1a5632' : '#8b1a1a'}; background: ${status === 'PASS' ? '#f1f8e9' : '#fce4ec'};">
+                <div style="font-size: 12px; font-weight: 700; color: ${status === 'PASS' ? '#1a5632' : '#8b1a1a'}; letter-spacing: 0.5px; text-transform: uppercase;">${status === 'PASS' ? 'Academic Progress: Satisfactory' : (status === 'FAIL' ? 'Academic Progress: Needs Improvement' : 'Progress: Incomplete')}</div>
+                <div style="font-size: 9px; margin-top: 2px; color: ${status === 'PASS' ? '#1a5632' : '#8b1a1a'};">
                     ${status === 'PASS' ? 'The student has met the minimum passing requirements and is in good academic standing.' : (status === 'FAIL' ? 'The student is advised to seek academic support and remedial classes.' : 'Awaiting completion of pending assessments.')}
                 </div>
-                <div style="margin-top: 3px; font-size: 10px; display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;">
-                    <span>Overall Average: <strong style="color: ${overallAvg >= 60 ? '#065f46' : '#991b1b'};">${overallAvg}%</strong></span>
-                    <span>CGPA: <strong style="color: #6366f1;">${cgpa} / 5.00</strong></span>
-                    <span>Classification: <strong style="color: ${overallAvg >= 75 ? '#065f46' : (overallAvg >= 65 ? '#1e40af' : (overallAvg >= 60 ? '#92400e' : '#991b1b'))};">${classification}</strong></span>
+                <div style="margin-top: 4px; font-size: 10px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-weight: 500;">
+                    <span>Overall Average: <strong style="color: ${overallAvg >= 60 ? '#1a5632' : '#8b1a1a'};">${overallAvg}%</strong></span>
+                    <span>CGPA: <strong style="color: #1a1a2e;">${cgpa} / 5.00</strong></span>
+                    <span>Classification: <strong style="color: ${overallAvg >= 75 ? '#1a5632' : (overallAvg >= 65 ? '#1a3a6b' : (overallAvg >= 60 ? '#8a6d1a' : '#8b1a1a'))};">${classification}</strong></span>
+                </div>
+            </div>
+            
+            <!-- ===== GRADING KEY ===== -->
+            <div style="margin: 0 20px 10px; padding: 8px 14px; background: #fafafa; border-radius: 3px; border: 1px solid #d0d0d0;">
+                <div style="font-size: 9px; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Grading Key</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 2px; font-size: 8px; color: #444; text-align: center;">
+                    <div style="font-weight: 700; background: #e8e8e8; padding: 3px 0; border-radius: 2px; font-size: 7px; text-transform: uppercase;">Marks From</div>
+                    <div style="font-weight: 700; background: #e8e8e8; padding: 3px 0; border-radius: 2px; font-size: 7px; text-transform: uppercase;">Marks To</div>
+                    <div style="font-weight: 700; background: #e8e8e8; padding: 3px 0; border-radius: 2px; font-size: 7px; text-transform: uppercase;">Grade</div>
+                    <div style="font-weight: 700; background: #e8e8e8; padding: 3px 0; border-radius: 2px; font-size: 7px; text-transform: uppercase;">Points</div>
+                    <div style="font-weight: 700; background: #e8e8e8; padding: 3px 0; border-radius: 2px; font-size: 7px; text-transform: uppercase;">Classification</div>
+                    
+                    <div style="background: #ffebee; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">0</div>
+                    <div style="background: #ffebee; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">59</div>
+                    <div style="background: #ffebee; padding: 3px 0; border-radius: 2px; font-weight: 700; color: #8b1a1a; font-size: 9px;">D</div>
+                    <div style="background: #ffebee; padding: 3px 0; border-radius: 2px; font-size: 8px;">0</div>
+                    <div style="background: #ffebee; padding: 3px 0; border-radius: 2px; color: #8b1a1a; font-weight: 600; font-size: 8px;">FAIL</div>
+                    
+                    <div style="background: #fff3e0; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">60</div>
+                    <div style="background: #fff3e0; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">64</div>
+                    <div style="background: #fff3e0; padding: 3px 0; border-radius: 2px; font-weight: 700; color: #8a6d1a; font-size: 9px;">C</div>
+                    <div style="background: #fff3e0; padding: 3px 0; border-radius: 2px; font-size: 8px;">2</div>
+                    <div style="background: #fff3e0; padding: 3px 0; border-radius: 2px; color: #8a6d1a; font-weight: 600; font-size: 8px;">PASS</div>
+                    
+                    <div style="background: #e3f2fd; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">65</div>
+                    <div style="background: #e3f2fd; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">74</div>
+                    <div style="background: #e3f2fd; padding: 3px 0; border-radius: 2px; font-weight: 700; color: #1a3a6b; font-size: 9px;">B</div>
+                    <div style="background: #e3f2fd; padding: 3px 0; border-radius: 2px; font-size: 8px;">3</div>
+                    <div style="background: #e3f2fd; padding: 3px 0; border-radius: 2px; color: #1a3a6b; font-weight: 600; font-size: 8px;">CREDIT</div>
+                    
+                    <div style="background: #e8f5e9; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">75</div>
+                    <div style="background: #e8f5e9; padding: 3px 0; border-radius: 2px; font-weight: 600; font-size: 8px;">100</div>
+                    <div style="background: #e8f5e9; padding: 3px 0; border-radius: 2px; font-weight: 700; color: #1a5632; font-size: 9px;">A</div>
+                    <div style="background: #e8f5e9; padding: 3px 0; border-radius: 2px; font-size: 8px;">4</div>
+                    <div style="background: #e8f5e9; padding: 3px 0; border-radius: 2px; color: #1a5632; font-weight: 600; font-size: 8px;">DISTINCTION</div>
                 </div>
             </div>
             
             <!-- ===== FOOTER ===== -->
-            <div style="padding: 6px 20px; text-align: center; border-top: 2px solid #e2e8f0; font-size: 8px; color: #94a3b8; background: #f8fafc;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 4px 0 6px;">
+            <div style="padding: 10px 20px; text-align: center; border-top: 2px solid #333333; font-size: 8px; color: #666; background: #f5f5f5;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 6px 0 8px;">
                     <div style="text-align: center;">
-                        <div style="border-bottom: 1px solid #475569; width: 60%; margin: 0 auto 2px; height: 16px;"></div>
-                        <div style="font-weight: 600; color: #1e293b; font-size: 8px;">Principal</div>
-                        <div style="font-size: 7px; color: #94a3b8;">Signature and Date</div>
+                        <div style="border-bottom: 1px solid #444; width: 60%; margin: 0 auto 2px; height: 20px;"></div>
+                        <div style="font-weight: 600; color: #1a1a2e; font-size: 8px;">Principal</div>
+                        <div style="font-size: 7px; color: #888;">Signature and Date</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="border-bottom: 1px solid #475569; width: 60%; margin: 0 auto 2px; height: 16px;"></div>
-                        <div style="font-weight: 600; color: #1e293b; font-size: 8px;">HOD - School of Nursing</div>
-                        <div style="font-size: 7px; color: #94a3b8;">Signature and Date</div>
+                        <div style="border-bottom: 1px solid #444; width: 60%; margin: 0 auto 2px; height: 20px;"></div>
+                        <div style="font-weight: 600; color: #1a1a2e; font-size: 8px;">HOD - School of Nursing</div>
+                        <div style="font-size: 7px; color: #888;">Signature and Date</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="border-bottom: 1px solid #475569; width: 60%; margin: 0 auto 2px; height: 16px;"></div>
-                        <div style="font-weight: 600; color: #1e293b; font-size: 8px;">Student's Signature</div>
-                        <div style="font-size: 7px; color: #94a3b8;">Date: ${issueDate}</div>
+                        <div style="border-bottom: 1px solid #444; width: 60%; margin: 0 auto 2px; height: 20px;"></div>
+                        <div style="font-weight: 600; color: #1a1a2e; font-size: 8px;">Student's Signature</div>
+                        <div style="font-size: 7px; color: #888;">Date: ${issueDate}</div>
                     </div>
                 </div>
-                <div style="font-size: 7px; color: #94a3b8;">This is a computer-generated official transcript. Verification can be made through the college registry.</div>
-                <div style="font-size: 6px; color: #cbd5e1; margin-top: 1px;">
-                    &copy; ${new Date().getFullYear()} Nakuru College of Health Sciences and Management - All Rights Reserved
+                <div style="margin-top: 4px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 7px; color: #888;">
+                    <span>Document ID: ${transcriptId}</span>
+                    <span>|</span>
+                    <span>Electronically verifiable</span>
                 </div>
+                <p style="margin-top: 4px; font-size: 7px; color: #999;">This is a computer-generated official transcript. Verification can be made through the college registry.</p>
+                <p style="font-size: 7px; color: #bbb; margin-top: 1px;">&copy; ${new Date().getFullYear()} Nakuru College of Health Sciences and Management - All Rights Reserved</p>
             </div>
         </div>
     `;
