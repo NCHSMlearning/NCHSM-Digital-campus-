@@ -3039,7 +3039,9 @@ async function loadAdminMarks(block, subject, at) {
                 <td id="arating_${i}" style="padding:8px 6px;text-align:center;font-size:12px;">
                     ${total > 0 ? `<span style="background:${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding:3px 12px; border-radius:12px; color:${total >= 60 ? '#065f46' : '#991b1b'}; font-weight:600; display:inline-block;">${gradeInfo.rating}</span>` : '<span style="color:#94a3b8;">PENDING</span>'}
                 </td>
-                <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">${m.gradedBy || '-'}</td>
+                <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">
+    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
+</td>
             </tr>`; 
     } 
     
@@ -3418,7 +3420,9 @@ async function loadAdminMarks(block, subject, at) {
                 <td id="lrating_${i}" style="padding:8px 6px;text-align:center;font-size:12px;">
                     ${total > 0 ? `<span style="background:${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding:3px 12px; border-radius:12px; color:${total >= 60 ? '#065f46' : '#991b1b'}; font-weight:600; display:inline-block;">${gradeInfo.rating}</span>` : '<span style="color:#94a3b8;">PENDING</span>'}
                 </td>
-                <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">${m.gradedBy || '-'}</td>
+                <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">
+    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
+</td>
             </tr>`; 
     } 
     
