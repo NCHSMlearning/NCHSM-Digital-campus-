@@ -5852,66 +5852,15 @@ window.deleteAnnouncement = deleteAnnouncement;
  * 15. RESOURCES MANAGEMENT - SUPER ADMIN VERSION
  * Handles BOTH Learning Materials AND Past Papers
  * WITH EDIT, DELETE, TVET/KRCHN SUPPORT
+ * ✅ NO DUPLICATE DECLARATIONS
+ * ✅ Uses existing globals: allResourcesData, currentResourceType, TVET_PROGRAMS, RESOURCES_BUCKET, sb, escapeHtml, showFeedback, logAudit, debounce
  *******************************************************/
 
 // =====================================================
-// GLOBALS - ONLY DECLARE NEW ONES (others exist at top)
+// GLOBALS - ONLY DECLARE NEW ONES
 // =====================================================
 let editingResourceId = null;
 let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
-
-// =====================================================
-// INITIALIZE RESOURCES SECTION
-// =====================================================
-function initResourcesSection() {
-    console.log('📁 Initializing Super Admin Resources Section...');
-    
-    // Set up block/term options
-    const resourceProgram = document.getElementById('resource_program');
-    const resourceBlock = document.getElementById('resource_block');
-    if (resourceProgram && resourceBlock) {
-        resourceProgram.addEventListener('change', () => {
-            updateBlockTermOptions('resource_program', 'resource_block');
-        });
-        setTimeout(() => updateBlockTermOptions('resource_program', 'resource_block'), 100);
-    }
-    
-    const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
-    if (pastpaperCheckbox) {
-        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
-    }
-    
-    const uploadForm = document.getElementById('upload-resource-form');
-    if (uploadForm) {
-        uploadForm.removeEventListener('submit', handleResourceUpload);
-        uploadForm.addEventListener('submit', handleResourceUpload);
-    }
-    
-    const searchInput = document.getElementById('resource-search');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
-    }
-    
-    const blockFilter = document.getElementById('resource-block-filter');
-    if (blockFilter) {
-        blockFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    const yearFilter = document.getElementById('resource-year-filter');
-    if (yearFilter) {
-        yearFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    const programFilter = document.getElementById('resource-program-filter');
-    if (programFilter) {
-        programFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    detectAdminProgram();
-    loadAllResources();
-    
-    console.log('✅ Super Admin Resources Section initialized');
-}
 
 // =====================================================
 // DETECT ADMIN PROGRAM
@@ -5951,7 +5900,7 @@ function updateAdminProgramUI(programType, profile) {
     
     if (blockBadge) {
         if (isTVET) {
-            const term = profile?.term || 1;
+            const term = profile?.block || 'Term1';
             blockBadge.innerHTML = `<i class="fas fa-calendar-alt"></i> Term: ${term}`;
         } else {
             const block = profile?.block || 'Introductory';
@@ -5974,6 +5923,59 @@ function switchAdminProgram() {
 }
 
 // =====================================================
+// UPDATE BLOCK/TERM OPTIONS FOR RESOURCES
+// =====================================================
+function updateBlockOptions() {
+    const programSelect = document.getElementById('resource_program');
+    const blockSelect = document.getElementById('resource_block');
+    
+    if (!programSelect || !blockSelect) return;
+    
+    const program = programSelect.value;
+    const isTVET = TVET_PROGRAMS.includes(program);
+    
+    blockSelect.innerHTML = '';
+    
+    if (isTVET) {
+        // TVET Terms - stored in block column as "Term1", "Term2", etc.
+        const terms = [
+            { value: 'Term1', label: '📘 Term 1' },
+            { value: 'Term2', label: '📗 Term 2' },
+            { value: 'Term3', label: '📕 Term 3' },
+            { value: 'Term4', label: '📙 Term 4' },
+            { value: 'Term5', label: '📒 Term 5' },
+            { value: 'Term6', label: '📓 Term 6' },
+            { value: 'Final Term', label: '🏆 Final Term' }
+        ];
+        
+        terms.forEach(term => {
+            const option = document.createElement('option');
+            option.value = term.value;
+            option.textContent = term.label;
+            blockSelect.appendChild(option);
+        });
+    } else {
+        // KRCHN Blocks
+        const blocks = [
+            { value: 'Introductory', label: '🚀 Introductory' },
+            { value: 'Block 1', label: '📖 Block 1' },
+            { value: 'Block 2', label: '📗 Block 2' },
+            { value: 'Block 3', label: '📘 Block 3' },
+            { value: 'Block 4', label: '📙 Block 4' },
+            { value: 'Block 5', label: '📕 Block 5' },
+            { value: 'Final', label: '🏆 Final Block' }
+        ];
+        
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block.value;
+            option.textContent = block.label;
+            blockSelect.appendChild(option);
+        });
+    }
+}
+
+// =====================================================
 // UPDATE FILTER DROPDOWN
 // =====================================================
 function updateFilterDropdown(isTVET) {
@@ -5988,7 +5990,7 @@ function updateFilterDropdown(isTVET) {
     filterSelect.appendChild(allOption);
     
     if (isTVET) {
-        const terms = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final Term'];
+        const terms = ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final Term'];
         terms.forEach(term => {
             const option = document.createElement('option');
             option.value = term;
@@ -6024,6 +6026,67 @@ function togglePastPaperFields() {
     if (yearInput) yearInput.required = isPastPaper;
     if (examTypeSelect) examTypeSelect.required = isPastPaper;
     if (courseInput) courseInput.required = isPastPaper;
+}
+
+// =====================================================
+// INITIALIZE RESOURCES SECTION
+// =====================================================
+function initResourcesSection() {
+    console.log('📁 Initializing Super Admin Resources Section...');
+    
+    const resourceProgram = document.getElementById('resource_program');
+    const resourceBlock = document.getElementById('resource_block');
+    
+    if (resourceProgram && resourceBlock) {
+        resourceProgram.addEventListener('change', function() {
+            updateBlockOptions();
+            const isTVET = TVET_PROGRAMS.includes(this.value);
+            updateFilterDropdown(isTVET);
+        });
+        
+        setTimeout(() => {
+            updateBlockOptions();
+            const program = resourceProgram.value;
+            const isTVET = TVET_PROGRAMS.includes(program);
+            updateFilterDropdown(isTVET);
+        }, 100);
+    }
+    
+    const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
+    if (pastpaperCheckbox) {
+        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
+    }
+    
+    const uploadForm = document.getElementById('upload-resource-form');
+    if (uploadForm) {
+        uploadForm.removeEventListener('submit', handleResourceUpload);
+        uploadForm.addEventListener('submit', handleResourceUpload);
+    }
+    
+    const searchInput = document.getElementById('resource-search');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
+    }
+    
+    const blockFilter = document.getElementById('resource-block-filter');
+    if (blockFilter) {
+        blockFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    const yearFilter = document.getElementById('resource-year-filter');
+    if (yearFilter) {
+        yearFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    const programFilter = document.getElementById('resource-program-filter');
+    if (programFilter) {
+        programFilter.addEventListener('change', filterResourcesTable);
+    }
+    
+    detectAdminProgram();
+    loadAllResources();
+    
+    console.log('✅ Super Admin Resources Section initialized');
 }
 
 // =====================================================
@@ -6099,7 +6162,6 @@ async function handleResourceUpload(e) {
                 filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
             }
 
-            // ✅ FIXED: supabase → sb
             const { error: uploadError } = await sb
                 .storage
                 .from(RESOURCES_BUCKET)
@@ -6111,7 +6173,6 @@ async function handleResourceUpload(e) {
             
             if (uploadError) throw uploadError;
 
-            // ✅ FIXED: supabase → sb
             const { data: urlData } = sb
                 .storage
                 .from(RESOURCES_BUCKET)
@@ -6149,7 +6210,6 @@ async function handleResourceUpload(e) {
         let result;
 
         if (isEdit) {
-            // ✅ FIXED: supabase → sb
             result = await sb
                 .from('resources')
                 .update(dbRecord)
@@ -6175,7 +6235,6 @@ async function handleResourceUpload(e) {
             dbRecord.uploaded_by_name = window.currentUserProfile?.full_name || 'Unknown';
             dbRecord.created_at = new Date().toISOString();
             
-            // ✅ FIXED: supabase → sb
             result = await sb
                 .from('resources')
                 .insert(dbRecord)
@@ -6212,7 +6271,6 @@ async function handleResourceUpload(e) {
 // =====================================================
 async function editResource(resourceId) {
     try {
-        // ✅ FIXED: supabase → sb
         const { data: resource, error } = await sb
             .from('resources')
             .select('*')
@@ -6229,10 +6287,18 @@ async function editResource(resourceId) {
         document.getElementById('resource_program').value = resource.program_type || '';
         document.getElementById('resource_intake').value = resource.intake || '';
         
-        updateBlockTermOptions('resource_program', 'resource_block');
-        setTimeout(() => {
-            document.getElementById('resource_block').value = resource.block || '';
-        }, 100);
+        // Update block options based on program
+        const programSelect = document.getElementById('resource_program');
+        const isTVET = TVET_PROGRAMS.includes(resource.program_type || '');
+        
+        // Trigger block options update
+        if (programSelect) {
+            programSelect.value = resource.program_type || '';
+            updateBlockOptions();
+            setTimeout(() => {
+                document.getElementById('resource_block').value = resource.block || '';
+            }, 100);
+        }
         
         document.getElementById('resource-title').value = resource.title || '';
         document.getElementById('resource-description').value = resource.description || '';
@@ -6293,7 +6359,6 @@ async function loadAllResources() {
     tableBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>';
 
     try {
-        // ✅ FIXED: supabase → sb
         let query = sb.from('resources').select('*').order('created_at', { ascending: false });
         
         if (currentResourceType === 'material') {
@@ -6392,13 +6457,14 @@ function renderResourcesTable(resources) {
         const uploadDate = new Date(resource.created_at).toLocaleDateString();
         const isTVET = TVET_PROGRAMS.includes(resource.program_type || '');
         const blockLabel = isTVET ? 'Term' : 'Block';
+        const blockValue = resource.block || resource.term || 'N/A';
         
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><span class="badge ${typeClass}"><i class="${typeIcon}"></i> ${typeLabel}</span></td>
             <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
             <td>${escapeHtml(resource.program_type || 'N/A')}</td>
-            <td>${escapeHtml(resource.block || 'N/A')}</td>
+            <td><span class="badge ${isTVET ? 'badge-tvet' : 'badge-krchn'}">${blockLabel}: ${escapeHtml(blockValue)}</span></td>
             <td><strong>${escapeHtml(titleDisplay)}</strong><br><small>${escapeHtml(resource.course_name || '')}</small></td>
             <td><small>${escapeHtml((resource.description || '-').substring(0, 50))}</small></td>
             <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
@@ -6426,7 +6492,6 @@ async function deleteResourceItem(resourceId, title) {
     if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
     
     try {
-        // ✅ FIXED: supabase → sb
         const { data: resource } = await sb
             .from('resources')
             .select('file_path')
@@ -6434,11 +6499,9 @@ async function deleteResourceItem(resourceId, title) {
             .single();
         
         if (resource?.file_path) {
-            // ✅ FIXED: supabase → sb
             await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
         }
         
-        // ✅ FIXED: supabase → sb
         await sb.from('resources').delete().eq('id', resourceId);
         
         await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
@@ -6493,14 +6556,15 @@ function exportResourcesToCSV() {
         return;
     }
     
-    let csv = 'Type,Year,Program,Block,Title,Course,Description,Uploaded By,Date\n';
+    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Uploaded By,Date\n';
     
     allResourcesData.forEach(r => {
         const isPastPaper = r.resource_type === 'pastpaper';
         const yearDisplay = isPastPaper ? r.pastpaper_year : r.intake;
         const date = new Date(r.created_at).toLocaleDateString();
+        const blockLabel = TVET_PROGRAMS.includes(r.program_type || '') ? 'Term' : 'Block';
         
-        csv += `${r.resource_type},${yearDisplay},${r.program_type},${r.block},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
+        csv += `${r.resource_type},${yearDisplay},${r.program_type},${blockLabel}: ${r.block || r.term || 'N/A'},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -6528,6 +6592,8 @@ window.initResourcesSection = initResourcesSection;
 window.handleResourceUpload = handleResourceUpload;
 window.switchAdminProgram = switchAdminProgram;
 window.exportResourcesToCSV = exportResourcesToCSV;
+window.updateBlockOptions = updateBlockOptions;
+window.updateFilterDropdown = updateFilterDropdown;
 
 console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support and Edit functionality!');
 /*******************************************************
