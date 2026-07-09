@@ -477,114 +477,120 @@
     }
 </style>
 
-</head>
-<body>
-    <div class="container">
-        <!-- Mobile Navigation Toggle -->
-        <div class="mobile-nav-toggle" id="mobileNavToggle">
-            <span></span>
-            <span></span>
-            <span></span>
+<!-- ============================================ -->
+<!-- MOBILE NAVIGATION TOGGLE                     -->
+<!-- ============================================ -->
+<button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<!-- ============================================ -->
+<!-- SIDEBAR - PREMIUM VERSION                   -->
+<!-- ============================================ -->
+<aside class="sidebar" id="sidebar">
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+        <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
+        <div>
+            <h2>NCHSM <span>Admin</span></h2>
+            <div class="header-subtitle">Super Admin Panel</div>
         </div>
-
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
-                <h2>Super Admin</h2>
-            </div>
-       <ul class="nav" id="mainNav">
-    <!-- DASHBOARD -->
-    <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+    </div>
     
-    <!-- USER MANAGEMENT DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-            <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
-            <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
-            <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
-        </ul>
-    </li>
-    
-  <!-- ACADEMIC MANAGEMENT DROPDOWN -->
-<li class="nav-dropdown">
-    <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down" style="float: right;"></i></a>
-    <ul class="dropdown-menu">
-        <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-        <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-        <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-        <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School System</a></li>
-        <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-        <!-- 👇 ADD THIS LINE BELOW 👇 -->
-        <li><a href="#" data-tab="programs"><i class="fas fa-sitemap"></i> Programs</a></li>
+    <!-- Navigation -->
+    <ul class="nav" id="mainNav">
+        <!-- DASHBOARD -->
+        <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        
+        <!-- USER MANAGEMENT -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+                <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+                <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
+                <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
+            </ul>
+        </li>
+        
+        <!-- ACADEMIC -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+                <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+                <li><a href="#" data-tab="programs"><i class="fas fa-sitemap"></i> Programs</a></li>
+                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+                <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School</a></li>
+                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+            </ul>
+        </li>
+        
+        <!-- SCHEDULING -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
+                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+            </ul>
+        </li>
+        
+        <!-- STAFF & COMM -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
+                <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
+                <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+                <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
+            </ul>
+        </li>
+        
+        <!-- FINANCIAL -->
+        <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
+        
+        <!-- SYSTEM TOOLS -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
+                <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
+                <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
+                <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
+                <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
+                <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
+                <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
+                <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+            </ul>
+        </li>
+        
+        <!-- SECURITY -->
+        <li class="nav-dropdown">
+            <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down"></i></a>
+            <ul class="dropdown-menu">
+                <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
+                <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
+                <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
+                <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
+                <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+            </ul>
+        </li>
+        
+        <!-- BACKUP -->
+        <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
     </ul>
-</li>
     
-    <!-- SCHEDULING & ATTENDANCE DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-            <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-            <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
-        </ul>
-    </li>
-    
-    <!-- STAFF & COMMUNICATION DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
-            <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-            <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
-            <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
-        </ul>
-    </li>
-    
-    <!-- FINANCIAL -->
-    <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
-    
-    <!-- SYSTEM TOOLS DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
-            <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-            <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
-            <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
-            <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
-            <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
-            <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
-            <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
-        </ul>
-    </li>
-    
-    <!-- SECURITY DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
-            <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
-            <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
-            <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-            <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
-        </ul>
-    </li>
-    
-    <!-- MAINTENANCE -->
-    <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
-</ul>
-            <div class="logout">
-                <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </aside>
+    <!-- Logout -->
+    <div class="logout">
+        <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</aside>
 
-        <main class="main">
-            <header>
-                <h1>Welcome, Super Admin!</h1>
-                <p class="subtitle">Full system oversight and user management</p>
-            </header>
+<!-- Mobile Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <!-- ============================================ -->
 <!-- COMPLETE MODERN DASHBOARD WITH CHARTS -->
 <!-- ============================================ -->
