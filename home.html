@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CampusNexus - The Ultimate Digital Learning Platform</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        /* ============================================================
+           🚀 ULTIMATE ULTRA BEST LANDING PAGE - VERSION 4.0
+           With ALL Pages Included
+           ============================================================ */
+        
+        /* ----- CSS Variables ----- */
+        :root {
+            --primary: #0A3D62;
+            --primary-dark: #052e1f;
+            --primary-light: #1a5a7a;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --gold: #d4af37;
+            --gold-light: #f0d060;
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.15);
+            --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --radius-2xl: 32px;
+            --radius-full: 9999px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--gray-800);
+            background: var(--white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-primary i {
+            margin-right: 8px;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            padding: 14px 32px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: 2px solid var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: #fff;
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-secondary i {
+            margin-right: 8px;
+        }
+
+        .btn-gold {
+            background: var(--gold);
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn-gold:hover {
+            background: var(--gold-light);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-gold i {
+            margin-right: 8px;
+        }
+
+        .btn-green {
+            background: var(--secondary);
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn-green:hover {
+            background: var(--secondary-dark);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-green i {
+            margin-right: 8px;
+        }
+
+        .btn-outline-light {
+            background: transparent;
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn-outline-light:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #fff;
+            transform: translateY(-2px);
+        }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            padding: 16px 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(226,232,240,0.5);
+        }
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .logo span {
+            color: var(--secondary);
+        }
+        .logo small {
+            font-size: 0.55rem;
+            font-weight: 400;
+            display: block;
+            color: var(--gray-500);
+            letter-spacing: 0.5px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+            list-style: none;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray-600);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--secondary);
+            transition: var(--transition);
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links .btn-primary {
+            padding: 10px 24px;
+            font-size: 0.85rem;
+        }
+        .nav-links .btn-primary::after {
+            display: none;
+        }
+
+        /* Mobile Menu Toggle */
+        .menu-toggle {
+            display: none;
+            font-size: 1.5rem;
+            color: var(--primary);
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            padding: 100px 0 80px;
+            background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .hero .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+        .hero h1 span {
+            color: var(--secondary);
+        }
+        .hero h1 .gold {
+            color: var(--gold);
+        }
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--gray-600);
+            margin-bottom: 32px;
+            max-width: 520px;
+            line-height: 1.8;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .hero-stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 40px;
+        }
+        .hero-stats .stat-item .number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .hero-stats .stat-item .label {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .hero-image {
+            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+            border-radius: var(--radius-xl);
+            padding: 30px;
+            min-height: 360px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-2xl);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-image::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 50%);
+            animation: shimmer 20s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hero-image .mockup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.8rem;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-image .mockup-header .mockup-user {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 14px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 0.7rem;
+        }
+        .hero-image .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-image .mockup-grid .card {
+            background: rgba(255,255,255,0.08);
+            padding: 14px 12px;
+            border-radius: 10px;
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.7rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .hero-image .mockup-grid .card:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+        }
+        .hero-image .mockup-grid .card i {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+            color: var(--gold);
+        }
+        .hero-image .mockup-grid .card .value {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .hero-image .mockup-grid .card .label {
+            font-size: 0.6rem;
+            opacity: 0.7;
+        }
+
+        .trust-badges {
+            display: flex;
+            gap: 24px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+        .trust-badges span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }
+        .trust-badges i {
+            color: var(--secondary);
+        }
+
+        /* ===== FEATURES ===== */
+        .features {
+            padding: 100px 0;
+            background: var(--white);
+        }
+        .features .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+        .features .section-header h2 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .features .section-header p {
+            color: var(--gray-500);
+            font-size: 1.05rem;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--gray-50);
+            padding: 32px 24px;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            transition: var(--transition);
+            border: 1px solid var(--gray-200);
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .feature-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary);
+        }
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+        .feature-card i {
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-bottom: 16px;
+            background: rgba(10,61,98,0.08);
+            padding: 14px;
+            border-radius: 14px;
+            width: 60px;
+            height: 60px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        .feature-card:hover i {
+            background: var(--primary);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        .feature-card h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .feature-card p {
+            color: var(--gray-500);
+            font-size: 0.85rem;
+        }
+
+        /* ===== STATS SECTION ===== */
+        .stats-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .stats-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        .stats-section .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        .stats-section .stat-item .number {
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: var(--gold);
+            display: block;
+        }
+        .stats-section .stat-item .label {
+            font-size: 0.95rem;
+            opacity: 0.8;
+        }
+
+        /* ===== HOW IT WORKS ===== */
+        .how-it-works {
+            padding: 100px 0;
+            background: var(--gray-50);
+        }
+        .how-it-works .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+        .how-it-works .section-header h2 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .how-it-works .section-header p {
+            color: var(--gray-500);
+            font-size: 1.05rem;
+        }
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+        .step {
+            text-align: center;
+            background: #fff;
+            padding: 36px 24px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            border: 1px solid var(--gray-200);
+            position: relative;
+        }
+        .step:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+        .step-number {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.3rem;
+            margin: 0 auto 16px;
+            box-shadow: var(--shadow-md);
+        }
+        .step h4 {
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 1.05rem;
+        }
+        .step p {
+            color: var(--gray-500);
+            font-size: 0.88rem;
+        }
+
+        /* ===== TESTIMONIALS ===== */
+        .testimonials {
+            padding: 100px 0;
+            background: var(--white);
+        }
+        .testimonials .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+        .testimonials .section-header h2 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .testimonials .section-header p {
+            color: var(--gray-500);
+            font-size: 1.05rem;
+        }
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .testimonial-card {
+            background: var(--gray-50);
+            padding: 32px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-200);
+            transition: var(--transition);
+        }
+        .testimonial-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
+        }
+        .testimonial-card .stars {
+            color: #f59e0b;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .testimonial-card .quote {
+            font-size: 0.95rem;
+            color: var(--gray-700);
+            margin-bottom: 16px;
+            font-style: italic;
+            line-height: 1.7;
+        }
+        .testimonial-card .author {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .testimonial-card .title {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        /* ===== CTA ===== */
+        .cta {
+            padding: 100px 0;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 50%);
+            animation: shimmer 30s infinite linear;
+        }
+        .cta .container {
+            position: relative;
+            z-index: 1;
+        }
+        .cta h2 {
+            font-size: 2.6rem;
+            font-weight: 900;
+            margin-bottom: 16px;
+        }
+        .cta p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 32px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.8;
+        }
+        .cta .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ============================================================
+           📄 PAGE LINKS SECTION (Privacy, Terms, Contact, etc.)
+           ============================================================ */
+        .page-links-section {
+            padding: 60px 0;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+        }
+        .page-links-section .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+        }
+        .page-links-section .link-group h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+        .page-links-section .link-group ul {
+            list-style: none;
+        }
+        .page-links-section .link-group ul li {
+            margin-bottom: 8px;
+        }
+        .page-links-section .link-group ul li a {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .page-links-section .link-group ul li a:hover {
+            color: var(--primary);
+            padding-left: 4px;
+        }
+        .page-links-section .link-group ul li a i {
+            margin-right: 8px;
+            color: var(--secondary);
+            width: 16px;
+        }
+
+        /* ============================================================
+           📄 FOOTER
+           ============================================================ */
+        .footer {
+            background: var(--gray-900);
+            color: rgba(255,255,255,0.7);
+            padding: 40px 0;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .footer .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        .footer .logo {
+            color: #fff;
+        }
+        .footer .logo small {
+            color: rgba(255,255,255,0.5);
+        }
+        .footer a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        .footer a:hover {
+            color: #fff;
+        }
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .footer-links a {
+            font-size: 0.85rem;
+        }
+        .footer .copyright {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            width: 100%;
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* ============================================================
+           📄 MODAL / POPUP FOR PAGES
+           ============================================================ */
+        .page-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .page-modal.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .page-modal .modal-content {
+            background: #fff;
+            border-radius: var(--radius-xl);
+            max-width: 700px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 40px;
+            box-shadow: var(--shadow-2xl);
+            position: relative;
+        }
+        .page-modal .modal-content .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 1.8rem;
+            color: var(--gray-400);
+            cursor: pointer;
+            background: none;
+            border: none;
+            transition: var(--transition);
+        }
+        .page-modal .modal-content .modal-close:hover {
+            color: var(--gray-800);
+            transform: rotate(90deg);
+        }
+        .page-modal .modal-content h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-right: 40px;
+        }
+        .page-modal .modal-content h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+        .page-modal .modal-content p {
+            color: var(--gray-600);
+            line-height: 1.8;
+            margin-bottom: 12px;
+        }
+        .page-modal .modal-content ul {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+        .page-modal .modal-content ul li {
+            color: var(--gray-600);
+            margin-bottom: 6px;
+            line-height: 1.6;
+        }
+        .page-modal .modal-content .contact-info {
+            background: var(--gray-50);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            margin-top: 16px;
+        }
+        .page-modal .modal-content .contact-info p {
+            margin-bottom: 4px;
+        }
+        .page-modal .modal-content .contact-info i {
+            color: var(--secondary);
+            width: 24px;
+        }
+
+        /* ===== BACK TO TOP ===== */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            border: none;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+        }
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .back-to-top:hover {
+            background: var(--primary-dark);
+            transform: translateY(-4px) scale(1.05);
+        }
+
+        /* ============================================================
+           📱 RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .steps {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .testimonial-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .stats-section .container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .page-links-section .container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero .container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+            .hero-stats {
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .steps {
+                grid-template-columns: 1fr;
+            }
+            .testimonial-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-section .container {
+                grid-template-columns: 1fr 1fr;
+            }
+            .page-links-section .container {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #fff;
+                padding: 20px;
+                box-shadow: var(--shadow-lg);
+                border-top: 1px solid var(--gray-200);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .trust-badges {
+                gap: 12px;
+            }
+            .hero-image .mockup-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .cta h2 {
+                font-size: 1.8rem;
+            }
+            .page-modal .modal-content {
+                padding: 24px;
+                margin: 10px;
+            }
+            .page-modal .modal-content h2 {
+                font-size: 1.4rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            .btn-primary, .btn-secondary, .btn-green, .btn-gold {
+                padding: 12px 24px;
+                font-size: 0.9rem;
+                width: 100%;
+                text-align: center;
+            }
+            .hero-buttons {
+                flex-direction: column;
+            }
+            .hero-buttons .btn-secondary {
+                text-align: center;
+            }
+            .stats-section .container {
+                grid-template-columns: 1fr;
+            }
+            .hero-image .mockup-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .hero-image .mockup-grid .card {
+                padding: 10px 8px;
+                font-size: 0.6rem;
+            }
+            .hero-image .mockup-grid .card i {
+                font-size: 1rem;
+            }
+            .footer .container {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer-links {
+                justify-content: center;
+            }
+            .back-to-top {
+                bottom: 20px;
+                right: 20px;
+                width: 44px;
+                height: 44px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<nav class="navbar">
+    <div class="container">
+        <a href="home.html" class="logo">
+            Campus<span>Nexus</span>
+            <small>Digital Learning Platform</small>
+        </a>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#" onclick="openModal('contactModal')">Contact</a></li>
+            <li><a href="login.html" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- ============================================================
+     HERO SECTION
+     ============================================================ -->
+<section class="hero">
+    <div class="container">
+        <div>
+            <h1>Transform Your Institution with <span>Modern</span> <span class="gold">Digital Learning</span></h1>
+            <p>One secure platform for learning, assessments, attendance, communication, and academic management. Built for Nursing, TVET, and Higher Learning Institutions across Africa.</p>
+            <div class="hero-buttons">
+                <a href="login.html" class="btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Student Login
+                </a>
+                <a href="#" class="btn-secondary" onclick="openModal('demoModal')">
+                    <i class="fas fa-calendar-check"></i> Book a Demo
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="number">2,500+</span>
+                    <span class="label">Students</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">150+</span>
+                    <span class="label">Faculty</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">92</span>
+                    <span class="label">Courses</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">99.8%</span>
+                    <span class="label">Uptime</span>
+                </div>
+            </div>
+            <div class="trust-badges">
+                <span><i class="fas fa-cloud"></i> Cloud-based</span>
+                <span><i class="fas fa-lock"></i> Secure</span>
+                <span><i class="fas fa-mobile-alt"></i> Mobile-friendly</span>
+                <span><i class="fas fa-smile"></i> Easy to use</span>
+                <span><i class="fas fa-heartbeat"></i> Health-focused</span>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="mockup-header">
+                <span><i class="fas fa-graduation-cap"></i> NCHSM Portal v2.1</span>
+                <span class="mockup-user"><i class="fas fa-user"></i> Kevin Matoka · HOD</span>
+            </div>
+            <div class="mockup-grid">
+                <div class="card">
+                    <i class="fas fa-calendar-check"></i>
+                    <span class="value">92%</span>
+                    <span class="label">Attendance</span>
+                </div>
+                <div class="card">
+                    <i class="fas fa-star"></i>
+                    <span class="value">1,450</span>
+                    <span class="label">Total Points</span>
+                </div>
+                <div class="card">
+                    <i class="fas fa-book"></i>
+                    <span class="value">8</span>
+                    <span class="label">Active Courses</span>
+                </div>
+                <div class="card">
+                    <i class="fas fa-clock"></i>
+                    <span class="value">5</span>
+                    <span class="label">Day Streak</span>
+                </div>
+                <div class="card">
+                    <i class="fas fa-file-alt"></i>
+                    <span class="value">4</span>
+                    <span class="label">Upcoming Exams</span>
+                </div>
+                <div class="card">
+                    <i class="fas fa-level-up-alt"></i>
+                    <span class="value">Lv. 3</span>
+                    <span class="label">Level</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     STATS SECTION
+     ============================================================ -->
+<section class="stats-section">
+    <div class="container">
+        <div class="stat-item">
+            <span class="number">2,500+</span>
+            <span class="label">Students Enrolled</span>
+        </div>
+        <div class="stat-item">
+            <span class="number">150+</span>
+            <span class="label">Expert Faculty</span>
+        </div>
+        <div class="stat-item">
+            <span class="number">92</span>
+            <span class="label">Courses Offered</span>
+        </div>
+        <div class="stat-item">
+            <span class="number">99.8%</span>
+            <span class="label">System Uptime</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     FEATURES SECTION
+     ============================================================ -->
+<section class="features" id="features">
+    <div class="container">
+        <div class="section-header">
+            <h2>Everything You Need in One Platform</h2>
+            <p>Built specifically for nursing, TVET, and higher learning institutions.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-user-graduate"></i>
+                <h3>Student Portal</h3>
+                <p>Access courses, track progress, check attendance, and view exam cards.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <h3>Lecturer Portal</h3>
+                <p>Manage classes, grade assessments, and engage with students.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-file-alt"></i>
+                <h3>Online Exams</h3>
+                <p>Create, schedule, and grade exams with real-time analytics.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-fingerprint"></i>
+                <h3>Attendance</h3>
+                <p>QR code and geo-location based attendance tracking.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-book-open"></i>
+                <h3>Learning Resources</h3>
+                <p>Upload and share course materials, videos, and documents.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Analytics & Reports</h3>
+                <p>Real-time insights on student performance and engagement.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-credit-card"></i>
+                <h3>Fee Management</h3>
+                <p>Track outstanding fees, manage payments, and generate reports.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-ticket-alt"></i>
+                <h3>Support Tickets</h3>
+                <p>Manage urgent tickets and provide timely support.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     HOW IT WORKS
+     ============================================================ -->
+<section class="how-it-works" id="how-it-works">
+    <div class="container">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Get started with CampusNexus in just 4 simple steps.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h4>Register Your Institution</h4>
+                <p>Sign up and set up your institution's profile.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h4>We Customize Your Portal</h4>
+                <p>Tailor the platform to your institution's needs.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h4>Train Your Staff</h4>
+                <p>We provide training and ongoing support.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h4>Go Live!</h4>
+                <p>Launch and start transforming education.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     TESTIMONIALS
+     ============================================================ -->
+<section class="testimonials" id="testimonials">
+    <div class="container">
+        <div class="section-header">
+            <h2>What Our Users Say</h2>
+            <p>Real feedback from real institutions using CampusNexus.</p>
+        </div>
+        <div class="testimonial-grid">
+            <div class="testimonial-card">
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+                <p class="quote">"This platform has transformed how we deliver education. Our students are more engaged and our lecturers are more efficient."</p>
+                <p class="author">Dr. Jane Mwangi</p>
+                <p class="title">Principal, Nakuru College of Health Sciences</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+                <p class="quote">"The attendance tracking and exam features have saved us countless hours. It's a game-changer for our institution."</p>
+                <p class="author">Mr. James Ochieng</p>
+                <p class="title">Dean of Students, TVET Institute</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+                <p class="quote">"Finally a platform that understands the unique needs of health training institutions. Our students love the NurseIQ feature!"</p>
+                <p class="author">Prof. Sarah Adhiambo</p>
+                <p class="title">Head of Nursing Department</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     PAGE LINKS SECTION (Contact, Privacy, Terms, etc.)
+     ============================================================ -->
+<section class="page-links-section">
+    <div class="container">
+        <div class="link-group">
+            <h4>📌 Quick Links</h4>
+            <ul>
+                <li><a href="#" onclick="openModal('contactModal')"><i class="fas fa-envelope"></i> Contact Us</a></li>
+                <li><a href="#" onclick="openModal('demoModal')"><i class="fas fa-calendar-check"></i> Book a Demo</a></li>
+                <li><a href="#" onclick="openModal('termsModal')"><i class="fas fa-file-contract"></i> Terms of Service</a></li>
+                <li><a href="#" onclick="openModal('privacyModal')"><i class="fas fa-shield-alt"></i> Privacy Policy</a></li>
+            </ul>
+        </div>
+        <div class="link-group">
+            <h4>🏫 Institution</h4>
+            <ul>
+                <li><a href="#features"><i class="fas fa-cogs"></i> Features</a></li>
+                <li><a href="#how-it-works"><i class="fas fa-question-circle"></i> How It Works</a></li>
+                <li><a href="#testimonials"><i class="fas fa-comments"></i> Testimonials</a></li>
+                <li><a href="login.html"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+            </ul>
+        </div>
+        <div class="link-group">
+            <h4>📚 Resources</h4>
+            <ul>
+                <li><a href="#"><i class="fas fa-blog"></i> Blog</a></li>
+                <li><a href="#"><i class="fas fa-video"></i> Video Tutorials</a></li>
+                <li><a href="#"><i class="fas fa-download"></i> Download Brochure</a></li>
+                <li><a href="#"><i class="fas fa-life-ring"></i> Support Center</a></li>
+            </ul>
+        </div>
+        <div class="link-group">
+            <h4>📞 Contact</h4>
+            <ul>
+                <li><a href="#" onclick="openModal('contactModal')"><i class="fas fa-phone"></i> +254 790 969 743</a></li>
+                <li><a href="#" onclick="openModal('contactModal')"><i class="fas fa-envelope"></i> info@campusnexus.com</a></li>
+                <li><a href="#" onclick="openModal('contactModal')"><i class="fas fa-map-marker-alt"></i> Nakuru, Kenya</a></li>
+                <li><a href="#" onclick="openModal('demoModal')"><i class="fas fa-calendar-check"></i> Book Demo</a></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     CTA SECTION
+     ============================================================ -->
+<section class="cta" id="cta">
+    <div class="container">
+        <h2>Ready to Digitize Your Institution?</h2>
+        <p>Schedule a free demonstration today and see how CampusNexus can transform your institution.</p>
+        <div class="cta-buttons">
+            <a href="#" class="btn-gold" onclick="openModal('demoModal')">
+                <i class="fas fa-calendar-check"></i> Book a Free Demo
+            </a>
+            <a href="login.html" class="btn-outline-light">
+                <i class="fas fa-sign-in-alt"></i> Student Login
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="footer">
+    <div class="container">
+        <div class="logo" style="color: #fff;">
+            Campus<span style="color: var(--secondary);">Nexus</span>
+            <small style="color: rgba(255,255,255,0.5);">Digital Learning Platform</small>
+        </div>
+        <div class="footer-links">
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#testimonials">Testimonials</a>
+            <a href="#" onclick="openModal('contactModal')">Contact</a>
+            <a href="#" onclick="openModal('termsModal')">Terms</a>
+            <a href="#" onclick="openModal('privacyModal')">Privacy</a>
+            <a href="login.html"><i class="fas fa-sign-in-alt"></i> Login</a>
+        </div>
+        <div class="copyright">
+            &copy; 2026 CampusNexus. All rights reserved. | Nakuru College of Health Sciences and Management
+        </div>
+    </div>
+</footer>
+
+<!-- ============================================================
+     BACK TO TOP BUTTON
+     ============================================================ -->
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+    <i class="fas fa-arrow-up"></i>
+</button>
+
+<!-- ============================================================
+     📄 MODALS / POPUPS
+     ============================================================ -->
+
+<!-- ===== CONTACT US MODAL ===== -->
+<div class="page-modal" id="contactModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('contactModal')">&times;</button>
+        <h2><i class="fas fa-envelope" style="color: var(--secondary);"></i> Contact Us</h2>
+        <p>We'd love to hear from you! Reach out to us through any of the channels below.</p>
+        
+        <h3>📍 Our Address</h3>
+        <p>Nakuru College of Health Sciences and Management<br>
+        Kiamunyi Off Nakuru - Kabarak Rd<br>
+        Along Canon Ndungu Street, Nakuru, Kenya</p>
+        
+        <h3>📞 Phone Numbers</h3>
+        <div class="contact-info">
+            <p><i class="fas fa-phone"></i> +254 720 219 337</p>
+            <p><i class="fas fa-phone"></i> +254 703 345 771</p>
+            <p><i class="fas fa-phone"></i> +254 722 702 566</p>
+        </div>
+        
+        <h3>📧 Email</h3>
+        <div class="contact-info">
+            <p><i class="fas fa-envelope"></i> info@campusnexus.com</p>
+            <p><i class="fas fa-envelope"></i> support@campusnexus.com</p>
+        </div>
+        
+        <h3>🕐 Office Hours</h3>
+        <p>Monday - Friday: 8:00 AM - 5:00 PM (EAT)</p>
+        <p>Saturday: 9:00 AM - 1:00 PM</p>
+        <p>Sunday: Closed</p>
+        
+        <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('contactModal')">
+            <i class="fas fa-check"></i> Got It
+        </button>
+    </div>
+</div>
+
+<!-- ===== BOOK A DEMO MODAL ===== -->
+<div class="page-modal" id="demoModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('demoModal')">&times;</button>
+        <h2><i class="fas fa-calendar-check" style="color: var(--gold);"></i> Book a Free Demo</h2>
+        <p>Ready to see CampusNexus in action? Schedule a personalized demonstration with our team.</p>
+        
+        <h3>📋 What to Expect</h3>
+        <ul>
+            <li>✅ Live walkthrough of the platform</li>
+            <li>✅ Customized to your institution's needs</li>
+            <li>✅ Q&A session with our experts</li>
+            <li>✅ No obligation - just see what's possible</li>
+        </ul>
+        
+        <h3>📅 How to Book</h3>
+        <div class="contact-info">
+            <p><i class="fas fa-phone"></i> Call: +254 790 969 743</p>
+            <p><i class="fas fa-envelope"></i> Email: demo@campusnexus.com</p>
+            <p><i class="fas fa-whatsapp"></i> WhatsApp: +254 790 969 743</p>
+        </div>
+        
+        <p style="margin-top: 12px; font-size: 0.9rem; color: var(--gray-500);">
+            <i class="fas fa-clock"></i> Demos typically take 30-45 minutes and can be scheduled at your convenience.
+        </p>
+        
+        <button class="btn-gold" style="margin-top: 20px; width: 100%;" onclick="closeModal('demoModal')">
+            <i class="fas fa-check"></i> I'll Reach Out
+        </button>
+    </div>
+</div>
+
+<!-- ===== TERMS OF SERVICE MODAL ===== -->
+<div class="page-modal" id="termsModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('termsModal')">&times;</button>
+        <h2><i class="fas fa-file-contract" style="color: var(--primary);"></i> Terms of Service</h2>
+        <p><strong>Last Updated:</strong> July 2026</p>
+        
+        <h3>1. Acceptance of Terms</h3>
+        <p>By accessing and using CampusNexus, you agree to comply with and be bound by these Terms of Service. If you do not agree, please do not use our platform.</p>
+        
+        <h3>2. User Accounts</h3>
+        <p>You must provide accurate and complete information when creating your account. You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account.</p>
+        
+        <h3>3. Acceptable Use</h3>
+        <p>You agree NOT to:</p>
+        <ul>
+            <li>Share your account credentials with others</li>
+            <li>Attempt to gain unauthorized access to any systems or networks</li>
+            <li>Upload malicious code or content</li>
+            <li>Harass, abuse, or harm other users</li>
+            <li>Violate any applicable laws or regulations</li>
+        </ul>
+        
+        <h3>4. Academic Integrity</h3>
+        <p>All academic work submitted through the platform must be your own. Plagiarism, cheating, or any form of academic dishonesty is strictly prohibited and may result in disciplinary action.</p>
+        
+        <h3>5. Intellectual Property</h3>
+        <p>All content, materials, and resources provided through CampusNexus are protected by copyright and other intellectual property laws. You may not reproduce, distribute, or modify any content without explicit permission.</p>
+        
+        <h3>6. Privacy and Data Protection</h3>
+        <p>Your use of the platform is also governed by our Privacy Policy. We collect and process your personal data in accordance with applicable data protection laws.</p>
+        
+        <h3>7. Termination</h3>
+        <p>We reserve the right to suspend or terminate your access to the platform for violation of these terms or for any other reason deemed appropriate.</p>
+        
+        <h3>8. Limitation of Liability</h3>
+        <p>We shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use or inability to use the platform.</p>
+        
+        <h3>9. Contact Information</h3>
+        <p>For questions about these Terms, please contact us at <strong>legal@campusnexus.com</strong>.</p>
+        
+        <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('termsModal')">
+            <i class="fas fa-check"></i> I Understand
+        </button>
+    </div>
+</div>
+
+<!-- ===== PRIVACY POLICY MODAL ===== -->
+<div class="page-modal" id="privacyModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('privacyModal')">&times;</button>
+        <h2><i class="fas fa-shield-alt" style="color: var(--secondary);"></i> Privacy Policy</h2>
+        <p><strong>Last Updated:</strong> July 2026</p>
+        
+        <h3>1. Information We Collect</h3>
+        <p>We collect information you provide directly, including:</p>
+        <ul>
+            <li>Name, email address, phone number</li>
+            <li>Student/Staff ID and academic records</li>
+            <li>Attendance, exam results, and progress data</li>
+            <li>Device information and IP addresses</li>
+        </ul>
+        
+        <h3>2. How We Use Your Information</h3>
+        <ul>
+            <li>To provide and improve our services</li>
+            <li>To track academic progress and attendance</li>
+            <li>To communicate with you about updates and announcements</li>
+            <li>To ensure platform security and integrity</li>
+        </ul>
+        
+        <h3>3. Data Security</h3>
+        <p>We implement appropriate technical and organizational measures to protect your personal data, including encryption, access controls, and regular security audits.</p>
+        
+        <h3>4. Data Sharing</h3>
+        <p>We do not sell your personal data to third parties. We may share data with:</p>
+        <ul>
+            <li>Your institution for academic purposes</li>
+            <li>Service providers who assist us in operating the platform</li>
+            <li>Law enforcement when required by law</li>
+        </ul>
+        
+        <h3>5. Your Rights</h3>
+        <p>You have the right to:</p>
+        <ul>
+            <li>Access and review your personal data</li>
+            <li>Request correction of inaccurate data</li>
+            <li>Request deletion of your data (subject to institutional requirements)</li>
+            <li>Object to processing of your data</li>
+        </ul>
+        
+        <h3>6. Data Retention</h3>
+        <p>We retain your data as long as your account is active or as needed to provide services. Academic records may be retained for longer periods as required by educational regulations.</p>
+        
+        <h3>7. Contact Us</h3>
+        <p>For privacy-related questions, please contact us at <strong>privacy@campusnexus.com</strong>.</p>
+        
+        <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('privacyModal')">
+            <i class="fas fa-check"></i> I Understand
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script>
+    // ============================================================
+    // MOBILE MENU TOGGLE
+    // ============================================================
+    const menuToggle = document.getElementById('menuToggle');
+    const navLinks = document.getElementById('navLinks');
+    
+    menuToggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        menuToggle.innerHTML = navLinks.classList.contains('open') 
+            ? '<i class="fas fa-times"></i>' 
+            : '<i class="fas fa-bars"></i>';
+    });
+
+    // Close menu when a link is clicked
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.addEventListener('click', () => {
+            navLinks.classList.remove('open');
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        });
+    });
+
+    // ============================================================
+    // MODAL FUNCTIONS
+    // ============================================================
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Close modal when clicking outside
+    document.querySelectorAll('.page-modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.page-modal.active').forEach(modal => {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        }
+    });
+
+    // ============================================================
+    // BACK TO TOP BUTTON
+    // ============================================================
+    const backToTop = document.getElementById('backToTop');
+    
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 500) {
+            backToTop.classList.add('visible');
+        } else {
+            backToTop.classList.remove('visible');
+        }
+    });
+    
+    backToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // ============================================================
+    // SMOOTH SCROLL FOR ANCHOR LINKS
+    // ============================================================
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            const href = this.getAttribute('href');
+            if (href === '#') return;
+            
+            e.preventDefault();
+            const target = document.querySelector(href);
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // ============================================================
+    // CONSOLE LOG - BRANDING
+    // ============================================================
+    console.log('%c🚀 CampusNexus - Digital Learning Platform', 'font-size: 20px; font-weight: bold; color: #0A3D62;');
+    console.log('%cBuilt for Nursing, TVET, and Higher Learning Institutions', 'font-size: 14px; color: #10b981;');
+    console.log('%c© 2026 Nakuru College of Health Sciences and Management', 'font-size: 12px; color: #64748b;');
+</script>
+
+</body>
+</html>
