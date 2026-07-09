@@ -489,35 +489,64 @@
     <!-- ============================================ -->
     <!-- SIDEBAR - PREMIUM VERSION                   -->
     <!-- ============================================ -->
-    <aside class="sidebar" id="sidebar">
-        <!-- Sidebar Header -->
-        <div class="sidebar-header">
-            <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
-            <div>
-                <h2>NCHSM <span>Admin</span></h2>
-                <div class="header-subtitle">Super Admin Panel</div>
+   <aside class="sidebar" id="sidebar">
+    <!-- Brand Section -->
+    <div class="sidebar-brand">
+        <div class="brand-logo">
+            <img src="images/Logo_NCHSM.png" alt="NCHSM" onerror="this.style.display='none'">
+            <div class="brand-status">
+                <span class="status-dot"></span>
+                Live
             </div>
         </div>
-        
-        <!-- Navigation -->
-        <ul class="nav" id="mainNav">
-            <!-- DASHBOARD -->
-            <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            
-            <!-- USER MANAGEMENT -->
+        <div class="brand-info">
+            <h2>NCHSM</h2>
+            <span class="brand-sub">Super Admin</span>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="sidebar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Search menu..." id="sidebarSearch">
+        <kbd>⌘K</kbd>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
+            <!-- Dashboard -->
+            <li>
+                <a href="#" data-tab="dashboard" class="nav-link active">
+                    <span class="nav-icon"><i class="fas fa-th-large"></i></span>
+                    <span class="nav-text">Dashboard</span>
+                    <span class="nav-badge">Live</span>
+                </a>
+            </li>
+
+            <!-- User Management -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-users-cog"></i></span>
+                    <span class="nav-text">User Management</span>
+                    <span class="nav-badge">4</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
-                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> All Users</a></li>
                     <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
                     <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
                     <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
                 </ul>
             </li>
-            
-            <!-- ACADEMIC -->
+
+            <!-- Academic -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-graduation-cap"></i></span>
+                    <span class="nav-text">Academic</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
                     <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
@@ -527,20 +556,29 @@
                     <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 </ul>
             </li>
-            
-            <!-- SCHEDULING -->
+
+            <!-- Scheduling -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-calendar-check"></i></span>
+                    <span class="nav-text">Scheduling</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
                     <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
                     <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
                 </ul>
             </li>
-            
-            <!-- STAFF & COMM -->
+
+            <!-- Staff & Comm -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-headset"></i></span>
+                    <span class="nav-text">Staff & Comm</span>
+                    <span class="nav-badge">3</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
                     <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
@@ -548,13 +586,22 @@
                     <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
                 </ul>
             </li>
-            
-            <!-- FINANCIAL -->
-            <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
-            
-            <!-- SYSTEM TOOLS -->
+
+            <!-- Fee Accounts -->
+            <li>
+                <a href="#" data-tab="fee-accounts" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="nav-text">Fee Accounts</span>
+                </a>
+            </li>
+
+            <!-- System Tools -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+                    <span class="nav-text">System Tools</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
                     <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
@@ -566,10 +613,14 @@
                     <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
                 </ul>
             </li>
-            
-            <!-- SECURITY -->
+
+            <!-- Security -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down"></i></a>
+                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
+                    <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
+                    <span class="nav-text">Security</span>
+                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+                </a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
                     <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
@@ -578,19 +629,41 @@
                     <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
                 </ul>
             </li>
-            
-            <!-- BACKUP -->
-            <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
-        </ul>
-        
-        <!-- Logout -->
-        <div class="logout">
-            <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div>
-    </aside>
 
-    <!-- Mobile Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+            <!-- Backup -->
+            <li>
+                <a href="#" data-tab="backup" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-database"></i></span>
+                    <span class="nav-text">Backup & Restore</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="user-avatar">
+                <img src="https://ui-avatars.com/api/?name=Super+Admin&background=FDB913&color=0B2A4A&size=40" alt="Admin">
+            </div>
+            <div class="user-info">
+                <span class="user-name">Super Admin</span>
+                <span class="user-role">Administrator</span>
+            </div>
+            <button class="user-options" onclick="logout()" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+        <div class="sidebar-version">
+            <span>v3.2.1</span>
+            <span class="divider">•</span>
+            <span><i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i> Online</span>
+        </div>
+    </div>
+</aside>
+
+<!-- Mobile Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- ============================================ -->
     <!-- MAIN CONTENT WRAPPER                        -->
