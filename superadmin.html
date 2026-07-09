@@ -488,66 +488,35 @@
     </button>
 
     <!-- ============================================ -->
-    <!-- SIDEBAR - PREMIUM VERSION                   -->
+    <!-- SIDEBAR - CLEAN VERSION                     -->
     <!-- ============================================ -->
-   <aside class="sidebar" id="sidebar">
-    <!-- Brand Section -->
-    <div class="sidebar-brand">
-        <div class="brand-logo">
-            <img src="images/Logo_NCHSM.png" alt="NCHSM" onerror="this.style.display='none'">
-            <div class="brand-status">
-                <span class="status-dot"></span>
-                Live
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
+            <div>
+                <h2>NCHSM <span>Admin</span></h2>
+                <div class="header-subtitle">Super Admin Panel</div>
             </div>
         </div>
-        <div class="brand-info">
-            <h2>NCHSM</h2>
-            <span class="brand-sub">Super Admin</span>
-        </div>
-    </div>
 
-    <!-- Search Bar -->
-    <div class="sidebar-search">
-        <i class="fas fa-search"></i>
-        <input type="text" placeholder="Search menu..." id="sidebarSearch">
-        <kbd>⌘K</kbd>
-    </div>
-
-    <!-- Navigation -->
-    <nav class="sidebar-nav">
-        <ul class="nav-list">
-            <!-- Dashboard -->
-            <li>
-                <a href="#" data-tab="dashboard" class="nav-link active">
-                    <span class="nav-icon"><i class="fas fa-th-large"></i></span>
-                    <span class="nav-text">Dashboard</span>
-                    <span class="nav-badge">Live</span>
-                </a>
-            </li>
-
-            <!-- User Management -->
+        <ul class="nav" id="mainNav">
+            <!-- DASHBOARD -->
+            <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            
+            <!-- USER MANAGEMENT -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-users-cog"></i></span>
-                    <span class="nav-text">User Management</span>
-                    <span class="nav-badge">4</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
-                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> All Users</a></li>
+                    <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
                     <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
                     <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
                     <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
                 </ul>
             </li>
-
-            <!-- Academic -->
+            
+            <!-- ACADEMIC -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-graduation-cap"></i></span>
-                    <span class="nav-text">Academic</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
                     <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
@@ -557,29 +526,20 @@
                     <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
                 </ul>
             </li>
-
-            <!-- Scheduling -->
+            
+            <!-- SCHEDULING -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-calendar-check"></i></span>
-                    <span class="nav-text">Scheduling</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
                     <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
                     <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
                 </ul>
             </li>
-
-            <!-- Staff & Comm -->
+            
+            <!-- STAFF & COMM -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-headset"></i></span>
-                    <span class="nav-text">Staff & Comm</span>
-                    <span class="nav-badge">3</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
                     <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
@@ -587,22 +547,13 @@
                     <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
                 </ul>
             </li>
-
-            <!-- Fee Accounts -->
-            <li>
-                <a href="#" data-tab="fee-accounts" class="nav-link">
-                    <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
-                    <span class="nav-text">Fee Accounts</span>
-                </a>
-            </li>
-
-            <!-- System Tools -->
+            
+            <!-- FINANCIAL -->
+            <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
+            
+            <!-- SYSTEM TOOLS -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                    <span class="nav-text">System Tools</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
                     <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
@@ -614,14 +565,10 @@
                     <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
                 </ul>
             </li>
-
-            <!-- Security -->
+            
+            <!-- SECURITY -->
             <li class="nav-dropdown">
-                <a href="javascript:void(0)" class="nav-link dropdown-trigger">
-                    <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
-                    <span class="nav-text">Security</span>
-                    <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
-                </a>
+                <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down"></i></a>
                 <ul class="dropdown-menu">
                     <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
                     <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
@@ -630,41 +577,18 @@
                     <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
                 </ul>
             </li>
-
-            <!-- Backup -->
-            <li>
-                <a href="#" data-tab="backup" class="nav-link">
-                    <span class="nav-icon"><i class="fas fa-database"></i></span>
-                    <span class="nav-text">Backup & Restore</span>
-                </a>
-            </li>
+            
+            <!-- BACKUP -->
+            <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
         </ul>
-    </nav>
 
-    <!-- Sidebar Footer -->
-    <div class="sidebar-footer">
-        <div class="user-card">
-            <div class="user-avatar">
-                <img src="https://ui-avatars.com/api/?name=Super+Admin&background=FDB913&color=0B2A4A&size=40" alt="Admin">
-            </div>
-            <div class="user-info">
-                <span class="user-name">Super Admin</span>
-                <span class="user-role">Administrator</span>
-            </div>
-            <button class="user-options" onclick="logout()" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
+        <div class="logout">
+            <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
-        <div class="sidebar-version">
-            <span>v3.2.1</span>
-            <span class="divider">•</span>
-            <span><i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i> Online</span>
-        </div>
-    </div>
-</aside>
+    </aside>
 
-<!-- Mobile Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- ============================================ -->
     <!-- MAIN CONTENT WRAPPER                        -->
@@ -4476,177 +4400,169 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
 <script type="module" src="script.js"></script>
 
-<!-- GLOBAL FUNCTIONS - NO DUPLICATES -->
-<script>
-    // ========== SHOW TAB FUNCTION ==========
-    if (typeof window.showTab === 'undefined') {
-        window.showTab = function(tabId) {
-            console.log('Opening tab:', tabId);
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-                tab.style.display = 'none';
-            });
-            const targetTab = document.getElementById(tabId);
-            if (targetTab) {
-                targetTab.classList.add('active');
-                targetTab.style.display = 'block';
-            }
-            document.querySelectorAll('.nav a').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-tab') === tabId) {
-                    link.classList.add('active');
+ <script>
+        // ============================================
+        // SHOW TAB FUNCTION
+        // ============================================
+        if (typeof window.showTab === 'undefined') {
+            window.showTab = function(tabId) {
+                console.log('Opening tab:', tabId);
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.style.display = 'none';
+                });
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    targetTab.style.display = 'block';
                 }
-            });
-            if (typeof loadSectionData === 'function') loadSectionData(tabId);
-        };
-    }
-    
-    // ========== LOGOUT FUNCTION ==========
-    if (typeof window.logout === 'undefined') {
-        window.logout = function() {
-            window.location.href = 'login.html';
-        };
-    }
-    
-    // ========== CLOSE MODAL FUNCTION ==========
-    if (typeof window.closeModal === 'undefined') {
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.style.display = 'none';
-        };
-    }
-    
-    // ========== CLOSE GRADE MODAL ==========
-    if (typeof window.closeGradeModal === 'undefined') {
-        window.closeGradeModal = function() {
-            const modal = document.getElementById('gradeModal');
-            if (modal) modal.style.display = 'none';
-        };
-    }
+                document.querySelectorAll('.nav a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-tab') === tabId) {
+                        link.classList.add('active');
+                    }
+                });
+                if (typeof loadSectionData === 'function') loadSectionData(tabId);
+            };
+        }
 
-    // ========== DROPDOWN TOGGLE FOR SIDEBAR NAVIGATION ==========
-    (function() {
-        function initDropdowns() {
-            const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
-            dropdownToggles.forEach(toggle => {
-                toggle.removeEventListener('click', handleDropdownClick);
-                toggle.addEventListener('click', handleDropdownClick);
-            });
+        // ============================================
+        // LOGOUT FUNCTION
+        // ============================================
+        if (typeof window.logout === 'undefined') {
+            window.logout = function() {
+                window.location.href = 'login.html';
+            };
         }
-        
-        function handleDropdownClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const parentLi = this.closest('.nav-dropdown');
-            
-            // Close all other dropdowns
-            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                if (dropdown !== parentLi) {
-                    dropdown.classList.remove('open');
-                }
-            });
-            
-            // Toggle current dropdown
-            parentLi.classList.toggle('open');
+
+        // ============================================
+        // CLOSE MODAL FUNCTION
+        // ============================================
+        if (typeof window.closeModal === 'undefined') {
+            window.closeModal = function(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) modal.style.display = 'none';
+            };
         }
-        
-        function closeDropdownsOnClickOutside(e) {
-            if (!e.target.closest('.nav-dropdown')) {
-                document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                    dropdown.classList.remove('open');
+
+        // ============================================
+        // DROPDOWN TOGGLE
+        // ============================================
+        (function() {
+            function initDropdowns() {
+                const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
+                dropdownToggles.forEach(toggle => {
+                    toggle.removeEventListener('click', handleDropdownClick);
+                    toggle.addEventListener('click', handleDropdownClick);
                 });
             }
-        }
-        
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
+
+            function handleDropdownClick(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const parentLi = this.closest('.nav-dropdown');
+                
+                document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                    if (dropdown !== parentLi) {
+                        dropdown.classList.remove('open');
+                    }
+                });
+                
+                parentLi.classList.toggle('open');
+            }
+
+            function closeDropdownsOnClickOutside(e) {
+                if (!e.target.closest('.nav-dropdown')) {
+                    document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                        dropdown.classList.remove('open');
+                    });
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    initDropdowns();
+                    document.addEventListener('click', closeDropdownsOnClickOutside);
+                });
+            } else {
                 initDropdowns();
                 document.addEventListener('click', closeDropdownsOnClickOutside);
-            });
-        } else {
-            initDropdowns();
-            document.addEventListener('click', closeDropdownsOnClickOutside);
-        }
-    })();
-
-    // ========== MOBILE NAVIGATION - FIXED WITH OVERLAY ==========
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebar = document.getElementById('sidebar');
-        const toggleBtn = document.getElementById('mobileNavToggle');
-        
-        // Create overlay if it doesn't exist
-        let overlayElement = document.getElementById('sidebarOverlay');
-        if (!overlayElement) {
-            const newOverlay = document.createElement('div');
-            newOverlay.id = 'sidebarOverlay';
-            newOverlay.className = 'sidebar-overlay';
-            document.body.appendChild(newOverlay);
-            overlayElement = document.getElementById('sidebarOverlay');
-        }
-        
-        // Toggle sidebar function
-        function toggleSidebar() {
-            sidebar.classList.toggle('active');
-            if (toggleBtn) toggleBtn.classList.toggle('active');
-            if (overlayElement) overlayElement.classList.toggle('active');
-            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
-        }
-        
-        // Close sidebar function
-        function closeSidebar() {
-            sidebar.classList.remove('active');
-            if (toggleBtn) toggleBtn.classList.remove('active');
-            if (overlayElement) overlayElement.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-        
-        // Toggle button click
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                toggleSidebar();
-            });
-        }
-        
-        // Overlay click to close
-        if (overlayElement) {
-            overlayElement.addEventListener('click', function() {
-                closeSidebar();
-            });
-        }
-        
-        // Close sidebar when a nav link is clicked (on mobile)
-        document.querySelectorAll('.sidebar .nav a').forEach(link => {
-            link.addEventListener('click', function() {
-                if (window.innerWidth <= 992) {
-                    closeSidebar();
-                }
-            });
-        });
-        
-        // Close sidebar on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
-                closeSidebar();
             }
-        });
-        
-        // Handle window resize
-        let resizeTimer;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                if (window.innerWidth > 992 && sidebar.classList.contains('active')) {
+        })();
+
+        // ============================================
+        // MOBILE NAVIGATION - FIXED
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('mobileNavToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            // Create overlay if it doesn't exist
+            let overlayElement = overlay;
+            if (!overlayElement) {
+                const newOverlay = document.createElement('div');
+                newOverlay.id = 'sidebarOverlay';
+                newOverlay.className = 'sidebar-overlay';
+                document.body.appendChild(newOverlay);
+                overlayElement = document.getElementById('sidebarOverlay');
+            }
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('active');
+                if (toggleBtn) toggleBtn.classList.toggle('active');
+                if (overlayElement) overlayElement.classList.toggle('active');
+                document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+            }
+            
+            function closeSidebar() {
+                sidebar.classList.remove('active');
+                if (toggleBtn) toggleBtn.classList.remove('active');
+                if (overlayElement) overlayElement.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleSidebar();
+                });
+            }
+            
+            if (overlayElement) {
+                overlayElement.addEventListener('click', function() {
+                    closeSidebar();
+                });
+            }
+            
+            document.querySelectorAll('.sidebar .nav a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 992) {
+                        closeSidebar();
+                    }
+                });
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && sidebar.classList.contains('active')) {
                     closeSidebar();
                 }
-            }, 250);
+            });
+            
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (window.innerWidth > 992 && sidebar.classList.contains('active')) {
+                        closeSidebar();
+                    }
+                }, 250);
+            });
+            
+            console.log('✅ Sidebar mobile toggle initialized');
         });
-        
-        console.log('✅ Sidebar mobile toggle initialized');
-    });
-    
-    console.log('✅ All scripts loaded successfully');
-</script>
+
+        console.log('✅ All scripts loaded successfully');
+    </script>
 </body>
 </html>
