@@ -4931,7 +4931,6 @@ function generateResultSlip(student, reportData) {
         console.error('PDF Error:', err);
     });
 }
-// ===== ADMIN ONLY: Comprehensive Transcripts Page - FORCE FRESH =====
 // ===== ADMIN ONLY: Transcripts Page - ON-DEMAND LOADING =====
 async function showTranscriptsPage() {
     if (currentUser?.role !== 'admin') {
@@ -4942,7 +4941,6 @@ async function showTranscriptsPage() {
     showLoading('Loading transcript options...');
     
     try {
-        // Get available years, blocks, and subjects
         const years = await apiCall('/api/years', {});
         const blocks = await apiCall('/api/blocks', {});
         const config = await getConfig(true);
@@ -4954,6 +4952,7 @@ async function showTranscriptsPage() {
                 subjectOptions[block] = config[block].map(s => s.name);
             }
         }
+        const allSubjects = Object.values(subjectOptions).flat();
         
         const html = `
             <style>
@@ -5043,14 +5042,6 @@ async function showTranscriptsPage() {
                 .student-item .score-badge.pass { background: #d1fae5; color: #065f46; }
                 .student-item .score-badge.fail { background: #fee2e2; color: #991b1b; }
                 .student-item .score-badge.pending { background: #fef3c7; color: #92400e; }
-                .action-buttons {
-                    display: flex;
-                    gap: 12px;
-                    flex-wrap: wrap;
-                    margin-top: 16px;
-                    padding-top: 16px;
-                    border-top: 1px solid #e2e8f0;
-                }
                 .load-stats {
                     font-size: 13px;
                     color: #64748b;
@@ -5078,7 +5069,7 @@ async function showTranscriptsPage() {
                     cursor: not-allowed;
                     transform: none;
                 }
-                .btn-preview {
+                .btn-load {
                     padding: 10px 24px;
                     border: none;
                     border-radius: 40px;
@@ -5088,12 +5079,39 @@ async function showTranscriptsPage() {
                     background: linear-gradient(135deg, #6366f1, #4f46e5);
                     color: white;
                 }
-                .btn-preview:hover {
+                .btn-load:hover {
                     transform: translateY(-2px);
                     box-shadow: 0 8px 16px rgba(99,102,241,0.3);
                 }
                 .selected-count {
                     font-weight: 600;
+                    color: #1e293b;
+                }
+                .mode-toggle {
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    background: #f1f5f9;
+                    padding: 4px;
+                    border-radius: 40px;
+                }
+                .mode-toggle button {
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 40px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 12px;
+                    transition: all 0.3s;
+                    background: transparent;
+                    color: #64748b;
+                }
+                .mode-toggle button.active {
+                    background: white;
+                    color: #1e293b;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                }
+                .mode-toggle button:hover:not(.active) {
                     color: #1e293b;
                 }
             </style>
@@ -5102,7 +5120,7 @@ async function showTranscriptsPage() {
             
             <div class="header" style="margin-top: 16px;">
                 <h3><i class="fas fa-file-pdf"></i> Transcript Generator</h3>
-                <p>Select a subject and year, then choose students to generate transcripts</p>
+                <p>Generate official academic transcripts for students</p>
             </div>
             
             <div class="transcript-selector">
@@ -5116,19 +5134,20 @@ async function showTranscriptsPage() {
                     <div>
                         <label><i class="fas fa-layer-group"></i> Block</label>
                         <select id="transcriptBlock">
-                            <option value="">-- Select Block --</option>
+                            <option value="all">-- All Blocks --</option>
                             ${blocks.map(b => `<option value="${b}">${b.replace('_', ' ')}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label><i class="fas fa-book"></i> Subject / Unit</label>
                         <select id="transcriptSubject">
-                            <option value="">-- Select Subject --</option>
+                            <option value="all">-- All Subjects --</option>
+                            ${allSubjects.map(s => `<option value="${s}">${s}</option>`).join('')}
                         </select>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <button class="btn-preview" onclick="loadTranscriptStudents()">
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <button class="btn-load" onclick="loadTranscriptStudents()">
                         <i class="fas fa-users"></i> Load Students
                     </button>
                     <button class="btn-generate" id="generateTranscriptBtn" onclick="generateSelectedTranscripts()" disabled>
@@ -5143,7 +5162,7 @@ async function showTranscriptsPage() {
             <div class="transcript-result" id="transcriptResult">
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
-                    <h4>Select a subject and click "Load Students"</h4>
+                    <h4>Select block/subject and click "Load Students"</h4>
                     <p>Students with marks will be displayed below</p>
                 </div>
             </div>
@@ -5152,14 +5171,21 @@ async function showTranscriptsPage() {
         updateContentArea(html);
         hideLoading();
         
-        // Populate subjects when block changes
+        // Update subject dropdown when block changes
         document.getElementById('transcriptBlock').addEventListener('change', function() {
             const block = this.value;
             const subjectSelect = document.getElementById('transcriptSubject');
-            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+            subjectSelect.innerHTML = '<option value="all">-- All Subjects --</option>';
             
-            if (block && subjectOptions[block]) {
+            if (block && block !== 'all' && subjectOptions[block]) {
                 subjectOptions[block].forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = subject;
+                    subjectSelect.appendChild(option);
+                });
+            } else if (block === 'all') {
+                allSubjects.forEach(subject => {
                     const option = document.createElement('option');
                     option.value = subject;
                     option.textContent = subject;
@@ -5168,22 +5194,17 @@ async function showTranscriptsPage() {
             }
         });
         
-        // Auto-load if block and subject are already selected
-        const initialBlock = document.getElementById('transcriptBlock').value;
-        const initialSubject = document.getElementById('transcriptSubject').value;
-        if (initialBlock && initialSubject) {
-            loadTranscriptStudents();
-        }
-        
     } catch (error) {
         console.error('Error loading transcript page:', error);
         hideLoading();
         showNotification('Error loading page: ' + error.message, true);
     }
 }
-  // ===== TRANSCRIPT HELPER FUNCTIONS =====
+
+// ===== TRANSCRIPT HELPER FUNCTIONS =====
 let _transcriptStudents = [];
 let _selectedStudents = new Set();
+let _transcriptMode = 'single'; // 'single' | 'all'
 
 async function loadTranscriptStudents() {
     const block = document.getElementById('transcriptBlock').value;
@@ -5191,65 +5212,157 @@ async function loadTranscriptStudents() {
     const year = document.getElementById('transcriptYear').value;
     
     if (!block || !subject) {
-        showNotification('Please select both a block and subject', true);
+        showNotification('Please select both a block and subject (or "All")', true);
         return;
     }
     
-    showLoading(`Loading students for ${subject}...`);
+    showLoading(`Loading students...`);
     
     try {
-        const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
-        console.log('📊 Marks loaded:', marks ? marks.length : 0);
+        let allMarks = [];
+        let blocksToProcess = [];
+        let subjectsToProcess = [];
         
-        if (!marks || marks.length === 0) {
+        // Determine which blocks to process
+        if (block === 'all') {
+            const blocksRes = await apiCall('/api/blocks', {});
+            blocksToProcess = blocksRes;
+        } else {
+            blocksToProcess = [block];
+        }
+        
+        // Determine which subjects to process
+        if (subject === 'all') {
+            const config = await getConfig(true);
+            for (let b of blocksToProcess) {
+                if (config[b]) {
+                    subjectsToProcess.push(...config[b].map(s => ({ name: s.name, block: b, assessmentType: s.assessmentType })));
+                }
+            }
+        } else {
+            // Find the block for this subject
+            const config = await getConfig(true);
+            let foundBlock = null;
+            let foundSubject = null;
+            for (let b of blocksToProcess) {
+                if (config[b]) {
+                    const s = config[b].find(sub => sub.name === subject);
+                    if (s) {
+                        foundBlock = b;
+                        foundSubject = s;
+                        break;
+                    }
+                }
+            }
+            if (foundSubject) {
+                subjectsToProcess.push({ name: subject, block: foundBlock, assessmentType: foundSubject.assessmentType });
+            } else {
+                showNotification(`Subject "${subject}" not found`, true);
+                hideLoading();
+                return;
+            }
+        }
+        
+        console.log(`📊 Processing ${subjectsToProcess.length} subjects across ${blocksToProcess.length} blocks`);
+        
+        // Fetch marks for each subject
+        for (let subj of subjectsToProcess) {
+            try {
+                const marks = await apiCall(`/api/marks/${subj.block}/${subj.name}`, {});
+                if (marks && marks.length > 0) {
+                    marks.forEach(m => {
+                        m._subject = subj.name;
+                        m._block = subj.block;
+                        m._assessmentType = subj.assessmentType;
+                    });
+                    allMarks = allMarks.concat(marks);
+                }
+            } catch(e) {
+                console.log(`⚠️ Could not fetch marks for ${subj.name}:`, e.message);
+            }
+        }
+        
+        console.log('📊 Total marks loaded:', allMarks.length);
+        
+        if (allMarks.length === 0) {
             hideLoading();
             document.getElementById('transcriptResult').innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px; display: block; color: #f59e0b;"></i>
                     <h4>No students found</h4>
-                    <p>No marks have been entered for ${subject} in ${block}</p>
+                    <p>No marks have been entered for the selected criteria</p>
                 </div>
             `;
             return;
         }
         
+        // Get student details
         const students = await apiCall('/api/students', {});
         const studentMap = {};
         students.forEach(s => { studentMap[s.admission] = s; });
         
-        const studentData = marks.map(mark => {
-            const student = studentMap[mark.admission] || {};
+        // Group marks by student
+        const studentMarksMap = {};
+        allMarks.forEach(mark => {
+            const adm = mark.admission;
+            if (!studentMarksMap[adm]) {
+                studentMarksMap[adm] = {
+                    admission: adm,
+                    name: studentMap[adm]?.name || mark.name || 'Unknown',
+                    block: mark._block || studentMap[adm]?.block || 'BLOCK_0',
+                    year: studentMap[adm]?.year || year,
+                    subjects: [],
+                    totalScore: 0,
+                    subjectCount: 0
+                };
+            }
+            
             let total = 0;
             let cat1 = parseFloat(mark.cat1) || 0;
             let cat2 = parseFloat(mark.cat2) || 0;
             let exam = parseFloat(mark.exam) || 0;
             
-            if (mark.assessmentType === 'full') {
+            if (mark._assessmentType === 'full') {
                 total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            } else if (mark.assessmentType === 'single_cat') {
+            } else if (mark._assessmentType === 'single_cat') {
                 total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
             } else {
                 total = Math.round(Math.min(exam,100) * 10) / 10;
             }
             
+            if (total > 0) {
+                studentMarksMap[adm].subjects.push({
+                    name: mark._subject,
+                    score: total
+                });
+                studentMarksMap[adm].totalScore += total;
+                studentMarksMap[adm].subjectCount++;
+            }
+        });
+        
+        // Convert to array and calculate averages
+        const studentData = Object.values(studentMarksMap).map(s => {
+            const avg = s.subjectCount > 0 ? Math.round((s.totalScore / s.subjectCount) * 10) / 10 : 0;
             let grade = 'D', status = 'FAIL';
-            if (total >= 75) { grade = 'A'; status = 'DISTINCTION'; }
-            else if (total >= 65) { grade = 'B'; status = 'CREDIT'; }
-            else if (total >= 60) { grade = 'C'; status = 'PASS'; }
+            if (avg >= 75) { grade = 'A'; status = 'DISTINCTION'; }
+            else if (avg >= 65) { grade = 'B'; status = 'CREDIT'; }
+            else if (avg >= 60) { grade = 'C'; status = 'PASS'; }
             
             return {
-                admission: mark.admission,
-                name: student.name || mark.name || 'Unknown',
-                block: student.block || block,
-                year: student.year || year,
-                mark: mark,
-                total: total,
+                admission: s.admission,
+                name: s.name,
+                block: s.block,
+                year: s.year,
+                subjects: s.subjects,
+                total: avg,
                 grade: grade,
                 status: status,
-                hasScore: total > 0
+                hasScore: s.subjectCount > 0,
+                subjectCount: s.subjectCount
             };
         });
         
+        // Sort by name
         studentData.sort((a, b) => a.name.localeCompare(b.name));
         
         _transcriptStudents = studentData;
@@ -5259,7 +5372,7 @@ async function loadTranscriptStudents() {
         updateTranscriptButtons();
         
         hideLoading();
-        showNotification(`Loaded ${studentData.length} students`, false);
+        showNotification(`Loaded ${studentData.length} students from ${subjectsToProcess.length} subjects`, false);
         
     } catch (error) {
         hideLoading();
@@ -5276,7 +5389,7 @@ function displayTranscriptStudents(students) {
             <div style="text-align: center; padding: 40px; color: #94a3b8;">
                 <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
                 <h4>No students found</h4>
-                <p>No marks have been entered for this subject</p>
+                <p>No marks have been entered for the selected criteria</p>
             </div>
         `;
         return;
@@ -5285,6 +5398,7 @@ function displayTranscriptStudents(students) {
     const passing = students.filter(s => s.hasScore && s.total >= 60).length;
     const failing = students.filter(s => s.hasScore && s.total < 60).length;
     const pending = students.filter(s => !s.hasScore).length;
+    const totalSubjects = students.reduce((sum, s) => sum + s.subjectCount, 0);
     
     let html = `
         <div class="load-stats">
@@ -5292,6 +5406,7 @@ function displayTranscriptStudents(students) {
             <span style="margin-left: 16px; color: #10b981;">✅ ${passing} passing</span>
             <span style="margin-left: 16px; color: #ef4444;">❌ ${failing} failing</span>
             <span style="margin-left: 16px; color: #f59e0b;">⏳ ${pending} pending</span>
+            <span style="margin-left: 16px; color: #6366f1;">📚 ${totalSubjects} total subjects</span>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
             <button class="save-btn" onclick="selectAllTranscriptStudents()" style="padding: 4px 14px; font-size: 11px;">
@@ -5312,6 +5427,7 @@ function displayTranscriptStudents(students) {
                 const isSelected = _selectedStudents.has(s.admission);
                 const statusClass = s.hasScore ? (s.total >= 60 ? 'pass' : 'fail') : 'pending';
                 const scoreDisplay = s.hasScore ? `${s.total}%` : '--';
+                const subjectDisplay = s.subjectCount > 0 ? `${s.subjectCount} subjects` : 'No marks';
                 
                 return `
                     <div class="student-item ${isSelected ? 'selected' : ''}" 
@@ -5323,6 +5439,7 @@ function displayTranscriptStudents(students) {
                         <div class="info">
                             <div class="name">${s.name}</div>
                             <div class="adm">${s.admission}</div>
+                            <div style="font-size:10px; color:#94a3b8;">${subjectDisplay}</div>
                         </div>
                         <div class="score-badge ${statusClass}">${scoreDisplay}</div>
                     </div>
@@ -5442,21 +5559,21 @@ function generateSelectedTranscripts() {
     let failed = 0;
     
     selectedStudents.forEach((s, index) => {
-        const subjectName = document.getElementById('transcriptSubject').value;
-        const block = document.getElementById('transcriptBlock').value;
+        // Build student data with ALL their subjects
+        const subjects = s.subjects.map(subj => ({
+            name: subj.name,
+            code: '',
+            score: subj.score,
+            block: s.block
+        }));
         
         const studentData = {
             name: s.name,
             admission: s.admission,
-            block: block,
-            subjects: [{
-                name: subjectName,
-                code: '',
-                score: s.total,
-                block: block
-            }],
+            block: s.block,
+            subjects: subjects,
             overallAvg: s.total,
-            subjectCount: 1,
+            subjectCount: s.subjectCount,
             status: s.total >= 60 ? 'PASS' : 'FAIL'
         };
         
