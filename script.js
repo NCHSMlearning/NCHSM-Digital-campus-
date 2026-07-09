@@ -640,6 +640,10 @@ async function loadSectionData(tabId) {
             updateProgramDropdown($('course-program'));
             updateBlockTermOptions('course-program', 'course-block');
             break;
+case 'programs': 
+    loadAllPrograms(); 
+    populateCourseSelector();
+    break;
         case 'sessions': 
             loadScheduledSessions(); 
             updateProgramDropdown($('new_session_program'));
@@ -14309,6 +14313,729 @@ window.rejectCurrentDocument = async function() {
 
 console.log('✅ Document Viewer functions loaded');
 
+// ============================================
+// PROGRAM MANAGEMENT - SUPABASE OPERATIONS
+// ============================================
+
+const PROGRAM_TABLE = 'programs';
+const INTAKE_TABLE = 'program_intakes';
+const BLOCK_TABLE = 'program_blocks';
+const MAPPING_TABLE = 'program_courses';
+
+// ---------- LOAD ALL PROGRAMS ----------
+async function loadAllPrograms() {
+    try {
+        const { data, error } = await sb
+            .from(PROGRAM_TABLE)
+            .select('*')
+            .order('program_code');
+        
+        if (error) throw error;
+        
+        renderProgramsTable(data);
+        updateProgramStats(data);
+        populateProgramSelectors(data);
+        return data;
+    } catch (error) {
+        console.error('Error loading programs:', error);
+        document.getElementById('programs-table-body').innerHTML = 
+            `<tr><td colspan="10" style="padding: 40px; text-align: center; color: #dc2626;">
+                ❌ Error loading programs: ${error.message}
+            </td></tr>`;
+        return [];
+    }
+}
+
+// ---------- RENDER PROGRAMS TABLE ----------
+function renderProgramsTable(programs) {
+    const tbody = document.getElementById('programs-table-body');
+    if (!tbody) return;
+    
+    if (!programs || programs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px; color: #6b7280;">
+            📭 No programs found. Create your first program above!
+        </td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    for (const p of programs) {
+        // Get intake count
+        const { count: intakeCount } = await sb
+            .from(INTAKE_TABLE)
+            .select('*', { count: 'exact', head: true })
+            .eq('program_id', p.id);
+        
+        // Get block count
+        const { count: blockCount } = await sb
+            .from(BLOCK_TABLE)
+            .select('*', { count: 'exact', head: true })
+            .eq('program_id', p.id);
+        
+        const statusClass = p.status === 'active' ? 'program-badge-active' : 
+                           p.status === 'inactive' ? 'program-badge-inactive' : 'program-badge-archived';
+        
+        const categoryClass = p.category === 'KRCHN' ? 'program-badge-krchn' : 'program-badge-tvet';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${escapeHtml(p.program_code)}</strong></td>
+                <td>${escapeHtml(p.program_name)}</td>
+                <td><span class="program-badge ${categoryClass}">${escapeHtml(p.category)}</span></td>
+                <td>${escapeHtml(p.program_type)}</td>
+                <td>${p.duration_months || '-'} mo</td>
+                <td>${p.total_credits || '-'}</td>
+                <td><span class="badge badge-info" style="cursor:pointer;" onclick="loadIntakesForProgram('${p.id}')">${intakeCount || 0}</span></td>
+                <td><span class="badge badge-info" style="cursor:pointer;" onclick="loadBlocksForProgram('${p.id}')">${blockCount || 0}</span></td>
+                <td><span class="program-badge ${statusClass}">${escapeHtml(p.status)}</span></td>
+                <td>
+                    <button onclick="editProgram('${p.id}')" class="btn-sm btn-edit"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteProgram('${p.id}')" class="btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// ---------- UPDATE STATS ----------
+function updateProgramStats(programs) {
+    if (!programs) return;
+    const active = programs.filter(p => p.status === 'active').length;
+    const inactive = programs.filter(p => p.status === 'inactive' || p.status === 'archived').length;
+    
+    const activeEl = document.getElementById('activeProgramsCount');
+    const inactiveEl = document.getElementById('inactiveProgramsCount');
+    
+    if (activeEl) activeEl.textContent = active;
+    if (inactiveEl) inactiveEl.textContent = inactive;
+}
+
+// ---------- POPULATE PROGRAM SELECTORS ----------
+function populateProgramSelectors(programs) {
+    const selectors = ['intake_program_select', 'block_program_select', 'mapping_program_select'];
+    selectors.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const currentValue = sel.value;
+        sel.innerHTML = `<option value="">-- Select Program --</option>`;
+        if (programs) {
+            programs.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.program_code} - ${p.program_name}`;
+                sel.appendChild(opt);
+            });
+        }
+        if (currentValue) sel.value = currentValue;
+    });
+}
+
+// ---------- CREATE PROGRAM ----------
+async function createProgram() {
+    const data = {
+        program_code: document.getElementById('program_code').value.trim().toUpperCase(),
+        program_name: document.getElementById('program_name').value.trim(),
+        category: document.getElementById('program_category').value,
+        program_type: document.getElementById('program_type').value,
+        duration_months: parseInt(document.getElementById('program_duration').value) || 0,
+        total_credits: parseInt(document.getElementById('program_credits').value) || 0,
+        description: document.getElementById('program_description').value.trim(),
+        status: document.getElementById('program_status').value,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+    
+    if (!data.program_code || !data.program_name) {
+        showFeedback('⚠️ Program Code and Name are required!', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await sb.from(PROGRAM_TABLE).insert([data]);
+        if (error) throw error;
+        
+        showFeedback('✅ Program created successfully!', 'success');
+        document.getElementById('add-program-form').reset();
+        loadAllPrograms();
+        
+    } catch (error) {
+        console.error('Error creating program:', error);
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ---------- DELETE PROGRAM ----------
+async function deleteProgram(id) {
+    if (!confirm('⚠️ Are you sure you want to delete this program? This will also delete all associated intakes, blocks, and mappings.')) return;
+    
+    try {
+        const { error } = await sb.from(PROGRAM_TABLE).delete().eq('id', id);
+        if (error) throw error;
+        showFeedback('✅ Program deleted successfully', 'success');
+        loadAllPrograms();
+    } catch (error) {
+        showFeedback('❌ Error deleting program: ' + error.message, 'error');
+    }
+}
+
+// ---------- EDIT PROGRAM ----------
+async function editProgram(id) {
+    try {
+        const { data: program, error } = await sb
+            .from(PROGRAM_TABLE)
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (error) throw error;
+        
+        // Populate form fields
+        document.getElementById('program_code').value = program.program_code;
+        document.getElementById('program_name').value = program.program_name;
+        document.getElementById('program_category').value = program.category;
+        document.getElementById('program_type').value = program.program_type;
+        document.getElementById('program_duration').value = program.duration_months || '';
+        document.getElementById('program_credits').value = program.total_credits || '';
+        document.getElementById('program_description').value = program.description || '';
+        document.getElementById('program_status').value = program.status || 'active';
+        
+        // Change button to update
+        const btn = document.querySelector('#add-program-form button[type="submit"]');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-save"></i> Update Program';
+            btn.style.background = '#f59e0b';
+        }
+        
+        // Store ID for update
+        document.getElementById('add-program-form').dataset.editId = id;
+        
+        // Override form submit
+        const form = document.getElementById('add-program-form');
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            updateProgram(id);
+        };
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+    } catch (error) {
+        showFeedback('❌ Error loading program: ' + error.message, 'error');
+    }
+}
+
+// ---------- UPDATE PROGRAM ----------
+async function updateProgram(id) {
+    const data = {
+        program_code: document.getElementById('program_code').value.trim().toUpperCase(),
+        program_name: document.getElementById('program_name').value.trim(),
+        category: document.getElementById('program_category').value,
+        program_type: document.getElementById('program_type').value,
+        duration_months: parseInt(document.getElementById('program_duration').value) || 0,
+        total_credits: parseInt(document.getElementById('program_credits').value) || 0,
+        description: document.getElementById('program_description').value.trim(),
+        status: document.getElementById('program_status').value,
+        updated_at: new Date().toISOString()
+    };
+    
+    if (!data.program_code || !data.program_name) {
+        showFeedback('⚠️ Program Code and Name are required!', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await sb.from(PROGRAM_TABLE).update(data).eq('id', id);
+        if (error) throw error;
+        
+        showFeedback('✅ Program updated successfully!', 'success');
+        
+        // Reset form
+        document.getElementById('add-program-form').reset();
+        document.getElementById('add-program-form').dataset.editId = '';
+        const btn = document.querySelector('#add-program-form button[type="submit"]');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-save"></i> Create Program';
+            btn.style.background = '#4C1D95';
+        }
+        document.getElementById('add-program-form').onsubmit = function(e) {
+            e.preventDefault();
+            createProgram();
+        };
+        
+        loadAllPrograms();
+        
+    } catch (error) {
+        showFeedback('❌ Error updating program: ' + error.message, 'error');
+    }
+}
+
+// ---------- FILTER PROGRAMS ----------
+function filterPrograms(status) {
+    const filter = document.getElementById('program_status_filter');
+    if (filter) filter.value = status;
+    filterProgramsTable();
+}
+
+function filterProgramsTable() {
+    const search = document.getElementById('program_search')?.value.toLowerCase() || '';
+    const category = document.getElementById('program_category_filter')?.value || 'all';
+    const type = document.getElementById('program_type_filter')?.value || 'all';
+    const status = document.getElementById('program_status_filter')?.value || 'all';
+    
+    const rows = document.querySelectorAll('#programs-table-body tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const rowCategory = row.cells?.[2]?.textContent?.trim() || '';
+        const rowType = row.cells?.[3]?.textContent?.trim() || '';
+        const rowStatus = row.cells?.[8]?.textContent?.trim()?.toLowerCase() || '';
+        
+        const matchSearch = !search || text.includes(search);
+        const matchCategory = category === 'all' || rowCategory.includes(category);
+        const matchType = type === 'all' || rowType.toLowerCase().includes(type);
+        const matchStatus = status === 'all' || rowStatus.includes(status);
+        
+        row.style.display = (matchSearch && matchCategory && matchType && matchStatus) ? '' : 'none';
+    });
+}
+
+// ---------- EXPORT PROGRAMS ----------
+function exportProgramsToCSV() {
+    const rows = document.querySelectorAll('#programs-table-body tr');
+    let csv = 'Code,Name,Category,Type,Duration,Credits,Status\n';
+    rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 9) return;
+        csv += `"${cells[0].textContent.trim()}","${cells[1].textContent.trim()}","${cells[2].textContent.trim()}","${cells[3].textContent.trim()}","${cells[4].textContent.trim()}","${cells[5].textContent.trim()}","${cells[8].textContent.trim()}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Programs_Export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showFeedback('✅ Programs exported!', 'success');
+}
+
+// ---------- INTAKE FUNCTIONS ----------
+async function loadProgramIntakes() {
+    const programId = document.getElementById('intake_program_select')?.value;
+    if (!programId) {
+        document.getElementById('program-intakes-container').innerHTML = 
+            '<p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its intakes.</p>';
+        return;
+    }
+    await loadIntakesForProgram(programId);
+}
+
+async function loadIntakesForProgram(programId) {
+    try {
+        const { data, error } = await sb
+            .from(INTAKE_TABLE)
+            .select('*')
+            .eq('program_id', programId)
+            .order('intake_year', { ascending: false });
+        
+        if (error) throw error;
+        
+        const container = document.getElementById('program-intakes-container');
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">No intakes found for this program.</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table class="data-table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="padding: 8px; text-align:left;">Intake Name</th>
+                        <th style="padding: 8px; text-align:left;">Year</th>
+                        <th style="padding: 8px; text-align:left;">Status</th>
+                        <th style="padding: 8px; text-align:left;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(i => `
+                        <tr>
+                            <td style="padding:8px;"><strong>${escapeHtml(i.intake_name)}</strong></td>
+                            <td style="padding:8px;">${i.intake_year}</td>
+                            <td style="padding:8px;">
+                                <span class="badge ${i.status === 'active' ? 'badge-success' : i.status === 'upcoming' ? 'badge-info' : 'badge-warning'}">
+                                    ${escapeHtml(i.status)}
+                                </span>
+                            </td>
+                            <td style="padding:8px;">
+                                <button onclick="deleteIntake('${i.id}')" class="btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        // Update total intakes count
+        document.getElementById('totalIntakesCount').textContent = data.length;
+        
+    } catch (error) {
+        console.error('Error loading intakes:', error);
+        document.getElementById('program-intakes-container').innerHTML = 
+            `<p style="color: #dc2626;">Error: ${error.message}</p>`;
+    }
+}
+
+async function addProgramIntake() {
+    const programId = document.getElementById('intake_program_select')?.value;
+    if (!programId) {
+        showFeedback('Please select a program first.', 'error');
+        return;
+    }
+    
+    const data = {
+        program_id: parseInt(programId),
+        intake_name: document.getElementById('intake_name').value.trim(),
+        intake_year: parseInt(document.getElementById('intake_year').value) || new Date().getFullYear(),
+        status: document.getElementById('intake_status').value,
+        created_at: new Date().toISOString()
+    };
+    
+    if (!data.intake_name) {
+        showFeedback('Please enter an intake name.', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await sb.from(INTAKE_TABLE).insert([data]);
+        if (error) throw error;
+        showFeedback('✅ Intake added successfully!', 'success');
+        document.getElementById('intake_name').value = '';
+        document.getElementById('intake_year').value = '';
+        loadProgramIntakes();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function deleteIntake(id) {
+    if (!confirm('Delete this intake?')) return;
+    try {
+        const { error } = await sb.from(INTAKE_TABLE).delete().eq('id', id);
+        if (error) throw error;
+        loadProgramIntakes();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ---------- BLOCK FUNCTIONS ----------
+async function loadProgramBlocks() {
+    const programId = document.getElementById('block_program_select')?.value;
+    if (!programId) {
+        document.getElementById('program-blocks-container').innerHTML = 
+            '<p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its blocks.</p>';
+        return;
+    }
+    await loadBlocksForProgram(programId);
+}
+
+async function loadBlocksForProgram(programId) {
+    try {
+        const { data, error } = await sb
+            .from(BLOCK_TABLE)
+            .select('*')
+            .eq('program_id', programId)
+            .order('block_sequence', { ascending: true });
+        
+        if (error) throw error;
+        
+        const container = document.getElementById('program-blocks-container');
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">No blocks defined for this program.</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table class="data-table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="padding:8px;text-align:left;">#</th>
+                        <th style="padding:8px;text-align:left;">Block Name</th>
+                        <th style="padding:8px;text-align:left;">Sequence</th>
+                        <th style="padding:8px;text-align:left;">Credit Hours</th>
+                        <th style="padding:8px;text-align:left;">Status</th>
+                        <th style="padding:8px;text-align:left;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map((b, idx) => `
+                        <tr>
+                            <td style="padding:8px;">${idx + 1}</td>
+                            <td style="padding:8px;"><strong>${escapeHtml(b.block_name)}</strong></td>
+                            <td style="padding:8px;">${b.block_sequence}</td>
+                            <td style="padding:8px;">${b.credit_hours || '-'}</td>
+                            <td style="padding:8px;">
+                                <span class="badge ${b.status === 'active' ? 'badge-success' : 'badge-warning'}">
+                                    ${escapeHtml(b.status || 'active')}
+                                </span>
+                            </td>
+                            <td style="padding:8px;">
+                                <button onclick="deleteBlock('${b.id}')" class="btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('totalBlocksCount').textContent = data.length;
+        
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+        document.getElementById('program-blocks-container').innerHTML = 
+            `<p style="color: #dc2626;">Error: ${error.message}</p>`;
+    }
+}
+
+async function addProgramBlock() {
+    const programId = document.getElementById('block_program_select')?.value;
+    if (!programId) {
+        showFeedback('Please select a program first.', 'error');
+        return;
+    }
+    
+    const data = {
+        program_id: parseInt(programId),
+        block_name: document.getElementById('block_name').value.trim(),
+        block_sequence: parseInt(document.getElementById('block_sequence').value) || 0,
+        credit_hours: parseInt(document.getElementById('block_credit_hours').value) || 0,
+        status: 'active',
+        created_at: new Date().toISOString()
+    };
+    
+    if (!data.block_name) {
+        showFeedback('Please enter a block name.', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await sb.from(BLOCK_TABLE).insert([data]);
+        if (error) throw error;
+        showFeedback('✅ Block added successfully!', 'success');
+        document.getElementById('block_name').value = '';
+        document.getElementById('block_sequence').value = '';
+        document.getElementById('block_credit_hours').value = '';
+        loadProgramBlocks();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function deleteBlock(id) {
+    if (!confirm('Delete this block?')) return;
+    try {
+        const { error } = await sb.from(BLOCK_TABLE).delete().eq('id', id);
+        if (error) throw error;
+        loadProgramBlocks();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ---------- MAPPING FUNCTIONS ----------
+async function loadProgramMappings() {
+    const programId = document.getElementById('mapping_program_select')?.value;
+    if (!programId) {
+        document.getElementById('program-mappings-container').innerHTML = 
+            '<p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its course mappings.</p>';
+        return;
+    }
+    
+    try {
+        const { data, error } = await sb
+            .from(MAPPING_TABLE)
+            .select('*, course:courses(id, course_name, unit_code)')
+            .eq('program_id', programId)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        const container = document.getElementById('program-mappings-container');
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">No courses mapped to this program.</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table class="data-table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="padding:8px;text-align:left;">Course</th>
+                        <th style="padding:8px;text-align:left;">Unit Code</th>
+                        <th style="padding:8px;text-align:left;">Block</th>
+                        <th style="padding:8px;text-align:left;">Type</th>
+                        <th style="padding:8px;text-align:left;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(m => `
+                        <tr>
+                            <td style="padding:8px;">${escapeHtml(m.course?.course_name || 'Unknown')}</td>
+                            <td style="padding:8px;">${escapeHtml(m.course?.unit_code || '-')}</td>
+                            <td style="padding:8px;">${escapeHtml(m.block || 'Any')}</td>
+                            <td style="padding:8px;">
+                                <span class="badge ${m.is_core ? 'badge-success' : 'badge-warning'}">
+                                    ${m.is_core ? 'Core' : 'Elective'}
+                                </span>
+                            </td>
+                            <td style="padding:8px;">
+                                <button onclick="deleteMapping('${m.id}')" class="btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading mappings:', error);
+        document.getElementById('program-mappings-container').innerHTML = 
+            `<p style="color: #dc2626;">Error: ${error.message}</p>`;
+    }
+}
+
+async function addProgramCourseMapping() {
+    const programId = document.getElementById('mapping_program_select')?.value;
+    const courseId = document.getElementById('mapping_course_select')?.value;
+    const block = document.getElementById('mapping_block_select')?.value || null;
+    const isCore = document.getElementById('mapping_is_core')?.value === 'true';
+    
+    if (!programId || !courseId) {
+        showFeedback('Please select a program and a course.', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await sb.from(MAPPING_TABLE).insert([{
+            program_id: parseInt(programId),
+            course_id: parseInt(courseId),
+            block: block,
+            is_core: isCore,
+            created_at: new Date().toISOString()
+        }]);
+        
+        if (error) throw error;
+        showFeedback('✅ Course mapped to program successfully!', 'success');
+        loadProgramMappings();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function deleteMapping(id) {
+    if (!confirm('Remove this course mapping?')) return;
+    try {
+        const { error } = await sb.from(MAPPING_TABLE).delete().eq('id', id);
+        if (error) throw error;
+        loadProgramMappings();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ---------- POPULATE COURSE SELECTOR ----------
+async function populateCourseSelector() {
+    try {
+        const { data: courses, error } = await sb
+            .from('courses')
+            .select('id, course_name, unit_code')
+            .order('course_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        const select = document.getElementById('mapping_course_select');
+        if (select) {
+            select.innerHTML = '<option value="">-- Select Course --</option>';
+            courses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.course_name} (${c.unit_code || 'N/A'})`;
+                select.appendChild(opt);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// ---------- POPULATE BLOCK SELECTOR ----------
+async function populateBlockSelector(programId) {
+    try {
+        const { data: blocks, error } = await sb
+            .from(BLOCK_TABLE)
+            .select('id, block_name')
+            .eq('program_id', programId)
+            .order('block_sequence', { ascending: true });
+        
+        if (error) throw error;
+        
+        const select = document.getElementById('mapping_block_select');
+        if (select) {
+            select.innerHTML = '<option value="">-- Any Block --</option>';
+            blocks.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.block_name;
+                opt.textContent = b.block_name;
+                select.appendChild(opt);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+    }
+}
+
+// ---------- SHOW INTAKES/BLOCKS ----------
+function showProgramIntakes() {
+    document.getElementById('intake_program_select')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showProgramBlocks() {
+    document.getElementById('block_program_select')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- LOAD SECTION DATA ----------
+function loadProgramsSection() {
+    loadAllPrograms();
+    populateCourseSelector();
+}
+
+// Make functions globally accessible
+window.loadAllPrograms = loadAllPrograms;
+window.createProgram = createProgram;
+window.editProgram = editProgram;
+window.updateProgram = updateProgram;
+window.deleteProgram = deleteProgram;
+window.filterPrograms = filterPrograms;
+window.filterProgramsTable = filterProgramsTable;
+window.exportProgramsToCSV = exportProgramsToCSV;
+window.loadProgramIntakes = loadProgramIntakes;
+window.loadIntakesForProgram = loadIntakesForProgram;
+window.addProgramIntake = addProgramIntake;
+window.deleteIntake = deleteIntake;
+window.loadProgramBlocks = loadProgramBlocks;
+window.loadBlocksForProgram = loadBlocksForProgram;
+window.addProgramBlock = addProgramBlock;
+window.deleteBlock = deleteBlock;
+window.loadProgramMappings = loadProgramMappings;
+window.addProgramCourseMapping = addProgramCourseMapping;
+window.deleteMapping = deleteMapping;
+window.populateCourseSelector = populateCourseSelector;
+window.populateBlockSelector = populateBlockSelector;
+window.showProgramIntakes = showProgramIntakes;
+window.showProgramBlocks = showProgramBlocks;
+window.loadProgramsSection = loadProgramsSection;
+
+console.log('✅ Program Management module loaded');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
