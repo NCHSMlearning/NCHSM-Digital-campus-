@@ -215,7 +215,7 @@ class ResourcesModule {
     }
     
     // ==================== PROGRAM DETECTION ====================
-    detectUserProgram() {
+   detectUserProgram() {
     console.log('🔍 Detecting user program...');
     
     let profile = null;
@@ -240,14 +240,16 @@ class ResourcesModule {
             this.userProgram = 'tvet';
             this.isTVETStudent = true;
             this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
-            // ✅ FIX: Use block from profile (it has "Term1")
-            this.userBlock = profile.block || profile.current_block || 'Term1';
-            this.userTerm = null;  // Don't use term
-            console.log(`✅ TVET Student: ${programCode}, Block: ${this.userBlock}`);
+            // ✅ Store the program code for filtering
+            this.userProgramCode = programCode;
+            this.userBlock = profile.block || 'Term1';
+            this.userTerm = null;
+            console.log(`✅ TVET Student: ${programCode} (will see ALL terms)`);
         } else {
             this.userProgram = 'krchn';
             this.isTVETStudent = false;
             this.userProgramDisplay = 'KRCHN Nursing';
+            this.userProgramCode = 'KRCHN';
             this.userBlock = profile.block || 'Introductory';
             this.userTerm = null;
             console.log(`✅ KRCHN Student: ${programCode}, Block: ${this.userBlock}`);
@@ -265,6 +267,7 @@ class ResourcesModule {
     this.userProgram = 'krchn';
     this.isTVETStudent = false;
     this.userProgramDisplay = 'KRCHN Nursing';
+    this.userProgramCode = 'KRCHN';
     this.userBlock = 'Introductory';
     this.userTerm = null;
     this.userIntakeYear = 2025;
@@ -473,7 +476,6 @@ class ResourcesModule {
         }
     }
     
-    // ==================== RESOURCE LOADING ====================
   // ==================== RESOURCE LOADING ====================
 async loadResources() {
     if (this.isLoading) return;
@@ -500,18 +502,27 @@ async loadResources() {
             .eq('intake', String(intakeYear))
             .order('created_at', { ascending: false });
         
-        // ✅ SIMPLE FIX: Use block for BOTH TVET and KRCHN
         if (isTVET) {
-            const tvetPrograms = this.TVET_PROGRAMS;
-            query = query.in('program_type', tvetPrograms);
+            // ✅ FIX: TVET students see ALL resources for their specific program
+            // Get the student's actual program (CPOTT, DPOTT, etc.)
+            const studentProgram = this.userProfile?.program || '';
             
-            // ✅ Use block (since that's where "Term1" is stored)
-            if (this.userBlock) {
-                const blockPattern = this.userBlock.toLowerCase();
-                query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
-                console.log(`🔍 Filtering TVET by block: ${this.userBlock}`);
+            if (studentProgram && this.TVET_PROGRAMS.includes(studentProgram)) {
+                // Filter by their specific program only - show ALL terms
+                query = query.eq('program_type', studentProgram);
+                console.log(`🔍 TVET Student: Showing ALL resources for ${studentProgram}`);
+            } else {
+                // Fallback: show all TVET programs
+                const tvetPrograms = this.TVET_PROGRAMS;
+                query = query.in('program_type', tvetPrograms);
+                console.log(`🔍 TVET Student: Showing ALL TVET resources`);
             }
+            
+            // ✅ DO NOT filter by block/term - show ALL terms
+            // Students can see resources from Term 1 to Final Term
+            
         } else {
+            // KRCHN: Filter by program and block
             query = query.eq('program_type', 'KRCHN');
             if (this.userBlock && this.userBlock !== 'General') {
                 const blockPattern = this.userBlock.toLowerCase();
@@ -523,7 +534,7 @@ async loadResources() {
         if (error) throw error;
         
         this.allResources = resources || [];
-        console.log(`✅ Loaded ${this.allResources.length} resources`);
+        console.log(`✅ Loaded ${this.allResources.length} resources for ${isTVET ? 'TVET' : 'KRCHN'}`);
         
         this.updatePastPaperCount();
         this.populateFilters();
