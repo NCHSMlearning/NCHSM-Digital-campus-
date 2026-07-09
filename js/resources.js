@@ -240,9 +240,9 @@ class ResourcesModule {
             this.userProgram = 'tvet';
             this.isTVETStudent = true;
             this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
-            // ✅ FIXED: Use block for TVET
+            // ✅ FIX: Use block from profile (it has "Term1")
             this.userBlock = profile.block || profile.current_block || 'Term1';
-            this.userTerm = 1;
+            this.userTerm = null;  // Don't use term
             console.log(`✅ TVET Student: ${programCode}, Block: ${this.userBlock}`);
         } else {
             this.userProgram = 'krchn';
@@ -474,7 +474,7 @@ class ResourcesModule {
     }
     
     // ==================== RESOURCE LOADING ====================
-   // ==================== RESOURCE LOADING ====================
+  // ==================== RESOURCE LOADING ====================
 async loadResources() {
     if (this.isLoading) return;
     this.detectUserProgram();
@@ -494,19 +494,18 @@ async loadResources() {
         const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
         const intakeYear = this.userIntakeYear || 2025;
         
-        console.log(`📊 Loading resources for: ${isTVET ? 'TVET' : 'KRCHN'}, Intake: ${intakeYear}, Block/Term: ${isTVET ? this.userBlock : this.userBlock}`);
-        
         let query = supabase
             .from('resources')
             .select('*')
             .eq('intake', String(intakeYear))
             .order('created_at', { ascending: false });
         
+        // ✅ SIMPLE FIX: Use block for BOTH TVET and KRCHN
         if (isTVET) {
             const tvetPrograms = this.TVET_PROGRAMS;
             query = query.in('program_type', tvetPrograms);
             
-            // ✅ FIXED: Use block for TVET (since term column is empty)
+            // ✅ Use block (since that's where "Term1" is stored)
             if (this.userBlock) {
                 const blockPattern = this.userBlock.toLowerCase();
                 query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
