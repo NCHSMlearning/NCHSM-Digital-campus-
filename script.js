@@ -14346,8 +14346,8 @@ async function loadAllPrograms() {
     }
 }
 
-// ---------- RENDER PROGRAMS TABLE ----------
-function renderProgramsTable(programs) {
+// ✅ CORRECT - make the function async
+async function renderProgramsTable(programs) {
     const tbody = document.getElementById('programs-table-body');
     if (!tbody) return;
     
@@ -14361,14 +14361,13 @@ function renderProgramsTable(programs) {
     tbody.innerHTML = '';
     
     for (const p of programs) {
-        // Get intake count
-        const { count: intakeCount } = await sb
+        // ✅ Now await works because function is async
+        const { count: intakeCount, error: intakeError } = await sb
             .from(INTAKE_TABLE)
             .select('*', { count: 'exact', head: true })
             .eq('program_id', p.id);
         
-        // Get block count
-        const { count: blockCount } = await sb
+        const { count: blockCount, error: blockError } = await sb
             .from(BLOCK_TABLE)
             .select('*', { count: 'exact', head: true })
             .eq('program_id', p.id);
