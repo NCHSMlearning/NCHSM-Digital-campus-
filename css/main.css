@@ -6045,3 +6045,54 @@ body.dark-mode .stat-label {
 .tab-content:not(.active) .loader {
     display: none !important;
 }
+
+/* Program Management Styles */
+.program-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.program-badge-krchn {
+    background: #dbeafe;
+    color: #2563eb;
+}
+.program-badge-tvet {
+    background: #fef3c7;
+    color: #d97706;
+}
+.program-badge-active {
+    background: #d1fae5;
+    color: #059669;
+}
+.program-badge-inactive {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.program-badge-archived {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+}
+.btn-edit {
+    background: #3b82f6;
+    color: white;
+}
+.btn-edit:hover {
+    background: #2563eb;
+}
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+.btn-delete:hover {
+    background: #dc2626;
+}
