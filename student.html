@@ -154,7 +154,10 @@
                     </li>
                     <li role="none"><a href="#" data-tab="attendance" role="menuitem"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span><span class="nav-badge" id="attendanceBadge" style="display: none;">0</span></a></li>
                     <li role="none"><a href="#" data-tab="messages" role="menuitem"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span><span class="nav-badge" id="messagesBadge" style="display: none;">0</span></a></li>
-                    <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span><span class="nav-badge" id="ticketsBadge" style="display: none;">0</span></a></li>
+                   
+            <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span><span class="nav-badge" id="ticketsBadge" style="display: none;">0</span></a></li>
+                <li role="none"><a href="#" data-tab="reviews" role="menuitem"><i class="fas fa-star"></i><span class="nav-text">Reviews</span><span class="nav-badge" id="reviewsBadge" style="display: none;">0</span></a></li>
+<li role="none"><a href="#" data-tab="newsletter" role="menuitem"><i class="fas fa-envelope"></i><span class="nav-text">Newsletter</span><span class="nav-badge" id="newsletterBadge" style="display: none;">0</span></a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer"><p class="version-info" id="sidebarVersion">Portal v2.1</p></div>
@@ -1465,6 +1468,333 @@
                 <div class="tickets-list-container"><div class="list-header"><h3><i class="fas fa-list"></i> My Support Tickets</h3><div class="list-summary"><span id="total-tickets-count">0 tickets</span><span class="last-updated">Last updated: <span id="last-updated-time">Just now</span></span></div></div><div class="tickets-table-container"><table class="tickets-table"><thead><tr><th>Ticket ID</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th><th>Created</th><th>Last Update</th><th>Actions</th></tr></thead><tbody id="tickets-table-body"><tr class="empty-row"><td colspan="8"><div class="empty-state"><i class="fas fa-ticket-alt"></i><h4>No tickets found</h4><p>You haven't created any support tickets yet.</p><button id="create-first-ticket" class="btn-primary"><i class="fas fa-plus"></i> Create Your First Ticket</button></div></td></td></tbody></table><div id="tickets-loading" class="loading-state" style="display:none;"><div class="spinner"></div><p>Loading tickets...</p></div></div><div class="pagination" style="display:none;"><button class="pagination-btn prev" disabled><i class="fas fa-chevron-left"></i> Previous</button><span class="page-info">Page 1 of 1</span><button class="pagination-btn next" disabled>Next <i class="fas fa-chevron-right"></i></button></div></div></div>
                 <div id="ticket-detail-modal" class="modal-overlay" style="display:none;"><div class="modal-container"><div class="modal-header"><h3 id="modal-ticket-title">Ticket Details</h3><button class="close-modal"><i class="fas fa-times"></i></button></div><div class="modal-body"><div class="ticket-header-info"><div class="ticket-id-status"><div class="ticket-id"><strong>Ticket ID:</strong><span id="detail-ticket-number" class="ticket-number">-</span></div><div class="ticket-status"><span id="detail-status" class="status-badge">Open</span></div></div><div class="ticket-meta"><div class="meta-item"><i class="fas fa-folder"></i><span id="detail-category">-</span></div><div class="meta-item"><i class="fas fa-exclamation-circle"></i><span id="detail-priority" class="priority-badge">Medium</span></div><div class="meta-item"><i class="fas fa-calendar"></i><span id="detail-created-at">-</span></div></div></div><div class="ticket-description-section"><h4><i class="fas fa-align-left"></i> Description</h4><div class="description-content"><p id="detail-description">-</p></div></div><div class="attachments-section" style="display:none;"><h4><i class="fas fa-paperclip"></i> Attachments</h4><div id="detail-attachments" class="attachments-list"></div></div><div class="conversations-section"><div class="section-header"><h4><i class="fas fa-comments"></i> Conversations</h4><span class="conversation-count">(<span id="conversation-count">0</span> messages)</span></div><div id="conversations-list" class="conversations-list"><div class="no-conversations"><i class="fas fa-comments"></i><p>No conversations yet. Start the conversation!</p></div></div><div class="new-message-section"><div class="message-input-container"><textarea id="new-message" placeholder="Type your reply here..." rows="3" maxlength="2000"></textarea><div class="input-actions"><label class="attach-btn"><i class="fas fa-paperclip"></i><input type="file" style="display:none;"></label><div class="char-counter"><span id="message-char-count">0</span>/2000</div></div></div><div class="message-actions"><button id="send-message-btn" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Reply</button><button id="cancel-message-btn" class="btn-secondary">Cancel</button></div></div></div></div><div class="modal-footer"><button id="close-ticket-btn" class="btn-secondary" style="display:none;"><i class="fas fa-times-circle"></i> Close Ticket</button><button id="reopen-ticket-btn" class="btn-secondary" style="display:none;"><i class="fas fa-redo"></i> Reopen Ticket</button><button class="btn-secondary close-modal-btn">Close</button></div></div></div>
             </section>
+                        <!-- ==================== REVIEWS TAB - COMPLETE ==================== -->
+<section id="reviews" class="tab-content" hidden>
+    <div class="reviews-container">
+        
+        <!-- ===== HEADER ===== -->
+        <div class="reviews-header-premium">
+            <div class="header-left">
+                <h1><i class="fas fa-star" style="color: #f59e0b;"></i> Student Reviews</h1>
+                <p class="subtitle">Share your honest feedback about courses, lecturers, facilities, and the site experience</p>
+            </div>
+            <div class="header-right">
+                <button class="btn-primary btn-gradient" id="writeReviewBtn">
+                    <i class="fas fa-pen"></i> Write a Review
+                    <span class="btn-badge">New</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== SITE RATING BANNER ===== -->
+        <div class="site-rating-banner" id="siteRatingBanner">
+            <div class="banner-content">
+                <div class="banner-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="banner-text">
+                    <h3>Rate Your Site Experience</h3>
+                    <p>How would you rate the overall NCHSM student portal experience?</p>
+                </div>
+                <div class="banner-rating">
+                    <div class="site-stars" id="siteStars">
+                        <span onclick="rateSite(1)" data-rating="1">☆</span>
+                        <span onclick="rateSite(2)" data-rating="2">☆</span>
+                        <span onclick="rateSite(3)" data-rating="3">☆</span>
+                        <span onclick="rateSite(4)" data-rating="4">☆</span>
+                        <span onclick="rateSite(5)" data-rating="5">☆</span>
+                    </div>
+                    <div class="site-rating-text" id="siteRatingText">Tap a star to rate the site</div>
+                </div>
+            </div>
+            <div class="site-rating-average">
+                <span class="avg-score" id="siteAvgScore">0.0</span>
+                <span class="avg-label">Site Rating</span>
+                <span class="avg-count">(<span id="siteRatingCount">0</span> reviews)</span>
+            </div>
+        </div>
+
+        <!-- ===== STATS ROW ===== -->
+        <div class="reviews-stats-row">
+            <div class="stat-card-premium">
+                <div class="stat-icon" style="background: #fef3c7; color: #f59e0b;">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-number" id="avgRatingDisplay">0.0</span>
+                    <span class="stat-label">Average Rating</span>
+                </div>
+            </div>
+            <div class="stat-card-premium">
+                <div class="stat-icon" style="background: #dbeafe; color: #3b82f6;">
+                    <i class="fas fa-list"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-number" id="totalReviewsDisplay">0</span>
+                    <span class="stat-label">Total Reviews</span>
+                </div>
+            </div>
+            <div class="stat-card-premium">
+                <div class="stat-icon" style="background: #d1fae5; color: #10b981;">
+                    <i class="fas fa-thumbs-up"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-number" id="helpfulCountDisplay">0</span>
+                    <span class="stat-label">Helpful Votes</span>
+                </div>
+            </div>
+            <div class="stat-card-premium">
+                <div class="stat-icon" style="background: #fce4ec; color: #ef4444;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-number" id="pendingReviewsDisplay">0</span>
+                    <span class="stat-label">Pending Approval</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CATEGORY QUICK FILTERS ===== -->
+        <div class="category-quick-filters" id="categoryQuickFilters">
+            <button class="cat-filter active" data-category="all" onclick="filterByCategory('all')">
+                <i class="fas fa-th-large"></i> All
+            </button>
+            <button class="cat-filter" data-category="site" onclick="filterByCategory('site')">
+                <i class="fas fa-globe"></i> Site
+            </button>
+            <button class="cat-filter" data-category="course" onclick="filterByCategory('course')">
+                <i class="fas fa-book-open"></i> Courses
+            </button>
+            <button class="cat-filter" data-category="lecturer" onclick="filterByCategory('lecturer')">
+                <i class="fas fa-chalkboard-teacher"></i> Lecturers
+            </button>
+            <button class="cat-filter" data-category="facility" onclick="filterByCategory('facility')">
+                <i class="fas fa-building"></i> Facilities
+            </button>
+            <button class="cat-filter" data-category="library" onclick="filterByCategory('library')">
+                <i class="fas fa-book"></i> Library
+            </button>
+            <button class="cat-filter" data-category="administration" onclick="filterByCategory('administration')">
+                <i class="fas fa-users-cog"></i> Admin
+            </button>
+            <button class="cat-filter" data-category="online" onclick="filterByCategory('online')">
+                <i class="fas fa-video"></i> Online
+            </button>
+            <button class="cat-filter" data-category="clinical" onclick="filterByCategory('clinical')">
+                <i class="fas fa-stethoscope"></i> Clinical
+            </button>
+        </div>
+
+        <!-- ===== FILTERS ===== -->
+        <div class="reviews-filters-premium">
+            <div class="filter-group">
+                <select id="reviewCategoryFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="all">All Categories</option>
+                    <option value="site">🌐 Site Experience</option>
+                    <option value="course">📚 Courses</option>
+                    <option value="lecturer">👨‍🏫 Lecturers</option>
+                    <option value="facility">🏛️ Facilities</option>
+                    <option value="library">📖 Library</option>
+                    <option value="administration">🏢 Administration</option>
+                    <option value="online">💻 Online Learning</option>
+                    <option value="clinical">🏥 Clinical Experience</option>
+                </select>
+                <select id="reviewRatingFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="all">All Ratings</option>
+                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                    <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                    <option value="3">⭐⭐⭐ 3 Stars</option>
+                    <option value="2">⭐⭐ 2 Stars</option>
+                    <option value="1">⭐ 1 Star</option>
+                </select>
+                <select id="reviewSortFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="highest">Highest Rated</option>
+                    <option value="lowest">Lowest Rated</option>
+                    <option value="helpful">Most Helpful</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="reviewSearchInput" placeholder="Search reviews..." onkeyup="applyFilters()">
+            </div>
+        </div>
+
+        <!-- ===== REVIEWS GRID ===== -->
+        <div class="reviews-grid-premium" id="reviewsGrid">
+            <div class="loading-state-premium">
+                <div class="loading-spinner-premium"></div>
+                <p>Loading reviews...</p>
+            </div>
+        </div>
+
+        <!-- ===== LOAD MORE ===== -->
+        <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+            <button class="btn-secondary" id="loadMoreReviewsBtn">
+                <i class="fas fa-chevron-down"></i> Load More Reviews
+            </button>
+        </div>
+
+        <!-- ===== WRITE REVIEW MODAL ===== -->
+        <div id="writeReviewModal" class="modal-overlay" style="display: none;">
+            <div class="modal-container-premium modal-large">
+                <div class="modal-header-premium">
+                    <h3><i class="fas fa-pen" style="color: #f59e0b;"></i> Write a Review</h3>
+                    <button class="close-modal-btn" id="closeReviewModal">&times;</button>
+                </div>
+                <div class="modal-body-premium">
+                    <form id="studentReviewForm" class="review-form-premium">
+                        
+                        <!-- ===== CATEGORY SELECTION ===== -->
+                        <div class="form-group">
+                            <label>What are you reviewing? <span class="required">*</span></label>
+                            <div class="component-selector-grid" id="componentSelector">
+                                <div class="component-option" data-value="site" onclick="selectComponent('site')">
+                                    <i class="fas fa-globe"></i>
+                                    <span>Site Experience</span>
+                                    <span class="option-badge">Overall</span>
+                                </div>
+                                <div class="component-option" data-value="course" onclick="selectComponent('course')">
+                                    <i class="fas fa-book-open"></i>
+                                    <span>Course</span>
+                                    <span class="option-badge">Academic</span>
+                                </div>
+                                <div class="component-option" data-value="lecturer" onclick="selectComponent('lecturer')">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                    <span>Lecturer</span>
+                                    <span class="option-badge">Teaching</span>
+                                </div>
+                                <div class="component-option" data-value="facility" onclick="selectComponent('facility')">
+                                    <i class="fas fa-building"></i>
+                                    <span>Facility</span>
+                                    <span class="option-badge">Infrastructure</span>
+                                </div>
+                                <div class="component-option" data-value="library" onclick="selectComponent('library')">
+                                    <i class="fas fa-book"></i>
+                                    <span>Library</span>
+                                    <span class="option-badge">Resources</span>
+                                </div>
+                                <div class="component-option" data-value="administration" onclick="selectComponent('administration')">
+                                    <i class="fas fa-users-cog"></i>
+                                    <span>Administration</span>
+                                    <span class="option-badge">Support</span>
+                                </div>
+                                <div class="component-option" data-value="online" onclick="selectComponent('online')">
+                                    <i class="fas fa-video"></i>
+                                    <span>Online Learning</span>
+                                    <span class="option-badge">E-Learning</span>
+                                </div>
+                                <div class="component-option" data-value="clinical" onclick="selectComponent('clinical')">
+                                    <i class="fas fa-stethoscope"></i>
+                                    <span>Clinical Experience</span>
+                                    <span class="option-badge">Practical</span>
+                                </div>
+                                <div class="component-option" data-value="general" onclick="selectComponent('general')">
+                                    <i class="fas fa-star"></i>
+                                    <span>General Feedback</span>
+                                    <span class="option-badge">Other</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="selectedComponent" value="">
+                            <div id="componentError" class="error-text" style="display: none;"></div>
+                        </div>
+
+                        <!-- ===== COMPONENT DETAILS (Dynamic) ===== -->
+                        <div id="componentDetails" style="display: none;">
+                            <div class="form-group" id="componentNameGroup">
+                                <label id="componentNameLabel">Select or enter name <span class="required">*</span></label>
+                                <div class="component-name-input-group">
+                                    <select id="componentNameSelect" class="form-select" style="display: none;">
+                                        <option value="">Select...</option>
+                                    </select>
+                                    <input type="text" id="componentNameInput" placeholder="Enter name..." class="form-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ===== RATING ===== -->
+                        <div class="form-group">
+                            <label>Your Rating <span class="required">*</span></label>
+                            <div class="star-rating-large" id="starRatingLarge">
+                                <span onclick="setReviewRating(1)" data-rating="1">☆</span>
+                                <span onclick="setReviewRating(2)" data-rating="2">☆</span>
+                                <span onclick="setReviewRating(3)" data-rating="3">☆</span>
+                                <span onclick="setReviewRating(4)" data-rating="4">☆</span>
+                                <span onclick="setReviewRating(5)" data-rating="5">☆</span>
+                            </div>
+                            <div class="rating-text" id="ratingText">Select a rating</div>
+                            <input type="hidden" id="reviewRatingValue" value="0">
+                            <div id="ratingError" class="error-text" style="display: none;">Please select a rating</div>
+                        </div>
+
+                        <!-- ===== REVIEW TITLE ===== -->
+                        <div class="form-group">
+                            <label>Review Title</label>
+                            <input type="text" id="reviewTitleInput" placeholder="Summarize your experience in a few words..." class="form-input">
+                        </div>
+
+                        <!-- ===== REVIEW TEXT ===== -->
+                        <div class="form-group">
+                            <label>Your Review <span class="required">*</span></label>
+                            <textarea id="reviewTextInput" rows="5" placeholder="Share your detailed experience..." class="form-textarea" required></textarea>
+                            <div class="char-counter"><span id="reviewCharCount">0</span>/1000 characters</div>
+                        </div>
+
+                        <!-- ===== PROS & CONS ===== -->
+                        <div class="form-row-two">
+                            <div class="form-group">
+                                <label><i class="fas fa-thumbs-up" style="color: #10b981;"></i> What went well?</label>
+                                <textarea id="reviewPros" rows="2" placeholder="List the positives..." class="form-textarea"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-thumbs-down" style="color: #ef4444;"></i> What could improve?</label>
+                                <textarea id="reviewCons" rows="2" placeholder="List areas for improvement..." class="form-textarea"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- ===== SUGGESTIONS ===== -->
+                        <div class="form-group">
+                            <label><i class="fas fa-lightbulb" style="color: #f59e0b;"></i> Suggestions</label>
+                            <textarea id="reviewSuggestions" rows="2" placeholder="Any suggestions for improvement..." class="form-textarea"></textarea>
+                        </div>
+
+                        <!-- ===== ANONYMOUS ===== -->
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="anonymousReview"> 
+                                <span class="checkbox-text">Submit anonymously <small>(your name won't be shown)</small></span>
+                            </label>
+                        </div>
+
+                        <!-- ===== SUBMIT ===== -->
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary btn-gradient btn-large" id="submitReviewBtn">
+                                <i class="fas fa-paper-plane"></i> Submit Review
+                            </button>
+                            <button type="button" class="btn-secondary" id="cancelReviewBtn">Cancel</button>
+                        </div>
+
+                        <div id="reviewFormFeedback" class="feedback-message" style="display: none;"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== REVIEW DETAIL MODAL ===== -->
+        <div id="reviewDetailModal" class="modal-overlay" style="display: none;">
+            <div class="modal-container-premium">
+                <div class="modal-header-premium">
+                    <h3 id="detailReviewTitle">Review Details</h3>
+                    <button class="close-modal-btn" id="closeDetailModal">&times;</button>
+                </div>
+                <div class="modal-body-premium" id="reviewDetailBody">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
             <!-- END SUPPORT TICKETS -->
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
 <section id="nurseiq" class="tab-content" hidden>
@@ -1656,6 +1986,8 @@
     <script src="./js/lecture-card.js"></script>
     <script src="./js/academic-reports.js"></script>
     <script src="./js/timetable-manager.js"></script>
+    <script src="./js/reviews-newsletter.js"></script>
+                       
     <script src="js/cleanup.js"></script>
 
   
