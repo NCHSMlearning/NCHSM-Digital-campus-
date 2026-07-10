@@ -15806,6 +15806,331 @@ window.initRealtimeDashboard = initRealtimeDashboard;
 
 console.log('✅ Real-time dashboard module loaded!');
 // ============================================
+// 📊 CHARTS INITIALIZATION - ADD THIS AT THE END
+// ============================================
+
+// Global chart instances
+let enrolmentBlockChart = null;
+let genderDistributionChart = null;
+let programBreakdownChart = null;
+
+// ============================================
+// LOAD CHART DATA FROM DATABASE
+// ============================================
+
+async function loadChartData() {
+    console.log('📊 Loading chart data...');
+    
+    try {
+        // Get students data
+        const { data: students, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('program, block, gender, intake_year, date_of_birth, full_name, student_id')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            console.log('No student data found for charts');
+            return;
+        }
+        
+        console.log(`📊 Loaded ${students.length} students for charts`);
+        
+        // Process each chart
+        processEnrolmentByBlock(students);
+        processGenderDistribution(students);
+        processProgramBreakdown(students);
+        loadBirthdays(students);
+        
+    } catch (error) {
+        console.error('Error loading chart data:', error);
+    }
+}
+
+// ============================================
+// 1. ENROLMENT BY BLOCK CHART
+// ============================================
+
+function processEnrolmentByBlock(students) {
+    const blockCounts = {};
+    students.forEach(s => {
+        const block = s.block || 'Unknown';
+        blockCounts[block] = (blockCounts[block] || 0) + 1;
+    });
+    
+    const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    const labels = [];
+    const data = [];
+    
+    blockOrder.forEach(block => {
+        if (blockCounts[block]) {
+            labels.push(block);
+            data.push(blockCounts[block]);
+        }
+    });
+    
+    Object.keys(blockCounts).forEach(block => {
+        if (!labels.includes(block)) {
+            labels.push(block);
+            data.push(blockCounts[block]);
+        }
+    });
+    
+    const colors = ['#4C1D95', '#6d28d9', '#8b5cf6', '#a78bfa', '#c4b5fd', '#8b5cf6', '#4C1D95'];
+    
+    const ctx = document.getElementById('enrolmentBlockChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    if (enrolmentBlockChart) enrolmentBlockChart.destroy();
+    
+    enrolmentBlockChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Students per Block',
+                data: data,
+                backgroundColor: colors.slice(0, data.length),
+                borderColor: '#4C1D95',
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.parsed.y} students`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Enrolment by Block chart updated');
+}
+
+// ============================================
+// 2. GENDER DISTRIBUTION CHART
+// ============================================
+
+function processGenderDistribution(students) {
+    let male = 0, female = 0, other = 0;
+    
+    students.forEach(s => {
+        const gender = (s.gender || '').toUpperCase();
+        if (gender === 'M' || gender === 'MALE') male++;
+        else if (gender === 'F' || gender === 'FEMALE') female++;
+        else other++;
+    });
+    
+    const ctx = document.getElementById('genderDistributionChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    if (genderDistributionChart) genderDistributionChart.destroy();
+    
+    genderDistributionChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [`Male (${male})`, `Female (${female})`, `Other (${other})`],
+            datasets: [{
+                data: [male, female, other],
+                backgroundColor: ['#3b82f6', '#ec4899', '#8b5cf6'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 10, usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${percentage}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Gender Distribution chart updated');
+}
+
+// ============================================
+// 3. PROGRAM BREAKDOWN CHART
+// ============================================
+
+function processProgramBreakdown(students) {
+    let krchnCount = 0, tvetCount = 0;
+    
+    students.forEach(s => {
+        if (s.program === 'KRCHN') krchnCount++;
+        else if (s.program) tvetCount++;
+    });
+    
+    const ctx = document.getElementById('programBreakdownChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    if (programBreakdownChart) programBreakdownChart.destroy();
+    
+    programBreakdownChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [`KRCHN (${krchnCount})`, `TVET (${tvetCount})`],
+            datasets: [{
+                data: [krchnCount, tvetCount],
+                backgroundColor: ['#4C1D95', '#f59e0b'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 10, usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${percentage}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Program Breakdown chart updated');
+}
+
+// ============================================
+// 4. BIRTHDAYS - TODAY
+// ============================================
+
+async function loadBirthdays(students) {
+    try {
+        const today = new Date();
+        const todayMonth = today.getMonth() + 1;
+        const todayDay = today.getDate();
+        
+        // Use passed students or fetch if not provided
+        let allStudents = students;
+        if (!allStudents) {
+            const { data, error } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('full_name, date_of_birth, program, student_id')
+                .eq('role', 'student')
+                .eq('status', 'approved');
+            
+            if (error) throw error;
+            allStudents = data || [];
+        }
+        
+        const birthdays = allStudents.filter(s => {
+            if (!s.date_of_birth) return false;
+            const dob = new Date(s.date_of_birth);
+            return (dob.getMonth() + 1 === todayMonth && dob.getDate() === todayDay);
+        });
+        
+        const birthdayCount = document.getElementById('birthdayCount');
+        if (birthdayCount) birthdayCount.textContent = birthdays.length;
+        
+        const listContainer = document.getElementById('birthdayStudentsList');
+        const cardContainer = document.getElementById('birthdayStudentCard');
+        
+        if (listContainer) {
+            if (birthdays.length === 0) {
+                listContainer.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No birthdays today 🎉</p>';
+                if (cardContainer) cardContainer.style.display = 'none';
+            } else {
+                let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                birthdays.forEach(s => {
+                    html += `
+                        <div style="background: #fef3c7; padding: 6px 12px; border-radius: 20px; border: 1px solid #f59e0b; font-size: 13px;">
+                            🎂 ${escapeHtml(s.full_name || 'Student')}
+                            <small style="color: #6b7280;">(${escapeHtml(s.program || 'N/A')})</small>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                listContainer.innerHTML = html;
+                
+                if (cardContainer && birthdays.length > 0) {
+                    const first = birthdays[0];
+                    document.getElementById('birthdayName').textContent = first.full_name || 'Student';
+                    document.getElementById('birthdayDetails').textContent = `${first.program || 'N/A'} - ${first.student_id || 'N/A'}`;
+                    
+                    if (first.date_of_birth) {
+                        const dob = new Date(first.date_of_birth);
+                        const age = today.getFullYear() - dob.getFullYear();
+                        document.getElementById('birthdayAge').textContent = `🎂 ${age} years old today!`;
+                    }
+                    cardContainer.style.display = 'block';
+                }
+            }
+        }
+        
+        console.log(`🎂 ${birthdays.length} birthdays today`);
+        
+    } catch (error) {
+        console.error('Error loading birthdays:', error);
+    }
+}
+
+// ============================================
+// MODIFY loadDashboardData TO INCLUDE CHARTS
+// ============================================
+
+// Save the original function
+const originalLoadDashboardData = loadDashboardData;
+
+// Override to include charts
+loadDashboardData = async function() {
+    // Call original
+    await originalLoadDashboardData();
+    
+    // Load charts
+    await loadChartData();
+    
+    console.log('✅ Dashboard with charts loaded');
+};
+
+// ============================================
+// MAKE FUNCTIONS GLOBALLY ACCESSIBLE
+// ============================================
+
+window.loadChartData = loadChartData;
+window.loadBirthdays = loadBirthdays;
+
+console.log('✅ Chart module loaded');
+
+// ============================================
 // END OF REAL-TIME DASHBOARD MODULE
 // ============================================
 // =====================================================
