@@ -479,111 +479,592 @@
 
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <!-- Mobile Navigation Toggle -->
-        <div class="mobile-nav-toggle" id="mobileNavToggle">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
+        <button 
+            class="mobile-nav-toggle" 
+            id="mobileNavToggle" 
+            aria-label="Toggle navigation menu" 
+            aria-expanded="false"
+            aria-controls="sidebar"
+            type="button"
+        >
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="sr-only">Open menu</span>
+        </button>
 
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
-                <h2>Super Admin</h2>
-            </div>
-       <ul class="nav" id="mainNav">
-    <!-- DASHBOARD -->
-    <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-    
-    <!-- USER MANAGEMENT DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-users-cog"></i> User Management <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-            <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
-            <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
-            <li><a href="#" data-tab="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a></li>
-        </ul>
-    </li>
-    
-  <!-- ACADEMIC MANAGEMENT DROPDOWN -->
-<li class="nav-dropdown">
-    <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-graduation-cap"></i> Academic <i class="fas fa-chevron-down" style="float: right;"></i></a>
-    <ul class="dropdown-menu">
-        <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-        <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-        <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-        <li><a href="#" data-tab="nursing-system"><i class="fas fa-hospital-user"></i> Nursing School System</a></li>
-        <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-        <!-- 👇 ADD THIS LINE BELOW 👇 -->
-        <li><a href="#" data-tab="programs"><i class="fas fa-sitemap"></i> Programs</a></li>
-    </ul>
-</li>
-    
-    <!-- SCHEDULING & ATTENDANCE DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-calendar-check"></i> Scheduling <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-            <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-            <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
-        </ul>
-    </li>
-    
-    <!-- STAFF & COMMUNICATION DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-headset"></i> Staff & Comm <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="staff-management"><i class="fas fa-chalkboard-user"></i> Staff Management</a></li>
-            <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-            <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
-            <li><a href="#" data-tab="notification-center"><i class="fas fa-bell"></i> Notifications</a></li>
-        </ul>
-    </li>
-    
-    <!-- FINANCIAL -->
-    <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
-    
-    <!-- SYSTEM TOOLS DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-tools"></i> System Tools <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
-            <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-            <li><a href="#" data-tab="data-visualization"><i class="fas fa-chart-bar"></i> Data Visualization</a></li>
-            <li><a href="#" data-tab="task-scheduler"><i class="fas fa-clock"></i> Task Scheduler</a></li>
-            <li><a href="#" data-tab="bulk-operations"><i class="fas fa-tasks"></i> Bulk Operations</a></li>
-            <li><a href="#" data-tab="api-management"><i class="fas fa-key"></i> API Management</a></li>
-            <li><a href="#" data-tab="quick-actions"><i class="fas fa-bolt"></i> Quick Actions</a></li>
-            <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
-        </ul>
-    </li>
-    
-    <!-- SECURITY DROPDOWN -->
-    <li class="nav-dropdown">
-        <a href="javascript:void(0)" class="dropdown-toggle"><i class="fas fa-shield-alt"></i> Security <i class="fas fa-chevron-down" style="float: right;"></i></a>
-        <ul class="dropdown-menu">
-            <li><a href="#" data-tab="security-2fa"><i class="fas fa-lock"></i> Security & 2FA</a></li>
-            <li><a href="#" data-tab="session-management"><i class="fas fa-user-clock"></i> Session Management</a></li>
-            <li><a href="#" data-tab="error-tracking"><i class="fas fa-bug"></i> Error Tracking</a></li>
-            <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-            <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
-        </ul>
-    </li>
-    
-    <!-- MAINTENANCE -->
-    <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
-</ul>
-            <div class="logout">
-                <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
+        <!-- Sidebar -->
+        <aside 
+            class="sidebar" 
+            id="sidebar" 
+            role="navigation" 
+            aria-label="Main navigation"
+            aria-hidden="false"
+        >
+            <!-- Sidebar Header -->
+            <header class="sidebar-header">
+                <figure class="logo-wrapper">
+                    <img 
+                        src="images/Logo_NCHSM.png" 
+                        alt="NCHSM - National College of Health Sciences and Management" 
+                        loading="lazy"
+                        width="48" 
+                        height="48"
+                        onerror="this.style.display='none'"
+                    >
+                    <figcaption class="sr-only">NCHSM Logo</figcaption>
+                </figure>
+                
+                <div class="user-info">
+                    <h2 class="user-name">Super Admin</h2>
+                    <span class="user-role" aria-label="Role: Administrator">
+                        <span class="role-dot" aria-hidden="true"></span>
+                        Administrator
+                    </span>
+                </div>
+                
+                <button 
+                    class="sidebar-collapse" 
+                    aria-label="Collapse sidebar" 
+                    type="button"
+                    title="Toggle sidebar width"
+                >
+                    <span aria-hidden="true">◀</span>
+                </button>
+            </header>
+
+            <!-- Navigation -->
+            <nav class="nav-wrapper" aria-label="Main menu">
+                <ul class="nav" id="mainNav" role="menubar" aria-orientation="vertical">
+                    
+                    <!-- DASHBOARD -->
+                    <li role="none" class="nav-item">
+                        <a 
+                            href="#dashboard" 
+                            data-tab="dashboard" 
+                            class="nav-link active" 
+                            role="menuitem"
+                            aria-current="page"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </span>
+                            <span class="nav-text">Dashboard</span>
+                            <span class="nav-badge" aria-label="3 notifications">3</span>
+                        </a>
+                    </li>
+                    
+                    <!-- USER MANAGEMENT -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-user-management"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-users-cog"></i>
+                            </span>
+                            <span class="nav-text">User Management</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-user-management"
+                            role="menu" 
+                            aria-label="User Management submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#users" data-tab="users" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-users"></i>
+                                    </span>
+                                    <span class="nav-text">Manage Users</span>
+                                    <span class="nav-badge" aria-label="5 pending">5</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#pending" data-tab="pending" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-clock"></i>
+                                    </span>
+                                    <span class="nav-text">Pending Approvals</span>
+                                    <span class="nav-badge warning" aria-label="12 pending">12</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#enroll" data-tab="enroll" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-user-plus"></i>
+                                    </span>
+                                    <span class="nav-text">Enroll Accounts</span>
+                                </a>
+                            </li>
+                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
+                            <li role="none">
+                                <a href="#admin-approvals" data-tab="admin-approvals" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-check-double"></i>
+                                    </span>
+                                    <span class="nav-text">Admin Approvals</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- ACADEMIC -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-academic"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-graduation-cap"></i>
+                            </span>
+                            <span class="nav-text">Academic</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-academic"
+                            role="menu" 
+                            aria-label="Academic submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#courses" data-tab="courses" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-book"></i>
+                                    </span>
+                                    <span class="nav-text">Courses</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#unit-management" data-tab="unit-management" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-plus-circle"></i>
+                                    </span>
+                                    <span class="nav-text">Unit Registration</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#cats" data-tab="cats" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-file-alt"></i>
+                                    </span>
+                                    <span class="nav-text">CATS/Exams</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#nursing-system" data-tab="nursing-system" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-hospital-user"></i>
+                                    </span>
+                                    <span class="nav-text">Nursing School System</span>
+                                </a>
+                            </li>
+                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
+                            <li role="none">
+                                <a href="#resources" data-tab="resources" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-file-upload"></i>
+                                    </span>
+                                    <span class="nav-text">Resources</span>
+                                    <span class="nav-badge" aria-label="3 new resources">3</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#programs" data-tab="programs" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-sitemap"></i>
+                                    </span>
+                                    <span class="nav-text">Programs</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- SCHEDULING -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-scheduling"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-calendar-check"></i>
+                            </span>
+                            <span class="nav-text">Scheduling</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-scheduling"
+                            role="menu" 
+                            aria-label="Scheduling submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#sessions" data-tab="sessions" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </span>
+                                    <span class="nav-text">Manage Sessions</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#attendance" data-tab="attendance" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </span>
+                                    <span class="nav-text">Attendance</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#calendar" data-tab="calendar" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-calendar"></i>
+                                    </span>
+                                    <span class="nav-text">System Calendar</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- STAFF & COMMUNICATION -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-staff"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-headset"></i>
+                            </span>
+                            <span class="nav-text">Staff & Comm</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-staff"
+                            role="menu" 
+                            aria-label="Staff and Communication submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#staff-management" data-tab="staff-management" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-chalkboard-user"></i>
+                                    </span>
+                                    <span class="nav-text">Staff Management</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#messages" data-tab="messages" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-inbox"></i>
+                                    </span>
+                                    <span class="nav-text">Inbox</span>
+                                    <span class="nav-badge danger" aria-label="8 unread messages">8</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#support-tickets" data-tab="support-tickets" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-ticket-alt"></i>
+                                    </span>
+                                    <span class="nav-text">Support Tickets</span>
+                                    <span class="nav-badge warning" aria-label="3 open tickets">3</span>
+                                </a>
+                            </li>
+                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
+                            <li role="none">
+                                <a href="#notification-center" data-tab="notification-center" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-bell"></i>
+                                    </span>
+                                    <span class="nav-text">Notifications</span>
+                                    <span class="nav-badge danger" aria-label="15 notifications">15</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- FINANCIAL -->
+                    <li role="none" class="nav-item">
+                        <a href="#fee-accounts" data-tab="fee-accounts" role="menuitem">
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-credit-card"></i>
+                            </span>
+                            <span class="nav-text">Fee Accounts</span>
+                            <span class="nav-badge" aria-label="2 pending payments">2</span>
+                        </a>
+                    </li>
+                    
+                    <!-- SYSTEM TOOLS -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-tools"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-tools"></i>
+                            </span>
+                            <span class="nav-text">System Tools</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-tools"
+                            role="menu" 
+                            aria-label="System Tools submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#system-health" data-tab="system-health" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-heartbeat"></i>
+                                    </span>
+                                    <span class="nav-text">System Health</span>
+                                    <span class="nav-badge success" aria-label="System healthy">✓</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#user-analytics" data-tab="user-analytics" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-chart-line"></i>
+                                    </span>
+                                    <span class="nav-text">User Analytics</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#data-visualization" data-tab="data-visualization" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </span>
+                                    <span class="nav-text">Data Visualization</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#task-scheduler" data-tab="task-scheduler" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-clock"></i>
+                                    </span>
+                                    <span class="nav-text">Task Scheduler</span>
+                                </a>
+                            </li>
+                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
+                            <li role="none">
+                                <a href="#bulk-operations" data-tab="bulk-operations" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-tasks"></i>
+                                    </span>
+                                    <span class="nav-text">Bulk Operations</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#api-management" data-tab="api-management" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-key"></i>
+                                    </span>
+                                    <span class="nav-text">API Management</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#quick-actions" data-tab="quick-actions" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-bolt"></i>
+                                    </span>
+                                    <span class="nav-text">Quick Actions</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#welcome-editor" data-tab="welcome-editor" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                    <span class="nav-text">Welcome Message</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- SECURITY -->
+                    <li role="none" class="nav-item nav-dropdown">
+                        <button 
+                            class="nav-link dropdown-toggle" 
+                            role="menuitem" 
+                            aria-haspopup="true" 
+                            aria-expanded="false"
+                            aria-controls="dropdown-security"
+                            type="button"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-shield-alt"></i>
+                            </span>
+                            <span class="nav-text">Security</span>
+                            <span class="dropdown-arrow" aria-hidden="true">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </button>
+                        
+                        <ul 
+                            class="dropdown-menu" 
+                            id="dropdown-security"
+                            role="menu" 
+                            aria-label="Security submenu"
+                            hidden
+                        >
+                            <li role="none">
+                                <a href="#security-2fa" data-tab="security-2fa" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <span class="nav-text">Security & 2FA</span>
+                                    <span class="nav-badge success" aria-label="Secure">✓</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#session-management" data-tab="session-management" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-user-clock"></i>
+                                    </span>
+                                    <span class="nav-text">Session Management</span>
+                                    <span class="nav-badge" aria-label="3 active sessions">3</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#error-tracking" data-tab="error-tracking" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-bug"></i>
+                                    </span>
+                                    <span class="nav-text">Error Tracking</span>
+                                </a>
+                            </li>
+                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
+                            <li role="none">
+                                <a href="#audit" data-tab="audit" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <span class="nav-text">Audit Logs</span>
+                                </a>
+                            </li>
+                            <li role="none">
+                                <a href="#security" data-tab="security" role="menuitem">
+                                    <span class="nav-icon" aria-hidden="true">
+                                        <i class="fas fa-cog"></i>
+                                    </span>
+                                    <span class="nav-text">Security Settings</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- BACKUP & RESTORE -->
+                    <li role="none" class="nav-item">
+                        <a href="#backup" data-tab="backup" role="menuitem">
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-database"></i>
+                            </span>
+                            <span class="nav-text">Backup & Restore</span>
+                            <span class="nav-badge" aria-label="Last backup: today">Today</span>
+                        </a>
+                    </li>
+                    
+                    <!-- DIVIDER -->
+                    <li role="separator" class="nav-divider" aria-hidden="true"></li>
+                    
+                    <!-- LOGOUT (moved to bottom of nav) -->
+                    <li role="none" class="nav-item logout-item">
+                        <button 
+                            onclick="logout()" 
+                            role="menuitem" 
+                            type="button"
+                            aria-label="Logout from system"
+                        >
+                            <span class="nav-icon" aria-hidden="true">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </span>
+                            <span class="nav-text">Logout</span>
+                            <span class="nav-shortcut" aria-hidden="true">⌘Q</span>
+                        </button>
+                    </li>
+                    
+                </ul>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <footer class="sidebar-footer">
+                <p class="version" aria-label="System version">
+                    <span aria-hidden="true">⚡</span> v3.2.1
+                </p>
+                <p class="copyright">
+                    &copy; 2026 NCHSM
+                </p>
+                <button 
+                    class="theme-toggle" 
+                    aria-label="Toggle theme" 
+                    type="button"
+                    title="Switch to dark/light mode"
+                >
+                    <span aria-hidden="true">🌙</span>
+                </button>
+            </footer>
         </aside>
 
-        <main class="main">
-            <header>
-                <h1>Welcome, Super Admin!</h1>
-                <p class="subtitle">Full system oversight and user management</p>
+        <!-- Main Content -->
+        <main class="main" id="main-content" role="main" aria-label="Main content">
+            <header class="main-header">
+                <div class="header-left">
+                    <h1>Welcome back, <span class="highlight">Super Admin</span></h1>
+                    <p class="subtitle" aria-label="System overview">
+                        <span aria-hidden="true">📊</span> Full system oversight and user management
+                    </p>
+                </div>
+                <div class="header-right">
+                    <time datetime="2026-07-09" class="header-date">
+                        <span aria-hidden="true">📅</span> July 9, 2026
+                    </time>
+                    <span class="header-status" aria-label="System status: Online">
+                        <span class="status-dot online" aria-hidden="true"></span>
+                        Online
+                    </span>
+                </div>
             </header>
 <!-- ============================================ -->
 <!-- COMPLETE MODERN DASHBOARD WITH CHARTS -->
