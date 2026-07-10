@@ -1,59 +1,121 @@
 // ============================================
-// COMPLETE REVIEWS SYSTEM
+// REVIEWS & NEWSLETTER MODULE - FIXED
 // ============================================
 
 let allReviews = [];
-let currentPage = 1;
-const REVIEWS_PER_PAGE = 10;
 let selectedComponent = '';
 let reviewRating = 0;
-let currentFilter = {
-    category: 'all',
-    rating: 'all',
-    sort: 'newest',
-    search: ''
-};
+let currentPage = 1;
+const REVIEWS_PER_PAGE = 10;
 
 // ============================================
-// INITIALIZE REVIEWS
+// INITIALIZE
 // ============================================
 
 function initReviewsModule() {
     console.log('⭐ Initializing Reviews Module...');
     
-    loadReviews();
-    loadSiteRating();
-    loadReviewStats();
-    
-    // Event Listeners
-    document.getElementById('writeReviewBtn')?.addEventListener('click', openReviewModal);
-    document.getElementById('closeReviewModal')?.addEventListener('click', closeReviewModal);
-    document.getElementById('cancelReviewBtn')?.addEventListener('click', closeReviewModal);
-    document.getElementById('closeDetailModal')?.addEventListener('click', closeDetailModal);
-    document.getElementById('studentReviewForm')?.addEventListener('submit', submitReview);
-    document.getElementById('loadMoreReviewsBtn')?.addEventListener('click', loadMoreReviews);
-    document.getElementById('refreshReviewsBtn')?.addEventListener('click', () => {
+    try {
         loadReviews();
         loadSiteRating();
-        loadReviewStats();
-    });
-    
-    // Character counter
-    document.getElementById('reviewTextInput')?.addEventListener('input', function() {
-        const count = document.getElementById('reviewCharCount');
-        if (count) count.textContent = this.value.length;
-    });
-    
-    // Search input
-    document.getElementById('reviewSearchInput')?.addEventListener('keyup', function(e) {
-        if (e.key === 'Enter') {
-            currentFilter.search = this.value;
-            loadReviews();
+        updateReviewStats();
+        
+        // Event listeners
+        const writeBtn = document.getElementById('writeReviewBtn');
+        if (writeBtn) {
+            writeBtn.addEventListener('click', openReviewModal);
         }
-    });
-    
-    console.log('✅ Reviews Module initialized');
+        
+        const closeBtn = document.getElementById('closeReviewModal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeReviewModal);
+        }
+        
+        const cancelBtn = document.getElementById('cancelReviewBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeReviewModal);
+        }
+        
+        const refreshBtn = document.getElementById('refreshReviewsBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                loadReviews();
+                loadSiteRating();
+                updateReviewStats();
+            });
+        }
+        
+        const form = document.getElementById('studentReviewForm');
+        if (form) {
+            form.addEventListener('submit', submitReview);
+        }
+        
+        const reviewText = document.getElementById('reviewTextInput');
+        if (reviewText) {
+            reviewText.addEventListener('input', function() {
+                const count = document.getElementById('reviewCharCount');
+                if (count) count.textContent = this.value.length;
+            });
+        }
+        
+        // Filter listeners
+        const categoryFilter = document.getElementById('reviewCategoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', function() {
+                currentFilter.category = this.value;
+                loadReviews();
+            });
+        }
+        
+        const ratingFilter = document.getElementById('reviewRatingFilter');
+        if (ratingFilter) {
+            ratingFilter.addEventListener('change', function() {
+                currentFilter.rating = this.value;
+                loadReviews();
+            });
+        }
+        
+        const sortFilter = document.getElementById('reviewSortFilter');
+        if (sortFilter) {
+            sortFilter.addEventListener('change', function() {
+                currentFilter.sort = this.value;
+                loadReviews();
+            });
+        }
+        
+        const searchInput = document.getElementById('reviewSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    currentFilter.search = this.value;
+                    loadReviews();
+                }
+            });
+        }
+        
+        // Load more
+        const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', loadMoreReviews);
+        }
+        
+        console.log('✅ Reviews Module initialized');
+        
+    } catch (error) {
+        console.error('Error initializing reviews:', error);
+    }
 }
+
+// ============================================
+// FILTER STATE
+// ============================================
+
+const currentFilter = {
+    category: 'all',
+    rating: 'all',
+    sort: 'newest',
+    search: ''
+};
 
 // ============================================
 // LOAD REVIEWS
@@ -71,7 +133,13 @@ async function loadReviews() {
     `;
     
     try {
-        let query = window.db.supabase
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            grid.innerHTML = '<div class="error-state-premium">Database connection error</div>';
+            return;
+        }
+        
+        let query = supabase
             .from('student_reviews')
             .select('*, student:student_id(full_name, program, profile_photo_url)')
             .eq('status', 'approved')
@@ -107,7 +175,7 @@ async function loadReviews() {
                     return (a.rating || 0) - (b.rating || 0);
                 case 'helpful':
                     return (b.helpful_count || 0) - (a.helpful_count || 0);
-                default: // newest
+                default:
                     return new Date(b.created_at) - new Date(a.created_at);
             }
         });
@@ -154,7 +222,6 @@ function renderReviews(reviews) {
     grid.innerHTML = reviews.map(review => {
         const stars = getStarHTML(review.rating || 0);
         const name = review.is_anonymous ? 'Anonymous Student' : (review.student?.full_name || 'Student');
-        const avatar = review.is_anonymous ? null : review.student?.profile_photo_url;
         const date = new Date(review.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -179,37 +246,37 @@ function renderReviews(reviews) {
             <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
                 <div class="review-card-header">
                     <div class="reviewer-info">
-                        ${!review.is_anonymous && avatar ? 
-                            `<img src="${avatar}" alt="${name}" class="reviewer-avatar">` :
+                        ${!review.is_anonymous && review.student?.profile_photo_url ? 
+                            `<img src="${review.student.profile_photo_url}" alt="${name}" class="reviewer-avatar">` :
                             `<div class="reviewer-avatar-placeholder">${name.charAt(0).toUpperCase()}</div>`
                         }
                         <div class="reviewer-details">
-                            <span class="reviewer-name">${name}</span>
+                            <span class="reviewer-name">${escapeHtml(name)}</span>
                             <span class="reviewer-program">${review.student?.program || ''}</span>
                         </div>
                     </div>
                     <div class="review-category-badge">
                         ${categoryIcon} ${categoryLabel}
-                        ${componentDisplay ? `<span class="component-tag">${componentDisplay}</span>` : ''}
+                        ${componentDisplay ? `<span class="component-tag">${escapeHtml(componentDisplay)}</span>` : ''}
                     </div>
                 </div>
                 
                 <div class="review-card-body">
                     <div class="review-rating">${stars}</div>
-                    ${review.review_title ? `<h4 class="review-title">${review.review_title}</h4>` : ''}
-                    <p class="review-text">${review.review.length > 200 ? review.review.substring(0, 200) + '...' : review.review}</p>
+                    ${review.review_title ? `<h4 class="review-title">${escapeHtml(review.review_title)}</h4>` : ''}
+                    <p class="review-text">${review.review.length > 200 ? review.review.substring(0, 200) + '...' : escapeHtml(review.review)}</p>
                     
                     ${review.pros ? `
                         <div class="review-pros">
                             <i class="fas fa-thumbs-up" style="color: #10b981;"></i>
-                            <span>${review.pros}</span>
+                            <span>${escapeHtml(review.pros)}</span>
                         </div>
                     ` : ''}
                     
                     ${review.cons ? `
                         <div class="review-cons">
                             <i class="fas fa-thumbs-down" style="color: #ef4444;"></i>
-                            <span>${review.cons}</span>
+                            <span>${escapeHtml(review.cons)}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -237,20 +304,35 @@ function renderReviews(reviews) {
 
 async function loadSiteRating() {
     try {
-        const { data, error } = await window.db.supabase
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        
+        // Try with component_type column - if it fails, use all reviews
+        let { data: reviews, error } = await supabase
             .from('student_reviews')
             .select('rating')
-            .eq('component_type', 'site')
             .eq('status', 'approved');
+        
+        // If component_type column doesn't exist, just get all approved reviews
+        if (error && error.code === '42703') {
+            const { data, err } = await supabase
+                .from('student_reviews')
+                .select('rating')
+                .eq('status', 'approved');
+            reviews = data;
+            error = err;
+        }
         
         if (error) throw error;
         
-        const ratings = data || [];
+        const ratings = reviews || [];
         const count = ratings.length;
         const avg = count > 0 ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / count) : 0;
         
-        document.getElementById('siteAvgScore').textContent = avg.toFixed(1);
-        document.getElementById('siteRatingCount').textContent = count;
+        const avgEl = document.getElementById('siteAvgScore');
+        const countEl = document.getElementById('siteRatingCount');
+        if (avgEl) avgEl.textContent = avg.toFixed(1);
+        if (countEl) countEl.textContent = count;
         
         // Update site stars
         const siteStars = document.querySelectorAll('#siteStars span');
@@ -264,8 +346,9 @@ async function loadSiteRating() {
             }
         });
         
-        if (count > 0) {
-            document.getElementById('siteRatingText').textContent = `${avg.toFixed(1)} average from ${count} reviews`;
+        const ratingText = document.getElementById('siteRatingText');
+        if (ratingText) {
+            ratingText.textContent = count > 0 ? `${avg.toFixed(1)} average from ${count} reviews` : 'Tap a star to rate the site';
         }
         
     } catch (error) {
@@ -274,36 +357,48 @@ async function loadSiteRating() {
 }
 
 // ============================================
-// UPDATE STATS
+// UPDATE REVIEW STATS
 // ============================================
 
 async function updateReviewStats() {
     try {
-        const { data, error } = await window.db.supabase
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        
+        // Get approved reviews
+        const { data: reviews, error } = await supabase
             .from('student_reviews')
             .select('rating, helpful_count, status')
             .eq('status', 'approved');
         
         if (error) throw error;
         
-        const reviews = data || [];
-        const total = reviews.length;
+        const total = reviews?.length || 0;
         const avg = total > 0 ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total) : 0;
-        const helpful = reviews.reduce((sum, r) => sum + (r.helpful_count || 0), 0);
+        const helpful = reviews?.reduce((sum, r) => sum + (r.helpful_count || 0), 0) || 0;
         
-        document.getElementById('avgRatingDisplay').textContent = avg.toFixed(1);
-        document.getElementById('totalReviewsDisplay').textContent = total;
-        document.getElementById('helpfulCountDisplay').textContent = helpful;
+        const avgEl = document.getElementById('avgRatingDisplay');
+        const totalEl = document.getElementById('totalReviewsDisplay');
+        const helpfulEl = document.getElementById('helpfulCountDisplay');
         
-        // Pending reviews count (for the student's own pending reviews)
-        const { data: pending, error: pendingError } = await window.db.supabase
-            .from('student_reviews')
-            .select('id', { count: 'exact' })
-            .eq('student_id', window.currentUserId)
-            .eq('status', 'pending');
+        if (avgEl) avgEl.textContent = avg.toFixed(1);
+        if (totalEl) totalEl.textContent = total;
+        if (helpfulEl) helpfulEl.textContent = helpful;
         
-        if (!pendingError) {
-            document.getElementById('pendingReviewsDisplay').textContent = pending?.length || 0;
+        // Get user's pending reviews
+        const currentUser = window.currentUserProfile || window.currentUserId;
+        if (currentUser) {
+            const userId = currentUser.user_id || currentUser;
+            const { data: pending, error: pendingError } = await supabase
+                .from('student_reviews')
+                .select('id', { count: 'exact' })
+                .eq('student_id', userId)
+                .eq('status', 'pending');
+            
+            if (!pendingError) {
+                const pendingEl = document.getElementById('pendingReviewsDisplay');
+                if (pendingEl) pendingEl.textContent = pending?.length || 0;
+            }
         }
         
     } catch (error) {
@@ -318,15 +413,15 @@ async function updateReviewStats() {
 async function submitReview(e) {
     e.preventDefault();
     
-    const component = document.getElementById('selectedComponent').value;
-    const rating = parseInt(document.getElementById('reviewRatingValue').value);
-    const title = document.getElementById('reviewTitleInput').value.trim();
-    const review = document.getElementById('reviewTextInput').value.trim();
-    const pros = document.getElementById('reviewPros').value.trim();
-    const cons = document.getElementById('reviewCons').value.trim();
-    const suggestions = document.getElementById('reviewSuggestions').value.trim();
-    const anonymous = document.getElementById('anonymousReview').checked;
-    const componentName = document.getElementById('componentNameInput').value.trim();
+    const component = document.getElementById('selectedComponent')?.value;
+    const rating = parseInt(document.getElementById('reviewRatingValue')?.value || 0);
+    const title = document.getElementById('reviewTitleInput')?.value?.trim() || '';
+    const review = document.getElementById('reviewTextInput')?.value?.trim();
+    const pros = document.getElementById('reviewPros')?.value?.trim() || '';
+    const cons = document.getElementById('reviewCons')?.value?.trim() || '';
+    const suggestions = document.getElementById('reviewSuggestions')?.value?.trim() || '';
+    const anonymous = document.getElementById('anonymousReview')?.checked || false;
+    const componentName = document.getElementById('componentNameInput')?.value?.trim() || '';
     
     // Validation
     if (!component) {
@@ -339,7 +434,7 @@ async function submitReview(e) {
         return;
     }
     
-    if (review.length < 10) {
+    if (!review || review.length < 10) {
         showReviewError('Please write at least 10 characters');
         return;
     }
@@ -349,10 +444,18 @@ async function submitReview(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     
     try {
-        const { data, error } = await window.db.supabase
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Database connection error');
+        
+        const currentUser = window.currentUserProfile || window.currentUserId;
+        const userId = currentUser?.user_id || currentUser;
+        
+        if (!userId) throw new Error('User not logged in');
+        
+        const { data, error } = await supabase
             .from('student_reviews')
             .insert([{
-                student_id: window.currentUserId,
+                student_id: userId,
                 component_type: component,
                 component_name: componentName || null,
                 rating: rating,
@@ -425,12 +528,18 @@ async function submitReview(e) {
 // HELPER FUNCTIONS
 // ============================================
 
+function getSupabaseClient() {
+    return window.supabase || window.sb || window.db?.supabase || null;
+}
+
 function showReviewError(message) {
     const feedback = document.getElementById('reviewFormFeedback');
-    feedback.style.display = 'block';
-    feedback.style.background = '#fee2e2';
-    feedback.style.color = '#991b1b';
-    feedback.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    if (feedback) {
+        feedback.style.display = 'block';
+        feedback.style.background = '#fee2e2';
+        feedback.style.color = '#991b1b';
+        feedback.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    }
 }
 
 function selectComponent(value) {
@@ -444,10 +553,9 @@ function selectComponent(value) {
     
     // Show component details
     const details = document.getElementById('componentDetails');
-    details.style.display = 'block';
+    if (details) details.style.display = 'block';
     
     const label = document.getElementById('componentNameLabel');
-    const select = document.getElementById('componentNameSelect');
     const input = document.getElementById('componentNameInput');
     
     const labels = {
@@ -462,44 +570,16 @@ function selectComponent(value) {
         'general': 'Topic'
     };
     
-    label.textContent = labels[value] || 'Name';
-    
-    // For courses, load from database
-    if (value === 'course') {
-        loadCoursesForReview();
-        select.style.display = 'block';
-        input.style.display = 'none';
-    } else {
-        select.style.display = 'none';
-        input.style.display = 'block';
+    if (label) label.textContent = labels[value] || 'Name';
+    if (input) {
         input.placeholder = `Enter ${labels[value] || 'name'}...`;
+        input.style.display = 'block';
+        input.value = '';
     }
     
     // Hide error
-    document.getElementById('componentError').style.display = 'none';
-}
-
-async function loadCoursesForReview() {
-    try {
-        const { data, error } = await window.db.supabase
-            .from('courses')
-            .select('id, course_name')
-            .limit(50);
-        
-        if (error) throw error;
-        
-        const select = document.getElementById('componentNameSelect');
-        select.innerHTML = '<option value="">Select a course...</option>';
-        data?.forEach(course => {
-            const option = document.createElement('option');
-            option.value = course.id;
-            option.textContent = course.course_name;
-            select.appendChild(option);
-        });
-        
-    } catch (error) {
-        console.error('Error loading courses:', error);
-    }
+    const errorEl = document.getElementById('componentError');
+    if (errorEl) errorEl.style.display = 'none';
 }
 
 function setReviewRating(rating) {
@@ -518,17 +598,18 @@ function setReviewRating(rating) {
     });
     
     const labels = ['', '⭐ Poor', '⭐ Fair', '⭐ Good', '⭐ Very Good', '⭐ Excellent'];
-    document.getElementById('ratingText').textContent = labels[rating] || 'Select a rating';
-    document.getElementById('ratingError').style.display = 'none';
+    const ratingText = document.getElementById('ratingText');
+    if (ratingText) ratingText.textContent = labels[rating] || 'Select a rating';
+    
+    const errorEl = document.getElementById('ratingError');
+    if (errorEl) errorEl.style.display = 'none';
 }
 
 function rateSite(rating) {
-    // Quick site rating - opens modal with site pre-selected
     openReviewModal();
     selectComponent('site');
     setReviewRating(rating);
     
-    // Highlight site option
     document.querySelectorAll('.component-option').forEach(opt => {
         opt.classList.toggle('selected', opt.dataset.value === 'site');
     });
@@ -551,33 +632,54 @@ function filterByCategory(category) {
     document.querySelectorAll('.cat-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
-    document.getElementById('reviewCategoryFilter').value = category;
+    const filterEl = document.getElementById('reviewCategoryFilter');
+    if (filterEl) filterEl.value = category;
     loadReviews();
 }
 
 function applyFilters() {
-    currentFilter.category = document.getElementById('reviewCategoryFilter').value;
-    currentFilter.rating = document.getElementById('reviewRatingFilter').value;
-    currentFilter.sort = document.getElementById('reviewSortFilter').value;
-    currentFilter.search = document.getElementById('reviewSearchInput').value;
+    const categoryEl = document.getElementById('reviewCategoryFilter');
+    const ratingEl = document.getElementById('reviewRatingFilter');
+    const sortEl = document.getElementById('reviewSortFilter');
+    const searchEl = document.getElementById('reviewSearchInput');
+    
+    if (categoryEl) currentFilter.category = categoryEl.value;
+    if (ratingEl) currentFilter.rating = ratingEl.value;
+    if (sortEl) currentFilter.sort = sortEl.value;
+    if (searchEl) currentFilter.search = searchEl.value;
+    
     loadReviews();
 }
 
 function openReviewModal() {
-    document.getElementById('writeReviewModal').style.display = 'flex';
-    document.getElementById('reviewFormFeedback').style.display = 'none';
+    const modal = document.getElementById('writeReviewModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const feedback = document.getElementById('reviewFormFeedback');
+        if (feedback) feedback.style.display = 'none';
+    }
 }
 
 function closeReviewModal() {
-    document.getElementById('writeReviewModal').style.display = 'none';
-    document.getElementById('studentReviewForm').reset();
-    document.getElementById('componentDetails').style.display = 'none';
+    const modal = document.getElementById('writeReviewModal');
+    if (modal) modal.style.display = 'none';
+    
+    // Reset form
+    const form = document.getElementById('studentReviewForm');
+    if (form) form.reset();
+    
+    const details = document.getElementById('componentDetails');
+    if (details) details.style.display = 'none';
+    
     document.querySelectorAll('.component-option').forEach(opt => opt.classList.remove('selected'));
     document.querySelectorAll('#starRatingLarge span').forEach(star => {
         star.textContent = '☆';
         star.style.color = '#d1d5db';
     });
-    document.getElementById('ratingText').textContent = 'Select a rating';
+    
+    const ratingText = document.getElementById('ratingText');
+    if (ratingText) ratingText.textContent = 'Select a rating';
+    
     document.getElementById('reviewRatingValue').value = 0;
 }
 
@@ -589,7 +691,7 @@ function openReviewDetail(reviewId) {
     const body = document.getElementById('reviewDetailBody');
     const title = document.getElementById('detailReviewTitle');
     
-    title.textContent = review.review_title || 'Review Details';
+    if (title) title.textContent = review.review_title || 'Review Details';
     
     const stars = getStarHTML(review.rating || 0);
     const date = new Date(review.created_at).toLocaleDateString('en-US', {
@@ -598,114 +700,115 @@ function openReviewDetail(reviewId) {
         day: 'numeric'
     });
     
-    body.innerHTML = `
-        <div class="detail-review-header">
-            <div class="detail-rating">${stars}</div>
-            <div class="detail-meta">
-                <span class="detail-category">${review.component_type}</span>
-                ${review.component_name ? `<span class="detail-component">${review.component_name}</span>` : ''}
-                <span class="detail-date">${date}</span>
+    if (body) {
+        body.innerHTML = `
+            <div class="detail-review-header">
+                <div class="detail-rating">${stars}</div>
+                <div class="detail-meta">
+                    <span class="detail-category">${review.component_type || 'General'}</span>
+                    ${review.component_name ? `<span class="detail-component">${escapeHtml(review.component_name)}</span>` : ''}
+                    <span class="detail-date">${date}</span>
+                </div>
             </div>
-        </div>
-        ${review.review_title ? `<h4 class="detail-title">${review.review_title}</h4>` : ''}
-        <p class="detail-review">${review.review}</p>
-        
-        ${review.pros ? `
-            <div class="detail-section pros">
-                <h5><i class="fas fa-thumbs-up" style="color: #10b981;"></i> What went well</h5>
-                <p>${review.pros}</p>
+            ${review.review_title ? `<h4 class="detail-title">${escapeHtml(review.review_title)}</h4>` : ''}
+            <p class="detail-review">${escapeHtml(review.review)}</p>
+            
+            ${review.pros ? `
+                <div class="detail-section pros">
+                    <h5><i class="fas fa-thumbs-up" style="color: #10b981;"></i> What went well</h5>
+                    <p>${escapeHtml(review.pros)}</p>
+                </div>
+            ` : ''}
+            
+            ${review.cons ? `
+                <div class="detail-section cons">
+                    <h5><i class="fas fa-thumbs-down" style="color: #ef4444;"></i> Could improve</h5>
+                    <p>${escapeHtml(review.cons)}</p>
+                </div>
+            ` : ''}
+            
+            ${review.suggestions ? `
+                <div class="detail-section suggestions">
+                    <h5><i class="fas fa-lightbulb" style="color: #f59e0b;"></i> Suggestions</h5>
+                    <p>${escapeHtml(review.suggestions)}</p>
+                </div>
+            ` : ''}
+            
+            <div class="detail-footer">
+                <span class="detail-helpful">
+                    <i class="fas fa-thumbs-up"></i> ${review.helpful_count || 0} people found this helpful
+                </span>
+                <button class="helpful-btn" onclick="markHelpful('${review.id}')">
+                    <i class="fas fa-thumbs-up"></i> Helpful
+                </button>
             </div>
-        ` : ''}
-        
-        ${review.cons ? `
-            <div class="detail-section cons">
-                <h5><i class="fas fa-thumbs-down" style="color: #ef4444;"></i> Could improve</h5>
-                <p>${review.cons}</p>
-            </div>
-        ` : ''}
-        
-        ${review.suggestions ? `
-            <div class="detail-section suggestions">
-                <h5><i class="fas fa-lightbulb" style="color: #f59e0b;"></i> Suggestions</h5>
-                <p>${review.suggestions}</p>
-            </div>
-        ` : ''}
-        
-        <div class="detail-footer">
-            <span class="detail-helpful">
-                <i class="fas fa-thumbs-up"></i> ${review.helpful_count || 0} people found this helpful
-            </span>
-            <button class="helpful-btn" onclick="markHelpful('${review.id}')">
-                <i class="fas fa-thumbs-up"></i> Helpful
-            </button>
-        </div>
-    `;
+        `;
+    }
     
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 }
 
 function closeDetailModal() {
-    document.getElementById('reviewDetailModal').style.display = 'none';
+    const modal = document.getElementById('reviewDetailModal');
+    if (modal) modal.style.display = 'none';
 }
 
 async function markHelpful(reviewId) {
     try {
-        const { error } = await window.db.supabase.rpc('mark_review_helpful', {
-            review_id: reviewId,
-            user_id: window.currentUserId
-        });
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
         
-        if (error) throw error;
+        const currentUser = window.currentUserProfile || window.currentUserId;
+        const userId = currentUser?.user_id || currentUser;
         
-        // Update local data
+        if (!userId) {
+            alert('Please login to mark reviews as helpful');
+            return;
+        }
+        
+        // Check if already marked
+        const { data: existing, error: checkError } = await supabase
+            .from('review_helpful')
+            .select('id')
+            .eq('review_id', reviewId)
+            .eq('user_id', userId)
+            .maybeSingle();
+        
+        if (checkError) throw checkError;
+        
+        if (existing) {
+            alert('You already marked this as helpful');
+            return;
+        }
+        
+        // Add helpful vote
+        const { error: insertError } = await supabase
+            .from('review_helpful')
+            .insert([{
+                review_id: reviewId,
+                user_id: userId
+            }]);
+        
+        if (insertError) throw insertError;
+        
+        // Update review count
         const review = allReviews.find(r => r.id === reviewId);
         if (review) {
             review.helpful_count = (review.helpful_count || 0) + 1;
         }
+        
+        // Update in database
+        await supabase
+            .from('student_reviews')
+            .update({ helpful_count: review?.helpful_count || 1 })
+            .eq('id', reviewId);
         
         loadReviews();
         updateReviewStats();
         
     } catch (error) {
         console.error('Error marking helpful:', error);
-        // If RPC doesn't exist, use direct update
-        try {
-            const { data: existing } = await window.db.supabase
-                .from('review_helpful')
-                .select('id')
-                .eq('review_id', reviewId)
-                .eq('user_id', window.currentUserId)
-                .maybeSingle();
-            
-            if (existing) {
-                alert('You already marked this as helpful');
-                return;
-            }
-            
-            await window.db.supabase
-                .from('review_helpful')
-                .insert([{
-                    review_id: reviewId,
-                    user_id: window.currentUserId
-                }]);
-            
-            const { data: review } = await window.db.supabase
-                .from('student_reviews')
-                .select('helpful_count')
-                .eq('id', reviewId)
-                .single();
-            
-            await window.db.supabase
-                .from('student_reviews')
-                .update({ helpful_count: (review?.helpful_count || 0) + 1 })
-                .eq('id', reviewId);
-            
-            loadReviews();
-            updateReviewStats();
-            
-        } catch (err) {
-            console.error('Error:', err);
-        }
+        alert('Error: ' + error.message);
     }
 }
 
@@ -717,7 +820,6 @@ function shareReview(reviewId) {
             url: window.location.href
         }).catch(() => {});
     } else {
-        // Fallback: copy to clipboard
         const url = window.location.href;
         navigator.clipboard.writeText(url).then(() => {
             alert('Link copied to clipboard! Share it with others.');
@@ -733,57 +835,68 @@ function loadMoreReviews() {
     
     if (moreReviews.length > 0) {
         const grid = document.getElementById('reviewsGrid');
-        grid.innerHTML += moreReviews.map(review => {
-            // Reuse the same card template
-            const stars = getStarHTML(review.rating || 0);
-            const name = review.is_anonymous ? 'Anonymous Student' : (review.student?.full_name || 'Student');
-            const date = new Date(review.created_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            
-            return `
-                <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
-                    <div class="review-card-header">
-                        <div class="reviewer-info">
-                            <div class="reviewer-avatar-placeholder">${name.charAt(0).toUpperCase()}</div>
-                            <div class="reviewer-details">
-                                <span class="reviewer-name">${name}</span>
-                                <span class="reviewer-program">${review.student?.program || ''}</span>
+        if (grid) {
+            grid.innerHTML += moreReviews.map(review => {
+                const stars = getStarHTML(review.rating || 0);
+                const name = review.is_anonymous ? 'Anonymous Student' : (review.student?.full_name || 'Student');
+                const date = new Date(review.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                return `
+                    <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
+                        <div class="review-card-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar-placeholder">${name.charAt(0).toUpperCase()}</div>
+                                <div class="reviewer-details">
+                                    <span class="reviewer-name">${escapeHtml(name)}</span>
+                                    <span class="reviewer-program">${review.student?.program || ''}</span>
+                                </div>
                             </div>
+                            <div class="review-category-badge">${review.component_type || 'General'}</div>
                         </div>
-                        <div class="review-category-badge">
-                            ${review.component_type || 'General'}
+                        <div class="review-card-body">
+                            <div class="review-rating">${stars}</div>
+                            ${review.review_title ? `<h4 class="review-title">${escapeHtml(review.review_title)}</h4>` : ''}
+                            <p class="review-text">${escapeHtml(review.review.substring(0, 200))}...</p>
+                        </div>
+                        <div class="review-card-footer">
+                            <span class="review-date"><i class="fas fa-clock"></i> ${date}</span>
                         </div>
                     </div>
-                    <div class="review-card-body">
-                        <div class="review-rating">${stars}</div>
-                        ${review.review_title ? `<h4 class="review-title">${review.review_title}</h4>` : ''}
-                        <p class="review-text">${review.review.substring(0, 200)}...</p>
-                    </div>
-                    <div class="review-card-footer">
-                        <span class="review-date"><i class="fas fa-clock"></i> ${date}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
+                `;
+            }).join('');
+        }
         updateLoadMoreButton();
     }
 }
 
 function updateLoadMoreButton() {
     const container = document.getElementById('loadMoreContainer');
-    if (allReviews.length > currentPage * REVIEWS_PER_PAGE) {
-        container.style.display = 'block';
-    } else {
-        container.style.display = 'none';
+    if (container) {
+        if (allReviews.length > currentPage * REVIEWS_PER_PAGE) {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+        }
     }
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        return m;
+    });
+}
+
 // ============================================
-// EXPOSE FUNCTIONS GLOBALLY
+// EXPOSE FUNCTIONS
 // ============================================
 
 window.initReviewsModule = initReviewsModule;
@@ -804,5 +917,7 @@ window.markHelpful = markHelpful;
 window.shareReview = shareReview;
 window.loadMoreReviews = loadMoreReviews;
 window.getStarHTML = getStarHTML;
+window.getSupabaseClient = getSupabaseClient;
+window.escapeHtml = escapeHtml;
 
-console.log('✅ Complete Reviews System loaded!');
+console.log('✅ Reviews & Newsletter module loaded (fixed)');
