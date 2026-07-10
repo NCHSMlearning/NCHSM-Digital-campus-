@@ -1,5 +1,5 @@
 // ============================================
-// REVIEWS & NEWSLETTER MODULE - FIXED
+// REVIEWS & NEWSLETTER MODULE - COMPLETE FIXED
 // ============================================
 
 let allReviews = [];
@@ -23,79 +23,69 @@ function initReviewsModule() {
         // Event listeners
         const writeBtn = document.getElementById('writeReviewBtn');
         if (writeBtn) {
+            writeBtn.removeEventListener('click', openReviewModal);
             writeBtn.addEventListener('click', openReviewModal);
         }
         
         const closeBtn = document.getElementById('closeReviewModal');
         if (closeBtn) {
+            closeBtn.removeEventListener('click', closeReviewModal);
             closeBtn.addEventListener('click', closeReviewModal);
         }
         
         const cancelBtn = document.getElementById('cancelReviewBtn');
         if (cancelBtn) {
+            cancelBtn.removeEventListener('click', closeReviewModal);
             cancelBtn.addEventListener('click', closeReviewModal);
         }
         
         const refreshBtn = document.getElementById('refreshReviewsBtn');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', function() {
-                loadReviews();
-                loadSiteRating();
-                updateReviewStats();
-            });
+            refreshBtn.removeEventListener('click', refreshReviews);
+            refreshBtn.addEventListener('click', refreshReviews);
         }
         
         const form = document.getElementById('studentReviewForm');
         if (form) {
+            form.removeEventListener('submit', submitReview);
             form.addEventListener('submit', submitReview);
         }
         
         const reviewText = document.getElementById('reviewTextInput');
         if (reviewText) {
-            reviewText.addEventListener('input', function() {
-                const count = document.getElementById('reviewCharCount');
-                if (count) count.textContent = this.value.length;
-            });
+            reviewText.removeEventListener('input', updateCharCount);
+            reviewText.addEventListener('input', updateCharCount);
         }
         
         // Filter listeners
         const categoryFilter = document.getElementById('reviewCategoryFilter');
         if (categoryFilter) {
-            categoryFilter.addEventListener('change', function() {
-                currentFilter.category = this.value;
-                loadReviews();
-            });
+            categoryFilter.removeEventListener('change', applyFilters);
+            categoryFilter.addEventListener('change', applyFilters);
         }
         
         const ratingFilter = document.getElementById('reviewRatingFilter');
         if (ratingFilter) {
-            ratingFilter.addEventListener('change', function() {
-                currentFilter.rating = this.value;
-                loadReviews();
-            });
+            ratingFilter.removeEventListener('change', applyFilters);
+            ratingFilter.addEventListener('change', applyFilters);
         }
         
         const sortFilter = document.getElementById('reviewSortFilter');
         if (sortFilter) {
-            sortFilter.addEventListener('change', function() {
-                currentFilter.sort = this.value;
-                loadReviews();
-            });
+            sortFilter.removeEventListener('change', applyFilters);
+            sortFilter.addEventListener('change', applyFilters);
         }
         
         const searchInput = document.getElementById('reviewSearchInput');
         if (searchInput) {
-            searchInput.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    currentFilter.search = this.value;
-                    loadReviews();
-                }
-            });
+            searchInput.removeEventListener('keyup', handleSearch);
+            searchInput.addEventListener('keyup', handleSearch);
         }
         
         // Load more
         const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
         if (loadMoreBtn) {
+            loadMoreBtn.removeEventListener('click', loadMoreReviews);
             loadMoreBtn.addEventListener('click', loadMoreReviews);
         }
         
@@ -104,6 +94,45 @@ function initReviewsModule() {
     } catch (error) {
         console.error('Error initializing reviews:', error);
     }
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function getSupabaseClient() {
+    return window.supabase || window.sb || window.db?.supabase || null;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        return m;
+    });
+}
+
+function updateCharCount() {
+    const input = document.getElementById('reviewTextInput');
+    const count = document.getElementById('reviewCharCount');
+    if (input && count) {
+        count.textContent = input.value.length;
+    }
+}
+
+function handleSearch(e) {
+    if (e.key === 'Enter') {
+        applyFilters();
+    }
+}
+
+function refreshReviews() {
+    loadReviews();
+    loadSiteRating();
+    updateReviewStats();
 }
 
 // ============================================
@@ -307,21 +336,10 @@ async function loadSiteRating() {
         const supabase = getSupabaseClient();
         if (!supabase) return;
         
-        // Try with component_type column - if it fails, use all reviews
-        let { data: reviews, error } = await supabase
+        const { data: reviews, error } = await supabase
             .from('student_reviews')
             .select('rating')
             .eq('status', 'approved');
-        
-        // If component_type column doesn't exist, just get all approved reviews
-        if (error && error.code === '42703') {
-            const { data, err } = await supabase
-                .from('student_reviews')
-                .select('rating')
-                .eq('status', 'approved');
-            reviews = data;
-            error = err;
-        }
         
         if (error) throw error;
         
@@ -524,14 +542,6 @@ async function submitReview(e) {
     }
 }
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
-function getSupabaseClient() {
-    return window.supabase || window.sb || window.db?.supabase || null;
-}
-
 function showReviewError(message) {
     const feedback = document.getElementById('reviewFormFeedback');
     if (feedback) {
@@ -541,6 +551,10 @@ function showReviewError(message) {
         feedback.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
     }
 }
+
+// ============================================
+// COMPONENT SELECTION
+// ============================================
 
 function selectComponent(value) {
     selectedComponent = value;
@@ -615,6 +629,10 @@ function rateSite(rating) {
     });
 }
 
+// ============================================
+// STAR HTML HELPER
+// ============================================
+
 function getStarHTML(rating) {
     let html = '';
     for (let i = 0; i < 5; i++) {
@@ -626,6 +644,10 @@ function getStarHTML(rating) {
     }
     return html;
 }
+
+// ============================================
+// FILTERS
+// ============================================
 
 function filterByCategory(category) {
     currentFilter.category = category;
@@ -650,6 +672,10 @@ function applyFilters() {
     
     loadReviews();
 }
+
+// ============================================
+// MODAL FUNCTIONS
+// ============================================
 
 function openReviewModal() {
     const modal = document.getElementById('writeReviewModal');
@@ -753,6 +779,10 @@ function closeDetailModal() {
     if (modal) modal.style.display = 'none';
 }
 
+// ============================================
+// HELPFUL & SHARE
+// ============================================
+
 async function markHelpful(reviewId) {
     try {
         const supabase = getSupabaseClient();
@@ -827,6 +857,10 @@ function shareReview(reviewId) {
     }
 }
 
+// ============================================
+// LOAD MORE
+// ============================================
+
 function loadMoreReviews() {
     currentPage++;
     const start = (currentPage - 1) * REVIEWS_PER_PAGE;
@@ -884,17 +918,6 @@ function updateLoadMoreButton() {
     }
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        if (m === '"') return '&quot;';
-        return m;
-    });
-}
-
 // ============================================
 // EXPOSE FUNCTIONS
 // ============================================
@@ -919,5 +942,6 @@ window.loadMoreReviews = loadMoreReviews;
 window.getStarHTML = getStarHTML;
 window.getSupabaseClient = getSupabaseClient;
 window.escapeHtml = escapeHtml;
+window.refreshReviews = refreshReviews;
 
 console.log('✅ Reviews & Newsletter module loaded (fixed)');
