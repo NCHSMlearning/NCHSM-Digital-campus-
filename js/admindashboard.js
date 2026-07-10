@@ -412,13 +412,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadExamsMap() {
-        const { data } = await sb.from('exams').select('*');
-        if (data) { 
-            examsMap = {};
-            data.forEach(e => { examsMap[e.id] = e; }); 
-        }
-        return examsMap;
+    const { data } = await sb.from('exams').select('*');
+    if (data) { 
+        examsMap = {};
+        data.forEach(e => { 
+            examsMap[e.id] = {
+                ...e,
+                status: e.status || 'published'  // ✅ Default status
+            }; 
+        }); 
     }
+    return examsMap;
+}
 
     // ============================================
     // 🔄 LOAD EXAMS FOR RESET DROPDOWN
@@ -480,73 +485,80 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ============================================
-    // 📊 LOAD STUDENTS WITH RESULTS
-    // ============================================
-    window.loadStudentsWithResults = async function() {
-        const loadingDiv = document.getElementById('studentsLoading');
-        const table = document.getElementById('studentsTable');
-        loadingDiv.style.display = 'block';
-        table.style.display = 'none';
-        try {
-            await loadExamsMap();
-            const { data: grades, error } = await sb
-                .from('exam_grades')
-                .select('*')
-                .eq('question_id', '00000000-0000-0000-0000-000000000000');
-            
-            if (error) { 
-                loadingDiv.innerHTML = 'Error loading data'; 
-                return; 
-            }
-            
-            const { data: releases } = await sb.from('released_exam_results').select('result_id');
-            const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-            const studentIds = [...new Set(grades.map(g => g.student_id))];
-            
-            const { data: profiles } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, email, program, block, intake_year')
-                .in('user_id', studentIds);
-            
-            const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-            
-            studentsResults = grades.map(g => ({
+   // ============================================
+// 📊 LOAD STUDENTS WITH RESULTS - FIXED
+// ============================================
+window.loadStudentsWithResults = async function() {
+    const loadingDiv = document.getElementById('studentsLoading');
+    const table = document.getElementById('studentsTable');
+    loadingDiv.style.display = 'block';
+    table.style.display = 'none';
+    try {
+        await loadExamsMap();
+        const { data: grades, error } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (error) { 
+            loadingDiv.innerHTML = 'Error loading data'; 
+            return; 
+        }
+        
+        const { data: releases } = await sb.from('released_exam_results').select('result_id');
+        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
+        const studentIds = [...new Set(grades.map(g => g.student_id))];
+        
+        const { data: profiles } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, email, program, block, intake_year')
+            .in('user_id', studentIds);
+        
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
+        // ✅ FIX: Include exam status in exam_info
+        studentsResults = grades.map(g => {
+            const exam = examsMap[g.exam_id] || null;
+            return {
                 ...g,
                 student_profile: profileMap[g.student_id] || null,
                 isReleased: releasedSet.has(g.id),
-                exam_info: examsMap[g.exam_id] || null
-            }));
-            
-            const examFilter = document.getElementById('examFilter')?.value;
-            const statusFilter = document.getElementById('statusFilter')?.value;
-            const search = document.getElementById('searchInput')?.value;
-            
-            let filtered = studentsResults;
-            if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
-            if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
-            if (search) {
-                filtered = filtered.filter(r => 
-                    r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || 
-                    r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase())
-                );
-            }
-            
-            studentsResults = filtered;
-            displayStudentsResults();
-            loadingDiv.style.display = 'none';
-            table.style.display = 'table';
-            updateStats();
-        } catch (err) { 
-            console.error(err);
-            loadingDiv.innerHTML = 'Error loading data'; 
+                exam_info: exam ? {
+                    ...exam,
+                    status: exam.status || 'published'  // ✅ Ensure status is included
+                } : null
+            };
+        });
+        
+        const examFilter = document.getElementById('examFilter')?.value;
+        const statusFilter = document.getElementById('statusFilter')?.value;
+        const search = document.getElementById('searchInput')?.value;
+        
+        let filtered = studentsResults;
+        if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
+        if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
+        if (search) {
+            filtered = filtered.filter(r => 
+                r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || 
+                r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase())
+            );
         }
-    };
+        
+        studentsResults = filtered;
+        displayStudentsResults();
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+        updateStats();
+    } catch (err) { 
+        console.error(err);
+        loadingDiv.innerHTML = 'Error loading data'; 
+    }
+};
 
     // ============================================
-    // 📊 DISPLAY STUDENTS RESULTS
-    // ============================================
-   function displayStudentsResults() {
+// 📊 DISPLAY STUDENTS RESULTS - FIXED
+// ============================================
+function displayStudentsResults() {
     const start = (currentPage.students - 1) * itemsPerPage;
     const page = studentsResults.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('studentsBody');
@@ -565,10 +577,40 @@ document.addEventListener('DOMContentLoaded', function() {
         const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
         const score = r.marks || 0;
         const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        const status = r.result_status || 'PENDING';
-        const isPassed = status === 'PASS' || score >= passMark;
-        const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
-        const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
+        
+        // ✅ CRITICAL FIX: Check exam status FIRST
+        const examStatus = r.exam_info?.status || 'published';
+        const isPendingReview = examStatus === 'pending_review';
+        const isReleased = r.isReleased || false;
+        const percentNum = parseFloat(percentage);
+        
+        // ✅ Determine display status based on exam status
+        let displayStatus = '';
+        let statusClass = '';
+        
+        if (isPendingReview) {
+            // 🔴 ALWAYS show PENDING for pending_review exams
+            displayStatus = 'PENDING';
+            statusClass = 'status-pending';
+        } else if (isReleased) {
+            // Only show PASS/FAIL if released
+            if (percentNum >= passMark) {
+                displayStatus = 'PASS';
+                statusClass = 'status-pass';
+            } else {
+                displayStatus = 'FAIL';
+                statusClass = 'status-fail';
+            }
+        } else if (r.result_status === 'PASS' || r.result_status === 'FAIL') {
+            // Use stored result status
+            displayStatus = r.result_status;
+            statusClass = displayStatus === 'PASS' ? 'status-pass' : 'status-fail';
+        } else {
+            // Default fallback
+            displayStatus = 'PENDING';
+            statusClass = 'status-pending';
+        }
+        
         const typeLabel = r.exam_info?.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
         const totalDisplay = totalMarks;
         
@@ -588,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${percentage}% ✏️
             </td>
             <td><span class="${statusClass}">${displayStatus}</span></td>
-            <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
+            <td>${isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
             <td>
                 <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
                 <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
@@ -606,7 +648,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     renderPagination('students', studentsResults.length);
 }
-
     // ============================================
     // 👥 LOAD ALL STUDENTS
     // ============================================
