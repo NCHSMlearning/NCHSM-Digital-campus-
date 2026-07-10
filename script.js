@@ -650,6 +650,9 @@ case 'programs':
             updateBlockTermOptions('new_session_program', 'new_session_block_term');
             populateSessionCourseSelects(); 
             break;
+            case 'reviews-newsletter': 
+    initReviewsNewsletter(); 
+    break;
         case 'attendance': 
             loadAttendance(); 
             updateProgramDropdown($('att_program'));
@@ -15270,7 +15273,17 @@ async function updateSidebarBadges() {
                 }
             });
         }
-        
+        // Get pending reviews count
+const { count: pendingReviews } = await sb
+    .from('student_reviews')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
+const reviewsBadge = document.getElementById('sidebarReviewsBadge');
+if (reviewsBadge) {
+    reviewsBadge.textContent = pendingReviews || 0;
+    reviewsBadge.style.display = pendingReviews > 0 ? 'inline' : 'none';
+}
         // 4. Dashboard badge (top of sidebar)
         const total = (pendingCount || 0) + (messageCount || 0) + (ticketCount || 0);
         const dashboardBadge = document.querySelector('.nav > li:first-child .badge-count');
@@ -16133,6 +16146,526 @@ console.log('✅ Chart module loaded');
 // ============================================
 // END OF REAL-TIME DASHBOARD MODULE
 // ============================================
+
+
+// ============================================
+// 📝 STUDENT REVIEWS & NEWSLETTER MANAGEMENT
+// ============================================
+
+let allReviews = [];
+let allSubscribers = [];
+
+// ============================================
+// LOAD REVIEWS
+// ============================================
+
+async function loadAllReviews() {
+    console.log('📝 Loading student reviews...');
+    
+    const tbody = document.getElementById('reviewsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading reviews...</td></tr>';
+    
+    try {
+        const { data: reviews, error } = await sb
+            .from('student_reviews')
+            .select('*, student:student_id(full_name, email, program)')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        allReviews = reviews || [];
+        
+        // Update stats
+        const total = allReviews.length;
+        const pending = allReviews.filter(r => r.status === 'pending').length;
+        const avgRating = allReviews.length > 0 
+            ? (allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / allReviews.length).toFixed(1)
+            : 0;
+        
+        const totalEl = document.getElementById('totalReviewsCount');
+        const pendingEl = document.getElementById('pendingReviewsCount');
+        const avgEl = document.getElementById('averageRating');
+        
+        if (totalEl) totalEl.textContent = total;
+        if (pendingEl) pendingEl.textContent = pending;
+        if (avgEl) avgEl.textContent = avgRating;
+        
+        renderReviewsTable();
+        
+    } catch (error) {
+        console.error('Error loading reviews:', error);
+        tbody.innerHTML = `<tr><td colspan="7" style="color: red; padding: 40px; text-align: center;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+// ============================================
+// RENDER REVIEWS TABLE
+// ============================================
+
+function renderReviewsTable() {
+    const tbody = document.getElementById('reviewsTableBody');
+    if (!tbody) return;
+    
+    const searchTerm = document.getElementById('reviewsSearch')?.value?.toLowerCase() || '';
+    const ratingFilter = document.getElementById('reviewsRatingFilter')?.value || 'all';
+    const statusFilter = document.getElementById('reviewsStatusFilter')?.value || 'all';
+    
+    let filtered = [...allReviews];
+    
+    if (searchTerm) {
+        filtered = filtered.filter(r => 
+            (r.review || '').toLowerCase().includes(searchTerm) ||
+            (r.student?.full_name || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (ratingFilter !== 'all') {
+        filtered = filtered.filter(r => (r.rating || 0) == ratingFilter);
+    }
+    
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(r => r.status === statusFilter);
+    }
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No reviews found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    filtered.forEach(review => {
+        const stars = getStarHTML(review.rating || 0);
+        const statusClass = review.status === 'approved' ? 'badge-success' : 
+                           review.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+        const date = review.created_at ? new Date(review.created_at).toLocaleDateString() : 'N/A';
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="padding: 12px;"><strong>${escapeHtml(review.student?.full_name || 'Anonymous')}</strong><br><small style="color: #6b7280;">${escapeHtml(review.student?.email || '')}</small></td>
+            <td style="padding: 12px;">${stars}</td>
+            <td style="padding: 12px;">${escapeHtml((review.review || '').substring(0, 100))}${(review.review?.length || 0) > 100 ? '...' : ''}</td>
+            <td style="padding: 12px;">${escapeHtml(review.student?.program || 'N/A')}</td>
+            <td style="padding: 12px;">${date}</td>
+            <td style="padding: 12px;"><span class="badge ${statusClass}">${escapeHtml(review.status || 'pending')}</span></td>
+            <td style="padding: 12px;">
+                ${review.status === 'pending' ? `
+                    <button onclick="approveReview('${review.id}')" class="btn-sm" style="background: #059669; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 4px;"><i class="fas fa-check"></i></button>
+                    <button onclick="rejectReview('${review.id}')" class="btn-sm" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 4px;"><i class="fas fa-times"></i></button>
+                ` : ''}
+                <button onclick="deleteReview('${review.id}')" class="btn-sm" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// ============================================
+// REVIEW ACTIONS
+// ============================================
+
+async function approveReview(reviewId) {
+    if (!confirm('Approve this review?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_reviews')
+            .update({ status: 'approved', updated_at: new Date().toISOString() })
+            .eq('id', reviewId);
+        
+        if (error) throw error;
+        showFeedback('✅ Review approved!', 'success');
+        loadAllReviews();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function rejectReview(reviewId) {
+    if (!confirm('Reject this review?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_reviews')
+            .update({ status: 'rejected', updated_at: new Date().toISOString() })
+            .eq('id', reviewId);
+        
+        if (error) throw error;
+        showFeedback('❌ Review rejected', 'warning');
+        loadAllReviews();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function deleteReview(reviewId) {
+    if (!confirm('Delete this review permanently?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_reviews')
+            .delete()
+            .eq('id', reviewId);
+        
+        if (error) throw error;
+        showFeedback('🗑️ Review deleted', 'success');
+        loadAllReviews();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// FILTER REVIEWS
+// ============================================
+
+function filterReviewsTable() {
+    renderReviewsTable();
+}
+
+// ============================================
+// EXPORT REVIEWS
+// ============================================
+
+function exportReviewsToCSV() {
+    if (!allReviews || allReviews.length === 0) {
+        showFeedback('No reviews to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Student', 'Email', 'Rating', 'Review', 'Program', 'Date', 'Status'];
+    const rows = allReviews.map(r => [
+        r.student?.full_name || 'Anonymous',
+        r.student?.email || '',
+        r.rating || 0,
+        (r.review || '').replace(/"/g, '""'),
+        r.student?.program || 'N/A',
+        new Date(r.created_at).toLocaleDateString(),
+        r.status || 'pending'
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `reviews_${new Date().toISOString().split('T')[0]}.csv`);
+    showFeedback('✅ Reviews exported!', 'success');
+}
+
+// ============================================
+// HELPER: GET STAR HTML
+// ============================================
+
+function getStarHTML(rating) {
+    const full = Math.floor(rating);
+    const half = rating % 1 >= 0.5 ? 1 : 0;
+    let html = '';
+    for (let i = 0; i < full; i++) html += '<i class="fas fa-star" style="color: #f59e0b;"></i>';
+    if (half) html += '<i class="fas fa-star-half-alt" style="color: #f59e0b;"></i>';
+    const empty = 5 - full - half;
+    for (let i = 0; i < empty; i++) html += '<i class="far fa-star" style="color: #d1d5db;"></i>';
+    return html;
+}
+
+// ============================================
+// NEWSLETTER SUBSCRIBERS
+// ============================================
+
+async function loadSubscribers() {
+    console.log('📧 Loading newsletter subscribers...');
+    
+    const tbody = document.getElementById('subscribersTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading subscribers...</td></tr>';
+    
+    try {
+        const { data: subscribers, error } = await sb
+            .from('newsletter_subscribers')
+            .select('*, user:user_id(full_name, email, program)')
+            .order('subscribed_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        allSubscribers = subscribers || [];
+        
+        const totalEl = document.getElementById('totalSubscribers');
+        if (totalEl) totalEl.textContent = allSubscribers.length;
+        
+        renderSubscribers();
+        
+    } catch (error) {
+        console.error('Error loading subscribers:', error);
+        tbody.innerHTML = `<tr><td colspan="6" style="color: red; padding: 40px; text-align: center;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+// ============================================
+// RENDER SUBSCRIBERS
+// ============================================
+
+function renderSubscribers() {
+    const tbody = document.getElementById('subscribersTableBody');
+    if (!tbody) return;
+    
+    const searchTerm = document.getElementById('subscribersSearch')?.value?.toLowerCase() || '';
+    
+    let filtered = [...allSubscribers];
+    
+    if (searchTerm) {
+        filtered = filtered.filter(s => 
+            (s.user?.full_name || '').toLowerCase().includes(searchTerm) ||
+            (s.user?.email || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #6b7280;">No subscribers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    filtered.forEach(sub => {
+        const date = sub.subscribed_at ? new Date(sub.subscribed_at).toLocaleDateString() : 'N/A';
+        const statusClass = sub.status === 'active' ? 'badge-success' : 'badge-danger';
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="padding: 12px;"><strong>${escapeHtml(sub.user?.full_name || 'Unknown')}</strong></td>
+            <td style="padding: 12px;">${escapeHtml(sub.user?.email || '')}</td>
+            <td style="padding: 12px;">${escapeHtml(sub.user?.program || 'N/A')}</td>
+            <td style="padding: 12px;">${date}</td>
+            <td style="padding: 12px;"><span class="badge ${statusClass}">${escapeHtml(sub.status || 'active')}</span></td>
+            <td style="padding: 12px;">
+                <button onclick="toggleSubscriber('${sub.id}')" class="btn-sm" style="background: ${sub.status === 'active' ? '#f59e0b' : '#059669'}; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+                    ${sub.status === 'active' ? 'Unsubscribe' : 'Reactivate'}
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// ============================================
+// TOGGLE SUBSCRIBER
+// ============================================
+
+async function toggleSubscriber(subId) {
+    const sub = allSubscribers.find(s => s.id === subId);
+    if (!sub) return;
+    
+    const newStatus = sub.status === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'reactivate' : 'unsubscribe';
+    
+    if (!confirm(`${action} this subscriber?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('newsletter_subscribers')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', subId);
+        
+        if (error) throw error;
+        showFeedback(`✅ Subscriber ${newStatus === 'active' ? 'activated' : 'unsubscribed'}!`, 'success');
+        loadSubscribers();
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// FILTER SUBSCRIBERS
+// ============================================
+
+function filterSubscribers() {
+    renderSubscribers();
+}
+
+// ============================================
+// EXPORT SUBSCRIBERS
+// ============================================
+
+function exportSubscribersToCSV() {
+    if (!allSubscribers || allSubscribers.length === 0) {
+        showFeedback('No subscribers to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Name', 'Email', 'Program', 'Subscribed Date', 'Status'];
+    const rows = allSubscribers.map(s => [
+        s.user?.full_name || 'Unknown',
+        s.user?.email || '',
+        s.user?.program || 'N/A',
+        new Date(s.subscribed_at).toLocaleDateString(),
+        s.status || 'active'
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `subscribers_${new Date().toISOString().split('T')[0]}.csv`);
+    showFeedback('✅ Subscribers exported!', 'success');
+}
+
+// ============================================
+// SEND NEWSLETTER
+// ============================================
+
+async function sendNewsletter() {
+    const audience = document.getElementById('newsletterAudience')?.value;
+    const subject = document.getElementById('newsletterSubject')?.value?.trim();
+    const content = document.getElementById('newsletterContent')?.value?.trim();
+    
+    if (!subject || !content) {
+        showFeedback('Please enter subject and content', 'error');
+        return;
+    }
+    
+    if (!confirm(`Send newsletter to "${audience}" subscribers?`)) return;
+    
+    try {
+        // Get subscribers based on audience
+        let query = sb.from('newsletter_subscribers').select('user_id, email').eq('status', 'active');
+        
+        if (audience === 'students') {
+            query = query.eq('user_type', 'student');
+        } else if (audience === 'staff') {
+            query = query.eq('user_type', 'staff');
+        } else if (audience === 'admins') {
+            query = query.eq('user_type', 'admin');
+        }
+        
+        const { data: subscribers, error: subError } = await query;
+        
+        if (subError) throw subError;
+        
+        if (!subscribers || subscribers.length === 0) {
+            showFeedback('No active subscribers found for this audience', 'warning');
+            return;
+        }
+        
+        // Create newsletter record
+        const { error: newsError } = await sb
+            .from('newsletters')
+            .insert([{
+                subject: subject,
+                content: content,
+                audience: audience,
+                sent_to: subscribers.length,
+                sent_at: new Date().toISOString(),
+                sent_by: currentUserProfile?.id || null
+            }]);
+        
+        if (newsError) throw newsError;
+        
+        showFeedback(`✅ Newsletter sent to ${subscribers.length} subscribers!`, 'success');
+        
+        // Clear form
+        document.getElementById('newsletterSubject').value = '';
+        document.getElementById('newsletterContent').value = '';
+        
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// SAVE REVIEW SETTINGS
+// ============================================
+
+async function saveReviewSettings() {
+    const settings = {
+        auto_approve: document.getElementById('autoApproveReviews')?.checked || false,
+        require_email_verify: document.getElementById('requireEmailVerify')?.checked || false,
+        allow_anonymous: document.getElementById('allowAnonymousReviews')?.checked || false,
+        min_words: parseInt(document.getElementById('minReviewWords')?.value) || 10,
+        newsletter_time: document.getElementById('newsletterTime')?.value || '09:00'
+    };
+    
+    try {
+        const { error } = await sb
+            .from('review_settings')
+            .upsert([{ 
+                id: '1', 
+                settings: settings,
+                updated_at: new Date().toISOString()
+            }]);
+        
+        if (error) throw error;
+        showFeedback('✅ Settings saved!', 'success');
+    } catch (error) {
+        showFeedback('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// TAB SWITCHING
+// ============================================
+
+function showReviewsTab(tabName) {
+    const tabs = ['reviewsTab', 'newsletterTab', 'settingsTab'];
+    const buttons = ['reviewsTabBtn', 'newsletterTabBtn', 'settingsTabBtn'];
+    
+    tabs.forEach(tab => {
+        const el = document.getElementById(tab);
+        if (el) el.style.display = tab === `${tabName}Tab` ? 'block' : 'none';
+    });
+    
+    buttons.forEach(btn => {
+        const el = document.getElementById(btn);
+        if (el) {
+            if (btn === `${tabName}TabBtn`) {
+                el.style.background = '#4C1D95';
+                el.style.color = 'white';
+            } else {
+                el.style.background = '#e5e7eb';
+                el.style.color = '#374151';
+            }
+        }
+    });
+    
+    if (tabName === 'reviews') loadAllReviews();
+    if (tabName === 'newsletter') loadSubscribers();
+}
+
+// ============================================
+// INITIALIZE REVIEWS & NEWSLETTER
+// ============================================
+
+function initReviewsNewsletter() {
+    loadAllReviews();
+    loadSubscribers();
+}
+
+// ============================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================
+
+window.loadAllReviews = loadAllReviews;
+window.loadSubscribers = loadSubscribers;
+window.renderReviewsTable = renderReviewsTable;
+window.renderSubscribers = renderSubscribers;
+window.approveReview = approveReview;
+window.rejectReview = rejectReview;
+window.deleteReview = deleteReview;
+window.filterReviewsTable = filterReviewsTable;
+window.filterSubscribers = filterSubscribers;
+window.exportReviewsToCSV = exportReviewsToCSV;
+window.exportSubscribersToCSV = exportSubscribersToCSV;
+window.sendNewsletter = sendNewsletter;
+window.toggleSubscriber = toggleSubscriber;
+window.showReviewsTab = showReviewsTab;
+window.saveReviewSettings = saveReviewSettings;
+window.initReviewsNewsletter = initReviewsNewsletter;
+window.getStarHTML = getStarHTML;
+
+console.log('✅ Reviews & Newsletter module loaded');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
