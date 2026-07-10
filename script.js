@@ -15180,12 +15180,6 @@ async function loadProgramsSection() {
     await populateCourseSelector();
 }
 
-// ---------- ADD TO loadSectionData ----------
-// Add this to your existing loadSectionData function:
-// case 'programs': 
-//     loadProgramsSection();
-//     break;
-
 // Make functions globally accessible
 window.loadAllPrograms = loadAllPrograms;
 window.createProgram = createProgram;
@@ -15214,6 +15208,606 @@ window.loadProgramsSection = loadProgramsSection;
 window.autoCreateBlocks = autoCreateBlocks;
 
 console.log('✅ Program Management module loaded with UUID support!');
+// ============================================
+// 🔥🔥🔥 REAL-TIME SIDEBAR & DASHBOARD UPDATES
+// ============================================
+// ADD THIS ENTIRE BLOCK AT THE VERY END OF YOUR script.js
+// ============================================
+
+// ============================================
+// 1. SIDEBAR BADGE UPDATES - REAL-TIME
+// ============================================
+
+async function updateSidebarBadges() {
+    console.log('🔄 Updating sidebar badges...');
+    
+    try {
+        // 1. Pending Approvals (User Management dropdown)
+        const { count: pendingCount, error: pError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        
+        if (!pError) {
+            // Update all pending badges in sidebar
+            document.querySelectorAll('.nav-dropdown .dropdown-menu .badge-danger').forEach(badge => {
+                const parentLink = badge.closest('a');
+                if (parentLink && parentLink.getAttribute('data-tab') === 'pending') {
+                    badge.textContent = pendingCount || 0;
+                    badge.style.display = pendingCount > 0 ? 'inline' : 'none';
+                }
+            });
+        }
+        
+        // 2. Inbox Messages (Staff & Comm dropdown)
+        const { count: messageCount, error: mError } = await sb
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_read', false);
+        
+        if (!mError) {
+            document.querySelectorAll('.nav-dropdown .dropdown-menu .badge-danger').forEach(badge => {
+                const parentLink = badge.closest('a');
+                if (parentLink && parentLink.getAttribute('data-tab') === 'messages') {
+                    badge.textContent = messageCount || 0;
+                    badge.style.display = messageCount > 0 ? 'inline' : 'none';
+                }
+            });
+        }
+        
+        // 3. Support Tickets - Open
+        const { count: ticketCount, error: tError } = await sb
+            .from('support_tickets')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'open');
+        
+        if (!tError) {
+            document.querySelectorAll('.nav-dropdown .dropdown-menu .badge-warning').forEach(badge => {
+                const parentLink = badge.closest('a');
+                if (parentLink && parentLink.getAttribute('data-tab') === 'support-tickets') {
+                    badge.textContent = ticketCount || 0;
+                    badge.style.display = ticketCount > 0 ? 'inline' : 'none';
+                }
+            });
+        }
+        
+        // 4. Dashboard badge (top of sidebar)
+        const total = (pendingCount || 0) + (messageCount || 0) + (ticketCount || 0);
+        const dashboardBadge = document.querySelector('.nav > li:first-child .badge-count');
+        if (dashboardBadge) {
+            dashboardBadge.textContent = total > 0 ? total : '0';
+        }
+        
+        console.log(`✅ Sidebar badges updated: Pending=${pendingCount||0}, Messages=${messageCount||0}, Tickets=${ticketCount||0}`);
+        
+    } catch (error) {
+        console.error('Error updating sidebar badges:', error);
+    }
+}
+
+// ============================================
+// 2. DASHBOARD STATS - REAL-TIME REFRESH
+// ============================================
+
+async function refreshDashboardStats() {
+    console.log('🔄 Refreshing dashboard stats...');
+    
+    try {
+        // Total Users
+        const { count: totalUsers, error: u1 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true });
+        if (!u1) document.getElementById('totalUsers').textContent = totalUsers || 0;
+        
+        // Pending Approvals
+        const { count: pending, error: u2 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        if (!u2) document.getElementById('pendingApprovals').textContent = pending || 0;
+        
+        // Total Students
+        const { count: students, error: u3 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        if (!u3) document.getElementById('totalStudents').textContent = students || 0;
+        
+        // Today's Check-ins
+        const today = new Date().toISOString().split('T')[0];
+        const { count: checkins, error: u4 } = await sb
+            .from('geo_attendance_logs')
+            .select('*', { count: 'exact', head: true })
+            .gte('check_in_time', today);
+        if (!u4) document.getElementById('totalDailyCheckIns').textContent = checkins || 0;
+        
+        // Total Courses
+        const { count: courses, error: u5 } = await sb
+            .from('courses')
+            .select('*', { count: 'exact', head: true });
+        if (!u5) document.getElementById('totalCourses').textContent = courses || 0;
+        
+        // Resources uploaded this month
+        const firstDay = new Date();
+        firstDay.setDate(1);
+        firstDay.setHours(0, 0, 0, 0);
+        const { count: resources, error: u6 } = await sb
+            .from('resources')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', firstDay.toISOString());
+        if (!u6) document.getElementById('totalResources').textContent = resources || 0;
+        
+        // Open Tickets
+        const { count: openTickets, error: u7 } = await sb
+            .from('support_tickets')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'open');
+        if (!u7) document.getElementById('dashboardOpenTickets').textContent = openTickets || 0;
+        
+        // Active Sessions
+        const { count: activeSessions, error: u8 } = await sb
+            .from('user_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true);
+        if (!u8) document.getElementById('activeSessions').textContent = activeSessions || 0;
+        
+        // KRCHN Students
+        const { count: krchn, error: u9 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .eq('program', 'KRCHN');
+        if (!u9) document.getElementById('krchnCountDisplay').textContent = krchn || 0;
+        
+        // TVET Students
+        const { count: tvet, error: u10 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .neq('program', 'KRCHN');
+        if (!u10) document.getElementById('tvetCountDisplay').textContent = tvet || 0;
+        
+        // Total Staff
+        const { count: staff, error: u11 } = await sb
+            .from('staff_records')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'active');
+        if (!u11) document.getElementById('totalStaffCountDisplay').textContent = staff || 0;
+        
+        // Total Units
+        const { count: units, error: u12 } = await sb
+            .from('units_catalog')
+            .select('*', { count: 'exact', head: true });
+        if (!u12) document.getElementById('dashboardTotalUnits').textContent = units || 0;
+        
+        // Pending Unit Registrations
+        const { count: pendingUnits, error: u13 } = await sb
+            .from('student_unit_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        if (!u13) document.getElementById('dashboardPendingUnitReg').textContent = pendingUnits || 0;
+        
+        // Total Resources Display
+        const { count: totalResources, error: u14 } = await sb
+            .from('resources')
+            .select('*', { count: 'exact', head: true });
+        if (!u14) document.getElementById('totalResourcesDisplay').textContent = totalResources || 0;
+        
+        console.log('✅ Dashboard stats refreshed');
+        
+    } catch (error) {
+        console.error('Error refreshing dashboard:', error);
+    }
+}
+
+// ============================================
+// 3. NOTIFICATION BELL - REAL-TIME
+// ============================================
+
+async function updateNotificationBell() {
+    try {
+        const { count, error } = await sb
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_read', false);
+        
+        if (error) throw error;
+        
+        const bellContainer = document.querySelector('.header-right');
+        if (!bellContainer) return;
+        
+        // Remove existing badge
+        const existingBadge = document.querySelector('.notification-badge');
+        if (existingBadge) existingBadge.remove();
+        
+        if (count > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'notification-badge';
+            badge.style.cssText = `
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #ef4444;
+                color: white;
+                border-radius: 50%;
+                padding: 2px 6px;
+                font-size: 10px;
+                font-weight: bold;
+                min-width: 18px;
+                text-align: center;
+                animation: pulse 1s infinite;
+            `;
+            badge.textContent = count > 99 ? '99+' : count;
+            
+            const bellIcon = document.querySelector('.header-right .fa-bell');
+            if (bellIcon) {
+                bellIcon.parentElement.style.position = 'relative';
+                bellIcon.parentElement.appendChild(badge);
+            }
+        }
+        
+        console.log(`🔔 ${count} unread notifications`);
+        
+    } catch (error) {
+        console.error('Error updating notification bell:', error);
+    }
+}
+
+// ============================================
+// 4. ACTIVE SESSIONS COUNT - REAL-TIME
+// ============================================
+
+async function updateActiveSessionsCount() {
+    try {
+        const { count, error } = await sb
+            .from('user_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true);
+        
+        if (error) throw error;
+        
+        const sessionBadge = document.querySelector('.nav a[data-tab="session-management"] .badge-count');
+        if (sessionBadge) {
+            sessionBadge.textContent = count || 0;
+        }
+        
+        console.log(`👥 ${count} active sessions`);
+        
+    } catch (error) {
+        console.error('Error updating sessions:', error);
+    }
+}
+
+// ============================================
+// 5. ONLINE/OFFLINE STATUS
+// ============================================
+
+function updateOnlineStatus() {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.header-status');
+    
+    if (!statusDot || !statusText) return;
+    
+    if (navigator.onLine) {
+        statusDot.className = 'status-dot online';
+        statusDot.style.background = '#22c55e';
+        const textSpan = statusText.querySelector('span:last-child') || statusText;
+        textSpan.textContent = ' Online';
+    } else {
+        statusDot.className = 'status-dot offline';
+        statusDot.style.background = '#ef4444';
+        const textSpan = statusText.querySelector('span:last-child') || statusText;
+        textSpan.textContent = ' Offline';
+    }
+}
+
+// ============================================
+// 6. HEARTBEAT - KEEP SESSION ALIVE
+// ============================================
+
+function startHeartbeat() {
+    setInterval(async () => {
+        try {
+            const { data, error } = await sb.auth.getSession();
+            if (error) {
+                console.warn('⚠️ Session may be expired');
+            } else if (data?.session) {
+                console.log('💓 Heartbeat sent');
+            }
+        } catch (error) {
+            console.warn('Heartbeat failed:', error);
+        }
+    }, 60000); // Every minute
+}
+
+// ============================================
+// 7. SUBSCRIPTIONS - REAL-TIME CHANNELS
+// ============================================
+
+function subscribeToRealtimeUpdates() {
+    console.log('📡 Setting up real-time subscriptions...');
+    
+    // Channel for sidebar updates
+    const channel = sb.channel('dashboard-realtime');
+    
+    // Subscribe to profile changes (pending approvals)
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'consolidated_user_profiles_table'
+        },
+        (payload) => {
+            console.log('🔄 Profile change detected:', payload.eventType);
+            updateSidebarBadges();
+            refreshDashboardStats();
+        }
+    );
+    
+    // Subscribe to notification changes
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'notifications'
+        },
+        (payload) => {
+            console.log('🔔 Notification change detected:', payload.eventType);
+            updateSidebarBadges();
+            updateNotificationBell();
+            refreshDashboardStats();
+        }
+    );
+    
+    // Subscribe to ticket changes
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'support_tickets'
+        },
+        (payload) => {
+            console.log('🎫 Ticket change detected:', payload.eventType);
+            updateSidebarBadges();
+            refreshDashboardStats();
+        }
+    );
+    
+    // Subscribe to session changes
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'user_sessions'
+        },
+        (payload) => {
+            console.log('💻 Session change detected:', payload.eventType);
+            updateActiveSessionsCount();
+        }
+    );
+    
+    // Subscribe to attendance changes
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'geo_attendance_logs'
+        },
+        (payload) => {
+            console.log('📍 Attendance change detected:', payload.eventType);
+            refreshDashboardStats();
+        }
+    );
+    
+    // Subscribe to resource changes
+    channel.on(
+        'postgres_changes',
+        {
+            event: '*',
+            schema: 'public',
+            table: 'resources'
+        },
+        (payload) => {
+            console.log('📁 Resource change detected:', payload.eventType);
+            refreshDashboardStats();
+        }
+    );
+    
+    channel.subscribe((status) => {
+        console.log('📡 Realtime subscription status:', status);
+    });
+}
+
+// ============================================
+// 8. AUTO-REFRESH INTERVALS
+// ============================================
+
+let dashboardInterval;
+
+function startAutoRefresh() {
+    if (dashboardInterval) clearInterval(dashboardInterval);
+    
+    dashboardInterval = setInterval(() => {
+        const dashboardTab = document.getElementById('dashboard');
+        if (dashboardTab && dashboardTab.classList.contains('active')) {
+            refreshDashboardStats();
+        }
+        // Always update sidebar badges
+        updateSidebarBadges();
+        updateNotificationBell();
+    }, 30000); // Every 30 seconds
+}
+
+// ============================================
+// 9. TOAST NOTIFICATION FUNCTION (if not already defined)
+// ============================================
+
+if (typeof window.showToast === 'undefined') {
+    window.showToast = function(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            const newContainer = document.createElement('div');
+            newContainer.id = 'toast-container';
+            newContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            `;
+            document.body.appendChild(newContainer);
+        }
+        
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: ${colors[type] || '#3b82f6'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+            min-width: 250px;
+            max-width: 400px;
+            font-size: 14px;
+        `;
+        toast.textContent = message;
+        document.getElementById('toast-container').appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+}
+
+// ============================================
+// 10. INITIALIZE REAL-TIME DASHBOARD
+// ============================================
+
+function initRealtimeDashboard() {
+    console.log('🔄 Initializing real-time dashboard...');
+    
+    // 1. Update all data immediately
+    updateSidebarBadges();
+    updateNotificationBell();
+    updateActiveSessionsCount();
+    refreshDashboardStats();
+    updateOnlineStatus();
+    
+    // 2. Start auto-refresh
+    startAutoRefresh();
+    startHeartbeat();
+    
+    // 3. Subscribe to real-time changes
+    subscribeToRealtimeUpdates();
+    
+    // 4. Listen to online/offline events
+    window.addEventListener('online', () => {
+        updateOnlineStatus();
+        refreshDashboardStats();
+        updateSidebarBadges();
+        showToast('🟢 Back online!', 'success');
+    });
+    
+    window.addEventListener('offline', () => {
+        updateOnlineStatus();
+        showToast('🔴 You are offline. Some features may not work.', 'error');
+    });
+    
+    // 5. Refresh when user returns to tab
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            console.log('👀 User returned - refreshing data...');
+            refreshDashboardStats();
+            updateSidebarBadges();
+            updateNotificationBell();
+        }
+    });
+    
+    console.log('✅ Real-time dashboard initialized!');
+}
+
+// ============================================
+// 11. INJECT CSS ANIMATIONS
+// ============================================
+
+function injectRealtimeCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .notification-badge {
+            animation: pulse 2s infinite;
+        }
+        .status-dot.online {
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+        .status-dot.offline {
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// ============================================
+// 12. MODIFY THE DOMContentLoaded EVENT
+// ============================================
+
+// Save original init if it exists
+const originalDOMContentLoaded = document._originalDOMContentLoaded;
+
+// Override the DOMContentLoaded to include real-time
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Running real-time initialization...');
+    
+    // Inject CSS
+    injectRealtimeCSS();
+    
+    // Initialize real-time after a short delay
+    setTimeout(() => {
+        initRealtimeDashboard();
+    }, 3000);
+});
+
+// ============================================
+// 13. MAKE FUNCTIONS GLOBALLY ACCESSIBLE
+// ============================================
+
+window.updateSidebarBadges = updateSidebarBadges;
+window.refreshDashboardStats = refreshDashboardStats;
+window.updateNotificationBell = updateNotificationBell;
+window.updateActiveSessionsCount = updateActiveSessionsCount;
+window.updateOnlineStatus = updateOnlineStatus;
+window.initRealtimeDashboard = initRealtimeDashboard;
+
+console.log('✅ Real-time dashboard module loaded!');
+// ============================================
+// END OF REAL-TIME DASHBOARD MODULE
+// ============================================
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
