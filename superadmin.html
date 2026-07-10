@@ -479,592 +479,1117 @@
 
 </head>
 <body>
-    <div class="app-container">
+    <div class="container">
         <!-- Mobile Navigation Toggle -->
         <button 
             class="mobile-nav-toggle" 
             id="mobileNavToggle" 
-            aria-label="Toggle navigation menu" 
+            aria-label="Toggle navigation" 
             aria-expanded="false"
-            aria-controls="sidebar"
-            type="button"
+            style="
+                display: none;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 12px;
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                z-index: 1000;
+                flex-direction: column;
+                gap: 5px;
+            "
         >
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-            <span class="sr-only">Open menu</span>
+            <span style="display: block; width: 25px; height: 3px; background: #333; border-radius: 3px;"></span>
+            <span style="display: block; width: 25px; height: 3px; background: #333; border-radius: 3px;"></span>
+            <span style="display: block; width: 25px; height: 3px; background: #333; border-radius: 3px;"></span>
         </button>
 
-        <!-- Sidebar -->
         <aside 
             class="sidebar" 
-            id="sidebar" 
-            role="navigation" 
-            aria-label="Main navigation"
-            aria-hidden="false"
+            id="sidebar"
+            style="
+                width: 280px;
+                height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                position: fixed;
+                left: 0;
+                top: 0;
+                padding: 24px 16px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+                z-index: 999;
+                overflow-y: auto;
+                transition: all 0.3s ease;
+            "
         >
             <!-- Sidebar Header -->
-            <header class="sidebar-header">
-                <figure class="logo-wrapper">
-                    <img 
-                        src="images/Logo_NCHSM.png" 
-                        alt="NCHSM - National College of Health Sciences and Management" 
-                        loading="lazy"
-                        width="48" 
-                        height="48"
-                        onerror="this.style.display='none'"
-                    >
-                    <figcaption class="sr-only">NCHSM Logo</figcaption>
-                </figure>
-                
-                <div class="user-info">
-                    <h2 class="user-name">Super Admin</h2>
-                    <span class="user-role" aria-label="Role: Administrator">
-                        <span class="role-dot" aria-hidden="true"></span>
-                        Administrator
-                    </span>
-                </div>
-                
-                <button 
-                    class="sidebar-collapse" 
-                    aria-label="Collapse sidebar" 
-                    type="button"
-                    title="Toggle sidebar width"
+            <div 
+                class="sidebar-header"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                    padding: 0 12px 24px 12px;
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                    margin-bottom: 20px;
+                "
+            >
+                <img 
+                    src="images/Logo_NCHSM.png" 
+                    alt="NCHSM Logo"
+                    style="
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 12px;
+                        background: white;
+                        padding: 8px;
+                        object-fit: contain;
+                    "
+                    onerror="this.style.display='none'"
                 >
-                    <span aria-hidden="true">◀</span>
-                </button>
-            </header>
+                <div>
+                    <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Super Admin</h2>
+                    <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Administrator</span>
+                </div>
+            </div>
 
             <!-- Navigation -->
-            <nav class="nav-wrapper" aria-label="Main menu">
-                <ul class="nav" id="mainNav" role="menubar" aria-orientation="vertical">
-                    
-                    <!-- DASHBOARD -->
-                    <li role="none" class="nav-item">
-                        <a 
-                            href="#dashboard" 
-                            data-tab="dashboard" 
-                            class="nav-link active" 
-                            role="menuitem"
-                            aria-current="page"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </span>
-                            <span class="nav-text">Dashboard</span>
-                            <span class="nav-badge" aria-label="3 notifications">3</span>
-                        </a>
-                    </li>
-                    
-                    <!-- USER MANAGEMENT -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-user-management"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-users-cog"></i>
-                            </span>
-                            <span class="nav-text">User Management</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-user-management"
-                            role="menu" 
-                            aria-label="User Management submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#users" data-tab="users" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-users"></i>
-                                    </span>
-                                    <span class="nav-text">Manage Users</span>
-                                    <span class="nav-badge" aria-label="5 pending">5</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#pending" data-tab="pending" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-clock"></i>
-                                    </span>
-                                    <span class="nav-text">Pending Approvals</span>
-                                    <span class="nav-badge warning" aria-label="12 pending">12</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#enroll" data-tab="enroll" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-user-plus"></i>
-                                    </span>
-                                    <span class="nav-text">Enroll Accounts</span>
-                                </a>
-                            </li>
-                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
-                            <li role="none">
-                                <a href="#admin-approvals" data-tab="admin-approvals" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-check-double"></i>
-                                    </span>
-                                    <span class="nav-text">Admin Approvals</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- ACADEMIC -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-academic"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-graduation-cap"></i>
-                            </span>
-                            <span class="nav-text">Academic</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-academic"
-                            role="menu" 
-                            aria-label="Academic submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#courses" data-tab="courses" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-book"></i>
-                                    </span>
-                                    <span class="nav-text">Courses</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#unit-management" data-tab="unit-management" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-plus-circle"></i>
-                                    </span>
-                                    <span class="nav-text">Unit Registration</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#cats" data-tab="cats" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-file-alt"></i>
-                                    </span>
-                                    <span class="nav-text">CATS/Exams</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#nursing-system" data-tab="nursing-system" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-hospital-user"></i>
-                                    </span>
-                                    <span class="nav-text">Nursing School System</span>
-                                </a>
-                            </li>
-                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
-                            <li role="none">
-                                <a href="#resources" data-tab="resources" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-file-upload"></i>
-                                    </span>
-                                    <span class="nav-text">Resources</span>
-                                    <span class="nav-badge" aria-label="3 new resources">3</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#programs" data-tab="programs" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-sitemap"></i>
-                                    </span>
-                                    <span class="nav-text">Programs</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- SCHEDULING -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-scheduling"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-calendar-check"></i>
-                            </span>
-                            <span class="nav-text">Scheduling</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-scheduling"
-                            role="menu" 
-                            aria-label="Scheduling submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#sessions" data-tab="sessions" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-calendar-alt"></i>
-                                    </span>
-                                    <span class="nav-text">Manage Sessions</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#attendance" data-tab="attendance" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-clipboard-check"></i>
-                                    </span>
-                                    <span class="nav-text">Attendance</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#calendar" data-tab="calendar" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-calendar"></i>
-                                    </span>
-                                    <span class="nav-text">System Calendar</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- STAFF & COMMUNICATION -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-staff"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-headset"></i>
-                            </span>
-                            <span class="nav-text">Staff & Comm</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-staff"
-                            role="menu" 
-                            aria-label="Staff and Communication submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#staff-management" data-tab="staff-management" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-chalkboard-user"></i>
-                                    </span>
-                                    <span class="nav-text">Staff Management</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#messages" data-tab="messages" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-inbox"></i>
-                                    </span>
-                                    <span class="nav-text">Inbox</span>
-                                    <span class="nav-badge danger" aria-label="8 unread messages">8</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#support-tickets" data-tab="support-tickets" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-ticket-alt"></i>
-                                    </span>
-                                    <span class="nav-text">Support Tickets</span>
-                                    <span class="nav-badge warning" aria-label="3 open tickets">3</span>
-                                </a>
-                            </li>
-                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
-                            <li role="none">
-                                <a href="#notification-center" data-tab="notification-center" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-bell"></i>
-                                    </span>
-                                    <span class="nav-text">Notifications</span>
-                                    <span class="nav-badge danger" aria-label="15 notifications">15</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- FINANCIAL -->
-                    <li role="none" class="nav-item">
-                        <a href="#fee-accounts" data-tab="fee-accounts" role="menuitem">
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-credit-card"></i>
-                            </span>
-                            <span class="nav-text">Fee Accounts</span>
-                            <span class="nav-badge" aria-label="2 pending payments">2</span>
-                        </a>
-                    </li>
-                    
-                    <!-- SYSTEM TOOLS -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-tools"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-tools"></i>
-                            </span>
-                            <span class="nav-text">System Tools</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-tools"
-                            role="menu" 
-                            aria-label="System Tools submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#system-health" data-tab="system-health" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-heartbeat"></i>
-                                    </span>
-                                    <span class="nav-text">System Health</span>
-                                    <span class="nav-badge success" aria-label="System healthy">✓</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#user-analytics" data-tab="user-analytics" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-chart-line"></i>
-                                    </span>
-                                    <span class="nav-text">User Analytics</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#data-visualization" data-tab="data-visualization" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-chart-bar"></i>
-                                    </span>
-                                    <span class="nav-text">Data Visualization</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#task-scheduler" data-tab="task-scheduler" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-clock"></i>
-                                    </span>
-                                    <span class="nav-text">Task Scheduler</span>
-                                </a>
-                            </li>
-                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
-                            <li role="none">
-                                <a href="#bulk-operations" data-tab="bulk-operations" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-tasks"></i>
-                                    </span>
-                                    <span class="nav-text">Bulk Operations</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#api-management" data-tab="api-management" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-key"></i>
-                                    </span>
-                                    <span class="nav-text">API Management</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#quick-actions" data-tab="quick-actions" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-bolt"></i>
-                                    </span>
-                                    <span class="nav-text">Quick Actions</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#welcome-editor" data-tab="welcome-editor" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-edit"></i>
-                                    </span>
-                                    <span class="nav-text">Welcome Message</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- SECURITY -->
-                    <li role="none" class="nav-item nav-dropdown">
-                        <button 
-                            class="nav-link dropdown-toggle" 
-                            role="menuitem" 
-                            aria-haspopup="true" 
-                            aria-expanded="false"
-                            aria-controls="dropdown-security"
-                            type="button"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-shield-alt"></i>
-                            </span>
-                            <span class="nav-text">Security</span>
-                            <span class="dropdown-arrow" aria-hidden="true">
-                                <i class="fas fa-chevron-down"></i>
-                            </span>
-                        </button>
-                        
-                        <ul 
-                            class="dropdown-menu" 
-                            id="dropdown-security"
-                            role="menu" 
-                            aria-label="Security submenu"
-                            hidden
-                        >
-                            <li role="none">
-                                <a href="#security-2fa" data-tab="security-2fa" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-lock"></i>
-                                    </span>
-                                    <span class="nav-text">Security & 2FA</span>
-                                    <span class="nav-badge success" aria-label="Secure">✓</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#session-management" data-tab="session-management" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-user-clock"></i>
-                                    </span>
-                                    <span class="nav-text">Session Management</span>
-                                    <span class="nav-badge" aria-label="3 active sessions">3</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#error-tracking" data-tab="error-tracking" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-bug"></i>
-                                    </span>
-                                    <span class="nav-text">Error Tracking</span>
-                                </a>
-                            </li>
-                            <li role="none" class="dropdown-divider" aria-hidden="true"></li>
-                            <li role="none">
-                                <a href="#audit" data-tab="audit" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <span class="nav-text">Audit Logs</span>
-                                </a>
-                            </li>
-                            <li role="none">
-                                <a href="#security" data-tab="security" role="menuitem">
-                                    <span class="nav-icon" aria-hidden="true">
-                                        <i class="fas fa-cog"></i>
-                                    </span>
-                                    <span class="nav-text">Security Settings</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
-                    <!-- BACKUP & RESTORE -->
-                    <li role="none" class="nav-item">
-                        <a href="#backup" data-tab="backup" role="menuitem">
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-database"></i>
-                            </span>
-                            <span class="nav-text">Backup & Restore</span>
-                            <span class="nav-badge" aria-label="Last backup: today">Today</span>
-                        </a>
-                    </li>
-                    
-                    <!-- DIVIDER -->
-                    <li role="separator" class="nav-divider" aria-hidden="true"></li>
-                    
-                    <!-- LOGOUT (moved to bottom of nav) -->
-                    <li role="none" class="nav-item logout-item">
-                        <button 
-                            onclick="logout()" 
-                            role="menuitem" 
-                            type="button"
-                            aria-label="Logout from system"
-                        >
-                            <span class="nav-icon" aria-hidden="true">
-                                <i class="fas fa-sign-out-alt"></i>
-                            </span>
-                            <span class="nav-text">Logout</span>
-                            <span class="nav-shortcut" aria-hidden="true">⌘Q</span>
-                        </button>
-                    </li>
-                    
-                </ul>
-            </nav>
+            <ul 
+                class="nav" 
+                id="mainNav"
+                style="
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                    flex: 1;
+                    overflow-y: auto;
+                "
+            >
+                <!-- DASHBOARD -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="dashboard" 
+                        class="active"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            background: rgba(255,255,255,0.15);
+                            border-left: 3px solid white;
+                        "
+                    >
+                        <i class="fas fa-tachometer-alt" style="width: 20px; text-align: center;"></i>
+                        <span>Dashboard</span>
+                        <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">3</span>
+                    </a>
+                </li>
+                
+                <!-- USER MANAGEMENT -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-users-cog" style="width: 20px; text-align: center;"></i>
+                        <span>User Management</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="users"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-users" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Manage Users</span>
+                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="pending"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-clock" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Pending Approvals</span>
+                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">12</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="enroll"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-user-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Enroll Accounts</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="admin-approvals"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-check-double" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Admin Approvals</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- ACADEMIC -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+                        <span>Academic</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="courses"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-book" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Courses</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="unit-management"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Unit Registration</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="cats"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>CATS/Exams</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="nursing-system"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-hospital-user" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Nursing School System</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="resources"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Resources</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="programs"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-sitemap" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Programs</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- SCHEDULING -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-calendar-check" style="width: 20px; text-align: center;"></i>
+                        <span>Scheduling</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="sessions"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-calendar-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Manage Sessions</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="attendance"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Attendance</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="calendar"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-calendar" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>System Calendar</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- STAFF & COMMUNICATION -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-headset" style="width: 20px; text-align: center;"></i>
+                        <span>Staff & Comm</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="staff-management"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-chalkboard-user" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Staff Management</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="messages"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-inbox" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Inbox</span>
+                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">8</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="support-tickets"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-ticket-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Support Tickets</span>
+                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">3</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="notification-center"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-bell" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Notifications</span>
+                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">15</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- FINANCIAL -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="fee-accounts"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-credit-card" style="width: 20px; text-align: center;"></i>
+                        <span>Fee Accounts</span>
+                        <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">2</span>
+                    </a>
+                </li>
+                
+                <!-- SYSTEM TOOLS -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-tools" style="width: 20px; text-align: center;"></i>
+                        <span>System Tools</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="system-health"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-heartbeat" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>System Health</span>
+                                <span style="margin-left: auto; background: #22c55e; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">✓</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="user-analytics"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>User Analytics</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="data-visualization"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-chart-bar" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Data Visualization</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="task-scheduler"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-clock" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Task Scheduler</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="bulk-operations"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-tasks" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Bulk Operations</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="api-management"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-key" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>API Management</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="quick-actions"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-bolt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Quick Actions</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="welcome-editor"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-edit" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Welcome Message</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- SECURITY -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-shield-alt" style="width: 20px; text-align: center;"></i>
+                        <span>Security</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="security-2fa"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-lock" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Security & 2FA</span>
+                                <span style="margin-left: auto; background: #22c55e; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">✓</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="session-management"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-user-clock" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Session Management</span>
+                                <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 10px;">3</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="error-tracking"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-bug" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Error Tracking</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="audit"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-search" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Audit Logs</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="security"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-cog" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Security Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- BACKUP -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="backup"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-database" style="width: 20px; text-align: center;"></i>
+                        <span>Backup & Restore</span>
+                        <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 10px;">Today</span>
+                    </a>
+                </li>
+            </ul>
 
-            <!-- Sidebar Footer -->
-            <footer class="sidebar-footer">
-                <p class="version" aria-label="System version">
-                    <span aria-hidden="true">⚡</span> v3.2.1
-                </p>
-                <p class="copyright">
-                    &copy; 2026 NCHSM
-                </p>
-                <button 
-                    class="theme-toggle" 
-                    aria-label="Toggle theme" 
-                    type="button"
-                    title="Switch to dark/light mode"
+            <!-- LOGOUT -->
+            <div 
+                class="logout"
+                style="
+                    border-top: 1px solid rgba(255,255,255,0.2);
+                    padding-top: 16px;
+                    margin-top: 8px;
+                "
+            >
+                <a 
+                    href="#" 
+                    onclick="logout()"
+                    style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        padding: 10px 14px;
+                        border-radius: 10px;
+                        color: white;
+                        text-decoration: none;
+                        font-size: 14px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        cursor: pointer;
+                    "
+                    onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                    onmouseout="this.style.background='transparent'"
                 >
-                    <span aria-hidden="true">🌙</span>
-                </button>
-            </footer>
+                    <i class="fas fa-sign-out-alt" style="width: 20px; text-align: center;"></i>
+                    <span>Logout</span>
+                    <span style="margin-left: auto; font-size: 11px; opacity: 0.6;">⌘Q</span>
+                </a>
+            </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main" id="main-content" role="main" aria-label="Main content">
-            <header class="main-header">
-                <div class="header-left">
-                    <h1>Welcome back, <span class="highlight">Super Admin</span></h1>
-                    <p class="subtitle" aria-label="System overview">
-                        <span aria-hidden="true">📊</span> Full system oversight and user management
-                    </p>
-                </div>
-                <div class="header-right">
-                    <time datetime="2026-07-09" class="header-date">
-                        <span aria-hidden="true">📅</span> July 9, 2026
-                    </time>
-                    <span class="header-status" aria-label="System status: Online">
-                        <span class="status-dot online" aria-hidden="true"></span>
-                        Online
-                    </span>
-                </div>
+        <!-- MAIN CONTENT -->
+        <main 
+            class="main"
+            style="
+                margin-left: 280px;
+                padding: 40px;
+                min-height: 100vh;
+                background: #f0f4ff;
+            "
+        >
+            <header>
+                <h1 style="font-size: 28px; color: #0b1124; margin-bottom: 4px;">
+                    Welcome, <span style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Super Admin</span>!
+                </h1>
+                <p class="subtitle" style="color: #64748b; font-size: 16px;">
+                    Full system oversight and user management
+                </p>
             </header>
 <!-- ============================================ -->
 <!-- COMPLETE MODERN DASHBOARD WITH CHARTS -->
