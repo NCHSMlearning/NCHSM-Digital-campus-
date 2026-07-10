@@ -21,6 +21,8 @@
 @import url('attendance.css');
 @import url('responsive.css');
 @import url('gamification.css');
+@import url('reviews-newsletter.css');
+
 :root {
     /* ===== SCHOOL LOGO COLORS ===== */
     --color-navy: #0B2A4A;
