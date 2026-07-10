@@ -204,7 +204,7 @@
             </div>
         </div>
 
-        <!-- ✅ FIX 1: NEXT EXAM WIDGET (ADD THIS) -->
+        <!-- NEXT EXAM WIDGET -->
         <div class="next-exam-widget" style="display: none;">
             <div class="widget-header">
                 <i class="fas fa-graduation-cap" style="color: white;"></i>
@@ -283,7 +283,6 @@
             <div class="mini-card" data-tab="nurseiq">
                 <i class="fas fa-brain"></i>
                 <div class="mini-card-value" id="dashboard-nurseiq-progress">--%</div>
-                <!-- ✅ FIX 2: ADD QUESTIONS COUNT -->
                 <div class="mini-sub">
                     Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · 
                     Questions: <span id="dashboard-nurseiq-questions">0</span>
@@ -293,6 +292,28 @@
                 <i class="fas fa-id-card"></i>
                 <div class="mini-card-value exam-status" id="dashboard-exam-status">--</div>
                 <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
+            </div>
+        </div>
+
+        <!-- ========== MINI CARDS ROW 3 - REVIEWS & NEWSLETTER ========== -->
+        <div class="mini-cards">
+            <div class="mini-card" data-tab="reviews">
+                <div class="mini-label">⭐ Reviews</div>
+                <div class="mini-card-value" id="dashboard-reviews-avg">0.0</div>
+                <div class="mini-sub">
+                    <span id="dashboard-reviews-total">0</span> reviews · 
+                    <span id="dashboard-reviews-pending">0</span> pending
+                </div>
+            </div>
+            <div class="mini-card" data-tab="newsletter">
+                <div class="mini-label">📧 Newsletter</div>
+                <div class="mini-card-value" id="dashboard-newsletter-status">📧 Not Subscribed</div>
+                <div class="mini-sub" id="dashboard-newsletter-latest">No newsletters yet</div>
+            </div>
+            <div class="mini-card" data-tab="profile">
+                <div class="mini-label">📸 Profile</div>
+                <div class="mini-card-value" id="dashboard-profile-status">✅ Complete</div>
+                <div class="mini-sub">Last updated: <span id="dashboard-profile-updated">--</span></div>
             </div>
         </div>
 
@@ -328,7 +349,7 @@
             <button class="action-btn" data-tab="profile">Upload →</button>
         </div>
         
-        <!-- ✅ FIX 3: LAST UPDATED TIMESTAMP -->
+        <!-- LAST UPDATED TIMESTAMP -->
         <div class="dashboard-footer" style="margin-top: 20px; padding: 10px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6b7280;">
             <span>
                 <i class="fas fa-clock"></i> 
