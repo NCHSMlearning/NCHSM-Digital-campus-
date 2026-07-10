@@ -728,23 +728,17 @@ class UIModule {
                     if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
                     break;
                     
-                // ========== REVIEWS & NEWSLETTER CASES ==========
                 case 'reviews':
-                    console.log('⭐ Loading Reviews module...');
-                    if (window.reviewsModule) {
-                        if (typeof window.reviewsModule.loadReviews === 'function') {
-                            window.reviewsModule.loadReviews();
-                        } else if (typeof window.reviewsModule.initReviews === 'function') {
-                            window.reviewsModule.initReviews();
-                        }
-                    } else if (typeof initReviewsModule === 'function') {
-                        initReviewsModule();
-                    } else if (typeof loadReviews === 'function') {
-                        loadReviews();
-                    }
-                    // Also load the reviews styles
-                    this.ensureReviewsStyles();
-                    break;
+    console.log('⭐ Loading Reviews module...');
+    if (typeof initReviewsModule === 'function') {
+        initReviewsModule();
+    } else {
+        console.warn('initReviewsModule not found, loading fallback');
+        if (typeof loadReviews === 'function') loadReviews();
+        if (typeof loadSiteRating === 'function') loadSiteRating();
+        if (typeof updateReviewStats === 'function') updateReviewStats();
+    }
+    break;
                     
                 case 'newsletter':
                     console.log('📧 Loading Newsletter module...');
