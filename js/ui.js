@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH FIXED DASHBOARD ON REFRESH
+// js/ui.js - COMPLETE WORKING VERSION WITH REVIEWS & NEWSLETTER
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -14,16 +14,17 @@ class UIModule {
         this.currentTab = 'dashboard';
         this.storageKey = 'nchsm_last_tab';
         
-        // ========== FIXED: Added all hub modules to valid tabs ==========
+        // ========== COMPLETE validTabs with ALL sections ==========
         this.validTabs = [
             'dashboard', 'profile', 'calendar', 'courses', 'attendance', 
             'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 
             'unit-registration', 'learning-hub', 'exam-card',
             'hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card',
-            'academic-reports'
+            'hub-lecture-card', 'academic-reports',
+            'reviews', 'newsletter'  // ✅ ADDED REVIEWS & NEWSLETTER
         ];
         
-        // ========== FIXED: Added names for all tabs ==========
+        // ========== COMPLETE tabNames ==========
         this.tabNames = {
             'dashboard': 'Dashboard', 
             'profile': 'Profile', 
@@ -42,7 +43,10 @@ class UIModule {
             'hub-register': 'Register Units',
             'hub-online-learning': 'Online Learning',
             'hub-exam-card': 'Exam Card',
-            'academic-reports': 'Academic Reports'
+            'hub-lecture-card': 'Lecture Card',
+            'academic-reports': 'Academic Reports',
+            'reviews': 'Reviews',          // ✅ ADDED
+            'newsletter': 'Newsletter'     // ✅ ADDED
         };
         
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -66,6 +70,9 @@ class UIModule {
         this.profileTrigger = null;
         this.dropdownMenu = null;
         this.supabase = null;
+        
+        // Reviews badge interval
+        this.reviewsBadgeInterval = null;
         
         setTimeout(() => this.safeInitialize(), 500);
     }
@@ -118,6 +125,9 @@ class UIModule {
         this.setupMobileMenuVisibility();
         this.loadLastTab();
         
+        // Start reviews badge updater
+        this.startReviewsBadgeUpdater();
+        
         // ========== FORCE DASHBOARD VISIBLE AFTER LOAD ==========
         setTimeout(() => {
             const dashboard = document.getElementById('dashboard');
@@ -127,7 +137,6 @@ class UIModule {
                 console.log('✅ Dashboard forced visible after load');
             }
             
-            // Ensure other tabs are hidden
             document.querySelectorAll('.tab-content').forEach(tab => {
                 if (tab.id !== 'dashboard') {
                     tab.style.display = 'none';
@@ -233,13 +242,11 @@ class UIModule {
         
         console.log(`📂 Showing tab: ${tabId}`);
         
-        // ALWAYS close mobile menu first
         if (this.isMenuOpen()) {
             console.log('🔒 Closing mobile menu before showing tab...');
             this.closeMenu();
         }
         
-        // Update content
         this.tabs.forEach(tab => {
             tab.style.display = 'none';
             tab.classList.remove('active');
@@ -258,7 +265,6 @@ class UIModule {
             }
         }
         
-        // Update nav links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
@@ -567,7 +573,91 @@ class UIModule {
     }
     
     // ============================================
-    // LOAD TAB MODULE
+    // REVIEWS BADGE UPDATER
+    // ============================================
+    
+    startReviewsBadgeUpdater() {
+        // Initial update
+        this.updateReviewsBadge();
+        
+        // Update every 30 seconds
+        if (this.reviewsBadgeInterval) {
+            clearInterval(this.reviewsBadgeInterval);
+        }
+        this.reviewsBadgeInterval = setInterval(() => {
+            this.updateReviewsBadge();
+        }, 30000);
+    }
+    
+    async updateReviewsBadge() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            // Check if reviews tab exists first
+            const reviewsTab = document.getElementById('reviews');
+            if (!reviewsTab) return;
+            
+            // Get pending reviews count (for badge)
+            const { count, error } = await supabase
+                .from('student_reviews')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            
+            if (error) throw error;
+            
+            const badge = document.getElementById('reviewsBadge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'inline-block';
+                    badge.style.background = '#ef4444';
+                    badge.style.color = 'white';
+                    badge.style.padding = '0 8px';
+                    badge.style.borderRadius = '20px';
+                    badge.style.fontSize = '10px';
+                    badge.style.fontWeight = '600';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            
+            // Also update newsletter badge
+            const { count: subCount, error: subError } = await supabase
+                .from('newsletter_subscribers')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', window.currentUserId);
+            
+            if (!subError) {
+                const nlBadge = document.getElementById('newsletterBadge');
+                if (nlBadge) {
+                    if (subCount > 0) {
+                        nlBadge.textContent = '✓';
+                        nlBadge.style.display = 'inline-block';
+                        nlBadge.style.background = '#10b981';
+                        nlBadge.style.color = 'white';
+                        nlBadge.style.padding = '0 8px';
+                        nlBadge.style.borderRadius = '20px';
+                        nlBadge.style.fontSize = '10px';
+                    } else {
+                        nlBadge.textContent = '✕';
+                        nlBadge.style.display = 'inline-block';
+                        nlBadge.style.background = '#6b7280';
+                        nlBadge.style.color = 'white';
+                        nlBadge.style.padding = '0 8px';
+                        nlBadge.style.borderRadius = '20px';
+                        nlBadge.style.fontSize = '10px';
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.warn('Could not update reviews badge:', error);
+        }
+    }
+    
+    // ============================================
+    // LOAD TAB MODULE - WITH REVIEWS & NEWSLETTER
     // ============================================
     
     loadTabModule(tabId) {
@@ -609,6 +699,10 @@ class UIModule {
                     if (window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
                     else if (typeof initExamCard === 'function') initExamCard();
                     break;
+                case 'hub-lecture-card':
+                    if (window.lectureCardModule?.loadLectureCard) window.lectureCardModule.loadLectureCard();
+                    else if (typeof initLectureCard === 'function') initLectureCard();
+                    break;
                 case 'cats':
                     if (window.examsModule?.loadExams) window.examsModule.loadExams();
                     break;
@@ -633,11 +727,176 @@ class UIModule {
                 case 'support-tickets':
                     if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
                     break;
+                    
+                // ========== REVIEWS & NEWSLETTER CASES ==========
+                case 'reviews':
+                    console.log('⭐ Loading Reviews module...');
+                    if (window.reviewsModule) {
+                        if (typeof window.reviewsModule.loadReviews === 'function') {
+                            window.reviewsModule.loadReviews();
+                        } else if (typeof window.reviewsModule.initReviews === 'function') {
+                            window.reviewsModule.initReviews();
+                        }
+                    } else if (typeof initReviewsModule === 'function') {
+                        initReviewsModule();
+                    } else if (typeof loadReviews === 'function') {
+                        loadReviews();
+                    }
+                    // Also load the reviews styles
+                    this.ensureReviewsStyles();
+                    break;
+                    
+                case 'newsletter':
+                    console.log('📧 Loading Newsletter module...');
+                    if (window.newsletterModule) {
+                        if (typeof window.newsletterModule.loadNewsletters === 'function') {
+                            window.newsletterModule.loadNewsletters();
+                        }
+                    } else if (typeof loadNewsletters === 'function') {
+                        loadNewsletters();
+                    }
+                    if (typeof loadNewsletterStatus === 'function') {
+                        loadNewsletterStatus();
+                    }
+                    break;
+                    
                 default:
                     console.log(`No specific loader for tab: ${tabId}`);
             }
         }, 300);
     }
+    
+    // ============================================
+    // ENSURE REVIEWS STYLES ARE LOADED
+    // ============================================
+    
+    ensureReviewsStyles() {
+        // Check if reviews styles are already loaded
+        if (document.getElementById('reviews-styles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'reviews-styles';
+        style.textContent = `
+            /* Reviews Module Styles */
+            .reviews-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+            .reviews-header-premium { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+            .reviews-header-premium h1 { font-size: 28px; font-weight: 700; color: #1e293b; margin: 0; }
+            .reviews-header-premium .subtitle { color: #64748b; margin: 4px 0 0; font-size: 15px; }
+            
+            .reviews-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 25px; }
+            .stat-card-premium { background: white; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f1f5f9; }
+            .stat-card-premium .stat-number { display: block; font-size: 24px; font-weight: 700; color: #1e293b; }
+            .stat-card-premium .stat-label { font-size: 12px; color: #64748b; }
+            
+            .reviews-grid-premium { display: grid; gap: 20px; }
+            .review-card-premium { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f1f5f9; transition: all 0.3s; cursor: pointer; }
+            .review-card-premium:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); transform: translateY(-2px); }
+            
+            .review-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+            .reviewer-info { display: flex; align-items: center; gap: 12px; }
+            .reviewer-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #f1f5f9; }
+            .reviewer-avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
+            .reviewer-details .reviewer-name { display: block; font-weight: 600; color: #1e293b; font-size: 15px; }
+            .reviewer-details .reviewer-program { font-size: 12px; color: #64748b; }
+            
+            .review-category-badge { background: #f1f5f9; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #475569; display: inline-flex; align-items: center; gap: 6px; }
+            .review-rating { margin-bottom: 8px; }
+            .review-title { font-size: 16px; font-weight: 600; color: #1e293b; margin: 0 0 8px; }
+            .review-text { color: #475569; line-height: 1.6; font-size: 14px; margin: 0; }
+            
+            .review-card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9; margin-top: 12px; }
+            .review-date { font-size: 12px; color: #94a3b8; }
+            .helpful-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; }
+            .helpful-btn:hover { background: #f1f5f9; color: #667eea; }
+            
+            .filter-select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: white; min-width: 140px; }
+            .reviews-filters-premium { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; background: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+            .filter-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+            .filter-group label { font-size: 13px; color: #475569; font-weight: 500; }
+            
+            .btn-gradient { background: linear-gradient(135deg, #667eea, #764ba2); border: none; padding: 12px 24px; border-radius: 12px; color: white; font-weight: 600; transition: all 0.3s; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+            .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+            
+            .loading-state-premium { text-align: center; padding: 60px 20px; }
+            .loading-spinner-premium { width: 40px; height: 40px; border: 3px solid #f1f5f9; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            
+            .empty-state-premium { text-align: center; padding: 60px 20px; }
+            .empty-state-premium i { font-size: 48px; color: #d1d5db; }
+            .empty-state-premium h3 { margin: 16px 0 8px; color: #1e293b; }
+            .empty-state-premium p { color: #64748b; margin-bottom: 20px; }
+            
+            .site-rating-banner { background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 16px; padding: 24px 30px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+            .banner-text h3 { color: white; margin: 0; font-size: 18px; }
+            .banner-text p { color: rgba(255,255,255,0.7); margin: 4px 0 0; font-size: 14px; }
+            .site-stars { font-size: 32px; cursor: pointer; display: flex; gap: 4px; }
+            .site-stars span { transition: all 0.2s; color: #d1d5db; }
+            .site-stars span:hover { transform: scale(1.2); }
+            
+            .review-pros, .review-cons { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: 8px; margin-top: 8px; font-size: 13px; }
+            .review-pros { background: #ecfdf5; color: #065f46; }
+            .review-cons { background: #fef2f2; color: #991b1b; }
+            
+            .category-quick-filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+            .cat-filter { padding: 8px 16px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; color: #475569; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+            .cat-filter:hover { border-color: #667eea; color: #667eea; }
+            .cat-filter.active { background: #667eea; color: white; border-color: #667eea; }
+            
+            .component-selector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+            .component-option { padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fafc; }
+            .component-option:hover { border-color: #667eea; background: #f1f5f9; }
+            .component-option.selected { border-color: #667eea; background: #eef2ff; }
+            .component-option i { font-size: 24px; color: #667eea; display: block; margin-bottom: 6px; }
+            .component-option span { font-size: 13px; font-weight: 500; color: #1e293b; }
+            .option-badge { display: block; font-size: 9px; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; margin-top: 4px; color: #64748b; }
+            
+            .star-rating-large { font-size: 36px; cursor: pointer; display: flex; gap: 6px; }
+            .star-rating-large span { transition: all 0.2s; color: #d1d5db; }
+            .star-rating-large span:hover { transform: scale(1.2); }
+            
+            .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+            .modal-container-premium { background: white; border-radius: 20px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+            .modal-header-premium { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+            .modal-header-premium h3 { margin: 0; font-size: 20px; color: #1e293b; }
+            .close-modal-btn { background: none; border: none; font-size: 28px; color: #94a3b8; cursor: pointer; padding: 0 8px; transition: all 0.2s; }
+            .close-modal-btn:hover { color: #ef4444; transform: rotate(90deg); }
+            .modal-body-premium { padding: 24px; }
+            
+            .form-input, .form-textarea, .form-select { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; transition: all 0.2s; font-family: inherit; }
+            .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+            .form-textarea { resize: vertical; min-height: 100px; }
+            .char-counter { text-align: right; font-size: 12px; color: #94a3b8; margin-top: 4px; }
+            .review-form-premium .form-group { margin-bottom: 20px; }
+            .review-form-premium label { display: block; font-weight: 600; color: #1e293b; margin-bottom: 6px; font-size: 14px; }
+            .review-form-premium .required { color: #ef4444; }
+            .error-text { color: #dc2626; font-size: 13px; margin-top: 4px; }
+            .feedback-message { padding: 12px 16px; border-radius: 10px; margin-top: 16px; }
+            
+            @media (max-width: 768px) {
+                .reviews-header-premium { flex-direction: column; align-items: flex-start; }
+                .site-rating-banner { flex-direction: column; align-items: flex-start; }
+                .reviews-filters-premium { flex-direction: column; align-items: stretch; }
+                .filter-group { flex-direction: column; align-items: stretch; }
+                .filter-select { min-width: unset; }
+                .component-selector-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+                .modal-container-premium { margin: 10px; max-height: 95vh; }
+                .review-card-header { flex-direction: column; }
+                .category-quick-filters { gap: 5px; }
+                .cat-filter { font-size: 12px; padding: 6px 12px; }
+                .reviews-stats-row { grid-template-columns: 1fr 1fr; }
+            }
+            
+            @media (max-width: 480px) {
+                .reviews-stats-row { grid-template-columns: 1fr; }
+            }
+        `;
+        document.head.appendChild(style);
+        console.log('✅ Reviews styles injected');
+    }
+    
+    // ============================================
+    // REMAINING UI METHODS
+    // ============================================
     
     updatePageTitle(tabId) {
         const tabName = this.tabNames[tabId] || 'Dashboard';
@@ -648,14 +907,10 @@ class UIModule {
         return this.validTabs.includes(tabId); 
     }
     
-    // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
     loadLastTab() {
-        // ALWAYS show dashboard on page load/refresh
-        // Do NOT restore previous tab - always start at dashboard
         this.currentTab = 'dashboard';
         localStorage.setItem(this.storageKey, 'dashboard');
         
-        // Force dashboard to be active
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
             dashboard.style.display = 'block';
@@ -663,7 +918,6 @@ class UIModule {
             console.log('📊 Dashboard activated on page load');
         }
         
-        // Hide all other tabs
         if (this.tabs) {
             this.tabs.forEach(tab => {
                 if (tab.id !== 'dashboard') {
@@ -673,7 +927,6 @@ class UIModule {
             });
         }
         
-        // Update navigation active state
         if (this.navLinks) {
             this.navLinks.forEach(link => {
                 link.classList.remove('active');
@@ -689,6 +942,7 @@ class UIModule {
         if (window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
         if (this.currentTab === 'exam-card' && typeof initExamCard === 'function') initExamCard();
         this.updateProfilePhoto();
+        this.updateReviewsBadge();
     }
     
     showToast(message, type = 'info', duration = 3000) {
@@ -853,8 +1107,6 @@ class UIModule {
             this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=User&background=4C1D95&color=fff&size=100&bold=true';
         }
     }
-    
-    // ==================== FIXED LAST LOGIN METHODS ====================
     
     async loadLastLogin() {
         try {
@@ -1105,4 +1357,4 @@ document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui 
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
-console.log('✅ UI Module loaded successfully with dashboard always showing on refresh!');
+console.log('✅ UI Module loaded successfully with Reviews & Newsletter support!');
