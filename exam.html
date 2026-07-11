@@ -354,6 +354,75 @@
         }
         
         /* ============================================================
+        ATTENDANCE REQUIRED MODAL
+        ============================================================ */
+        #attendance-required-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        #attendance-required-modal .modal-box {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        @keyframes modalSlideIn {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        #attendance-required-modal .modal-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+        #attendance-required-modal h2 {
+            color: #0A3D62;
+            margin-bottom: 10px;
+        }
+        #attendance-required-modal p {
+            color: #64748B;
+            margin-bottom: 20px;
+        }
+        #attendance-required-modal .info-box {
+            background: #F8FAFC;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #DC2626;
+            text-align: left;
+        }
+        #attendance-required-modal .info-box p {
+            margin: 5px 0;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+        #attendance-required-modal .btn-ok {
+            background: #0A3D62;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        #attendance-required-modal .btn-ok:hover {
+            background: #0A2D4A;
+            transform: scale(1.02);
+        }
+        
+        /* ============================================================
         RESPONSIVE
         ============================================================ */
         @media (max-width: 600px) {
@@ -430,6 +499,7 @@
                     <li><i class="fas fa-eye"></i> Your screen and camera are being monitored</li>
                     <li><i class="fas fa-check check"></i> Results will be released after admin review</li>
                     <li><i class="fas fa-user-check" style="color:#DC2626;"></i> <strong>Face must be visible at all times</strong></li>
+                    <li><i class="fas fa-clipboard-check" style="color:#0A3D62;"></i> <strong>Attendance will be recorded upon submission</strong></li>
                 </ul>
             </div>
             <div class="terms-agreement">
@@ -804,6 +874,22 @@
         </div>
     </div>
 
+    <!-- Attendance Required Modal -->
+    <div id="attendance-required-modal">
+        <div class="modal-box">
+            <div class="modal-icon">📋</div>
+            <h2>Attendance Required</h2>
+            <p>You need to sign in for attendance before you can submit your exam.</p>
+            <div class="info-box">
+                <p><i class="fas fa-info-circle" style="color: #DC2626;"></i> Please contact your instructor to sign in for attendance.</p>
+                <p style="font-size:0.8rem; color:#94A3B8; margin-top:8px;">
+                    <i class="fas fa-clock"></i> Attendance is required for exam validation.
+                </p>
+            </div>
+            <button class="btn-ok" onclick="closeAttendanceModal()">OK, I Understand</button>
+        </div>
+    </div>
+
     <!-- Submission Progress -->
     <div id="submission-progress-overlay">
         <div class="progress-spinner"><i class="fas fa-spinner fa-spin"></i></div>
@@ -914,6 +1000,9 @@
         let examVideoStream = null;
         let snapshotInterval = null;
 
+        // Attendance Tracking
+        let attendanceRecorded = false;
+
         // ============================================================
         // DOM REFS
         // ============================================================
@@ -964,6 +1053,7 @@
         const statsFace = document.getElementById('statsFace');
         const statsProgress = document.getElementById('statsProgress');
         const statsUnanswered = document.getElementById('statsUnanswered');
+        const attendanceModal = document.getElementById('attendance-required-modal');
 
         // ============================================================
         // SHUFFLE FUNCTIONS
@@ -1431,9 +1521,123 @@
                 faceDetectionRecoveryTimer = null;
             }
 
+            // ✅ Mark attendance as in_progress when exam starts
+            try {
+                await markExamAttendance('in_progress');
+                attendanceRecorded = true;
+                console.log('✅ Attendance marked as in_progress');
+            } catch (e) {
+                console.warn('Could not mark attendance:', e);
+            }
+
             lobbyContainer.classList.remove('active');
             examInterface.classList.add('active');
             initExam();
+        }
+
+        // ============================================================
+        // ATTENDANCE FUNCTIONS
+        // ============================================================
+
+        async function checkAttendanceBeforeSubmit() {
+            try {
+                const { data: attendance, error } = await sb
+                    .from('exam_attendance')
+                    .select('*')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(EXAM_ID))
+                    .eq('date', new Date().toDateString())
+                    .single();
+
+                if (error) {
+                    return { signedIn: false, record: null };
+                }
+
+                return { signedIn: attendance.status === 'signed_in' || attendance.status === 'present' || attendance.status === 'in_progress' || attendance.status === 'completed', record: attendance };
+            } catch (e) {
+                console.warn('Error checking attendance:', e);
+                return { signedIn: false, record: null };
+            }
+        }
+
+        async function markExamAttendance(status) {
+            try {
+                const today = new Date().toDateString();
+                
+                const { data: existing, error: checkError } = await sb
+                    .from('exam_attendance')
+                    .select('*')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(EXAM_ID))
+                    .eq('date', today)
+                    .single();
+
+                const studentName = studentProfile ? studentProfile.full_name || 'Unknown' : 'Unknown';
+                const studentReg = studentProfile ? studentProfile.student_id || 'N/A' : 'N/A';
+
+                if (existing) {
+                    const { error: updateError } = await sb
+                        .from('exam_attendance')
+                        .update({
+                            status: status,
+                            submission_time: status === 'completed' ? new Date().toISOString() : existing.submission_time,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existing.id);
+
+                    if (updateError) throw updateError;
+                    return existing.id;
+                } else {
+                    const { data: newRecord, error: insertError } = await sb
+                        .from('exam_attendance')
+                        .insert({
+                            student_id: studentId,
+                            exam_id: parseInt(EXAM_ID),
+                            student_name: studentName,
+                            student_reg_number: studentReg,
+                            status: status,
+                            date: today,
+                            sign_in_time: new Date().toISOString(),
+                            submission_time: status === 'completed' ? new Date().toISOString() : null
+                        })
+                        .select()
+                        .single();
+
+                    if (insertError) throw insertError;
+                    return newRecord.id;
+                }
+            } catch (e) {
+                console.error('Error marking attendance:', e);
+                throw e;
+            }
+        }
+
+        async function verifySignInAttendance() {
+            try {
+                const result = await checkAttendanceBeforeSubmit();
+                
+                if (!result.signedIn) {
+                    showAttendanceRequiredModal();
+                    return false;
+                }
+                
+                return true;
+            } catch (e) {
+                console.error('Error verifying attendance:', e);
+                return false;
+            }
+        }
+
+        function showAttendanceRequiredModal() {
+            if (attendanceModal) {
+                attendanceModal.style.display = 'flex';
+            }
+        }
+
+        function closeAttendanceModal() {
+            if (attendanceModal) {
+                attendanceModal.style.display = 'none';
+            }
         }
 
         // ============================================================
@@ -2689,40 +2893,63 @@
         }
 
         // ============================================================
-        // SUBMISSION
+        // ⭐ SUBMISSION - UPDATED WITH ATTENDANCE CHECK
         // ============================================================
 
         function submitExam() {
             if (isSubmitting) return;
 
-            saveCurrentAnswer();
-            syncPendingAnswers();
+            // ✅ Check attendance before allowing submission
+            verifySignInAttendance().then(canSubmit => {
+                if (!canSubmit) {
+                    // Attendance verification failed - don't proceed with submission
+                    return;
+                }
 
-            var skipped = questions.filter(function(q) { return !answers[q.id]; }).length;
-            var modalMsg = document.getElementById('modal-message');
-            if (modalMsg) {
-                modalMsg.innerHTML = skipped > 0 ?
-                    '⚠️ ' + skipped + ' question(s) unanswered. Submit anyway?' :
-                    '✅ All ' + questions.length + ' questions answered. Submit now?';
-            }
+                // Save current answer and sync
+                saveCurrentAnswer();
+                syncPendingAnswers();
 
-            document.getElementById('submission-modal').style.display = 'flex';
+                // Check unanswered questions
+                var skipped = questions.filter(function(q) { return !answers[q.id]; }).length;
+                var modalMsg = document.getElementById('modal-message');
+                if (modalMsg) {
+                    modalMsg.innerHTML = skipped > 0 ?
+                        '⚠️ ' + skipped + ' question(s) unanswered. Submit anyway?' :
+                        '✅ All ' + questions.length + ' questions answered. Submit now?';
+                }
 
-            var confirmBtn = document.getElementById('confirm-submit-btn');
-            var cancelBtn = document.getElementById('cancel-submit-btn');
+                document.getElementById('submission-modal').style.display = 'flex';
 
-            var newConfirmBtn = confirmBtn.cloneNode(true);
-            var newCancelBtn = cancelBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                var confirmBtn = document.getElementById('confirm-submit-btn');
+                var cancelBtn = document.getElementById('cancel-submit-btn');
 
-            newConfirmBtn.addEventListener('click', async function() {
-                document.getElementById('submission-modal').style.display = 'none';
-                await executeSubmissionWithLoading();
-            });
+                var newConfirmBtn = confirmBtn.cloneNode(true);
+                var newCancelBtn = cancelBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
 
-            newCancelBtn.addEventListener('click', function() {
-                document.getElementById('submission-modal').style.display = 'none';
+                newConfirmBtn.addEventListener('click', async function() {
+                    document.getElementById('submission-modal').style.display = 'none';
+                    
+                    // ✅ Mark attendance as completed
+                    try {
+                        await markExamAttendance('completed');
+                        attendanceRecorded = true;
+                        console.log('✅ Attendance marked as completed');
+                    } catch (e) {
+                        console.warn('Could not mark attendance:', e);
+                    }
+                    
+                    await executeSubmissionWithLoading();
+                });
+
+                newCancelBtn.addEventListener('click', function() {
+                    document.getElementById('submission-modal').style.display = 'none';
+                });
+            }).catch(err => {
+                console.error('Attendance check failed:', err);
+                showToast('Error checking attendance. Please try again.', 'error');
             });
         }
 
@@ -3633,6 +3860,7 @@
         window.prevQuestion = prevQuestion;
         window.nextQuestion = nextQuestion;
         window.submitExam = submitExam;
+        window.closeAttendanceModal = closeAttendanceModal;
     </script>
 </body>
 </html>
