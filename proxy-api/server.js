@@ -230,7 +230,7 @@ app.get('/api/subjects/:block', async (req, res) => {
     }
 });
 
-// ========== GET MARKS ENDPOINT - IMPROVED DYNAMIC ==========
+// ========== GET MARKS ENDPOINT - WITH YEAR FILTERING ==========
 app.get('/api/marks/:block/:subject', async (req, res) => {
     try {
         const { block, subject } = req.params;
@@ -240,14 +240,14 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
         
         if (examType === 'nck') {
-            // ... NCK logic (keep as is) ...
+            // NCK logic (keep as is)
+            // ... 
         } else {
-            // ===== INTERNAL MARKS - IMPROVED DYNAMIC =====
+            // ===== INTERNAL MARKS =====
             let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
             const sheetName = `${block}_${cleanSubject}`;
             
-            console.log(`[GET INTERNAL] Reading sheet: ${sheetName}`);
-            
+            // Get marks from sheet
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId: req.spreadsheetId,
                 range: `${sheetName}!A:Z`,
@@ -255,7 +255,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             });
             
             const data = response.data.values || [];
-            console.log(`[GET INTERNAL] Raw data rows: ${data.length}`);
             
             if (data.length === 0) {
                 console.log(`[GET INTERNAL] No data found in sheet ${sheetName}`);
@@ -264,23 +263,16 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             }
             
             const headers = data[0] || [];
-            console.log(`[GET INTERNAL] Headers:`, headers);
             
-            // ===== IMPROVED DYNAMIC COLUMN MAPPING =====
+            // Find column indexes
             function findColumnIndex(headers, keywords) {
                 for (let i = 0; i < headers.length; i++) {
                     const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
                     for (const keyword of keywords) {
                         const upperKeyword = keyword.toUpperCase();
-                        // Check if header contains the keyword
-                        if (header.includes(upperKeyword)) {
+                        if (header.includes(upperKeyword) || header.startsWith(upperKeyword)) {
                             return i;
                         }
-                        // Check if header starts with the keyword
-                        if (header.startsWith(upperKeyword)) {
-                            return i;
-                        }
-                        // Check if keyword contains the header (for short headers)
                         if (upperKeyword.includes(header) && header.length > 2) {
                             return i;
                         }
@@ -300,11 +292,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             const typeIdx = findColumnIndex(headers, ['ASSESSMENT TYPE', 'ASSESSMENT_TYPE']);
             const yearIdx = findColumnIndex(headers, ['YEAR']);
             
-            console.log(`[GET INTERNAL] Column mapping:`, {
-                admIdx, nameIdx, cat1Idx, cat2Idx, examIdx, finalIdx, gradeIdx, gradedIdx, typeIdx, yearIdx
-            });
-            
-            // Get student-year mapping
+            // ===== GET STUDENTS WITH YEAR INFO =====
             const studentsResponse = await sheets.spreadsheets.values.get({
                 spreadsheetId: req.spreadsheetId,
                 range: 'STUDENTS!A:E',
@@ -312,21 +300,32 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             });
             const studentsData = studentsResponse.data.values || [];
             
+            // Build student maps
             const studentYearMap = {};
+            const studentBlockMap = {};
+            const studentNameMap = {};
+            
             for (let i = 1; i < studentsData.length; i++) {
                 const row = studentsData[i];
                 if (row && row[0]) {
-                    studentYearMap[row[0].trim()] = row[3] || '2024';
+                    const admission = row[0].toString().trim();
+                    studentYearMap[admission] = row[3] ? row[3].toString().trim() : '2024';
+                    studentBlockMap[admission] = row[2] ? row[2].toString().trim() : '';
+                    studentNameMap[admission] = row[1] ? row[1].toString().trim() : '';
                 }
             }
             
+            // ===== FILTER MARKS BY YEAR AND BLOCK =====
             const allMarks = [];
+            let skippedWrongYear = 0;
+            let skippedWrongBlock = 0;
+            let skippedNoAdmission = 0;
             
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
                 
-                // Get admission - try different positions
+                // Get admission
                 let admission = '';
                 if (admIdx !== -1 && row[admIdx]) {
                     admission = row[admIdx].toString().trim();
@@ -334,23 +333,28 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                     admission = row[0].toString().trim();
                 }
                 
-                if (!admission) continue;
-                
-                // Get year from sheet if available, otherwise from STUDENTS map
-                let studentYear = year;
-                if (yearIdx !== -1 && row[yearIdx] && row[yearIdx].toString().trim() !== '') {
-                    studentYear = row[yearIdx].toString().trim();
-                } else if (studentYearMap[admission]) {
-                    studentYear = studentYearMap[admission];
-                }
-                
-                if (studentYear !== year) {
-                    console.log(`⏭️ Skipping ${admission} (${studentYear}) - not ${year}`);
+                if (!admission) {
+                    skippedNoAdmission++;
                     continue;
                 }
                 
-                // Get values with fallbacks
-                const name = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : `Student ${i}`;
+                // ✅ CHECK 1: Student must be in this block
+                const studentBlock = studentBlockMap[admission] || '';
+                if (studentBlock && studentBlock !== block) {
+                    skippedWrongBlock++;
+                    continue;
+                }
+                
+                // ✅ CHECK 2: Student must be in this year
+                const studentYear = studentYearMap[admission] || '';
+                if (studentYear && studentYear !== year) {
+                    skippedWrongYear++;
+                    continue;
+                }
+                
+                // Get values
+                const name = studentNameMap[admission] || 
+                            (nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : `Student ${i}`);
                 const cat1 = cat1Idx !== -1 && row[cat1Idx] ? parseFloat(row[cat1Idx]) || 0 : 0;
                 const cat2 = cat2Idx !== -1 && row[cat2Idx] ? parseFloat(row[cat2Idx]) || 0 : 0;
                 const exam = examIdx !== -1 && row[examIdx] ? parseFloat(row[examIdx]) || 0 : 0;
@@ -370,11 +374,13 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                     grade: grade,
                     gradedBy: gradedBy || '',
                     assessmentType: assessmentType,
-                    year: studentYear
+                    year: studentYear || year
                 });
             }
             
             console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
+            console.log(`[GET INTERNAL] Skipped: ${skippedWrongYear} wrong year, ${skippedWrongBlock} wrong block`);
+            
             res.json(allMarks);
         }
         
