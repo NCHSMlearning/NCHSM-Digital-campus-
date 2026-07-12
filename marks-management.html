@@ -2873,22 +2873,86 @@ document.querySelectorAll('.nav-item').forEach(el => {
     }; 
     hideLoading(); 
 }
+// ===== FIXED: loadAdminMarks with proper year filtering =====
 async function loadAdminMarks(block, subject, at) { 
     showLoading('Loading marks...'); 
     
-    // ✅ FORCE FRESH DATA - Add timestamp to URL
-    const marks = await apiCall(`/api/marks/${block}/${subject}`, {});
+    // ✅ Get marks from API (pass year in header)
+    const marks = await apiCall(`/api/marks/${block}/${subject}`, {
+        headers: {
+            'X-Year': currentYear,
+            'X-Exam-Type': 'internal'
+        }
+    });
+    
+    console.log('📊 Raw marks loaded:', marks ? marks.length : 0);
+    
+    // ✅ Get all students for the current year ONLY
+    const allStudents = await apiCall('/api/students', {});
+    console.log('📊 All students:', allStudents ? allStudents.length : 0);
+    
+    // ✅ Filter students by current year
+    const yearStudents = allStudents.filter(s => {
+        const adm = s.admission || '';
+        const studentYear = s.year || '';
+        // Check if student belongs to current year
+        return studentYear === currentYear || 
+               adm.includes(currentYear) || 
+               adm.includes(currentYear.slice(-2));
+    });
+    
+    console.log(`📊 Students in ${currentYear}:`, yearStudents.length);
+    const yearAdmissions = new Set(yearStudents.map(s => s.admission));
+    
+    // ✅ Create name map for year students
+    const studentNameMap = {};
+    yearStudents.forEach(s => {
+        studentNameMap[s.admission] = s.name;
+    });
+    
+    // ✅ Filter marks to ONLY include students from current year
+    let filteredMarks = marks.filter(m => {
+        const adm = m.admission || '';
+        return yearAdmissions.has(adm);
+    });
+    
+    console.log(`📊 Filtered marks (${currentYear} only):`, filteredMarks.length);
+    
+    // ✅ Update names from student map
+    filteredMarks = filteredMarks.map(m => ({
+        ...m,
+        name: studentNameMap[m.admission] || m.name || 'Unknown'
+    }));
+    
+    // ✅ Also, if there are students in this block who don't have marks yet,
+    // we should show them with empty fields (so admin can enter marks)
+    const blockStudents = yearStudents.filter(s => s.block === block);
+    const existingAdmissions = new Set(filteredMarks.map(m => m.admission));
+    
+    // Add students who don't have marks yet
+    blockStudents.forEach(s => {
+        if (!existingAdmissions.has(s.admission)) {
+            filteredMarks.push({
+                admission: s.admission,
+                name: s.name || 'Unknown',
+                cat1: 0,
+                cat2: 0,
+                exam: 0,
+                gradedBy: '',
+                year: currentYear,
+                _new: true
+            });
+        }
+    });
+    
+    console.log(`📊 Total marks to display (including empty):`, filteredMarks.length);
     
     // ✅ Get unit code from config
     const config = await getConfig();
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
-    console.log('📊 Admin marks loaded:', marks);
-    console.log('📊 Number of records:', marks ? marks.length : 0);
-    console.log('📊 First record:', marks && marks.length > 0 ? marks[0] : 'No data');
-    
-    // ===== YOUR GRADING SYSTEM =====
+    // ===== GRADING SYSTEM =====
     function getGrade(score, isSecondAttempt = false) {
         if (isSecondAttempt) {
             if (score >= 80) return { grade: 'A', rating: 'Distinction', points: 4 };
@@ -2910,12 +2974,16 @@ async function loadAdminMarks(block, subject, at) {
         else return '#991b1b';
     }
     
-    if (!marks || marks.length === 0) {
+    // Sort filtered marks by name
+    filteredMarks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    
+    if (!filteredMarks || filteredMarks.length === 0) {
         document.getElementById('marksTable').innerHTML = `
             <div class="card" style="text-align:center; padding: 40px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px;"></i>
-                <h4>No marks found for ${displaySubject}</h4>
-                <p style="color: #64748b;">No student data available for this subject. Please check if students are assigned to this block.</p>
+                <h4>No students found for ${displaySubject}</h4>
+                <p style="color: #64748b;">No students from March ${currentYear} class in ${block.replace('_', ' ')} have marks in this subject.</p>
+                <p style="color: #64748b; font-size: 13px;">💡 Make sure students are assigned to BLOCK_0 with YEAR=2024 for the 2024 class.</p>
                 <button class="save-btn" onclick="refreshAllData()" style="margin-top: 12px;">
                     <i class="fas fa-sync-alt"></i> Refresh Data
                 </button>
@@ -2931,6 +2999,8 @@ async function loadAdminMarks(block, subject, at) {
                 <h3 style="margin:0; font-size:18px;">📝 ${displaySubject}</h3>
                 ${unitCode ? `<span style="font-size:12px; color:#64748b;">Unit Code: <strong>${unitCode}</strong></span>` : ''}
                 <span style="font-size:12px; color:#64748b; margin-left:12px;">${block.replace('_', ' ')}</span>
+                <span style="font-size:12px; color:#64748b; margin-left:12px; background:#f1f5f9; padding:2px 12px; border-radius:40px;">🎓 ${currentYear} Class</span>
+                <span style="font-size:12px; color:#64748b; margin-left:12px; background:#e0f2fe; padding:2px 12px; border-radius:40px;">👥 ${filteredMarks.length} students</span>
             </div>
             <div class="export-bar" style="display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="export-btn" onclick="exportAdminMarks()"><i class="fas fa-file-export"></i> Export CSV</button>
@@ -2940,9 +3010,6 @@ async function loadAdminMarks(block, subject, at) {
                 <button class="btn-warning" onclick="refreshAllData()" style="padding:8px 16px;border:none;border-radius:40px;color:white;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
-                <span style="font-size:12px;color:#64748b;padding:8px 12px;background:#f1f5f9;border-radius:40px;">
-                    📅 ${currentYear} Class | ${marks.length} students
-                </span>
             </div>
         </div>
         
@@ -2955,9 +3022,6 @@ async function loadAdminMarks(block, subject, at) {
                 <span style="background:#fef3c7; padding:2px 12px; border-radius:4px; font-weight:700; color:#92400e;">C (60-64%) → 2.0</span>
                 <span style="background:#fee2e2; padding:2px 12px; border-radius:4px; font-weight:700; color:#991b1b;">D (Below 60%) → 0.0</span>
             </div>
-            <span style="font-size:11px; color:#94a3b8; margin-left:auto;">
-                <i class="fas fa-info-circle"></i> 2nd Attempt: +5% higher threshold
-            </span>
         </div>
         
         <div style="overflow-x:auto;">
@@ -2986,14 +3050,14 @@ async function loadAdminMarks(block, subject, at) {
                 </thead>
                 <tbody>`;
     
-    window.currentAdminMarks = marks; 
+    window.currentAdminMarks = filteredMarks; 
     window.currentAdminAssessmentType = at; 
     window.currentAdminBlock = block; 
     window.currentAdminSubject = subject; 
     window.currentSaveFunction = saveAdminMarks;
     
-    for(let i = 0; i < marks.length; i++){ 
-        const m = marks[i]; 
+    for(let i = 0; i < filteredMarks.length; i++){ 
+        const m = filteredMarks[i]; 
         const cat1 = m.cat1 || ''; 
         const cat2 = m.cat2 || ''; 
         const exam = m.exam || ''; 
@@ -3010,16 +3074,16 @@ async function loadAdminMarks(block, subject, at) {
             total = Math.round(Math.min(nexam,100) * 10) / 10;
         }
         
-        // Check if second attempt (you can add logic here)
         const isSecondAttempt = false;
         const gradeInfo = getGrade(total, isSecondAttempt);
         const pointsColor = getPointsColor(gradeInfo.points);
         const rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : 'pending-row');
+        const isNew = m._new === true;
         
         html += `<tr class="${rowClass}">
             <td style="padding:8px 6px;text-align:center;font-size:12px;color:#94a3b8;">${i + 1}</td>
             <td style="padding:8px 8px;font-weight:500;font-size:12px;">${m.admission || 'N/A'}</td>
-            <td style="padding:8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>`;
+            <td style="padding:8px 8px;"><strong>${m.name || 'Unknown'}</strong> ${isNew ? '<span style="font-size:10px;color:#f59e0b;">(new)</span>' : ''}</td>`;
         
         if(at === 'full'){ 
             html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>
@@ -3040,8 +3104,8 @@ async function loadAdminMarks(block, subject, at) {
                     ${total > 0 ? `<span style="background:${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding:3px 12px; border-radius:12px; color:${total >= 60 ? '#065f46' : '#991b1b'}; font-weight:600; display:inline-block;">${gradeInfo.rating}</span>` : '<span style="color:#94a3b8;">PENDING</span>'}
                 </td>
                 <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">
-    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
-</td>
+                    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
+                </td>
             </tr>`; 
     } 
     
