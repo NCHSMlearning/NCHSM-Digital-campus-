@@ -12,6 +12,395 @@
     
     <!-- Main CSS -->
     <link rel="stylesheet" href="css/admindashboard.css">
+    
+    <style>
+        /* ============================================================
+        ATTENDANCE SHEET STYLES
+        ============================================================ */
+        .attendance-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            padding: 15px 20px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .attendance-stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #E2E8F0;
+        }
+        .attendance-stat-card .stat-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: #EFF6FF;
+        }
+        .attendance-stat-card .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .attendance-stat-card .stat-label {
+            font-size: 0.7rem;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        .attendance-stat-card .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-stat-card.present .stat-value { color: #38A169; }
+        .attendance-stat-card.absent .stat-value { color: #DC2626; }
+        .attendance-stat-card.in-progress .stat-value { color: #F59E0B; }
+        .attendance-stat-card.completed .stat-value { color: #0A3D62; }
+        .attendance-stat-card.live .stat-value { color: #3B82F6; }
+        
+        .status-badge-attendance {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-badge-attendance.present { background: #D1FAE5; color: #064E3B; }
+        .status-badge-attendance.absent { background: #FEE2E2; color: #991B1B; }
+        .status-badge-attendance.in-progress { background: #FEF3C7; color: #92400E; }
+        .status-badge-attendance.signed-in { background: #DBEAFE; color: #1E40AF; }
+        .status-badge-attendance.completed { background: #D1FAE5; color: #064E3B; }
+        
+        .attendance-filters {
+            padding: 12px 20px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .attendance-filters select,
+        .attendance-filters input {
+            padding: 8px 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: white;
+            min-width: 140px;
+        }
+        .attendance-filters select:focus,
+        .attendance-filters input:focus {
+            outline: none;
+            border-color: #0A3D62;
+        }
+        .attendance-filters label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .attendance-summary-bar {
+            padding: 10px 20px;
+            background: #F0FDF4;
+            border-bottom: 1px solid #D1FAE5;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .attendance-summary-bar .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #475569;
+        }
+        .attendance-summary-bar .summary-item .num {
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-summary-bar .summary-item .num.present { color: #38A169; }
+        .attendance-summary-bar .summary-item .num.absent { color: #DC2626; }
+        .attendance-summary-bar .summary-item .num.in-progress { color: #F59E0B; }
+        .attendance-summary-bar .summary-item .num.live { color: #3B82F6; }
+        
+        .progress-bar-attendance {
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            min-width: 100px;
+        }
+        .progress-bar-attendance .progress-fill-attendance {
+            height: 100%;
+            background: linear-gradient(90deg, #38A169, #0A3D62);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .attendance-table-wrap {
+            overflow-x: auto;
+            padding: 0 20px 20px;
+        }
+        .attendance-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .attendance-table-wrap th {
+            background: #F8FAFC;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #E2E8F0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        .attendance-table-wrap td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #F1F5F9;
+            vertical-align: middle;
+        }
+        .attendance-table-wrap tbody tr:hover {
+            background: #F8FAFC;
+        }
+        
+        .btn-sm {
+            padding: 3px 10px;
+            font-size: 0.65rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-sm:hover {
+            transform: scale(1.05);
+        }
+        .btn-sm.btn-info { background: #DBEAFE; color: #1E40AF; }
+        .btn-sm.btn-primary { background: #0A3D62; color: white; }
+        .btn-sm.btn-success { background: #D1FAE5; color: #064E3B; }
+        .btn-sm.btn-danger { background: #FEE2E2; color: #991B1B; }
+        .btn-sm.btn-warning { background: #FEF3C7; color: #92400E; }
+        
+        .attendance-empty {
+            text-align: center;
+            padding: 40px;
+            color: #94A3B8;
+        }
+        .attendance-empty i {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        /* Live video cell */
+        .live-video-container {
+            width: 200px;
+            height: 140px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .live-video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #1a1a2e;
+        }
+        .live-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            color: #4ADE80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .live-badge .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #4ADE80;
+            border-radius: 50%;
+            animation: pulse-dot 1s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        .video-controls button {
+            padding: 2px 8px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            cursor: pointer;
+        }
+        .video-controls button:hover {
+            background: rgba(0,0,0,0.8);
+        }
+        .video-placeholder {
+            width: 200px;
+            height: 140px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 6px;
+            border: 2px dashed #E2E8F0;
+        }
+        .video-placeholder i {
+            font-size: 2rem;
+            color: #94A3B8;
+        }
+        .video-placeholder span {
+            font-size: 0.6rem;
+            color: #94A3B8;
+        }
+        
+        /* Full video modal */
+        .full-video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            padding: 20px;
+        }
+        .full-video-modal .video-wrapper {
+            background: #1a1a2e;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .full-video-modal .video-wrapper video {
+            width: 100%;
+            max-height: 70vh;
+            background: #1a1a2e;
+        }
+        .full-video-modal .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .full-video-modal .close-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+        .full-video-modal .video-info {
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        .full-video-modal .video-info h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .full-video-modal .video-info p {
+            margin: 2px 0 0;
+            font-size: 0.8rem;
+            color: #94A3B8;
+        }
+        .full-video-modal .video-info .status-live {
+            color: #4ADE80;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .full-video-modal .video-info .status-live .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #4ADE80;
+            border-radius: 50%;
+            animation: pulse-dot 1s infinite;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .attendance-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+            .attendance-stat-card {
+                padding: 8px 12px;
+            }
+            .attendance-stat-card .stat-value {
+                font-size: 1rem;
+            }
+            .live-video-container {
+                width: 140px;
+                height: 100px;
+            }
+            .video-placeholder {
+                width: 140px;
+                height: 100px;
+            }
+            .attendance-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .attendance-filters select,
+            .attendance-filters input {
+                width: 100%;
+                min-width: unset;
+            }
+            .attendance-summary-bar {
+                gap: 8px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -32,6 +421,8 @@
             <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
             <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
             <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
+            <!-- ✅ NEW: Attendance Sheet Tab -->
+            <li><a data-tab="attendance" onclick="switchTab('attendance')"><i class="fas fa-clipboard-check"></i> Attendance Sheet <span class="badge-sidebar" id="attendanceBadge">0</span></a></li>
         </ul>
         <div class="sidebar-footer">
             <button class="logout-btn-sidebar" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -167,84 +558,81 @@
                 <div class="pagination" id="liveStudentsPagination"></div>
             </div>
 
-           <!-- ========== 📹 LIVE FEED TABLE ========== -->
-<div class="table-container" id="livefeedTableContainer" style="display:none;">
-    <div class="table-header">
-        <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
-        <div class="table-actions">
-            <!-- ✅ View Toggle -->
-            <div class="view-toggle">
-                <button class="view-toggle-btn active" onclick="setLiveFeedView('live')" id="liveViewBtn">
-                    <i class="fas fa-broadcast"></i> Live
-                </button>
-                <button class="view-toggle-btn" onclick="setLiveFeedView('past')" id="pastViewBtn">
-                    <i class="fas fa-history"></i> Past
-                </button>
+            <!-- Live Feed Table -->
+            <div class="table-container" id="livefeedTableContainer" style="display:none;">
+                <div class="table-header">
+                    <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
+                    <div class="table-actions">
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" onclick="setLiveFeedView('live')" id="liveViewBtn">
+                                <i class="fas fa-broadcast"></i> Live
+                            </button>
+                            <button class="view-toggle-btn" onclick="setLiveFeedView('past')" id="pastViewBtn">
+                                <i class="fas fa-history"></i> Past
+                            </button>
+                        </div>
+                        <button class="btn btn-success" onclick="refreshLiveFeed()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
+                            <i class="fas fa-play" id="liveFeedAutoIcon"></i> 
+                            <span id="liveFeedAutoText">Auto: ON</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportLiveFeed()">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 200px; display: flex; gap: 8px; align-items: center;">
+                        <i class="fas fa-search" style="color: #94A3B8;"></i>
+                        <input type="text" id="liveFeedSearch" placeholder="Search by name or reg number..." 
+                               style="flex:1; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.85rem; min-width: 150px;"
+                               oninput="filterLiveFeed()">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Exam:</label>
+                        <select id="liveFeedExamFilter" onchange="filterLiveFeed()" 
+                                style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 150px;">
+                            <option value="">All Exams</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Status:</label>
+                        <select id="liveFeedStatusFilter" onchange="filterLiveFeed()" 
+                                style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;">
+                            <option value="">All</option>
+                            <option value="active">🟢 Active</option>
+                            <option value="violation">🚨 Violation</option>
+                            <option value="warning">⚠️ Warning</option>
+                            <option value="no-camera">📷 No Camera</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-danger" onclick="clearLiveFeedFilters()" style="padding: 6px 14px; font-size: 0.75rem;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+                
+                <div id="liveFeedLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+                </div>
+                
+                <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5; flex-wrap:wrap; gap:12px;">
+                    <span><strong id="liveFeedCount">0</strong> students <span id="liveFeedViewLabel">active</span></span>
+                    <span>🟢 <strong id="liveFeedWithCamera">0</strong> with camera</span>
+                    <span>🔴 <strong id="liveFeedNoCamera">0</strong> no camera</span>
+                    <span>🚨 <strong id="liveFeedViolations">0</strong> violations</span>
+                    <span style="margin-left:auto; font-size:0.8rem; color:#64748B;">
+                        <i class="fas fa-sync"></i> Auto-refresh: <span id="liveFeedRefreshStatus">active</span>
+                    </span>
+                </div>
+                
+                <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
+                </div>
+                
+                <div class="pagination" id="liveFeedPagination"></div>
             </div>
-            <button class="btn btn-success" onclick="refreshLiveFeed()">
-                <i class="fas fa-sync"></i> Refresh
-            </button>
-            <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
-                <i class="fas fa-play" id="liveFeedAutoIcon"></i> 
-                <span id="liveFeedAutoText">Auto: ON</span>
-            </button>
-            <button class="btn btn-secondary" onclick="exportLiveFeed()">
-                <i class="fas fa-file-excel"></i> Export
-            </button>
-        </div>
-    </div>
-    
-    <!-- ✅ FILTERS & SEARCH -->
-    <div style="padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-        <div style="flex: 1; min-width: 200px; display: flex; gap: 8px; align-items: center;">
-            <i class="fas fa-search" style="color: #94A3B8;"></i>
-            <input type="text" id="liveFeedSearch" placeholder="Search by name or reg number..." 
-                   style="flex:1; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.85rem; min-width: 150px;"
-                   oninput="filterLiveFeed()">
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Exam:</label>
-            <select id="liveFeedExamFilter" onchange="filterLiveFeed()" 
-                    style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 150px;">
-                <option value="">All Exams</option>
-            </select>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Status:</label>
-            <select id="liveFeedStatusFilter" onchange="filterLiveFeed()" 
-                    style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;">
-                <option value="">All</option>
-                <option value="active">🟢 Active</option>
-                <option value="violation">🚨 Violation</option>
-                <option value="warning">⚠️ Warning</option>
-                <option value="no-camera">📷 No Camera</option>
-            </select>
-        </div>
-        <button class="btn btn-danger" onclick="clearLiveFeedFilters()" style="padding: 6px 14px; font-size: 0.75rem;">
-            <i class="fas fa-times"></i> Clear
-        </button>
-    </div>
-    
-    <div id="liveFeedLoading" class="loading">
-        <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
-    </div>
-    
-    <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5; flex-wrap:wrap; gap:12px;">
-        <span><strong id="liveFeedCount">0</strong> students <span id="liveFeedViewLabel">active</span></span>
-        <span>🟢 <strong id="liveFeedWithCamera">0</strong> with camera</span>
-        <span>🔴 <strong id="liveFeedNoCamera">0</strong> no camera</span>
-        <span>🚨 <strong id="liveFeedViolations">0</strong> violations</span>
-        <span style="margin-left:auto; font-size:0.8rem; color:#64748B;">
-            <i class="fas fa-sync"></i> Auto-refresh: <span id="liveFeedRefreshStatus">active</span>
-        </span>
-    </div>
-    
-    <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
-        <!-- Camera cards will be dynamically inserted here -->
-    </div>
-    
-    <div class="pagination" id="liveFeedPagination"></div>
-</div>
 
             <!-- Exams Table -->
             <div class="table-container" id="examsTableContainer" style="display:none;">
@@ -309,10 +697,167 @@
                 </table>
                 <div class="pagination" id="proctoringPagination"></div>
             </div>
+
+            <!-- ============================================================
+            ✅ ATTENDANCE SHEET TABLE
+            ============================================================ -->
+            <div class="table-container" id="attendanceTableContainer" style="display:none;">
+                <div class="table-header">
+                    <h2><i class="fas fa-clipboard-check"></i> 📋 Exam Attendance Sheet</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-success" onclick="refreshAttendance()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-danger" onclick="viewAllLiveVideos()">
+                            <i class="fas fa-video"></i> View All Live
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportAttendanceCSV()">
+                            <i class="fas fa-file-csv"></i> Export CSV
+                        </button>
+                        <button class="btn btn-primary" onclick="exportAttendanceExcel()">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </button>
+                        <button class="btn btn-warning" onclick="printAttendance()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Attendance Stats -->
+                <div class="attendance-stats-grid" id="attendanceStatsGrid">
+                    <div class="attendance-stat-card present">
+                        <div class="stat-icon" style="background:#D1FAE5;">✅</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Present</span>
+                            <span class="stat-value" id="attStatPresent">0</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card in-progress">
+                        <div class="stat-icon" style="background:#FEF3C7;">⏳</div>
+                        <div class="stat-info">
+                            <span class="stat-label">In Progress</span>
+                            <span class="stat-value" id="attStatInProgress">0</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card completed">
+                        <div class="stat-icon" style="background:#DBEAFE;">📋</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Signed In</span>
+                            <span class="stat-value" id="attStatSignedIn">0</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card absent">
+                        <div class="stat-icon" style="background:#FEE2E2;">❌</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Absent</span>
+                            <span class="stat-value" id="attStatAbsent">0</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card" style="background:#F0FDF4; border-color:#38A169;">
+                        <div class="stat-icon" style="background:#D1FAE5;">📊</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Attendance Rate</span>
+                            <span class="stat-value" id="attStatRate" style="color:#38A169;">0%</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card live">
+                        <div class="stat-icon" style="background:#DBEAFE;">📹</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Live Video</span>
+                            <span class="stat-value" id="attStatLive">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="attendance-filters">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Exam:</label>
+                        <select id="attendanceExamFilter" onchange="loadAttendanceSheet()">
+                            <option value="">All Exams</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Date:</label>
+                        <input type="date" id="attendanceDateFilter" onchange="loadAttendanceSheet()">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Status:</label>
+                        <select id="attendanceStatusFilter" onchange="loadAttendanceSheet()">
+                            <option value="">All</option>
+                            <option value="present">✅ Present</option>
+                            <option value="in_progress">⏳ In Progress</option>
+                            <option value="signed_in">📋 Signed In</option>
+                            <option value="absent">❌ Absent</option>
+                            <option value="completed">✅ Completed</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.8rem;">
+                            <input type="checkbox" id="showOnlyLive" onchange="loadAttendanceSheet()">
+                            <i class="fas fa-video" style="color:#3B82F6;"></i> Live Only
+                        </label>
+                        <button class="btn btn-sm btn-info" onclick="loadAttendanceSheet()" style="padding:6px 16px;">
+                            <i class="fas fa-search"></i> Apply
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="clearAttendanceFilters()" style="padding:6px 16px;">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Bar -->
+                <div class="attendance-summary-bar" id="attendanceSummaryBar" style="display:none;">
+                    <span class="summary-item">📊 Total: <span class="num" id="attTotalStudents">0</span></span>
+                    <span class="summary-item">✅ Present: <span class="num present" id="attSummaryPresent">0</span></span>
+                    <span class="summary-item">⏳ In Progress: <span class="num in-progress" id="attSummaryInProgress">0</span></span>
+                    <span class="summary-item">❌ Absent: <span class="num absent" id="attSummaryAbsent">0</span></span>
+                    <span class="summary-item">📹 Live: <span class="num live" id="attSummaryLive">0</span></span>
+                    <div class="progress-bar-attendance">
+                        <div class="progress-fill-attendance" id="attendanceProgressBar" style="width:0%;"></div>
+                    </div>
+                    <span class="summary-item" style="font-weight:700; color:#0A3D62;">
+                        <span id="attSummaryRate">0%</span> attendance
+                    </span>
+                </div>
+
+                <!-- Attendance Table -->
+                <div class="attendance-table-wrap">
+                    <div id="attendanceLoading" class="loading" style="padding:40px;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading attendance data...
+                    </div>
+                    <table id="attendanceTable" style="display:none; width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Student Name</th>
+                                <th>Registration</th>
+                                <th>Exam</th>
+                                <th>Status</th>
+                                <th>Sign In</th>
+                                <th style="width:220px;">📹 Live Feed</th>
+                                <th style="width:100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody">
+                            <tr>
+                                <td colspan="8" class="attendance-empty">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    No attendance records found
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="attendancePagination"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- ========== MODALS ========== -->
+    <!-- (Keep all your existing modals here - studentModal, examModal, etc.) -->
+    
+    <!-- Student Modal -->
     <div id="studentModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -321,6 +866,7 @@
         </div>
     </div>
 
+    <!-- Exam Modal -->
     <div id="examModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeExamModal()">&times;</span>
@@ -383,6 +929,7 @@
         </div>
     </div>
 
+    <!-- Assign Exam Modal -->
     <div id="assignExamModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeAssignExamModal()">&times;</span>
@@ -402,59 +949,61 @@
         </div>
     </div>
 
-  <div id="releaseModal" class="modal">
-    <div class="modal-content" style="max-width: 1000px;">
-        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
-        <h2><i class="fas fa-share-alt"></i> Release & Resend Results</h2>
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label>Select Exam:</label>
-                <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
-                    <option value="">-- Select Exam --</option>
-                </select>
+    <!-- Release Modal -->
+    <div id="releaseModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
+            <h2><i class="fas fa-share-alt"></i> Release & Resend Results</h2>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Select Exam:</label>
+                    <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
+                        <option value="">-- Select Exam --</option>
+                    </select>
+                </div>
             </div>
-        </div>
-        <div id="releasePreview" style="display:none;">
-            <div class="release-actions">
-                <button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button>
-                <button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button>
-                <span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span>
-            </div>
-            <div id="releaseSummary"></div>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table class="preview-table" style="width:100%;">
-                    <thead>
-                        <tr>
-                            <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-                            <th>Student ID</th>
-                            <th>Student Name</th>
-                            <th>Score</th>
-                            <th>%</th>
-                            <th>Status</th>
-                            <th>Released</th>
-                            <th style="min-width:180px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="releasePreviewBody"></tbody>
-                </table>
-            </div>
-            <!-- Email toggle -->
-            <div style="margin-top: 16px; padding: 12px; background: #F0FDF4; border-radius: 8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                    <input type="checkbox" id="sendEmailOnRelease" checked>
-                    <i class="fas fa-envelope"></i> Send email notification
-                </label>
-                <span style="font-size:0.75rem; color:#64748B;">(Students will be notified that their results have been released)</span>
-            </div>
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
-                <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">
-                    <i class="fas fa-share-alt"></i> Release Selected
-                </button>
+            <div id="releasePreview" style="display:none;">
+                <div class="release-actions">
+                    <button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button>
+                    <button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button>
+                    <span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span>
+                </div>
+                <div id="releaseSummary"></div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table class="preview-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Score</th>
+                                <th>%</th>
+                                <th>Status</th>
+                                <th>Released</th>
+                                <th style="min-width:180px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="releasePreviewBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: #F0FDF4; border-radius: 8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="sendEmailOnRelease" checked>
+                        <i class="fas fa-envelope"></i> Send email notification
+                    </label>
+                    <span style="font-size:0.75rem; color:#64748B;">(Students will be notified that their results have been released)</span>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
+                    <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">
+                        <i class="fas fa-share-alt"></i> Release Selected
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Reset Exam Modal -->
     <div id="resetExamModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeResetModal()">&times;</span>
@@ -467,6 +1016,7 @@
         </div>
     </div>
 
+    <!-- Reset By Email Modal -->
     <div id="resetByEmailModal" class="modal">
         <div class="modal-content" style="max-width: 550px;">
             <span class="close-modal" onclick="closeResetByEmailModal()">&times;</span>
@@ -494,80 +1044,62 @@
         </div>
     </div>
 
-   <!-- Camera Modal - UPDATED for Multiple Snapshots -->
-<div id="cameraModal" class="modal">
-    <div class="modal-content" style="max-width: 950px;">
-        <span class="close-modal" onclick="closeCameraModal()">&times;</span>
-        <h2 id="cameraModalTitle"><i class="fas fa-video"></i> Live Camera Feed</h2>
-        
-        <!-- Student/Exam Info -->
-        <div style="background:#F8FAFC; padding:12px 16px; border-radius:12px; margin:12px 0; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
-            <div><strong>👤 Student:</strong> <span id="cameraStudentName">Loading...</span></div>
-            <div><strong>📝 Exam:</strong> <span id="cameraExamName">Loading...</span></div>
-            <div><strong>🟢 Status:</strong> <span id="cameraStatus" class="status-active">Active</span></div>
-        </div>
-        
-        <!-- Camera Feed -->
-        <div style="background:#000; border-radius:12px; overflow:hidden; min-height:400px; position:relative;">
-            <div id="cameraLoading" style="display:flex; align-items:center; justify-content:center; height:400px; color:white; flex-direction:column; gap:16px; background:#1a1a2e;">
-                <i class="fas fa-spinner fa-spin fa-3x"></i>
-                <p>Loading camera feed...</p>
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content" style="max-width: 950px;">
+            <span class="close-modal" onclick="closeCameraModal()">&times;</span>
+            <h2 id="cameraModalTitle"><i class="fas fa-video"></i> Live Camera Feed</h2>
+            <div style="background:#F8FAFC; padding:12px 16px; border-radius:12px; margin:12px 0; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                <div><strong>👤 Student:</strong> <span id="cameraStudentName">Loading...</span></div>
+                <div><strong>📝 Exam:</strong> <span id="cameraExamName">Loading...</span></div>
+                <div><strong>🟢 Status:</strong> <span id="cameraStatus" class="status-active">Active</span></div>
             </div>
-            <img id="cameraFeed" src="" alt="Camera Feed" style="width:100%; display:none; max-height:600px; object-fit:contain; background:#000;">
-            
-            <!-- Camera Overlay -->
-            <div id="cameraOverlay" style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.8)); padding:20px; display:none; color:white;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <span><i class="fas fa-clock"></i> <span id="cameraTimestamp">--</span></span>
-                    <span><i class="fas fa-wifi"></i> <span id="cameraSignal">Live</span></span>
-                    <span><i class="fas fa-camera"></i> <span id="cameraFPS">--</span></span>
+            <div style="background:#000; border-radius:12px; overflow:hidden; min-height:400px; position:relative;">
+                <div id="cameraLoading" style="display:flex; align-items:center; justify-content:center; height:400px; color:white; flex-direction:column; gap:16px; background:#1a1a2e;">
+                    <i class="fas fa-spinner fa-spin fa-3x"></i>
+                    <p>Loading camera feed...</p>
+                </div>
+                <img id="cameraFeed" src="" alt="Camera Feed" style="width:100%; display:none; max-height:600px; object-fit:contain; background:#000;">
+                <div id="cameraOverlay" style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.8)); padding:20px; display:none; color:white;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <span><i class="fas fa-clock"></i> <span id="cameraTimestamp">--</span></span>
+                        <span><i class="fas fa-wifi"></i> <span id="cameraSignal">Live</span></span>
+                        <span><i class="fas fa-camera"></i> <span id="cameraFPS">--</span></span>
+                    </div>
+                </div>
+                <div style="position:absolute; bottom:80px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; flex-wrap:wrap; justify-content:center;">
+                    <button class="btn btn-success" onclick="captureSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera"></i> Capture</button>
+                    <button class="btn btn-primary" onclick="refreshCameraFeed()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-sync"></i> Refresh</button>
+                    <button class="btn btn-warning" onclick="toggleAutoRefreshCamera()" id="cameraRefreshBtn" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-play"></i> Auto: ON</button>
+                    <button class="btn btn-danger" onclick="requestCameraSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera-retro"></i> Request</button>
                 </div>
             </div>
-            
-            <!-- Control Buttons -->
-            <div style="position:absolute; bottom:80px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; flex-wrap:wrap; justify-content:center;">
-                <button class="btn btn-success" onclick="captureSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera"></i> Capture</button>
-                <button class="btn btn-primary" onclick="refreshCameraFeed()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-sync"></i> Refresh</button>
-                <button class="btn btn-warning" onclick="toggleAutoRefreshCamera()" id="cameraRefreshBtn" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-play"></i> Auto: ON</button>
-                <button class="btn btn-danger" onclick="requestCameraSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera-retro"></i> Request</button>
+            <div id="snapshotGallery" style="margin-top:16px; display:none; background:#F8FAFC; border-radius:12px; padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h4 style="margin:0;">
+                        <i class="fas fa-images"></i> Recent Snapshots 
+                        <span class="snapshot-count" id="snapshotCount" style="background:#E2E8F0; padding:2px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; color:#475569; margin-left:8px;">0</span>
+                    </h4>
+                    <button class="btn btn-danger btn-sm" onclick="clearAllSnapshots()" style="padding:4px 12px; font-size:0.7rem; background:#DC2626; color:white; border:none; border-radius:6px; cursor:pointer;">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                </div>
+                <div id="snapshotList" style="display:flex; gap:12px; overflow-x:auto; padding:8px 4px; min-height:100px; flex-wrap:nowrap; scroll-behavior:smooth;"></div>
+                <div id="snapshotEmpty" style="display:flex; align-items:center; justify-content:center; padding:20px; color:#94A3B8; flex-direction:column; gap:8px;">
+                    <i class="fas fa-camera-slash fa-2x"></i>
+                    <p style="margin:0;">No snapshots captured yet</p>
+                    <p style="margin:0; font-size:0.8rem;">Click "Capture" to take a snapshot</p>
+                </div>
             </div>
-        </div>
-
-        <!-- ============================================================
-        ✅ UPDATED: Snapshot Gallery - Shows Multiple Snapshots
-        ============================================================ -->
-        <div id="snapshotGallery" style="margin-top:16px; display:none; background:#F8FAFC; border-radius:12px; padding:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <h4 style="margin:0;">
-                    <i class="fas fa-images"></i> Recent Snapshots 
-                    <span class="snapshot-count" id="snapshotCount" style="background:#E2E8F0; padding:2px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; color:#475569; margin-left:8px;">0</span>
-                </h4>
-                <button class="btn btn-danger btn-sm" onclick="clearAllSnapshots()" style="padding:4px 12px; font-size:0.7rem; background:#DC2626; color:white; border:none; border-radius:6px; cursor:pointer;">
-                    <i class="fas fa-trash"></i> Clear All
-                </button>
+            <div style="margin-top:16px; max-height:150px; overflow-y:auto; background:#F8FAFC; border-radius:12px; padding:12px;">
+                <h4 style="margin-bottom:8px; font-size:0.9rem;"><i class="fas fa-exclamation-triangle"></i> Recent Alerts</h4>
+                <div id="cameraAlertsList" style="font-size:0.8rem;"></div>
             </div>
-            <div id="snapshotList" style="display:flex; gap:12px; overflow-x:auto; padding:8px 4px; min-height:100px; flex-wrap:nowrap; scroll-behavior:smooth;">
-                <!-- Snapshots will be inserted here -->
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
+                <button class="btn btn-danger" onclick="closeCameraModal()">Close</button>
             </div>
-            <div id="snapshotEmpty" style="display:flex; align-items:center; justify-content:center; padding:20px; color:#94A3B8; flex-direction:column; gap:8px;">
-                <i class="fas fa-camera-slash fa-2x"></i>
-                <p style="margin:0;">No snapshots captured yet</p>
-                <p style="margin:0; font-size:0.8rem;">Click "Capture" to take a snapshot</p>
-            </div>
-        </div>
-
-        <!-- Alerts List -->
-        <div style="margin-top:16px; max-height:150px; overflow-y:auto; background:#F8FAFC; border-radius:12px; padding:12px;">
-            <h4 style="margin-bottom:8px; font-size:0.9rem;"><i class="fas fa-exclamation-triangle"></i> Recent Alerts</h4>
-            <div id="cameraAlertsList" style="font-size:0.8rem;"></div>
-        </div>
-        
-        <!-- Close Button -->
-        <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
-            <button class="btn btn-danger" onclick="closeCameraModal()">Close</button>
         </div>
     </div>
-</div>
 
     <!-- Timer Modal -->
     <div id="timerModal" class="modal">
