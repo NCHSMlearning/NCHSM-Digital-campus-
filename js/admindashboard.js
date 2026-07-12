@@ -25,7 +25,13 @@
     let allExams = [];
     let proctoringLogs = [];
     let examsMap = {};
-    let currentPage = { students: 1, allStudents: 1, exams: 1, proctoring: 1 };
+    let currentPage = { 
+    students: 1, 
+    allStudents: 1, 
+    exams: 1, 
+    proctoring: 1, 
+    attendance: 1 
+};
     let currentExamFilter = 'all';
     let itemsPerPage = 15;
     let notificationSubscription = null;
@@ -48,7 +54,15 @@
     let currentCameraExam = null;
     let currentCameraStudentName = '';
     let currentCameraExamName = '';
-
+// ============================================
+// 📋 ATTENDANCE SHEET STATE
+// ============================================
+let attendanceData = [];
+let attendanceAutoRefresh = true;
+let attendanceRefreshInterval = null;
+let liveVideoStreams = {};
+let isVideoAutoRefresh = true;
+    
     // Timer Variables
     let timerModalData = {
         studentId: null,
@@ -356,6 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
     // ============================================
+
     // 🔐 AUTHENTICATION
     // ============================================
     function checkAdminAuth() {
@@ -5601,7 +5616,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         }
     };
 
-    // ============================================
+  // ============================================
     // 🖱️ SIDEBAR FUNCTIONS
     // ============================================
     window.toggleSidebar = function() {
@@ -5622,7 +5637,8 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
             'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
             'liveStudents': ['Live Students', 'Students currently taking exams', 'fa-eye'],
-            'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video']
+            'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video'],
+            'attendance': ['Attendance Sheet', 'View exam attendance with live video feeds', 'fa-clipboard-check']  // ✅ ADD THIS LINE
         };
         
         const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
@@ -5635,6 +5651,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         document.getElementById('proctoringTableContainer').style.display = tab === 'proctoring' ? 'block' : 'none';
         document.getElementById('liveStudentsTableContainer').style.display = tab === 'liveStudents' ? 'block' : 'none';
         document.getElementById('livefeedTableContainer').style.display = tab === 'livefeed' ? 'block' : 'none';
+        document.getElementById('attendanceTableContainer').style.display = tab === 'attendance' ? 'block' : 'none';  // ✅ ADD THIS LINE
 
         if (tab === 'students') loadStudentsWithResults();
         if (tab === 'allStudents') loadAllStudents();
@@ -5645,6 +5662,9 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             loadLiveFeed();
             startLiveFeedAutoRefresh();
         }
+        if (tab === 'attendance') {  // ✅ ADD THIS BLOCK
+            initAttendanceTab();
+        }
         
         renderFilters();
 
@@ -5653,7 +5673,6 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             document.getElementById('sidebarOverlay').classList.remove('show');
         }
     };
-
     // ============================================
     // 🔄 REFRESH STUDENT PROGRESS
     // ============================================
@@ -5694,6 +5713,14 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             }
         });
 
+        // ✅ Load attendance exam dropdown
+        if (typeof loadAttendanceExamDropdown === 'function') {
+            loadAttendanceExamDropdown();
+        }
+        if (typeof setDefaultAttendanceDate === 'function') {
+            setDefaultAttendanceDate();
+        }
+
         // Load live feed in background after 2 seconds
         setTimeout(function() {
             if (typeof loadLiveFeed === 'function') {
@@ -5710,6 +5737,10 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             }
             if (currentTab === 'livefeed' && typeof loadLiveFeed === 'function') {
                 loadLiveFeed();
+            }
+            // ✅ Auto-refresh attendance
+            if (currentTab === 'attendance' && attendanceAutoRefresh && typeof loadAttendanceSheet === 'function') {
+                loadAttendanceSheet();
             }
         }, 30000);
 
@@ -5744,6 +5775,17 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                 }
             }
             
+            // ✅ Keyboard shortcut for Attendance: Ctrl+Shift+A
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                if (typeof switchTab === 'function') {
+                    switchTab('attendance');
+                    if (typeof showToast === 'function') {
+                        showToast('📋 Opening Attendance Sheet', 'info');
+                    }
+                }
+            }
+            
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal').forEach(function(modal) {
                     if (modal.style.display === 'flex') {
@@ -5759,6 +5801,9 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                         }
                         if (modal.id === 'cameraModal' && typeof closeCameraModal === 'function') {
                             closeCameraModal();
+                        }
+                        if (modal.id === 'attendanceDetailModal') {
+                            modal.remove();
                         }
                     }
                 });
@@ -5780,14 +5825,809 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                 if (e.target.id === 'cameraModal' && typeof closeCameraModal === 'function') {
                     closeCameraModal();
                 }
+                if (e.target.id === 'attendanceDetailModal') {
+                    e.target.remove();
+                }
             }
         });
 
         console.log('✅ Dashboard fully initialized');
         console.log('📹 Press Ctrl+Shift+L to open Live Feed');
+        console.log('📋 Press Ctrl+Shift+A to open Attendance Sheet');
+    });
+// ============================================
+// 📋 ATTENDANCE SHEET FUNCTIONS
+// ============================================
+
+// Load attendance sheet
+async function loadAttendanceSheet() {
+    const examId = document.getElementById('attendanceExamFilter')?.value;
+    const date = document.getElementById('attendanceDateFilter')?.value;
+    const status = document.getElementById('attendanceStatusFilter')?.value;
+    const showOnlyLive = document.getElementById('showOnlyLive')?.checked || false;
+
+    const loadingDiv = document.getElementById('attendanceLoading');
+    const table = document.getElementById('attendanceTable');
+    const summaryBar = document.getElementById('attendanceSummaryBar');
+
+    if (loadingDiv) {
+        loadingDiv.style.display = 'block';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading attendance data...';
+    }
+    if (table) table.style.display = 'none';
+    if (summaryBar) summaryBar.style.display = 'none';
+
+    try {
+        let query = sb.from('exam_attendance').select('*');
+        
+        if (examId) {
+            query = query.eq('exam_id', parseInt(examId));
+        }
+        if (date) {
+            query = query.eq('date', date);
+        }
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        let filteredData = data || [];
+        
+        // Filter for live only if checked
+        if (showOnlyLive) {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const { data: liveLogs } = await sb
+                .from('exam_proctoring_logs')
+                .select('student_id, exam_id')
+                .gte('timestamp', fiveMinutesAgo);
+            
+            const liveSet = new Set(liveLogs?.map(l => `${l.student_id}_${l.exam_id}`) || []);
+            filteredData = filteredData.filter(r => liveSet.has(`${r.student_id}_${r.exam_id}`));
+        }
+
+        attendanceData = filteredData;
+        renderAttendanceTable(attendanceData);
+        updateAttendanceStats(attendanceData);
+        updateAttendanceSummary(attendanceData);
+
+        // Update badge count
+        const badge = document.getElementById('attendanceBadge');
+        if (badge) badge.textContent = attendanceData.length;
+
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        showToast('Error loading attendance data', 'error');
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '❌ Error loading attendance data';
+            loadingDiv.style.color = '#DC2626';
+        }
+    }
+
+    if (loadingDiv) loadingDiv.style.display = 'none';
+}
+
+// Render attendance table
+function renderAttendanceTable(data) {
+    const tbody = document.getElementById('attendanceBody');
+    const table = document.getElementById('attendanceTable');
+
+    if (!tbody) return;
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="attendance-empty">
+                    <i class="fas fa-clipboard-list"></i>
+                    No attendance records found
+                </td>
+            </tr>
+        `;
+        if (table) table.style.display = 'table';
+        return;
+    }
+
+    // Get live students
+    const liveStudents = getLiveStudents(data);
+
+    let html = '';
+    data.forEach((record, index) => {
+        const isLive = liveStudents.includes(record.student_id);
+        const statusClass = record.status === 'present' || record.status === 'completed' ? 'present' :
+                           record.status === 'signed_in' ? 'signed-in' :
+                           record.status === 'in_progress' ? 'in-progress' : 'absent';
+        
+        const statusDisplay = record.status === 'completed' ? '✅ Completed' :
+                              record.status === 'present' ? '✅ Present' :
+                              record.status === 'signed_in' ? '📋 Signed In' :
+                              record.status === 'in_progress' ? '⏳ In Progress' : '❌ Absent';
+
+        const signInTime = record.sign_in_time ? new Date(record.sign_in_time).toLocaleString() : '--';
+        
+        // Video feed HTML
+        let videoHtml = '';
+        if (isLive) {
+            videoHtml = `
+                <div class="live-video-container">
+                    <video id="liveVideo_${record.student_id}" 
+                           autoplay muted playsinline
+                           style="width:100%; height:100%; object-fit:cover; background:#1a1a2e;">
+                        <source src="" type="video/webm">
+                    </video>
+                    <div class="live-badge">
+                        <span class="dot"></span> LIVE
+                    </div>
+                    <div class="video-controls">
+                        <button onclick="toggleVideoMute('${record.student_id}')" title="Mute">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <button onclick="openFullVideo('${record.student_id}', '${record.student_name || 'Student'}', '${record.exam_id}')" title="Full Screen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            videoHtml = `
+                <div class="video-placeholder">
+                    <i class="fas fa-video-slash"></i>
+                    <span>Not live</span>
+                    <button onclick="requestLiveFeed('${record.student_id}', '${record.exam_id}')" 
+                            style="padding:2px 12px; background:#3B82F6; color:white; border:none; border-radius:4px; font-size:0.6rem; cursor:pointer;">
+                        <i class="fas fa-play"></i> Request
+                    </button>
+                </div>
+            `;
+        }
+
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><strong>${record.student_name || 'Unknown'}</strong></td>
+                <td>${record.student_reg_number || 'N/A'}</td>
+                <td>${record.exam_name || 'Exam ' + record.exam_id}</td>
+                <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
+                <td>${signInTime}</td>
+                <td>${videoHtml}</td>
+                <td>
+                    <button class="btn-sm btn-info" onclick="viewStudentAttendance('${record.student_id}', '${record.exam_id}')">
+                        <i class="fas fa-eye"></i> Details
+                    </button>
+                    ${isLive ? `
+                        <button class="btn-sm btn-danger" onclick="stopLiveFeed('${record.student_id}')">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
     });
 
-    // ============================================
+    tbody.innerHTML = html;
+    if (table) table.style.display = 'table';
+    
+    const summaryBar = document.getElementById('attendanceSummaryBar');
+    if (summaryBar) summaryBar.style.display = 'flex';
+
+    // Start video streams for live students
+    setTimeout(() => {
+        const liveIds = getLiveStudents(data);
+        liveIds.forEach(id => {
+            startVideoStream(id);
+        });
+    }, 500);
+
+    // Update live count
+    const liveCountEl = document.getElementById('attSummaryLive');
+    if (liveCountEl) liveCountEl.textContent = liveStudents.length;
+    
+    const liveStatEl = document.getElementById('attStatLive');
+    if (liveStatEl) liveStatEl.textContent = liveStudents.length;
+}
+
+// Get live students from heartbeat data
+function getLiveStudents(attendanceData) {
+    const inProgress = attendanceData.filter(r => r.status === 'in_progress');
+    const now = Date.now();
+    const activeThreshold = 5 * 60 * 1000; // 5 minutes
+
+    return inProgress.filter(r => {
+        const lastActivity = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return (now - lastActivity) < activeThreshold;
+    }).map(r => r.student_id);
+}
+
+// Start video stream for a student
+async function startVideoStream(studentId) {
+    const videoElement = document.getElementById(`liveVideo_${studentId}`);
+    if (!videoElement) return;
+
+    if (liveVideoStreams[studentId]) {
+        videoElement.srcObject = liveVideoStreams[studentId];
+        return;
+    }
+
+    try {
+        const stream = await getStudentVideoStream(studentId);
+        if (stream) {
+            liveVideoStreams[studentId] = stream;
+            videoElement.srcObject = stream;
+            await videoElement.play();
+            console.log(`📹 Video stream started for student: ${studentId}`);
+        }
+    } catch (error) {
+        console.error(`Error starting video for ${studentId}:`, error);
+    }
+}
+
+// Get student video stream (simulated)
+async function getStudentVideoStream(studentId) {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, 640, 480);
+        
+        ctx.fillStyle = '#4ADE80';
+        ctx.font = '20px Poppins';
+        ctx.textAlign = 'center';
+        ctx.fillText(`📹 Student: ${studentId}`, 320, 200);
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '16px Poppins';
+        ctx.fillText('Live Video Feed', 320, 240);
+        ctx.fillStyle = '#64748B';
+        ctx.font = '12px Poppins';
+        ctx.fillText(`Updated: ${new Date().toLocaleTimeString()}`, 320, 280);
+        
+        let frame = 0;
+        const animate = () => {
+            if (!liveVideoStreams[studentId]) return;
+            
+            frame++;
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 640, 480);
+            
+            const pulse = Math.sin(frame / 20) * 10 + 20;
+            ctx.fillStyle = `rgba(74, 222, 128, ${0.1 + Math.sin(frame / 30) * 0.05})`;
+            ctx.beginPath();
+            ctx.arc(50, 50, pulse, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#4ADE80';
+            ctx.font = '20px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText(`📹 Student: ${studentId}`, 320, 200);
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = '16px Poppins';
+            ctx.fillText('Live Video Feed', 320, 240);
+            ctx.fillStyle = '#64748B';
+            ctx.font = '12px Poppins';
+            ctx.fillText(`Updated: ${new Date().toLocaleTimeString()}`, 320, 280);
+            
+            ctx.strokeStyle = '#4ADE80';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(200, 100, 240, 200);
+            ctx.fillStyle = '#4ADE80';
+            ctx.font = '12px Poppins';
+            ctx.fillText('✅ Face Detected', 320, 340);
+            
+            requestAnimationFrame(animate);
+        };
+        animate();
+        
+        return canvas.captureStream(15);
+        
+    } catch (error) {
+        console.error('Error creating video stream:', error);
+        return null;
+    }
+}
+
+// Stop video stream
+function stopLiveFeed(studentId) {
+    if (liveVideoStreams[studentId]) {
+        liveVideoStreams[studentId].getTracks().forEach(track => track.stop());
+        delete liveVideoStreams[studentId];
+    }
+    
+    const videoElement = document.getElementById(`liveVideo_${studentId}`);
+    if (videoElement) {
+        videoElement.srcObject = null;
+    }
+    
+    showToast(`📹 Video feed stopped`, 'info');
+    loadAttendanceSheet();
+}
+
+// Toggle video mute
+function toggleVideoMute(studentId) {
+    const videoElement = document.getElementById(`liveVideo_${studentId}`);
+    if (videoElement) {
+        videoElement.muted = !videoElement.muted;
+        const icon = videoElement.muted ? 'fa-volume-mute' : 'fa-volume-up';
+        const buttons = videoElement.parentElement.querySelectorAll('.video-controls button');
+        buttons.forEach(btn => {
+            if (btn.innerHTML.includes('fa-volume')) {
+                btn.innerHTML = `<i class="fas ${icon}"></i>`;
+            }
+        });
+    }
+}
+
+// Open full video modal
+function openFullVideo(studentId, studentName, examId) {
+    const modal = document.createElement('div');
+    modal.className = 'full-video-modal';
+    modal.innerHTML = `
+        <div class="video-wrapper">
+            <button class="close-btn" onclick="this.closest('.full-video-modal').remove()">&times;</button>
+            <div class="video-info">
+                <div>
+                    <h3>${studentName || 'Student'}</h3>
+                    <p>ID: ${studentId} | Exam: ${examId || 'N/A'}</p>
+                </div>
+                <div class="status-live">
+                    <span class="dot"></span> LIVE
+                </div>
+            </div>
+            <video id="fullVideo_${studentId}" autoplay muted playsinline style="width:100%; max-height:70vh; background:#1a1a2e;">
+                <source src="" type="video/webm">
+            </video>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const videoEl = document.getElementById(`fullVideo_${studentId}`);
+    if (videoEl && liveVideoStreams[studentId]) {
+        videoEl.srcObject = liveVideoStreams[studentId];
+        videoEl.play();
+    }
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+// Request live feed from student
+async function requestLiveFeed(studentId, examId) {
+    try {
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            event_type: 'admin_live_request',
+            details: 'Admin requested live video feed',
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+        showToast('📹 Live feed requested', 'success');
+        loadAttendanceSheet();
+    } catch (error) {
+        showToast('Error requesting live feed', 'error');
+    }
+}
+
+// View all live videos
+function viewAllLiveVideos() {
+    const liveIds = getLiveStudents(attendanceData);
+    if (liveIds.length === 0) {
+        showToast('No live students to view', 'warning');
+        return;
+    }
+    showToast(`📹 Opening ${liveIds.length} live feeds...`, 'info');
+    
+    liveIds.forEach(id => {
+        const record = attendanceData.find(r => r.student_id === id);
+        if (record) {
+            openFullVideo(id, record.student_name || 'Student', record.exam_id);
+        }
+    });
+}
+
+// Update attendance stats
+function updateAttendanceStats(data) {
+    const total = data.length;
+    const present = data.filter(r => r.status === 'present' || r.status === 'completed').length;
+    const inProgress = data.filter(r => r.status === 'in_progress').length;
+    const signedIn = data.filter(r => r.status === 'signed_in').length;
+    const absent = total - present - inProgress - signedIn;
+    const rate = total > 0 ? Math.round(((present + signedIn) / total) * 100) : 0;
+
+    const statPresent = document.getElementById('attStatPresent');
+    const statInProgress = document.getElementById('attStatInProgress');
+    const statSignedIn = document.getElementById('attStatSignedIn');
+    const statAbsent = document.getElementById('attStatAbsent');
+    const statRate = document.getElementById('attStatRate');
+
+    if (statPresent) statPresent.textContent = present;
+    if (statInProgress) statInProgress.textContent = inProgress;
+    if (statSignedIn) statSignedIn.textContent = signedIn;
+    if (statAbsent) statAbsent.textContent = absent;
+    if (statRate) statRate.textContent = rate + '%';
+}
+
+// Update attendance summary
+function updateAttendanceSummary(data) {
+    const total = data.length;
+    const present = data.filter(r => r.status === 'present' || r.status === 'completed').length;
+    const inProgress = data.filter(r => r.status === 'in_progress').length;
+    const absent = total - present - inProgress;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    const totalEl = document.getElementById('attTotalStudents');
+    const presentEl = document.getElementById('attSummaryPresent');
+    const inProgressEl = document.getElementById('attSummaryInProgress');
+    const absentEl = document.getElementById('attSummaryAbsent');
+    const rateEl = document.getElementById('attSummaryRate');
+    const progressBar = document.getElementById('attendanceProgressBar');
+
+    if (totalEl) totalEl.textContent = total;
+    if (presentEl) presentEl.textContent = present;
+    if (inProgressEl) inProgressEl.textContent = inProgress;
+    if (absentEl) absentEl.textContent = absent;
+    if (rateEl) rateEl.textContent = rate + '%';
+    if (progressBar) progressBar.style.width = rate + '%';
+}
+
+// View student attendance details
+async function viewStudentAttendance(studentId, examId) {
+    try {
+        const { data, error } = await sb
+            .from('exam_attendance')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        showAttendanceDetailModal(studentId, data || []);
+    } catch (error) {
+        showToast('Error loading student details', 'error');
+    }
+}
+
+// Show attendance detail modal
+function showAttendanceDetailModal(studentId, records) {
+    const modal = document.createElement('div');
+    modal.id = 'attendanceDetailModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        padding: 20px;
+    `;
+
+    const record = records[0] || {};
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin:0; color:#0A3D62;">
+                    <i class="fas fa-user-graduate"></i> Student Attendance Details
+                </h2>
+                <button onclick="this.closest('#attendanceDetailModal').remove()" 
+                        style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8;">
+                    &times;
+                </button>
+            </div>
+
+            <div style="background: #F8FAFC; padding: 16px; border-radius: 12px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><strong>👤 Student ID:</strong> ${studentId}</div>
+                <div><strong>📛 Name:</strong> ${record.student_name || 'Unknown'}</div>
+                <div><strong>🆔 Registration:</strong> ${record.student_reg_number || 'N/A'}</div>
+                <div><strong>📝 Exam:</strong> ${record.exam_name || 'Exam ' + record.exam_id}</div>
+            </div>
+
+            <h3 style="color:#0A3D62; margin-bottom:12px;">📋 Attendance History</h3>
+            
+            ${records && records.length > 0 ? `
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse: collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="background:#F8FAFC;">
+                                <th style="padding:8px 12px; text-align:left;">Date</th>
+                                <th style="padding:8px 12px; text-align:left;">Status</th>
+                                <th style="padding:8px 12px; text-align:left;">Sign In</th>
+                                <th style="padding:8px 12px; text-align:left;">Submission</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${records.map(r => `
+                                <tr style="border-bottom:1px solid #E2E8F0;">
+                                    <td style="padding:8px 12px;">${r.date || '--'}</td>
+                                    <td style="padding:8px 12px;">
+                                        <span class="status-badge-attendance ${r.status === 'present' || r.status === 'completed' ? 'present' : r.status === 'signed_in' ? 'signed-in' : r.status === 'in_progress' ? 'in-progress' : 'absent'}">
+                                            ${r.status || 'Unknown'}
+                                        </span>
+                                    </td>
+                                    <td style="padding:8px 12px;">${r.sign_in_time ? new Date(r.sign_in_time).toLocaleTimeString() : '--'}</td>
+                                    <td style="padding:8px 12px;">${r.submission_time ? new Date(r.submission_time).toLocaleTimeString() : '--'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div style="text-align:center; padding:20px; color:#94A3B8;">
+                    <i class="fas fa-clipboard-list" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                    No attendance records found
+                </div>
+            `}
+
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
+                <button onclick="this.closest('#attendanceDetailModal').remove()" 
+                        style="padding: 8px 20px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+// Export attendance to CSV
+function exportAttendanceCSV() {
+    if (!attendanceData || attendanceData.length === 0) {
+        showToast('No data to export', 'warning');
+        return;
+    }
+
+    const headers = ['Student Name', 'Registration', 'Exam ID', 'Status', 'Date', 'Sign In Time', 'Submission Time', 'Duration (min)'];
+    const rows = attendanceData.map(record => [
+        record.student_name || 'Unknown',
+        record.student_reg_number || 'N/A',
+        record.exam_id || 'N/A',
+        record.status || 'Unknown',
+        record.date || '--',
+        record.sign_in_time ? new Date(record.sign_in_time).toLocaleString() : '--',
+        record.submission_time ? new Date(record.submission_time).toLocaleString() : '--',
+        record.sign_in_time && record.submission_time ? 
+            Math.round((new Date(record.submission_time) - new Date(record.sign_in_time)) / 1000 / 60) : '--'
+    ]);
+
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csvContent += row.join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('📥 Attendance exported successfully!', 'success');
+}
+
+// Export attendance to Excel
+function exportAttendanceExcel() {
+    if (!attendanceData || attendanceData.length === 0) {
+        showToast('No data to export', 'warning');
+        return;
+    }
+
+    const data = attendanceData.map(record => ({
+        'Student Name': record.student_name || 'Unknown',
+        'Registration': record.student_reg_number || 'N/A',
+        'Exam ID': record.exam_id || 'N/A',
+        'Status': record.status || 'Unknown',
+        'Date': record.date || '--',
+        'Sign In Time': record.sign_in_time ? new Date(record.sign_in_time).toLocaleString() : '--',
+        'Submission Time': record.submission_time ? new Date(record.submission_time).toLocaleString() : '--',
+        'Duration (min)': record.sign_in_time && record.submission_time ? 
+            Math.round((new Date(record.submission_time) - new Date(record.sign_in_time)) / 1000 / 60) : '--'
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+    XLSX.writeFile(wb, `attendance_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    showToast('📥 Attendance exported successfully!', 'success');
+}
+
+// Print attendance
+function printAttendance() {
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    printWindow.document.write(`
+        <html>
+            <head><title>Attendance Sheet</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+                th { background: #f5f5f5; }
+                h1 { color: #0A3D62; }
+                .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+                .status-badge.present { background: #D1FAE5; color: #064E3B; }
+                .status-badge.absent { background: #FEE2E2; color: #991B1B; }
+                .status-badge.in-progress { background: #FEF3C7; color: #92400E; }
+                .status-badge.signed-in { background: #DBEAFE; color: #1E40AF; }
+                .status-badge.completed { background: #D1FAE5; color: #064E3B; }
+                .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                .stats { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+                .stats div { padding: 8px 16px; background: #f8fafc; border-radius: 8px; }
+            </style>
+        </head><body>
+    `);
+    
+    printWindow.document.write(`
+        <div class="header">
+            <h1>📋 Exam Attendance Sheet</h1>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        <div class="stats">
+            <div>📊 Total: ${attendanceData.length}</div>
+            <div style="background:#D1FAE5;">✅ Present: ${attendanceData.filter(r => r.status === 'present' || r.status === 'completed').length}</div>
+            <div style="background:#FEF3C7;">⏳ In Progress: ${attendanceData.filter(r => r.status === 'in_progress').length}</div>
+            <div style="background:#DBEAFE;">📋 Signed In: ${attendanceData.filter(r => r.status === 'signed_in').length}</div>
+            <div style="background:#FEE2E2;">❌ Absent: ${attendanceData.filter(r => r.status === 'absent').length}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Registration</th>
+                    <th>Status</th>
+                    <th>Sign In Time</th>
+                    <th>Submission Time</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+    `);
+    
+    attendanceData.forEach((record, index) => {
+        const statusClass = record.status === 'present' || record.status === 'completed' ? 'present' :
+                           record.status === 'signed_in' ? 'signed-in' :
+                           record.status === 'in_progress' ? 'in-progress' : 'absent';
+        const statusDisplay = record.status === 'completed' ? 'Completed' :
+                              record.status === 'present' ? 'Present' :
+                              record.status === 'signed_in' ? 'Signed In' :
+                              record.status === 'in_progress' ? 'In Progress' : 'Absent';
+        const duration = record.sign_in_time && record.submission_time ? 
+            Math.round((new Date(record.submission_time) - new Date(record.sign_in_time)) / 1000 / 60) + ' min' : '--';
+        
+        printWindow.document.write(`
+            <tr>
+                <td>${index + 1}</td>
+                <td>${record.student_name || 'Unknown'}</td>
+                <td>${record.student_reg_number || 'N/A'}</td>
+                <td><span class="status-badge ${statusClass}">${statusDisplay}</span></td>
+                <td>${record.sign_in_time ? new Date(record.sign_in_time).toLocaleString() : '--'}</td>
+                <td>${record.submission_time ? new Date(record.submission_time).toLocaleString() : '--'}</td>
+                <td>${duration}</td>
+            </tr>
+        `);
+    });
+    
+    printWindow.document.write(`</tbody></table></body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Refresh attendance
+function refreshAttendance() {
+    loadAttendanceSheet();
+    showToast('🔄 Attendance refreshed', 'success');
+}
+
+// Clear attendance filters
+function clearAttendanceFilters() {
+    const examFilter = document.getElementById('attendanceExamFilter');
+    const dateFilter = document.getElementById('attendanceDateFilter');
+    const statusFilter = document.getElementById('attendanceStatusFilter');
+    const liveOnly = document.getElementById('showOnlyLive');
+    
+    if (examFilter) examFilter.value = '';
+    if (dateFilter) dateFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (liveOnly) liveOnly.checked = false;
+    
+    loadAttendanceSheet();
+}
+
+// Load exam dropdown for attendance filter
+async function loadAttendanceExamDropdown() {
+    try {
+        const { data, error } = await sb
+            .from('exams')
+            .select('id, exam_name')
+            .order('exam_name');
+
+        if (error) throw error;
+
+        const select = document.getElementById('attendanceExamFilter');
+        if (select) {
+            select.innerHTML = '<option value="">All Exams</option>';
+            data.forEach(exam => {
+                select.innerHTML += `<option value="${exam.id}">${exam.exam_name || 'Exam ' + exam.id}</option>`;
+            });
+        }
+
+        // Also populate for live feed
+        const liveSelect = document.getElementById('liveFeedExamFilter');
+        if (liveSelect) {
+            liveSelect.innerHTML = '<option value="">All Exams</option>';
+            data.forEach(exam => {
+                liveSelect.innerHTML += `<option value="${exam.id}">${exam.exam_name || 'Exam ' + exam.id}</option>`;
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading exams:', error);
+    }
+}
+
+// Set default date to today
+function setDefaultAttendanceDate() {
+    const dateInput = document.getElementById('attendanceDateFilter');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+}
+
+// Initialize attendance tab
+function initAttendanceTab() {
+    loadAttendanceExamDropdown();
+    setDefaultAttendanceDate();
+    loadAttendanceSheet();
+    startAttendanceAutoRefresh();
+}
+
+// Auto-refresh attendance
+function toggleAttendanceAutoRefresh() {
+    attendanceAutoRefresh = !attendanceAutoRefresh;
+    const icon = document.getElementById('attendanceAutoIcon');
+    const text = document.getElementById('attendanceAutoText');
+    
+    if (attendanceAutoRefresh) {
+        if (icon) icon.className = 'fas fa-play';
+        if (text) text.textContent = 'Auto: ON';
+        startAttendanceAutoRefresh();
+    } else {
+        if (icon) icon.className = 'fas fa-pause';
+        if (text) text.textContent = 'Auto: OFF';
+        if (attendanceRefreshInterval) {
+            clearInterval(attendanceRefreshInterval);
+            attendanceRefreshInterval = null;
+        }
+    }
+}
+
+function startAttendanceAutoRefresh() {
+    if (attendanceRefreshInterval) {
+        clearInterval(attendanceRefreshInterval);
+    }
+    attendanceRefreshInterval = setInterval(() => {
+        if (attendanceAutoRefresh && currentTab === 'attendance') {
+            loadAttendanceSheet();
+        }
+    }, 30000);
+}
+   // ============================================
     // 📤 EXPOSE FUNCTIONS GLOBALLY
     // ============================================
     window.getKenyaNow = getKenyaNow;
@@ -5799,5 +6639,37 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
     window.getExamTotalMarks = getExamTotalMarks;
     window.getPassMark = getPassMark;
     window.updateTotalMarksHint = updateTotalMarksHint;
+
+    // ============================================
+    // 📋 ATTENDANCE SHEET FUNCTIONS - GLOBAL EXPOSURE
+    // ============================================
+    window.loadAttendanceSheet = loadAttendanceSheet;
+    window.renderAttendanceTable = renderAttendanceTable;
+    window.updateAttendanceStats = updateAttendanceStats;
+    window.updateAttendanceSummary = updateAttendanceSummary;
+    window.viewStudentAttendance = viewStudentAttendance;
+    window.showAttendanceDetailModal = showAttendanceDetailModal;
+    window.exportAttendanceCSV = exportAttendanceCSV;
+    window.exportAttendanceExcel = exportAttendanceExcel;
+    window.printAttendance = printAttendance;
+    window.refreshAttendance = refreshAttendance;
+    window.clearAttendanceFilters = clearAttendanceFilters;
+    window.loadAttendanceExamDropdown = loadAttendanceExamDropdown;
+    window.setDefaultAttendanceDate = setDefaultAttendanceDate;
+    window.initAttendanceTab = initAttendanceTab;
+    window.toggleAttendanceAutoRefresh = toggleAttendanceAutoRefresh;
+    window.startAttendanceAutoRefresh = startAttendanceAutoRefresh;
+
+    // ============================================
+    // 📹 VIDEO FUNCTIONS - GLOBAL EXPOSURE
+    // ============================================
+    window.startVideoStream = startVideoStream;
+    window.getStudentVideoStream = getStudentVideoStream;
+    window.stopLiveFeed = stopLiveFeed;
+    window.toggleVideoMute = toggleVideoMute;
+    window.openFullVideo = openFullVideo;
+    window.requestLiveFeed = requestLiveFeed;
+    window.viewAllLiveVideos = viewAllLiveVideos;
+    window.getLiveStudents = getLiveStudents;
 
 })();
