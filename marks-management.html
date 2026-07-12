@@ -2873,11 +2873,11 @@ document.querySelectorAll('.nav-item').forEach(el => {
     }; 
     hideLoading(); 
 }
-// ===== FIXED: loadAdminMarks with proper year filtering =====
+// ===== FIXED: loadAdminMarks - Use backend filtering only =====
 async function loadAdminMarks(block, subject, at) { 
     showLoading('Loading marks...'); 
     
-    // ✅ Get marks from API (pass year in header)
+    // ✅ Get marks from API (already filtered by year and block)
     const marks = await apiCall(`/api/marks/${block}/${subject}`, {
         headers: {
             'X-Year': currentYear,
@@ -2887,36 +2887,18 @@ async function loadAdminMarks(block, subject, at) {
     
     console.log('📊 Raw marks loaded:', marks ? marks.length : 0);
     
-    // ✅ Get all students for the current year ONLY
+    // ✅ Get all students for name mapping only (NOT for filtering!)
     const allStudents = await apiCall('/api/students', {});
     console.log('📊 All students:', allStudents ? allStudents.length : 0);
     
-    // ✅ Filter students by current year
-    const yearStudents = allStudents.filter(s => {
-        const adm = s.admission || '';
-        const studentYear = s.year || '';
-        // Check if student belongs to current year
-        return studentYear === currentYear || 
-               adm.includes(currentYear) || 
-               adm.includes(currentYear.slice(-2));
-    });
-    
-    console.log(`📊 Students in ${currentYear}:`, yearStudents.length);
-    const yearAdmissions = new Set(yearStudents.map(s => s.admission));
-    
-    // ✅ Create name map for year students
+    // ✅ Create name map for all students
     const studentNameMap = {};
-    yearStudents.forEach(s => {
+    allStudents.forEach(s => {
         studentNameMap[s.admission] = s.name;
     });
     
-    // ✅ Filter marks to ONLY include students from current year
-    let filteredMarks = marks.filter(m => {
-        const adm = m.admission || '';
-        return yearAdmissions.has(adm);
-    });
-    
-    console.log(`📊 Filtered marks (${currentYear} only):`, filteredMarks.length);
+    // ✅ USE THE MARKS AS-IS (backend already filtered by year and block)
+    let filteredMarks = marks;
     
     // ✅ Update names from student map
     filteredMarks = filteredMarks.map(m => ({
@@ -2924,28 +2906,7 @@ async function loadAdminMarks(block, subject, at) {
         name: studentNameMap[m.admission] || m.name || 'Unknown'
     }));
     
-    // ✅ Also, if there are students in this block who don't have marks yet,
-    // we should show them with empty fields (so admin can enter marks)
-    const blockStudents = yearStudents.filter(s => s.block === block);
-    const existingAdmissions = new Set(filteredMarks.map(m => m.admission));
-    
-    // Add students who don't have marks yet
-    blockStudents.forEach(s => {
-        if (!existingAdmissions.has(s.admission)) {
-            filteredMarks.push({
-                admission: s.admission,
-                name: s.name || 'Unknown',
-                cat1: 0,
-                cat2: 0,
-                exam: 0,
-                gradedBy: '',
-                year: currentYear,
-                _new: true
-            });
-        }
-    });
-    
-    console.log(`📊 Total marks to display (including empty):`, filteredMarks.length);
+    console.log(`📊 Total marks to display: ${filteredMarks.length}`);
     
     // ✅ Get unit code from config
     const config = await getConfig();
@@ -2982,8 +2943,7 @@ async function loadAdminMarks(block, subject, at) {
             <div class="card" style="text-align:center; padding: 40px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px;"></i>
                 <h4>No students found for ${displaySubject}</h4>
-                <p style="color: #64748b;">No students from March ${currentYear} class in ${block.replace('_', ' ')} have marks in this subject.</p>
-                <p style="color: #64748b; font-size: 13px;">💡 Make sure students are assigned to BLOCK_0 with YEAR=2024 for the 2024 class.</p>
+                <p style="color: #64748b;">No students have marks in this subject for ${currentYear}.</p>
                 <button class="save-btn" onclick="refreshAllData()" style="margin-top: 12px;">
                     <i class="fas fa-sync-alt"></i> Refresh Data
                 </button>
@@ -3078,12 +3038,11 @@ async function loadAdminMarks(block, subject, at) {
         const gradeInfo = getGrade(total, isSecondAttempt);
         const pointsColor = getPointsColor(gradeInfo.points);
         const rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : 'pending-row');
-        const isNew = m._new === true;
         
         html += `<tr class="${rowClass}">
             <td style="padding:8px 6px;text-align:center;font-size:12px;color:#94a3b8;">${i + 1}</td>
             <td style="padding:8px 8px;font-weight:500;font-size:12px;">${m.admission || 'N/A'}</td>
-            <td style="padding:8px 8px;"><strong>${m.name || 'Unknown'}</strong> ${isNew ? '<span style="font-size:10px;color:#f59e0b;">(new)</span>' : ''}</td>`;
+            <td style="padding:8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>`;
         
         if(at === 'full'){ 
             html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>
