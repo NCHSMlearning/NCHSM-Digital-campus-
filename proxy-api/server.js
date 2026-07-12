@@ -240,14 +240,13 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
         
         if (examType === 'nck') {
-            // NCK logic (keep as is)
-            // ... 
+            // NCK logic
+            res.json([]);
         } else {
             // ===== INTERNAL MARKS =====
             let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
             const sheetName = `${block}_${cleanSubject}`;
             
-            // Get marks from sheet
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId: req.spreadsheetId,
                 range: `${sheetName}!A:Z`,
@@ -264,7 +263,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             
             const headers = data[0] || [];
             
-            // Find column indexes
             function findColumnIndex(headers, keywords) {
                 for (let i = 0; i < headers.length; i++) {
                     const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
@@ -300,7 +298,6 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
             });
             const studentsData = studentsResponse.data.values || [];
             
-            // Build student maps
             const studentYearMap = {};
             const studentBlockMap = {};
             const studentNameMap = {};
@@ -315,96 +312,91 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                 }
             }
             
-           // ===== FILTER MARKS BY YEAR AND BLOCK =====
-const allMarks = [];
-let skippedWrongYear = 0;
-let skippedWrongBlock = 0;
-let skippedNoAdmission = 0;
-
-for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (!row || row.length === 0) continue;
-    
-    // Get admission
-    let admission = '';
-    if (admIdx !== -1 && row[admIdx]) {
-        admission = row[admIdx].toString().trim();
-    } else if (row[0]) {
-        admission = row[0].toString().trim();
-    }
-    
-    if (!admission) {
-        skippedNoAdmission++;
-        continue;
-    }
-    
-    // ✅ CHECK 1: Student must be in this block
-    const studentBlock = studentBlockMap[admission] || '';
-    if (studentBlock && studentBlock !== block) {
-        skippedWrongBlock++;
-        continue;
-    }
-    
-    // ✅ CHECK 2: Get the actual year from the MARKSHEET (NOT the STUDENTS sheet!)
-    let studentYear = '';
-    
-    // First check if there's a YEAR column in the marksheet
-    if (yearIdx !== -1 && row[yearIdx]) {
-        const sheetYear = row[yearIdx].toString().trim();
-        if (sheetYear) {
-            studentYear = sheetYear;
-        }
-    }
-    
-    // If no YEAR column in marksheet, try to extract from admission
-    if (!studentYear) {
-        if (admission.includes('/2024') || admission.includes('/24')) {
-            studentYear = '2024';
-        } else if (admission.includes('/2025') || admission.includes('/25')) {
-            studentYear = '2025';
-        } else if (admission.includes('/2026') || admission.includes('/26')) {
-            studentYear = '2026';
-        } else {
-            studentYear = year; // Fallback to request year
-        }
-    }
-    
-    // ✅ Filter by the actual student year from the marksheet
-    if (studentYear && studentYear !== year) {
-        skippedWrongYear++;
-        continue;
-    }
-    
-    // Get values
-    const name = studentNameMap[admission] || 
-                (nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : `Student ${i}`);
-    const cat1 = cat1Idx !== -1 && row[cat1Idx] ? parseFloat(row[cat1Idx]) || 0 : 0;
-    const cat2 = cat2Idx !== -1 && row[cat2Idx] ? parseFloat(row[cat2Idx]) || 0 : 0;
-    const exam = examIdx !== -1 && row[examIdx] ? parseFloat(row[examIdx]) || 0 : 0;
-    const final = finalIdx !== -1 && row[finalIdx] ? row[finalIdx].toString().trim() : '';
-    const grade = gradeIdx !== -1 && row[gradeIdx] ? row[gradeIdx].toString().trim() : '';
-    const gradedBy = gradedIdx !== -1 && row[gradedIdx] ? row[gradedIdx].toString().trim() : '';
-    const assessmentType = typeIdx !== -1 && row[typeIdx] ? row[typeIdx].toString().trim() : 'full';
-    
-    allMarks.push({
-        row: i + 1,
-        admission: admission,
-        name: name,
-        cat1: cat1,
-        cat2: cat2,
-        exam: exam,
-        final: final,
-        grade: grade,
-        gradedBy: gradedBy || '',
-        assessmentType: assessmentType,
-        year: studentYear || year  // ← Use the actual year from the marksheet
-    });
-}
-
+            // ===== FILTER MARKS BY YEAR AND BLOCK =====
+            const allMarks = [];
+            let skippedWrongYear = 0;
+            let skippedWrongBlock = 0;
+            let skippedNoAdmission = 0;
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                let admission = '';
+                if (admIdx !== -1 && row[admIdx]) {
+                    admission = row[admIdx].toString().trim();
+                } else if (row[0]) {
+                    admission = row[0].toString().trim();
+                }
+                
+                if (!admission) {
+                    skippedNoAdmission++;
+                    continue;
+                }
+                
+                const studentBlock = studentBlockMap[admission] || '';
+                if (studentBlock && studentBlock !== block) {
+                    skippedWrongBlock++;
+                    continue;
+                }
+                
+                // ✅ Get the actual year from the MARKSHEET
+                let studentYear = '';
+                
+                if (yearIdx !== -1 && row[yearIdx]) {
+                    const sheetYear = row[yearIdx].toString().trim();
+                    if (sheetYear) {
+                        studentYear = sheetYear;
+                    }
+                }
+                
+                if (!studentYear) {
+                    if (admission.includes('/2024') || admission.includes('/24')) {
+                        studentYear = '2024';
+                    } else if (admission.includes('/2025') || admission.includes('/25')) {
+                        studentYear = '2025';
+                    } else if (admission.includes('/2026') || admission.includes('/26')) {
+                        studentYear = '2026';
+                    } else {
+                        studentYear = year;
+                    }
+                }
+                
+                if (studentYear && studentYear !== year) {
+                    skippedWrongYear++;
+                    continue;
+                }
+                
+                const name = studentNameMap[admission] || 
+                            (nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : `Student ${i}`);
+                const cat1 = cat1Idx !== -1 && row[cat1Idx] ? parseFloat(row[cat1Idx]) || 0 : 0;
+                const cat2 = cat2Idx !== -1 && row[cat2Idx] ? parseFloat(row[cat2Idx]) || 0 : 0;
+                const exam = examIdx !== -1 && row[examIdx] ? parseFloat(row[examIdx]) || 0 : 0;
+                const final = finalIdx !== -1 && row[finalIdx] ? row[finalIdx].toString().trim() : '';
+                const grade = gradeIdx !== -1 && row[gradeIdx] ? row[gradeIdx].toString().trim() : '';
+                const gradedBy = gradedIdx !== -1 && row[gradedIdx] ? row[gradedIdx].toString().trim() : '';
+                const assessmentType = typeIdx !== -1 && row[typeIdx] ? row[typeIdx].toString().trim() : 'full';
+                
+                allMarks.push({
+                    row: i + 1,
+                    admission: admission,
+                    name: name,
+                    cat1: cat1,
+                    cat2: cat2,
+                    exam: exam,
+                    final: final,
+                    grade: grade,
+                    gradedBy: gradedBy || '',
+                    assessmentType: assessmentType,
+                    year: studentYear || year
+                });
+            }
+            
             console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
             console.log(`[GET INTERNAL] Skipped: ${skippedWrongYear} wrong year, ${skippedWrongBlock} wrong block`);
             
             res.json(allMarks);
+        } // ← THIS CLOSING BRACE IS CRITICAL!
         
     } catch (error) {
         console.error('Error in /api/marks:', error);
