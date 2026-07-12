@@ -401,10 +401,10 @@ for (let i = 1; i < data.length; i++) {
     });
 }
 
-console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
-console.log(`[GET INTERNAL] Skipped: ${skippedWrongYear} wrong year, ${skippedWrongBlock} wrong block`);
-
-res.json(allMarks);
+            console.log(`[GET INTERNAL] Found ${allMarks.length} marks for ${year}`);
+            console.log(`[GET INTERNAL] Skipped: ${skippedWrongYear} wrong year, ${skippedWrongBlock} wrong block`);
+            
+            res.json(allMarks);
         
     } catch (error) {
         console.error('Error in /api/marks:', error);
