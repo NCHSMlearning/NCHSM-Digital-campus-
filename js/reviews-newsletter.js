@@ -1,5 +1,5 @@
 // ============================================
-// REVIEWS & NEWSLETTER MODULE - COMPLETE FIXED
+// REVIEWS & NEWSLETTER MODULE - KRCHN & TVET SUPPORT
 // ============================================
 
 let allReviews = [];
@@ -9,6 +9,85 @@ let currentPage = 1;
 const REVIEWS_PER_PAGE = 10;
 
 // ============================================
+// FILTER STATE
+// ============================================
+
+const currentFilter = {
+    category: 'all',
+    rating: 'all',
+    sort: 'newest',
+    search: '',
+    program: 'all',
+    block: 'all'
+};
+
+// ============================================
+// PROGRAM TYPES
+// ============================================
+
+const PROGRAM_TYPES = {
+    KRCHN: 'KRCHN',
+    TVET: 'TVET'
+};
+
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    return TVET_PROGRAMS.includes(programCode.toUpperCase());
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    if (programCode === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(programCode)) return 'TVET';
+    return 'KRCHN';
+}
+
+function getProgramDisplayName(programCode) {
+    const names = {
+        'KRCHN': '🎓 KRCHN Nursing',
+        'DPOTT': 'Diploma in Perioperative Theatre Technology',
+        'DCH': 'Diploma in Community Health',
+        'DHRIT': 'Diploma in Health Records and IT',
+        'DSL': 'Diploma in Science Lab',
+        'DSW': 'Diploma in Social Work',
+        'DCJS': 'Diploma in Criminal Justice',
+        'DHSS': 'Diploma in Health Support Services',
+        'DICT': 'Diploma in ICT',
+        'DME': 'Diploma in Medical Engineering',
+        'CPOTT': 'Certificate in Perioperative Theatre Technology',
+        'CCH': 'Certificate in Community Health',
+        'CHRIT': 'Certificate in Health Records and IT',
+        'CPC': 'Certificate in Patient Care',
+        'CSL': 'Certificate in Science Lab',
+        'CSW': 'Certificate in Social Work',
+        'CCJS': 'Certificate in Criminal Justice',
+        'CAG': 'Certificate in Agriculture',
+        'CHSS': 'Certificate in Health Support Services',
+        'CICT': 'Certificate in ICT',
+        'ACH': 'Artisan in Community Health',
+        'AAG': 'Artisan in Agriculture',
+        'ASW': 'Artisan in Social Work',
+        'CCA': 'Certificate in Computer Applications',
+        'PTE': 'TVET/CDACC (PTE)'
+    };
+    return names[programCode] || programCode;
+}
+
+function getBlockDisplay(block, programType) {
+    if (!block) return 'N/A';
+    if (programType === 'TVET') {
+        return block.startsWith('Term') ? block : `Term ${block}`;
+    }
+    return block;
+}
+
+// ============================================
 // INITIALIZE
 // ============================================
 
@@ -16,9 +95,22 @@ function initReviewsModule() {
     console.log('⭐ Initializing Reviews Module...');
     
     try {
+        // Reset filter state
+        currentFilter.category = 'all';
+        currentFilter.rating = 'all';
+        currentFilter.sort = 'newest';
+        currentFilter.search = '';
+        currentFilter.program = 'all';
+        currentFilter.block = 'all';
+        currentPage = 1;
+        
+        // Load data
         loadReviews();
         loadSiteRating();
         updateReviewStats();
+        
+        // Setup category filters
+        initCategoryFilters();
         
         // Event listeners
         const writeBtn = document.getElementById('writeReviewBtn');
@@ -82,6 +174,20 @@ function initReviewsModule() {
             searchInput.addEventListener('keyup', handleSearch);
         }
         
+        // Program filter
+        const programFilter = document.getElementById('reviewProgramFilter');
+        if (programFilter) {
+            programFilter.removeEventListener('change', applyFilters);
+            programFilter.addEventListener('change', applyFilters);
+        }
+        
+        // Block filter
+        const blockFilter = document.getElementById('reviewBlockFilter');
+        if (blockFilter) {
+            blockFilter.removeEventListener('change', applyFilters);
+            blockFilter.addEventListener('change', applyFilters);
+        }
+        
         // Load more
         const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
         if (loadMoreBtn) {
@@ -89,11 +195,33 @@ function initReviewsModule() {
             loadMoreBtn.addEventListener('click', loadMoreReviews);
         }
         
+        // Add reset button if not exists
+        addResetButton();
+        
         console.log('✅ Reviews Module initialized');
         
     } catch (error) {
         console.error('Error initializing reviews:', error);
     }
+}
+
+// ============================================
+// ADD RESET BUTTON
+// ============================================
+
+function addResetButton() {
+    const filterBar = document.querySelector('.reviews-filters-premium');
+    if (!filterBar) return;
+    
+    if (document.getElementById('resetFiltersBtn')) return;
+    
+    const resetBtn = document.createElement('button');
+    resetBtn.id = 'resetFiltersBtn';
+    resetBtn.className = 'btn-secondary';
+    resetBtn.innerHTML = '<i class="fas fa-undo"></i> Reset';
+    resetBtn.style.cssText = 'padding: 8px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 13px;';
+    resetBtn.addEventListener('click', resetFilters);
+    filterBar.appendChild(resetBtn);
 }
 
 // ============================================
@@ -130,24 +258,14 @@ function handleSearch(e) {
 }
 
 function refreshReviews() {
+    currentPage = 1;
     loadReviews();
     loadSiteRating();
     updateReviewStats();
 }
 
 // ============================================
-// FILTER STATE
-// ============================================
-
-const currentFilter = {
-    category: 'all',
-    rating: 'all',
-    sort: 'newest',
-    search: ''
-};
-
-// ============================================
-// LOAD REVIEWS
+// SMART LOAD REVIEWS - SUPPORTS BOTH KRCHN & TVET
 // ============================================
 
 async function loadReviews() {
@@ -168,47 +286,131 @@ async function loadReviews() {
             return;
         }
         
+        // Get current user's block and program
+        const currentUser = window.currentUserProfile || window.currentUserId;
+        const userBlock = currentUser?.block || 'Block 1';
+        const userProgram = currentUser?.program || 'KRCHN';
+        const userProgramType = getProgramType(userProgram);
+        
+        console.log('📊 User Program:', userProgram);
+        console.log('📊 User Program Type:', userProgramType);
+        console.log('📊 User Block:', userBlock);
+        console.log('📊 Current Filters:', currentFilter);
+        
+        // Start with base query - ONLY approved reviews
         let query = supabase
             .from('student_reviews')
-            .select('*, student:student_id(full_name, program, profile_photo_url)')
-            .eq('status', 'approved')
-            .order('created_at', { ascending: false });
+            .select('*, student:student_id(full_name, program, block, profile_photo_url)')
+            .eq('status', 'approved');
         
-        // Apply filters
-        if (currentFilter.category !== 'all') {
-            query = query.eq('component_type', currentFilter.category);
+        // Apply category filter
+        if (currentFilter.category && currentFilter.category !== 'all') {
+            const categoryMap = {
+                'site': 'site',
+                'course': 'course',
+                'lecturer': 'lecturer',
+                'facility': 'facility',
+                'library': 'library',
+                'administration': 'administration',
+                'online': 'online',
+                'clinical': 'clinical',
+                'general': 'general'
+            };
+            const mappedCategory = categoryMap[currentFilter.category] || currentFilter.category;
+            console.log('📊 Filtering by category:', mappedCategory);
+            query = query.eq('component_type', mappedCategory);
         }
         
-        if (currentFilter.rating !== 'all') {
-            query = query.eq('rating', parseInt(currentFilter.rating));
+        // ============================================
+        // 🔥 SMART FILTERING: ACADEMIC VS SITE
+        // ============================================
+        
+        // If filtering by a specific category
+        if (currentFilter.category && currentFilter.category !== 'all') {
+            // Academic categories: filter by block and program type
+            const academicCategories = ['course', 'lecturer', 'facility', 'library', 'administration', 'online', 'clinical', 'general'];
+            
+            if (academicCategories.includes(currentFilter.category)) {
+                // Academic reviews - filter by user's block and program
+                console.log('📊 Academic review - filtering by block:', userBlock);
+                console.log('📊 Academic review - filtering by program type:', userProgramType);
+                query = query
+                    .eq('target_block', userBlock)
+                    .eq('target_program_type', userProgramType);
+            } 
+            // Site reviews - show ALL
+            else if (currentFilter.category === 'site') {
+                console.log('📊 Site review - showing ALL');
+                // No additional filters - all site reviews visible
+            }
         }
         
-        if (currentFilter.search) {
-            query = query.or(`review.ilike.%${currentFilter.search}%, review_title.ilike.%${currentFilter.search}%, component_name.ilike.%${currentFilter.search}%`);
+        // Apply rating filter
+        if (currentFilter.rating && currentFilter.rating !== 'all') {
+            const ratingValue = parseInt(currentFilter.rating);
+            console.log('📊 Filtering by rating:', ratingValue);
+            query = query.eq('rating', ratingValue);
+        }
+        
+        // Apply search filter
+        if (currentFilter.search && currentFilter.search.trim() !== '') {
+            const searchTerm = currentFilter.search.trim();
+            console.log('📊 Searching for:', searchTerm);
+            query = query.or(`review.ilike.%${searchTerm}%, review_title.ilike.%${searchTerm}%, component_name.ilike.%${searchTerm}%`);
+        }
+        
+        // Apply sorting
+        if (currentFilter.sort === 'newest') {
+            query = query.order('created_at', { ascending: false });
+        } else if (currentFilter.sort === 'oldest') {
+            query = query.order('created_at', { ascending: true });
+        } else if (currentFilter.sort === 'highest') {
+            query = query.order('rating', { ascending: false });
+        } else if (currentFilter.sort === 'lowest') {
+            query = query.order('rating', { ascending: true });
+        } else if (currentFilter.sort === 'helpful') {
+            query = query.order('helpful_count', { ascending: false });
+        } else {
+            query = query.order('created_at', { ascending: false });
         }
         
         const { data, error } = await query;
         
         if (error) throw error;
         
-        allReviews = data || [];
+        // ============================================
+        // 🔥 POST-FETCH FILTERING FOR "ALL" CATEGORY
+        // ============================================
         
-        // Apply sorting
-        allReviews.sort((a, b) => {
-            switch(currentFilter.sort) {
-                case 'oldest':
-                    return new Date(a.created_at) - new Date(b.created_at);
-                case 'highest':
-                    return (b.rating || 0) - (a.rating || 0);
-                case 'lowest':
-                    return (a.rating || 0) - (b.rating || 0);
-                case 'helpful':
-                    return (b.helpful_count || 0) - (a.helpful_count || 0);
-                default:
-                    return new Date(b.created_at) - new Date(a.created_at);
-            }
-        });
+        let filteredReviews = data || [];
         
+        // If "all" category, filter academic by block in JavaScript
+        if (!currentFilter.category || currentFilter.category === 'all') {
+            const academicCategories = ['course', 'lecturer', 'facility', 'library', 'administration', 'online', 'clinical', 'general'];
+            
+            filteredReviews = filteredReviews.filter(review => {
+                // Site reviews - always show
+                if (review.component_type === 'site') {
+                    return true;
+                }
+                // Academic reviews - only show if matches user's block and program type
+                if (academicCategories.includes(review.component_type)) {
+                    const reviewBlock = review.target_block || review.block || 'Block 1';
+                    const reviewProgramType = review.target_program_type || review.program_type || 'KRCHN';
+                    // Check if both block and program type match
+                    return reviewBlock === userBlock && reviewProgramType === userProgramType;
+                }
+                return true;
+            });
+        }
+        
+        allReviews = filteredReviews;
+        console.log(`✅ Found ${allReviews.length} reviews (filtered for block: ${userBlock}, program type: ${userProgramType})`);
+        
+        // Update filter results count
+        updateFilterResultsCount(allReviews.length);
+        
+        // Render reviews
         renderReviews(allReviews.slice(0, REVIEWS_PER_PAGE));
         updateLoadMoreButton();
         updateReviewStats();
@@ -237,12 +439,15 @@ function renderReviews(reviews) {
     if (!reviews || reviews.length === 0) {
         grid.innerHTML = `
             <div class="empty-state-premium">
-                <i class="fas fa-star" style="font-size: 48px; color: #d1d5db;"></i>
+                <i class="fas fa-search" style="font-size: 48px; color: #d1d5db;"></i>
                 <h3>No Reviews Found</h3>
-                <p>Be the first to share your experience!</p>
-                <button onclick="openReviewModal()" class="btn-primary">
-                    <i class="fas fa-pen"></i> Write a Review
-                </button>
+                <p>Try adjusting your filters or be the first to share your experience!</p>
+                <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="resetFilters()" class="btn-secondary">Reset Filters</button>
+                    <button onclick="openReviewModal()" class="btn-primary">
+                        <i class="fas fa-pen"></i> Write a Review
+                    </button>
+                </div>
             </div>
         `;
         return;
@@ -256,6 +461,7 @@ function renderReviews(reviews) {
             month: 'short',
             day: 'numeric'
         });
+        
         const categoryIcons = {
             'site': '🌐',
             'course': '📚',
@@ -267,9 +473,16 @@ function renderReviews(reviews) {
             'clinical': '🏥',
             'general': '⭐'
         };
+        
         const categoryIcon = categoryIcons[review.component_type] || '📝';
         const categoryLabel = review.component_type ? review.component_type.charAt(0).toUpperCase() + review.component_type.slice(1) : 'General';
         const componentDisplay = review.component_name ? `on ${review.component_name}` : '';
+        
+        // Determine program type badge
+        const programType = review.target_program_type || review.program_type || 'KRCHN';
+        const isTVET = programType === 'TVET';
+        const programBadge = isTVET ? '🔧 TVET' : '🎓 KRCHN';
+        const blockDisplay = review.target_block || review.block || 'N/A';
         
         return `
             <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
@@ -293,6 +506,21 @@ function renderReviews(reviews) {
                 <div class="review-card-body">
                     <div class="review-rating">${stars}</div>
                     ${review.review_title ? `<h4 class="review-title">${escapeHtml(review.review_title)}</h4>` : ''}
+                    
+                    <!-- Block & Program Badge -->
+                    <div class="review-meta-badges" style="display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0;">
+                        ${review.target_block ? `
+                            <span class="block-tag" style="background: #e2e8f0; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #475569;">
+                                <i class="fas fa-layer-group"></i> ${escapeHtml(blockDisplay)}
+                            </span>
+                        ` : ''}
+                        ${review.target_program_type ? `
+                            <span class="program-tag" style="background: ${isTVET ? '#fef3c7' : '#dbeafe'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: ${isTVET ? '#92400e' : '#1e40af'};">
+                                ${programBadge}
+                            </span>
+                        ` : ''}
+                    </div>
+                    
                     <p class="review-text">${review.review.length > 200 ? review.review.substring(0, 200) + '...' : escapeHtml(review.review)}</p>
                     
                     ${review.pros ? `
@@ -339,7 +567,8 @@ async function loadSiteRating() {
         const { data: reviews, error } = await supabase
             .from('student_reviews')
             .select('rating')
-            .eq('status', 'approved');
+            .eq('status', 'approved')
+            .eq('component_type', 'site');
         
         if (error) throw error;
         
@@ -467,6 +696,9 @@ async function submitReview(e) {
         
         const currentUser = window.currentUserProfile || window.currentUserId;
         const userId = currentUser?.user_id || currentUser;
+        const userProgram = currentUser?.program || 'KRCHN';
+        const userBlock = currentUser?.block || 'Block 1';
+        const userProgramType = getProgramType(userProgram);
         
         if (!userId) throw new Error('User not logged in');
         
@@ -483,6 +715,9 @@ async function submitReview(e) {
                 cons: cons || null,
                 suggestions: suggestions || null,
                 is_anonymous: anonymous,
+                target_block: userBlock,
+                target_program: userProgram,
+                target_program_type: userProgramType,
                 status: 'pending',
                 created_at: new Date().toISOString()
             }]);
@@ -650,12 +885,24 @@ function getStarHTML(rating) {
 // ============================================
 
 function filterByCategory(category) {
-    currentFilter.category = category;
+    console.log('📊 Quick filter by category:', category);
+    
+    // Update active state on quick filter buttons
     document.querySelectorAll('.cat-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
+    
+    // Update the dropdown filter
     const filterEl = document.getElementById('reviewCategoryFilter');
-    if (filterEl) filterEl.value = category;
+    if (filterEl) {
+        filterEl.value = category;
+    }
+    
+    // Update current filter state
+    currentFilter.category = category;
+    currentPage = 1;
+    
+    // Reload reviews
     loadReviews();
 }
 
@@ -664,13 +911,108 @@ function applyFilters() {
     const ratingEl = document.getElementById('reviewRatingFilter');
     const sortEl = document.getElementById('reviewSortFilter');
     const searchEl = document.getElementById('reviewSearchInput');
+    const programEl = document.getElementById('reviewProgramFilter');
+    const blockEl = document.getElementById('reviewBlockFilter');
     
-    if (categoryEl) currentFilter.category = categoryEl.value;
-    if (ratingEl) currentFilter.rating = ratingEl.value;
-    if (sortEl) currentFilter.sort = sortEl.value;
-    if (searchEl) currentFilter.search = searchEl.value;
+    // Get values
+    const category = categoryEl ? categoryEl.value : 'all';
+    const rating = ratingEl ? ratingEl.value : 'all';
+    const sort = sortEl ? sortEl.value : 'newest';
+    const search = searchEl ? searchEl.value : '';
+    const program = programEl ? programEl.value : 'all';
+    const block = blockEl ? blockEl.value : 'all';
     
+    console.log('🔍 Applying filters:', { category, rating, sort, search, program, block });
+    
+    // Update current filter state
+    currentFilter.category = category;
+    currentFilter.rating = rating;
+    currentFilter.sort = sort;
+    currentFilter.search = search;
+    currentFilter.program = program;
+    currentFilter.block = block;
+    
+    // Reset to page 1 when filters change
+    currentPage = 1;
+    
+    // Reload reviews with filters
     loadReviews();
+}
+
+function resetFilters() {
+    console.log('🔄 Resetting all filters');
+    
+    // Reset filter state
+    currentFilter.category = 'all';
+    currentFilter.rating = 'all';
+    currentFilter.sort = 'newest';
+    currentFilter.search = '';
+    currentFilter.program = 'all';
+    currentFilter.block = 'all';
+    currentPage = 1;
+    
+    // Reset UI elements
+    const categoryFilter = document.getElementById('reviewCategoryFilter');
+    const ratingFilter = document.getElementById('reviewRatingFilter');
+    const sortFilter = document.getElementById('reviewSortFilter');
+    const searchInput = document.getElementById('reviewSearchInput');
+    const programFilter = document.getElementById('reviewProgramFilter');
+    const blockFilter = document.getElementById('reviewBlockFilter');
+    
+    if (categoryFilter) categoryFilter.value = 'all';
+    if (ratingFilter) ratingFilter.value = 'all';
+    if (sortFilter) sortFilter.value = 'newest';
+    if (searchInput) searchInput.value = '';
+    if (programFilter) programFilter.value = 'all';
+    if (blockFilter) blockFilter.value = 'all';
+    
+    // Reset quick filter buttons
+    document.querySelectorAll('.cat-filter').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === 'all');
+    });
+    
+    // Reload reviews
+    loadReviews();
+}
+
+// ============================================
+// INITIALIZE CATEGORY FILTERS
+// ============================================
+
+function initCategoryFilters() {
+    const categoryButtons = document.querySelectorAll('.cat-filter');
+    categoryButtons.forEach(btn => {
+        btn.removeEventListener('click', categoryClickHandler);
+        btn.addEventListener('click', categoryClickHandler);
+    });
+}
+
+function categoryClickHandler() {
+    const category = this.dataset.category;
+    filterByCategory(category);
+}
+
+// ============================================
+// UPDATE FILTER RESULTS COUNT
+// ============================================
+
+function updateFilterResultsCount(count) {
+    let resultsEl = document.getElementById('filterResultsCount');
+    
+    if (!resultsEl) {
+        const filterBar = document.querySelector('.reviews-filters-premium');
+        if (filterBar) {
+            resultsEl = document.createElement('span');
+            resultsEl.id = 'filterResultsCount';
+            resultsEl.className = 'filter-results-count';
+            resultsEl.style.cssText = 'font-size: 13px; color: #64748b; margin-left: 10px; font-weight: 500;';
+            filterBar.appendChild(resultsEl);
+        }
+    }
+    
+    if (resultsEl) {
+        resultsEl.textContent = `${count} review${count !== 1 ? 's' : ''} found`;
+    }
 }
 
 // ============================================
@@ -870,7 +1212,8 @@ function loadMoreReviews() {
     if (moreReviews.length > 0) {
         const grid = document.getElementById('reviewsGrid');
         if (grid) {
-            grid.innerHTML += moreReviews.map(review => {
+            const existingCards = grid.innerHTML;
+            grid.innerHTML = existingCards + moreReviews.map(review => {
                 const stars = getStarHTML(review.rating || 0);
                 const name = review.is_anonymous ? 'Anonymous Student' : (review.student?.full_name || 'Student');
                 const date = new Date(review.created_at).toLocaleDateString('en-US', {
@@ -932,6 +1275,7 @@ window.setReviewRating = setReviewRating;
 window.rateSite = rateSite;
 window.filterByCategory = filterByCategory;
 window.applyFilters = applyFilters;
+window.resetFilters = resetFilters;
 window.openReviewModal = openReviewModal;
 window.closeReviewModal = closeReviewModal;
 window.openReviewDetail = openReviewDetail;
@@ -943,5 +1287,12 @@ window.getStarHTML = getStarHTML;
 window.getSupabaseClient = getSupabaseClient;
 window.escapeHtml = escapeHtml;
 window.refreshReviews = refreshReviews;
+window.initCategoryFilters = initCategoryFilters;
+window.updateFilterResultsCount = updateFilterResultsCount;
+window.isTVETProgram = isTVETProgram;
+window.getProgramType = getProgramType;
+window.getProgramDisplayName = getProgramDisplayName;
+window.getBlockDisplay = getBlockDisplay;
+window.TVET_PROGRAMS = TVET_PROGRAMS;
 
-console.log('✅ Reviews & Newsletter module loaded (fixed)');
+console.log('✅ Reviews & Newsletter module loaded (KRCHN & TVET support)');
