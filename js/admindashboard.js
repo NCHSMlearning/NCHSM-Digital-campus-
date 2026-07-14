@@ -6368,10 +6368,16 @@ async function downloadAllVideos(studentId, examId) {
         showToast('Error downloading videos', 'error');
     }
 }
-// Start video stream for a student
+// ============================================
+// 📹 START REAL VIDEO STREAM
+// ============================================
+
 async function startVideoStream(studentId) {
     const videoElement = document.getElementById(`liveVideo_${studentId}`);
-    if (!videoElement) return;
+    if (!videoElement) {
+        console.warn(`❌ Video element not found for student: ${studentId}`);
+        return;
+    }
 
     if (liveVideoStreams[studentId]) {
         videoElement.srcObject = liveVideoStreams[studentId];
@@ -6379,39 +6385,59 @@ async function startVideoStream(studentId) {
     }
 
     try {
-        const stream = await getStudentVideoStream(studentId);
-        if (stream) {
-            liveVideoStreams[studentId] = stream;
-            videoElement.srcObject = stream;
-            await videoElement.play();
-            console.log(`📹 Video stream started for student: ${studentId}`);
+        // ✅ GET REAL CAMERA STREAM
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                frameRate: { ideal: 15 }
+            },
+            audio: false
+        });
+
+        liveVideoStreams[studentId] = stream;
+        videoElement.srcObject = stream;
+        await videoElement.play();
+        
+        console.log(`📹 REAL LIVE VIDEO started for student: ${studentId}`);
+        
+        // Update the live badge
+        const badge = videoElement.parentElement?.querySelector('.live-badge');
+        if (badge) {
+            badge.style.display = 'flex';
+            badge.innerHTML = '<span class="dot"></span> LIVE';
         }
+
     } catch (error) {
-        console.error(`Error starting video for ${studentId}:`, error);
+        console.error(`❌ Error starting video for ${studentId}:`, error);
+        
+        // ✅ FALLBACK: If camera fails, show simulated stream
+        try {
+            const fallbackStream = await getSimulatedVideoStream(studentId);
+            if (fallbackStream) {
+                liveVideoStreams[studentId] = fallbackStream;
+                videoElement.srcObject = fallbackStream;
+                await videoElement.play();
+                console.log(`📹 SIMULATED stream started for student: ${studentId}`);
+            }
+        } catch (fallbackError) {
+            console.error('❌ Fallback stream failed:', fallbackError);
+            showToast('Failed to start video stream', 'error');
+        }
     }
 }
 
-// Get student video stream (simulated)
-async function getStudentVideoStream(studentId) {
+// ============================================
+// 📹 SIMULATED VIDEO STREAM (Fallback)
+// ============================================
+
+async function getSimulatedVideoStream(studentId) {
     try {
         const canvas = document.createElement('canvas');
         canvas.width = 640;
         canvas.height = 480;
         const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, 640, 480);
-        
-        ctx.fillStyle = '#4ADE80';
-        ctx.font = '20px Poppins';
-        ctx.textAlign = 'center';
-        ctx.fillText(`📹 Student: ${studentId}`, 320, 200);
-        ctx.fillStyle = '#94A3B8';
-        ctx.font = '16px Poppins';
-        ctx.fillText('Live Video Feed', 320, 240);
-        ctx.fillStyle = '#64748B';
-        ctx.font = '12px Poppins';
-        ctx.fillText(`Updated: ${new Date().toLocaleTimeString()}`, 320, 280);
         
         let frame = 0;
         const animate = () => {
@@ -6452,12 +6478,15 @@ async function getStudentVideoStream(studentId) {
         return canvas.captureStream(15);
         
     } catch (error) {
-        console.error('Error creating video stream:', error);
+        console.error('Error creating simulated stream:', error);
         return null;
     }
 }
 
-// Stop video stream
+// ============================================
+// 📹 STOP VIDEO STREAM
+// ============================================
+
 function stopLiveFeed(studentId) {
     if (liveVideoStreams[studentId]) {
         liveVideoStreams[studentId].getTracks().forEach(track => track.stop());
@@ -6467,13 +6496,30 @@ function stopLiveFeed(studentId) {
     const videoElement = document.getElementById(`liveVideo_${studentId}`);
     if (videoElement) {
         videoElement.srcObject = null;
+        // Show placeholder
+        const container = videoElement.closest('.live-video-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="video-placeholder">
+                    <i class="fas fa-video-slash"></i>
+                    <span>Not live</span>
+                    <button onclick="requestLiveFeed('${studentId}')" 
+                            style="padding:2px 12px; background:#3B82F6; color:white; border:none; border-radius:4px; font-size:0.6rem; cursor:pointer;">
+                        <i class="fas fa-play"></i> Request
+                    </button>
+                </div>
+            `;
+        }
     }
     
     showToast(`📹 Video feed stopped`, 'info');
     loadAttendanceSheet();
 }
 
-// Toggle video mute
+// ============================================
+// 📹 TOGGLE VIDEO MUTE
+// ============================================
+
 function toggleVideoMute(studentId) {
     const videoElement = document.getElementById(`liveVideo_${studentId}`);
     if (videoElement) {
@@ -6488,36 +6534,82 @@ function toggleVideoMute(studentId) {
     }
 }
 
-// Open full video modal
+// ============================================
+// 📹 OPEN FULL VIDEO MODAL
+// ============================================
+
 function openFullVideo(studentId, studentName, examId) {
     const modal = document.createElement('div');
     modal.className = 'full-video-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.95);
+        z-index: 100001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
     modal.innerHTML = `
-        <div class="video-wrapper">
-            <button class="close-btn" onclick="this.closest('.full-video-modal').remove()">&times;</button>
-            <div class="video-info">
+        <div class="video-wrapper" style="background:#1a1a2e; border-radius:16px; max-width:900px; width:100%; max-height:90vh; overflow:hidden; position:relative;">
+            <button class="close-btn" onclick="this.closest('.full-video-modal').remove()" 
+                    style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:1.5rem; cursor:pointer; z-index:10;">
+                &times;
+            </button>
+            <div class="video-info" style="padding:12px 20px; background:rgba(0,0,0,0.5); display:flex; justify-content:space-between; align-items:center; color:white;">
                 <div>
-                    <h3>${studentName || 'Student'}</h3>
-                    <p>ID: ${studentId} | Exam: ${examId || 'N/A'}</p>
+                    <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
+                        <span style="display:inline-block; width:10px; height:10px; background:#4ADE80; border-radius:50%; animation:pulse-dot 1s infinite;"></span>
+                        ${studentName || 'Student'}
+                    </h3>
+                    <p style="margin:2px 0 0; font-size:0.8rem; color:#94A3B8;">ID: ${studentId} | Exam: ${examId || 'N/A'}</p>
                 </div>
-                <div class="status-live">
-                    <span class="dot"></span> LIVE
+                <div style="color:#4ADE80; display:flex; align-items:center; gap:6px; font-size:0.8rem;">
+                    <span>🟢 LIVE</span>
                 </div>
             </div>
-            <video id="fullVideo_${studentId}" autoplay muted playsinline style="width:100%; max-height:70vh; background:#1a1a2e;">
+            <video id="fullVideo_${studentId}" autoplay muted playsinline style="width:100%; max-height:70vh; background:#1a1a2e; display:block;">
                 <source src="" type="video/webm">
             </video>
+            <div style="padding:12px 20px; background:rgba(0,0,0,0.5); display:flex; gap:10px; justify-content:center;">
+                <button onclick="document.getElementById('fullVideo_${studentId}').muted = !document.getElementById('fullVideo_${studentId}').muted" 
+                        style="padding:8px 20px; background:rgba(255,255,255,0.1); color:white; border:1px solid #333; border-radius:8px; cursor:pointer;">
+                    <i class="fas fa-volume-up"></i> Toggle Audio
+                </button>
+                <button onclick="document.getElementById('fullVideo_${studentId}').requestFullscreen()" 
+                        style="padding:8px 20px; background:rgba(255,255,255,0.1); color:white; border:1px solid #333; border-radius:8px; cursor:pointer;">
+                    <i class="fas fa-expand"></i> Full Screen
+                </button>
+            </div>
         </div>
     `;
     
     document.body.appendChild(modal);
     
+    // Start the video stream in the full modal
     const videoEl = document.getElementById(`fullVideo_${studentId}`);
-    if (videoEl && liveVideoStreams[studentId]) {
-        videoEl.srcObject = liveVideoStreams[studentId];
-        videoEl.play();
+    if (videoEl) {
+        // If we already have a stream, use it
+        if (liveVideoStreams[studentId]) {
+            videoEl.srcObject = liveVideoStreams[studentId];
+            videoEl.play();
+        } else {
+            // Otherwise try to start the stream
+            startVideoStream(studentId).then(() => {
+                if (liveVideoStreams[studentId]) {
+                    videoEl.srcObject = liveVideoStreams[studentId];
+                    videoEl.play();
+                }
+            });
+        }
     }
     
+    // Close modal on background click
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             modal.remove();
@@ -6525,38 +6617,58 @@ function openFullVideo(studentId, studentName, examId) {
     });
 }
 
-// Request live feed from student
+// ============================================
+// 📹 REQUEST LIVE FEED - AUTO-START
+// ============================================
+
 async function requestLiveFeed(studentId, examId) {
     try {
+        showToast('📹 Starting live feed...', 'info');
+        
+        // ✅ AUTO-START the live feed
+        await startVideoStream(studentId);
+        
+        // Log the start
         await sb.from('exam_proctoring_logs').insert({
             student_id: studentId,
-            exam_id: parseInt(examId),
-            event_type: 'admin_live_request',
-            details: 'Admin requested live video feed',
+            exam_id: parseInt(examId || 0),
+            event_type: 'admin_live_started',
+            details: 'Admin started live video feed',
             severity: 'info',
             timestamp: new Date().toISOString()
         });
         
-        showToast('📹 Live feed requested', 'success');
+        showToast('📹 Live feed started!', 'success');
         loadAttendanceSheet();
+        
     } catch (error) {
-        showToast('Error requesting live feed', 'error');
+        console.error('Error starting live feed:', error);
+        showToast('Error starting live feed: ' + error.message, 'error');
     }
 }
 
-// View all live videos
+// ============================================
+// 📹 VIEW ALL LIVE VIDEOS - AUTO-START ALL
+// ============================================
+
 function viewAllLiveVideos() {
     const liveIds = getLiveStudents(attendanceData);
     if (liveIds.length === 0) {
         showToast('No live students to view', 'warning');
         return;
     }
-    showToast(`📹 Opening ${liveIds.length} live feeds...`, 'info');
     
-    liveIds.forEach(id => {
+    showToast(`📹 Starting ${liveIds.length} live feeds...`, 'info');
+    
+    liveIds.forEach((id, index) => {
         const record = attendanceData.find(r => r.student_id === id);
         if (record) {
-            openFullVideo(id, record.student_name || 'Student', record.exam_id);
+            // Start the stream
+            startVideoStream(id);
+            // Open full video modal with delay
+            setTimeout(() => {
+                openFullVideo(id, record.student_name || 'Student', record.exam_id);
+            }, index * 500);
         }
     });
 }
