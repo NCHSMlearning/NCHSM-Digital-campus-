@@ -3668,21 +3668,24 @@
 <section id="cats" class="tab-content">
     <h2><i class="fas fa-pen-ruler"></i> CATS / Exams Administration</h2>
     
-    <!-- Tab Navigation -->
-    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; flex-wrap: wrap;">
-        <button onclick="showExamTab('list')" id="examListTabBtn" class="exam-tab-btn active" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-list"></i> Exam List
-        </button>
-        <button onclick="showExamTab('create')" id="examCreateTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-plus-circle"></i> Create Exam
-        </button>
-        <button onclick="showExamTab('marks')" id="examMarksTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-edit"></i> Marks Entry
-        </button>
-        <button onclick="showExamTab('analytics')" id="examAnalyticsTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-chart-line"></i> Analytics
-        </button>
-    </div>
+  <!-- Tab Navigation - UPDATED with Grading System -->
+<div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; flex-wrap: wrap;">
+    <button onclick="showExamTab('list')" id="examListTabBtn" class="exam-tab-btn active" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
+        <i class="fas fa-list"></i> Exam List
+    </button>
+    <button onclick="showExamTab('create')" id="examCreateTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
+        <i class="fas fa-plus-circle"></i> Create Exam
+    </button>
+    <button onclick="showExamTab('marks')" id="examMarksTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
+        <i class="fas fa-edit"></i> Marks Entry
+    </button>
+    <button onclick="showExamTab('grading')" id="examGradingTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
+        <i class="fas fa-graduation-cap"></i> Grading System
+    </button>
+    <button onclick="showExamTab('analytics')" id="examAnalyticsTabBtn" class="exam-tab-btn" style="padding: 10px 20px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">
+        <i class="fas fa-chart-line"></i> Analytics
+    </button>
+</div>
     
     <!-- ========== TAB 1: EXAM LIST ========== -->
     <div id="examListTab" class="exam-tab-content">
@@ -4008,7 +4011,128 @@
         </div>
     </div>
 </div>
-    
+    <!-- ========== TAB: GRADING SYSTEM ========== -->
+<div id="examGradingTab" class="exam-tab-content" style="display: none;">
+    <div style="background: #f8f9fa; padding: 25px; border-radius: 12px;">
+        <h3><i class="fas fa-graduation-cap"></i> Grading System Configuration</h3>
+        <p style="color: #6b7280; font-size: 14px;">Configure grade boundaries, points, and descriptions for your institution.</p>
+        
+        <!-- Stats Cards -->
+        <div class="cards" style="margin-bottom: 20px;">
+            <div class="card" style="border-top: 4px solid #4C1D95;">
+                <h3 style="color: #4C1D95;">Total Grades</h3>
+                <p class="data" id="totalGradesCount" style="color: #4C1D95; font-size: 28px;">0</p>
+                <p class="minor-data">Configured grade levels</p>
+            </div>
+            <div class="card" style="border-top: 4px solid #10b981;">
+                <h3 style="color: #059669;">Pass Grade</h3>
+                <p class="data" id="passGradeDisplay" style="color: #059669; font-size: 28px;">D</p>
+                <p class="minor-data">Minimum passing grade</p>
+            </div>
+            <div class="card" style="border-top: 4px solid #f59e0b;">
+                <h3 style="color: #d97706;">Highest Points</h3>
+                <p class="data" id="highestPointsDisplay" style="color: #d97706; font-size: 28px;">12</p>
+                <p class="minor-data">Maximum grade points</p>
+            </div>
+        </div>
+        
+        <!-- Add New Grade Form -->
+        <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+            <h4 style="color: #4C1D95; margin: 0 0 15px 0;">
+                <i class="fas fa-plus-circle"></i> Add New Grade
+            </h4>
+            <form id="add-grade-form" onsubmit="event.preventDefault(); addGrade();">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Grade *</label>
+                        <input type="text" id="grade_letter" placeholder="e.g., A, B+, C-" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Min Score (%) *</label>
+                        <input type="number" id="grade_min_score" placeholder="e.g., 80" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Max Score (%) *</label>
+                        <input type="number" id="grade_max_score" placeholder="e.g., 100" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Points</label>
+                        <input type="number" id="grade_points" placeholder="e.g., 12" value="0" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Description</label>
+                        <input type="text" id="grade_description" placeholder="e.g., Excellent" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Status</label>
+                        <select id="grade_status" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="active">✅ Active</option>
+                            <option value="inactive">⏸️ Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button type="submit" class="btn-action" style="background: #4C1D95; padding: 8px 24px;">
+                        <i class="fas fa-save"></i> Add Grade
+                    </button>
+                    <button type="button" onclick="resetGradeForm()" class="btn" style="background: #6b7280; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Grades Table -->
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+            <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #4C1D95;">
+                    <i class="fas fa-list"></i> Grade Configuration
+                </h4>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="loadGrades()" class="btn-action" style="background: #4C1D95; padding: 6px 14px; font-size: 12px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button onclick="exportGradesToCSV()" class="btn-action export-btn" style="padding: 6px 14px; font-size: 12px;">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button onclick="setDefaultGrades()" class="btn-action" style="background: #f59e0b; padding: 6px 14px; font-size: 12px;">
+                        <i class="fas fa-undo"></i> Set Default
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive" style="overflow-x: auto;">
+                <table class="data-table" id="grades_table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #343a40; color: white;">
+                            <th style="padding: 10px; text-align: left;">Grade</th>
+                            <th style="padding: 10px; text-align: center;">Min Score</th>
+                            <th style="padding: 10px; text-align: center;">Max Score</th>
+                            <th style="padding: 10px; text-align: center;">Points</th>
+                            <th style="padding: 10px; text-align: left;">Description</th>
+                            <th style="padding: 10px; text-align: center;">Status</th>
+                            <th style="padding: 10px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grades_table_body">
+                        <tr><td colspan="7" style="padding: 40px; text-align: center; color: #6b7280;">
+                            <div class="loading-spinner"></div> Loading grades...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Grade Color Preview -->
+        <div style="margin-top: 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px;">
+            <h4 style="color: #4C1D95; margin: 0 0 15px 0;">
+                <i class="fas fa-palette"></i> Grade Color Preview
+            </h4>
+            <div id="gradeColorPreview" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <!-- Colors will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
     <!-- ========== TAB 4: ANALYTICS ========== -->
     <div id="examAnalyticsTab" class="exam-tab-content" style="display: none;">
         <div style="background: #f8f9fa; padding: 25px; border-radius: 12px;">
