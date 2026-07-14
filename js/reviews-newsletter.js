@@ -1,5 +1,30 @@
 // ============================================
-// REVIEWS & NEWSLETTER MODULE - KRCHN & TVET SUPPORT
+// REVIEWS & NEWSLETTER MODULE - COMPLETE FIXED
+// (No duplicate declarations)
+// ============================================
+
+// ============================================
+// CHECK IF TVET_PROGRAMS ALREADY EXISTS
+// ============================================
+
+// Only define if not already defined globally
+if (typeof window.TVET_PROGRAMS === 'undefined') {
+    window.TVET_PROGRAMS = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+    ];
+}
+
+// Use the global or local variable
+const TVET_PROGRAMS_LOCAL = window.TVET_PROGRAMS || [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+// ============================================
+// GLOBAL VARIABLES
 // ============================================
 
 let allReviews = [];
@@ -22,23 +47,12 @@ const currentFilter = {
 };
 
 // ============================================
-// PROGRAM TYPES
+// PROGRAM TYPE FUNCTIONS
 // ============================================
-
-const PROGRAM_TYPES = {
-    KRCHN: 'KRCHN',
-    TVET: 'TVET'
-};
-
-const TVET_PROGRAMS = [
-    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-];
 
 function isTVETProgram(programCode) {
     if (!programCode) return false;
-    return TVET_PROGRAMS.includes(programCode.toUpperCase());
+    return TVET_PROGRAMS_LOCAL.includes(programCode.toUpperCase());
 }
 
 function getProgramType(programCode) {
@@ -331,7 +345,7 @@ async function loadReviews() {
             const academicCategories = ['course', 'lecturer', 'facility', 'library', 'administration', 'online', 'clinical', 'general'];
             
             if (academicCategories.includes(currentFilter.category)) {
-                // Academic reviews - filter by user's block and program
+                // Academic reviews - filter by user's block and program type
                 console.log('📊 Academic review - filtering by block:', userBlock);
                 console.log('📊 Academic review - filtering by program type:', userProgramType);
                 query = query
@@ -1293,6 +1307,6 @@ window.isTVETProgram = isTVETProgram;
 window.getProgramType = getProgramType;
 window.getProgramDisplayName = getProgramDisplayName;
 window.getBlockDisplay = getBlockDisplay;
-window.TVET_PROGRAMS = TVET_PROGRAMS;
+window.TVET_PROGRAMS_LOCAL = TVET_PROGRAMS_LOCAL;
 
 console.log('✅ Reviews & Newsletter module loaded (KRCHN & TVET support)');
