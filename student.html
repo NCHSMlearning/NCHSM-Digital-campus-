@@ -161,41 +161,43 @@
             <div class="sidebar-footer"><p class="version-info" id="sidebarVersion">Portal v2.1</p></div>
         </aside>
 
-       <!-- ==================== DASHBOARD SECTION ==================== -->
+        <!-- MAIN CONTENT AREA -->
+        <main class="main" id="main-content">
+<!-- ==================== DASHBOARD SECTION ==================== -->
 <section id="dashboard" class="tab-content active" role="region">
     
     <div class="dashboard-container">
         
         <!-- WELCOME -->
         <div class="welcome">
-            <h1>Good Evening 🌅, <span id="welcome-student-name">Kevin matoka Tiong'i</span>! 🎉</h1>
+            <h1>Good Morning, <span id="welcome-student-name">Student</span>! 🎉</h1>
             <p id="student-welcome-message">Access your courses, schedule, and check your attendance status.</p>
         </div>
 
         <!-- ⭐ SUPER CLASSY NEXT CLASS CARD -->
-        <div id="quick-next-class" class="next-class-card" style="display: block;">
+        <div id="quick-next-class" class="next-class-card" style="display: none;">
             <div class="next-class-glow"></div>
             <div class="next-class-inner">
                 <div class="next-class-time-badge">
                     <div class="next-class-time-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="next-class-time-text">
                         <div class="next-class-time-label">NEXT CLASS</div>
-                        <div class="next-class-time-value" id="quick-next-class-time">08:00 — 10:30</div>
+                        <div class="next-class-time-value" id="quick-next-class-time">--:-- --:--</div>
                     </div>
                 </div>
                 <div class="next-class-info">
                     <div class="next-class-course">
-                        <span id="quick-next-class-name">REVISION - Epidemiology & VS</span>
-                        <code id="quick-next-class-code">Epidemiology & Demography</code>
+                        <span id="quick-next-class-name">--</span>
+                        <code id="quick-next-class-code">--</code>
                     </div>
                     <div class="next-class-meta">
-                        <div class="next-class-meta-item"><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">Md. Mercy</span></div>
-                        <div class="next-class-meta-item"><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">Lecture Hall 4</span></div>
+                        <div class="next-class-meta-item"><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">--</span></div>
+                        <div class="next-class-meta-item"><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></div>
                     </div>
                 </div>
                 <div class="next-class-day-badge" id="quick-next-class-day-container">
                     <i class="fas fa-calendar-day"></i>
-                    <span id="quick-next-class-day">Wed, 15 Jul 2026</span>
+                    <span id="quick-next-class-day">--</span>
                 </div>
             </div>
         </div>
@@ -209,28 +211,26 @@
             <div id="next-exam-details" style="color: white;"></div>
         </div>
 
-        <!-- STATS ROW (XP, NurseIQ, Attendance, Login, Total Points) -->
+        <!-- STATS ROW (XP, NurseIQ, Attendance, Daily Streak) -->
         <div class="stats-row">
             <div class="xp-area">
-                <div class="label"><i class="fas fa-star"></i> Level <span id="user-level">4</span> · <span id="user-xp">30</span>/<span id="user-xp-max">100</span> XP</div>
-                <div class="progress-bg"><div class="progress-fill" id="xp-progress-fill" style="width:30%"></div></div>
+                <div class="label"><i class="fas fa-star"></i> Level <span id="user-level">1</span> · <span id="user-xp">0</span>/<span id="user-xp-max">100</span> XP to Level <span id="next-level">2</span></div>
+                <div class="progress-bg"><div class="progress-fill" id="xp-progress-fill"></div></div>
             </div>
             <div class="xp-area">
                 <div class="label"><i class="fas fa-brain"></i> NurseIQ: <span id="dashboard-nurseiq-points">0</span> pts</div>
             </div>
             <div class="xp-area">
-                <div class="label"><i class="fas fa-calendar-check"></i> Attendance: <span id="attendance-points-value">200</span> pts</div>
+                <div class="label"><i class="fas fa-calendar-check"></i> 🎯 Attendance: <span id="attendance-points-value">0</span> pts</div>
             </div>
-            <div class="xp-area">
-                <div class="label" style="background: #ede9fe; color: #4C1D95;">
-                    <i class="fas fa-sign-in-alt" style="color: #4C1D95;"></i> 
-                    Login: <span id="login-points-display" style="font-weight: 700; color: #4C1D95;">130</span> pts
-                </div>
-            </div>
-            <div class="xp-area">
-                <div class="label" style="background: #fef3c7; color: #92400e;">
-                    <i class="fas fa-trophy" style="color: #f59e0b;"></i> 
-                    Total: <span id="total-points-display" style="font-weight: 700; color: #d97706;">330</span> pts
+            <!-- ✅ DAILY STREAK -->
+            <div class="xp-area" style="background: linear-gradient(135deg, #4C1D95, #7C3AED); border-radius: 12px; padding: 8px 16px;">
+                <div class="label" style="color: white;">
+                    <i class="fas fa-fire" style="color: #fbbf24;"></i> 
+                    Daily Streak: <span id="daily-streak-display" style="font-weight: 700; color: #fbbf24;">0</span> days
+                    <span style="font-size: 10px; color: #c4b5fd; font-weight: 400; display: block; margin-top: 2px;">
+                        🔥 Keep logging in daily!
+                    </span>
                 </div>
             </div>
         </div>
@@ -238,54 +238,7 @@
         <!-- ANNOUNCEMENT -->
         <div class="announcement">
             <div class="announcement-title"><i class="fas fa-bullhorn"></i> Official Announcement</div>
-            <div class="announcement-text" id="student-announcement">All the best in your examinations</div>
-        </div>
-
-        <!-- ========== DAILY STREAK CARD - MAIN ========== -->
-        <div class="streak-container" id="streak-container">
-            <div class="streak-header">
-                <div class="streak-fire" id="streak-fire">
-                    <span class="streak-emoji" id="streak-emoji">🔥</span>
-                    <span class="streak-label">Daily Streak</span>
-                </div>
-                <div class="streak-counter">
-                    <span class="streak-number" id="daily-streak-display">1</span>
-                    <span class="streak-unit">days</span>
-                </div>
-            </div>
-            
-            <!-- Streak Progress Bar -->
-            <div class="streak-progress-container">
-                <div class="streak-progress-bg">
-                    <div class="streak-progress-fill" id="streak-progress-fill" style="width: 3%;"></div>
-                </div>
-                <div class="streak-milestones">
-                    <span class="milestone active" data-day="1">🔥 1</span>
-                    <span class="milestone" data-day="3">🌱 3</span>
-                    <span class="milestone" data-day="7">🌿 7</span>
-                    <span class="milestone" data-day="14">💎 14</span>
-                    <span class="milestone" data-day="30">👑 30</span>
-                </div>
-            </div>
-            
-            <!-- Streak Lights -->
-            <div class="streak-lights" id="streak-lights">
-                <span class="streak-light active" id="light-1">⭐</span>
-                <span class="streak-light" id="light-2">⭐</span>
-                <span class="streak-light" id="light-3">⭐</span>
-                <span class="streak-light" id="light-4">⭐</span>
-                <span class="streak-light" id="light-5">⭐</span>
-            </div>
-            
-            <!-- Streak Status -->
-            <div class="streak-message" id="streak-message">
-                <span id="streak-status-text">🔥 Your streak has started! Keep going!</span>
-            </div>
-            
-            <!-- Restore Button -->
-            <button class="streak-restore-btn" id="streak-restore-btn">
-                <i class="fas fa-undo"></i> 💫 Restore Streak (3 left)
-            </button>
+            <div class="announcement-text" id="student-announcement">Loading latest announcement...</div>
         </div>
 
         <!-- QUICK SNAPSHOT -->
@@ -295,16 +248,16 @@
         <div class="attendance-card" data-tab="attendance">
             <div class="attendance-header">
                 <div>
-                    <span class="attendance-percent" id="dashboard-attendance-rate">23%</span>
+                    <span class="attendance-percent" id="dashboard-attendance-rate">0%</span>
                     <span class="attendance-label">Attendance</span>
                 </div>
                 <div class="warning-badge" id="attendance-warning-badge">
-                    <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">CRITICAL</span>
+                    <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
                 </div>
             </div>
             <div class="vp-row">
-                <span>✅ <strong id="dashboard-verified-count">20</strong>/<strong id="dashboard-total-count">86</strong></span>
-                <span>⏳ <strong id="dashboard-pending-count">66</strong></span>
+                <span>✅ <strong id="dashboard-verified-count">0</strong>/<strong id="dashboard-total-count">0</strong></span>
+                <span>⏳ <strong id="dashboard-pending-count">0</strong></span>
                 <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
             </div>
         </div>
@@ -313,18 +266,18 @@
         <div class="mini-cards">
             <div class="mini-card" data-tab="cats">
                 <div class="mini-label">📝 Upcoming Exam</div>
-                <div class="mini-card-value" id="dashboard-upcoming-exam">END OF BLOCK 2</div>
-                <div class="mini-sub">Jul 15, 2026</div>
+                <div class="mini-card-value" id="dashboard-upcoming-exam">--</div>
+                <div class="mini-sub">Next CAT/Exam date</div>
             </div>
             <div class="mini-card" data-tab="hub-courses">
                 <div class="mini-label">📚 Active Courses</div>
-                <div class="mini-card-value" id="dashboard-active-courses">9</div>
+                <div class="mini-card-value" id="dashboard-active-courses">0</div>
                 <div class="mini-sub">Currently enrolled</div>
             </div>
             <div class="mini-card" data-tab="profile">
                 <div class="mini-label">📖 Current Block</div>
-                <div class="mini-card-value" id="dashboard-current-block-value">Block 2</div>
-                <div class="mini-sub"><span id="dashboard-program-name">KRCHN</span> · Intake <span id="dashboard-intake-year">2025</span></div>
+                <div class="mini-card-value" id="dashboard-current-block-value">--</div>
+                <div class="mini-sub"><span id="dashboard-program-name">--</span> · Intake <span id="dashboard-intake-year">--</span></div>
             </div>
         </div>
 
@@ -332,31 +285,31 @@
         <div class="mini-cards">
             <div class="mini-card" data-tab="resources">
                 <i class="fas fa-folder-open"></i>
-                <div class="mini-card-value" id="dashboard-new-resources">24</div>
+                <div class="mini-card-value" id="dashboard-new-resources">0</div>
                 <div class="mini-sub">Resources</div>
             </div>
             <div class="mini-card" data-tab="nurseiq">
                 <i class="fas fa-brain"></i>
-                <div class="mini-card-value" id="dashboard-nurseiq-progress">0%</div>
+                <div class="mini-card-value" id="dashboard-nurseiq-progress">--%</div>
                 <div class="mini-sub">
-                    Accuracy: <span id="dashboard-nurseiq-accuracy">0</span>% · 
+                    Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · 
                     Questions: <span id="dashboard-nurseiq-questions">0</span>
                 </div>
             </div>
             <div class="mini-card" data-tab="hub-exam-card">
                 <i class="fas fa-id-card"></i>
-                <div class="mini-card-value exam-status" id="dashboard-exam-status">ELIGIBLE</div>
-                <div class="mini-sub">Approved: <span id="dashboard-approved-units">9</span> units</div>
+                <div class="mini-card-value exam-status" id="dashboard-exam-status">--</div>
+                <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
             </div>
         </div>
 
-        <!-- MINI CARDS ROW 3 - REVIEWS, NEWSLETTER, STREAK MINI -->
+        <!-- ========== MINI CARDS ROW 3 - REVIEWS & NEWSLETTER & DAILY STREAK ========== -->
         <div class="mini-cards">
             <div class="mini-card" data-tab="reviews">
                 <div class="mini-label">⭐ Reviews</div>
-                <div class="mini-card-value" id="dashboard-reviews-avg">4.2</div>
+                <div class="mini-card-value" id="dashboard-reviews-avg">0.0</div>
                 <div class="mini-sub">
-                    <span id="dashboard-reviews-total">5</span> reviews · 
+                    <span id="dashboard-reviews-total">0</span> reviews · 
                     <span id="dashboard-reviews-pending">0</span> pending
                 </div>
             </div>
@@ -365,11 +318,12 @@
                 <div class="mini-card-value" id="dashboard-newsletter-status">📧 Not Subscribed</div>
                 <div class="mini-sub" id="dashboard-newsletter-latest">No newsletters yet</div>
             </div>
-            <div class="mini-card streak-mini" data-tab="dashboard" style="cursor:pointer; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-color: #d97706; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);">
-                <div class="mini-label" style="color: #92400e; font-weight: 700;">🔥 Daily Streak</div>
-                <div class="mini-card-value" id="daily-streak-value" style="color: #78350f; font-weight: 800; font-size: 24px;">1</div>
-                <div class="mini-sub" style="color: #78350f; font-weight: 600;">
-                    <span id="streak-mini-status">🔥 Keep going!</span>
+            <!-- ✅ DAILY STREAK MINI CARD -->
+            <div class="mini-card" data-tab="profile" style="cursor:pointer; background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                <div class="mini-label" style="color: #92400e;">🔥 Daily Streak</div>
+                <div class="mini-card-value" id="daily-streak-value" style="color: #d97706; font-weight: 700;">0</div>
+                <div class="mini-sub" style="color: #92400e;">
+                    Keep logging in daily!
                 </div>
             </div>
         </div>
@@ -388,25 +342,9 @@
         </div>
 
         <!-- ========== LEADERBOARD SECTION ========== -->
-        <div class="section-title">
-            🏅 Leaderboard 
-            <span class="leaderboard-tabs">
-                <span class="active" data-period="all">All Time</span>
-                <span data-period="weekly">Weekly</span>
-                <span data-period="monthly">Monthly</span>
-            </span>
-        </div>
+        <div class="section-title">🏅 Leaderboard <span class="leaderboard-tabs">Weekly · Monthly · All Time</span></div>
         <div class="leaderboard-slim" id="leaderboard-container">
-            <div class="leader-slim"><span class="rank">👑</span><span class="name">Kevin</span><span class="pts">1308 pts</span></div>
-            <div class="leader-slim"><span class="rank">🥈</span><span class="name">Florence</span><span class="pts">720 pts</span></div>
-            <div class="leader-slim"><span class="rank">🥉</span><span class="name">Brenda</span><span class="pts">702 pts</span></div>
-            <div class="leader-slim"><span class="rank">4</span><span class="name">Shadell</span><span class="pts">678 pts</span></div>
-            <div class="leader-slim"><span class="rank">5</span><span class="name">Celine</span><span class="pts">670 pts</span></div>
-            <div class="leader-slim"><span class="rank">6</span><span class="name">Magdaline</span><span class="pts">605 pts</span></div>
-            <div class="leader-slim"><span class="rank">7</span><span class="name">Sumaya</span><span class="pts">565 pts</span></div>
-            <div class="leader-slim"><span class="rank">8</span><span class="name">MARCH</span><span class="pts">532 pts</span></div>
-            <div class="leader-slim"><span class="rank">9</span><span class="name">OKUGO</span><span class="pts">522 pts</span></div>
-            <div class="leader-slim"><span class="rank">10</span><span class="name">Marion</span><span class="pts">520 pts</span></div>
+            <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
         </div>
 
         <!-- ========== ACTION REQUIRED SECTION ========== -->
@@ -426,11 +364,11 @@
         <div class="dashboard-footer" style="margin-top: 20px; padding: 10px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6b7280;">
             <span>
                 <i class="fas fa-clock"></i> 
-                Last updated: <span id="dashboard-last-updated">08:03:36 pm</span>
+                Last updated: <span id="dashboard-last-updated">Just now</span>
             </span>
             <span>
                 <i class="fas fa-user"></i> 
-                <span id="dashboard-student-id">KRCHN/0110/MAR/2025</span>
+                <span id="dashboard-student-id">Loading...</span>
             </span>
         </div>
         
