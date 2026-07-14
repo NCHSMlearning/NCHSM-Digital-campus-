@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY)
+// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS
 
 class DashboardModule {
     constructor(supabaseClient) {
@@ -126,7 +126,9 @@ class DashboardModule {
             streakRestoreBtn: document.getElementById('streak-restore-btn'),
             streakEmoji: document.getElementById('streak-emoji'),
             streakLights: document.querySelectorAll('.streak-light'),
-            streakMilestones: document.querySelectorAll('.milestone')
+            streakMilestones: document.querySelectorAll('.milestone'),
+            // ✅ TOTAL POINTS
+            totalPointsDisplay: document.getElementById('total-points-display')
         };
     }
     
@@ -1619,6 +1621,12 @@ class DashboardModule {
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
+        // ✅ UPDATE TOTAL POINTS
+        if (this.elements.totalPointsDisplay) {
+            const total = (m.login?.points || 0) + (m.attendance?.points || 0) + (m.nurseiq?.questions || 0);
+            this.elements.totalPointsDisplay.innerText = total;
+        }
+        
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -1741,4 +1749,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Streak System (lights up after 1 day)!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points!');
