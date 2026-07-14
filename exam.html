@@ -1052,55 +1052,75 @@
             }
 
             // Save recording to server
-            async saveRecording(studentId, examId) {
-                if (this.recordedChunks.length === 0 || this.videoUploaded) return;
+          // In the StealthProctor class - update the saveRecording method
+async saveRecording(studentId, examId) {
+    if (this.recordedChunks.length === 0 || this.videoUploaded) return;
 
-                try {
-                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
-                    const timestamp = Date.now();
-                    const fileName = `videos/${studentId}/${examId}/${timestamp}.webm`;
+    try {
+        const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+        const timestamp = Date.now();
+        const fileName = `videos/${studentId}/${examId}/${timestamp}.webm`;
 
-                    // Upload to Supabase Storage
-                    const { data, error } = await sb.storage
-                        .from('proctoring')
-                        .upload(fileName, blob, {
-                            contentType: 'video/webm',
-                            cacheControl: '3600'
-                        });
+        // Upload to Supabase Storage
+        const { data, error } = await sb.storage
+            .from('proctoring')
+            .upload(fileName, blob, {
+                contentType: 'video/webm',
+                cacheControl: '3600'
+            });
 
-                    if (error) throw error;
+        if (error) throw error;
 
-                    this.videoUploaded = true;
+        this.videoUploaded = true;
 
-                    // Log the video
-                    await sb.from('exam_proctoring_logs').insert({
-                        student_id: studentId,
-                        exam_id: parseInt(examId),
-                        event_type: 'video_recording',
-                        details: `Background video recorded: ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`,
-                        severity: 'info',
-                        timestamp: new Date().toISOString()
-                    });
+        // ✅ LOG THE VIDEO TO video_recordings TABLE
+        try {
+            await sb.from('video_recordings').insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                file_path: fileName,
+                file_size: blob.size,
+                status: 'uploaded',
+                created_at: new Date().toISOString()
+            });
+            console.log('✅ Video logged to video_recordings');
+        } catch (logError) {
+            console.warn('⚠️ Could not log to video_recordings:', logError);
+        }
 
-                    console.log('✅ Video saved successfully');
-                    this.recordedChunks = [];
+        // ✅ LOG TO PROCTORING LOGS
+        try {
+            await sb.from('exam_proctoring_logs').insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                event_type: 'video_recording',
+                details: `Background video recorded: ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`,
+                severity: 'info',
+                timestamp: new Date().toISOString()
+            });
+        } catch (logError) {
+            console.warn('⚠️ Could not log to proctoring logs:', logError);
+        }
 
-                    // Get public URL
-                    const { data: urlData } = sb.storage
-                        .from('proctoring')
-                        .getPublicUrl(fileName);
+        console.log('✅ Video saved and logged successfully');
+        this.recordedChunks = [];
 
-                    return urlData.publicUrl;
+        // Get public URL
+        const { data: urlData } = sb.storage
+            .from('proctoring')
+            .getPublicUrl(fileName);
 
-                } catch (error) {
-                    console.error('❌ Error saving video:', error);
-                    // Retry later
-                    setTimeout(() => {
-                        this.videoUploaded = false;
-                        this.saveRecording(studentId, examId);
-                    }, 5000);
-                }
-            }
+        return urlData.publicUrl;
+
+    } catch (error) {
+        console.error('❌ Error saving video:', error);
+        // Retry later
+        setTimeout(() => {
+            this.videoUploaded = false;
+            this.saveRecording(studentId, examId);
+        }, 5000);
+    }
+}
 
             // Upload snapshot silently
             async uploadSnapshot(screenshot, studentId, examId) {
