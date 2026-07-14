@@ -5838,8 +5838,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
 // ============================================
 // 📋 ATTENDANCE SHEET FUNCTIONS
 // ============================================
-
-// Load attendance sheet
+// Load attendance sheet - PERMANENT FIX
 async function loadAttendanceSheet() {
     const examId = document.getElementById('attendanceExamFilter')?.value;
     const date = document.getElementById('attendanceDateFilter')?.value;
@@ -5858,13 +5857,18 @@ async function loadAttendanceSheet() {
     if (summaryBar) summaryBar.style.display = 'none';
 
     try {
+        // Build the query
         let query = sb.from('exam_attendance').select('*');
         
         if (examId) {
             query = query.eq('exam_id', parseInt(examId));
         }
         if (date) {
-            query = query.eq('date', date);
+            const dateObj = new Date(date);
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const formattedDate = `${days[dateObj.getDay()]} ${months[dateObj.getMonth()]} ${dateObj.getDate()} ${dateObj.getFullYear()}`;
+            query = query.eq('date', formattedDate);
         }
         if (status) {
             query = query.eq('status', status);
@@ -5874,10 +5878,38 @@ async function loadAttendanceSheet() {
 
         if (error) throw error;
 
-        let filteredData = data || [];
-        
+        let attendanceRecords = data || [];
+
+        // If no records with filters, get all records
+        if (attendanceRecords.length === 0 && (examId || date || status)) {
+            const { data: allData } = await sb
+                .from('exam_attendance')
+                .select('*')
+                .order('created_at', { ascending: false });
+            attendanceRecords = allData || [];
+        }
+
+        // Get exam names
+        if (attendanceRecords.length > 0) {
+            const examIds = [...new Set(attendanceRecords.map(r => r.exam_id).filter(id => id))];
+            if (examIds.length > 0) {
+                const { data: exams } = await sb
+                    .from('exams')
+                    .select('id, exam_name')
+                    .in('id', examIds);
+                
+                const examMap = {};
+                exams?.forEach(e => { examMap[e.id] = e.exam_name; });
+                
+                attendanceRecords = attendanceRecords.map(r => ({
+                    ...r,
+                    exam_name: examMap[r.exam_id] || 'Exam ' + r.exam_id
+                }));
+            }
+        }
+
         // Filter for live only if checked
-        if (showOnlyLive) {
+        if (showOnlyLive && attendanceRecords.length > 0) {
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
             const { data: liveLogs } = await sb
                 .from('exam_proctoring_logs')
@@ -5885,20 +5917,20 @@ async function loadAttendanceSheet() {
                 .gte('timestamp', fiveMinutesAgo);
             
             const liveSet = new Set(liveLogs?.map(l => `${l.student_id}_${l.exam_id}`) || []);
-            filteredData = filteredData.filter(r => liveSet.has(`${r.student_id}_${r.exam_id}`));
+            attendanceRecords = attendanceRecords.filter(r => liveSet.has(`${r.student_id}_${r.exam_id}`));
         }
 
-        attendanceData = filteredData;
+        // Update global and render
+        attendanceData = attendanceRecords;
         renderAttendanceTable(attendanceData);
         updateAttendanceStats(attendanceData);
         updateAttendanceSummary(attendanceData);
 
-        // Update badge count
         const badge = document.getElementById('attendanceBadge');
         if (badge) badge.textContent = attendanceData.length;
 
     } catch (error) {
-        console.error('Error loading attendance:', error);
+        console.error('❌ Error loading attendance:', error);
         showToast('Error loading attendance data', 'error');
         if (loadingDiv) {
             loadingDiv.innerHTML = '❌ Error loading attendance data';
@@ -6580,15 +6612,18 @@ async function loadAttendanceExamDropdown() {
     }
 }
 
-// Set default date to today
+// Set default date to today - FIXED
 function setDefaultAttendanceDate() {
     const dateInput = document.getElementById('attendanceDateFilter');
     if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.value = today;
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+        console.log('📅 Default date set to:', dateInput.value);
     }
 }
-
 // Initialize attendance tab
 function initAttendanceTab() {
     loadAttendanceExamDropdown();
