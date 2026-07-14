@@ -6081,11 +6081,16 @@ function getLiveStudents(attendanceData) {
     }).map(r => r.student_id);
 }
 // ============================================
-// 📹 VIEW STUDENT RECORDINGS (Stealth Videos)
+// 📹 VIEW STUDENT RECORDINGS - CORRECTED
 // ============================================
 
 async function viewStudentRecordings(studentId, examId) {
     try {
+        if (!studentId || !examId) {
+            showToast('❌ Missing student or exam ID', 'error');
+            return;
+        }
+        
         showToast('📹 Loading recordings...', 'info');
         
         // 1. Get student info
@@ -6095,7 +6100,9 @@ async function viewStudentRecordings(studentId, examId) {
             .eq('user_id', studentId)
             .single();
         
-        if (studentError) throw studentError;
+        if (studentError) {
+            console.warn('Student not found:', studentError);
+        }
         
         // 2. Get exam info
         const { data: exam, error: examError } = await sb
@@ -6104,7 +6111,9 @@ async function viewStudentRecordings(studentId, examId) {
             .eq('id', parseInt(examId))
             .single();
         
-        if (examError) throw examError;
+        if (examError) {
+            console.warn('Exam not found:', examError);
+        }
         
         // 3. List videos from storage
         const folderPath = `videos/${studentId}/${examId}/`;
@@ -6124,7 +6133,7 @@ async function viewStudentRecordings(studentId, examId) {
                 .order('timestamp', { ascending: false });
             
             if (logs && logs.length > 0) {
-                showVideoModal(student, exam, logs, null);
+                showVideoModal(studentId, parseInt(examId), student, exam, logs, null);
                 return;
             }
             
@@ -6150,7 +6159,7 @@ async function viewStudentRecordings(studentId, examId) {
                 .order('timestamp', { ascending: false });
             
             if (logs && logs.length > 0) {
-                showVideoModal(student, exam, logs, null);
+                showVideoModal(studentId, parseInt(examId), student, exam, logs, null);
                 return;
             }
             
@@ -6159,7 +6168,7 @@ async function viewStudentRecordings(studentId, examId) {
         }
         
         // 5. Show videos in modal
-        showVideoModal(student, exam, null, videoFiles, folderPath);
+        showVideoModal(studentId, parseInt(examId), student, exam, null, videoFiles, folderPath);
         
     } catch (error) {
         console.error('❌ Error loading recordings:', error);
@@ -6168,10 +6177,11 @@ async function viewStudentRecordings(studentId, examId) {
 }
 
 // ============================================
-// 📹 SHOW VIDEO MODAL
+// 📹 SHOW VIDEO MODAL - CORRECTED
 // ============================================
 
-function showVideoModal(student, exam, logs, files, folderPath) {
+function showVideoModal(studentId, examId, student, exam, logs, files, folderPath) {
+    // Create modal container
     const modal = document.createElement('div');
     modal.id = 'videoModal';
     modal.style.cssText = `
@@ -6229,10 +6239,9 @@ function showVideoModal(student, exam, logs, files, folderPath) {
             `;
         }).join('');
     } 
-    // Build from logs (if storage not available)
+    // Build from logs
     else if (logs && logs.length > 0) {
         videosHtml = logs.map((log, index) => {
-            // Try to extract URL from details
             let url = null;
             const details = log.details || '';
             const urlMatch = details.match(/https?:\/\/[^\s]+/);
@@ -6654,14 +6663,79 @@ function openFullVideo(studentId, studentName, examId) {
 }
 
 // ============================================
-// 📹 REQUEST LIVE FEED - AUTO-START
+// 📹 REQUEST LIVE FEED - WITH VIDEO CREATION
 // ============================================
 
 async function requestLiveFeed(studentId, examId) {
     try {
         showToast('📹 Starting live feed...', 'info');
         
-        // ✅ AUTO-START the live feed
+        // Check if video element exists, if not create it
+        let videoElement = document.getElementById(`liveVideo_${studentId}`);
+        let container = document.getElementById(`liveVideoContainer_${studentId}`);
+        
+        if (!container) {
+            // Find the placeholder or create container
+            const placeholder = document.getElementById(`videoPlaceholder_${studentId}`);
+            if (placeholder) {
+                // Replace placeholder with video container
+                container = document.createElement('div');
+                container.className = 'live-video-container';
+                container.id = `liveVideoContainer_${studentId}`;
+                container.innerHTML = `
+                    <video id="liveVideo_${studentId}" 
+                           autoplay muted playsinline
+                           style="width:100%; height:100%; object-fit:cover; background:#1a1a2e;">
+                        <source src="" type="video/webm">
+                    </video>
+                    <div class="live-badge">
+                        <span class="dot"></span> LIVE
+                    </div>
+                    <div class="video-controls">
+                        <button onclick="toggleVideoMute('${studentId}')" title="Mute">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <button onclick="openFullVideo('${studentId}', 'Student', '${examId}')" title="Full Screen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                `;
+                placeholder.parentNode.replaceChild(container, placeholder);
+            } else {
+                // Find the cell and add video
+                const row = document.querySelector(`[data-student-id="${studentId}"]`);
+                if (row) {
+                    const cell = row.querySelector('.live-feed-cell');
+                    if (cell) {
+                        container = document.createElement('div');
+                        container.className = 'live-video-container';
+                        container.id = `liveVideoContainer_${studentId}`;
+                        container.innerHTML = `
+                            <video id="liveVideo_${studentId}" 
+                                   autoplay muted playsinline
+                                   style="width:100%; height:100%; object-fit:cover; background:#1a1a2e;">
+                                <source src="" type="video/webm">
+                            </video>
+                            <div class="live-badge">
+                                <span class="dot"></span> LIVE
+                            </div>
+                            <div class="video-controls">
+                                <button onclick="toggleVideoMute('${studentId}')" title="Mute">
+                                    <i class="fas fa-volume-up"></i>
+                                </button>
+                                <button onclick="openFullVideo('${studentId}', 'Student', '${examId}')" title="Full Screen">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
+                        `;
+                        cell.innerHTML = '';
+                        cell.appendChild(container);
+                    }
+                }
+            }
+        }
+        
+        // Start the video stream
         await startVideoStream(studentId);
         
         // Log the start
