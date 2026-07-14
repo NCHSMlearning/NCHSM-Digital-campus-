@@ -6371,6 +6371,39 @@ async function downloadAllVideos(studentId, examId) {
         showToast('Error downloading videos', 'error');
     }
 }
+
+    // ============================================
+// 📹 GET STUDENT VIDEO STREAM (Real + Fallback)
+// ============================================
+
+async function getStudentVideoStream(studentId) {
+    try {
+        // ✅ First try: REAL camera stream
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                frameRate: { ideal: 15 }
+            },
+            audio: false
+        });
+        
+        console.log(`📹 REAL camera stream obtained for student: ${studentId}`);
+        return stream;
+        
+    } catch (error) {
+        console.warn(`⚠️ Real camera failed for ${studentId}, using simulated stream:`, error);
+        
+        // ✅ Fallback: Simulated stream
+        try {
+            return await getSimulatedVideoStream(studentId);
+        } catch (fallbackError) {
+            console.error('❌ Fallback stream failed:', fallbackError);
+            return null;
+        }
+    }
+}
 // ============================================
 // 📹 START REAL VIDEO STREAM
 // ============================================
