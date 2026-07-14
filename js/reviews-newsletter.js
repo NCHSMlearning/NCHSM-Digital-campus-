@@ -1,13 +1,12 @@
 // ============================================
-// REVIEWS & NEWSLETTER MODULE - COMPLETE FIXED
-// (No duplicate declarations)
+// REVIEWS & NEWSLETTER MODULE - COMPLETE
+// WITH AUTO PROGRAM DETECTION & SUBMIT POPUP
 // ============================================
 
 // ============================================
-// CHECK IF TVET_PROGRAMS ALREADY EXISTS
+// TVET PROGRAM CODES
 // ============================================
 
-// Only define if not already defined globally
 if (typeof window.TVET_PROGRAMS === 'undefined') {
     window.TVET_PROGRAMS = [
         'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
@@ -16,12 +15,52 @@ if (typeof window.TVET_PROGRAMS === 'undefined') {
     ];
 }
 
-// Use the global or local variable
-const TVET_PROGRAMS_LOCAL = window.TVET_PROGRAMS || [
-    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-];
+const TVET_CODES = window.TVET_PROGRAMS;
+
+// ============================================
+// PROGRAM DISPLAY NAMES
+// ============================================
+
+const PROGRAM_NAMES = {
+    'KRCHN': '🎓 KRCHN Nursing',
+    'DPOTT': 'DPOTT - Perioperative Theatre Technology',
+    'DCH': 'DCH - Community Health',
+    'DHRIT': 'DHRIT - Health Records and IT',
+    'DSL': 'DSL - Science Lab',
+    'DSW': 'DSW - Social Work',
+    'DCJS': 'DCJS - Criminal Justice',
+    'DHSS': 'DHSS - Health Support Services',
+    'DICT': 'DICT - ICT',
+    'DME': 'DME - Medical Engineering',
+    'CPOTT': 'CPOTT - Certificate Perioperative Theatre',
+    'CCH': 'CCH - Certificate Community Health',
+    'CHRIT': 'CHRIT - Certificate Health Records',
+    'CPC': 'CPC - Certificate Patient Care',
+    'CSL': 'CSL - Certificate Science Lab',
+    'CSW': 'CSW - Certificate Social Work',
+    'CCJS': 'CCJS - Certificate Criminal Justice',
+    'CAG': 'CAG - Certificate Agriculture',
+    'CHSS': 'CHSS - Certificate Health Support Services',
+    'CICT': 'CICT - Certificate ICT',
+    'ACH': 'ACH - Artisan Community Health',
+    'AAG': 'AAG - Artisan Agriculture',
+    'ASW': 'ASW - Artisan Social Work',
+    'CCA': 'CCA - Certificate Computer Applications',
+    'PTE': 'PTE - TVET/CDACC'
+};
+
+// ============================================
+// PROGRAM STATE
+// ============================================
+
+let userProgram = 'krchn';
+let userProgramCode = 'KRCHN';
+let userProgramDisplay = 'KRCHN Nursing';
+let userBlock = 'Block 1';
+let userTerm = null;
+let isTVETStudent = false;
+let userIntakeYear = 2025;
+let userProgramType = 'KRCHN';
 
 // ============================================
 // GLOBAL VARIABLES
@@ -47,12 +86,98 @@ const currentFilter = {
 };
 
 // ============================================
-// PROGRAM TYPE FUNCTIONS
+// PROGRAM DETECTION
 // ============================================
+
+function detectUserProgram() {
+    console.log('🔍 Detecting user program for reviews...');
+    
+    let profile = null;
+    if (window.currentUserProfile) profile = window.currentUserProfile;
+    else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
+    else if (window.userProfile) profile = window.userProfile;
+    else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
+    
+    if (!profile) {
+        try {
+            const savedProfile = localStorage.getItem('userProfile');
+            if (savedProfile) profile = JSON.parse(savedProfile);
+        } catch (e) {}
+    }
+    
+    if (profile) {
+        const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
+        
+        if (TVET_CODES.includes(programCode)) {
+            isTVETStudent = true;
+            userProgram = 'tvet';
+            userProgramCode = programCode;
+            userProgramDisplay = PROGRAM_NAMES[programCode] || `${programCode} (TVET)`;
+            userProgramType = 'TVET';
+            userBlock = profile.block || 'Term 1';
+            userTerm = extractTermNumber(userBlock);
+            userIntakeYear = profile.intake_year || profile.intake || 2025;
+            console.log(`✅ TVET Student detected: ${userProgramDisplay}, Term: ${userTerm || 'Not set'}`);
+        } else {
+            isTVETStudent = false;
+            userProgram = 'krchn';
+            userProgramCode = 'KRCHN';
+            userProgramDisplay = 'KRCHN Nursing';
+            userProgramType = 'KRCHN';
+            userBlock = profile.block || 'Block 1';
+            userTerm = null;
+            userIntakeYear = profile.intake_year || profile.intake || 2025;
+            console.log(`✅ KRCHN Student detected: Block ${userBlock}`);
+        }
+        
+        updateUserProgramUI();
+        return userProgram;
+    }
+    
+    console.log('⚠️ No profile found, defaulting to KRCHN');
+    userProgram = 'krchn';
+    userProgramCode = 'KRCHN';
+    userProgramDisplay = 'KRCHN Nursing';
+    userProgramType = 'KRCHN';
+    userBlock = 'Block 1';
+    userTerm = null;
+    isTVETStudent = false;
+    updateUserProgramUI();
+    return 'krchn';
+}
+
+function extractTermNumber(block) {
+    if (!block) return 1;
+    const termMatch = block.match(/Term\s*(\d+)/i);
+    if (termMatch) return parseInt(termMatch[1]);
+    if (block.toLowerCase().includes('introductory')) return 1;
+    if (block.toLowerCase().includes('final')) return 7;
+    return 1;
+}
+
+function updateUserProgramUI() {
+    const blockDisplay = document.getElementById('userCurrentBlock');
+    if (blockDisplay) {
+        if (isTVETStudent) {
+            blockDisplay.textContent = `Term ${userTerm || 1}`;
+        } else {
+            blockDisplay.textContent = userBlock || 'Block 1';
+        }
+    }
+    
+    const programFilter = document.getElementById('reviewProgramFilter');
+    if (programFilter) {
+        if (isTVETStudent) {
+            programFilter.value = 'TVET';
+        } else {
+            programFilter.value = 'KRCHN';
+        }
+    }
+}
 
 function isTVETProgram(programCode) {
     if (!programCode) return false;
-    return TVET_PROGRAMS_LOCAL.includes(programCode.toUpperCase());
+    return TVET_CODES.includes(programCode.toUpperCase());
 }
 
 function getProgramType(programCode) {
@@ -63,42 +188,7 @@ function getProgramType(programCode) {
 }
 
 function getProgramDisplayName(programCode) {
-    const names = {
-        'KRCHN': '🎓 KRCHN Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and IT',
-        'DSL': 'Diploma in Science Lab',
-        'DSW': 'Diploma in Social Work',
-        'DCJS': 'Diploma in Criminal Justice',
-        'DHSS': 'Diploma in Health Support Services',
-        'DICT': 'Diploma in ICT',
-        'DME': 'Diploma in Medical Engineering',
-        'CPOTT': 'Certificate in Perioperative Theatre Technology',
-        'CCH': 'Certificate in Community Health',
-        'CHRIT': 'Certificate in Health Records and IT',
-        'CPC': 'Certificate in Patient Care',
-        'CSL': 'Certificate in Science Lab',
-        'CSW': 'Certificate in Social Work',
-        'CCJS': 'Certificate in Criminal Justice',
-        'CAG': 'Certificate in Agriculture',
-        'CHSS': 'Certificate in Health Support Services',
-        'CICT': 'Certificate in ICT',
-        'ACH': 'Artisan in Community Health',
-        'AAG': 'Artisan in Agriculture',
-        'ASW': 'Artisan in Social Work',
-        'CCA': 'Certificate in Computer Applications',
-        'PTE': 'TVET/CDACC (PTE)'
-    };
-    return names[programCode] || programCode;
-}
-
-function getBlockDisplay(block, programType) {
-    if (!block) return 'N/A';
-    if (programType === 'TVET') {
-        return block.startsWith('Term') ? block : `Term ${block}`;
-    }
-    return block;
+    return PROGRAM_NAMES[programCode] || programCode || 'Unknown Program';
 }
 
 // ============================================
@@ -109,24 +199,21 @@ function initReviewsModule() {
     console.log('⭐ Initializing Reviews Module...');
     
     try {
-        // Reset filter state
+        detectUserProgram();
+        
         currentFilter.category = 'all';
         currentFilter.rating = 'all';
         currentFilter.sort = 'newest';
         currentFilter.search = '';
-        currentFilter.program = 'all';
+        currentFilter.program = isTVETStudent ? 'TVET' : 'KRCHN';
         currentFilter.block = 'all';
         currentPage = 1;
         
-        // Load data
         loadReviews();
         loadSiteRating();
         updateReviewStats();
-        
-        // Setup category filters
         initCategoryFilters();
         
-        // Event listeners
         const writeBtn = document.getElementById('writeReviewBtn');
         if (writeBtn) {
             writeBtn.removeEventListener('click', openReviewModal);
@@ -163,7 +250,6 @@ function initReviewsModule() {
             reviewText.addEventListener('input', updateCharCount);
         }
         
-        // Filter listeners
         const categoryFilter = document.getElementById('reviewCategoryFilter');
         if (categoryFilter) {
             categoryFilter.removeEventListener('change', applyFilters);
@@ -188,45 +274,36 @@ function initReviewsModule() {
             searchInput.addEventListener('keyup', handleSearch);
         }
         
-        // Program filter
         const programFilter = document.getElementById('reviewProgramFilter');
         if (programFilter) {
             programFilter.removeEventListener('change', applyFilters);
             programFilter.addEventListener('change', applyFilters);
         }
         
-        // Block filter
         const blockFilter = document.getElementById('reviewBlockFilter');
         if (blockFilter) {
             blockFilter.removeEventListener('change', applyFilters);
             blockFilter.addEventListener('change', applyFilters);
         }
         
-        // Load more
         const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
         if (loadMoreBtn) {
             loadMoreBtn.removeEventListener('click', loadMoreReviews);
             loadMoreBtn.addEventListener('click', loadMoreReviews);
         }
         
-        // Add reset button if not exists
         addResetButton();
         
-        console.log('✅ Reviews Module initialized');
+        console.log(`✅ Reviews Module initialized for ${userProgramDisplay}`);
         
     } catch (error) {
         console.error('Error initializing reviews:', error);
     }
 }
 
-// ============================================
-// ADD RESET BUTTON
-// ============================================
-
 function addResetButton() {
     const filterBar = document.querySelector('.reviews-filters-premium');
     if (!filterBar) return;
-    
     if (document.getElementById('resetFiltersBtn')) return;
     
     const resetBtn = document.createElement('button');
@@ -279,7 +356,7 @@ function refreshReviews() {
 }
 
 // ============================================
-// SMART LOAD REVIEWS - SUPPORTS BOTH KRCHN & TVET
+// LOAD REVIEWS WITH AUTO PROGRAM FILTERING
 // ============================================
 
 async function loadReviews() {
@@ -300,24 +377,29 @@ async function loadReviews() {
             return;
         }
         
-        // Get current user's block and program
-        const currentUser = window.currentUserProfile || window.currentUserId;
-        const userBlock = currentUser?.block || 'Block 1';
-        const userProgram = currentUser?.program || 'KRCHN';
-        const userProgramType = getProgramType(userProgram);
+        detectUserProgram();
         
-        console.log('📊 User Program:', userProgram);
+        const currentUser = window.currentUserProfile || window.currentUserId;
+        const userBlock = currentUser?.block || userBlock || 'Block 1';
+        const userProgram = currentUser?.program || userProgramCode || 'KRCHN';
+        const userProgramType = isTVETStudent ? 'TVET' : 'KRCHN';
+        
         console.log('📊 User Program Type:', userProgramType);
         console.log('📊 User Block:', userBlock);
+        console.log('📊 Is TVET Student:', isTVETStudent);
         console.log('📊 Current Filters:', currentFilter);
         
-        // Start with base query - ONLY approved reviews
         let query = supabase
             .from('student_reviews')
             .select('*, student:student_id(full_name, program, block, profile_photo_url)')
             .eq('status', 'approved');
         
-        // Apply category filter
+        if (isTVETStudent) {
+            query = query.eq('target_program_type', 'TVET');
+        } else {
+            query = query.eq('target_program_type', 'KRCHN');
+        }
+        
         if (currentFilter.category && currentFilter.category !== 'all') {
             const categoryMap = {
                 'site': 'site',
@@ -335,45 +417,22 @@ async function loadReviews() {
             query = query.eq('component_type', mappedCategory);
         }
         
-        // ============================================
-        // 🔥 SMART FILTERING: ACADEMIC VS SITE
-        // ============================================
-        
-        // If filtering by a specific category
-        if (currentFilter.category && currentFilter.category !== 'all') {
-            // Academic categories: filter by block and program type
-            const academicCategories = ['course', 'lecturer', 'facility', 'library', 'administration', 'online', 'clinical', 'general'];
-            
-            if (academicCategories.includes(currentFilter.category)) {
-                // Academic reviews - filter by user's block and program type
-                console.log('📊 Academic review - filtering by block:', userBlock);
-                console.log('📊 Academic review - filtering by program type:', userProgramType);
-                query = query
-                    .eq('target_block', userBlock)
-                    .eq('target_program_type', userProgramType);
-            } 
-            // Site reviews - show ALL
-            else if (currentFilter.category === 'site') {
-                console.log('📊 Site review - showing ALL');
-                // No additional filters - all site reviews visible
-            }
+        if (currentFilter.category && currentFilter.category !== 'all' && currentFilter.category !== 'site') {
+            query = query.eq('target_block', userBlock);
         }
         
-        // Apply rating filter
         if (currentFilter.rating && currentFilter.rating !== 'all') {
             const ratingValue = parseInt(currentFilter.rating);
             console.log('📊 Filtering by rating:', ratingValue);
             query = query.eq('rating', ratingValue);
         }
         
-        // Apply search filter
         if (currentFilter.search && currentFilter.search.trim() !== '') {
             const searchTerm = currentFilter.search.trim();
             console.log('📊 Searching for:', searchTerm);
             query = query.or(`review.ilike.%${searchTerm}%, review_title.ilike.%${searchTerm}%, component_name.ilike.%${searchTerm}%`);
         }
         
-        // Apply sorting
         if (currentFilter.sort === 'newest') {
             query = query.order('created_at', { ascending: false });
         } else if (currentFilter.sort === 'oldest') {
@@ -392,39 +451,10 @@ async function loadReviews() {
         
         if (error) throw error;
         
-        // ============================================
-        // 🔥 POST-FETCH FILTERING FOR "ALL" CATEGORY
-        // ============================================
+        allReviews = data || [];
+        console.log(`✅ Found ${allReviews.length} reviews`);
         
-        let filteredReviews = data || [];
-        
-        // If "all" category, filter academic by block in JavaScript
-        if (!currentFilter.category || currentFilter.category === 'all') {
-            const academicCategories = ['course', 'lecturer', 'facility', 'library', 'administration', 'online', 'clinical', 'general'];
-            
-            filteredReviews = filteredReviews.filter(review => {
-                // Site reviews - always show
-                if (review.component_type === 'site') {
-                    return true;
-                }
-                // Academic reviews - only show if matches user's block and program type
-                if (academicCategories.includes(review.component_type)) {
-                    const reviewBlock = review.target_block || review.block || 'Block 1';
-                    const reviewProgramType = review.target_program_type || review.program_type || 'KRCHN';
-                    // Check if both block and program type match
-                    return reviewBlock === userBlock && reviewProgramType === userProgramType;
-                }
-                return true;
-            });
-        }
-        
-        allReviews = filteredReviews;
-        console.log(`✅ Found ${allReviews.length} reviews (filtered for block: ${userBlock}, program type: ${userProgramType})`);
-        
-        // Update filter results count
         updateFilterResultsCount(allReviews.length);
-        
-        // Render reviews
         renderReviews(allReviews.slice(0, REVIEWS_PER_PAGE));
         updateLoadMoreButton();
         updateReviewStats();
@@ -492,7 +522,6 @@ function renderReviews(reviews) {
         const categoryLabel = review.component_type ? review.component_type.charAt(0).toUpperCase() + review.component_type.slice(1) : 'General';
         const componentDisplay = review.component_name ? `on ${review.component_name}` : '';
         
-        // Determine program type badge
         const programType = review.target_program_type || review.program_type || 'KRCHN';
         const isTVET = programType === 'TVET';
         const programBadge = isTVET ? '🔧 TVET' : '🎓 KRCHN';
@@ -521,7 +550,6 @@ function renderReviews(reviews) {
                     <div class="review-rating">${stars}</div>
                     ${review.review_title ? `<h4 class="review-title">${escapeHtml(review.review_title)}</h4>` : ''}
                     
-                    <!-- Block & Program Badge -->
                     <div class="review-meta-badges" style="display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0;">
                         ${review.target_block ? `
                             <span class="block-tag" style="background: #e2e8f0; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #475569;">
@@ -595,7 +623,6 @@ async function loadSiteRating() {
         if (avgEl) avgEl.textContent = avg.toFixed(1);
         if (countEl) countEl.textContent = count;
         
-        // Update site stars
         const siteStars = document.querySelectorAll('#siteStars span');
         siteStars.forEach((star, index) => {
             if (index < Math.round(avg)) {
@@ -626,7 +653,6 @@ async function updateReviewStats() {
         const supabase = getSupabaseClient();
         if (!supabase) return;
         
-        // Get approved reviews
         const { data: reviews, error } = await supabase
             .from('student_reviews')
             .select('rating, helpful_count, status')
@@ -646,7 +672,6 @@ async function updateReviewStats() {
         if (totalEl) totalEl.textContent = total;
         if (helpfulEl) helpfulEl.textContent = helpful;
         
-        // Get user's pending reviews
         const currentUser = window.currentUserProfile || window.currentUserId;
         if (currentUser) {
             const userId = currentUser.user_id || currentUser;
@@ -668,7 +693,7 @@ async function updateReviewStats() {
 }
 
 // ============================================
-// SUBMIT REVIEW
+// SUBMIT REVIEW WITH BEAUTIFUL POPUP
 // ============================================
 
 async function submitReview(e) {
@@ -684,7 +709,6 @@ async function submitReview(e) {
     const anonymous = document.getElementById('anonymousReview')?.checked || false;
     const componentName = document.getElementById('componentNameInput')?.value?.trim() || '';
     
-    // Validation
     if (!component) {
         showReviewError('Please select what you are reviewing');
         return;
@@ -710,11 +734,12 @@ async function submitReview(e) {
         
         const currentUser = window.currentUserProfile || window.currentUserId;
         const userId = currentUser?.user_id || currentUser;
-        const userProgram = currentUser?.program || 'KRCHN';
-        const userBlock = currentUser?.block || 'Block 1';
-        const userProgramType = getProgramType(userProgram);
         
         if (!userId) throw new Error('User not logged in');
+        
+        const userProgram = currentUser?.program || userProgramCode || 'KRCHN';
+        const userBlock = currentUser?.block || userBlock || 'Block 1';
+        const userProgramType = isTVETStudent ? 'TVET' : 'KRCHN';
         
         const { data, error } = await supabase
             .from('student_reviews')
@@ -738,16 +763,254 @@ async function submitReview(e) {
         
         if (error) throw error;
         
-        // Show success
-        const feedback = document.getElementById('reviewFormFeedback');
-        feedback.style.display = 'block';
-        feedback.style.background = '#d1fae5';
-        feedback.style.color = '#065f46';
-        feedback.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <strong>Review Submitted!</strong>
-            <p>Thank you for your feedback. Your review will be reviewed and published soon.</p>
+        // ============================================
+        // 🎉 BEAUTIFUL SUCCESS POPUP
+        // ============================================
+        
+        // Close the review modal first
+        closeReviewModal();
+        
+        // Create popup overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'reviewSuccessPopup';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100000;
+            animation: fadeInOverlay 0.4s ease;
         `;
+        
+        // Create popup card
+        overlay.innerHTML = `
+            <div class="review-success-card" style="
+                background: white;
+                border-radius: 24px;
+                max-width: 480px;
+                width: 90%;
+                padding: 40px 35px;
+                text-align: center;
+                box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+                animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+                position: relative;
+                overflow: hidden;
+            ">
+                <!-- Background decoration -->
+                <div style="
+                    position: absolute;
+                    top: -60px;
+                    right: -60px;
+                    width: 200px;
+                    height: 200px;
+                    background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent 70%);
+                    border-radius: 50%;
+                "></div>
+                <div style="
+                    position: absolute;
+                    bottom: -80px;
+                    left: -80px;
+                    width: 250px;
+                    height: 250px;
+                    background: radial-gradient(circle, rgba(102, 126, 234, 0.08), transparent 70%);
+                    border-radius: 50%;
+                "></div>
+                
+                <!-- Success Icon -->
+                <div style="
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 20px;
+                    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.3);
+                    position: relative;
+                    z-index: 1;
+                ">
+                    <i class="fas fa-check" style="color: white; font-size: 36px;"></i>
+                </div>
+                
+                <!-- Success Text -->
+                <h2 style="
+                    font-size: 24px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    margin: 0 0 8px;
+                    position: relative;
+                    z-index: 1;
+                ">🎉 Review Submitted!</h2>
+                
+                <p style="
+                    color: #64748b;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    margin: 0 0 6px;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    Thank you for sharing your feedback!
+                </p>
+                <p style="
+                    color: #94a3b8;
+                    font-size: 13px;
+                    margin: 0 0 20px;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    Your review has been submitted and is pending approval.
+                </p>
+                
+                <!-- Rating Summary -->
+                <div style="
+                    background: #f8fafc;
+                    border-radius: 12px;
+                    padding: 15px 20px;
+                    margin-bottom: 20px;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    <div style="display: flex; justify-content: center; gap: 4px; font-size: 24px; margin-bottom: 4px;">
+                        ${getStarHTML(rating)}
+                    </div>
+                    <span style="font-size: 13px; color: #64748b;">
+                        ${rating} out of 5 stars
+                    </span>
+                    ${anonymous ? '<span style="margin-left: 10px; font-size: 12px; color: #94a3b8;">· 🤫 Anonymous</span>' : ''}
+                </div>
+                
+                <!-- Review Preview -->
+                <div style="
+                    background: #f1f5f9;
+                    border-radius: 12px;
+                    padding: 15px 18px;
+                    margin-bottom: 25px;
+                    text-align: left;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    <p style="
+                        font-size: 14px;
+                        color: #1e293b;
+                        margin: 0 0 4px;
+                        font-weight: 500;
+                    ">
+                        ${escapeHtml(title || 'Your Review')}
+                    </p>
+                    <p style="
+                        font-size: 13px;
+                        color: #475569;
+                        margin: 0;
+                        line-height: 1.5;
+                    ">
+                        "${escapeHtml(review.length > 120 ? review.substring(0, 120) + '...' : review)}"
+                    </p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 12px; position: relative; z-index: 1; flex-wrap: wrap; justify-content: center;">
+                    <button onclick="closeSuccessPopup()" style="
+                        flex: 1;
+                        min-width: 120px;
+                        padding: 12px 24px;
+                        background: linear-gradient(135deg, #4C1D95, #6d28d9);
+                        color: white;
+                        border: none;
+                        border-radius: 12px;
+                        font-size: 15px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    "
+                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'"
+                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
+                    >
+                        <i class="fas fa-thumbs-up"></i> View Reviews
+                    </button>
+                    <button onclick="closeSuccessPopup(); openReviewModal();" style="
+                        flex: 1;
+                        min-width: 120px;
+                        padding: 12px 24px;
+                        background: #f1f5f9;
+                        color: #1e293b;
+                        border: none;
+                        border-radius: 12px;
+                        font-size: 15px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    "
+                    onmouseover="this.style.background='#e2e8f0'"
+                    onmouseout="this.style.background='#f1f5f9'"
+                    >
+                        <i class="fas fa-pen"></i> Write Another
+                    </button>
+                </div>
+                
+                <!-- Close button -->
+                <button onclick="closeSuccessPopup()" style="
+                    position: absolute;
+                    top: 12px;
+                    right: 16px;
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    color: #94a3b8;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    z-index: 2;
+                "
+                onmouseover="this.style.color='#ef4444'"
+                onmouseout="this.style.color='#94a3b8'"
+                >
+                    ×
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Add keyframe animations
+        if (!document.getElementById('review-popup-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'review-popup-styles';
+            styles.textContent = `
+                @keyframes fadeInOverlay {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes popIn {
+                    0% { transform: scale(0.8); opacity: 0; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from { transform: translateY(30px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                .review-success-card .rating-stars {
+                    animation: slideUp 0.5s ease 0.2s both;
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+        
+        // Auto-close after 8 seconds
+        setTimeout(() => {
+            const popup = document.getElementById('reviewSuccessPopup');
+            if (popup) {
+                popup.style.opacity = '0';
+                popup.style.transition = 'opacity 0.3s';
+                setTimeout(() => popup.remove(), 400);
+            }
+        }, 8000);
         
         // Reset form
         document.getElementById('selectedComponent').value = '';
@@ -763,24 +1026,21 @@ async function submitReview(e) {
         document.getElementById('reviewCharCount').textContent = '0';
         document.getElementById('componentDetails').style.display = 'none';
         
-        // Reset stars
         document.querySelectorAll('#starRatingLarge span').forEach(star => {
             star.textContent = '☆';
             star.style.color = '#d1d5db';
         });
         
-        // Reset component options
         document.querySelectorAll('.component-option').forEach(opt => {
             opt.classList.remove('selected');
         });
         
-        // Close modal after delay
+        // Refresh reviews after popup
         setTimeout(() => {
-            closeReviewModal();
             loadReviews();
             loadSiteRating();
             updateReviewStats();
-        }, 3000);
+        }, 500);
         
     } catch (error) {
         showReviewError('Error submitting review: ' + error.message);
@@ -788,6 +1048,19 @@ async function submitReview(e) {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Review';
+    }
+}
+
+// ============================================
+// CLOSE SUCCESS POPUP
+// ============================================
+
+function closeSuccessPopup() {
+    const popup = document.getElementById('reviewSuccessPopup');
+    if (popup) {
+        popup.style.opacity = '0';
+        popup.style.transition = 'opacity 0.3s';
+        setTimeout(() => popup.remove(), 400);
     }
 }
 
@@ -809,12 +1082,10 @@ function selectComponent(value) {
     selectedComponent = value;
     document.getElementById('selectedComponent').value = value;
     
-    // Update UI
     document.querySelectorAll('.component-option').forEach(opt => {
         opt.classList.toggle('selected', opt.dataset.value === value);
     });
     
-    // Show component details
     const details = document.getElementById('componentDetails');
     if (details) details.style.display = 'block';
     
@@ -840,7 +1111,6 @@ function selectComponent(value) {
         input.value = '';
     }
     
-    // Hide error
     const errorEl = document.getElementById('componentError');
     if (errorEl) errorEl.style.display = 'none';
 }
@@ -901,22 +1171,17 @@ function getStarHTML(rating) {
 function filterByCategory(category) {
     console.log('📊 Quick filter by category:', category);
     
-    // Update active state on quick filter buttons
     document.querySelectorAll('.cat-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
     
-    // Update the dropdown filter
     const filterEl = document.getElementById('reviewCategoryFilter');
     if (filterEl) {
         filterEl.value = category;
     }
     
-    // Update current filter state
     currentFilter.category = category;
     currentPage = 1;
-    
-    // Reload reviews
     loadReviews();
 }
 
@@ -928,7 +1193,6 @@ function applyFilters() {
     const programEl = document.getElementById('reviewProgramFilter');
     const blockEl = document.getElementById('reviewBlockFilter');
     
-    // Get values
     const category = categoryEl ? categoryEl.value : 'all';
     const rating = ratingEl ? ratingEl.value : 'all';
     const sort = sortEl ? sortEl.value : 'newest';
@@ -938,34 +1202,27 @@ function applyFilters() {
     
     console.log('🔍 Applying filters:', { category, rating, sort, search, program, block });
     
-    // Update current filter state
     currentFilter.category = category;
     currentFilter.rating = rating;
     currentFilter.sort = sort;
     currentFilter.search = search;
     currentFilter.program = program;
     currentFilter.block = block;
-    
-    // Reset to page 1 when filters change
     currentPage = 1;
-    
-    // Reload reviews with filters
     loadReviews();
 }
 
 function resetFilters() {
     console.log('🔄 Resetting all filters');
     
-    // Reset filter state
     currentFilter.category = 'all';
     currentFilter.rating = 'all';
     currentFilter.sort = 'newest';
     currentFilter.search = '';
-    currentFilter.program = 'all';
+    currentFilter.program = isTVETStudent ? 'TVET' : 'KRCHN';
     currentFilter.block = 'all';
     currentPage = 1;
     
-    // Reset UI elements
     const categoryFilter = document.getElementById('reviewCategoryFilter');
     const ratingFilter = document.getElementById('reviewRatingFilter');
     const sortFilter = document.getElementById('reviewSortFilter');
@@ -977,15 +1234,13 @@ function resetFilters() {
     if (ratingFilter) ratingFilter.value = 'all';
     if (sortFilter) sortFilter.value = 'newest';
     if (searchInput) searchInput.value = '';
-    if (programFilter) programFilter.value = 'all';
+    if (programFilter) programFilter.value = isTVETStudent ? 'TVET' : 'KRCHN';
     if (blockFilter) blockFilter.value = 'all';
     
-    // Reset quick filter buttons
     document.querySelectorAll('.cat-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === 'all');
     });
     
-    // Reload reviews
     loadReviews();
 }
 
@@ -1046,7 +1301,6 @@ function closeReviewModal() {
     const modal = document.getElementById('writeReviewModal');
     if (modal) modal.style.display = 'none';
     
-    // Reset form
     const form = document.getElementById('studentReviewForm');
     if (form) form.reset();
     
@@ -1152,7 +1406,6 @@ async function markHelpful(reviewId) {
             return;
         }
         
-        // Check if already marked
         const { data: existing, error: checkError } = await supabase
             .from('review_helpful')
             .select('id')
@@ -1167,7 +1420,6 @@ async function markHelpful(reviewId) {
             return;
         }
         
-        // Add helpful vote
         const { error: insertError } = await supabase
             .from('review_helpful')
             .insert([{
@@ -1177,13 +1429,11 @@ async function markHelpful(reviewId) {
         
         if (insertError) throw insertError;
         
-        // Update review count
         const review = allReviews.find(r => r.id === reviewId);
         if (review) {
             review.helpful_count = (review.helpful_count || 0) + 1;
         }
         
-        // Update in database
         await supabase
             .from('student_reviews')
             .update({ helpful_count: review?.helpful_count || 1 })
@@ -1306,7 +1556,6 @@ window.updateFilterResultsCount = updateFilterResultsCount;
 window.isTVETProgram = isTVETProgram;
 window.getProgramType = getProgramType;
 window.getProgramDisplayName = getProgramDisplayName;
-window.getBlockDisplay = getBlockDisplay;
-window.TVET_PROGRAMS_LOCAL = TVET_PROGRAMS_LOCAL;
+window.closeSuccessPopup = closeSuccessPopup;
 
-console.log('✅ Reviews & Newsletter module loaded (KRCHN & TVET support)');
+console.log('✅ Reviews & Newsletter module loaded with beautiful submit popup!');
