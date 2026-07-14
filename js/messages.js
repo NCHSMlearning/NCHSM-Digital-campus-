@@ -1,4 +1,5 @@
 // messages.js - Messages System for NCHSM Digital Student Dashboard
+// Updated with enhanced UI, stats display, and proper filtering
 
 // *************************************************************************
 // *** MESSAGES SYSTEM ***
@@ -11,6 +12,7 @@ class MessagesSystem {
         this.messageTemplates = [];
         this.isInitialized = false;
         this.currentFilter = 'all';
+        this.searchTerm = '';
         
         // DOM Elements cache
         this.elements = {};
@@ -28,6 +30,11 @@ class MessagesSystem {
         this.isInitialized = true;
         
         console.log('✅ Messages System initialized');
+        
+        // Load messages after a short delay
+        setTimeout(() => {
+            this.loadMessages();
+        }, 500);
     }
     
     cacheElements() {
@@ -40,7 +47,13 @@ class MessagesSystem {
             messagesBadge: document.getElementById('messages-badge'),
             refreshBtn: document.getElementById('refresh-messages-btn'),
             searchInput: document.getElementById('message-search'),
-            templateSelect: document.getElementById('message-template-select')
+            templateSelect: document.getElementById('message-template-select'),
+            totalDisplay: document.getElementById('total-messages-display'),
+            unreadDisplay: document.getElementById('unread-messages-display'),
+            announcementsDisplay: document.getElementById('announcements-display'),
+            unreadBadge: document.getElementById('unread-badge'),
+            lastUpdated: document.getElementById('messages-last-updated'),
+            clearSearch: document.getElementById('clear-search')
         };
     }
     
@@ -70,10 +83,36 @@ class MessagesSystem {
             this.elements.searchInput.addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    this.searchMessages(e.target.value);
+                    this.searchTerm = e.target.value.trim();
+                    this.searchMessages(this.searchTerm);
+                    
+                    // Show/hide clear button
+                    if (this.elements.clearSearch) {
+                        this.elements.clearSearch.style.display = this.searchTerm ? 'block' : 'none';
+                    }
                 }, 300);
             });
         }
+        
+        // Clear search
+        if (this.elements.clearSearch) {
+            this.elements.clearSearch.addEventListener('click', () => {
+                if (this.elements.searchInput) {
+                    this.elements.searchInput.value = '';
+                    this.searchTerm = '';
+                    this.searchMessages('');
+                    this.elements.clearSearch.style.display = 'none';
+                }
+            });
+        }
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const filter = btn.getAttribute('data-filter');
+                this.filterMessages(filter);
+            });
+        });
         
         // Template selection
         if (this.elements.templateSelect) {
@@ -103,7 +142,7 @@ class MessagesSystem {
     
     isMessagesTabActive() {
         const messagesTab = document.getElementById('messages');
-        return messagesTab && messagesTab.classList.contains('active');
+        return messagesTab && messagesTab.classList.contains('active') && messagesTab.style.display !== 'none';
     }
     
     // Helper function for safe Supabase client access
@@ -129,7 +168,9 @@ class MessagesSystem {
         return window.db?.currentUserId || window.currentUserId;
     }
     
-    // Load messages and announcements
+    // ==========================================
+    // LOAD MESSAGES
+    // ==========================================
     async loadMessages() {
         console.log('📨 Loading messages...');
         
@@ -142,7 +183,7 @@ class MessagesSystem {
             return;
         }
         
-        const program = userProfile?.program || userProfile?.department;
+        const program = userProfile?.program || userProfile?.department || 'General';
         
         // Show loading state
         if (this.elements.messagesList) {
@@ -150,49 +191,92 @@ class MessagesSystem {
         }
         
         try {
-            // Load personal messages
-            const { data: personalMessages, error: personalError } = await supabaseClient
+            // Build query - fetch all messages
+            let query = supabaseClient
                 .from('student_messages')
                 .select('*')
-                .or(`recipient_id.eq.${userId},recipient_program.eq.${program}`)
                 .order('created_at', { ascending: false })
                 .limit(50);
             
-            if (personalError) throw personalError;
+            // If user is logged in, filter by recipient
+            if (userId) {
+                query = query.or(`recipient_id.eq.${userId},recipient_program.eq.${program},recipient_type.eq.Announcement`);
+            } else {
+                // If no user, only show announcements
+                query = query.eq('recipient_type', 'Announcement');
+            }
             
-            // Load official announcements
-            const { data: notifications, error: notifError } = await supabaseClient
-                .from('notifications')
-                .select('*')
-                .or(`target_program.eq.${program},target_program.is.null`)
-                .order('created_at', { ascending: false })
-                .limit(20);
+            const { data, error } = await query;
             
-            if (notifError) throw notifError;
+            if (error) throw error;
             
-            // Store messages
-            this.currentMessages = personalMessages || [];
-            this.currentAnnouncements = notifications || [];
+            const allMessages = data || [];
+            console.log(`📩 Fetched ${allMessages.length} messages from database`);
+            
+            // Separate into personal messages and announcements
+            // Personal messages: Individual or program-specific
+            this.currentMessages = allMessages.filter(m => 
+                m.recipient_type === 'Individual' || 
+                (m.recipient_type !== 'Announcement' && m.recipient_program === program)
+            );
+            
+            // Announcements: Type is 'Announcement' or recipient_id is null
+            this.currentAnnouncements = allMessages.filter(m => 
+                m.recipient_type === 'Announcement' || 
+                m.recipient_id === null
+            );
+            
+            // Normalize fields (handle both 'message' and 'body' columns)
+            this.currentMessages = this.currentMessages.map(m => ({
+                ...m,
+                body: m.body || m.message || '',
+                message: m.message || m.body || ''
+            }));
+            
+            this.currentAnnouncements = this.currentAnnouncements.map(m => ({
+                ...m,
+                body: m.body || m.message || '',
+                message: m.message || m.body || '',
+                title: m.subject || 'Announcement'
+            }));
             
             // Update UI
             this.renderMessages();
+            this.updateStats();
             this.updateUnreadCount();
-            
-            // Update dashboard announcement
             this.updateDashboardAnnouncement();
+            this.updateLastUpdated();
             
             // Load templates if needed
             this.loadMessageTemplates();
             
-            console.log(`✅ Loaded ${this.currentMessages.length} messages and ${this.currentAnnouncements.length} announcements`);
+            console.log(`✅ Loaded ${this.currentMessages.length} personal messages and ${this.currentAnnouncements.length} announcements`);
             
         } catch (error) {
             console.error("Failed to load messages:", error);
-            this.showMessage('Error loading messages', 'error');
+            this.showMessage('Error loading messages: ' + error.message, 'error');
+            
+            // Show error in messages list
+            if (this.elements.messagesList) {
+                this.elements.messagesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
+                        <h3>Error Loading Messages</h3>
+                        <p>${error.message || 'Could not load messages. Please try again.'}</p>
+                        <div class="empty-actions">
+                            <button onclick="window.messagesSystem?.loadMessages()" class="btn-primary">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
         }
     }
     
-    // Check for new messages (lightweight check)
+    // ==========================================
+    // CHECK FOR NEW MESSAGES
+    // ==========================================
     async checkForNewMessages() {
         try {
             const userId = this.getCurrentUserId();
@@ -200,22 +284,30 @@ class MessagesSystem {
             if (!supabaseClient) return;
             
             // Get latest message timestamp
-            const latestMessage = [...this.currentMessages, ...this.currentAnnouncements]
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            const allMessages = [...this.currentMessages, ...this.currentAnnouncements];
+            if (allMessages.length === 0) {
+                this.loadMessages();
+                return;
+            }
+            
+            const latestMessage = allMessages.sort((a, b) => 
+                new Date(b.created_at) - new Date(a.created_at)
+            )[0];
             
             const lastTimestamp = latestMessage?.created_at;
             
             // Check for new unread messages
             const { data: newMessages, error } = await supabaseClient
                 .from('student_messages')
-                .select('id, is_read')
+                .select('id, is_read, created_at')
                 .eq('recipient_id', userId)
                 .eq('is_read', false)
                 .gt('created_at', lastTimestamp || new Date(0).toISOString())
                 .limit(1);
             
             if (!error && newMessages?.length > 0) {
-                this.loadMessages(); // Reload if new messages found
+                console.log('📬 New messages detected, reloading...');
+                this.loadMessages();
             }
             
         } catch (error) {
@@ -223,7 +315,9 @@ class MessagesSystem {
         }
     }
     
-    // Render messages in the list
+    // ==========================================
+    // RENDER MESSAGES
+    // ==========================================
     renderMessages() {
         if (!this.elements.messagesList) return;
         
@@ -232,9 +326,22 @@ class MessagesSystem {
         if (!messages || messages.length === 0) {
             this.elements.messagesList.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-comment-slash"></i>
+                    <div class="empty-icon"><i class="fas fa-inbox"></i></div>
                     <h3>No Messages Found</h3>
-                    <p>You have no messages or announcements at this time.</p>
+                    <p>${this.searchTerm ? `No messages found for "${this.searchTerm}"` : 'You have no messages or announcements at this time.'}</p>
+                    ${this.searchTerm ? `
+                        <div class="empty-actions">
+                            <button onclick="document.getElementById('message-search').value=''; window.messagesSystem?.searchMessages('');" class="btn-primary">
+                                <i class="fas fa-undo"></i> Clear Search
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="empty-actions">
+                            <button onclick="window.messagesSystem?.loadMessages()" class="btn-primary">
+                                <i class="fas fa-redo"></i> Refresh
+                            </button>
+                        </div>
+                    `}
                 </div>
             `;
             return;
@@ -247,66 +354,117 @@ class MessagesSystem {
         this.attachMessageEventListeners();
     }
     
-    // Get filtered messages based on current filter
+    // ==========================================
+    // GET FILTERED MESSAGES
+    // ==========================================
     getFilteredMessages() {
-        const allMessages = [
+        let allMessages = [
             ...this.currentMessages.map(m => ({ ...m, type: 'Personal' })),
             ...this.currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         
+        // Apply filter
         switch(this.currentFilter) {
             case 'unread':
-                return allMessages.filter(m => !m.is_read);
+                allMessages = allMessages.filter(m => !m.is_read);
+                break;
             case 'personal':
-                return this.currentMessages.map(m => ({ ...m, type: 'Personal' }));
+                allMessages = allMessages.filter(m => m.type === 'Personal');
+                break;
             case 'announcements':
-                return this.currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }));
+                allMessages = allMessages.filter(m => m.type === 'Announcement');
+                break;
+            case 'academic':
+                allMessages = allMessages.filter(m => 
+                    m.subject?.toLowerCase().includes('exam') || 
+                    m.subject?.toLowerCase().includes('academic') ||
+                    m.subject?.toLowerCase().includes('course') ||
+                    m.subject?.toLowerCase().includes('grade') ||
+                    m.subject?.toLowerCase().includes('assignment')
+                );
+                break;
+            case 'administrative':
+                allMessages = allMessages.filter(m => 
+                    m.subject?.toLowerCase().includes('fee') || 
+                    m.subject?.toLowerCase().includes('deadline') ||
+                    m.subject?.toLowerCase().includes('policy') ||
+                    m.subject?.toLowerCase().includes('payment') ||
+                    m.subject?.toLowerCase().includes('registration')
+                );
+                break;
             case 'high-priority':
-                return allMessages.filter(m => m.priority === 'high');
+                allMessages = allMessages.filter(m => 
+                    m.priority === 'high' || m.priority === 'urgent'
+                );
+                break;
             default:
-                return allMessages;
+                break;
         }
+        
+        // Apply search if there's a search term
+        if (this.searchTerm) {
+            const searchLower = this.searchTerm.toLowerCase();
+            allMessages = allMessages.filter(msg => {
+                const title = (msg.subject || msg.title || '').toLowerCase();
+                const body = (msg.body || msg.message || msg.message_content || '').toLowerCase();
+                const sender = (msg.sender_name || '').toLowerCase();
+                
+                return title.includes(searchLower) || 
+                       body.includes(searchLower) || 
+                       sender.includes(searchLower);
+            });
+        }
+        
+        return allMessages;
     }
     
-    // Create message card HTML
+    // ==========================================
+    // CREATE MESSAGE CARD
+    // ==========================================
     createMessageCard(msg) {
         const title = msg.subject || msg.title || 'Message';
         const body = msg.body || msg.message || msg.message_content || '';
         const isRead = msg.is_read ? 'read' : 'unread';
         const createdAt = this.formatMessageDate(msg.created_at);
-        const borderColor = msg.type === 'Personal' ? '#4C1D95' : '#F97316';
+        const borderColor = msg.type === 'Announcement' ? '#F97316' : '#4C1D95';
         const priority = msg.priority || 'normal';
+        const icon = msg.type === 'Announcement' ? 'fa-bullhorn' : 'fa-user';
+        const iconClass = msg.type === 'Announcement' ? 'announcement' : 'personal';
         
         // Truncate long messages
-        const truncatedBody = body.length > 300 ? body.substring(0, 300) + '...' : body;
+        const truncatedBody = body.length > 200 ? body.substring(0, 200) + '...' : body;
+        const hasMore = body.length > 200;
+        
+        // Get sender name
+        const senderName = msg.sender_name || (msg.type === 'Announcement' ? 'Administration' : 'Unknown');
         
         return `
             <div class="message-item ${isRead}" 
                  data-id="${msg.id}" 
                  data-type="${msg.type}"
-                 data-priority="${priority}"
-                 style="border-left: 4px solid ${borderColor};">
+                 data-priority="${priority}">
                 
                 <div class="message-header">
                     <div class="message-title-section">
-                        <i class="fas ${msg.type === 'Personal' ? 'fa-user' : 'fa-bullhorn'}" 
-                           style="color: ${borderColor};"></i>
+                        <div class="message-icon ${iconClass}">
+                            <i class="fas ${icon}"></i>
+                        </div>
                         <div class="message-title-wrapper">
-                            <h4 class="message-title">${this.escapeHtml(title)}</h4>
+                            <div class="message-title">${this.escapeHtml(title)}</div>
                             <div class="message-meta">
-                                <span class="message-date">${createdAt}</span>
+                                <span class="message-date"><i class="far fa-clock"></i> ${createdAt}</span>
                                 <span class="priority-badge ${priority}">${priority}</span>
-                                <span class="message-type">${msg.type}</span>
+                                <span class="message-type-badge ${msg.type.toLowerCase()}">${msg.type}</span>
                             </div>
                         </div>
                     </div>
                     <div class="message-actions">
                         ${!msg.is_read ? `
-                            <button class="mark-read-btn" data-id="${msg.id}" data-type="${msg.type}">
+                            <button class="mark-read-btn" data-id="${msg.id}" data-type="${msg.type}" title="Mark as read">
                                 <i class="fas fa-check"></i>
                             </button>
                         ` : ''}
-                        <button class="view-btn" data-id="${msg.id}">
+                        <button class="view-btn" data-id="${msg.id}" title="View message">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -314,30 +472,30 @@ class MessagesSystem {
                 
                 <div class="message-body">
                     <p>${this.escapeHtml(truncatedBody)}</p>
-                    ${body.length > 300 ? `
+                    ${hasMore ? `
                         <button class="read-more-btn" data-id="${msg.id}">
-                            Read More
+                            Read More <i class="fas fa-chevron-right"></i>
                         </button>
                     ` : ''}
                 </div>
                 
                 <div class="message-footer">
-                    <span class="message-status ${isRead}">
+                    <span class="message-status-indicator ${isRead}">
                         <i class="fas ${msg.is_read ? 'fa-check-circle' : 'fa-circle'}"></i>
                         ${isRead.toUpperCase()}
                     </span>
-                    ${msg.sender_name ? `
-                        <span class="message-sender">
-                            <i class="fas fa-user-tag"></i>
-                            From: ${this.escapeHtml(msg.sender_name)}
-                        </span>
-                    ` : ''}
+                    <span class="message-sender">
+                        <i class="fas fa-user-tag"></i>
+                        ${this.escapeHtml(senderName)}
+                    </span>
                 </div>
             </div>
         `;
     }
     
-    // Attach event listeners to message cards
+    // ==========================================
+    // ATTACH EVENT LISTENERS
+    // ==========================================
     attachMessageEventListeners() {
         // View message buttons
         document.querySelectorAll('.view-btn, .read-more-btn').forEach(btn => {
@@ -361,7 +519,7 @@ class MessagesSystem {
         // Message item click
         document.querySelectorAll('.message-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.message-actions')) {
+                if (!e.target.closest('.message-actions') && !e.target.closest('.read-more-btn')) {
                     const messageId = item.getAttribute('data-id');
                     this.showMessageModal(messageId);
                 }
@@ -369,7 +527,9 @@ class MessagesSystem {
         });
     }
     
-    // Show message modal
+    // ==========================================
+    // SHOW MESSAGE MODAL
+    // ==========================================
     async showMessageModal(messageId) {
         // Find message
         let message = this.currentMessages.find(m => m.id == messageId);
@@ -380,33 +540,39 @@ class MessagesSystem {
             messageType = 'Announcement';
         }
         
-        if (!message) return;
+        if (!message) {
+            console.warn('Message not found:', messageId);
+            return;
+        }
         
         // Mark as read if unread
         if (!message.is_read) {
             await this.markMessageAsRead(messageId, messageType);
         }
         
-        // Create modal content
-        const modalContent = this.createModalContent(message, messageType);
-        
-        // Show modal using UI module if available, or create custom
-        if (window.ui && window.ui.showToast) {
-            // Use existing UI modal system
-            this.showCustomModal(modalContent);
-        } else {
-            // Simple alert for now
-            alert(`${message.title || 'Message'}\n\n${message.body || message.message || ''}`);
-        }
+        // Create and show modal
+        this.showCustomModal(message, messageType);
     }
     
-    // Create modal content
-    createModalContent(message, messageType) {
+    // ==========================================
+    // SHOW CUSTOM MODAL
+    // ==========================================
+    showCustomModal(message, messageType) {
+        // Remove existing modal
+        const existingModal = document.getElementById('message-detail-modal');
+        if (existingModal) existingModal.remove();
+        
         const title = message.subject || message.title || 'Message';
         const body = message.body || message.message || message.message_content || '';
         const createdAt = this.formatMessageDate(message.created_at, true);
+        const senderName = message.sender_name || (messageType === 'Announcement' ? 'Administration' : 'Unknown');
+        const priority = message.priority || 'normal';
         
-        return `
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'message-detail-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
             <div class="message-modal">
                 <div class="modal-header">
                     <h3>${this.escapeHtml(title)}</h3>
@@ -414,12 +580,13 @@ class MessagesSystem {
                     <button class="close-modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="message-meta">
+                    <div class="message-meta-detail">
                         <div><strong>Date:</strong> ${createdAt}</div>
-                        ${message.sender_name ? `<div><strong>From:</strong> ${this.escapeHtml(message.sender_name)}</div>` : ''}
-                        ${message.priority ? `<div><strong>Priority:</strong> <span class="priority-badge ${message.priority}">${message.priority}</span></div>` : ''}
+                        <div><strong>From:</strong> ${this.escapeHtml(senderName)}</div>
+                        ${priority ? `<div><strong>Priority:</strong> <span class="priority-badge ${priority}">${priority}</span></div>` : ''}
+                        ${messageType === 'Personal' ? `<div><strong>Type:</strong> Personal Message</div>` : ''}
                     </div>
-                    <div class="message-content">
+                    <div class="message-content-full">
                         ${this.escapeHtml(body).replace(/\n/g, '<br>')}
                     </div>
                 </div>
@@ -433,48 +600,6 @@ class MessagesSystem {
                 </div>
             </div>
         `;
-    }
-    
-    // Show custom modal
-    showCustomModal(content) {
-        // Remove existing modal
-        const existingModal = document.getElementById('message-detail-modal');
-        if (existingModal) existingModal.remove();
-        
-        // Create modal
-        const modal = document.createElement('div');
-        modal.id = 'message-detail-modal';
-        modal.className = 'modal-overlay';
-        modal.innerHTML = content;
-        
-        // Add styles
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        `;
-        
-        // Add modal styles
-        const messageModal = modal.querySelector('.message-modal');
-        if (messageModal) {
-            messageModal.style.cssText = `
-                background: white;
-                border-radius: 12px;
-                width: 100%;
-                max-width: 600px;
-                max-height: 80vh;
-                overflow: hidden;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            `;
-        }
         
         document.body.appendChild(modal);
         
@@ -501,16 +626,17 @@ class MessagesSystem {
         });
     }
     
-    // Mark message as read
+    // ==========================================
+    // MARK MESSAGE AS READ
+    // ==========================================
     async markMessageAsRead(messageId, messageType) {
         const supabaseClient = this.getSupabaseClient();
         if (!supabaseClient) return false;
         
         try {
-            const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
-            
+            // Use student_messages table for both types (since we're using one table)
             const { error } = await supabaseClient
-                .from(tableName)
+                .from('student_messages')
                 .update({ 
                     is_read: true, 
                     read_at: new Date().toISOString() 
@@ -520,16 +646,15 @@ class MessagesSystem {
             if (error) throw error;
             
             // Update local state
-            if (messageType === 'Personal') {
-                const message = this.currentMessages.find(m => m.id == messageId);
-                if (message) message.is_read = true;
-            } else {
-                const announcement = this.currentAnnouncements.find(a => a.id == messageId);
-                if (announcement) announcement.is_read = true;
+            const allMessages = [...this.currentMessages, ...this.currentAnnouncements];
+            const message = allMessages.find(m => m.id == messageId);
+            if (message) {
+                message.is_read = true;
             }
             
             // Update UI
             this.renderMessages();
+            this.updateStats();
             this.updateUnreadCount();
             
             this.showMessage('Marked as read', 'success');
@@ -542,7 +667,9 @@ class MessagesSystem {
         }
     }
     
-    // Reply to message
+    // ==========================================
+    // REPLY TO MESSAGE
+    // ==========================================
     replyToMessage(messageId) {
         let message = this.currentMessages.find(m => m.id == messageId);
         if (!message) return;
@@ -554,16 +681,18 @@ class MessagesSystem {
             this.elements.messageBody.value = `Re: ${subject}\n\n--- Original Message ---\n${quotedBody}\n\n--- Your Reply ---\n`;
             this.elements.messageBody.focus();
             
-            // Switch to messages tab
-            if (window.ui && window.ui.showTab) {
-                window.ui.showTab('messages');
+            // Scroll to message form
+            if (this.elements.messageForm) {
+                this.elements.messageForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             
             this.showMessage('Message form pre-filled for reply', 'info');
         }
     }
     
-    // Handle message form submission
+    // ==========================================
+    // HANDLE MESSAGE FORM SUBMISSION
+    // ==========================================
     async handleMessageSubmit(e) {
         e.preventDefault();
         
@@ -591,17 +720,21 @@ class MessagesSystem {
         if (this.elements.messageStatus) {
             this.elements.messageStatus.textContent = 'Sending message...';
             this.elements.messageStatus.className = 'status-sending';
+            this.elements.messageStatus.style.display = 'block';
         }
         
         try {
             const messageData = {
                 subject: 'Message from Student',
                 body: this.elements.messageBody.value.trim(),
+                message: this.elements.messageBody.value.trim(),
                 recipient_id: 'admin',
-                recipient_program: userProfile.program || userProfile.department,
+                recipient_program: userProfile.program || userProfile.department || 'General',
+                student_id: userId,
                 sender_id: userId,
                 sender_name: userProfile.full_name || userProfile.name || 'Student',
                 sender_email: userProfile.email || '',
+                recipient_type: 'Individual',
                 is_read: false,
                 priority: 'normal',
                 created_at: new Date().toISOString()
@@ -638,105 +771,63 @@ class MessagesSystem {
                 setTimeout(() => {
                     this.elements.messageStatus.textContent = '';
                     this.elements.messageStatus.className = '';
+                    this.elements.messageStatus.style.display = 'none';
                 }, 3000);
             }
         }
     }
     
-    // Search messages
+    // ==========================================
+    // SEARCH MESSAGES
+    // ==========================================
     searchMessages(searchTerm) {
-        const messages = this.getFilteredMessages();
+        this.searchTerm = searchTerm.trim();
+        this.renderMessages();
         
-        if (!searchTerm.trim()) {
-            this.renderMessages();
-            return;
-        }
-        
-        const searchLower = searchTerm.toLowerCase();
-        const filteredMessages = messages.filter(msg => {
-            const title = (msg.subject || msg.title || '').toLowerCase();
-            const body = (msg.body || msg.message || msg.message_content || '').toLowerCase();
-            const sender = (msg.sender_name || '').toLowerCase();
-            
-            return title.includes(searchLower) || 
-                   body.includes(searchLower) || 
-                   sender.includes(searchLower);
-        });
-        
-        this.displaySearchResults(filteredMessages, searchTerm);
-    }
-    
-    // Display search results
-    displaySearchResults(messages, searchTerm) {
-        if (!this.elements.messagesList) return;
-        
-        if (messages.length === 0) {
-            this.elements.messagesList.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-search"></i>
-                    <h3>No Results Found</h3>
-                    <p>No messages found for "${searchTerm}"</p>
-                </div>
-            `;
-            return;
-        }
-        
-        this.elements.messagesList.innerHTML = messages
-            .map(msg => this.createMessageCard(msg))
-            .join('');
-        
-        this.attachMessageEventListeners();
-    }
-    
-    // Load message templates
-    async loadMessageTemplates() {
-        const userProfile = this.getUserProfile();
-        const supabaseClient = this.getSupabaseClient();
-        
-        if (!supabaseClient || !this.elements.templateSelect) return;
-        
-        try {
-            const { data: templates, error } = await supabaseClient
-                .from('message_templates')
-                .select('*')
-                .eq('is_active', true)
-                .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
-                .order('name', { ascending: true });
-            
-            if (error) throw error;
-            
-            this.messageTemplates = templates || [];
-            this.populateTemplateDropdown();
-            
-        } catch (error) {
-            console.error('Error loading message templates:', error);
+        // Show/hide clear search button
+        if (this.elements.clearSearch) {
+            this.elements.clearSearch.style.display = this.searchTerm ? 'block' : 'none';
         }
     }
     
-    // Populate template dropdown
-    populateTemplateDropdown() {
-        if (!this.elements.templateSelect) return;
+    // ==========================================
+    // UPDATE STATS
+    // ==========================================
+    updateStats() {
+        const total = this.currentMessages.length + this.currentAnnouncements.length;
+        const unread = [...this.currentMessages, ...this.currentAnnouncements]
+            .filter(m => !m.is_read).length;
+        const announcements = this.currentAnnouncements.length;
         
-        this.elements.templateSelect.innerHTML = '<option value="">Select a template...</option>';
+        // Update total display
+        if (this.elements.totalDisplay) {
+            this.elements.totalDisplay.textContent = total;
+        }
         
-        this.messageTemplates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.name;
-            this.elements.templateSelect.appendChild(option);
-        });
+        // Update unread display
+        if (this.elements.unreadDisplay) {
+            this.elements.unreadDisplay.textContent = unread;
+        }
+        
+        // Update announcements display
+        if (this.elements.announcementsDisplay) {
+            this.elements.announcementsDisplay.textContent = announcements;
+        }
+        
+        // Update unread badge
+        if (this.elements.unreadBadge) {
+            if (unread > 0) {
+                this.elements.unreadBadge.textContent = unread;
+                this.elements.unreadBadge.style.display = 'inline';
+            } else {
+                this.elements.unreadBadge.style.display = 'none';
+            }
+        }
     }
     
-    // Apply message template
-    applyMessageTemplate(templateId) {
-        const template = this.messageTemplates.find(t => t.id == templateId);
-        if (!template || !this.elements.messageBody) return;
-        
-        this.elements.messageBody.value = template.content;
-        this.showMessage(`Template "${template.name}" applied`, 'success');
-    }
-    
-    // Update unread message count
+    // ==========================================
+    // UPDATE UNREAD COUNT
+    // ==========================================
     updateUnreadCount() {
         const allMessages = [
             ...this.currentMessages,
@@ -765,7 +856,19 @@ class MessagesSystem {
         return unreadCount;
     }
     
-    // Update dashboard announcement
+    // ==========================================
+    // UPDATE LAST UPDATED
+    // ==========================================
+    updateLastUpdated() {
+        if (this.elements.lastUpdated) {
+            const now = new Date();
+            this.elements.lastUpdated.textContent = now.toLocaleString();
+        }
+    }
+    
+    // ==========================================
+    // UPDATE DASHBOARD ANNOUNCEMENT
+    // ==========================================
     updateDashboardAnnouncement() {
         if (this.currentAnnouncements.length === 0) return;
         
@@ -777,16 +880,20 @@ class MessagesSystem {
         }
     }
     
-    // Filter messages
+    // ==========================================
+    // FILTER MESSAGES
+    // ==========================================
     filterMessages(filterType) {
         this.currentFilter = filterType;
         this.renderMessages();
         this.updateFilterButtonStates();
     }
     
-    // Update filter button states
+    // ==========================================
+    // UPDATE FILTER BUTTON STATES
+    // ==========================================
     updateFilterButtonStates() {
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
             const filter = btn.getAttribute('data-filter');
             if (filter === this.currentFilter) {
                 btn.classList.add('active');
@@ -796,7 +903,63 @@ class MessagesSystem {
         });
     }
     
-    // Show loading state
+    // ==========================================
+    // LOAD MESSAGE TEMPLATES
+    // ==========================================
+    async loadMessageTemplates() {
+        const userProfile = this.getUserProfile();
+        const supabaseClient = this.getSupabaseClient();
+        
+        if (!supabaseClient || !this.elements.templateSelect) return;
+        
+        try {
+            const { data: templates, error } = await supabaseClient
+                .from('message_templates')
+                .select('*')
+                .eq('is_active', true)
+                .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
+                .order('name', { ascending: true });
+            
+            if (error) throw error;
+            
+            this.messageTemplates = templates || [];
+            this.populateTemplateDropdown();
+            
+        } catch (error) {
+            console.error('Error loading message templates:', error);
+        }
+    }
+    
+    // ==========================================
+    // POPULATE TEMPLATE DROPDOWN
+    // ==========================================
+    populateTemplateDropdown() {
+        if (!this.elements.templateSelect) return;
+        
+        this.elements.templateSelect.innerHTML = '<option value="">Select a template...</option>';
+        
+        this.messageTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            this.elements.templateSelect.appendChild(option);
+        });
+    }
+    
+    // ==========================================
+    // APPLY MESSAGE TEMPLATE
+    // ==========================================
+    applyMessageTemplate(templateId) {
+        const template = this.messageTemplates.find(t => t.id == templateId);
+        if (!template || !this.elements.messageBody) return;
+        
+        this.elements.messageBody.value = template.content;
+        this.showMessage(`Template "${template.name}" applied`, 'success');
+    }
+    
+    // ==========================================
+    // SHOW LOADING STATE
+    // ==========================================
     showLoading() {
         if (!this.elements.messagesList) return;
         
@@ -808,7 +971,9 @@ class MessagesSystem {
         `;
     }
     
-    // Show message (toast/status)
+    // ==========================================
+    // SHOW MESSAGE (Toast/Status)
+    // ==========================================
     showMessage(text, type = 'info') {
         // Use UI module if available
         if (window.ui && window.ui.showToast) {
@@ -820,16 +985,20 @@ class MessagesSystem {
         if (this.elements.messageStatus) {
             this.elements.messageStatus.textContent = text;
             this.elements.messageStatus.className = `status-${type}`;
+            this.elements.messageStatus.style.display = 'block';
             
             // Auto-hide after 3 seconds
             setTimeout(() => {
                 this.elements.messageStatus.textContent = '';
                 this.elements.messageStatus.className = '';
+                this.elements.messageStatus.style.display = 'none';
             }, 3000);
         }
     }
     
-    // Format message date
+    // ==========================================
+    // FORMAT MESSAGE DATE
+    // ==========================================
     formatMessageDate(dateString, full = false) {
         if (!dateString) return 'N/A';
         
@@ -863,7 +1032,9 @@ class MessagesSystem {
         });
     }
     
-    // Utility to safely escape HTML
+    // ==========================================
+    // UTILITY: ESCAPE HTML
+    // ==========================================
     escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -894,14 +1065,16 @@ window.initializeMessagesSystem = () => window.messagesSystem.initialize();
 // Auto-initialize when app is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        window.messagesSystem.initialize();
+        setTimeout(() => window.messagesSystem.initialize(), 300);
     });
 } else {
-    window.messagesSystem.initialize();
+    setTimeout(() => window.messagesSystem.initialize(), 300);
 }
 
 // Listen for app ready event
 document.addEventListener('appReady', () => {
     console.log('📱 App ready, initializing messages system...');
-    window.messagesSystem.initialize();
+    setTimeout(() => window.messagesSystem.initialize(), 300);
 });
+
+console.log('📨 Messages system loaded!');
