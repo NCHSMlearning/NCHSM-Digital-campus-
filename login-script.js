@@ -324,79 +324,131 @@ init: function() {
         }
     },
     
-    // ============================================
-    // COMPLETE LOGIN - WITH SESSION TRACKING FIX
-    // ============================================
-    completeLogin: async function(profileData, sessionToken, isStaff = false) {
-        console.log('🎉 COMPLETE LOGIN STARTED');
-        console.log('📊 Profile Data:', profileData);
-        console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
-        console.log('👔 Is Staff:', isStaff);
-        
-        try {
-            // 1. Update last login (non-blocking)
-            if (!isStaff) {
-                console.log('📝 Updating last login...');
-                this.updateLastLogin(profileData.user_id, profileData.email).catch((err) => {
-                    console.warn('⚠️ Last login update failed:', err);
-                });
+   // ============================================
+// COMPLETE LOGIN - WITH SESSION TRACKING FIX
+// ============================================
+completeLogin: async function(profileData, sessionToken, isStaff = false) {
+    console.log('🎉 COMPLETE LOGIN STARTED');
+    console.log('📊 Profile Data:', profileData);
+    console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+    console.log('👔 Is Staff:', isStaff);
+    
+    try {
+        // ✅ FIX: WAIT for updateLastLogin to complete
+        if (!isStaff) {
+            console.log('📝 Updating last login...');
+            const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
+            console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
+            
+            // If update failed, try force update
+            if (!updateResult) {
+                console.log('⚠️ updateLastLogin failed, trying force update...');
+                await this.forceUpdateLoginCount(profileData.user_id);
             }
-            
-            // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
-            console.log('🔍 Attempting to track session...');
-            const sessionResult = await this.trackUserSession(
-                profileData.user_id, 
-                profileData.email, 
-                sessionToken, 
-                navigator.userAgent, 
-                isStaff
-            );
-            
-            if (sessionResult) {
-                console.log('✅ Session tracked successfully!');
-            } else {
-                console.warn('⚠️ Session tracking returned null/undefined');
-            }
-            
-            // 3. Store profile (minimal)
-            const safeProfile = {
-                user_id: profileData.user_id,
-                email: profileData.email,
-                full_name: profileData.full_name,
-                role: profileData.role,
-                program: profileData.program || profileData.department,
-                is_staff: isStaff || false
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            console.log('💾 Profile stored in localStorage');
-            
-            // 4. Store session expiry
-            if (!isStaff && this.supabase) {
-                try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        localStorage.setItem('session_expires', session.expires_at);
-                        console.log('⏰ Session expiry stored:', session.expires_at);
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Could not get session expiry:', err);
-                }
-            }
-            
-            // 5. Update last login info on page
-            this.updateLastLoginInfo();
-            
-            // 6. Redirect
-            console.log('🚀 Redirecting to dashboard...');
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error:', error);
-            console.error('❌ Error stack:', error.stack);
-            // Still redirect even if tracking fails
-            this.redirectToDashboard(profileData);
         }
-    },
+        
+        // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
+        console.log('🔍 Attempting to track session...');
+        const sessionResult = await this.trackUserSession(
+            profileData.user_id, 
+            profileData.email, 
+            sessionToken, 
+            navigator.userAgent, 
+            isStaff
+        );
+        
+        if (sessionResult) {
+            console.log('✅ Session tracked successfully!');
+        } else {
+            console.warn('⚠️ Session tracking returned null/undefined');
+        }
+        
+        // 3. Store profile (minimal)
+        const safeProfile = {
+            user_id: profileData.user_id,
+            email: profileData.email,
+            full_name: profileData.full_name,
+            role: profileData.role,
+            program: profileData.program || profileData.department,
+            is_staff: isStaff || false
+        };
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        console.log('💾 Profile stored in localStorage');
+        
+        // 4. Store session expiry
+        if (!isStaff && this.supabase) {
+            try {
+                const { data: { session } } = await this.supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem('session_expires', session.expires_at);
+                    console.log('⏰ Session expiry stored:', session.expires_at);
+                }
+            } catch (err) {
+                console.warn('⚠️ Could not get session expiry:', err);
+            }
+        }
+        
+        // 5. Update last login info on page
+        this.updateLastLoginInfo();
+        
+        // 6. Redirect
+        console.log('🚀 Redirecting to dashboard...');
+        this.redirectToDashboard(profileData);
+        
+    } catch (error) {
+        console.error('❌ Complete login error:', error);
+        console.error('❌ Error stack:', error.stack);
+        // Still redirect even if tracking fails
+        this.redirectToDashboard(profileData);
+    }
+},
+
+// ============================================
+// FORCE UPDATE LOGIN COUNT - NEW FUNCTION
+// ============================================
+forceUpdateLoginCount: async function(userId) {
+    try {
+        console.log('🔧 Force updating login count for user:', userId);
+        
+        // Count sessions
+        const { data: sessions, error: sessionsError } = await this.supabase
+            .from('user_sessions')
+            .select('id')
+            .eq('user_id', userId);
+        
+        if (sessionsError) {
+            console.error('❌ Error counting sessions:', sessionsError);
+            return false;
+        }
+        
+        const sessionCount = sessions?.length || 0;
+        console.log('📊 Total sessions found:', sessionCount);
+        
+        // Update login_count to match sessions
+        const { error: updateError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .update({
+                login_count: sessionCount,
+                last_login: new Date().toISOString(),
+                last_activity: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (updateError) {
+            console.error('❌ Error updating login count:', updateError);
+            return false;
+        }
+        
+        console.log(`✅ Login count force updated to ${sessionCount}`);
+        console.log(`✅ Login points: ${sessionCount * 10}`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Force update error:', error);
+        return false;
+    }
+},
     
     // ============================================
     // HIDE SKELETON LOADER
@@ -1359,42 +1411,56 @@ initPasswordStrength: function() {
         return `${browser} on ${os} (${device})`;
     },
     
-    // ============================================
-    // UPDATE LAST LOGIN
-    // ============================================
-    updateLastLogin: async function(userId, email) {
-        try {
-            const now = new Date().toISOString();
-            
-            const { data: profile, error: fetchError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('login_count')
-                .eq('user_id', userId)
-                .maybeSingle();
-            
-            if (fetchError) return false;
-            
-            const newCount = (profile?.login_count || 0) + 1;
-            
-            const { error: updateError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .update({
-                    last_login: now,
-                    login_count: newCount,
-                    last_activity: now,
-                    updated_at: now
-                })
-                .eq('user_id', userId);
-            
-            if (updateError) return false;
-            
-            return true;
-            
-        } catch (error) {
+   // ============================================
+// UPDATE LAST LOGIN - FIXED VERSION
+// ============================================
+updateLastLogin: async function(userId, email) {
+    try {
+        console.log('📝 updateLastLogin called for:', userId);
+        
+        const now = new Date().toISOString();
+        
+        // Get current login count
+        const { data: profile, error: fetchError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('login_count')
+            .eq('user_id', userId)
+            .maybeSingle();
+        
+        if (fetchError) {
+            console.error('❌ Error fetching login count:', fetchError);
             return false;
         }
-    },
-    
+        
+        const currentCount = profile?.login_count || 0;
+        const newCount = currentCount + 1;
+        
+        console.log(`📊 Current login count: ${currentCount}, New: ${newCount}`);
+        
+        // Update
+        const { error: updateError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .update({
+                last_login: now,
+                login_count: newCount,
+                last_activity: now,
+                updated_at: now
+            })
+            .eq('user_id', userId);
+        
+        if (updateError) {
+            console.error('❌ Error updating login count:', updateError);
+            return false;
+        }
+        
+        console.log(`✅ Login count updated to ${newCount}`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ updateLastLogin exception:', error);
+        return false;
+    }
+},
  // ============================================
 // UPDATE LAST LOGIN INFO - WITH CORRECT TIMEZONE
 // ============================================
