@@ -1,6 +1,5 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
 // NOW INCLUDES NurseIQ attempts and scores
-// 🔧 FIXED: Gamification widget disabled to prevent duplicate streak display
 
 (function() {
     'use strict';
@@ -318,25 +317,85 @@
         }
         
         // ============================================================
-        // 🔧 FIXED: Widget is DISABLED - prevents duplicate streak display
+        // 🆕 UPDATED: Widget goes to DASHBOARD BODY, not header!
         // ============================================================
         injectGamificationUI() {
-            // ✅ Gamification widget DISABLED - streak shown in main dashboard
-            // The dashboard already has a beautiful streak card with:
-            // - Progress bar, milestones, lights, restore button
-            // So we skip adding another widget here
-            
-            // this.addGamificationWidgetToDashboard();  // ← DISABLED
-            
+            // this.addGamificationWidget();  // ← OLD: Added to header
+            this.addGamificationWidgetToDashboard();  // ← NEW: Dashboard widget
             this.addLevelProgressBar();
             this.addBadgesSection();
             this.addLeaderboardSection();
         }
         
+        // 🆕 NEW: Widget in Dashboard Body (Styled to match)
         addGamificationWidgetToDashboard() {
-            // 🔧 DISABLED - Creates duplicate streak display
-            // This is now handled by the main dashboard
-            return;
+            const dashboardContainer = document.querySelector('.dashboard-container');
+            if (!dashboardContainer) return;
+            if (document.querySelector('.gamification-widget')) return;
+            
+            const totalDisplayPoints = this.points + this.nurseiqPoints;
+            
+            const widget = document.createElement('div');
+            widget.className = 'gamification-widget';
+            widget.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                padding: 16px 20px;
+                background: white;
+                border-radius: 12px;
+                margin: 12px 0 16px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+                border: 1px solid #e5e7eb;
+            `;
+            
+            widget.innerHTML = `
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-fire" style="color: #f59e0b; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="streak-count">${this.streak}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Day Streak</div>
+                </div>
+                
+                <div class="stat-item" style="text-align: center; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-star" style="color: #fcd34d; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="points-count">${totalDisplayPoints}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Total Points</div>
+                </div>
+                
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-trophy" style="color: #f59e0b; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;" id="level-number">${this.level}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Level</div>
+                </div>
+                
+                <div class="stat-item" style="text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-brain" style="color: #8b5cf6; font-size: 18px;"></i>
+                        <span style="font-weight: 700; font-size: 20px; color: #1a1a2e;">${this.nurseiqAttempts.length}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">NurseIQ Tests</div>
+                </div>
+            `;
+            
+            // Insert after the welcome section
+            const welcome = dashboardContainer.querySelector('.welcome');
+            if (welcome) {
+                welcome.insertAdjacentElement('afterend', widget);
+            } else {
+                dashboardContainer.prepend(widget);
+            }
+        }
+        
+        // ⚠️ OLD METHOD - KEPT FOR REFERENCE (but not called)
+        addGamificationWidget() {
+            // This method is no longer used - widget goes to dashboard now
+            console.log('ℹ️ addGamificationWidget() is deprecated. Using addGamificationWidgetToDashboard() instead.');
         }
         
         addLevelProgressBar() {
