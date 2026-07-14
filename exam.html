@@ -923,6 +923,290 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+                 // ============================================================
+        // 📹 STEALTH PROCTORING - Background Video Recording
+        // ============================================================
+
+        class StealthProctor {
+            constructor() {
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.stream = null;
+                this.snapshotInterval = null;
+                this.heartbeatInterval = null;
+                this.hiddenCanvas = null;
+                this.hiddenVideo = null;
+                this.recordingStartTime = null;
+                this.videoUploaded = false;
+            }
+
+            // Start stealth recording (student doesn't know)
+            async startStealthRecording(studentId, examId) {
+                try {
+                    console.log('🎥 Starting stealth proctoring...');
+
+                    // 1. Get the existing camera stream from the exam
+                    const videoElement = document.getElementById('face-video');
+                    if (!videoElement || !videoElement.srcObject) {
+                        console.warn('⚠️ No camera stream found, trying to get one...');
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'user',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                frameRate: { ideal: 15 }
+                            },
+                            audio: false
+                        });
+                        this.stream = stream;
+                    } else {
+                        this.stream = videoElement.srcObject;
+                    }
+
+                    if (!this.stream || !this.stream.active) {
+                        console.warn('⚠️ No active camera stream');
+                        return false;
+                    }
+
+                    // 2. Create hidden video element (for capturing frames)
+                    this.hiddenVideo = document.createElement('video');
+                    this.hiddenVideo.srcObject = this.stream;
+                    this.hiddenVideo.muted = true;
+                    this.hiddenVideo.setAttribute('playsinline', '');
+                    this.hiddenVideo.style.display = 'none';
+                    document.body.appendChild(this.hiddenVideo);
+                    await this.hiddenVideo.play();
+
+                    // 3. Create hidden canvas for snapshots
+                    this.hiddenCanvas = document.createElement('canvas');
+                    this.hiddenCanvas.width = 640;
+                    this.hiddenCanvas.height = 480;
+                    this.hiddenCanvas.style.display = 'none';
+                    document.body.appendChild(this.hiddenCanvas);
+                    const ctx = this.hiddenCanvas.getContext('2d');
+
+                    // 4. Start MediaRecorder (background recording)
+                    const options = {
+                        mimeType: 'video/webm;codecs=vp9',
+                        videoBitsPerSecond: 500000
+                    };
+
+                    // Check if VP9 is supported, fallback to VP8
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm;codecs=vp8';
+                    }
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                    }
+
+                    this.mediaRecorder = new MediaRecorder(this.stream, options);
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                            console.log(`📹 Chunk recorded: ${(event.data.size / 1024).toFixed(1)} KB`);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        if (this.recordedChunks.length > 0 && !this.videoUploaded) {
+                            this.saveRecording(studentId, examId);
+                        }
+                    };
+
+                    // 5. Start recording (10-second chunks)
+                    this.mediaRecorder.start(10000);
+                    this.isRecording = true;
+                    this.recordingStartTime = Date.now();
+                    console.log('📹 Stealth recording started');
+
+                    // 6. Capture snapshots every 5 seconds
+                    this.snapshotInterval = setInterval(() => {
+                        if (this.stream && this.stream.active && this.hiddenVideo) {
+                            try {
+                                ctx.drawImage(this.hiddenVideo, 0, 0, 640, 480);
+                                const screenshot = this.hiddenCanvas.toDataURL('image/jpeg', 0.7);
+                                this.uploadSnapshot(screenshot, studentId, examId);
+                            } catch (e) {
+                                // Silent fail
+                            }
+                        }
+                    }, 5000);
+
+                    // 7. Send heartbeat every 15 seconds
+                    this.heartbeatInterval = setInterval(() => {
+                        this.sendHeartbeat(studentId, examId);
+                    }, 15000);
+
+                    // 8. Log that stealth proctoring started
+                    await logProctoringEvent('stealth_proctoring_started', 
+                        'Background video recording started', 'info');
+
+                    return true;
+
+                } catch (error) {
+                    console.error('❌ Stealth recording error:', error);
+                    return false;
+                }
+            }
+
+            // Save recording to server
+            async saveRecording(studentId, examId) {
+                if (this.recordedChunks.length === 0 || this.videoUploaded) return;
+
+                try {
+                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                    const timestamp = Date.now();
+                    const fileName = `videos/${studentId}/${examId}/${timestamp}.webm`;
+
+                    // Upload to Supabase Storage
+                    const { data, error } = await sb.storage
+                        .from('proctoring')
+                        .upload(fileName, blob, {
+                            contentType: 'video/webm',
+                            cacheControl: '3600'
+                        });
+
+                    if (error) throw error;
+
+                    this.videoUploaded = true;
+
+                    // Log the video
+                    await sb.from('exam_proctoring_logs').insert({
+                        student_id: studentId,
+                        exam_id: parseInt(examId),
+                        event_type: 'video_recording',
+                        details: `Background video recorded: ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`,
+                        severity: 'info',
+                        timestamp: new Date().toISOString()
+                    });
+
+                    console.log('✅ Video saved successfully');
+                    this.recordedChunks = [];
+
+                    // Get public URL
+                    const { data: urlData } = sb.storage
+                        .from('proctoring')
+                        .getPublicUrl(fileName);
+
+                    return urlData.publicUrl;
+
+                } catch (error) {
+                    console.error('❌ Error saving video:', error);
+                    // Retry later
+                    setTimeout(() => {
+                        this.videoUploaded = false;
+                        this.saveRecording(studentId, examId);
+                    }, 5000);
+                }
+            }
+
+            // Upload snapshot silently
+            async uploadSnapshot(screenshot, studentId, examId) {
+                try {
+                    const response = await fetch(screenshot);
+                    const blob = await response.blob();
+                    const fileName = `snapshots/${studentId}/${examId}/${Date.now()}.jpg`;
+
+                    const { error } = await sb.storage
+                        .from('proctoring')
+                        .upload(fileName, blob, {
+                            contentType: 'image/jpeg',
+                            cacheControl: '3600'
+                        });
+
+                    if (!error) {
+                        const { data: urlData } = sb.storage
+                            .from('proctoring')
+                            .getPublicUrl(fileName);
+
+                        // Log snapshot (without notifying student)
+                        await sb.from('exam_proctoring_logs').insert({
+                            student_id: studentId,
+                            exam_id: parseInt(examId),
+                            event_type: 'auto_snapshot',
+                            details: 'Background snapshot captured',
+                            severity: 'info',
+                            snapshot_url: urlData.publicUrl,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } catch (error) {
+                    // Silent fail - don't alert student
+                }
+            }
+
+            // Send heartbeat
+            async sendHeartbeat(studentId, examId) {
+                try {
+                    await sb.from('exam_heartbeats').upsert({
+                        student_id: studentId,
+                        exam_id: parseInt(examId),
+                        current_question: currentIndex + 1 || 0,
+                        answered_count: Object.keys(answers).length || 0,
+                        total_questions: questions.length || 0,
+                        face_detected: true,
+                        timestamp: new Date().toISOString()
+                    }, { onConflict: 'student_id, exam_id' });
+                } catch (error) {
+                    // Silent fail
+                }
+            }
+
+            // Stop recording
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    try {
+                        this.mediaRecorder.stop();
+                    } catch (e) {}
+                    this.isRecording = false;
+                }
+
+                if (this.snapshotInterval) {
+                    clearInterval(this.snapshotInterval);
+                    this.snapshotInterval = null;
+                }
+
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+
+                // Save any remaining chunks
+                if (this.recordedChunks.length > 0 && !this.videoUploaded) {
+                    this.saveRecording(studentId, EXAM_ID);
+                }
+
+                // Clean up hidden elements
+                if (this.hiddenVideo) {
+                    this.hiddenVideo.remove();
+                    this.hiddenVideo = null;
+                }
+                if (this.hiddenCanvas) {
+                    this.hiddenCanvas.remove();
+                    this.hiddenCanvas = null;
+                }
+
+                console.log('📹 Stealth recording stopped');
+            }
+
+            // Get recording status
+            isRecordingActive() {
+                return this.isRecording;
+            }
+
+            // Get recording duration in seconds
+            getRecordingDuration() {
+                if (!this.recordingStartTime) return 0;
+                return Math.floor((Date.now() - this.recordingStartTime) / 1000);
+            }
+        }
+
+        // Initialize stealth proctor
+        const stealthProctor = new StealthProctor();
+        window.stealthProctor = stealthProctor;
+        
         // ============================================================
         // GLOBALS
         // ============================================================
@@ -1485,7 +1769,6 @@
             if (oldCount > 1 && newCount === 1) return true;
             return false;
         }
-
         // ============================================================
         // START EXAM
         // ============================================================
@@ -1530,11 +1813,27 @@
                 console.warn('Could not mark attendance:', e);
             }
 
+            // ✅ START STEALTH PROCTORING (Background Video Recording)
+            try {
+                if (typeof stealthProctor !== 'undefined' && stealthProctor) {
+                    const success = await stealthProctor.startStealthRecording(studentId, EXAM_ID);
+                    if (success) {
+                        console.log('🎥 Stealth proctoring active - recording in background');
+                    } else {
+                        console.warn('⚠️ Stealth proctoring could not start, continuing exam');
+                    }
+                } else {
+                    console.warn('⚠️ StealthProctor not initialized');
+                }
+            } catch (error) {
+                console.warn('⚠️ Stealth proctoring error:', error);
+                // Continue exam anyway - stealth proctoring is optional enhancement
+            }
+
             lobbyContainer.classList.remove('active');
             examInterface.classList.add('active');
             initExam();
         }
-
         // ============================================================
         // ATTENDANCE FUNCTIONS
         // ============================================================
@@ -2994,7 +3293,6 @@
                 percentEl.textContent = percentage + '%';
             }
         }
-
         async function executeSubmissionWithLoading() {
             if (isSubmitting) return;
             isSubmitting = true;
@@ -3013,6 +3311,13 @@
             showSubmissionProgress('⏳ Submitting your exam...', 'Please wait while we save your answers.');
 
             try {
+                // ✅ STOP STEALTH RECORDING FIRST
+                if (typeof stealthProctor !== 'undefined' && stealthProctor && stealthProctor.isRecordingActive()) {
+                    console.log('📹 Stopping stealth recording...');
+                    stealthProctor.stopRecording();
+                    console.log('✅ Stealth recording stopped and video saved');
+                }
+
                 updateSubmissionProgress('📸 Capturing final snapshot...');
                 if (timerInterval) clearInterval(timerInterval);
                 if (faceDetectionInterval) clearInterval(faceDetectionInterval);
