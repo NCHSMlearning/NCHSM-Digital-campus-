@@ -5973,7 +5973,7 @@ function renderGradesTable() {
             <td style="padding: 10px; text-align: center;">${grade.min_score}%</td>
             <td style="padding: 10px; text-align: center;">${grade.max_score}%</td>
             <td style="padding: 10px; text-align: center; font-weight: bold;">${grade.points || 0}</td>
-            <td style="padding: 10px;">${escapeHtml(grade.description || '-')}</td>
+           <td style="padding: 10px;">${escapeHtml(grade.comment || grade.description || '-')}</td>
             <td style="padding: 10px; text-align: center;">
                 <span class="badge ${statusClass}" style="padding: 4px 10px; border-radius: 12px;">${statusText}</span>
             </td>
@@ -6053,7 +6053,7 @@ async function addGrade() {
     const minScore = parseFloat(document.getElementById('grade_min_score').value);
     const maxScore = parseFloat(document.getElementById('grade_max_score').value);
     const points = parseInt(document.getElementById('grade_points').value) || 0;
-    const description = document.getElementById('grade_description').value.trim();
+    const comment = document.getElementById('grade_comment').value.trim();
     const status = document.getElementById('grade_status').value;
     
     if (!grade || isNaN(minScore) || isNaN(maxScore)) {
@@ -6140,7 +6140,7 @@ async function updateGrade(gradeId) {
     const minScore = parseFloat(document.getElementById('grade_min_score').value);
     const maxScore = parseFloat(document.getElementById('grade_max_score').value);
     const points = parseInt(document.getElementById('grade_points').value) || 0;
-    const description = document.getElementById('grade_description').value.trim();
+   const comment = document.getElementById('grade_comment').value.trim();
     const status = document.getElementById('grade_status').value;
     
     if (!grade || isNaN(minScore) || isNaN(maxScore)) {
