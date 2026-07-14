@@ -5838,7 +5838,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
 // ============================================
 // 📋 ATTENDANCE SHEET FUNCTIONS
 // ============================================
-// Load attendance sheet - PERMANENT FIX
+// Load attendance sheet - WITH EXAM NAMES
 async function loadAttendanceSheet() {
     const examId = document.getElementById('attendanceExamFilter')?.value;
     const date = document.getElementById('attendanceDateFilter')?.value;
@@ -5889,7 +5889,7 @@ async function loadAttendanceSheet() {
             attendanceRecords = allData || [];
         }
 
-        // Get exam names
+        // ✅ FIX: Get exam names from the exams table
         if (attendanceRecords.length > 0) {
             const examIds = [...new Set(attendanceRecords.map(r => r.exam_id).filter(id => id))];
             if (examIds.length > 0) {
@@ -5899,8 +5899,11 @@ async function loadAttendanceSheet() {
                     .in('id', examIds);
                 
                 const examMap = {};
-                exams?.forEach(e => { examMap[e.id] = e.exam_name; });
+                exams?.forEach(e => { 
+                    examMap[e.id] = e.exam_name || 'Exam ' + e.id; 
+                });
                 
+                // ✅ Add exam_name to each record
                 attendanceRecords = attendanceRecords.map(r => ({
                     ...r,
                     exam_name: examMap[r.exam_id] || 'Exam ' + r.exam_id
@@ -5942,6 +5945,7 @@ async function loadAttendanceSheet() {
 }
 
 // Render attendance table - WITH KENYA TIME + RECORDINGS BUTTON
+// Render attendance table - WITH EXAM NAMES
 function renderAttendanceTable(data) {
     const tbody = document.getElementById('attendanceBody');
     const table = document.getElementById('attendanceTable');
@@ -5976,10 +5980,10 @@ function renderAttendanceTable(data) {
                               record.status === 'signed_in' ? '📋 Signed In' :
                               record.status === 'in_progress' ? '⏳ In Progress' : '❌ Absent';
 
-        // ✅ FIX: Use Kenya time
+        // ✅ Use Kenya time
         const signInTime = record.sign_in_time ? formatKenyaTime(record.sign_in_time) : '--';
-        const submissionTime = record.submission_time ? formatKenyaTime(record.submission_time) : '--';
         
+        // ✅ Use exam_name from the record (already fetched)
         const examName = record.exam_name || 'Exam ' + record.exam_id;
         
         // Video feed HTML
@@ -6018,13 +6022,12 @@ function renderAttendanceTable(data) {
             `;
         }
 
-        // ✅ UPDATED: Added "Recordings" button
         html += `
             <tr>
                 <td>${index + 1}</td>
                 <td><strong>${record.student_name || 'Unknown'}</strong></td>
                 <td>${record.student_reg_number || 'N/A'}</td>
-                <td>${examName}</td>
+                <td><strong>${examName}</strong></td>
                 <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
                 <td>${signInTime}</td>
                 <td>${videoHtml}</td>
@@ -6750,7 +6753,7 @@ async function viewStudentAttendance(studentId, examId) {
     }
 }
 
-// Show attendance detail modal - WITH SNAPSHOTS
+// Show attendance detail modal - WITH SNAPSHOTS & EXAM NAME
 function showAttendanceDetailModal(studentId, records, snapshots) {
     const modal = document.createElement('div');
     modal.id = 'attendanceDetailModal';
@@ -6771,7 +6774,10 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
 
     const record = records[0] || {};
 
-    // Build snapshots HTML
+    // ✅ Get exam name from record or fetch it
+    const examName = record.exam_name || 'Exam ' + record.exam_id;
+
+    // Build snapshots HTML with Kenya time
     let snapshotsHtml = '';
     if (snapshots && snapshots.length > 0) {
         snapshotsHtml = `
@@ -6786,7 +6792,7 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                              onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:#94A3B8;\\'><i class=\\'fas fa-image\\' style=\\'font-size:2rem;display:block;\\'></i>No image</div>'">
                         <div style="padding:6px 10px; font-size:0.7rem; background:white; display:flex; justify-content:space-between; align-items:center;">
                             <span>${s.event_type || 'Snapshot'}</span>
-                            <span style="color:#64748B;">${new Date(s.timestamp).toLocaleTimeString()}</span>
+                            <span style="color:#64748B;">${formatKenyaTime(s.timestamp)}</span>
                         </div>
                         ${s.event_type === 'multiple_faces_detected' ? 
                             '<div style="position:absolute; top:4px; right:4px; background:#DC2626; color:white; padding:2px 8px; border-radius:4px; font-size:0.6rem; font-weight:600;">🚨 VIOLATION</div>' : 
@@ -6826,7 +6832,7 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                 <div><strong>👤 Student ID:</strong> ${studentId}</div>
                 <div><strong>📛 Name:</strong> ${record.student_name || 'Unknown'}</div>
                 <div><strong>🆔 Registration:</strong> ${record.student_reg_number || 'N/A'}</div>
-                <div><strong>📝 Exam:</strong> ${record.exam_name || 'Exam ' + record.exam_id}</div>
+                <div><strong>📝 Exam:</strong> ${examName}</div>
             </div>
 
             <h3 style="color:#0A3D62; margin-bottom:12px;">📋 Attendance History</h3>
