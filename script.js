@@ -4059,14 +4059,6 @@ function getExamTypeLabel(examType) {
     return labels[examType] || 'Assessment';
 }
 
-
-function showFeedback(message, type = 'info') {
-    const colors = {
-        success: '#059669',
-        error: '#DC2626',
-        warning: '#F59E0B',
-        info: '#3B82F6'
-    };
     
     const feedback = document.createElement('div');
     feedback.style.cssText = `
@@ -4086,16 +4078,9 @@ function showFeedback(message, type = 'info') {
     }, 4000);
 }
 
-function setButtonLoading(button, isLoading, originalText) {
-    if (!button) return;
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<div class="loading-spinner" style="width:20px;height:20px;display:inline-block;"></div> Loading...';
-    } else {
-        button.disabled = false;
-        button.innerHTML = originalText || 'Submit';
-    }
-}
+
+
+
 
 // ========== POPULATE COURSE SELECTS ==========
 async function populateExamCourseSelects(courses = null) {
