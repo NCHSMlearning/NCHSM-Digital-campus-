@@ -5941,7 +5941,7 @@ async function loadAttendanceSheet() {
     if (loadingDiv) loadingDiv.style.display = 'none';
 }
 
-// Render attendance table
+// Render attendance table - WITH KENYA TIME
 function renderAttendanceTable(data) {
     const tbody = document.getElementById('attendanceBody');
     const table = document.getElementById('attendanceTable');
@@ -5976,7 +5976,11 @@ function renderAttendanceTable(data) {
                               record.status === 'signed_in' ? '📋 Signed In' :
                               record.status === 'in_progress' ? '⏳ In Progress' : '❌ Absent';
 
-        const signInTime = record.sign_in_time ? new Date(record.sign_in_time).toLocaleString() : '--';
+        // ✅ FIX: Use Kenya time
+        const signInTime = record.sign_in_time ? formatKenyaTime(record.sign_in_time) : '--';
+        const submissionTime = record.submission_time ? formatKenyaTime(record.submission_time) : '--';
+        
+        const examName = record.exam_name || 'Exam ' + record.exam_id;
         
         // Video feed HTML
         let videoHtml = '';
@@ -6019,7 +6023,7 @@ function renderAttendanceTable(data) {
                 <td>${index + 1}</td>
                 <td><strong>${record.student_name || 'Unknown'}</strong></td>
                 <td>${record.student_reg_number || 'N/A'}</td>
-                <td>${record.exam_name || 'Exam ' + record.exam_id}</td>
+                <td>${examName}</td>
                 <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
                 <td>${signInTime}</td>
                 <td>${videoHtml}</td>
@@ -6043,7 +6047,6 @@ function renderAttendanceTable(data) {
     const summaryBar = document.getElementById('attendanceSummaryBar');
     if (summaryBar) summaryBar.style.display = 'flex';
 
-    // Start video streams for live students
     setTimeout(() => {
         const liveIds = getLiveStudents(data);
         liveIds.forEach(id => {
@@ -6051,7 +6054,6 @@ function renderAttendanceTable(data) {
         });
     }, 500);
 
-    // Update live count
     const liveCountEl = document.getElementById('attSummaryLive');
     if (liveCountEl) liveCountEl.textContent = liveStudents.length;
     
@@ -6328,6 +6330,7 @@ async function viewStudentAttendance(studentId, examId) {
 }
 
 // Show attendance detail modal
+// Show attendance detail modal - WITH KENYA TIME
 function showAttendanceDetailModal(studentId, records) {
     const modal = document.createElement('div');
     modal.id = 'attendanceDetailModal';
@@ -6387,8 +6390,8 @@ function showAttendanceDetailModal(studentId, records) {
                                             ${r.status || 'Unknown'}
                                         </span>
                                     </td>
-                                    <td style="padding:8px 12px;">${r.sign_in_time ? new Date(r.sign_in_time).toLocaleTimeString() : '--'}</td>
-                                    <td style="padding:8px 12px;">${r.submission_time ? new Date(r.submission_time).toLocaleTimeString() : '--'}</td>
+                                    <td style="padding:8px 12px;">${r.sign_in_time ? formatKenyaTime(r.sign_in_time) : '--'}</td>
+                                    <td style="padding:8px 12px;">${r.submission_time ? formatKenyaTime(r.submission_time) : '--'}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -6412,7 +6415,6 @@ function showAttendanceDetailModal(studentId, records) {
 
     document.body.appendChild(modal);
 }
-
 // Export attendance to CSV
 function exportAttendanceCSV() {
     if (!attendanceData || attendanceData.length === 0) {
