@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH LOGIN POINTS
+// dashboard.js - COMPLETE WORKING VERSION WITH LOGIN POINTS & FIXED LEADERBOARD
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -22,7 +22,7 @@ class DashboardModule {
             nextExam: null,
             reviews: { total: 0, avg: 0, pending: 0 },
             newsletter: { subscribed: false, latest: null },
-            login: { count: 0, points: 0 }  // ✅ LOGIN METRICS
+            login: { count: 0, points: 0 }
         };
         
         this.cacheElements();
@@ -391,26 +391,9 @@ class DashboardModule {
             
             if (error) throw error;
             
-            // ✅ GET LOGIN COUNT
-            let loginCount = 0;
-            try {
-                const { data: profileData, error: profileError } = await this.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('login_count')
-                    .eq('user_id', this.userId)
-                    .single();
-                
-                if (profileError) {
-                    console.warn('⚠️ Could not get login count:', profileError);
-                } else {
-                    loginCount = profileData?.login_count || 0;
-                    console.log(`📊 Login count: ${loginCount}`);
-                }
-            } catch (e) {
-                console.warn('⚠️ Error fetching login count:', e);
-            }
-            
-            const loginPoints = loginCount * 10;
+            // ✅ GET LOGIN COUNT FROM RPC (already included)
+            const loginCount = data?.login?.count || 0;
+            const loginPoints = data?.login?.points || 0;
             
             // Update metrics
             this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
@@ -1059,6 +1042,7 @@ class DashboardModule {
         }
     }
     
+    // ✅ UPDATED LEADERBOARD - Only counts verified attendance + exam grades
     async loadLeaderboardData(period = 'all') {
         const container = document.getElementById('leaderboard-container');
         if (!container) return;
@@ -1091,27 +1075,40 @@ class DashboardModule {
             
             const studentIds = students.map(s => s.id);
             
+            // ✅ ONLY get verified attendance
             const { data: allAttendance } = await this.sb
                 .from('geo_attendance_logs')
                 .select('student_id, is_verified')
                 .in('student_id', studentIds);
             
+            // ✅ Get NurseIQ progress
             const { data: allProgress } = await this.sb
                 .from('user_progress')
                 .select('user_id, progress_data')
                 .in('user_id', studentIds);
             
+            // ✅ Get NurseIQ attempts
             const { data: allAttempts } = await this.sb
                 .from('nurseiq_attempts')
                 .select('student_id, score, total_questions')
                 .in('student_id', studentIds);
             
+            // ✅ Get Exam Grades
+            const { data: allExamGrades } = await this.sb
+                .from('exam_grades')
+                .select('student_id, total_score')
+                .in('student_id', studentIds);
+            
             const scoredStudents = students.map(student => {
+                // ✅ 1. Login Points (10 per login)
                 const loginPoints = (student.login_count || 0) * 10;
+                
+                // ✅ 2. Attendance Points (ONLY verified attendance)
                 const studentAttendance = allAttendance?.filter(a => a.student_id === student.id) || [];
                 const verifiedCount = studentAttendance.filter(a => a.is_verified === true).length || 0;
                 const attendancePoints = verifiedCount * 10;
                 
+                // ✅ 3. NurseIQ Points (1 per question)
                 const progress = allProgress?.find(p => p.user_id === student.id);
                 let nurseIQPoints = 0;
                 if (progress?.progress_data?.answers) {
@@ -1123,10 +1120,24 @@ class DashboardModule {
                 attempts.forEach(a => { attemptPoints += a.score || 0; });
                 if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
                 
-                const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
-                return { ...student, loginPoints, attendancePoints, nurseIQPoints, totalPoints };
+                // ✅ 4. Exam Points (total_score from exam_grades)
+                const examGrades = allExamGrades?.filter(g => g.student_id === student.id) || [];
+                const examPoints = examGrades.reduce((sum, grade) => sum + (grade.total_score || 0), 0);
+                
+                // ✅ TOTAL = All 4 sources
+                const totalPoints = loginPoints + attendancePoints + nurseIQPoints + examPoints;
+                
+                return { 
+                    ...student, 
+                    loginPoints, 
+                    attendancePoints, 
+                    nurseIQPoints, 
+                    examPoints,
+                    totalPoints 
+                };
             });
             
+            // Sort by total points (highest first)
             scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
             const topStudents = scoredStudents.slice(0, 10);
             
@@ -1134,19 +1145,27 @@ class DashboardModule {
                 const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
                 const name = student.full_name?.split(' ')[0] || 'Student';
                 return `
-                    <div class="leader-slim">
-                        <span class="rank">${rankIcon}</span>
-                        <span class="name">${this.escapeHtml(name)}</span>
-                        <span class="pts">${student.totalPoints} pts</span>
+                    <div class="leader-slim" style="
+                        display: flex; 
+                        align-items: center; 
+                        gap: 12px; 
+                        padding: 6px 12px; 
+                        border-radius: 8px;
+                        background: ${index === 0 ? '#ede9fe' : 'transparent'};
+                    ">
+                        <span class="rank" style="font-weight: 700; min-width: 24px; text-align: center;">${rankIcon}</span>
+                        <span class="name" style="flex: 1; font-weight: 500;">${this.escapeHtml(name)}</span>
+                        <span class="pts" style="font-weight: 700; color: #4C1D95;">${student.totalPoints} pts</span>
                     </div>
                 `;
             }).join('');
             
-            console.log(`✅ Leaderboard loaded with ${topStudents.length} students`);
+            console.log(`✅ Leaderboard loaded with ${topStudents.length} students (${period} period)`);
+            console.log('📊 Points breakdown: Login + Verified Attendance + NurseIQ + Exam Grades');
             
         } catch (error) {
             console.error('Leaderboard error:', error);
-            container.innerHTML = '<div class="error-slim">Failed to load</div>';
+            container.innerHTML = '<div class="error-slim">Failed to load leaderboard</div>';
         }
     }
     
@@ -1467,4 +1486,4 @@ window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 window.checkLoginPoints = () => dashboardModule?.checkLoginPoints();
 
-console.log('✅ Dashboard module ready with Login Points!');
+console.log('✅ Dashboard module ready with Login Points & Fixed Leaderboard!');
