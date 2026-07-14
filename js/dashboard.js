@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH LOGIN POINTS & FIXED LEADERBOARD
+// dashboard.js - COMPLETE WORKING VERSION WITH DAILY STREAK & FIXED LEADERBOARD
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -22,7 +22,7 @@ class DashboardModule {
             nextExam: null,
             reviews: { total: 0, avg: 0, pending: 0 },
             newsletter: { subscribed: false, latest: null },
-            login: { count: 0, points: 0 }
+            login: { count: 0, points: 0, streak: 0 }  // ✅ Added streak
         };
         
         this.cacheElements();
@@ -117,11 +117,9 @@ class DashboardModule {
             headerTime: document.getElementById('header-time'),
             dashboardLastUpdated: document.getElementById('dashboard-last-updated'),
             dashboardStudentId: document.getElementById('dashboard-student-id'),
-            // ✅ LOGIN POINTS ELEMENTS
-            loginPoints: document.getElementById('dashboard-login-points'),
-            loginCount: document.getElementById('dashboard-login-count'),
-            loginPointsDisplay: document.getElementById('login-points-display'),
-            loginCountDisplay: document.getElementById('login-count-display')
+            // ✅ DAILY STREAK ELEMENTS
+            dailyStreakDisplay: document.getElementById('daily-streak-display'),
+            dailyStreakValue: document.getElementById('daily-streak-value')
         };
     }
     
@@ -138,7 +136,7 @@ class DashboardModule {
             { selector: '.mini-card[data-tab="hub-exam-card"]', tabId: 'hub-exam-card' },
             { selector: '.mini-card[data-tab="reviews"]', tabId: 'reviews' },
             { selector: '.mini-card[data-tab="newsletter"]', tabId: 'newsletter' },
-            { selector: '.mini-card[data-tab="login"]', tabId: 'profile' },
+            { selector: '.mini-card[data-tab="streak"]', tabId: 'profile' },
             { selector: '.action-btn[data-tab="resources"]', tabId: 'resources' },
             { selector: '.action-btn[data-tab="profile"]', tabId: 'profile' },
             { selector: '.next-exam-widget', tabId: 'cats' },
@@ -188,7 +186,7 @@ class DashboardModule {
             'dashboard': 'dashboard',
             'reviews': 'reviews',
             'newsletter': 'newsletter',
-            'login': 'profile'
+            'streak': 'profile'
         };
         
         const tabName = tabMap[section] || section;
@@ -359,6 +357,75 @@ class DashboardModule {
             });
     }
     
+    // ✅ Calculate Daily Streak
+    async calculateDailyStreak() {
+        try {
+            if (!this.userId || !this.sb) return 0;
+            
+            const { data: sessions, error } = await this.sb
+                .from('user_sessions')
+                .select('login_time')
+                .eq('user_id', this.userId)
+                .order('login_time', { ascending: false });
+            
+            if (error) throw error;
+            
+            if (!sessions || sessions.length === 0) return 0;
+            
+            let streak = 0;
+            let currentDate = this.getKenyaNow();
+            currentDate.setHours(0, 0, 0, 0);
+            
+            // Get unique login dates
+            const uniqueDates = [];
+            const seenDates = new Set();
+            
+            for (const session of sessions) {
+                const loginDate = new Date(session.login_time);
+                loginDate.setHours(0, 0, 0, 0);
+                const dateKey = loginDate.toISOString().split('T')[0];
+                
+                if (!seenDates.has(dateKey)) {
+                    seenDates.add(dateKey);
+                    uniqueDates.push(loginDate);
+                }
+            }
+            
+            // Sort dates in descending order (newest first)
+            uniqueDates.sort((a, b) => b - a);
+            
+            // Calculate consecutive days
+            for (let i = 0; i < uniqueDates.length; i++) {
+                const diffDays = Math.floor((currentDate - uniqueDates[i]) / (1000 * 60 * 60 * 24));
+                
+                if (i === 0) {
+                    // First date should be today or yesterday
+                    if (diffDays === 0 || diffDays === 1) {
+                        streak = 1;
+                    } else {
+                        break;
+                    }
+                } else {
+                    const prevDiff = Math.floor((currentDate - uniqueDates[i]) / (1000 * 60 * 60 * 24));
+                    const expectedDay = streak; // Should be consecutive
+                    
+                    if (prevDiff === expectedDay) {
+                        streak++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            
+            console.log(`🔥 Daily Streak: ${streak} days`);
+            return streak;
+            
+        } catch (error) {
+            console.error('Error calculating streak:', error);
+            return 0;
+        }
+    }
+    
     async loadAllMetrics() {
         console.log('📊 Loading dashboard metrics...');
         
@@ -391,9 +458,12 @@ class DashboardModule {
             
             if (error) throw error;
             
-            // ✅ GET LOGIN COUNT FROM RPC (already included)
+            // ✅ GET LOGIN COUNT FROM RPC
             const loginCount = data?.login?.count || 0;
             const loginPoints = data?.login?.points || 0;
+            
+            // ✅ Calculate Daily Streak
+            const streak = await this.calculateDailyStreak();
             
             // Update metrics
             this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
@@ -416,10 +486,11 @@ class DashboardModule {
             const percent = (currentXP / maxXP) * 100;
             this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
             
-            // ✅ STORE LOGIN METRICS
-            this.metrics.login = { count: loginCount, points: loginPoints };
+            // ✅ STORE LOGIN METRICS WITH STREAK
+            this.metrics.login = { count: loginCount, points: loginPoints, streak: streak };
             
             console.log(`📊 Login Points: ${loginPoints} (${loginCount} logins × 10)`);
+            console.log(`🔥 Daily Streak: ${streak} days`);
             
             await this.loadReviewsSnapshot();
             await this.loadNewsletterSnapshot();
@@ -497,11 +568,12 @@ class DashboardModule {
                     .single();
                 
                 const loginCount = profileData?.login_count || 0;
-                this.metrics.login = { count: loginCount, points: loginCount * 10 };
-                console.log(`📊 Login count (fallback): ${loginCount}`);
+                const streak = await this.calculateDailyStreak();
+                this.metrics.login = { count: loginCount, points: loginCount * 10, streak: streak };
+                console.log(`📊 Login count (fallback): ${loginCount}, Streak: ${streak}`);
             } catch (e) {
                 console.warn('Could not fetch login count:', e);
-                this.metrics.login = { count: 0, points: 0 };
+                this.metrics.login = { count: 0, points: 0, streak: 0 };
             }
         }
         
@@ -1042,7 +1114,7 @@ class DashboardModule {
         }
     }
     
-    // ✅ UPDATED LEADERBOARD - Only counts verified attendance + exam grades
+    // ✅ UPDATED LEADERBOARD - Login points + Verified Attendance + Exam Grades + NurseIQ
     async loadLeaderboardData(period = 'all') {
         const container = document.getElementById('leaderboard-container');
         if (!container) return;
@@ -1313,18 +1385,12 @@ class DashboardModule {
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // ✅ DISPLAY LOGIN POINTS
-        if (this.elements.loginPoints) {
-            this.elements.loginPoints.innerText = m.login?.points || 0;
+        // ✅ DISPLAY DAILY STREAK
+        if (this.elements.dailyStreakDisplay) {
+            this.elements.dailyStreakDisplay.innerText = m.login?.streak || 0;
         }
-        if (this.elements.loginCount) {
-            this.elements.loginCount.innerText = m.login?.count || 0;
-        }
-        if (this.elements.loginPointsDisplay) {
-            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
-        }
-        if (this.elements.loginCountDisplay) {
-            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+        if (this.elements.dailyStreakValue) {
+            this.elements.dailyStreakValue.innerText = m.login?.streak || 0;
         }
         
         const rate = m.attendance.rate || 0;
@@ -1395,42 +1461,6 @@ class DashboardModule {
         this.showToast('🔄 Dashboard refreshed!', 1500);
     }
     
-    async checkLoginPoints() {
-        console.log('🔍 Checking login points...');
-        
-        if (!this.userId || !this.sb) {
-            console.warn('⚠️ No user or Supabase client');
-            return;
-        }
-        
-        try {
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('login_count')
-                .eq('user_id', this.userId)
-                .single();
-            
-            if (error) throw error;
-            
-            const count = data?.login_count || 0;
-            const points = count * 10;
-            
-            console.log(`📊 Login count: ${count}, Points: ${points}`);
-            
-            this.metrics.login = { count, points };
-            this.updateUIFromMetrics();
-            await this.loadXPMetrics();
-            
-            this.showToast(`🔄 Login points updated: ${points} (${count} logins × 10)`, 3000);
-            
-            return { count, points };
-        } catch (error) {
-            console.error('❌ Error checking login points:', error);
-            this.showToast('❌ Could not check login points', 2000);
-            return null;
-        }
-    }
-    
     showToast(message, duration = 2000) {
         let toast = document.getElementById('custom-toast');
         if (!toast) {
@@ -1484,6 +1514,5 @@ function initDashboardModule(supabaseClient) {
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
-window.checkLoginPoints = () => dashboardModule?.checkLoginPoints();
 
-console.log('✅ Dashboard module ready with Login Points & Fixed Leaderboard!');
+console.log('✅ Dashboard module ready with Daily Streak & Fixed Leaderboard!');
