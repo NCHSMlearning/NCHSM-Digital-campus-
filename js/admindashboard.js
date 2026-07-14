@@ -5941,7 +5941,7 @@ async function loadAttendanceSheet() {
     if (loadingDiv) loadingDiv.style.display = 'none';
 }
 
-// Render attendance table - WITH KENYA TIME
+// Render attendance table - WITH KENYA TIME + RECORDINGS BUTTON
 function renderAttendanceTable(data) {
     const tbody = document.getElementById('attendanceBody');
     const table = document.getElementById('attendanceTable');
@@ -6018,6 +6018,7 @@ function renderAttendanceTable(data) {
             `;
         }
 
+        // ✅ UPDATED: Added "Recordings" button
         html += `
             <tr>
                 <td>${index + 1}</td>
@@ -6028,14 +6029,19 @@ function renderAttendanceTable(data) {
                 <td>${signInTime}</td>
                 <td>${videoHtml}</td>
                 <td>
-                    <button class="btn-sm btn-info" onclick="viewStudentAttendance('${record.student_id}', '${record.exam_id}')">
-                        <i class="fas fa-eye"></i> Details
-                    </button>
-                    ${isLive ? `
-                        <button class="btn-sm btn-danger" onclick="stopLiveFeed('${record.student_id}')">
-                            <i class="fas fa-stop"></i>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                        <button class="btn-sm btn-info" onclick="viewStudentAttendance('${record.student_id}', '${record.exam_id}')">
+                            <i class="fas fa-eye"></i> Details
                         </button>
-                    ` : ''}
+                        <button class="btn-sm btn-success" onclick="viewStudentRecordings('${record.student_id}', '${record.exam_id}')" title="View Recordings">
+                            <i class="fas fa-video"></i> Recordings
+                        </button>
+                        ${isLive ? `
+                            <button class="btn-sm btn-danger" onclick="stopLiveFeed('${record.student_id}')">
+                                <i class="fas fa-stop"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 </td>
             </tr>
         `;
@@ -6060,7 +6066,6 @@ function renderAttendanceTable(data) {
     const liveStatEl = document.getElementById('attStatLive');
     if (liveStatEl) liveStatEl.textContent = liveStudents.length;
 }
-
 // Get live students from heartbeat data
 function getLiveStudents(attendanceData) {
     const inProgress = attendanceData.filter(r => r.status === 'in_progress');
@@ -6072,7 +6077,297 @@ function getLiveStudents(attendanceData) {
         return (now - lastActivity) < activeThreshold;
     }).map(r => r.student_id);
 }
+// ============================================
+// 📹 VIEW STUDENT RECORDINGS (Stealth Videos)
+// ============================================
 
+async function viewStudentRecordings(studentId, examId) {
+    try {
+        showToast('📹 Loading recordings...', 'info');
+        
+        // 1. Get student info
+        const { data: student, error: studentError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, student_id')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (studentError) throw studentError;
+        
+        // 2. Get exam info
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('exam_name')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError) throw examError;
+        
+        // 3. List videos from storage
+        const folderPath = `videos/${studentId}/${examId}/`;
+        const { data: files, error: storageError } = await sb.storage
+            .from('proctoring')
+            .list(folderPath);
+        
+        if (storageError) {
+            console.warn('Storage error:', storageError);
+            // Try to get videos from logs instead
+            const { data: logs } = await sb
+                .from('exam_proctoring_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .eq('event_type', 'video_recording')
+                .order('timestamp', { ascending: false });
+            
+            if (logs && logs.length > 0) {
+                showVideoModal(student, exam, logs, null);
+                return;
+            }
+            
+            showToast('No recordings found', 'warning');
+            return;
+        }
+        
+        // 4. Filter for video files
+        const videoFiles = files?.filter(f => 
+            f.name.endsWith('.webm') || 
+            f.name.endsWith('.mp4') || 
+            f.name.endsWith('.avi')
+        ) || [];
+        
+        if (videoFiles.length === 0) {
+            // Check logs for recordings
+            const { data: logs } = await sb
+                .from('exam_proctoring_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .eq('event_type', 'video_recording')
+                .order('timestamp', { ascending: false });
+            
+            if (logs && logs.length > 0) {
+                showVideoModal(student, exam, logs, null);
+                return;
+            }
+            
+            showToast('No recordings found for this student', 'warning');
+            return;
+        }
+        
+        // 5. Show videos in modal
+        showVideoModal(student, exam, null, videoFiles, folderPath);
+        
+    } catch (error) {
+        console.error('❌ Error loading recordings:', error);
+        showToast('Error loading recordings: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// 📹 SHOW VIDEO MODAL
+// ============================================
+
+function showVideoModal(student, exam, logs, files, folderPath) {
+    const modal = document.createElement('div');
+    modal.id = 'videoModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 100000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-y: auto;
+    `;
+    
+    let videosHtml = '';
+    
+    // Build from files (storage)
+    if (files && files.length > 0 && folderPath) {
+        videosHtml = files.map((file, index) => {
+            const url = sb.storage
+                .from('proctoring')
+                .getPublicUrl(folderPath + file.name).data.publicUrl;
+            
+            const fileSize = (file.metadata?.size || 0) / 1024 / 1024;
+            const sizeDisplay = fileSize > 0 ? `(${fileSize.toFixed(1)} MB)` : '';
+            
+            return `
+                <div class="video-item" style="background:#1a1a2e; border-radius:12px; overflow:hidden; margin-bottom:16px; border:1px solid #333;">
+                    <video controls style="width:100%; max-height:500px; background:#000; display:block;">
+                        <source src="${url}" type="video/webm">
+                        <source src="${url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div style="padding:12px 16px; color:white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#1a1a2e;">
+                        <div>
+                            <span style="font-weight:600;">📹 Recording ${index + 1}</span>
+                            <span style="color:#94A3B8; font-size:0.8rem; margin-left:12px;">${sizeDisplay}</span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <span style="color:#94A3B8; font-size:0.7rem;">${new Date(file.created_at || Date.now()).toLocaleString()}</span>
+                            <button onclick="window.open('${url}', '_blank')" 
+                                    style="padding:4px 12px; background:#3B82F6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.7rem;">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <button onclick="this.closest('.video-item').querySelector('video').requestFullscreen()" 
+                                    style="padding:4px 12px; background:#8B5CF6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.7rem;">
+                                <i class="fas fa-expand"></i> Fullscreen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } 
+    // Build from logs (if storage not available)
+    else if (logs && logs.length > 0) {
+        videosHtml = logs.map((log, index) => {
+            // Try to extract URL from details
+            let url = null;
+            const details = log.details || '';
+            const urlMatch = details.match(/https?:\/\/[^\s]+/);
+            if (urlMatch) {
+                url = urlMatch[0];
+            }
+            
+            return `
+                <div style="background:#1a1a2e; border-radius:12px; overflow:hidden; margin-bottom:16px; border:1px solid #333; padding:20px; text-align:center;">
+                    <div style="color:#94A3B8; margin-bottom:12px;">
+                        <i class="fas fa-video" style="font-size:3rem; display:block; margin-bottom:8px; color:#4ADE80;"></i>
+                        <p style="margin:4px 0;"><strong>Recording ${index + 1}</strong></p>
+                        <p style="font-size:0.8rem; color:#64748B;">${log.details || 'Video recording'}</p>
+                        <p style="font-size:0.7rem; color:#64748B;">${formatKenyaTime(log.timestamp)}</p>
+                    </div>
+                    ${url ? `
+                        <button onclick="window.open('${url}', '_blank')" 
+                                style="padding:8px 24px; background:#3B82F6; color:white; border:none; border-radius:8px; cursor:pointer;">
+                            <i class="fas fa-play"></i> Open Video
+                        </button>
+                    ` : `
+                        <span style="color:#94A3B8; font-size:0.8rem;">Video file not available in storage</span>
+                    `}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    if (!videosHtml) {
+        videosHtml = `
+            <div style="text-align:center; padding:40px; color:#94A3B8;">
+                <i class="fas fa-video-slash" style="font-size:4rem; display:block; margin-bottom:16px;"></i>
+                <p>No recordings found for this student</p>
+                <p style="font-size:0.8rem;">Videos are recorded during exams with stealth proctoring</p>
+            </div>
+        `;
+    }
+    
+    const studentName = student?.full_name || 'Unknown Student';
+    const studentIdDisplay = student?.student_id || 'N/A';
+    const examName = exam?.exam_name || 'Exam ' + examId;
+    
+    modal.innerHTML = `
+        <div style="max-width:900px; width:100%; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; color:white;">
+                <div>
+                    <h2 style="margin:0; display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-video" style="color:#4ADE80;"></i>
+                        Recordings
+                    </h2>
+                    <p style="margin:4px 0 0; color:#94A3B8; font-size:0.9rem;">
+                        ${studentName} (${studentIdDisplay}) - ${examName}
+                    </p>
+                </div>
+                <button onclick="document.getElementById('videoModal').remove()" 
+                        style="background:rgba(255,255,255,0.1); color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:1.5rem; cursor:pointer;">
+                    &times;
+                </button>
+            </div>
+            
+            <div style="color:#94A3B8; font-size:0.8rem; margin-bottom:16px;">
+                <i class="fas fa-info-circle"></i> 
+                ${files ? `${files.length} video(s) found in storage` : `${logs ? logs.length : 0} video(s) found in logs`}
+            </div>
+            
+            <div class="videos-container">
+                ${videosHtml}
+            </div>
+            
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #333; padding-top:16px;">
+                <button onclick="downloadAllVideos('${studentId}', '${examId}')" 
+                        style="padding:8px 20px; background:#38A169; color:white; border:none; border-radius:8px; cursor:pointer;">
+                    <i class="fas fa-download"></i> Download All
+                </button>
+                <button onclick="document.getElementById('videoModal').remove()" 
+                        style="padding:8px 20px; background:#DC2626; color:white; border:none; border-radius:8px; cursor:pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// ============================================
+// 📥 DOWNLOAD ALL VIDEOS
+// ============================================
+
+async function downloadAllVideos(studentId, examId) {
+    try {
+        showToast('📥 Preparing download...', 'info');
+        
+        const folderPath = `videos/${studentId}/${examId}/`;
+        const { data: files, error } = await sb.storage
+            .from('proctoring')
+            .list(folderPath);
+        
+        if (error || !files || files.length === 0) {
+            showToast('No videos to download', 'warning');
+            return;
+        }
+        
+        const videoFiles = files.filter(f => 
+            f.name.endsWith('.webm') || 
+            f.name.endsWith('.mp4') || 
+            f.name.endsWith('.avi')
+        );
+        
+        if (videoFiles.length === 0) {
+            showToast('No video files found', 'warning');
+            return;
+        }
+        
+        // Download each video
+        let downloaded = 0;
+        for (const file of videoFiles) {
+            const url = sb.storage
+                .from('proctoring')
+                .getPublicUrl(folderPath + file.name).data.publicUrl;
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${studentId}_${examId}_${file.name}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            await new Promise(r => setTimeout(r, 500));
+            downloaded++;
+        }
+        
+        showToast(`✅ Downloaded ${downloaded} videos`, 'success');
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast('Error downloading videos', 'error');
+    }
+}
 // Start video stream for a student
 async function startVideoStream(studentId) {
     const videoElement = document.getElementById(`liveVideo_${studentId}`);
@@ -6753,16 +7048,18 @@ function startAttendanceAutoRefresh() {
     window.toggleAttendanceAutoRefresh = toggleAttendanceAutoRefresh;
     window.startAttendanceAutoRefresh = startAttendanceAutoRefresh;
 
-    // ============================================
-    // 📹 VIDEO FUNCTIONS - GLOBAL EXPOSURE
-    // ============================================
-    window.startVideoStream = startVideoStream;
-    window.getStudentVideoStream = getStudentVideoStream;
-    window.stopLiveFeed = stopLiveFeed;
-    window.toggleVideoMute = toggleVideoMute;
-    window.openFullVideo = openFullVideo;
-    window.requestLiveFeed = requestLiveFeed;
-    window.viewAllLiveVideos = viewAllLiveVideos;
-    window.getLiveStudents = getLiveStudents;
-
+   // ============================================
+// 📹 VIDEO FUNCTIONS - GLOBAL EXPOSURE
+// ============================================
+window.startVideoStream = startVideoStream;
+window.getStudentVideoStream = getStudentVideoStream;
+window.stopLiveFeed = stopLiveFeed;
+window.toggleVideoMute = toggleVideoMute;
+window.openFullVideo = openFullVideo;
+window.requestLiveFeed = requestLiveFeed;
+window.viewAllLiveVideos = viewAllLiveVideos;
+window.getLiveStudents = getLiveStudents;
+window.viewStudentRecordings = viewStudentRecordings;  
+window.showVideoModal = showVideoModal;              
+window.downloadAllVideos = downloadAllVideos;          
 })();
