@@ -2,19 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusNexus - Digital Learning Platform for Nursing & TVET Institutions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampusNexus - Next Generation Digital Learning Platform</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="CampusNexus is the ultimate digital learning platform for nursing, TVET, and higher learning institutions. Transform your institution today.">
+    <meta name="keywords" content="learning management system, digital learning, nursing education, TVET, campus management">
+    <meta name="author" content="Nakuru College of Health Sciences and Management">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="CampusNexus - Digital Learning Platform">
+    <meta property="og:description" content="One secure platform for learning, assessments, attendance, and academic management.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nakurucollegeofhealthelearning.site">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <style>
         /* ============================================================
-           ULTIMATE LANDING PAGE - VERSION 5.0
+           🔥 ULTIMATE AMAZING LANDING PAGE - VERSION 6.0
            ============================================================ */
         
         :root {
@@ -23,6 +34,7 @@
             --primary-light: #1a5a7a;
             --secondary: #10b981;
             --secondary-dark: #059669;
+            --secondary-light: #34d399;
             --gold: #d4af37;
             --gold-light: #f0d060;
             --white: #ffffff;
@@ -36,18 +48,21 @@
             --gray-700: #334155;
             --gray-800: #1e293b;
             --gray-900: #0f172a;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
             --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.15);
             --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+            --shadow-3xl: 0 35px 60px -15px rgba(0,0,0,0.3);
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 16px;
             --radius-xl: 24px;
             --radius-2xl: 32px;
+            --radius-3xl: 48px;
             --radius-full: 9999px;
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -66,6 +81,98 @@
             background: var(--white);
             line-height: 1.6;
             overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* ===== DARK MODE ===== */
+        body.dark-mode {
+            --white: #0f172a;
+            --gray-50: #1e293b;
+            --gray-100: #334155;
+            --gray-200: #475569;
+            --gray-300: #64748b;
+            --gray-400: #94a3b8;
+            --gray-500: #cbd5e1;
+            --gray-600: #e2e8f0;
+            --gray-700: #f1f5f9;
+            --gray-800: #f8fafc;
+            background: #0f172a;
+            color: #f8fafc;
+        }
+
+        body.dark-mode .navbar {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom-color: rgba(255,255,255,0.05);
+        }
+
+        body.dark-mode .nav-links a {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .nav-links a:hover {
+            color: #f8fafc;
+        }
+
+        body.dark-mode .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        body.dark-mode .hero p {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .feature-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        body.dark-mode .feature-card:hover {
+            border-color: var(--secondary);
+        }
+
+        body.dark-mode .step {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        body.dark-mode .testimonial-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        body.dark-mode .page-links-section {
+            background: #1e293b;
+            border-top-color: #334155;
+        }
+
+        body.dark-mode .page-links-section .link-group ul li a {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .page-links-section .link-group ul li a:hover {
+            color: #f8fafc;
+        }
+
+        body.dark-mode .modal-content {
+            background: #1e293b;
+        }
+
+        body.dark-mode .modal-content h2,
+        body.dark-mode .modal-content h3 {
+            color: #f8fafc;
+        }
+
+        body.dark-mode .modal-content p,
+        body.dark-mode .modal-content ul li {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .modal-content .contact-info {
+            background: #0f172a;
+        }
+
+        body.dark-mode .page-modal {
+            background: rgba(0,0,0,0.8);
         }
 
         .container {
@@ -74,11 +181,13 @@
             padding: 0 20px;
         }
 
-        /* ===== BUTTONS ===== */
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
         .btn-primary {
             background: var(--primary);
             color: #fff;
-            padding: 14px 32px;
+            padding: 14px 36px;
             border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 1rem;
@@ -87,18 +196,35 @@
             transition: var(--transition);
             display: inline-block;
             text-decoration: none;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(10, 61, 98, 0.3);
+        }
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: rotate(45deg) translateX(-100%);
+            transition: var(--transition);
+        }
+        .btn-primary:hover::after {
+            transform: rotate(45deg) translateX(100%);
         }
         .btn-primary:hover {
             background: var(--primary-dark);
             transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 8px 30px rgba(10, 61, 98, 0.4);
         }
-        .btn-primary i { margin-right: 8px; }
+        .btn-primary i { margin-right: 10px; }
 
         .btn-secondary {
             background: transparent;
             color: var(--primary);
-            padding: 14px 32px;
+            padding: 14px 36px;
             border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 1rem;
@@ -112,34 +238,35 @@
             background: var(--primary);
             color: #fff;
             transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 8px 30px rgba(10, 61, 98, 0.2);
         }
-        .btn-secondary i { margin-right: 8px; }
+        .btn-secondary i { margin-right: 10px; }
 
         .btn-gold {
             background: var(--gold);
             color: #fff;
-            padding: 14px 32px;
+            padding: 16px 40px;
             border-radius: var(--radius-full);
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 1.05rem;
             border: none;
             cursor: pointer;
             transition: var(--transition);
             display: inline-block;
             text-decoration: none;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
         }
         .btn-gold:hover {
             background: var(--gold-light);
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 35px rgba(212, 175, 55, 0.5);
         }
-        .btn-gold i { margin-right: 8px; }
+        .btn-gold i { margin-right: 10px; }
 
         .btn-green {
             background: var(--secondary);
             color: #fff;
-            padding: 14px 32px;
+            padding: 14px 36px;
             border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 1rem;
@@ -148,13 +275,14 @@
             transition: var(--transition);
             display: inline-block;
             text-decoration: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         .btn-green:hover {
             background: var(--secondary-dark);
             transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
         }
-        .btn-green i { margin-right: 8px; }
+        .btn-green i { margin-right: 10px; }
 
         .btn-outline-light {
             background: transparent;
@@ -162,7 +290,7 @@
             padding: 12px 28px;
             border-radius: var(--radius-full);
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             border: 2px solid rgba(255,255,255,0.3);
             cursor: pointer;
             transition: var(--transition);
@@ -175,7 +303,34 @@
             transform: translateY(-2px);
         }
 
-        /* ===== NAVBAR ===== */
+        /* ============================================================
+           THEME TOGGLE
+           ============================================================ */
+        .theme-toggle-btn {
+            background: var(--gray-200);
+            border: none;
+            border-radius: var(--radius-full);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .theme-toggle-btn:hover {
+            background: var(--gray-300);
+            transform: scale(1.05);
+        }
+        .theme-toggle-btn i {
+            font-size: 1.1rem;
+        }
+
+        /* ============================================================
+           NAVBAR
+           ============================================================ */
         .navbar {
             padding: 16px 0;
             background: rgba(255,255,255,0.95);
@@ -185,6 +340,7 @@
             top: 0;
             z-index: 1000;
             border-bottom: 1px solid rgba(226,232,240,0.5);
+            transition: background 0.3s ease;
         }
         .navbar .container {
             display: flex;
@@ -196,8 +352,12 @@
             font-weight: 800;
             color: var(--primary);
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .logo span { color: var(--secondary); }
+        .logo .logo-gold { color: var(--gold); }
         .logo small {
             font-size: 0.55rem;
             font-weight: 400;
@@ -207,7 +367,7 @@
         }
         .nav-links {
             display: flex;
-            gap: 28px;
+            gap: 32px;
             align-items: center;
             list-style: none;
         }
@@ -246,24 +406,60 @@
             border: none;
         }
 
-        /* ===== HERO ===== */
+        /* ============================================================
+           SCROLL PROGRESS BAR
+           ============================================================ */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--secondary), var(--gold));
+            z-index: 1001;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        /* ============================================================
+           HERO SECTION
+           ============================================================ */
         .hero {
-            padding: 100px 0 80px;
+            padding: 120px 0 80px;
             background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
             position: relative;
             overflow: hidden;
+            transition: background 0.3s ease;
         }
         .hero::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -20%;
+            top: -30%;
+            right: -10%;
             width: 600px;
             height: 600px;
-            background: radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
             border-radius: 50%;
             pointer-events: none;
+            animation: floatGlow 10s ease-in-out infinite;
         }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(212,175,55,0.06) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatGlow 15s ease-in-out infinite reverse;
+        }
+
+        @keyframes floatGlow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
+        }
+
         .hero .container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -272,14 +468,37 @@
             position: relative;
             z-index: 1;
         }
+        .hero .badge {
+            display: inline-block;
+            background: rgba(16,185,129,0.1);
+            color: var(--secondary);
+            padding: 6px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(16,185,129,0.2);
+        }
         .hero h1 {
-            font-size: 3.2rem;
+            font-size: 3.4rem;
             font-weight: 900;
             line-height: 1.1;
             margin-bottom: 20px;
         }
-        .hero h1 span { color: var(--secondary); }
-        .hero h1 .gold { color: var(--gold); }
+        .hero h1 .highlight { 
+            background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero h1 .gold { 
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .hero p {
             font-size: 1.15rem;
             color: var(--gray-600);
@@ -294,29 +513,34 @@
         }
         .hero-stats {
             display: flex;
-            gap: 40px;
-            margin-top: 40px;
+            gap: 48px;
+            margin-top: 48px;
+            padding-top: 32px;
+            border-top: 1px solid var(--gray-200);
         }
         .hero-stats .stat-item .number {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 800;
             color: var(--primary);
+            display: block;
         }
         .hero-stats .stat-item .label {
             font-size: 0.85rem;
             color: var(--gray-500);
         }
 
+        /* Hero Dashboard Mockup */
         .hero-image {
             background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            border-radius: var(--radius-xl);
+            border-radius: var(--radius-2xl);
             padding: 30px;
-            min-height: 360px;
+            min-height: 400px;
             display: flex;
             flex-direction: column;
-            box-shadow: var(--shadow-2xl);
+            box-shadow: var(--shadow-3xl);
             position: relative;
             overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
         }
         .hero-image::before {
             content: '';
@@ -326,9 +550,9 @@
             width: 200%;
             height: 200%;
             background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 50%);
-            animation: shimmer 20s infinite linear;
+            animation: shimmerRotate 25s infinite linear;
         }
-        @keyframes shimmer {
+        @keyframes shimmerRotate {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
@@ -338,31 +562,32 @@
             align-items: center;
             color: rgba(255,255,255,0.8);
             font-size: 0.8rem;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
             margin-bottom: 16px;
             position: relative;
             z-index: 1;
         }
         .hero-image .mockup-header .mockup-user {
-            background: rgba(255,255,255,0.1);
-            padding: 4px 14px;
+            background: rgba(255,255,255,0.08);
+            padding: 4px 16px;
             border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 0.7rem;
+            border: 1px solid rgba(255,255,255,0.05);
         }
         .hero-image .mockup-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 12px;
             flex: 1;
             position: relative;
             z-index: 1;
         }
         .hero-image .mockup-grid .card {
-            background: rgba(255,255,255,0.08);
-            padding: 14px 12px;
-            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            padding: 16px 12px;
+            border-radius: var(--radius-md);
             text-align: center;
             color: rgba(255,255,255,0.9);
             font-size: 0.7rem;
@@ -372,30 +597,73 @@
             justify-content: center;
             transition: var(--transition);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.04);
+            cursor: default;
         }
         .hero-image .mockup-grid .card:hover {
-            background: rgba(255,255,255,0.15);
-            transform: translateY(-2px);
+            background: rgba(255,255,255,0.12);
+            transform: translateY(-3px) scale(1.02);
         }
         .hero-image .mockup-grid .card i {
-            font-size: 1.3rem;
-            margin-bottom: 4px;
-            color: var(--gold);
+            font-size: 1.4rem;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .hero-image .mockup-grid .card .value {
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            color: #fff;
         }
         .hero-image .mockup-grid .card .label {
             font-size: 0.6rem;
-            opacity: 0.7;
+            opacity: 0.6;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* Floating Elements */
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .floating-element-1 {
+            width: 60px;
+            height: 60px;
+            background: rgba(212,175,55,0.08);
+            top: 10%;
+            right: 5%;
+            animation: floatAnim 8s ease-in-out infinite;
+        }
+        .floating-element-2 {
+            width: 100px;
+            height: 100px;
+            background: rgba(16,185,129,0.05);
+            bottom: 15%;
+            left: -3%;
+            animation: floatAnim 12s ease-in-out infinite reverse;
+        }
+        .floating-element-3 {
+            width: 40px;
+            height: 40px;
+            background: rgba(10,61,98,0.06);
+            top: 50%;
+            left: 50%;
+            animation: floatAnim 10s ease-in-out infinite 2s;
+        }
+
+        @keyframes floatAnim {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, -20px) scale(1.1); }
         }
 
         .trust-badges {
             display: flex;
-            gap: 24px;
-            margin-top: 32px;
+            gap: 28px;
+            margin-top: 36px;
             flex-wrap: wrap;
         }
         .trust-badges span {
@@ -404,23 +672,56 @@
             gap: 8px;
             font-size: 0.85rem;
             color: var(--gray-600);
+            font-weight: 500;
+            padding: 6px 14px;
+            background: var(--white);
+            border-radius: var(--radius-full);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            transition: var(--transition);
+        }
+        .trust-badges span:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--secondary);
         }
         .trust-badges i { color: var(--secondary); }
 
-        /* ===== FEATURES ===== */
+        /* ============================================================
+           FEATURES SECTION
+           ============================================================ */
         .features {
             padding: 100px 0;
             background: var(--white);
+            transition: background 0.3s ease;
         }
         .features .section-header {
             text-align: center;
             max-width: 700px;
             margin: 0 auto 60px;
         }
+        .features .section-header .subtitle-badge {
+            display: inline-block;
+            background: rgba(16,185,129,0.1);
+            color: var(--secondary);
+            padding: 4px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
         .features .section-header h2 {
-            font-size: 2.4rem;
+            font-size: 2.6rem;
             font-weight: 800;
             margin-bottom: 12px;
+        }
+        .features .section-header h2 span {
+            background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .features .section-header p {
             color: var(--gray-500);
@@ -440,6 +741,7 @@
             border: 1px solid var(--gray-200);
             position: relative;
             overflow: hidden;
+            cursor: default;
         }
         .feature-card::before {
             content: '';
@@ -448,34 +750,38 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--gold));
             opacity: 0;
             transition: var(--transition);
         }
         .feature-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-8px);
             box-shadow: var(--shadow-xl);
-            border-color: var(--primary);
+            border-color: var(--secondary);
         }
         .feature-card:hover::before { opacity: 1; }
-        .feature-card i {
-            font-size: 2.2rem;
-            color: var(--primary);
-            margin-bottom: 16px;
-            background: rgba(10,61,98,0.08);
-            padding: 14px;
-            border-radius: 14px;
-            width: 60px;
-            height: 60px;
-            display: inline-flex;
+        .feature-card .icon-wrapper {
+            background: linear-gradient(135deg, rgba(10,61,98,0.08), rgba(16,185,129,0.08));
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-lg);
+            display: flex;
             align-items: center;
             justify-content: center;
+            margin: 0 auto 16px;
+            transition: var(--transition);
+        }
+        .feature-card:hover .icon-wrapper {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transform: scale(1.05);
+        }
+        .feature-card i {
+            font-size: 2rem;
+            color: var(--primary);
             transition: var(--transition);
         }
         .feature-card:hover i {
-            background: var(--primary);
             color: #fff;
-            transform: scale(1.05);
         }
         .feature-card h3 {
             font-size: 1.05rem;
@@ -487,7 +793,9 @@
             font-size: 0.85rem;
         }
 
-        /* ===== STATS SECTION ===== */
+        /* ============================================================
+           STATS SECTION
+           ============================================================ */
         .stats-section {
             padding: 80px 0;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -514,28 +822,44 @@
             z-index: 1;
         }
         .stats-section .stat-item .number {
-            font-size: 2.8rem;
+            font-size: 3rem;
             font-weight: 900;
             color: var(--gold);
             display: block;
+            animation: countUp 1s ease-out forwards;
         }
         .stats-section .stat-item .label {
             font-size: 0.95rem;
             opacity: 0.8;
         }
 
-        /* ===== HOW IT WORKS ===== */
+        /* ============================================================
+           HOW IT WORKS
+           ============================================================ */
         .how-it-works {
             padding: 100px 0;
             background: var(--gray-50);
+            transition: background 0.3s ease;
         }
         .how-it-works .section-header {
             text-align: center;
             max-width: 700px;
             margin: 0 auto 60px;
         }
+        .how-it-works .section-header .subtitle-badge {
+            display: inline-block;
+            background: rgba(16,185,129,0.1);
+            color: var(--secondary);
+            padding: 4px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
         .how-it-works .section-header h2 {
-            font-size: 2.4rem;
+            font-size: 2.6rem;
             font-weight: 800;
             margin-bottom: 12px;
         }
@@ -551,29 +875,35 @@
         .step {
             text-align: center;
             background: #fff;
-            padding: 36px 24px;
+            padding: 40px 24px;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-sm);
             transition: var(--transition);
             border: 1px solid var(--gray-200);
+            position: relative;
         }
         .step:hover {
-            transform: translateY(-4px);
+            transform: translateY(-6px);
             box-shadow: var(--shadow-xl);
         }
         .step-number {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
-            width: 56px;
-            height: 56px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             margin: 0 auto 16px;
             box-shadow: var(--shadow-md);
+            transition: var(--transition);
+        }
+        .step:hover .step-number {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
         }
         .step h4 {
             font-weight: 700;
@@ -585,18 +915,33 @@
             font-size: 0.88rem;
         }
 
-        /* ===== TESTIMONIALS ===== */
+        /* ============================================================
+           TESTIMONIALS
+           ============================================================ */
         .testimonials {
             padding: 100px 0;
             background: var(--white);
+            transition: background 0.3s ease;
         }
         .testimonials .section-header {
             text-align: center;
             max-width: 700px;
             margin: 0 auto 60px;
         }
+        .testimonials .section-header .subtitle-badge {
+            display: inline-block;
+            background: rgba(16,185,129,0.1);
+            color: var(--secondary);
+            padding: 4px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
         .testimonials .section-header h2 {
-            font-size: 2.4rem;
+            font-size: 2.6rem;
             font-weight: 800;
             margin-bottom: 12px;
         }
@@ -617,21 +962,36 @@
             transition: var(--transition);
         }
         .testimonial-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--primary);
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--secondary);
         }
         .testimonial-card .stars {
             color: #f59e0b;
             margin-bottom: 10px;
             font-size: 1rem;
+            letter-spacing: 2px;
         }
         .testimonial-card .quote {
             font-size: 0.95rem;
             color: var(--gray-700);
             margin-bottom: 16px;
             font-style: italic;
-            line-height: 1.7;
+            line-height: 1.8;
+        }
+        .testimonial-card .quote::before {
+            content: '"';
+            font-size: 2rem;
+            color: var(--secondary);
+            opacity: 0.3;
+            margin-right: 4px;
+        }
+        .testimonial-card .quote::after {
+            content: '"';
+            font-size: 2rem;
+            color: var(--secondary);
+            opacity: 0.3;
+            margin-left: 4px;
         }
         .testimonial-card .author {
             font-weight: 700;
@@ -642,7 +1002,9 @@
             color: var(--gray-500);
         }
 
-        /* ===== CTA ===== */
+        /* ============================================================
+           CTA SECTION
+           ============================================================ */
         .cta {
             padding: 100px 0;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -659,11 +1021,24 @@
             width: 200%;
             height: 200%;
             background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 50%);
-            animation: shimmer 30s infinite linear;
+            animation: shimmerRotate 30s infinite linear;
         }
         .cta .container { position: relative; z-index: 1; }
+        .cta .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            color: var(--gold);
+            padding: 6px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
         .cta h2 {
-            font-size: 2.6rem;
+            font-size: 2.8rem;
             font-weight: 900;
             margin-bottom: 16px;
         }
@@ -690,6 +1065,7 @@
             padding: 60px 0;
             background: var(--gray-50);
             border-top: 1px solid var(--gray-200);
+            transition: background 0.3s ease;
         }
         .page-links-section .container {
             display: grid;
@@ -713,15 +1089,18 @@
             text-decoration: none;
             font-size: 0.9rem;
             transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         .page-links-section .link-group ul li a:hover {
             color: var(--primary);
-            padding-left: 4px;
+            transform: translateX(4px);
         }
         .page-links-section .link-group ul li a i {
-            margin-right: 8px;
             color: var(--secondary);
-            width: 16px;
+            width: 18px;
+            font-size: 0.85rem;
         }
 
         /* ============================================================
@@ -775,43 +1154,51 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(12px);
             z-index: 9999;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            animation: fadeIn 0.3s ease;
+            animation: modalFadeIn 0.4s ease;
         }
         .page-modal.active { display: flex; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.92) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .page-modal .modal-content {
             background: #fff;
-            border-radius: var(--radius-xl);
+            border-radius: var(--radius-2xl);
             max-width: 700px;
             width: 100%;
             max-height: 85vh;
             overflow-y: auto;
-            padding: 40px;
-            box-shadow: var(--shadow-2xl);
+            padding: 48px;
+            box-shadow: var(--shadow-3xl);
             position: relative;
+            transition: background 0.3s ease;
         }
         .page-modal .modal-content .modal-close {
             position: absolute;
-            top: 16px;
-            right: 20px;
+            top: 20px;
+            right: 24px;
             font-size: 1.8rem;
             color: var(--gray-400);
             cursor: pointer;
             background: none;
             border: none;
             transition: var(--transition);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .page-modal .modal-content .modal-close:hover {
             color: var(--gray-800);
+            background: var(--gray-100);
             transform: rotate(90deg);
         }
         .page-modal .modal-content h2 {
@@ -821,6 +1208,7 @@
             margin-bottom: 20px;
             padding-right: 40px;
         }
+        .page-modal .modal-content h2 i { margin-right: 12px; }
         .page-modal .modal-content h3 {
             font-size: 1.1rem;
             font-weight: 700;
@@ -844,25 +1232,28 @@
         }
         .page-modal .modal-content .contact-info {
             background: var(--gray-50);
-            padding: 20px;
+            padding: 20px 24px;
             border-radius: var(--radius-md);
             margin-top: 16px;
+            border: 1px solid var(--gray-200);
         }
         .page-modal .modal-content .contact-info p { margin-bottom: 4px; }
         .page-modal .modal-content .contact-info i {
             color: var(--secondary);
-            width: 24px;
+            width: 28px;
         }
 
-        /* ===== BACK TO TOP ===== */
+        /* ============================================================
+           BACK TO TOP
+           ============================================================ */
         .back-to-top {
             position: fixed;
             bottom: 30px;
             right: 30px;
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
-            width: 50px;
-            height: 50px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -875,16 +1266,16 @@
             z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(20px);
+            transform: translateY(20px) scale(0.8);
         }
         .back-to-top.visible {
             opacity: 1;
             visibility: visible;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
         .back-to-top:hover {
-            background: var(--primary-dark);
             transform: translateY(-4px) scale(1.05);
+            box-shadow: var(--shadow-xl);
         }
 
         /* ============================================================
@@ -896,6 +1287,7 @@
             .testimonial-grid { grid-template-columns: repeat(2, 1fr); }
             .stats-section .container { grid-template-columns: repeat(2, 1fr); }
             .page-links-section .container { grid-template-columns: repeat(2, 1fr); }
+            .hero h1 { font-size: 2.8rem; }
         }
 
         @media (max-width: 768px) {
@@ -905,6 +1297,7 @@
             }
             .hero h1 { font-size: 2.2rem; }
             .hero-stats { gap: 20px; flex-wrap: wrap; }
+            .hero-stats .stat-item .number { font-size: 1.5rem; }
             .features-grid { grid-template-columns: 1fr; }
             .steps { grid-template-columns: 1fr; }
             .testimonial-grid { grid-template-columns: 1fr; }
@@ -917,18 +1310,27 @@
                 top: 100%;
                 left: 0;
                 right: 0;
-                background: #fff;
-                padding: 20px;
+                background: var(--white);
+                padding: 24px;
                 box-shadow: var(--shadow-lg);
                 border-top: 1px solid var(--gray-200);
+                gap: 16px;
             }
             .nav-links.open { display: flex; }
             .menu-toggle { display: block; }
             .trust-badges { gap: 12px; }
+            .trust-badges span { font-size: 0.75rem; padding: 4px 12px; }
             .hero-image .mockup-grid { grid-template-columns: repeat(2, 1fr); }
             .cta h2 { font-size: 1.8rem; }
-            .page-modal .modal-content { padding: 24px; margin: 10px; }
+            .page-modal .modal-content { padding: 28px 20px; margin: 10px; }
             .page-modal .modal-content h2 { font-size: 1.4rem; }
+            .features .section-header h2 { font-size: 2rem; }
+            .how-it-works .section-header h2 { font-size: 2rem; }
+            .testimonials .section-header h2 { font-size: 2rem; }
+            .stats-section .stat-item .number { font-size: 2rem; }
+            .floating-element { display: none; }
+            .hero .badge { font-size: 0.65rem; }
+            .theme-toggle-btn span { display: none; }
         }
 
         @media (max-width: 480px) {
@@ -938,27 +1340,38 @@
                 font-size: 0.9rem;
                 width: 100%;
                 text-align: center;
+                justify-content: center;
             }
             .hero-buttons { flex-direction: column; }
+            .hero-buttons .btn-secondary { text-align: center; }
             .stats-section .container { grid-template-columns: 1fr; }
             .hero-image .mockup-grid { grid-template-columns: 1fr 1fr; }
             .hero-image .mockup-grid .card { padding: 10px 8px; font-size: 0.6rem; }
             .hero-image .mockup-grid .card i { font-size: 1rem; }
+            .hero-image .mockup-grid .card .value { font-size: 0.85rem; }
             .footer .container { flex-direction: column; text-align: center; }
             .footer-links { justify-content: center; }
             .back-to-top { bottom: 20px; right: 20px; width: 44px; height: 44px; font-size: 1rem; }
+            .cta h2 { font-size: 1.5rem; }
+            .hero-stats { gap: 12px; }
+            .hero-stats .stat-item .number { font-size: 1.2rem; }
+            .hero-stats .stat-item .label { font-size: 0.7rem; }
         }
     </style>
 </head>
 <body>
 
+<!-- ===== SCROLL PROGRESS BAR ===== -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
 <!-- ============================================================
      NAVBAR
      ============================================================ -->
-<nav class="navbar">
+<nav class="navbar" id="navbar">
     <div class="container">
-        <a href="home.html" class="logo">
+        <a href="index.html" class="logo">
             Campus<span>Nexus</span>
+            <span class="logo-gold">✦</span>
             <small>Digital Learning Platform</small>
         </a>
         <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
@@ -969,18 +1382,34 @@
             <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#testimonials">Testimonials</a></li>
             <li><a href="#" onclick="openModal('contactModal')">Contact</a></li>
+            <li>
+                <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                    <span id="themeLabel">Dark</span>
+                </button>
+            </li>
             <li><a href="login.html" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Login</a></li>
         </ul>
     </div>
 </nav>
 
+<!-- ===== FLOATING ELEMENTS ===== -->
+<div class="floating-element floating-element-1"></div>
+<div class="floating-element floating-element-2"></div>
+<div class="floating-element floating-element-3"></div>
+
 <!-- ============================================================
      HERO SECTION
      ============================================================ -->
-<section class="hero">
+<section class="hero" id="home">
     <div class="container">
         <div>
-            <h1>Transform Your Institution with <span>Modern</span> <span class="gold">Digital Learning</span></h1>
+            <div class="badge"><i class="fas fa-rocket"></i> Next Generation Learning</div>
+            <h1>
+                Transform Your Institution with <br>
+                <span class="highlight">Modern Digital</span> <br>
+                <span class="gold">Learning Platform</span>
+            </h1>
             <p>One secure platform for learning, assessments, attendance, communication, and academic management. Built for Nursing, TVET, and Higher Learning Institutions across Africa.</p>
             <div class="hero-buttons">
                 <a href="login.html" class="btn-primary">
@@ -992,20 +1421,20 @@
             </div>
             <div class="hero-stats">
                 <div class="stat-item">
-                    <span class="number">2,500+</span>
-                    <span class="label">Students</span>
+                    <span class="number" data-count="2500">2,500+</span>
+                    <span class="label">Students Enrolled</span>
                 </div>
                 <div class="stat-item">
-                    <span class="number">150+</span>
-                    <span class="label">Faculty</span>
+                    <span class="number" data-count="150">150+</span>
+                    <span class="label">Expert Faculty</span>
                 </div>
                 <div class="stat-item">
-                    <span class="number">92</span>
-                    <span class="label">Courses</span>
+                    <span class="number" data-count="92">92</span>
+                    <span class="label">Courses Offered</span>
                 </div>
                 <div class="stat-item">
-                    <span class="number">99.8%</span>
-                    <span class="label">Uptime</span>
+                    <span class="number" data-count="99.8">99.8%</span>
+                    <span class="label">System Uptime</span>
                 </div>
             </div>
             <div class="trust-badges">
@@ -1060,22 +1489,22 @@
 <!-- ============================================================
      STATS SECTION
      ============================================================ -->
-<section class="stats-section">
+<section class="stats-section" id="stats">
     <div class="container">
         <div class="stat-item">
-            <span class="number">2,500+</span>
+            <span class="number" data-count="2500">0</span>
             <span class="label">Students Enrolled</span>
         </div>
         <div class="stat-item">
-            <span class="number">150+</span>
+            <span class="number" data-count="150">0</span>
             <span class="label">Expert Faculty</span>
         </div>
         <div class="stat-item">
-            <span class="number">92</span>
+            <span class="number" data-count="92">0</span>
             <span class="label">Courses Offered</span>
         </div>
         <div class="stat-item">
-            <span class="number">99.8%</span>
+            <span class="number" data-count="99.8">0</span>
             <span class="label">System Uptime</span>
         </div>
     </div>
@@ -1087,47 +1516,48 @@
 <section class="features" id="features">
     <div class="container">
         <div class="section-header">
-            <h2>Everything You Need in One Platform</h2>
+            <div class="subtitle-badge"><i class="fas fa-cogs"></i> Platform Features</div>
+            <h2>Everything You Need in <span>One Platform</span></h2>
             <p>Built specifically for nursing, TVET, and higher learning institutions.</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
-                <i class="fas fa-user-graduate"></i>
+                <div class="icon-wrapper"><i class="fas fa-user-graduate"></i></div>
                 <h3>Student Portal</h3>
                 <p>Access courses, track progress, check attendance, and view exam cards.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-chalkboard-teacher"></i>
+                <div class="icon-wrapper"><i class="fas fa-chalkboard-teacher"></i></div>
                 <h3>Lecturer Portal</h3>
                 <p>Manage classes, grade assessments, and engage with students.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-file-alt"></i>
+                <div class="icon-wrapper"><i class="fas fa-file-alt"></i></div>
                 <h3>Online Exams</h3>
                 <p>Create, schedule, and grade exams with real-time analytics.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-fingerprint"></i>
+                <div class="icon-wrapper"><i class="fas fa-fingerprint"></i></div>
                 <h3>Attendance</h3>
                 <p>QR code and geo-location based attendance tracking.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-book-open"></i>
+                <div class="icon-wrapper"><i class="fas fa-book-open"></i></div>
                 <h3>Learning Resources</h3>
                 <p>Upload and share course materials, videos, and documents.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-chart-line"></i>
+                <div class="icon-wrapper"><i class="fas fa-chart-line"></i></div>
                 <h3>Analytics & Reports</h3>
                 <p>Real-time insights on student performance and engagement.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-credit-card"></i>
+                <div class="icon-wrapper"><i class="fas fa-credit-card"></i></div>
                 <h3>Fee Management</h3>
                 <p>Track outstanding fees, manage payments, and generate reports.</p>
             </div>
             <div class="feature-card">
-                <i class="fas fa-ticket-alt"></i>
+                <div class="icon-wrapper"><i class="fas fa-ticket-alt"></i></div>
                 <h3>Support Tickets</h3>
                 <p>Manage urgent tickets and provide timely support.</p>
             </div>
@@ -1141,6 +1571,7 @@
 <section class="how-it-works" id="how-it-works">
     <div class="container">
         <div class="section-header">
+            <div class="subtitle-badge"><i class="fas fa-route"></i> Simple Process</div>
             <h2>How It Works</h2>
             <p>Get started with CampusNexus in just 4 simple steps.</p>
         </div>
@@ -1175,25 +1606,26 @@
 <section class="testimonials" id="testimonials">
     <div class="container">
         <div class="section-header">
+            <div class="subtitle-badge"><i class="fas fa-quote-left"></i> Testimonials</div>
             <h2>What Our Users Say</h2>
             <p>Real feedback from real institutions using CampusNexus.</p>
         </div>
         <div class="testimonial-grid">
             <div class="testimonial-card">
                 <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">"This platform has transformed how we deliver education. Our students are more engaged and our lecturers are more efficient."</p>
+                <p class="quote">This platform has transformed how we deliver education. Our students are more engaged and our lecturers are more efficient.</p>
                 <p class="author">Dr. Jane Mwangi</p>
                 <p class="title">Principal, Nakuru College of Health Sciences</p>
             </div>
             <div class="testimonial-card">
                 <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">"The attendance tracking and exam features have saved us countless hours. It's a game-changer for our institution."</p>
+                <p class="quote">The attendance tracking and exam features have saved us countless hours. It's a game-changer for our institution.</p>
                 <p class="author">Mr. James Ochieng</p>
                 <p class="title">Dean of Students, TVET Institute</p>
             </div>
             <div class="testimonial-card">
                 <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">"Finally a platform that understands the unique needs of health training institutions. Our students love the NurseIQ feature!"</p>
+                <p class="quote">Finally a platform that understands the unique needs of health training institutions. Our students love the NurseIQ feature!</p>
                 <p class="author">Prof. Sarah Adhiambo</p>
                 <p class="title">Head of Nursing Department</p>
             </div>
@@ -1250,6 +1682,7 @@
      ============================================================ -->
 <section class="cta" id="cta">
     <div class="container">
+        <div class="badge"><i class="fas fa-star"></i> Limited Offer</div>
         <h2>Ready to Digitize Your Institution?</h2>
         <p>Schedule a free demonstration today and see how CampusNexus can transform your institution.</p>
         <div class="cta-buttons">
@@ -1270,6 +1703,7 @@
     <div class="container">
         <div class="logo" style="color: #fff;">
             Campus<span style="color: var(--secondary);">Nexus</span>
+            <span style="color: var(--gold);">✦</span>
             <small style="color: rgba(255,255,255,0.5);">Digital Learning Platform</small>
         </div>
         <div class="footer-links">
@@ -1298,49 +1732,41 @@
      MODALS
      ============================================================ -->
 
-<!-- ===== CONTACT US MODAL ===== -->
+<!-- Contact Modal -->
 <div class="page-modal" id="contactModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('contactModal')">&times;</button>
         <h2><i class="fas fa-envelope" style="color: var(--secondary);"></i> Contact Us</h2>
         <p>We'd love to hear from you! Reach out to us through any of the channels below.</p>
-        
         <h3>📍 Our Address</h3>
-        <p>Nakuru College of Health Sciences and Management<br>
-        Kiamunyi Off Nakuru - Kabarak Rd<br>
-        Along Canon Ndungu Street, Nakuru, Kenya</p>
-        
+        <p>Nakuru College of Health Sciences and Management<br>Kiamunyi Off Nakuru - Kabarak Rd<br>Along Canon Ndungu Street, Nakuru, Kenya</p>
         <h3>📞 Phone Numbers</h3>
         <div class="contact-info">
             <p><i class="fas fa-phone"></i> +254 720 219 337</p>
             <p><i class="fas fa-phone"></i> +254 703 345 771</p>
             <p><i class="fas fa-phone"></i> +254 722 702 566</p>
         </div>
-        
         <h3>📧 Email</h3>
         <div class="contact-info">
             <p><i class="fas fa-envelope"></i> info@campusnexus.com</p>
             <p><i class="fas fa-envelope"></i> support@campusnexus.com</p>
         </div>
-        
         <h3>🕐 Office Hours</h3>
         <p>Monday - Friday: 8:00 AM - 5:00 PM (EAT)</p>
         <p>Saturday: 9:00 AM - 1:00 PM</p>
         <p>Sunday: Closed</p>
-        
         <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('contactModal')">
             <i class="fas fa-check"></i> Got It
         </button>
     </div>
 </div>
 
-<!-- ===== BOOK A DEMO MODAL ===== -->
+<!-- Demo Modal -->
 <div class="page-modal" id="demoModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('demoModal')">&times;</button>
         <h2><i class="fas fa-calendar-check" style="color: var(--gold);"></i> Book a Free Demo</h2>
         <p>Ready to see CampusNexus in action? Schedule a personalized demonstration with our team.</p>
-        
         <h3>📋 What to Expect</h3>
         <ul>
             <li>✅ Live walkthrough of the platform</li>
@@ -1348,121 +1774,81 @@
             <li>✅ Q&A session with our experts</li>
             <li>✅ No obligation - just see what's possible</li>
         </ul>
-        
         <h3>📅 How to Book</h3>
         <div class="contact-info">
             <p><i class="fas fa-phone"></i> Call: +254 720 219 337</p>
             <p><i class="fas fa-envelope"></i> Email: demo@campusnexus.com</p>
             <p><i class="fas fa-whatsapp"></i> WhatsApp: +254 720 219 337</p>
         </div>
-        
         <p style="margin-top: 12px; font-size: 0.9rem; color: var(--gray-500);">
             <i class="fas fa-clock"></i> Demos typically take 30-45 minutes and can be scheduled at your convenience.
         </p>
-        
         <button class="btn-gold" style="margin-top: 20px; width: 100%;" onclick="closeModal('demoModal')">
             <i class="fas fa-check"></i> I'll Reach Out
         </button>
     </div>
 </div>
 
-<!-- ===== TERMS OF SERVICE MODAL ===== -->
+<!-- Terms Modal -->
 <div class="page-modal" id="termsModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('termsModal')">&times;</button>
         <h2><i class="fas fa-file-contract" style="color: var(--primary);"></i> Terms of Service</h2>
         <p><strong>Last Updated:</strong> July 2026</p>
-        
         <h3>1. Acceptance of Terms</h3>
-        <p>By accessing and using CampusNexus, you agree to comply with and be bound by these Terms of Service. If you do not agree, please do not use our platform.</p>
-        
+        <p>By accessing and using CampusNexus, you agree to comply with and be bound by these Terms of Service.</p>
         <h3>2. User Accounts</h3>
-        <p>You must provide accurate and complete information when creating your account. You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account.</p>
-        
+        <p>You must provide accurate information when creating your account. You are responsible for maintaining the confidentiality of your login credentials.</p>
         <h3>3. Acceptable Use</h3>
-        <p>You agree NOT to:</p>
-        <ul>
-            <li>Share your account credentials with others</li>
-            <li>Attempt to gain unauthorized access to any systems or networks</li>
-            <li>Upload malicious code or content</li>
-            <li>Harass, abuse, or harm other users</li>
-            <li>Violate any applicable laws or regulations</li>
-        </ul>
-        
+        <p>You agree NOT to share your account, attempt unauthorized access, upload malicious code, harass others, or violate laws.</p>
         <h3>4. Academic Integrity</h3>
-        <p>All academic work submitted through the platform must be your own. Plagiarism, cheating, or any form of academic dishonesty is strictly prohibited and may result in disciplinary action.</p>
-        
+        <p>All academic work must be your own. Plagiarism and cheating are strictly prohibited.</p>
         <h3>5. Intellectual Property</h3>
-        <p>All content, materials, and resources provided through CampusNexus are protected by copyright and other intellectual property laws. You may not reproduce, distribute, or modify any content without explicit permission.</p>
-        
+        <p>All content is protected by copyright. You may not reproduce or distribute without permission.</p>
         <h3>6. Privacy and Data Protection</h3>
-        <p>Your use of the platform is also governed by our Privacy Policy. We collect and process your personal data in accordance with applicable data protection laws.</p>
-        
+        <p>Your data is handled in accordance with our Privacy Policy and applicable data protection laws.</p>
         <h3>7. Termination</h3>
-        <p>We reserve the right to suspend or terminate your access to the platform for violation of these terms or for any other reason deemed appropriate.</p>
-        
-        <h3>8. Limitation of Liability</h3>
-        <p>We shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use or inability to use the platform.</p>
-        
-        <h3>9. Contact Information</h3>
-        <p>For questions about these Terms, please contact us at <strong>legal@campusnexus.com</strong>.</p>
-        
+        <p>We reserve the right to suspend or terminate access for violation of these terms.</p>
+        <h3>8. Contact Information</h3>
+        <p>For questions: <strong>legal@campusnexus.com</strong></p>
         <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('termsModal')">
             <i class="fas fa-check"></i> I Understand
         </button>
     </div>
 </div>
 
-<!-- ===== PRIVACY POLICY MODAL ===== -->
+<!-- Privacy Modal -->
 <div class="page-modal" id="privacyModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('privacyModal')">&times;</button>
         <h2><i class="fas fa-shield-alt" style="color: var(--secondary);"></i> Privacy Policy</h2>
         <p><strong>Last Updated:</strong> July 2026</p>
-        
         <h3>1. Information We Collect</h3>
-        <p>We collect information you provide directly, including:</p>
         <ul>
             <li>Name, email address, phone number</li>
             <li>Student/Staff ID and academic records</li>
             <li>Attendance, exam results, and progress data</li>
             <li>Device information and IP addresses</li>
         </ul>
-        
         <h3>2. How We Use Your Information</h3>
         <ul>
             <li>To provide and improve our services</li>
             <li>To track academic progress and attendance</li>
-            <li>To communicate with you about updates and announcements</li>
-            <li>To ensure platform security and integrity</li>
+            <li>To communicate with you about updates</li>
+            <li>To ensure platform security</li>
         </ul>
-        
         <h3>3. Data Security</h3>
-        <p>We implement appropriate technical and organizational measures to protect your personal data, including encryption, access controls, and regular security audits.</p>
-        
+        <p>We implement encryption, access controls, and regular security audits to protect your data.</p>
         <h3>4. Data Sharing</h3>
-        <p>We do not sell your personal data to third parties. We may share data with:</p>
-        <ul>
-            <li>Your institution for academic purposes</li>
-            <li>Service providers who assist us in operating the platform</li>
-            <li>Law enforcement when required by law</li>
-        </ul>
-        
+        <p>We do not sell your data. We may share with your institution, service providers, or law enforcement when required.</p>
         <h3>5. Your Rights</h3>
-        <p>You have the right to:</p>
         <ul>
-            <li>Access and review your personal data</li>
-            <li>Request correction of inaccurate data</li>
-            <li>Request deletion of your data (subject to institutional requirements)</li>
-            <li>Object to processing of your data</li>
+            <li>Access and review your data</li>
+            <li>Request correction or deletion</li>
+            <li>Object to processing</li>
         </ul>
-        
-        <h3>6. Data Retention</h3>
-        <p>We retain your data as long as your account is active or as needed to provide services. Academic records may be retained for longer periods as required by educational regulations.</p>
-        
-        <h3>7. Contact Us</h3>
-        <p>For privacy-related questions, please contact us at <strong>privacy@campusnexus.com</strong>.</p>
-        
+        <h3>6. Contact Us</h3>
+        <p>Privacy questions: <strong>privacy@campusnexus.com</strong></p>
         <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeModal('privacyModal')">
             <i class="fas fa-check"></i> I Understand
         </button>
@@ -1473,7 +1859,45 @@
      SCRIPTS
      ============================================================ -->
 <script>
-    // ===== MOBILE MENU TOGGLE =====
+    // ============================================================
+    // SCROLL PROGRESS BAR
+    // ============================================================
+    const scrollProgress = document.getElementById('scrollProgress');
+    window.addEventListener('scroll', () => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = (scrollTop / docHeight) * 100;
+        scrollProgress.style.width = progress + '%';
+    });
+
+    // ============================================================
+    // THEME TOGGLE
+    // ============================================================
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
+    let darkMode = false;
+
+    themeToggle.addEventListener('click', () => {
+        darkMode = !darkMode;
+        document.body.classList.toggle('dark-mode', darkMode);
+        themeIcon.className = darkMode ? 'fas fa-sun' : 'fas fa-moon';
+        themeLabel.textContent = darkMode ? 'Light' : 'Dark';
+        localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    });
+
+    // Check saved theme
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        darkMode = true;
+        document.body.classList.add('dark-mode');
+        themeIcon.className = 'fas fa-sun';
+        themeLabel.textContent = 'Light';
+    }
+
+    // ============================================================
+    // MOBILE MENU TOGGLE
+    // ============================================================
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
     
@@ -1491,7 +1915,9 @@
         });
     });
 
-    // ===== MODAL FUNCTIONS =====
+    // ============================================================
+    // MODAL FUNCTIONS
+    // ============================================================
     function openModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -1526,7 +1952,9 @@
         }
     });
 
-    // ===== BACK TO TOP =====
+    // ============================================================
+    // BACK TO TOP
+    // ============================================================
     const backToTop = document.getElementById('backToTop');
     
     window.addEventListener('scroll', () => {
@@ -1541,7 +1969,9 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // ===== SMOOTH SCROLL =====
+    // ============================================================
+    // SMOOTH SCROLL
+    // ============================================================
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             const href = this.getAttribute('href');
@@ -1558,10 +1988,52 @@
         });
     });
 
-    // ===== CONSOLE BRANDING =====
-    console.log('%c🚀 CampusNexus - Digital Learning Platform', 'font-size: 20px; font-weight: bold; color: #0A3D62;');
-    console.log('%cBuilt for Nursing, TVET, and Higher Learning Institutions', 'font-size: 14px; color: #10b981;');
+    // ============================================================
+    // ANIMATED COUNTERS
+    // ============================================================
+    const counters = document.querySelectorAll('.stats-section .stat-item .number');
+    
+    const animateCounter = (el) => {
+        const target = parseFloat(el.dataset.count);
+        const isDecimal = target % 1 !== 0;
+        let current = 0;
+        const increment = target / 60;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            if (isDecimal) {
+                el.textContent = current.toFixed(1) + '%';
+            } else {
+                el.textContent = Math.floor(current).toLocaleString() + '+';
+            }
+        }, 30);
+    };
+
+    // Use Intersection Observer for counters
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const el = entry.target;
+                animateCounter(el);
+                counterObserver.unobserve(el);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    counters.forEach(counter => {
+        counterObserver.observe(counter);
+    });
+
+    // ============================================================
+    // CONSOLE BRANDING
+    // ============================================================
+    console.log('%c🚀 CampusNexus - Digital Learning Platform', 'font-size: 24px; font-weight: bold; color: #0A3D62;');
+    console.log('%c🏥 Built for Nursing, TVET, and Higher Learning Institutions', 'font-size: 14px; color: #10b981;');
     console.log('%c© 2026 Nakuru College of Health Sciences and Management', 'font-size: 12px; color: #64748b;');
+    console.log('%c✨ The Future of Education is Here!', 'font-size: 16px; color: #d4af37; font-weight: bold;');
 </script>
 
 </body>
