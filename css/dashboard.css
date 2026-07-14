@@ -1,10 +1,40 @@
 /* ============================================
-   DASHBOARD.CSS - COMPLETE CLEAN VERSION
-   WITH COMPACT PREMIUM STREAK CARD
+   DASHBOARD.CSS - COMPLETE FIXED VERSION
+   WITH PROPER LAYOUT AND COMPACT STREAK CARD
    ============================================ */
 
-/* ========== DASHBOARD CONTAINER ========== */
+/* ========== RESET & BASE ========== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #f1f5f9;
+}
+
+/* ========== MAIN LAYOUT FIX ========== */
+.container {
+    display: flex;
+    min-height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 16px;
+    gap: 20px;
+}
+
+.main {
+    flex: 1;
+    min-width: 0;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .dashboard-container {
+    flex: 1;
     max-width: 100%;
     margin: 0 auto;
     padding: 0;
@@ -60,6 +90,12 @@
     gap: 6px;
 }
 
+.xp-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .progress-bg {
     background: #e2e8f0;
     border-radius: 20px;
@@ -111,7 +147,7 @@
     border-bottom: 2px solid #FDB913;
 }
 
-/* ========== ATTENDANCE CARD - SLIM ========== */
+/* ========== ATTENDANCE CARD ========== */
 .attendance-card {
     background: white;
     border-radius: 16px;
@@ -227,7 +263,7 @@
 .mini-card:nth-child(5) i { color: #f59e0b; }
 .mini-card:nth-child(6) i { color: #059669; }
 
-/* ========== ACHIEVEMENTS - SLIM GRID ========== */
+/* ========== ACHIEVEMENTS ========== */
 .achievements-slim {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -352,69 +388,6 @@
     color: #0B2A4A;
 }
 
-/* ========== TIMETABLE ========== */
-.timetable-tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-.week-btn {
-    background: #f1f5f9;
-    border: none;
-    padding: 6px 14px;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.week-btn.active {
-    background: #0B2A4A;
-    color: white;
-}
-
-.week-btn:hover:not(.active) {
-    background: #e2e8f0;
-}
-
-.timetable-card {
-    background: white;
-    border-radius: 16px;
-    padding: 12px;
-    border: 1px solid #e5e7eb;
-}
-
-.class-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 12px;
-    border-bottom: 1px solid #f0f2f5;
-}
-
-.class-row:last-child {
-    border-bottom: none;
-}
-
-.class-time {
-    font-weight: 600;
-    color: #0B2A4A;
-}
-
-.class-name {
-    flex: 1;
-    margin-left: 12px;
-    color: #1f2937;
-}
-
-.class-room {
-    color: #6b7280;
-    font-size: 11px;
-}
-
 /* ========== ACTION CARDS ========== */
 .action-card {
     background: #fffbeb;
@@ -464,114 +437,6 @@
     background: #fde68a;
 }
 
-/* ========== RESPONSIVE ========== */
-@media (max-width: 640px) {
-    .achievements-slim {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .mini-cards {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-    
-    .stats-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .attendance-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .action-card {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .action-btn {
-        width: 100%;
-    }
-    
-    .leader-slim {
-        gap: 8px;
-    }
-    
-    .leader-slim .rank {
-        width: 25px;
-    }
-}
-
-@media (max-width: 480px) {
-    .mini-cards {
-        grid-template-columns: 1fr;
-    }
-    
-    .welcome h1 {
-        font-size: 18px;
-    }
-    
-    .welcome p {
-        font-size: 11px;
-    }
-}
-
-/* ========== UTILITIES ========== */
-.view-all {
-    font-size: 11px;
-    color: #FDB913;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.view-all:hover {
-    text-decoration: underline;
-}
-
-/* Loading States */
-.loading-state {
-    text-align: center;
-    padding: 20px;
-}
-
-.loading-spinner {
-    width: 30px;
-    height: 30px;
-    border: 3px solid #e2e8f0;
-    border-top-color: #0B2A4A;
-    border-radius: 50%;
-    margin: 0 auto 10px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.empty-state {
-    text-align: center;
-    padding: 30px;
-    color: #94a3b8;
-}
-
-.empty-state i {
-    font-size: 40px;
-    margin-bottom: 10px;
-    display: block;
-}
-
-/* Footer */
-.footer-meta {
-    text-align: center;
-    font-size: 10px;
-    color: #94a3b8;
-    margin-top: 20px;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
-}
-
 /* ========== COMPACT NEXT CLASS CARD ========== */
 .next-class-card {
     background: linear-gradient(135deg, #4C1D95, #6d28d9);
@@ -596,7 +461,6 @@
     padding: 12px 16px;
 }
 
-/* Time Badge */
 .next-class-time-badge {
     display: flex;
     align-items: center;
@@ -638,7 +502,6 @@
     color: #FFD700;
 }
 
-/* Course Info */
 .next-class-info {
     flex: 1;
     min-width: 160px;
@@ -672,7 +535,6 @@
     color: #FFD700;
 }
 
-/* Day Badge */
 .next-class-day-badge {
     background: rgba(255,255,255,0.12);
     padding: 5px 12px;
@@ -693,23 +555,6 @@
     color: #4C1D95;
 }
 
-/* Mobile */
-@media (max-width: 640px) {
-    .next-class-inner {
-        flex-direction: column;
-        text-align: center;
-        padding: 12px;
-    }
-    
-    .next-class-time-badge {
-        align-self: center;
-    }
-    
-    .next-class-meta {
-        justify-content: center;
-    }
-}
-
 /* ============================================
    COMPACT PREMIUM STREAK CARD
    ============================================ */
@@ -726,7 +571,6 @@
     transition: all 0.3s ease;
 }
 
-/* Animated background glow - subtle */
 .streak-container::before {
     content: '';
     position: absolute;
@@ -744,7 +588,6 @@
     50% { transform: scale(1.1); opacity: 1; }
 }
 
-/* Streak Header - compact */
 .streak-header {
     display: flex;
     justify-content: space-between;
@@ -808,7 +651,6 @@
     font-weight: 500;
 }
 
-/* Streak Progress - compact */
 .streak-progress-container {
     margin: 10px 0 8px;
     position: relative;
@@ -856,7 +698,6 @@
     100% { transform: translateX(100%); }
 }
 
-/* Milestones - compact */
 .streak-milestones {
     display: flex;
     justify-content: space-between;
@@ -890,7 +731,6 @@
     border: 1px solid rgba(52, 211, 153, 0.08);
 }
 
-/* Streak Lights - compact */
 .streak-lights {
     display: flex;
     justify-content: center;
@@ -927,7 +767,6 @@
     50% { transform: scale(1.1); text-shadow: 0 0 20px rgba(251, 191, 36, 0.6), 0 0 40px rgba(251, 191, 36, 0.2); }
 }
 
-/* Streak Message - compact */
 .streak-message {
     text-align: center;
     margin-top: 6px;
@@ -951,7 +790,6 @@
     font-weight: 700;
 }
 
-/* Restore Button - compact */
 .streak-restore-btn {
     display: inline-flex;
     align-items: center;
@@ -987,20 +825,8 @@
     font-size: 12px;
 }
 
-/* Celebration Confetti */
-.streak-celebration {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 0;
-}
-
 /* ============================================
-   DAILY STREAK MINI CARD - COMPACT
+   DAILY STREAK MINI CARD
    ============================================ */
 
 .streak-mini {
@@ -1033,8 +859,58 @@
     font-size: 8px !important;
 }
 
-/* Mobile Responsive for Streak */
-@media (max-width: 640px) {
+/* ========== RESPONSIVE ========== */
+@media (max-width: 992px) {
+    .container {
+        flex-direction: column;
+        padding: 0 12px;
+    }
+    
+    .main {
+        padding: 12px 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .mini-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .achievements-slim {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .attendance-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .action-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .action-btn {
+        width: 100%;
+    }
+    
+    .leader-slim {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .leader-slim .rank {
+        width: 25px;
+    }
+    
     .streak-container {
         padding: 12px 14px;
     }
@@ -1077,6 +953,18 @@
 }
 
 @media (max-width: 480px) {
+    .mini-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .welcome h1 {
+        font-size: 18px;
+    }
+    
+    .welcome p {
+        font-size: 11px;
+    }
+    
     .streak-header {
         flex-direction: column;
         text-align: center;
@@ -1094,4 +982,74 @@
     .streak-mini .mini-card-value {
         font-size: 16px !important;
     }
+    
+    .next-class-inner {
+        flex-direction: column;
+        text-align: center;
+        padding: 12px;
+    }
+    
+    .next-class-time-badge {
+        align-self: center;
+    }
+    
+    .next-class-meta {
+        justify-content: center;
+    }
+}
+
+/* ========== UTILITIES ========== */
+.view-all {
+    font-size: 11px;
+    color: #FDB913;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0B2A4A;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 30px;
+    color: #94a3b8;
+}
+
+.empty-state i {
+    font-size: 40px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.dashboard-footer {
+    margin-top: 20px;
+    padding: 10px 0;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #6b7280;
+    flex-wrap: wrap;
+    gap: 8px;
 }
