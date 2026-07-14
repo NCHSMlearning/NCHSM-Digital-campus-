@@ -6494,6 +6494,19 @@ window.resetGradeForm = resetGradeForm;
 window.setDefaultGrades = setDefaultGrades;
 window.exportGradesToCSV = exportGradesToCSV;
 window.getGradeColor = getGradeColor;
+
+// ============================================
+// TOGGLE AUDIT COLUMNS - GLOBAL
+// ============================================
+
+window.toggleAuditColumns = function(checkbox) {
+    const auditCols = document.querySelectorAll('.audit-col');
+    if (checkbox) {
+        auditCols.forEach(col => col.style.display = 'table-cell');
+    } else {
+        auditCols.forEach(col => col.style.display = 'none');
+    }
+};
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
