@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH REVIEWS & NEWSLETTER
+// dashboard.js - COMPLETE WORKING VERSION WITH LOGIN POINTS
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -8,8 +8,7 @@ class DashboardModule {
         this.userProfile = null;
         this.autoRefreshInterval = null;
          
-        // Cache configuration
-        this.CACHE_DURATION = 120000; // 2 minutes
+        this.CACHE_DURATION = 120000;
         this.cacheKey = null;
         
         this.metrics = {
@@ -22,7 +21,8 @@ class DashboardModule {
             xp: { current: 0, max: 100, level: 1, percent: 0 },
             nextExam: null,
             reviews: { total: 0, avg: 0, pending: 0 },
-            newsletter: { subscribed: false, latest: null }
+            newsletter: { subscribed: false, latest: null },
+            login: { count: 0, points: 0 }  // ✅ LOGIN METRICS
         };
         
         this.cacheElements();
@@ -33,9 +33,6 @@ class DashboardModule {
         console.log('✅ DashboardModule initialized');
     }
     
-    // ============================================================
-    // 🕐 KENYA TIMEZONE HELPERS
-    // ============================================================
     getKenyaNow() {
         return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
     }
@@ -64,28 +61,11 @@ class DashboardModule {
         });
     }
     
-    formatKenyaDateTime(date) {
-        if (!date) return 'N/A';
-        const d = new Date(date);
-        return d.toLocaleString('en-KE', {
-            timeZone: 'Africa/Nairobi',
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
-    }
-    
     getTimeAgo(date) {
         if (!date) return 'First login';
         try {
             const kenyaTime = new Date(new Date(date).toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
             const now = this.getKenyaNow();
-            
             const diffMs = now - kenyaTime;
             const diffMins = Math.floor(diffMs / 60000);
             const diffHours = Math.floor(diffMs / 3600000);
@@ -97,7 +77,6 @@ class DashboardModule {
             if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
             return this.formatKenyaDate(date);
         } catch (error) {
-            console.error('Error formatting time ago:', error);
             return 'Unknown';
         }
     }
@@ -127,28 +106,25 @@ class DashboardModule {
             userXpMax: document.getElementById('user-xp-max'),
             xpProgressFill: document.getElementById('xp-progress-fill'),
             announcementText: document.getElementById('student-announcement'),
-            // ✅ Reviews elements
             reviewsAvg: document.getElementById('dashboard-reviews-avg'),
             reviewsTotal: document.getElementById('dashboard-reviews-total'),
             reviewsPending: document.getElementById('dashboard-reviews-pending'),
-            // ✅ Newsletter elements
             newsletterStatus: document.getElementById('dashboard-newsletter-status'),
             newsletterLatest: document.getElementById('dashboard-newsletter-latest'),
-            // ✅ Next exam widget
             nextExamWidget: document.querySelector('.next-exam-widget'),
             nextExamDetails: document.getElementById('next-exam-details'),
-            // ✅ Last login
             lastLoginTime: document.getElementById('last-login-time'),
             headerTime: document.getElementById('header-time'),
-            // ✅ Dashboard last updated
             dashboardLastUpdated: document.getElementById('dashboard-last-updated'),
-            dashboardStudentId: document.getElementById('dashboard-student-id')
+            dashboardStudentId: document.getElementById('dashboard-student-id'),
+            // ✅ LOGIN POINTS ELEMENTS
+            loginPoints: document.getElementById('dashboard-login-points'),
+            loginCount: document.getElementById('dashboard-login-count'),
+            loginPointsDisplay: document.getElementById('login-points-display'),
+            loginCountDisplay: document.getElementById('login-count-display')
         };
     }
     
-    // ============================================================
-    // 🖱️ CLICKABLE STATS NAVIGATION
-    // ============================================================
     setupClickableStats() {
         console.log('🖱️ Setting up clickable stats...');
         
@@ -162,6 +138,7 @@ class DashboardModule {
             { selector: '.mini-card[data-tab="hub-exam-card"]', tabId: 'hub-exam-card' },
             { selector: '.mini-card[data-tab="reviews"]', tabId: 'reviews' },
             { selector: '.mini-card[data-tab="newsletter"]', tabId: 'newsletter' },
+            { selector: '.mini-card[data-tab="login"]', tabId: 'profile' },
             { selector: '.action-btn[data-tab="resources"]', tabId: 'resources' },
             { selector: '.action-btn[data-tab="profile"]', tabId: 'profile' },
             { selector: '.next-exam-widget', tabId: 'cats' },
@@ -210,7 +187,8 @@ class DashboardModule {
             'calendar': 'calendar',
             'dashboard': 'dashboard',
             'reviews': 'reviews',
-            'newsletter': 'newsletter'
+            'newsletter': 'newsletter',
+            'login': 'profile'
         };
         
         const tabName = tabMap[section] || section;
@@ -381,9 +359,6 @@ class DashboardModule {
             });
     }
     
-    // ============================================================
-    // 📊 ONE API CALL WITH CACHING
-    // ============================================================
     async loadAllMetrics() {
         console.log('📊 Loading dashboard metrics...');
         
@@ -395,7 +370,7 @@ class DashboardModule {
                     if (Date.now() - timestamp < this.CACHE_DURATION) {
                         this.metrics = data;
                         this.updateUIFromMetrics();
-                        console.log('✅ Dashboard loaded from CACHE (2x faster!)');
+                        console.log('✅ Dashboard loaded from CACHE');
                         this.loadFreshData();
                         return;
                     }
@@ -416,6 +391,27 @@ class DashboardModule {
             
             if (error) throw error;
             
+            // ✅ GET LOGIN COUNT
+            let loginCount = 0;
+            try {
+                const { data: profileData, error: profileError } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count')
+                    .eq('user_id', this.userId)
+                    .single();
+                
+                if (profileError) {
+                    console.warn('⚠️ Could not get login count:', profileError);
+                } else {
+                    loginCount = profileData?.login_count || 0;
+                    console.log(`📊 Login count: ${loginCount}`);
+                }
+            } catch (e) {
+                console.warn('⚠️ Error fetching login count:', e);
+            }
+            
+            const loginPoints = loginCount * 10;
+            
             // Update metrics
             this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
             this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
@@ -427,24 +423,25 @@ class DashboardModule {
             this.metrics.resources = data.resources || 0;
             this.metrics.courses = data.examCard?.approved || 0;
             
-            // Update XP
+            // ✅ UPDATE XP WITH LOGIN POINTS
             const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
             const nurseIQPoints = this.metrics.nurseiq.questions || 0;
-            const totalXP = attendancePoints + nurseIQPoints;
+            const totalXP = loginPoints + attendancePoints + nurseIQPoints;
             const maxXP = 100;
             const currentXP = totalXP % maxXP;
             const level = Math.floor(totalXP / maxXP) + 1;
             const percent = (currentXP / maxXP) * 100;
             this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
             
-            // ✅ Load Reviews & Newsletter
+            // ✅ STORE LOGIN METRICS
+            this.metrics.login = { count: loginCount, points: loginPoints };
+            
+            console.log(`📊 Login Points: ${loginPoints} (${loginCount} logins × 10)`);
+            
             await this.loadReviewsSnapshot();
             await this.loadNewsletterSnapshot();
             
-            // Save to cache
             this.saveToCache();
-            
-            // Update UI
             this.updateUIFromMetrics();
             
             // Update announcement
@@ -469,7 +466,6 @@ class DashboardModule {
             if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             
-            // Update last updated
             if (this.elements.dashboardLastUpdated) {
                 this.elements.dashboardLastUpdated.textContent = this.getKenyaNow().toLocaleTimeString('en-KE', {
                     hour: '2-digit',
@@ -480,7 +476,6 @@ class DashboardModule {
                 });
             }
             
-            // Update exams
             await this.updateExamsMetric();
             
             console.log('✅ Dashboard loaded from DATABASE');
@@ -508,6 +503,25 @@ class DashboardModule {
     
     async loadIndividualMetrics() {
         console.log('⚠️ Falling back to individual metrics...');
+        
+        // ✅ GET LOGIN COUNT
+        if (this.userId && this.sb) {
+            try {
+                const { data: profileData } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count')
+                    .eq('user_id', this.userId)
+                    .single();
+                
+                const loginCount = profileData?.login_count || 0;
+                this.metrics.login = { count: loginCount, points: loginCount * 10 };
+                console.log(`📊 Login count (fallback): ${loginCount}`);
+            } catch (e) {
+                console.warn('Could not fetch login count:', e);
+                this.metrics.login = { count: 0, points: 0 };
+            }
+        }
+        
         await Promise.all([
             this.loadAttendanceMetrics(),
             this.loadResourcesMetrics(),
@@ -634,17 +648,12 @@ class DashboardModule {
         }
     }
     
-    // ============================================================
-    // ⭐ REVIEWS SNAPSHOT
-    // ============================================================
-    
     async loadReviewsSnapshot() {
         console.log('⭐ Loading reviews snapshot...');
         
         try {
             if (!this.sb) return;
             
-            // Get total approved reviews
             const { count: totalReviews, error: totalError } = await this.sb
                 .from('student_reviews')
                 .select('*', { count: 'exact', head: true })
@@ -652,7 +661,6 @@ class DashboardModule {
             
             if (totalError) throw totalError;
             
-            // Get average rating
             const { data: ratings, error: ratingError } = await this.sb
                 .from('student_reviews')
                 .select('rating')
@@ -664,7 +672,6 @@ class DashboardModule {
                 ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1)
                 : '0.0';
             
-            // Get user's own pending reviews
             const { count: userPending, error: pendingError } = await this.sb
                 .from('student_reviews')
                 .select('*', { count: 'exact', head: true })
@@ -673,14 +680,12 @@ class DashboardModule {
             
             if (pendingError) throw pendingError;
             
-            // Update metrics
             this.metrics.reviews = {
                 total: totalReviews || 0,
                 avg: parseFloat(avgRating),
                 pending: userPending || 0
             };
             
-            // Update UI
             this.updateReviewsUI();
             
             console.log(`✅ Reviews snapshot: ${totalReviews || 0} total, ${avgRating} avg, ${userPending || 0} pending`);
@@ -703,7 +708,6 @@ class DashboardModule {
             this.elements.reviewsPending.textContent = m.pending;
         }
         
-        // Update sidebar badge
         const badge = document.getElementById('reviewsBadge');
         if (badge) {
             if (m.pending > 0) {
@@ -720,17 +724,12 @@ class DashboardModule {
         }
     }
     
-    // ============================================================
-    // 📧 NEWSLETTER SNAPSHOT
-    // ============================================================
-    
     async loadNewsletterSnapshot() {
         console.log('📧 Loading newsletter snapshot...');
         
         try {
             if (!this.sb) return;
             
-            // Check if user is subscribed
             const { data: subscription, error: subError } = await this.sb
                 .from('newsletter_subscribers')
                 .select('status')
@@ -739,7 +738,6 @@ class DashboardModule {
             
             if (subError) throw subError;
             
-            // Get latest newsletter
             const { data: latestNews, error: newsError } = await this.sb
                 .from('newsletters')
                 .select('subject, sent_at')
@@ -748,13 +746,11 @@ class DashboardModule {
             
             if (newsError) throw newsError;
             
-            // Update metrics
             this.metrics.newsletter = {
                 subscribed: subscription?.status === 'active',
                 latest: latestNews?.[0] || null
             };
             
-            // Update UI
             this.updateNewsletterUI();
             
             console.log(`📧 Newsletter status: ${this.metrics.newsletter.subscribed ? 'Subscribed' : 'Not subscribed'}`);
@@ -781,7 +777,6 @@ class DashboardModule {
             }
         }
         
-        // Update sidebar badge
         const badge = document.getElementById('newsletterBadge');
         if (badge) {
             if (m.subscribed) {
@@ -804,10 +799,6 @@ class DashboardModule {
         }
     }
     
-    // ============================================================
-    // 🆕 EXAMS METRICS WITH WIDGET
-    // ============================================================
-    
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
@@ -816,13 +807,6 @@ class DashboardModule {
             
             const kenyaNow = this.getKenyaNow();
             const todayStr = kenyaNow.toISOString().split('T')[0];
-            
-            console.log('📅 Checking upcoming exams for:', {
-                program: this.userProfile.program,
-                block: this.userProfile.block,
-                intake: this.userProfile.intake_year,
-                today: todayStr
-            });
             
             const { data: exams, error } = await this.sb
                 .from('exams')
@@ -834,8 +818,6 @@ class DashboardModule {
                 .order('exam_start_time', { ascending: true });
             
             if (error) throw error;
-            
-            console.log(`📊 Found ${exams?.length || 0} exams for this student`);
             
             if (!exams || exams.length === 0) {
                 upcomingText = 'No exams scheduled';
@@ -881,8 +863,6 @@ class DashboardModule {
                 const dateB = new Date(`${b.exam_date}T${b.exam_start_time || '00:00:00'}`);
                 return dateA - dateB;
             });
-            
-            console.log(`📊 Upcoming: ${upcomingExams.length}, Current: ${currentExams.length}, Completed: ${completedExams.length}`);
             
             if (upcomingExams.length > 0) {
                 const nextExam = upcomingExams[0];
@@ -1162,7 +1142,7 @@ class DashboardModule {
                 `;
             }).join('');
             
-            console.log(`✅ Leaderboard loaded with ${topStudents.length} students using only 3 requests!`);
+            console.log(`✅ Leaderboard loaded with ${topStudents.length} students`);
             
         } catch (error) {
             console.error('Leaderboard error:', error);
@@ -1171,7 +1151,7 @@ class DashboardModule {
     }
     
     async loadQuickNextClass() {
-        console.log('📅 Loading next UNFINISHED class...');
+        console.log('📅 Loading next class...');
         
         try {
             const studentBlock = this.userProfile?.block;
@@ -1182,9 +1162,6 @@ class DashboardModule {
             
             const now = this.getKenyaNow();
             const todayDate = now.toISOString().split('T')[0];
-            const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:00`;
-            
-            console.log(`Current: ${todayDate} at ${currentTime} (Kenya Time)`);
             
             const { data: futureClasses, error } = await this.sb
                 .from('timetables')
@@ -1216,7 +1193,7 @@ class DashboardModule {
             }
             
             if (!nextClass) {
-                console.log('No future classes (all today are done)');
+                console.log('No future classes');
                 const card = document.getElementById('quick-next-class');
                 if (card) card.style.display = 'none';
                 return;
@@ -1275,9 +1252,24 @@ class DashboardModule {
     }
     
     async loadXPMetrics() {
+        let loginCount = 0;
+        if (this.userId && this.sb) {
+            try {
+                const { data } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count')
+                    .eq('user_id', this.userId)
+                    .single();
+                loginCount = data?.login_count || 0;
+            } catch (e) {
+                console.warn('Could not fetch login count for XP:', e);
+            }
+        }
+        
+        const loginPoints = loginCount * 10;
         const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
         const nurseIQPoints = this.metrics.nurseiq.questions || 0;
-        const totalXP = attendancePoints + nurseIQPoints;
+        const totalXP = loginPoints + attendancePoints + nurseIQPoints;
         
         const maxXP = 100;
         const currentXP = totalXP % maxXP;
@@ -1285,6 +1277,7 @@ class DashboardModule {
         const percent = (currentXP / maxXP) * 100;
         
         this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
+        this.metrics.login = { count: loginCount, points: loginPoints };
         
         if (this.elements.userLevel) this.elements.userLevel.innerText = level;
         if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
@@ -1300,6 +1293,20 @@ class DashboardModule {
         if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
+        
+        // ✅ DISPLAY LOGIN POINTS
+        if (this.elements.loginPoints) {
+            this.elements.loginPoints.innerText = m.login?.points || 0;
+        }
+        if (this.elements.loginCount) {
+            this.elements.loginCount.innerText = m.login?.count || 0;
+        }
+        if (this.elements.loginPointsDisplay) {
+            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
+        }
+        if (this.elements.loginCountDisplay) {
+            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+        }
         
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
@@ -1332,9 +1339,6 @@ class DashboardModule {
         
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-        
-        // Reviews are updated separately via updateReviewsUI()
-        // Newsletter are updated separately via updateNewsletterUI()
     }
     
     startLiveClock() {
@@ -1370,6 +1374,42 @@ class DashboardModule {
         }
         await this.loadFreshData();
         this.showToast('🔄 Dashboard refreshed!', 1500);
+    }
+    
+    async checkLoginPoints() {
+        console.log('🔍 Checking login points...');
+        
+        if (!this.userId || !this.sb) {
+            console.warn('⚠️ No user or Supabase client');
+            return;
+        }
+        
+        try {
+            const { data, error } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('login_count')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (error) throw error;
+            
+            const count = data?.login_count || 0;
+            const points = count * 10;
+            
+            console.log(`📊 Login count: ${count}, Points: ${points}`);
+            
+            this.metrics.login = { count, points };
+            this.updateUIFromMetrics();
+            await this.loadXPMetrics();
+            
+            this.showToast(`🔄 Login points updated: ${points} (${count} logins × 10)`, 3000);
+            
+            return { count, points };
+        } catch (error) {
+            console.error('❌ Error checking login points:', error);
+            this.showToast('❌ Could not check login points', 2000);
+            return null;
+        }
     }
     
     showToast(message, duration = 2000) {
@@ -1425,5 +1465,6 @@ function initDashboardModule(supabaseClient) {
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
+window.checkLoginPoints = () => dashboardModule?.checkLoginPoints();
 
-console.log('✅ Dashboard module ready with Reviews & Newsletter!');
+console.log('✅ Dashboard module ready with Login Points!');
