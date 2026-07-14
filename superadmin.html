@@ -3927,61 +3927,87 @@
         </div>
     </div>
     
-    <!-- ========== TAB 3: MARKS ENTRY ========== -->
-    <div id="examMarksTab" class="exam-tab-content" style="display: none;">
-        <div style="background: #f8f9fa; padding: 25px; border-radius: 12px;">
-            <h3><i class="fas fa-edit"></i> Enter Student Marks</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label>Select Exam</label>
-                    <select id="marks_exam_select" onchange="loadStudentsForMarksEntry()" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                        <option value="">-- Select Exam --</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Select Class</label>
-                    <select id="marks_class_select" onchange="loadStudentsForMarksEntry()" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Progress Summary</label>
-                    <div id="marks_progress_summary" style="padding: 8px; background: #e5e7eb; border-radius: 6px; text-align: center;">
-                        Select exam to see progress
-                    </div>
-                </div>
+   <!-- ========== TAB 3: MARKS ENTRY ========== -->
+<div id="examMarksTab" class="exam-tab-content" style="display: none;">
+    <div style="background: #f8f9fa; padding: 25px; border-radius: 12px;">
+        <h3><i class="fas fa-edit"></i> Enter Student Marks</h3>
+        
+        <!-- Filters -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+            <div>
+                <label>Select Exam</label>
+                <select id="marks_exam_select" onchange="loadStudentsForMarksEntry()" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    <option value="">-- Select Exam --</option>
+                </select>
             </div>
-            
-            <div id="marks_entry_container" style="display: none;">
-                <div class="table-responsive">
-                    <table class="data-table" id="marks_entry_table">
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Student ID</th>
-                                <th>Marks (0-<span id="max_marks_span">100</span>)</th>
-                                <th>Grade</th>
-                                <th>Remarks</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="marks_entry_body">
-                            <tr><td colspan="6">Select exam and class to load students...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button onclick="saveAllMarks()" class="btn-action" style="background: #059669;">
-                        <i class="fas fa-save-all"></i> Save All Marks
-                    </button>
-                    <button onclick="exportMarksToCSV()" class="btn-action export-btn">
-                        <i class="fas fa-download"></i> Export Marks (CSV)
-                    </button>
+            <div>
+                <label>Select Class</label>
+                <select id="marks_class_select" onchange="loadStudentsForMarksEntry()" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                    <option value="">-- Select Class --</option>
+                </select>
+            </div>
+            <div>
+                <label>Progress Summary</label>
+                <div id="marks_progress_summary" style="padding: 8px; background: #e5e7eb; border-radius: 6px; text-align: center;">
+                    Select exam to see progress
                 </div>
             </div>
         </div>
+        
+        <!-- Toolbar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <p style="margin: 0; font-size: 12px; color: #6b7280;">
+                <i class="fas fa-info-circle"></i> Marks autosave for every row as you input the marks
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                    <input type="checkbox" id="chkViewAllColumns" onchange="toggleAuditColumns(this)">
+                    View all columns
+                </label>
+                <button onclick="saveAllMarks()" class="btn-action" style="background: #059669; padding: 8px 20px;">
+                    <i class="fas fa-save"></i> Save Marks
+                </button>
+            </div>
+        </div>
+        
+        <!-- Marks Table -->
+        <div id="marks_entry_container" style="display: none;">
+            <div class="table-responsive" style="overflow-x: auto;">
+                <table class="data-table" id="marks_entry_table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #343a40; color: white;">
+                            <th style="padding: 12px; text-align: center; width: 50px;">#</th>
+                            <th style="padding: 12px; text-align: left;">AdmNo</th>
+                            <th style="padding: 12px; text-align: left;">Name</th>
+                            <th style="padding: 12px; text-align: center;">Marks (0-<span id="max_marks_span">100</span>)</th>
+                            <th style="padding: 12px; text-align: center;">Status</th>
+                            <th style="padding: 12px; text-align: center;">Grade</th>
+                            <th style="padding: 12px; text-align: center;">Points</th>
+                            <th style="padding: 12px; text-align: left;">Comments</th>
+                            <th class="audit-col" style="padding: 12px; text-align: left; display: none;">Created By</th>
+                            <th class="audit-col" style="padding: 12px; text-align: left; display: none;">Created On</th>
+                            <th class="audit-col" style="padding: 12px; text-align: left; display: none;">Modified By</th>
+                            <th class="audit-col" style="padding: 12px; text-align: left; display: none;">Modified On</th>
+                        </tr>
+                    </thead>
+                    <tbody id="marks_entry_body">
+                        <tr><td colspan="12" style="padding: 40px; text-align: center; color: #6b7280;">
+                            <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                            Select exam and class to load students...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Export Button -->
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button onclick="exportMarksToCSV()" class="btn-action export-btn">
+                    <i class="fas fa-download"></i> Export Marks (CSV)
+                </button>
+            </div>
+        </div>
     </div>
+</div>
     
     <!-- ========== TAB 4: ANALYTICS ========== -->
     <div id="examAnalyticsTab" class="exam-tab-content" style="display: none;">
