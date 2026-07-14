@@ -708,24 +708,24 @@
     }
 }
 /* ============================================
-   DAILY STREAK STYLES - COMPLETE
+   COMPACT STREAK CARD - SMALLER VERSION
    ============================================ */
 
-/* ========== MAIN STREAK CARD ========== */
+/* ========== MAIN STREAK CARD - COMPACT ========== */
 .streak-container {
     background: linear-gradient(145deg, #0f172a, #1e293b, #0f172a);
-    border-radius: 16px;
-    padding: 16px 20px;
-    margin-bottom: 16px;
-    border: 1px solid rgba(251, 191, 36, 0.15);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(251, 191, 36, 0.12);
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(251, 191, 36, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
     transition: all 0.3s ease;
     width: 100%;
 }
 
-/* Animated background glow */
+/* Animated background glow - subtle */
 .streak-container::before {
     content: '';
     position: absolute;
@@ -733,7 +733,7 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.02) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.015) 0%, transparent 70%);
     animation: glowPulse 4s ease-in-out infinite;
     pointer-events: none;
 }
@@ -743,12 +743,12 @@
     50% { transform: scale(1.1); opacity: 1; }
 }
 
-/* Streak Header */
+/* Streak Header - compact */
 .streak-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     position: relative;
     z-index: 1;
 }
@@ -756,83 +756,83 @@
 .streak-fire {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
 
 .streak-emoji {
-    font-size: 28px;
+    font-size: 20px;
     animation: fireFlicker 1.2s ease-in-out infinite;
     display: inline-block;
-    filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4));
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));
 }
 
 @keyframes fireFlicker {
     0%, 100% { transform: scale(1) rotate(0deg); }
-    25% { transform: scale(1.08) rotate(-3deg); }
-    75% { transform: scale(1.08) rotate(3deg); }
+    25% { transform: scale(1.06) rotate(-2deg); }
+    75% { transform: scale(1.06) rotate(2deg); }
 }
 
 .streak-label {
-    font-size: 14px;
+    font-size: 11px;
     font-weight: 700;
     color: #fbbf24;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
-    background: rgba(251, 191, 36, 0.08);
-    padding: 4px 14px;
-    border-radius: 16px;
-    border: 1px solid rgba(251, 191, 36, 0.1);
+    background: rgba(251, 191, 36, 0.06);
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(251, 191, 36, 0.08);
     white-space: nowrap;
 }
 
 .streak-counter {
     text-align: right;
-    background: rgba(251, 191, 36, 0.06);
-    padding: 4px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(251, 191, 36, 0.08);
+    background: rgba(251, 191, 36, 0.04);
+    padding: 2px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(251, 191, 36, 0.06);
 }
 
 .streak-number {
-    font-size: 32px;
+    font-size: 24px;
     font-weight: 800;
     color: #fbbf24;
     display: block;
     line-height: 1;
-    text-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+    text-shadow: 0 0 15px rgba(251, 191, 36, 0.15);
 }
 
 .streak-unit {
-    font-size: 11px;
+    font-size: 9px;
     color: #94a3b8;
     font-weight: 500;
 }
 
-/* Streak Progress Bar */
+/* Streak Progress Bar - compact */
 .streak-progress-container {
-    margin: 12px 0 10px;
+    margin: 6px 0 5px;
     position: relative;
     z-index: 1;
 }
 
 .streak-progress-bg {
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
-    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    height: 4px;
     overflow: hidden;
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.02);
 }
 
 .streak-progress-fill {
     height: 100%;
-    border-radius: 16px;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444, #f59e0b);
     background-size: 300% 100%;
     animation: progressFlow 3s ease-in-out infinite;
     position: relative;
-    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
 }
 
 @keyframes progressFlow {
@@ -847,7 +847,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
     animation: shimmer 2s infinite;
 }
 
@@ -856,58 +856,58 @@
     100% { transform: translateX(100%); }
 }
 
-/* Streak Milestones */
+/* Streak Milestones - compact */
 .streak-milestones {
     display: flex;
     justify-content: space-between;
-    margin-top: 6px;
+    margin-top: 3px;
     padding: 0 2px;
     flex-wrap: wrap;
-    gap: 2px;
+    gap: 1px;
 }
 
 .milestone {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.2);
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.15);
     transition: all 0.4s ease;
     cursor: default;
     font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.02);
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.01);
 }
 
 .milestone.active {
     color: #fbbf24;
     font-weight: 700;
     transform: scale(1.05);
-    background: rgba(251, 191, 36, 0.08);
-    border: 1px solid rgba(251, 191, 36, 0.1);
-    box-shadow: 0 0 15px rgba(251, 191, 36, 0.06);
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.08);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.04);
 }
 
 .milestone.reached {
     color: #34d399;
-    background: rgba(52, 211, 153, 0.06);
-    border: 1px solid rgba(52, 211, 153, 0.08);
+    background: rgba(52, 211, 153, 0.04);
+    border: 1px solid rgba(52, 211, 153, 0.06);
 }
 
-/* Streak Lights */
+/* Streak Lights - compact */
 .streak-lights {
     display: flex;
     justify-content: center;
-    gap: 12px;
-    margin: 10px 0 8px;
-    padding: 6px;
+    gap: 6px;
+    margin: 5px 0 4px;
+    padding: 3px;
     position: relative;
     z-index: 1;
     flex-wrap: wrap;
 }
 
 .streak-light {
-    font-size: 20px;
-    opacity: 0.12;
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 14px;
+    opacity: 0.1;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     filter: grayscale(1) brightness(0.3);
     transform: scale(0.8);
 }
@@ -920,30 +920,30 @@
 }
 
 .streak-light.active:nth-child(1) { animation-delay: 0s; }
-.streak-light.active:nth-child(2) { animation-delay: 0.15s; }
-.streak-light.active:nth-child(3) { animation-delay: 0.3s; }
-.streak-light.active:nth-child(4) { animation-delay: 0.45s; }
-.streak-light.active:nth-child(5) { animation-delay: 0.6s; }
+.streak-light.active:nth-child(2) { animation-delay: 0.12s; }
+.streak-light.active:nth-child(3) { animation-delay: 0.24s; }
+.streak-light.active:nth-child(4) { animation-delay: 0.36s; }
+.streak-light.active:nth-child(5) { animation-delay: 0.48s; }
 
 @keyframes lightPulse {
-    0%, 100% { transform: scale(1); text-shadow: 0 0 10px rgba(251, 191, 36, 0.15); }
-    50% { transform: scale(1.15); text-shadow: 0 0 25px rgba(251, 191, 36, 0.7), 0 0 50px rgba(251, 191, 36, 0.3); }
+    0%, 100% { transform: scale(1); text-shadow: 0 0 8px rgba(251, 191, 36, 0.1); }
+    50% { transform: scale(1.1); text-shadow: 0 0 18px rgba(251, 191, 36, 0.5), 0 0 35px rgba(251, 191, 36, 0.2); }
 }
 
-/* Streak Message */
+/* Streak Message - compact */
 .streak-message {
     text-align: center;
-    margin-top: 8px;
-    padding: 8px 14px;
-    border-radius: 12px;
-    background: rgba(251, 191, 36, 0.04);
-    border: 1px solid rgba(251, 191, 36, 0.05);
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    background: rgba(251, 191, 36, 0.03);
+    border: 1px solid rgba(251, 191, 36, 0.04);
     position: relative;
     z-index: 1;
 }
 
 #streak-status-text {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 500;
     color: #e2e8f0;
     letter-spacing: 0.2px;
@@ -954,32 +954,32 @@
     font-weight: 700;
 }
 
-/* Restore Button */
+/* Restore Button - compact */
 .streak-restore-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin: 10px auto 0;
-    padding: 8px 22px;
+    gap: 5px;
+    margin: 5px auto 0;
+    padding: 5px 16px;
     background: linear-gradient(135deg, #f59e0b, #f97316);
     color: white;
     border: none;
-    border-radius: 24px;
-    font-size: 12px;
+    border-radius: 20px;
+    font-size: 10px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 1;
-    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.25);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
     width: fit-content;
     margin-left: auto;
     margin-right: auto;
 }
 
 .streak-restore-btn:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.4);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.35);
 }
 
 .streak-restore-btn:active {
@@ -987,81 +987,83 @@
 }
 
 .streak-restore-btn i {
-    font-size: 13px;
+    font-size: 11px;
 }
 
-/* ========== STREAK MINI CARD ========== */
+/* ========== STREAK MINI CARD - COMPACT ========== */
 .streak-mini {
     background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
     border-color: #d97706 !important;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2) !important;
     transition: all 0.3s ease !important;
 }
 
 .streak-mini:hover {
-    transform: translateY(-3px) scale(1.02) !important;
-    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.3) !important;
 }
 
 .streak-mini .mini-label {
     color: #92400e !important;
     font-weight: 700 !important;
+    font-size: 8px !important;
 }
 
 .streak-mini .mini-card-value {
     color: #78350f !important;
     font-weight: 800 !important;
-    font-size: 24px !important;
+    font-size: 18px !important;
 }
 
 .streak-mini .mini-sub {
     color: #78350f !important;
     font-weight: 600 !important;
+    font-size: 7px !important;
 }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 640px) {
     .streak-container {
-        padding: 14px 16px;
+        padding: 8px 12px;
     }
     
     .streak-number {
-        font-size: 26px;
+        font-size: 20px;
     }
     
     .streak-emoji {
-        font-size: 22px;
+        font-size: 17px;
     }
     
     .streak-label {
-        font-size: 12px;
-        padding: 2px 10px;
+        font-size: 10px;
+        padding: 2px 8px;
     }
     
     .streak-light {
-        font-size: 16px;
+        font-size: 12px;
     }
     
     .streak-lights {
-        gap: 8px;
+        gap: 4px;
     }
     
     .streak-milestones {
-        gap: 2px;
+        gap: 1px;
         justify-content: center;
     }
     
     .milestone {
-        font-size: 9px;
-        padding: 1px 6px;
+        font-size: 7px;
+        padding: 1px 4px;
     }
     
     #streak-status-text {
-        font-size: 11px;
+        font-size: 10px;
     }
     
     .streak-mini .mini-card-value {
-        font-size: 20px !important;
+        font-size: 16px !important;
     }
 }
 
@@ -1069,7 +1071,7 @@
     .streak-header {
         flex-direction: column;
         text-align: center;
-        gap: 6px;
+        gap: 4px;
     }
     
     .streak-counter {
@@ -1077,11 +1079,11 @@
     }
     
     .streak-number {
-        font-size: 24px;
+        font-size: 18px;
     }
     
     .streak-restore-btn {
-        font-size: 11px;
-        padding: 6px 16px;
+        font-size: 9px;
+        padding: 4px 12px;
     }
 }
