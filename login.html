@@ -144,12 +144,20 @@
             <!-- ===== MAIN CONTENT ===== -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
-                    <!-- ===== THEME TOGGLE BUTTON ===== -->
-                    <div class="theme-controls">
-                        <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
-                            <i data-feather="sun" id="themeIcon"></i>
-                            <span id="themeLabel">Light</span>
-                        </button>
+                    <!-- ===== MAIN SITE BUTTON + THEME TOGGLE ===== -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 10px;">
+                        <!-- Main Site Button -->
+                        <a href="home.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #0A3D62; color: #fff; border-radius: 9999px; text-decoration: none; font-weight: 600; font-size: 0.8rem; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(10, 61, 98, 0.2); border: none; cursor: pointer;">
+                            <i data-feather="home" style="width: 16px; height: 16px;"></i> Main Site
+                        </a>
+                        
+                        <!-- Theme Toggle -->
+                        <div class="theme-controls" style="position: static;">
+                            <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
+                                <i data-feather="sun" id="themeIcon"></i>
+                                <span id="themeLabel">Light</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Welcome -->
@@ -161,11 +169,11 @@
                         <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                     </div>
                     
-                 <!-- Last Login Info -->
-<div class="last-login-info" id="lastLoginInfo">
-    <i data-feather="clock"></i>
-    <span>Sign in to see your last login activity</span>
-</div>
+                    <!-- Last Login Info -->
+                    <div class="last-login-info" id="lastLoginInfo">
+                        <i data-feather="clock"></i>
+                        <span>Sign in to see your last login activity</span>
+                    </div>
                     
                     <!-- Attempts Remaining -->
                     <div class="attempts-info" id="attemptsInfo">
