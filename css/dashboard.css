@@ -707,3 +707,381 @@
         justify-content: center;
     }
 }
+/* ============================================
+   DAILY STREAK STYLES - PREMIUM VERSION
+   ============================================ */
+
+/* ========== MAIN STREAK CARD ========== */
+.streak-container {
+    background: linear-gradient(145deg, #0f172a, #1e293b, #0f172a);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(251, 191, 36, 0.15);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(251, 191, 36, 0.08);
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+/* Animated background glow */
+.streak-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.02) 0%, transparent 70%);
+    animation: glowPulse 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes glowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+/* Streak Header */
+.streak-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.streak-fire {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.streak-emoji {
+    font-size: 28px;
+    animation: fireFlicker 1.2s ease-in-out infinite;
+    display: inline-block;
+    filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4));
+}
+
+@keyframes fireFlicker {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.08) rotate(-3deg); }
+    75% { transform: scale(1.08) rotate(3deg); }
+}
+
+.streak-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fbbf24;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(251, 191, 36, 0.08);
+    padding: 4px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(251, 191, 36, 0.1);
+    white-space: nowrap;
+}
+
+.streak-counter {
+    text-align: right;
+    background: rgba(251, 191, 36, 0.06);
+    padding: 4px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(251, 191, 36, 0.08);
+}
+
+.streak-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fbbf24;
+    display: block;
+    line-height: 1;
+    text-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+}
+
+.streak-unit {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Streak Progress Bar */
+.streak-progress-container {
+    margin: 12px 0 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.streak-progress-bg {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    height: 6px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.streak-progress-fill {
+    height: 100%;
+    border-radius: 16px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444, #f59e0b);
+    background-size: 300% 100%;
+    animation: progressFlow 3s ease-in-out infinite;
+    position: relative;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+@keyframes progressFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.streak-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Streak Milestones */
+.streak-milestones {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding: 0 2px;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.milestone {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.4s ease;
+    cursor: default;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.milestone.active {
+    color: #fbbf24;
+    font-weight: 700;
+    transform: scale(1.05);
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.1);
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.06);
+}
+
+.milestone.reached {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.06);
+    border: 1px solid rgba(52, 211, 153, 0.08);
+}
+
+/* Streak Lights */
+.streak-lights {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 10px 0 8px;
+    padding: 6px;
+    position: relative;
+    z-index: 1;
+    flex-wrap: wrap;
+}
+
+.streak-light {
+    font-size: 20px;
+    opacity: 0.12;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: grayscale(1) brightness(0.3);
+    transform: scale(0.8);
+}
+
+.streak-light.active {
+    opacity: 1;
+    filter: grayscale(0) brightness(1);
+    transform: scale(1);
+    animation: lightPulse 1.5s ease-in-out infinite;
+}
+
+.streak-light.active:nth-child(1) { animation-delay: 0s; }
+.streak-light.active:nth-child(2) { animation-delay: 0.15s; }
+.streak-light.active:nth-child(3) { animation-delay: 0.3s; }
+.streak-light.active:nth-child(4) { animation-delay: 0.45s; }
+.streak-light.active:nth-child(5) { animation-delay: 0.6s; }
+
+@keyframes lightPulse {
+    0%, 100% { transform: scale(1); text-shadow: 0 0 10px rgba(251, 191, 36, 0.15); }
+    50% { transform: scale(1.15); text-shadow: 0 0 25px rgba(251, 191, 36, 0.7), 0 0 50px rgba(251, 191, 36, 0.3); }
+}
+
+/* Streak Message */
+.streak-message {
+    text-align: center;
+    margin-top: 8px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgba(251, 191, 36, 0.04);
+    border: 1px solid rgba(251, 191, 36, 0.05);
+    position: relative;
+    z-index: 1;
+}
+
+#streak-status-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: #e2e8f0;
+    letter-spacing: 0.2px;
+}
+
+#streak-status-text .streak-highlight {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+/* Restore Button */
+.streak-restore-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px auto 0;
+    padding: 8px 22px;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.25);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.streak-restore-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.4);
+}
+
+.streak-restore-btn:active {
+    transform: scale(0.95);
+}
+
+.streak-restore-btn i {
+    font-size: 13px;
+}
+
+/* ========== STREAK MINI CARD ========== */
+.streak-mini {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
+    transition: all 0.3s ease !important;
+}
+
+.streak-mini:hover {
+    transform: translateY(-3px) scale(1.02) !important;
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35) !important;
+}
+
+.streak-mini .mini-label {
+    color: #92400e !important;
+    font-weight: 700 !important;
+}
+
+.streak-mini .mini-card-value {
+    color: #78350f !important;
+    font-weight: 800 !important;
+    font-size: 24px !important;
+}
+
+.streak-mini .mini-sub {
+    color: #78350f !important;
+    font-weight: 600 !important;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 640px) {
+    .streak-container {
+        padding: 14px 16px;
+    }
+    
+    .streak-number {
+        font-size: 26px;
+    }
+    
+    .streak-emoji {
+        font-size: 22px;
+    }
+    
+    .streak-label {
+        font-size: 12px;
+        padding: 2px 10px;
+    }
+    
+    .streak-light {
+        font-size: 16px;
+    }
+    
+    .streak-lights {
+        gap: 8px;
+    }
+    
+    .streak-milestones {
+        gap: 2px;
+        justify-content: center;
+    }
+    
+    .milestone {
+        font-size: 9px;
+        padding: 1px 6px;
+    }
+    
+    #streak-status-text {
+        font-size: 11px;
+    }
+    
+    .streak-mini .mini-card-value {
+        font-size: 20px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .streak-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 6px;
+    }
+    
+    .streak-counter {
+        text-align: center;
+    }
+    
+    .streak-number {
+        font-size: 24px;
+    }
+    
+    .streak-restore-btn {
+        font-size: 11px;
+        padding: 6px 16px;
+    }
+}
