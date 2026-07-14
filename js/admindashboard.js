@@ -6311,27 +6311,40 @@ function updateAttendanceSummary(data) {
     if (progressBar) progressBar.style.width = rate + '%';
 }
 
-// View student attendance details
+// View student attendance details - WITH SNAPSHOTS
 async function viewStudentAttendance(studentId, examId) {
     try {
-        const { data, error } = await sb
+        // Get attendance records
+        const { data: attendance, error: attError } = await sb
             .from('exam_attendance')
             .select('*')
             .eq('student_id', studentId)
             .eq('exam_id', parseInt(examId))
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (attError) throw attError;
 
-        showAttendanceDetailModal(studentId, data || []);
+        // Get proctoring logs with snapshots
+        const { data: logs, error: logError } = await sb
+            .from('exam_proctoring_logs')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .not('screenshot_data', 'is', null)
+            .order('timestamp', { ascending: false })
+            .limit(20);
+
+        if (logError) throw logError;
+
+        showAttendanceDetailModal(studentId, attendance || [], logs || []);
     } catch (error) {
         showToast('Error loading student details', 'error');
+        console.error(error);
     }
 }
 
-// Show attendance detail modal
-// Show attendance detail modal - WITH KENYA TIME
-function showAttendanceDetailModal(studentId, records) {
+// Show attendance detail modal - WITH SNAPSHOTS
+function showAttendanceDetailModal(studentId, records, snapshots) {
     const modal = document.createElement('div');
     modal.id = 'attendanceDetailModal';
     modal.style.cssText = `
@@ -6346,11 +6359,52 @@ function showAttendanceDetailModal(studentId, records) {
         justify-content: center;
         z-index: 10001;
         padding: 20px;
+        overflow-y: auto;
     `;
 
     const record = records[0] || {};
+
+    // Build snapshots HTML
+    let snapshotsHtml = '';
+    if (snapshots && snapshots.length > 0) {
+        snapshotsHtml = `
+            <h3 style="color:#0A3D62; margin:16px 0 12px;">📸 Snapshots (${snapshots.length})</h3>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; max-height:400px; overflow-y:auto; padding:4px;">
+                ${snapshots.map((s, i) => `
+                    <div style="background:#F8FAFC; border-radius:8px; overflow:hidden; border:1px solid #E2E8F0; position:relative;">
+                        <img src="${s.screenshot_data}" 
+                             alt="Snapshot ${i+1}" 
+                             style="width:100%; height:150px; object-fit:cover; cursor:pointer;"
+                             onclick="window.open('${s.screenshot_data}', '_blank')"
+                             onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:#94A3B8;\\'><i class=\\'fas fa-image\\' style=\\'font-size:2rem;display:block;\\'></i>No image</div>'">
+                        <div style="padding:6px 10px; font-size:0.7rem; background:white; display:flex; justify-content:space-between; align-items:center;">
+                            <span>${s.event_type || 'Snapshot'}</span>
+                            <span style="color:#64748B;">${new Date(s.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        ${s.event_type === 'multiple_faces_detected' ? 
+                            '<div style="position:absolute; top:4px; right:4px; background:#DC2626; color:white; padding:2px 8px; border-radius:4px; font-size:0.6rem; font-weight:600;">🚨 VIOLATION</div>' : 
+                            s.event_type === 'face_missing' ?
+                            '<div style="position:absolute; top:4px; right:4px; background:#F59E0B; color:white; padding:2px 8px; border-radius:4px; font-size:0.6rem; font-weight:600;">⚠️ NO FACE</div>' :
+                            ''
+                        }
+                    </div>
+                `).join('')}
+            </div>
+            <div style="margin-top:8px; font-size:0.7rem; color:#64748B; text-align:center;">
+                <i class="fas fa-info-circle"></i> Click any snapshot to view full size
+            </div>
+        `;
+    } else {
+        snapshotsHtml = `
+            <div style="text-align:center; padding:20px; color:#94A3B8; border:1px dashed #E2E8F0; border-radius:8px; margin-top:16px;">
+                <i class="fas fa-camera-slash" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                No snapshots available for this student
+            </div>
+        `;
+    }
+
     modal.innerHTML = `
-        <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+        <div style="background: white; border-radius: 16px; max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h2 style="margin:0; color:#0A3D62;">
                     <i class="fas fa-user-graduate"></i> Student Attendance Details
@@ -6403,6 +6457,8 @@ function showAttendanceDetailModal(studentId, records) {
                     No attendance records found
                 </div>
             `}
+
+            ${snapshotsHtml}
 
             <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
                 <button onclick="this.closest('#attendanceDetailModal').remove()" 
