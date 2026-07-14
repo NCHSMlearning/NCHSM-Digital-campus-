@@ -5921,9 +5921,125 @@ function exportMarksToCSV() {
 
 let allGrades = [];
 
+// ============================================
+// POPULATE GRADING PROGRAM DROPDOWN
+// ============================================
+
+async function populateGradingProgramDropdown() {
+    const select = document.getElementById('grading_program_select');
+    if (!select) return;
+    
+    try {
+        const { data: students, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('program')
+            .eq('role', 'student')
+            .not('program', 'is', null);
+        
+        if (error) throw error;
+        
+        const programs = [...new Set(students.map(s => s.program).filter(p => p))];
+        
+        select.innerHTML = '<option value="">All Programs</option>';
+        programs.sort();
+        
+        programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = getProgramDisplayName(program) || program;
+            select.appendChild(option);
+        });
+        
+        console.log(`✅ Populated ${programs.length} programs`);
+        
+    } catch (error) {
+        console.error('Error populating grading program dropdown:', error);
+    }
+}
+
+// ============================================
+// POPULATE GRADING UNIT DROPDOWN
+// ============================================
+
+async function populateGradingUnitDropdown() {
+    const select = document.getElementById('grading_unit_select');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">All Units</option>';
+    
+    try {
+        const { data: units, error } = await sb
+            .from('units_catalog')
+            .select('id, unit_code, unit_name')
+            .order('unit_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (units && units.length > 0) {
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = `${unit.unit_code} - ${unit.unit_name}`;
+                select.appendChild(option);
+            });
+        }
+        
+        console.log(`✅ Populated ${units?.length || 0} units`);
+        
+    } catch (error) {
+        console.error('Error populating grading unit dropdown:', error);
+    }
+}
+
+// ============================================
+// POPULATE TEMPLATE DROPDOWN
+// ============================================
+
+async function populateGradingTemplateDropdown() {
+    const select = document.getElementById('grading_template_select');
+    if (!select) return;
+    
+    try {
+        const { data: programs, error } = await sb
+            .from('programs')
+            .select('program_code')
+            .eq('status', 'active')
+            .order('program_code', { ascending: true });
+        
+        if (error) throw error;
+        
+        select.innerHTML = '<option value="">All Programs</option>';
+        
+        if (programs && programs.length > 0) {
+            programs.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.program_code;
+                option.textContent = getProgramDisplayName(p.program_code) || p.program_code;
+                select.appendChild(option);
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error populating template dropdown:', error);
+    }
+}
+
+// ============================================
+// INITIALIZE GRADING DROPDOWNS
+// ============================================
+
+async function initGradingDropdowns() {
+    await populateGradingProgramDropdown();
+    await populateGradingUnitDropdown();
+    await populateGradingTemplateDropdown();
+}
+
+// ============================================
 // LOAD GRADES FROM DATABASE
+// ============================================
+
 async function loadGrades() {
-    const tbody = document.getElementById('grades_table_body');
+    const tbody = document.getElementById('grading_table_body');
     if (!tbody) return;
     
     tbody.innerHTML = '<tr><td colspan="7" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading grades...</td></tr>';
@@ -5943,13 +6059,26 @@ async function loadGrades() {
         
     } catch (error) {
         console.error('Error loading grades:', error);
-        tbody.innerHTML = `<tr><td colspan="7" style="color: red; padding: 40px; text-align: center;">Error: ${error.message}</td></tr>`;
+        // Use fallback defaults if table doesn't exist
+        allGrades = [
+            { id: '1', grade: 'A', min_score: 75, max_score: 100, points: 4, comment: 'EXCELLENT', status: 'active' },
+            { id: '2', grade: 'B', min_score: 65, max_score: 74, points: 3, comment: 'GOOD', status: 'active' },
+            { id: '3', grade: 'C', min_score: 60, max_score: 64, points: 2, comment: 'SATISFACTORY', status: 'active' },
+            { id: '4', grade: 'FAIL', min_score: 0, max_score: 59, points: 0, comment: 'FAIL', status: 'active' }
+        ];
+        renderGradesTable();
+        updateGradeStats();
+        updateGradeColorPreview();
+        showFeedback('⚠️ Using default grading system', 'warning');
     }
 }
 
+// ============================================
 // RENDER GRADES TABLE
+// ============================================
+
 function renderGradesTable() {
-    const tbody = document.getElementById('grades_table_body');
+    const tbody = document.getElementById('grading_table_body');
     if (!tbody) return;
     
     if (!allGrades || allGrades.length === 0) {
@@ -5967,13 +6096,13 @@ function renderGradesTable() {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #e5e7eb';
         tr.innerHTML = `
-            <td style="padding: 10px; font-weight: bold; color: ${rowColor};">
+            <td style="padding: 10px; text-align: center; font-weight: 500;">${grade.min_score}</td>
+            <td style="padding: 10px; text-align: center; font-weight: 500;">${grade.max_score}</td>
+            <td style="padding: 10px; text-align: center; font-weight: bold; color: ${rowColor}; font-size: 18px;">
                 ${escapeHtml(grade.grade)}
             </td>
-            <td style="padding: 10px; text-align: center;">${grade.min_score}%</td>
-            <td style="padding: 10px; text-align: center;">${grade.max_score}%</td>
             <td style="padding: 10px; text-align: center; font-weight: bold;">${grade.points || 0}</td>
-           <td style="padding: 10px;">${escapeHtml(grade.comment || grade.description || '-')}</td>
+            <td style="padding: 10px;">${escapeHtml(grade.comment || grade.description || '-')}</td>
             <td style="padding: 10px; text-align: center;">
                 <span class="badge ${statusClass}" style="padding: 4px 10px; border-radius: 12px;">${statusText}</span>
             </td>
@@ -5990,22 +6119,31 @@ function renderGradesTable() {
     });
 }
 
+// ============================================
 // UPDATE GRADE STATS
+// ============================================
+
 function updateGradeStats() {
     const total = allGrades.length;
-    const passGrade = allGrades.find(g => g.is_pass === true) || allGrades.find(g => g.grade === 'D') || { grade: 'D' };
+    const active = allGrades.filter(g => g.status === 'active').length;
+    const passGrade = allGrades.find(g => g.grade === 'C' || g.min_score >= 60) || { grade: 'C' };
     const highestPoints = allGrades.reduce((max, g) => Math.max(max, g.points || 0), 0);
     
-    const totalEl = document.getElementById('totalGradesCount');
-    const passEl = document.getElementById('passGradeDisplay');
-    const highestEl = document.getElementById('highestPointsDisplay');
+    const totalEl = document.getElementById('grading_total_count');
+    const passEl = document.getElementById('grading_pass_grade');
+    const highestEl = document.getElementById('grading_highest_points');
+    const activeEl = document.getElementById('grading_active_count');
     
     if (totalEl) totalEl.textContent = total;
-    if (passEl) passEl.textContent = passGrade.grade || 'D';
-    if (highestEl) highestEl.textContent = highestPoints || 12;
+    if (passEl) passEl.textContent = passGrade.grade || 'C';
+    if (highestEl) highestEl.textContent = highestPoints || 4;
+    if (activeEl) activeEl.textContent = active;
 }
 
+// ============================================
 // UPDATE GRADE COLOR PREVIEW
+// ============================================
+
 function updateGradeColorPreview() {
     const container = document.getElementById('gradeColorPreview');
     if (!container) return;
@@ -6035,7 +6173,10 @@ function updateGradeColorPreview() {
     });
 }
 
+// ============================================
 // GET GRADE COLOR
+// ============================================
+
 function getGradeColor(grade) {
     const colors = {
         'A': '#10b981', 'A-': '#34d399', 'B+': '#22d3ee',
@@ -6047,7 +6188,10 @@ function getGradeColor(grade) {
     return colors[grade] || '#6b7280';
 }
 
+// ============================================
 // ADD GRADE
+// ============================================
+
 async function addGrade() {
     const grade = document.getElementById('grade_letter').value.trim().toUpperCase();
     const minScore = parseFloat(document.getElementById('grade_min_score').value);
@@ -6083,7 +6227,7 @@ async function addGrade() {
         min_score: minScore,
         max_score: maxScore,
         points: points,
-        description: description || null,
+        comment: comment || null,
         status: status,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -6107,7 +6251,10 @@ async function addGrade() {
     }
 }
 
+// ============================================
 // EDIT GRADE
+// ============================================
+
 async function editGrade(gradeId) {
     const grade = allGrades.find(g => g.id === gradeId);
     if (!grade) return;
@@ -6116,7 +6263,7 @@ async function editGrade(gradeId) {
     document.getElementById('grade_min_score').value = grade.min_score;
     document.getElementById('grade_max_score').value = grade.max_score;
     document.getElementById('grade_points').value = grade.points || 0;
-    document.getElementById('grade_description').value = grade.description || '';
+    document.getElementById('grade_comment').value = grade.comment || grade.description || '';
     document.getElementById('grade_status').value = grade.status || 'active';
     
     const submitBtn = document.querySelector('#add-grade-form button[type="submit"]');
@@ -6134,13 +6281,16 @@ async function editGrade(gradeId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ============================================
 // UPDATE GRADE
+// ============================================
+
 async function updateGrade(gradeId) {
     const grade = document.getElementById('grade_letter').value.trim().toUpperCase();
     const minScore = parseFloat(document.getElementById('grade_min_score').value);
     const maxScore = parseFloat(document.getElementById('grade_max_score').value);
     const points = parseInt(document.getElementById('grade_points').value) || 0;
-   const comment = document.getElementById('grade_comment').value.trim();
+    const comment = document.getElementById('grade_comment').value.trim();
     const status = document.getElementById('grade_status').value;
     
     if (!grade || isNaN(minScore) || isNaN(maxScore)) {
@@ -6158,7 +6308,7 @@ async function updateGrade(gradeId) {
         min_score: minScore,
         max_score: maxScore,
         points: points,
-        description: description || null,
+        comment: comment || null,
         status: status,
         updated_at: new Date().toISOString()
     };
@@ -6181,7 +6331,10 @@ async function updateGrade(gradeId) {
     }
 }
 
+// ============================================
 // DELETE GRADE
+// ============================================
+
 async function deleteGrade(gradeId, gradeLetter) {
     if (!confirm(`⚠️ Delete grade "${gradeLetter}"? This cannot be undone.`)) return;
     
@@ -6202,13 +6355,16 @@ async function deleteGrade(gradeId, gradeLetter) {
     }
 }
 
+// ============================================
 // RESET GRADE FORM
+// ============================================
+
 function resetGradeForm() {
     document.getElementById('grade_letter').value = '';
     document.getElementById('grade_min_score').value = '';
     document.getElementById('grade_max_score').value = '';
     document.getElementById('grade_points').value = '0';
-    document.getElementById('grade_description').value = '';
+    document.getElementById('grade_comment').value = '';
     document.getElementById('grade_status').value = 'active';
     
     const submitBtn = document.querySelector('#add-grade-form button[type="submit"]');
@@ -6224,23 +6380,18 @@ function resetGradeForm() {
     };
 }
 
+// ============================================
 // SET DEFAULT GRADES
+// ============================================
+
 async function setDefaultGrades() {
     if (!confirm('⚠️ This will replace all existing grades with the default grading system. Continue?')) return;
     
     const defaultGrades = [
-        { grade: 'A', min_score: 80, max_score: 100, points: 12, description: 'Excellent', status: 'active' },
-        { grade: 'A-', min_score: 75, max_score: 79, points: 11, description: 'Very Good', status: 'active' },
-        { grade: 'B+', min_score: 70, max_score: 74, points: 10, description: 'Good', status: 'active' },
-        { grade: 'B', min_score: 65, max_score: 69, points: 9, description: 'Above Average', status: 'active' },
-        { grade: 'B-', min_score: 60, max_score: 64, points: 8, description: 'Average', status: 'active' },
-        { grade: 'C+', min_score: 55, max_score: 59, points: 7, description: 'Below Average', status: 'active' },
-        { grade: 'C', min_score: 50, max_score: 54, points: 6, description: 'Satisfactory', status: 'active' },
-        { grade: 'C-', min_score: 45, max_score: 49, points: 5, description: 'Marginal', status: 'active' },
-        { grade: 'D+', min_score: 40, max_score: 44, points: 4, description: 'Poor', status: 'active' },
-        { grade: 'D', min_score: 35, max_score: 39, points: 3, description: 'Very Poor', status: 'active' },
-        { grade: 'E', min_score: 30, max_score: 34, points: 2, description: 'Extremely Poor', status: 'active' },
-        { grade: 'F', min_score: 0, max_score: 29, points: 0, description: 'Fail', status: 'active' }
+        { grade: 'A', min_score: 75, max_score: 100, points: 4, comment: 'EXCELLENT', status: 'active' },
+        { grade: 'B', min_score: 65, max_score: 74, points: 3, comment: 'GOOD', status: 'active' },
+        { grade: 'C', min_score: 60, max_score: 64, points: 2, comment: 'SATISFACTORY', status: 'active' },
+        { grade: 'FAIL', min_score: 0, max_score: 59, points: 0, comment: 'FAIL', status: 'active' }
     ];
     
     try {
@@ -6257,17 +6408,53 @@ async function setDefaultGrades() {
     }
 }
 
+// ============================================
+// GENERATE GRADE COMMENTS
+// ============================================
+
+function generateGradeComments() {
+    const comments = {
+        'A': 'EXCELLENT',
+        'A-': 'VERY GOOD',
+        'B+': 'GOOD',
+        'B': 'GOOD',
+        'B-': 'ABOVE AVERAGE',
+        'C+': 'AVERAGE',
+        'C': 'SATISFACTORY',
+        'C-': 'BELOW AVERAGE',
+        'D+': 'POOR',
+        'D': 'POOR',
+        'D-': 'VERY POOR',
+        'E': 'VERY POOR',
+        'F': 'FAIL'
+    };
+    
+    allGrades.forEach(grade => {
+        grade.comment = comments[grade.grade] || grade.grade + ' GRADE';
+    });
+    
+    renderGradesTable();
+    showFeedback('✅ Grade comments auto-generated!', 'success');
+}
+
+// ============================================
 // EXPORT GRADES TO CSV
+// ============================================
+
 function exportGradesToCSV() {
     if (!allGrades || allGrades.length === 0) {
         showFeedback('No grades to export', 'warning');
         return;
     }
     
-    const headers = ['Grade', 'Min Score', 'Max Score', 'Points', 'Description', 'Status'];
+    const headers = ['Grade', 'Min Score', 'Max Score', 'Points', 'Comment', 'Status'];
     const rows = allGrades.map(g => [
-        g.grade, g.min_score, g.max_score, g.points || 0,
-        g.description || '', g.status || 'active'
+        g.grade,
+        g.min_score,
+        g.max_score,
+        g.points || 0,
+        g.comment || g.description || '',
+        g.status || 'active'
     ]);
     
     let csv = headers.join(',') + '\n';
@@ -6284,6 +6471,36 @@ function exportGradesToCSV() {
     URL.revokeObjectURL(url);
     showFeedback('✅ Grades exported successfully!', 'success');
 }
+
+// ============================================
+// ALIAS FUNCTIONS FOR HTML COMPATIBILITY
+// ============================================
+
+// These allow your HTML to call loadGradingData() instead of loadGrades()
+window.loadGradingData = loadGrades;
+window.saveGrade = addGrade;
+window.editGradeRow = editGrade;
+window.deleteGradeRow = deleteGrade;
+window.generateDefaultGrades = setDefaultGrades;
+window.generateGradeComments = generateGradeComments;
+window.exportGradingData = exportGradesToCSV;
+
+// ============================================
+// EXPORT FUNCTIONS
+// ============================================
+
+window.loadGrades = loadGrades;
+window.addGrade = addGrade;
+window.editGrade = editGrade;
+window.updateGrade = updateGrade;
+window.deleteGrade = deleteGrade;
+window.resetGradeForm = resetGradeForm;
+window.setDefaultGrades = setDefaultGrades;
+window.exportGradesToCSV = exportGradesToCSV;
+window.getGradeColor = getGradeColor;
+window.initGradingDropdowns = initGradingDropdowns;
+window.populateGradingProgramDropdown = populateGradingProgramDropdown;
+window.populateGradingUnitDropdown = populateGradingUnitDropdown;
 
 // ============================================
 // FILTER EXAMS TABLE
