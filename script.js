@@ -4059,12 +4059,6 @@ function getExamTypeLabel(examType) {
     return labels[examType] || 'Assessment';
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 function showFeedback(message, type = 'info') {
     const colors = {
