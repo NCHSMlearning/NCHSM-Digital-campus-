@@ -3,7 +3,13 @@
 // Version: 4.0 - Fixed Session + Theme Toggle
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
-
+  // ============================================
+// 🚀 HIDE .html EXTENSION IN URL
+// ============================================
+if (window.location.pathname.endsWith('.html')) {
+    const cleanPath = window.location.pathname.replace(/\.html$/, '');
+    window.history.replaceState({}, '', cleanPath);
+}
 // ============================================
 // QUEUE SYSTEM - BYPASSED
 // ============================================
