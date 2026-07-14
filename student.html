@@ -211,7 +211,7 @@
             <div id="next-exam-details" style="color: white;"></div>
         </div>
 
-        <!-- STATS ROW (XP, NurseIQ, Attendance) -->
+        <!-- STATS ROW (XP, NurseIQ, Attendance, Daily Streak) -->
         <div class="stats-row">
             <div class="xp-area">
                 <div class="label"><i class="fas fa-star"></i> Level <span id="user-level">1</span> · <span id="user-xp">0</span>/<span id="user-xp-max">100</span> XP to Level <span id="next-level">2</span></div>
@@ -222,6 +222,16 @@
             </div>
             <div class="xp-area">
                 <div class="label"><i class="fas fa-calendar-check"></i> 🎯 Attendance: <span id="attendance-points-value">0</span> pts</div>
+            </div>
+            <!-- ✅ DAILY STREAK -->
+            <div class="xp-area" style="background: linear-gradient(135deg, #4C1D95, #7C3AED); border-radius: 12px; padding: 8px 16px;">
+                <div class="label" style="color: white;">
+                    <i class="fas fa-fire" style="color: #fbbf24;"></i> 
+                    Daily Streak: <span id="daily-streak-display" style="font-weight: 700; color: #fbbf24;">0</span> days
+                    <span style="font-size: 10px; color: #c4b5fd; font-weight: 400; display: block; margin-top: 2px;">
+                        🔥 Keep logging in daily!
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -293,7 +303,7 @@
             </div>
         </div>
 
-        <!-- ========== MINI CARDS ROW 3 - REVIEWS & NEWSLETTER ========== -->
+        <!-- ========== MINI CARDS ROW 3 - REVIEWS & NEWSLETTER & DAILY STREAK ========== -->
         <div class="mini-cards">
             <div class="mini-card" data-tab="reviews">
                 <div class="mini-label">⭐ Reviews</div>
@@ -308,10 +318,13 @@
                 <div class="mini-card-value" id="dashboard-newsletter-status">📧 Not Subscribed</div>
                 <div class="mini-sub" id="dashboard-newsletter-latest">No newsletters yet</div>
             </div>
-            <div class="mini-card" data-tab="profile">
-                <div class="mini-label">📸 Profile</div>
-                <div class="mini-card-value" id="dashboard-profile-status">✅ Complete</div>
-                <div class="mini-sub">Last updated: <span id="dashboard-profile-updated">--</span></div>
+            <!-- ✅ DAILY STREAK MINI CARD -->
+            <div class="mini-card" data-tab="profile" style="cursor:pointer; background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                <div class="mini-label" style="color: #92400e;">🔥 Daily Streak</div>
+                <div class="mini-card-value" id="daily-streak-value" style="color: #d97706; font-weight: 700;">0</div>
+                <div class="mini-sub" style="color: #92400e;">
+                    Keep logging in daily!
+                </div>
             </div>
         </div>
 
