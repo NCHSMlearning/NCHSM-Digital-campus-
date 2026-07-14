@@ -4059,33 +4059,6 @@ function getExamTypeLabel(examType) {
     return labels[examType] || 'Assessment';
 }
 
-// ========== SHOW FEEDBACK FUNCTION ==========
-// ✅ COMPLETE FUNCTION - Add this
-function showFeedback(message, type = 'info') {
-    const colors = {
-        success: '#059669',
-        error: '#DC2626',
-        warning: '#F59E0B',
-        info: '#3B82F6'
-    };
-    
-    const feedback = document.createElement('div');
-    feedback.style.cssText = `
-        position: fixed; top: 20px; right: 20px; 
-        padding: 15px 25px; background: ${colors[type] || '#4C1D95'}; 
-        color: white; border-radius: 8px; z-index: 9999;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        max-width: 500px; animation: slideIn 0.3s ease;
-    `;
-    feedback.textContent = message;
-    document.body.appendChild(feedback);
-    
-    setTimeout(() => {
-        feedback.style.opacity = '0';
-        feedback.style.transition = 'opacity 0.5s';
-        setTimeout(() => feedback.remove(), 500);
-    }, 4000);
-}
 
 // ========== POPULATE COURSE SELECTS ==========
 async function populateExamCourseSelects(courses = null) {
