@@ -1,4 +1,5 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH DAILY STREAK & FIXED LEADERBOARD
+// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY)
+
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -22,7 +23,7 @@ class DashboardModule {
             nextExam: null,
             reviews: { total: 0, avg: 0, pending: 0 },
             newsletter: { subscribed: false, latest: null },
-            login: { count: 0, points: 0, streak: 0 }  // ✅ Added streak
+            login: { count: 0, points: 0, streak: 0, maxStreak: 0, streakRestores: 0 }
         };
         
         this.cacheElements();
@@ -117,9 +118,15 @@ class DashboardModule {
             headerTime: document.getElementById('header-time'),
             dashboardLastUpdated: document.getElementById('dashboard-last-updated'),
             dashboardStudentId: document.getElementById('dashboard-student-id'),
-            // ✅ DAILY STREAK ELEMENTS
+            // Streak elements
             dailyStreakDisplay: document.getElementById('daily-streak-display'),
-            dailyStreakValue: document.getElementById('daily-streak-value')
+            dailyStreakValue: document.getElementById('daily-streak-value'),
+            streakStatusText: document.getElementById('streak-status-text'),
+            streakProgressFill: document.getElementById('streak-progress-fill'),
+            streakRestoreBtn: document.getElementById('streak-restore-btn'),
+            streakEmoji: document.getElementById('streak-emoji'),
+            streakLights: document.querySelectorAll('.streak-light'),
+            streakMilestones: document.querySelectorAll('.milestone')
         };
     }
     
@@ -245,6 +252,14 @@ class DashboardModule {
                 this.showToast('All achievements feature coming soon!', 2000);
             });
         }
+        
+        // Streak restore button
+        const restoreBtn = document.getElementById('streak-restore-btn');
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', () => {
+                this.restoreStreak();
+            });
+        }
     }
     
     async initialize(userId, userProfile) {
@@ -357,10 +372,10 @@ class DashboardModule {
             });
     }
     
-    // ✅ Calculate Daily Streak
+    // ✅ CALCULATE DAILY STREAK
     async calculateDailyStreak() {
         try {
-            if (!this.userId || !this.sb) return 0;
+            if (!this.userId || !this.sb) return { streak: 0, maxStreak: 0, restores: 0 };
             
             const { data: sessions, error } = await this.sb
                 .from('user_sessions')
@@ -369,12 +384,9 @@ class DashboardModule {
                 .order('login_time', { ascending: false });
             
             if (error) throw error;
-            
-            if (!sessions || sessions.length === 0) return 0;
-            
-            let streak = 0;
-            let currentDate = this.getKenyaNow();
-            currentDate.setHours(0, 0, 0, 0);
+            if (!sessions || sessions.length === 0) {
+                return { streak: 0, maxStreak: 0, restores: 0 };
+            }
             
             // Get unique login dates
             const uniqueDates = [];
@@ -391,38 +403,259 @@ class DashboardModule {
                 }
             }
             
-            // Sort dates in descending order (newest first)
             uniqueDates.sort((a, b) => b - a);
             
-            // Calculate consecutive days
-            for (let i = 0; i < uniqueDates.length; i++) {
-                const diffDays = Math.floor((currentDate - uniqueDates[i]) / (1000 * 60 * 60 * 24));
+            const today = this.getKenyaNow();
+            today.setHours(0, 0, 0, 0);
+            
+            let currentStreak = 0;
+            let maxStreak = 0;
+            
+            // Check if logged in today
+            if (uniqueDates.length > 0) {
+                const lastLogin = uniqueDates[0];
+                const diffDays = Math.floor((today - lastLogin) / (1000 * 60 * 60 * 24));
                 
-                if (i === 0) {
-                    // First date should be today or yesterday
-                    if (diffDays === 0 || diffDays === 1) {
-                        streak = 1;
-                    } else {
-                        break;
-                    }
-                } else {
-                    const prevDiff = Math.floor((currentDate - uniqueDates[i]) / (1000 * 60 * 60 * 24));
-                    const expectedDay = streak; // Should be consecutive
+                if (diffDays === 0 || diffDays === 1) {
+                    // Logged in today or yesterday - streak continues
+                    currentStreak = 1;
                     
-                    if (prevDiff === expectedDay) {
-                        streak++;
+                    // Count consecutive days backwards
+                    for (let i = 1; i < uniqueDates.length; i++) {
+                        const prevDate = uniqueDates[i];
+                        const expectedDate = new Date(lastLogin);
+                        expectedDate.setDate(expectedDate.getDate() - i);
+                        expectedDate.setHours(0, 0, 0, 0);
+                        
+                        if (prevDate.getTime() === expectedDate.getTime()) {
+                            currentStreak++;
+                        } else {
+                            break;
+                        }
+                    }
+                } else if (diffDays > 1) {
+                    // Missed more than 1 day - check if restore is available
+                    const { data: profile } = await this.sb
+                        .from('consolidated_user_profiles_table')
+                        .select('streak_data')
+                        .eq('user_id', this.userId)
+                        .single();
+                    
+                    const streakData = profile?.streak_data || {};
+                    const restoresUsed = streakData.restores_used || 0;
+                    
+                    if (restoresUsed < 3 && streakData.current_streak > 0) {
+                        // Auto-restore available (user needs to click restore)
+                        currentStreak = streakData.current_streak || 0;
                     } else {
-                        break;
+                        currentStreak = 0;
                     }
                 }
+                
+                // Store max streak
+                const { data: profile } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('streak_data')
+                    .eq('user_id', this.userId)
+                    .single();
+                
+                const streakData = profile?.streak_data || {};
+                maxStreak = Math.max(currentStreak, streakData.max_streak || 0);
+                
+                // Save updated streak data
+                await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        streak_data: {
+                            current_streak: currentStreak,
+                            max_streak: maxStreak,
+                            restores_used: streakData.restores_used || 0,
+                            last_login_date: today.toISOString().split('T')[0]
+                        }
+                    })
+                    .eq('user_id', this.userId);
             }
             
-            console.log(`🔥 Daily Streak: ${streak} days`);
-            return streak;
+            // Get restore count
+            const { data: profile } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('streak_data')
+                .eq('user_id', this.userId)
+                .single();
+            
+            const streakData = profile?.streak_data || {};
+            const restoresUsed = streakData.restores_used || 0;
+            
+            return { 
+                streak: currentStreak, 
+                maxStreak: maxStreak, 
+                restores: restoresUsed,
+                maxRestores: 3
+            };
             
         } catch (error) {
             console.error('Error calculating streak:', error);
-            return 0;
+            return { streak: 0, maxStreak: 0, restores: 0, maxRestores: 3 };
+        }
+    }
+    
+    // ✅ RESTORE STREAK
+    async restoreStreak() {
+        console.log('🔥 Restoring streak...');
+        
+        if (!this.userId || !this.sb) {
+            this.showToast('❌ Please log in first', 2000);
+            return;
+        }
+        
+        try {
+            const { data: profile } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('streak_data')
+                .eq('user_id', this.userId)
+                .single();
+            
+            let streakData = profile?.streak_data || {};
+            let restoresUsed = streakData.restores_used || 0;
+            let currentStreak = streakData.current_streak || 0;
+            
+            if (restoresUsed >= 3) {
+                this.showToast('❌ No restores remaining! Max 3 per month.', 3000);
+                return;
+            }
+            
+            if (currentStreak === 0) {
+                this.showToast('❌ No streak to restore! Start logging in daily.', 3000);
+                return;
+            }
+            
+            restoresUsed++;
+            
+            await this.sb
+                .from('consolidated_user_profiles_table')
+                .update({
+                    streak_data: {
+                        current_streak: currentStreak,
+                        max_streak: streakData.max_streak || 0,
+                        restores_used: restoresUsed,
+                        last_login_date: this.getKenyaNow().toISOString().split('T')[0]
+                    }
+                })
+                .eq('user_id', this.userId);
+            
+            this.metrics.login.streak = currentStreak;
+            this.metrics.login.streakRestores = restoresUsed;
+            
+            this.updateStreakUI();
+            
+            this.showToast(`✅ Streak restored! You have ${3 - restoresUsed} restores left.`, 3000);
+            
+            await this.loadFreshData();
+            
+        } catch (error) {
+            console.error('Error restoring streak:', error);
+            this.showToast('❌ Failed to restore streak. Try again.', 2000);
+        }
+    }
+    
+    // ✅ UPDATE STREAK UI - LIGHTS UP AFTER 1 DAY
+    updateStreakUI() {
+        const streak = this.metrics.login.streak || 0;
+        const restoresLeft = 3 - (this.metrics.login.streakRestores || 0);
+        
+        // Update numbers
+        if (this.elements.dailyStreakDisplay) {
+            this.elements.dailyStreakDisplay.innerText = streak;
+        }
+        if (this.elements.dailyStreakValue) {
+            this.elements.dailyStreakValue.innerText = streak;
+        }
+        
+        // Update streak lights - LIGHTS UP AFTER 1 DAY!
+        const lights = document.querySelectorAll('.streak-light');
+        const lightCount = Math.min(streak, 5);
+        
+        lights.forEach((light, index) => {
+            if (index < lightCount) {
+                light.classList.add('active');
+            } else {
+                light.classList.remove('active');
+            }
+        });
+        
+        // Update fire emoji
+        const fireEmoji = document.getElementById('streak-emoji');
+        if (fireEmoji) {
+            if (streak >= 1) {
+                fireEmoji.style.opacity = '1';
+                if (streak >= 30) {
+                    fireEmoji.textContent = '🔥🔥🔥';
+                } else if (streak >= 14) {
+                    fireEmoji.textContent = '🔥🔥';
+                } else {
+                    fireEmoji.textContent = '🔥';
+                }
+            } else {
+                fireEmoji.style.opacity = '0.3';
+                fireEmoji.textContent = '🔥';
+            }
+        }
+        
+        // Update progress bar
+        const progressFill = document.getElementById('streak-progress-fill');
+        if (progressFill) {
+            let progress = 0;
+            if (streak >= 30) {
+                progress = 100;
+            } else if (streak >= 1) {
+                progress = Math.min((streak / 30) * 100, 100);
+            }
+            progressFill.style.width = progress + '%';
+        }
+        
+        // Update milestones
+        document.querySelectorAll('.milestone').forEach(el => {
+            const day = parseInt(el.dataset.day);
+            el.classList.remove('active', 'reached');
+            if (streak >= day) {
+                el.classList.add('reached');
+            } else if (streak === day - 1) {
+                el.classList.add('active');
+            }
+        });
+        
+        // Update status message
+        const statusText = document.getElementById('streak-status-text');
+        if (statusText) {
+            if (streak === 0) {
+                statusText.textContent = '✨ Login today to start your streak!';
+            } else if (streak === 1) {
+                statusText.textContent = '🔥 Your streak has started! Keep going!';
+            } else if (streak >= 30) {
+                statusText.textContent = `👑 ${streak} days! You\'re a LEGEND! 🎉`;
+            } else if (streak >= 14) {
+                statusText.textContent = `💎 ${streak} days! You\'re on FIRE! 🔥`;
+            } else if (streak >= 7) {
+                statusText.textContent = `🌿 ${streak} days! You\'re growing strong! 💪`;
+            } else if (streak >= 3) {
+                statusText.textContent = `🌱 ${streak} days! Keep the momentum going!`;
+            } else {
+                statusText.textContent = `🔥 ${streak} day${streak > 1 ? 's' : ''}! Keep logging in!`;
+            }
+        }
+        
+        // Show/hide restore button
+        const restoreBtn = document.getElementById('streak-restore-btn');
+        if (restoreBtn) {
+            if (streak > 0 && restoresLeft > 0) {
+                restoreBtn.style.display = 'inline-flex';
+                restoreBtn.innerHTML = `💫 Restore (${restoresLeft} left)`;
+            } else if (streak === 0 && restoresLeft > 0) {
+                restoreBtn.style.display = 'inline-flex';
+                restoreBtn.innerHTML = `💫 Start Streak (${restoresLeft} left)`;
+            } else {
+                restoreBtn.style.display = 'none';
+            }
         }
     }
     
@@ -458,12 +691,11 @@ class DashboardModule {
             
             if (error) throw error;
             
-            // ✅ GET LOGIN COUNT FROM RPC
             const loginCount = data?.login?.count || 0;
             const loginPoints = data?.login?.points || 0;
             
             // ✅ Calculate Daily Streak
-            const streak = await this.calculateDailyStreak();
+            const streakData = await this.calculateDailyStreak();
             
             // Update metrics
             this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
@@ -476,7 +708,6 @@ class DashboardModule {
             this.metrics.resources = data.resources || 0;
             this.metrics.courses = data.examCard?.approved || 0;
             
-            // ✅ UPDATE XP WITH LOGIN POINTS
             const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
             const nurseIQPoints = this.metrics.nurseiq.questions || 0;
             const totalXP = loginPoints + attendancePoints + nurseIQPoints;
@@ -487,10 +718,16 @@ class DashboardModule {
             this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
             
             // ✅ STORE LOGIN METRICS WITH STREAK
-            this.metrics.login = { count: loginCount, points: loginPoints, streak: streak };
+            this.metrics.login = { 
+                count: loginCount, 
+                points: loginPoints, 
+                streak: streakData.streak,
+                maxStreak: streakData.maxStreak,
+                streakRestores: streakData.restores
+            };
             
             console.log(`📊 Login Points: ${loginPoints} (${loginCount} logins × 10)`);
-            console.log(`🔥 Daily Streak: ${streak} days`);
+            console.log(`🔥 Daily Streak: ${streakData.streak} days`);
             
             await this.loadReviewsSnapshot();
             await this.loadNewsletterSnapshot();
@@ -530,6 +767,9 @@ class DashboardModule {
                 });
             }
             
+            // ✅ Update Streak UI
+            this.updateStreakUI();
+            
             await this.updateExamsMetric();
             
             console.log('✅ Dashboard loaded from DATABASE');
@@ -558,7 +798,6 @@ class DashboardModule {
     async loadIndividualMetrics() {
         console.log('⚠️ Falling back to individual metrics...');
         
-        // ✅ GET LOGIN COUNT
         if (this.userId && this.sb) {
             try {
                 const { data: profileData } = await this.sb
@@ -568,12 +807,18 @@ class DashboardModule {
                     .single();
                 
                 const loginCount = profileData?.login_count || 0;
-                const streak = await this.calculateDailyStreak();
-                this.metrics.login = { count: loginCount, points: loginCount * 10, streak: streak };
-                console.log(`📊 Login count (fallback): ${loginCount}, Streak: ${streak}`);
+                const streakData = await this.calculateDailyStreak();
+                this.metrics.login = { 
+                    count: loginCount, 
+                    points: loginCount * 10, 
+                    streak: streakData.streak,
+                    maxStreak: streakData.maxStreak,
+                    streakRestores: streakData.restores
+                };
+                console.log(`📊 Login count (fallback): ${loginCount}, Streak: ${streakData.streak}`);
             } catch (e) {
                 console.warn('Could not fetch login count:', e);
-                this.metrics.login = { count: 0, points: 0, streak: 0 };
+                this.metrics.login = { count: 0, points: 0, streak: 0, maxStreak: 0, streakRestores: 0 };
             }
         }
         
@@ -589,6 +834,7 @@ class DashboardModule {
             this.loadNewsletterSnapshot()
         ]);
         this.updateUIFromMetrics();
+        this.updateStreakUI();
         this.saveToCache();
     }
     
@@ -1147,40 +1393,32 @@ class DashboardModule {
             
             const studentIds = students.map(s => s.id);
             
-            // ✅ ONLY get verified attendance
             const { data: allAttendance } = await this.sb
                 .from('geo_attendance_logs')
                 .select('student_id, is_verified')
                 .in('student_id', studentIds);
             
-            // ✅ Get NurseIQ progress
             const { data: allProgress } = await this.sb
                 .from('user_progress')
                 .select('user_id, progress_data')
                 .in('user_id', studentIds);
             
-            // ✅ Get NurseIQ attempts
             const { data: allAttempts } = await this.sb
                 .from('nurseiq_attempts')
                 .select('student_id, score, total_questions')
                 .in('student_id', studentIds);
             
-            // ✅ Get Exam Grades
             const { data: allExamGrades } = await this.sb
                 .from('exam_grades')
                 .select('student_id, total_score')
                 .in('student_id', studentIds);
             
             const scoredStudents = students.map(student => {
-                // ✅ 1. Login Points (10 per login)
                 const loginPoints = (student.login_count || 0) * 10;
-                
-                // ✅ 2. Attendance Points (ONLY verified attendance)
                 const studentAttendance = allAttendance?.filter(a => a.student_id === student.id) || [];
                 const verifiedCount = studentAttendance.filter(a => a.is_verified === true).length || 0;
                 const attendancePoints = verifiedCount * 10;
                 
-                // ✅ 3. NurseIQ Points (1 per question)
                 const progress = allProgress?.find(p => p.user_id === student.id);
                 let nurseIQPoints = 0;
                 if (progress?.progress_data?.answers) {
@@ -1192,11 +1430,9 @@ class DashboardModule {
                 attempts.forEach(a => { attemptPoints += a.score || 0; });
                 if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
                 
-                // ✅ 4. Exam Points (total_score from exam_grades)
                 const examGrades = allExamGrades?.filter(g => g.student_id === student.id) || [];
                 const examPoints = examGrades.reduce((sum, grade) => sum + (grade.total_score || 0), 0);
                 
-                // ✅ TOTAL = All 4 sources
                 const totalPoints = loginPoints + attendancePoints + nurseIQPoints + examPoints;
                 
                 return { 
@@ -1209,7 +1445,6 @@ class DashboardModule {
                 };
             });
             
-            // Sort by total points (highest first)
             scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
             const topStudents = scoredStudents.slice(0, 10);
             
@@ -1233,7 +1468,6 @@ class DashboardModule {
             }).join('');
             
             console.log(`✅ Leaderboard loaded with ${topStudents.length} students (${period} period)`);
-            console.log('📊 Points breakdown: Login + Verified Attendance + NurseIQ + Exam Grades');
             
         } catch (error) {
             console.error('Leaderboard error:', error);
@@ -1385,14 +1619,6 @@ class DashboardModule {
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // ✅ DISPLAY DAILY STREAK
-        if (this.elements.dailyStreakDisplay) {
-            this.elements.dailyStreakDisplay.innerText = m.login?.streak || 0;
-        }
-        if (this.elements.dailyStreakValue) {
-            this.elements.dailyStreakValue.innerText = m.login?.streak || 0;
-        }
-        
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -1515,4 +1741,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Daily Streak & Fixed Leaderboard!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day)!');
