@@ -25,7 +25,8 @@
     
     <style>
         /* ============================================================
-           🔥 ULTIMATE AMAZING LANDING PAGE - VERSION 6.0
+           🔥 ULTIMATE AMAZING LANDING PAGE - VERSION 7.0
+           WITH PRICING PACKAGES & NEW TESTIMONIALS
            ============================================================ */
         
         :root {
@@ -62,7 +63,6 @@
             --radius-3xl: 48px;
             --radius-full: 9999px;
             --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -121,23 +121,17 @@
             color: #94a3b8;
         }
 
-        body.dark-mode .feature-card {
+        body.dark-mode .feature-card,
+        body.dark-mode .step,
+        body.dark-mode .testimonial-card,
+        body.dark-mode .pricing-card {
             background: #1e293b;
             border-color: #334155;
         }
 
-        body.dark-mode .feature-card:hover {
+        body.dark-mode .feature-card:hover,
+        body.dark-mode .pricing-card:hover {
             border-color: var(--secondary);
-        }
-
-        body.dark-mode .step {
-            background: #1e293b;
-            border-color: #334155;
-        }
-
-        body.dark-mode .testimonial-card {
-            background: #1e293b;
-            border-color: #334155;
         }
 
         body.dark-mode .page-links-section {
@@ -303,9 +297,7 @@
             transform: translateY(-2px);
         }
 
-        /* ============================================================
-           THEME TOGGLE
-           ============================================================ */
+        /* ===== THEME TOGGLE ===== */
         .theme-toggle-btn {
             background: var(--gray-200);
             border: none;
@@ -406,9 +398,7 @@
             border: none;
         }
 
-        /* ============================================================
-           SCROLL PROGRESS BAR
-           ============================================================ */
+        /* ===== SCROLL PROGRESS BAR ===== */
         .scroll-progress {
             position: fixed;
             top: 0;
@@ -623,43 +613,6 @@
             color: rgba(255,255,255,0.6);
         }
 
-        /* Floating Elements */
-        .floating-element {
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .floating-element-1 {
-            width: 60px;
-            height: 60px;
-            background: rgba(212,175,55,0.08);
-            top: 10%;
-            right: 5%;
-            animation: floatAnim 8s ease-in-out infinite;
-        }
-        .floating-element-2 {
-            width: 100px;
-            height: 100px;
-            background: rgba(16,185,129,0.05);
-            bottom: 15%;
-            left: -3%;
-            animation: floatAnim 12s ease-in-out infinite reverse;
-        }
-        .floating-element-3 {
-            width: 40px;
-            height: 40px;
-            background: rgba(10,61,98,0.06);
-            top: 50%;
-            left: 50%;
-            animation: floatAnim 10s ease-in-out infinite 2s;
-        }
-
-        @keyframes floatAnim {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(20px, -20px) scale(1.1); }
-        }
-
         .trust-badges {
             display: flex;
             gap: 28px;
@@ -834,11 +787,191 @@
         }
 
         /* ============================================================
+           📦 PRICING / PACKAGES SECTION
+           ============================================================ */
+        .pricing {
+            padding: 100px 0;
+            background: var(--gray-50);
+            transition: background 0.3s ease;
+        }
+        .pricing .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+        .pricing .section-header .subtitle-badge {
+            display: inline-block;
+            background: rgba(212,175,55,0.1);
+            color: var(--gold);
+            padding: 4px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(212,175,55,0.2);
+        }
+        .pricing .section-header h2 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .pricing .section-header h2 span {
+            color: var(--gold);
+        }
+        .pricing .section-header p {
+            color: var(--gray-500);
+            font-size: 1.05rem;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+        .pricing-card {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            padding: 40px 30px;
+            text-align: center;
+            transition: var(--transition);
+            border: 2px solid var(--gray-200);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-2xl);
+        }
+        .pricing-card.popular {
+            border-color: var(--gold);
+            transform: scale(1.02);
+        }
+        .pricing-card.popular:hover {
+            transform: scale(1.04) translateY(-8px);
+        }
+        .pricing-card .popular-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--gold);
+            color: #fff;
+            padding: 4px 14px;
+            border-radius: var(--radius-full);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .pricing-card .package-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: #fff;
+            font-size: 2rem;
+        }
+        .pricing-card .package-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .pricing-card .package-price {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 4px;
+        }
+        .pricing-card .package-price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--gray-500);
+        }
+        .pricing-card .package-desc {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 16px;
+        }
+        .pricing-card .features-list {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .pricing-card .features-list li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .pricing-card .features-list li:last-child {
+            border-bottom: none;
+        }
+        .pricing-card .features-list li i {
+            color: var(--secondary);
+            width: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .pricing-card .features-list li .fa-times {
+            color: #ef4444;
+        }
+        .pricing-card .btn-pricing {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .pricing-card .btn-pricing.basic {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+        .pricing-card .btn-pricing.basic:hover {
+            background: var(--gray-300);
+            transform: translateY(-2px);
+        }
+        .pricing-card .btn-pricing.standard {
+            background: var(--primary);
+            color: #fff;
+        }
+        .pricing-card .btn-pricing.standard:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .pricing-card .btn-pricing.premium {
+            background: var(--gold);
+            color: #fff;
+        }
+        .pricing-card .btn-pricing.premium:hover {
+            background: var(--gold-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* ============================================================
            HOW IT WORKS
            ============================================================ */
         .how-it-works {
             padding: 100px 0;
-            background: var(--gray-50);
+            background: var(--white);
             transition: background 0.3s ease;
         }
         .how-it-works .section-header {
@@ -916,11 +1049,11 @@
         }
 
         /* ============================================================
-           TESTIMONIALS
+           TESTIMONIALS - UPDATED
            ============================================================ */
         .testimonials {
             padding: 100px 0;
-            background: var(--white);
+            background: var(--gray-50);
             transition: background 0.3s ease;
         }
         .testimonials .section-header {
@@ -955,11 +1088,12 @@
             gap: 24px;
         }
         .testimonial-card {
-            background: var(--gray-50);
+            background: var(--white);
             padding: 32px;
             border-radius: var(--radius-lg);
             border: 1px solid var(--gray-200);
             transition: var(--transition);
+            position: relative;
         }
         .testimonial-card:hover {
             transform: translateY(-6px);
@@ -996,10 +1130,24 @@
         .testimonial-card .author {
             font-weight: 700;
             font-size: 0.95rem;
+            color: var(--primary);
         }
         .testimonial-card .title {
             font-size: 0.8rem;
             color: var(--gray-500);
+        }
+        .testimonial-card .author-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
         }
 
         /* ============================================================
@@ -1283,11 +1431,18 @@
            ============================================================ */
         @media (max-width: 1024px) {
             .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
             .steps { grid-template-columns: repeat(2, 1fr); }
             .testimonial-grid { grid-template-columns: repeat(2, 1fr); }
             .stats-section .container { grid-template-columns: repeat(2, 1fr); }
             .page-links-section .container { grid-template-columns: repeat(2, 1fr); }
             .hero h1 { font-size: 2.8rem; }
+            .pricing-card.popular {
+                transform: scale(1);
+            }
+            .pricing-card.popular:hover {
+                transform: scale(1.02) translateY(-6px);
+            }
         }
 
         @media (max-width: 768px) {
@@ -1299,6 +1454,14 @@
             .hero-stats { gap: 20px; flex-wrap: wrap; }
             .hero-stats .stat-item .number { font-size: 1.5rem; }
             .features-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .pricing-card.popular {
+                transform: scale(1);
+                order: -1;
+            }
+            .pricing-card.popular:hover {
+                transform: scale(1.02) translateY(-6px);
+            }
             .steps { grid-template-columns: 1fr; }
             .testimonial-grid { grid-template-columns: 1fr; }
             .stats-section .container { grid-template-columns: 1fr 1fr; }
@@ -1324,8 +1487,9 @@
             .cta h2 { font-size: 1.8rem; }
             .page-modal .modal-content { padding: 28px 20px; margin: 10px; }
             .page-modal .modal-content h2 { font-size: 1.4rem; }
-            .features .section-header h2 { font-size: 2rem; }
-            .how-it-works .section-header h2 { font-size: 2rem; }
+            .features .section-header h2,
+            .pricing .section-header h2,
+            .how-it-works .section-header h2,
             .testimonials .section-header h2 { font-size: 2rem; }
             .stats-section .stat-item .number { font-size: 2rem; }
             .floating-element { display: none; }
@@ -1343,7 +1507,6 @@
                 justify-content: center;
             }
             .hero-buttons { flex-direction: column; }
-            .hero-buttons .btn-secondary { text-align: center; }
             .stats-section .container { grid-template-columns: 1fr; }
             .hero-image .mockup-grid { grid-template-columns: 1fr 1fr; }
             .hero-image .mockup-grid .card { padding: 10px 8px; font-size: 0.6rem; }
@@ -1356,6 +1519,8 @@
             .hero-stats { gap: 12px; }
             .hero-stats .stat-item .number { font-size: 1.2rem; }
             .hero-stats .stat-item .label { font-size: 0.7rem; }
+            .pricing-card { padding: 24px 16px; }
+            .pricing-card .package-price { font-size: 1.8rem; }
         }
     </style>
 </head>
@@ -1379,6 +1544,7 @@
         </button>
         <ul class="nav-links" id="navLinks">
             <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Packages</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#testimonials">Testimonials</a></li>
             <li><a href="#" onclick="openModal('contactModal')">Contact</a></li>
@@ -1392,11 +1558,6 @@
         </ul>
     </div>
 </nav>
-
-<!-- ===== FLOATING ELEMENTS ===== -->
-<div class="floating-element floating-element-1"></div>
-<div class="floating-element floating-element-2"></div>
-<div class="floating-element floating-element-3"></div>
 
 <!-- ============================================================
      HERO SECTION
@@ -1415,8 +1576,8 @@
                 <a href="login.html" class="btn-primary">
                     <i class="fas fa-sign-in-alt"></i> Student Login
                 </a>
-                <a href="#" class="btn-secondary" onclick="openModal('demoModal')">
-                    <i class="fas fa-calendar-check"></i> Book a Demo
+                <a href="#pricing" class="btn-secondary">
+                    <i class="fas fa-tag"></i> View Packages
                 </a>
             </div>
             <div class="hero-stats">
@@ -1566,6 +1727,90 @@
 </section>
 
 <!-- ============================================================
+     📦 PRICING / PACKAGES SECTION - NEW
+     ============================================================ -->
+<section class="pricing" id="pricing">
+    <div class="container">
+        <div class="section-header">
+            <div class="subtitle-badge"><i class="fas fa-tags"></i> Pricing Plans</div>
+            <h2>Choose the <span>Perfect Package</span> for Your Institution</h2>
+            <p>Flexible monthly plans designed to meet the needs of institutions of all sizes.</p>
+        </div>
+        <div class="pricing-grid">
+            <!-- Basic Package -->
+            <div class="pricing-card">
+                <div class="package-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="package-name">Basic</div>
+                <div class="package-price">KES 25,000 <span>/ month</span></div>
+                <div class="package-desc">Essential portal access for your institution</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Full Portal Access</li>
+                    <li><i class="fas fa-check"></i> Student & Staff Management</li>
+                    <li><i class="fas fa-check"></i> Course Management</li>
+                    <li><i class="fas fa-check"></i> Attendance Tracking</li>
+                    <li><i class="fas fa-check"></i> Exam Management</li>
+                    <li><i class="fas fa-times"></i> Staff Training</li>
+                    <li><i class="fas fa-times"></i> IT Support</li>
+                    <li><i class="fas fa-times"></i> Cybersecurity</li>
+                </ul>
+                <a href="#" class="btn-pricing basic" onclick="openModal('demoModal')">
+                    <i class="fas fa-shopping-cart"></i> Get Started
+                </a>
+            </div>
+
+            <!-- Standard Package (Popular) -->
+            <div class="pricing-card popular">
+                <div class="popular-badge"><i class="fas fa-star"></i> Most Popular</div>
+                <div class="package-icon" style="background: linear-gradient(135deg, var(--gold), var(--gold-light));">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="package-name">Standard</div>
+                <div class="package-price">KES 30,000 <span>/ month</span></div>
+                <div class="package-desc">Portal access with staff training included</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Full Portal Access</li>
+                    <li><i class="fas fa-check"></i> Student & Staff Management</li>
+                    <li><i class="fas fa-check"></i> Course Management</li>
+                    <li><i class="fas fa-check"></i> Attendance Tracking</li>
+                    <li><i class="fas fa-check"></i> Exam Management</li>
+                    <li><i class="fas fa-check"></i> Staff Training Included</li>
+                    <li><i class="fas fa-times"></i> IT Support</li>
+                    <li><i class="fas fa-times"></i> Cybersecurity</li>
+                </ul>
+                <a href="#" class="btn-pricing standard" onclick="openModal('demoModal')">
+                    <i class="fas fa-shopping-cart"></i> Get Started
+                </a>
+            </div>
+
+            <!-- Premium Package -->
+            <div class="pricing-card">
+                <div class="package-icon" style="background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="package-name">Premium</div>
+                <div class="package-price">KES 45,000 <span>/ month</span></div>
+                <div class="package-desc">Complete solution with full support & security</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Full Portal Access</li>
+                    <li><i class="fas fa-check"></i> Student & Staff Management</li>
+                    <li><i class="fas fa-check"></i> Course Management</li>
+                    <li><i class="fas fa-check"></i> Attendance Tracking</li>
+                    <li><i class="fas fa-check"></i> Exam Management</li>
+                    <li><i class="fas fa-check"></i> Staff & Student Training</li>
+                    <li><i class="fas fa-check"></i> IT Support Included</li>
+                    <li><i class="fas fa-check"></i> Basic Cybersecurity</li>
+                </ul>
+                <a href="#" class="btn-pricing premium" onclick="openModal('demoModal')">
+                    <i class="fas fa-shopping-cart"></i> Get Started
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
      HOW IT WORKS
      ============================================================ -->
 <section class="how-it-works" id="how-it-works">
@@ -1601,33 +1846,41 @@
 </section>
 
 <!-- ============================================================
-     TESTIMONIALS
+     TESTIMONIALS - UPDATED with Kevin & Peter
      ============================================================ -->
 <section class="testimonials" id="testimonials">
     <div class="container">
         <div class="section-header">
             <div class="subtitle-badge"><i class="fas fa-quote-left"></i> Testimonials</div>
             <h2>What Our Users Say</h2>
-            <p>Real feedback from real institutions using CampusNexus.</p>
+            <p>Real feedback from real people using CampusNexus.</p>
         </div>
         <div class="testimonial-grid">
+            <!-- Testimonial 1 -->
             <div class="testimonial-card">
+                <div class="author-img">KM</div>
                 <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">This platform has transformed how we deliver education. Our students are more engaged and our lecturers are more efficient.</p>
+                <p class="quote">CampusNexus has revolutionized how we manage our academic programs. The platform is intuitive, comprehensive, and has significantly improved our operational efficiency. I highly recommend it to any institution looking to digitize their learning experience.</p>
+                <p class="author">Kevin Matoka Tiong'i</p>
+                <p class="title">Head of Department, Nakuru College of Health Sciences and Management</p>
+            </div>
+
+            <!-- Testimonial 2 -->
+            <div class="testimonial-card">
+                <div class="author-img">PO</div>
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+                <p class="quote">The platform's practical approach to skills training has been exceptional. Our students are more engaged, and the ability to track attendance and performance in real-time has transformed our skills lab operations.</p>
+                <p class="author">Peter Onkundi</p>
+                <p class="title">Skills Lab Coordinator, Nakuru College of Health Sciences and Management</p>
+            </div>
+
+            <!-- Testimonial 3 -->
+            <div class="testimonial-card">
+                <div class="author-img">JM</div>
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+                <p class="quote">This platform has transformed how we deliver education. Our students are more engaged and our lecturers are more efficient. The attendance tracking and exam features alone have saved us countless hours.</p>
                 <p class="author">Dr. Jane Mwangi</p>
                 <p class="title">Principal, Nakuru College of Health Sciences</p>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">The attendance tracking and exam features have saved us countless hours. It's a game-changer for our institution.</p>
-                <p class="author">Mr. James Ochieng</p>
-                <p class="title">Dean of Students, TVET Institute</p>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars">⭐⭐⭐⭐⭐</div>
-                <p class="quote">Finally a platform that understands the unique needs of health training institutions. Our students love the NurseIQ feature!</p>
-                <p class="author">Prof. Sarah Adhiambo</p>
-                <p class="title">Head of Nursing Department</p>
             </div>
         </div>
     </div>
@@ -1651,6 +1904,7 @@
             <h4>🏫 Institution</h4>
             <ul>
                 <li><a href="#features"><i class="fas fa-cogs"></i> Features</a></li>
+                <li><a href="#pricing"><i class="fas fa-tags"></i> Packages</a></li>
                 <li><a href="#how-it-works"><i class="fas fa-question-circle"></i> How It Works</a></li>
                 <li><a href="#testimonials"><i class="fas fa-comments"></i> Testimonials</a></li>
                 <li><a href="login.html"><i class="fas fa-sign-in-alt"></i> Login</a></li>
@@ -1689,8 +1943,8 @@
             <a href="#" class="btn-gold" onclick="openModal('demoModal')">
                 <i class="fas fa-calendar-check"></i> Book a Free Demo
             </a>
-            <a href="login.html" class="btn-outline-light">
-                <i class="fas fa-sign-in-alt"></i> Student Login
+            <a href="#pricing" class="btn-outline-light">
+                <i class="fas fa-tag"></i> View Packages
             </a>
         </div>
     </div>
@@ -1708,6 +1962,7 @@
         </div>
         <div class="footer-links">
             <a href="#features">Features</a>
+            <a href="#pricing">Packages</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#testimonials">Testimonials</a>
             <a href="#" onclick="openModal('contactModal')">Contact</a>
@@ -1721,9 +1976,7 @@
     </div>
 </footer>
 
-<!-- ============================================================
-     BACK TO TOP BUTTON
-     ============================================================ -->
+<!-- ===== BACK TO TOP BUTTON ===== -->
 <button class="back-to-top" id="backToTop" aria-label="Back to top">
     <i class="fas fa-arrow-up"></i>
 </button>
@@ -1776,7 +2029,7 @@
         <div class="contact-info">
             <p><i class="fas fa-phone"></i> Call: +254 790 969 743</p>
             <p><i class="fas fa-envelope"></i> Email: demo@campusnexus.com</p>
-            <p><i class="fas fa-whatsapp"></i> WhatsApp:+254 790 969 743</p>
+            <p><i class="fas fa-whatsapp"></i> WhatsApp: +254 790 969 743</p>
         </div>
         <p style="margin-top: 12px; font-size: 0.9rem; color: var(--gray-500);">
             <i class="fas fa-clock"></i> Demos typically take 30-45 minutes and can be scheduled at your convenience.
@@ -1857,13 +2110,14 @@
      SCRIPTS
      ============================================================ -->
 <script>
-     // ============================================================
+    // ============================================================
     // HIDE .html EXTENSION IN URL
     // ============================================================
     if (window.location.pathname.endsWith('.html')) {
         const cleanPath = window.location.pathname.replace(/\.html$/, '');
         window.history.replaceState({}, '', cleanPath);
     }
+
     // ============================================================
     // SCROLL PROGRESS BAR
     // ============================================================
