@@ -4045,7 +4045,18 @@ async function loadAttendance() {
  * 13. EXAMS/CATS MANAGEMENT - COMPLETE FIXED VERSION
  * WITH GRADING SYSTEM TAB
  *******************************************************/
+// ============================================
+// TOGGLE AUDIT COLUMNS - GLOBAL - MOVED TO TOP
+// ============================================
 
+window.toggleAuditColumns = function(checkbox) {
+    const auditCols = document.querySelectorAll('.audit-col');
+    if (checkbox) {
+        auditCols.forEach(col => col.style.display = 'table-cell');
+    } else {
+        auditCols.forEach(col => col.style.display = 'none');
+    }
+};
 // ========== HELPER FUNCTIONS ==========
 function getExamTypeLabel(examType) {
     const labels = {
@@ -6495,18 +6506,6 @@ window.setDefaultGrades = setDefaultGrades;
 window.exportGradesToCSV = exportGradesToCSV;
 window.getGradeColor = getGradeColor;
 
-// ============================================
-// TOGGLE AUDIT COLUMNS - GLOBAL
-// ============================================
-
-window.toggleAuditColumns = function(checkbox) {
-    const auditCols = document.querySelectorAll('.audit-col');
-    if (checkbox) {
-        auditCols.forEach(col => col.style.display = 'table-cell');
-    } else {
-        auditCols.forEach(col => col.style.display = 'none');
-    }
-};
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
