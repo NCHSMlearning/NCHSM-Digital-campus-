@@ -1,6 +1,6 @@
 // ============================================
 // REVIEWS & NEWSLETTER MODULE - COMPLETE
-// AUTO PROGRAM DETECTION ONLY (NO MANUAL FILTER)
+// AUTO PROGRAM DETECTION + WORKING MODALS
 // ============================================
 
 // ============================================
@@ -54,7 +54,6 @@ const PROGRAM_NAMES = {
 // ============================================
 
 let allReviews = [];
-let allSubscribers = [];
 let selectedComponent = '';
 let reviewRating = 0;
 let currentPage = 1;
@@ -85,7 +84,7 @@ const currentFilter = {
     rating: 'all',
     sort: 'newest',
     search: '',
-    block: 'all'  // ✅ Removed 'program' - auto-detected
+    block: 'all'
 };
 
 // ============================================
@@ -112,7 +111,6 @@ function detectUserProgram() {
         userRole = (profile.role || profile.user_type || 'student').toLowerCase();
         console.log('👤 User Role:', userRole);
         
-        // ✅ STAFF/ADMIN - Show ALL reviews
         if (['staff', 'admin', 'superadmin', 'hod', 'lecturer', 'instructor'].includes(userRole)) {
             console.log('👤 Staff/Admin detected - showing ALL reviews');
             isStaffUser = true;
@@ -129,12 +127,10 @@ function detectUserProgram() {
             return 'all';
         }
         
-        // ✅ STUDENT - Auto-detect program
         const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
         console.log('📋 Detected Program Code:', programCode);
         
         if (programCode === 'KRCHN') {
-            // KRCHN Student
             isTVETStudent = false;
             userProgram = 'krchn';
             userProgramCode = 'KRCHN';
@@ -145,9 +141,7 @@ function detectUserProgram() {
             userIntakeYear = profile.intake_year || 2025;
             isAdminView = false;
             console.log(`✅ KRCHN Student: Block ${userBlock}`);
-            
         } else if (TVET_CODES.includes(programCode)) {
-            // TVET Student
             isTVETStudent = true;
             userProgram = 'tvet';
             userProgramCode = programCode;
@@ -158,9 +152,7 @@ function detectUserProgram() {
             userIntakeYear = profile.intake_year || 2025;
             isAdminView = false;
             console.log(`✅ TVET Student: ${userProgramDisplay}, Term: ${userTerm || 'Not set'}`);
-            
         } else {
-            // Unknown - default to KRCHN
             isTVETStudent = false;
             userProgram = 'krchn';
             userProgramCode = 'KRCHN';
@@ -200,7 +192,6 @@ function extractTermNumber(block) {
 }
 
 function updateUserProgramUI() {
-    // Update the block indicator
     const blockDisplay = document.getElementById('userCurrentBlock');
     if (blockDisplay) {
         if (isStaffUser || userProgram === 'all') {
@@ -209,40 +200,6 @@ function updateUserProgramUI() {
             blockDisplay.textContent = `Term ${userTerm || 1}`;
         } else {
             blockDisplay.textContent = userBlock || 'Block 1';
-        }
-    }
-    
-    // ✅ Update program badge
-    const programBadge = document.getElementById('program-display-badge');
-    if (programBadge) {
-        if (isStaffUser || userProgram === 'all') {
-            programBadge.innerHTML = `<i class="fas fa-users"></i> All Reviews (Admin)`;
-            programBadge.style.background = '#8b5cf6';
-        } else if (isTVETStudent) {
-            programBadge.innerHTML = `<i class="fas fa-tools"></i> ${userProgramDisplay}`;
-            programBadge.style.background = '#1a7a5a';
-        } else {
-            programBadge.innerHTML = `<i class="fas fa-graduation-cap"></i> ${userProgramDisplay}`;
-            programBadge.style.background = '#4C1D95';
-        }
-    }
-    
-    // ✅ Update block/term display
-    const blockTermDisplay = document.getElementById('block-term-display');
-    const blockTermValue = document.getElementById('block-term-value');
-    if (blockTermDisplay && blockTermValue) {
-        if (isStaffUser || userProgram === 'all') {
-            blockTermDisplay.style.background = '#f3e8ff';
-            blockTermDisplay.style.color = '#6d28d9';
-            blockTermValue.textContent = 'All Reviews';
-        } else if (isTVETStudent) {
-            blockTermDisplay.style.background = '#fef3c7';
-            blockTermDisplay.style.color = '#78350f';
-            blockTermValue.textContent = `Term ${userTerm || 1}`;
-        } else {
-            blockTermDisplay.style.background = '#dbeafe';
-            blockTermDisplay.style.color = '#1e40af';
-            blockTermValue.textContent = userBlock || 'Block 1';
         }
     }
 }
@@ -320,7 +277,6 @@ function initReviewsModule() {
     try {
         detectUserProgram();
         
-        // Reset filter state (NO program filter)
         currentFilter.category = 'all';
         currentFilter.rating = 'all';
         currentFilter.sort = 'newest';
@@ -333,80 +289,129 @@ function initReviewsModule() {
         updateReviewStats();
         initCategoryFilters();
         
-        // Event listeners
+        // ============================================
+        // ✅ FIXED: EVENT LISTENERS
+        // ============================================
+        
+        // Write Review Button
         const writeBtn = document.getElementById('writeReviewBtn');
         if (writeBtn) {
             writeBtn.removeEventListener('click', openReviewModal);
             writeBtn.addEventListener('click', openReviewModal);
         }
         
-        const closeBtn = document.getElementById('closeReviewModal');
-        if (closeBtn) {
-            closeBtn.removeEventListener('click', closeReviewModal);
-            closeBtn.addEventListener('click', closeReviewModal);
+        // Close Review Modal Button
+        const closeModalBtn = document.getElementById('closeReviewModal');
+        if (closeModalBtn) {
+            closeModalBtn.removeEventListener('click', closeReviewModal);
+            closeModalBtn.addEventListener('click', closeReviewModal);
+            console.log('✅ Close modal button listener added');
+        } else {
+            console.warn('⚠️ closeReviewModal button not found');
         }
         
+        // Cancel Review Button
         const cancelBtn = document.getElementById('cancelReviewBtn');
         if (cancelBtn) {
             cancelBtn.removeEventListener('click', closeReviewModal);
             cancelBtn.addEventListener('click', closeReviewModal);
         }
         
+        // Close Detail Modal Button
+        const closeDetailBtn = document.getElementById('closeDetailModal');
+        if (closeDetailBtn) {
+            closeDetailBtn.removeEventListener('click', closeDetailModal);
+            closeDetailBtn.addEventListener('click', closeDetailModal);
+            console.log('✅ Close detail modal button listener added');
+        }
+        
+        // Refresh Button
         const refreshBtn = document.getElementById('refreshReviewsBtn');
         if (refreshBtn) {
             refreshBtn.removeEventListener('click', refreshReviews);
             refreshBtn.addEventListener('click', refreshReviews);
         }
         
+        // Review Form
         const form = document.getElementById('studentReviewForm');
         if (form) {
             form.removeEventListener('submit', submitReview);
             form.addEventListener('submit', submitReview);
         }
         
+        // Review Text Input
         const reviewText = document.getElementById('reviewTextInput');
         if (reviewText) {
             reviewText.removeEventListener('input', updateCharCount);
             reviewText.addEventListener('input', updateCharCount);
         }
         
-        // Filter listeners (NO program filter)
+        // Category Filter
         const categoryFilter = document.getElementById('reviewCategoryFilter');
         if (categoryFilter) {
             categoryFilter.removeEventListener('change', applyFilters);
             categoryFilter.addEventListener('change', applyFilters);
         }
         
+        // Rating Filter
         const ratingFilter = document.getElementById('reviewRatingFilter');
         if (ratingFilter) {
             ratingFilter.removeEventListener('change', applyFilters);
             ratingFilter.addEventListener('change', applyFilters);
         }
         
+        // Sort Filter
         const sortFilter = document.getElementById('reviewSortFilter');
         if (sortFilter) {
             sortFilter.removeEventListener('change', applyFilters);
             sortFilter.addEventListener('change', applyFilters);
         }
         
+        // Search Input
         const searchInput = document.getElementById('reviewSearchInput');
         if (searchInput) {
             searchInput.removeEventListener('keyup', handleSearch);
             searchInput.addEventListener('keyup', handleSearch);
         }
         
-        // ✅ BLOCK filter ONLY (program is auto-detected)
+        // Block Filter
         const blockFilter = document.getElementById('reviewBlockFilter');
         if (blockFilter) {
             blockFilter.removeEventListener('change', applyFilters);
             blockFilter.addEventListener('change', applyFilters);
         }
         
+        // Load More Button
         const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
         if (loadMoreBtn) {
             loadMoreBtn.removeEventListener('click', loadMoreReviews);
             loadMoreBtn.addEventListener('click', loadMoreReviews);
         }
+        
+        // ✅ CLOSE MODAL ON OUTSIDE CLICK
+        const writeModal = document.getElementById('writeReviewModal');
+        if (writeModal) {
+            writeModal.removeEventListener('click', function(e) {
+                if (e.target === this) closeReviewModal();
+            });
+            writeModal.addEventListener('click', function(e) {
+                if (e.target === this) closeReviewModal();
+            });
+        }
+        
+        const detailModal = document.getElementById('reviewDetailModal');
+        if (detailModal) {
+            detailModal.removeEventListener('click', function(e) {
+                if (e.target === this) closeDetailModal();
+            });
+            detailModal.addEventListener('click', function(e) {
+                if (e.target === this) closeDetailModal();
+            });
+        }
+        
+        // ✅ CLOSE ON ESCAPE KEY
+        document.removeEventListener('keydown', handleEscapeKey);
+        document.addEventListener('keydown', handleEscapeKey);
         
         addResetButton();
         
@@ -415,6 +420,108 @@ function initReviewsModule() {
         
     } catch (error) {
         console.error('Error initializing reviews:', error);
+    }
+}
+
+function handleEscapeKey(e) {
+    if (e.key === 'Escape') {
+        const writeModal = document.getElementById('writeReviewModal');
+        if (writeModal && writeModal.style.display === 'flex') {
+            closeReviewModal();
+        }
+        const detailModal = document.getElementById('reviewDetailModal');
+        if (detailModal && detailModal.style.display === 'flex') {
+            closeDetailModal();
+        }
+    }
+}
+
+// ============================================
+// ✅ FIXED: MODAL FUNCTIONS
+// ============================================
+
+function openReviewModal() {
+    console.log('🔓 Opening review modal...');
+    const modal = document.getElementById('writeReviewModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.style.opacity = '0';
+        modal.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+        }, 10);
+        
+        const feedback = document.getElementById('reviewFormFeedback');
+        if (feedback) feedback.style.display = 'none';
+        
+        const errorEl = document.getElementById('componentError');
+        if (errorEl) errorEl.style.display = 'none';
+        
+        const ratingError = document.getElementById('ratingError');
+        if (ratingError) ratingError.style.display = 'none';
+    } else {
+        console.error('❌ Modal #writeReviewModal not found!');
+    }
+}
+
+function closeReviewModal() {
+    console.log('🔒 Closing review modal...');
+    const modal = document.getElementById('writeReviewModal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+        
+        const form = document.getElementById('studentReviewForm');
+        if (form) form.reset();
+        
+        const details = document.getElementById('componentDetails');
+        if (details) details.style.display = 'none';
+        
+        document.querySelectorAll('.component-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        
+        document.querySelectorAll('#starRatingLarge span').forEach(star => {
+            star.textContent = '☆';
+            star.style.color = '#d1d5db';
+        });
+        
+        const ratingText = document.getElementById('ratingText');
+        if (ratingText) ratingText.textContent = 'Select a rating';
+        
+        document.getElementById('reviewRatingValue').value = 0;
+        
+        const feedback = document.getElementById('reviewFormFeedback');
+        if (feedback) {
+            feedback.style.display = 'none';
+            feedback.innerHTML = '';
+        }
+    } else {
+        console.warn('⚠️ Modal #writeReviewModal not found');
+    }
+}
+
+function closeDetailModal() {
+    console.log('🔒 Closing detail modal...');
+    const modal = document.getElementById('reviewDetailModal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    } else {
+        console.warn('⚠️ Modal #reviewDetailModal not found');
+    }
+}
+
+function closeSuccessPopup() {
+    const popup = document.getElementById('reviewSuccessPopup');
+    if (popup) {
+        popup.style.opacity = '0';
+        popup.style.transition = 'opacity 0.3s';
+        setTimeout(() => popup.remove(), 400);
     }
 }
 
@@ -492,7 +599,6 @@ async function loadReviews() {
             .select('*, student:student_id(full_name, program, block, profile_photo_url)')
             .eq('status', 'approved');
         
-        // ✅ AUTO FILTER BY PROGRAM TYPE (NOT MANUAL)
         if (!isStaffUser && userProgramType !== 'all') {
             console.log(`🔍 Auto-filtering reviews for: ${userProgramType}`);
             query = query.eq('target_program_type', userProgramType);
@@ -500,7 +606,6 @@ async function loadReviews() {
             console.log('👤 Staff/Admin - Showing ALL reviews');
         }
         
-        // Apply category filter
         if (currentFilter.category && currentFilter.category !== 'all') {
             const categoryMap = {
                 'site': 'site',
@@ -518,27 +623,23 @@ async function loadReviews() {
             query = query.eq('component_type', mappedCategory);
         }
         
-        // ✅ AUTO FILTER BY BLOCK for academic categories
         if (!isStaffUser && currentFilter.category && currentFilter.category !== 'all' && currentFilter.category !== 'site') {
             console.log(`🔍 Auto-filtering by block: ${userBlock}`);
             query = query.eq('target_block', userBlock);
         }
         
-        // Apply rating filter
         if (currentFilter.rating && currentFilter.rating !== 'all') {
             const ratingValue = parseInt(currentFilter.rating);
             console.log('📊 Filtering by rating:', ratingValue);
             query = query.eq('rating', ratingValue);
         }
         
-        // Apply search filter
         if (currentFilter.search && currentFilter.search.trim() !== '') {
             const searchTerm = currentFilter.search.trim();
             console.log('📊 Searching for:', searchTerm);
             query = query.or(`review.ilike.%${searchTerm}%, review_title.ilike.%${searchTerm}%, component_name.ilike.%${searchTerm}%`);
         }
         
-        // Apply sorting
         if (currentFilter.sort === 'newest') {
             query = query.order('created_at', { ascending: false });
         } else if (currentFilter.sort === 'oldest') {
@@ -843,7 +944,6 @@ async function submitReview(e) {
         
         if (!userId) throw new Error('User not logged in');
         
-        // ✅ AUTO-DETECT program for the review
         const userProgram = currentUser?.program || userProgramCode || 'KRCHN';
         const userBlock = currentUser?.block || userBlock || 'Block 1';
         const userProgramType = isTVETStudent ? 'TVET' : 'KRCHN';
@@ -1057,7 +1157,7 @@ function showSuccessPopup(rating, title, review, anonymous) {
             </div>
             
             <div style="display: flex; gap: 12px; position: relative; z-index: 1; flex-wrap: wrap; justify-content: center;">
-                <button onclick="closeSuccessPopup()" style="
+                <button onclick="closeSuccessPopup(); loadReviews();" style="
                     flex: 1;
                     min-width: 120px;
                     padding: 12px 24px;
@@ -1117,7 +1217,6 @@ function showSuccessPopup(rating, title, review, anonymous) {
     
     document.body.appendChild(overlay);
     
-    // Add keyframe animations
     if (!document.getElementById('review-popup-styles')) {
         const styles = document.createElement('style');
         styles.id = 'review-popup-styles';
@@ -1134,7 +1233,6 @@ function showSuccessPopup(rating, title, review, anonymous) {
         document.head.appendChild(styles);
     }
     
-    // Auto-close after 8 seconds
     setTimeout(() => {
         const popup = document.getElementById('reviewSuccessPopup');
         if (popup) {
@@ -1343,39 +1441,8 @@ function updateFilterResultsCount(count) {
 }
 
 // ============================================
-// MODAL FUNCTIONS
+// MODAL FUNCTIONS (EXPOSED)
 // ============================================
-
-function openReviewModal() {
-    const modal = document.getElementById('writeReviewModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        const feedback = document.getElementById('reviewFormFeedback');
-        if (feedback) feedback.style.display = 'none';
-    }
-}
-
-function closeReviewModal() {
-    const modal = document.getElementById('writeReviewModal');
-    if (modal) modal.style.display = 'none';
-    
-    const form = document.getElementById('studentReviewForm');
-    if (form) form.reset();
-    
-    const details = document.getElementById('componentDetails');
-    if (details) details.style.display = 'none';
-    
-    document.querySelectorAll('.component-option').forEach(opt => opt.classList.remove('selected'));
-    document.querySelectorAll('#starRatingLarge span').forEach(star => {
-        star.textContent = '☆';
-        star.style.color = '#d1d5db';
-    });
-    
-    const ratingText = document.getElementById('ratingText');
-    if (ratingText) ratingText.textContent = 'Select a rating';
-    
-    document.getElementById('reviewRatingValue').value = 0;
-}
 
 function openReviewDetail(reviewId) {
     const review = allReviews.find(r => r.id === reviewId);
@@ -1440,11 +1507,6 @@ function openReviewDetail(reviewId) {
     }
     
     if (modal) modal.style.display = 'flex';
-}
-
-function closeDetailModal() {
-    const modal = document.getElementById('reviewDetailModal');
-    if (modal) modal.style.display = 'none';
 }
 
 // ============================================
@@ -1612,4 +1674,4 @@ window.initCategoryFilters = initCategoryFilters;
 window.updateFilterResultsCount = updateFilterResultsCount;
 window.closeSuccessPopup = closeSuccessPopup;
 
-console.log('✅ Reviews & Newsletter module loaded with auto program detection!');
+console.log('✅ Reviews & Newsletter module loaded with working modals!');
