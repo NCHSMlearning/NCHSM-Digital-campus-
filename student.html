@@ -2662,6 +2662,32 @@ setTimeout(function() {
     }
 })();
 </script>
+        <script>
+// ============================================
+// 🎨 THEME SWITCHER
+// ============================================
+function setTheme(theme) {
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const selected = document.querySelector(`.theme-btn[data-theme="${theme}"]`);
+    if (selected) selected.classList.add('active');
+    
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('nchsm_theme', theme);
+    console.log('🎨 Theme:', theme);
+}
+
+// Load saved theme
+function loadTheme() {
+    const saved = localStorage.getItem('nchsm_theme') || 'purple';
+    setTheme(saved);
+}
+
+document.addEventListener('DOMContentLoaded', loadTheme);
+document.addEventListener('appReady', loadTheme);
+window.setTheme = setTheme;
+</script>                
 <script>
 // ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
 (function() {
@@ -2744,6 +2770,7 @@ setTimeout(function() {
     setTimeout(installSuperFix, 3000);
 })();
 </script>
+                        
     <!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
