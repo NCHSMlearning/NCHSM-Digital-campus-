@@ -240,7 +240,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
         
         if (examType === 'nck') {
-            // ===== NCK LOGIC - FIXED =====
+            // ===== NCK LOGIC - WITH YEAR FILTERING =====
             console.log(`📋 NCK request for: ${subject}, Year: ${year}`);
             
             let sheetName = '';
@@ -281,7 +281,10 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                 const avgIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'AVERAGE');
                 const statusIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'STATUS');
                 
-                // Get score columns (all except ADMISSION, NAME, AVERAGE, STATUS, GRADED BY, YEAR)
+                console.log(`📋 Year column index: ${yearIdx}`);
+                console.log(`📋 Requested year: ${year}`);
+                
+                // Get score columns
                 const scoreIndices = [];
                 for (let i = 0; i < headers.length; i++) {
                     const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
@@ -293,29 +296,32 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                 console.log(`📋 Found ${scoreIndices.length} score columns`);
                 
                 const allMarks = [];
+                let totalRows = 0;
+                let matchedRows = 0;
+                let skippedNoYear = 0;
+                let skippedWrongYear = 0;
+                let yearsFound = {};
                 
                 for (let i = 1; i < data.length; i++) {
                     const row = data[i];
                     if (!row || row.length === 0) continue;
+                    totalRows++;
                     
-                    // Get admission
-                    let admission = '';
-                    if (admIdx !== -1 && row[admIdx]) {
-                        admission = row[admIdx].toString().trim();
-                    } else if (row[0]) {
-                        admission = row[0].toString().trim();
-                    }
+                    // Get name
+                    const name = row[nameIdx] ? row[nameIdx].toString().trim() : 'Unknown';
                     
-                    if (!admission) continue;
-                    
-                    // Get year
+                    // Get year from the row
                     let studentYear = '';
                     if (yearIdx !== -1 && row[yearIdx]) {
                         studentYear = row[yearIdx].toString().trim();
                     }
                     
-                    // If no year in the row, try to extract from admission
+                    // If no year in row, try to extract from admission
                     if (!studentYear) {
+                        let admission = '';
+                        if (admIdx !== -1 && row[admIdx]) {
+                            admission = row[admIdx].toString().trim();
+                        }
                         if (admission.includes('/2024') || admission.includes('/24')) {
                             studentYear = '2024';
                         } else if (admission.includes('/2025') || admission.includes('/25')) {
@@ -323,13 +329,35 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                         } else if (admission.includes('/2026') || admission.includes('/26')) {
                             studentYear = '2026';
                         } else {
-                            studentYear = '2024';
+                            studentYear = '2024'; // Default
                         }
                     }
                     
+                    // Track years found
+                    if (studentYear) {
+                        yearsFound[studentYear] = (yearsFound[studentYear] || 0) + 1;
+                    }
+                    
                     // ✅ FILTER BY YEAR
-                    if (studentYear !== year) {
+                    if (!studentYear) {
+                        skippedNoYear++;
                         continue;
+                    }
+                    
+                    if (studentYear !== year) {
+                        skippedWrongYear++;
+                        continue;
+                    }
+                    
+                    matchedRows++;
+                    
+                    // Get admission
+                    let admission = '';
+                    if (admIdx !== -1 && row[admIdx] && row[admIdx].toString().trim() !== '') {
+                        admission = row[admIdx].toString().trim();
+                    } else {
+                        // Use name as identifier if no admission
+                        admission = name.replace(/\s/g, '_').toUpperCase();
                     }
                     
                     // Get scores
@@ -355,7 +383,7 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                     
                     allMarks.push({
                         admission: admission,
-                        name: row[nameIdx] ? row[nameIdx].toString().trim() : 'Unknown',
+                        name: name,
                         scores: scores,
                         final: avg,
                         status: status,
@@ -364,7 +392,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                     });
                 }
                 
-                console.log(`📋 NCK found ${allMarks.length} records for ${year}`);
+                console.log(`📋 Total rows processed: ${totalRows}`);
+                console.log(`📋 Years found in sheet:`, yearsFound);
+                console.log(`📋 Matched year ${year}: ${matchedRows} records`);
+                console.log(`📋 Skipped: ${skippedNoYear} no year, ${skippedWrongYear} wrong year`);
+                console.log(`📋 Returning ${allMarks.length} records for ${year}`);
+                
                 res.json(allMarks);
                 
             } catch (error) {
