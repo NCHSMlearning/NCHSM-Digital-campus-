@@ -1,5 +1,6 @@
 // ============================================
 // NCHSM AI CHATBOT ASSISTANT - COMPLETE
+// WITH SUPABASE STORAGE + RESPONSE FETCHING
 // ============================================
 
 class ChatbotAssistant {
@@ -9,7 +10,10 @@ class ChatbotAssistant {
         this.userId = null;
         this.userProfile = null;
         this.sb = null;
+        this.sessionId = null;
+        this.conversationHistory = [];
         
+        // Default intents (can be overridden from Supabase)
         this.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'sup'],
             'exam': ['exam', 'assessment', 'cat', 'test', 'quiz', 'midterm', 'final'],
@@ -24,6 +28,7 @@ class ChatbotAssistant {
             'thanks': ['thanks', 'thank you', 'thx', 'appreciate', 'good job', 'nice']
         };
         
+        // Default responses (will be overridden from Supabase)
         this.responses = {
             'greeting': this.greetingResponse.bind(this),
             'exam': this.examResponse.bind(this),
@@ -39,16 +44,76 @@ class ChatbotAssistant {
             'default': this.defaultResponse.bind(this)
         };
         
+        // Custom responses from Supabase
+        this.customResponses = {};
+        
         this.init();
     }
+    
+    // ============================================
+    // INIT
+    // ============================================
     
     init() {
         console.log('🤖 Initializing Chatbot Assistant...');
         this.setupDataFetching();
         this.createChatWidget();
         this.addStyles();
+        this.loadCustomResponses();
         console.log('✅ Chatbot Assistant ready');
     }
+    
+    // ============================================
+    // LOAD CUSTOM RESPONSES FROM SUPABASE
+    // ============================================
+    
+    async loadCustomResponses() {
+        try {
+            if (!this.sb) {
+                console.log('⏳ Waiting for Supabase to load custom responses...');
+                setTimeout(() => this.loadCustomResponses(), 1000);
+                return;
+            }
+            
+            const { data, error } = await this.sb
+                .from('chatbot_responses')
+                .select('*')
+                .eq('is_active', true);
+            
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                this.customResponses = {};
+                data.forEach(item => {
+                    if (!this.customResponses[item.intent]) {
+                        this.customResponses[item.intent] = [];
+                    }
+                    this.customResponses[item.intent].push(item.response_text);
+                });
+                console.log(`📚 Loaded ${data.length} custom responses from Supabase`);
+            } else {
+                console.log('📚 No custom responses found, using defaults');
+            }
+        } catch (error) {
+            console.error('❌ Error loading custom responses:', error);
+        }
+    }
+    
+    // ============================================
+    // GET RESPONSE (with Supabase fallback)
+    // ============================================
+    
+    getCustomResponse(intent) {
+        const responses = this.customResponses[intent];
+        if (responses && responses.length > 0) {
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+        return null;
+    }
+    
+    // ============================================
+    // SETUP DATA FETCHING
+    // ============================================
     
     setupDataFetching() {
         // Get user data from global scope
@@ -66,6 +131,7 @@ class ChatbotAssistant {
             this.sb = window.db?.supabase || window.supabase;
             if (this.userId) {
                 console.log('🤖 Chatbot connected via appReady:', this.userId);
+                this.loadCustomResponses();
             }
         });
         
@@ -78,6 +144,7 @@ class ChatbotAssistant {
                 this.userProfile = window.currentUserProfile;
                 this.sb = window.db?.supabase || window.supabase;
                 console.log('🤖 Chatbot found user data:', this.userId);
+                this.loadCustomResponses();
                 clearInterval(checkInterval);
             }
             if (checkCount > 10) {
@@ -86,6 +153,10 @@ class ChatbotAssistant {
             }
         }, 500);
     }
+    
+    // ============================================
+    // CREATE CHAT WIDGET
+    // ============================================
     
     createChatWidget() {
         // Check if already exists
@@ -354,6 +425,10 @@ class ChatbotAssistant {
         });
     }
     
+    // ============================================
+    // STYLES
+    // ============================================
+    
     addStyles() {
         if (document.getElementById('chatbotStyles')) return;
         
@@ -430,6 +505,10 @@ class ChatbotAssistant {
         document.head.appendChild(styles);
     }
     
+    // ============================================
+    // CHAT CONTROLS
+    // ============================================
+    
     toggleChat() {
         this.isOpen = !this.isOpen;
         const window = document.getElementById('chatbotWindow');
@@ -450,6 +529,10 @@ class ChatbotAssistant {
         document.getElementById('chatbotWindow').style.display = 'none';
     }
     
+    // ============================================
+    // SEND MESSAGE WITH SUPABASE STORAGE
+    // ============================================
+    
     async sendMessage() {
         const input = document.getElementById('chatbotInput');
         const message = input.value.trim();
@@ -464,20 +547,40 @@ class ChatbotAssistant {
         // Show typing indicator
         this.showTyping();
         
+        // Start timer
+        const startTime = Date.now();
+        
         // Process message
-        const response = await this.processMessage(message);
+        const intent = this.detectIntent(message);
+        const handler = this.responses[intent] || this.responses['default'];
+        const response = await handler(message);
+        
+        // Calculate response time
+        const responseTime = Date.now() - startTime;
         
         // Remove typing indicator
         this.hideTyping();
         
-        // Add bot response
-        this.addMessage('bot', response);
+        // Add bot response with feedback
+        this.addMessageWithFeedback('bot', response);
+        
+        // ✅ SAVE TO SUPABASE
+        await this.saveConversation(
+            message,
+            response,
+            intent,
+            this.getKeywords(message),
+            responseTime
+        );
+        
         input.disabled = false;
         input.focus();
-        
-        // Scroll to bottom
         this.scrollToBottom();
     }
+    
+    // ============================================
+    // ADD MESSAGE
+    // ============================================
     
     addMessage(type, content) {
         const container = document.getElementById('chatbotMessages');
@@ -540,6 +643,92 @@ class ChatbotAssistant {
         container.appendChild(div);
         this.scrollToBottom();
     }
+    
+    // ============================================
+    // ADD MESSAGE WITH FEEDBACK BUTTONS
+    // ============================================
+    
+    addMessageWithFeedback(type, content) {
+        const container = document.getElementById('chatbotMessages');
+        if (!container) return;
+        
+        const div = document.createElement('div');
+        div.className = `chatbot-message ${type}`;
+        div.style.cssText = `
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            animation: messageIn 0.3s ease;
+            ${type === 'user' ? 'justify-content: flex-end;' : ''}
+        `;
+        
+        if (type === 'bot') {
+            // Generate a unique ID for this message
+            const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+            
+            div.innerHTML = `
+                <div style="
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: #4C1D95;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 16px;
+                    flex-shrink: 0;
+                ">🤖</div>
+                <div style="
+                    background: white;
+                    padding: 12px 16px;
+                    border-radius: 12px 12px 12px 4px;
+                    max-width: 80%;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    line-height: 1.6;
+                    font-size: 14px;
+                    color: #1e293b;
+                    word-wrap: break-word;
+                    white-space: pre-wrap;
+                ">
+                    ${content}
+                    <div style="margin-top: 10px; display: flex; gap: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px; align-items: center;">
+                        <span style="font-size: 11px; color: #94a3b8;">Was this helpful?</span>
+                        <button onclick="window.chatbot?.saveFeedback('${messageId}', true)" style="
+                            background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #10b981;
+                            transition: transform 0.2s;
+                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👍</button>
+                        <button onclick="window.chatbot?.saveFeedback('${messageId}', false)" style="
+                            background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #ef4444;
+                            transition: transform 0.2s;
+                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👎</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            div.innerHTML = `
+                <div style="
+                    background: #4C1D95;
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 12px 12px 4px 12px;
+                    max-width: 80%;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    line-height: 1.6;
+                    font-size: 14px;
+                    word-wrap: break-word;
+                    white-space: pre-wrap;
+                ">${this.escapeHtml(content)}</div>
+            `;
+        }
+        
+        container.appendChild(div);
+        this.scrollToBottom();
+    }
+    
+    // ============================================
+    // TYPING INDICATOR
+    // ============================================
     
     showTyping() {
         const container = document.getElementById('chatbotMessages');
@@ -657,6 +846,10 @@ class ChatbotAssistant {
         }
     }
     
+    // ============================================
+    // PROCESS MESSAGE
+    // ============================================
+    
     async processMessage(message) {
         const lowerMsg = message.toLowerCase().trim();
         
@@ -676,9 +869,173 @@ class ChatbotAssistant {
             }
         }
         
-        // Get response
+        // Check for custom response first
+        const customResponse = this.getCustomResponse(intent);
+        if (customResponse) {
+            return customResponse;
+        }
+        
+        // Get default response
         const handler = this.responses[intent] || this.responses['default'];
         return await handler(message);
+    }
+    
+    // ============================================
+    // 💾 SUPABASE STORAGE METHODS
+    // ============================================
+    
+    generateSessionId() {
+        if (!this.sessionId) {
+            this.sessionId = `${this.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+        return this.sessionId;
+    }
+    
+    async saveConversation(message, response, intent, keywords, responseTime) {
+        try {
+            if (!this.sb || !this.userId) {
+                console.log('💬 Conversation not saved (no Supabase/user)');
+                return;
+            }
+
+            const { data, error } = await this.sb
+                .from('chatbot_conversations')
+                .insert({
+                    user_id: this.userId,
+                    session_id: this.sessionId || this.generateSessionId(),
+                    message: message,
+                    response: response,
+                    intent: intent || 'unknown',
+                    detected_keywords: keywords || [],
+                    response_time_ms: responseTime || 0,
+                    created_at: new Date().toISOString()
+                })
+                .select();
+
+            if (error) {
+                console.error('❌ Failed to save conversation:', error);
+            } else {
+                console.log('💬 Conversation saved to Supabase');
+            }
+        } catch (error) {
+            console.error('❌ Save conversation error:', error);
+        }
+    }
+    
+    async saveFeedback(conversationId, wasHelpful) {
+        try {
+            if (!this.sb) return;
+            const { error } = await this.sb
+                .from('chatbot_conversations')
+                .update({ was_helpful: wasHelpful })
+                .eq('id', conversationId);
+            if (error) console.error('❌ Feedback save error:', error);
+        } catch (error) {
+            console.error('❌ Feedback error:', error);
+        }
+    }
+    
+    async getUserConversations(limit = 20) {
+        try {
+            if (!this.sb || !this.userId) return [];
+            const { data, error } = await this.sb
+                .from('chatbot_conversations')
+                .select('*')
+                .eq('user_id', this.userId)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('❌ Fetch conversations error:', error);
+            return [];
+        }
+    }
+    
+    async getChatbotAnalytics() {
+        try {
+            if (!this.sb) return null;
+
+            // Total conversations
+            const { count: total } = await this.sb
+                .from('chatbot_conversations')
+                .select('*', { count: 'exact', head: true });
+
+            // Today's conversations
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const { count: todayCount } = await this.sb
+                .from('chatbot_conversations')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', today.toISOString());
+
+            // Intent breakdown
+            const { data: intents } = await this.sb
+                .from('chatbot_conversations')
+                .select('intent');
+
+            // Count intents
+            const intentCounts = {};
+            if (intents) {
+                intents.forEach(i => {
+                    const intent = i.intent || 'unknown';
+                    intentCounts[intent] = (intentCounts[intent] || 0) + 1;
+                });
+            }
+
+            // Helpful rate
+            const { data: helpful } = await this.sb
+                .from('chatbot_conversations')
+                .select('was_helpful')
+                .not('was_helpful', 'is', null);
+
+            const helpfulCount = helpful?.filter(h => h.was_helpful === true).length || 0;
+            const totalFeedback = helpful?.length || 0;
+            const helpfulRate = totalFeedback > 0 ? Math.round((helpfulCount / totalFeedback) * 100) : 0;
+
+            return {
+                total: total || 0,
+                today: todayCount || 0,
+                intentBreakdown: intentCounts,
+                helpfulRate: helpfulRate,
+                totalFeedback: totalFeedback
+            };
+        } catch (error) {
+            console.error('❌ Analytics error:', error);
+            return null;
+        }
+    }
+    
+    detectIntent(message) {
+        const lowerMsg = message.toLowerCase().trim();
+        let intent = 'default';
+        let highestMatch = 0;
+
+        for (const [key, keywords] of Object.entries(this.intents)) {
+            for (const keyword of keywords) {
+                if (lowerMsg.includes(keyword)) {
+                    const matchScore = keyword.length / lowerMsg.length;
+                    if (matchScore > highestMatch) {
+                        highestMatch = matchScore;
+                        intent = key;
+                    }
+                }
+            }
+        }
+        return intent;
+    }
+    
+    getKeywords(message) {
+        const lowerMsg = message.toLowerCase().trim();
+        const keywords = [];
+        for (const [key, words] of Object.entries(this.intents)) {
+            for (const word of words) {
+                if (lowerMsg.includes(word)) {
+                    keywords.push(word);
+                }
+            }
+        }
+        return keywords.slice(0, 10);
     }
     
     // ============================================
@@ -967,6 +1324,7 @@ function initChatbot() {
         window.chatbot = new ChatbotAssistant();
         console.log('✅ Chatbot initialized successfully!');
         console.log('💬 Click the 💬 button to chat!');
+        console.log('📊 Conversations will be saved to Supabase');
     } catch (error) {
         console.error('❌ Chatbot initialization error:', error);
     }
