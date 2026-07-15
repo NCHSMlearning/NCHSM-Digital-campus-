@@ -310,11 +310,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
                     // Get name
                     const name = row[nameIdx] ? row[nameIdx].toString().trim() : 'Unknown';
                     
-                    // Get year from the row
-                    let studentYear = '';
-                    if (yearIdx !== -1 && row[yearIdx]) {
-                        studentYear = row[yearIdx].toString().trim();
-                    }
+                   // Get year from the row - FORCE TO STRING
+let studentYear = '';
+if (yearIdx !== -1 && row[yearIdx] !== undefined && row[yearIdx] !== null) {
+    studentYear = String(row[yearIdx]).trim();
+    console.log(`📋 Row ${i}: Year = "${studentYear}" (type: ${typeof studentYear})`);
+}
                     
                     // If no year in row, try to extract from admission
                     if (!studentYear) {
