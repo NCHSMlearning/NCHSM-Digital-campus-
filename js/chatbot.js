@@ -533,7 +533,7 @@ class ChatbotAssistant {
     // SEND MESSAGE WITH SUPABASE STORAGE
     // ============================================
     
-  async sendMessage() {
+ async sendMessage() {
     const input = document.getElementById('chatbotInput');
     const message = input.value.trim();
     
@@ -562,7 +562,9 @@ class ChatbotAssistant {
     
     // ✅ Use the message_id from the saved conversation
     const messageId = saved?.message_id || `temp_${Date.now()}`;
-    this.addMessageWithFeedback('bot', response, messageId);
+    
+    // ✅ PASS THE messageId TO addMessageWithFeedback
+    this.addMessageWithFeedback('bot', response, messageId);  // ← 3 parameters!
     
     input.disabled = false;
     input.focus();
@@ -634,87 +636,87 @@ class ChatbotAssistant {
         this.scrollToBottom();
     }
     
-    // ============================================
-    // ADD MESSAGE WITH FEEDBACK BUTTONS
-    // ============================================
+   // ============================================
+// ADD MESSAGE WITH FEEDBACK BUTTONS - FIXED
+// ============================================
+
+addMessageWithFeedback(type, content, messageId) {  // ← ADD messageId parameter
+    const container = document.getElementById('chatbotMessages');
+    if (!container) return;
     
-    addMessageWithFeedback(type, content) {
-        const container = document.getElementById('chatbotMessages');
-        if (!container) return;
+    const div = document.createElement('div');
+    div.className = `chatbot-message ${type}`;
+    div.style.cssText = `
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        animation: messageIn 0.3s ease;
+        ${type === 'user' ? 'justify-content: flex-end;' : ''}
+    `;
+    
+    if (type === 'bot') {
+        // ✅ USE the messageId passed from sendMessage()
+        const feedbackId = messageId || `temp_${Date.now()}`;
         
-        const div = document.createElement('div');
-        div.className = `chatbot-message ${type}`;
-        div.style.cssText = `
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-            animation: messageIn 0.3s ease;
-            ${type === 'user' ? 'justify-content: flex-end;' : ''}
-        `;
-        
-        if (type === 'bot') {
-            // Generate a unique ID for this message
-            const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-            
-            div.innerHTML = `
-                <div style="
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    background: #4C1D95;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 16px;
-                    flex-shrink: 0;
-                ">🤖</div>
-                <div style="
-                    background: white;
-                    padding: 12px 16px;
-                    border-radius: 12px 12px 12px 4px;
-                    max-width: 80%;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                    line-height: 1.6;
-                    font-size: 14px;
-                    color: #1e293b;
-                    word-wrap: break-word;
-                    white-space: pre-wrap;
-                ">
-                    ${content}
-                    <div style="margin-top: 10px; display: flex; gap: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px; align-items: center;">
-                        <span style="font-size: 11px; color: #94a3b8;">Was this helpful?</span>
-                        <button onclick="window.chatbot?.saveFeedback('${messageId}', true)" style="
-                            background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #10b981;
-                            transition: transform 0.2s;
-                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👍</button>
-                        <button onclick="window.chatbot?.saveFeedback('${messageId}', false)" style="
-                            background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #ef4444;
-                            transition: transform 0.2s;
-                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👎</button>
-                    </div>
+        div.innerHTML = `
+            <div style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: #4C1D95;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 16px;
+                flex-shrink: 0;
+            ">🤖</div>
+            <div style="
+                background: white;
+                padding: 12px 16px;
+                border-radius: 12px 12px 12px 4px;
+                max-width: 80%;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                line-height: 1.6;
+                font-size: 14px;
+                color: #1e293b;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+            ">
+                ${content}
+                <div style="margin-top: 10px; display: flex; gap: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px; align-items: center;">
+                    <span style="font-size: 11px; color: #94a3b8;">Was this helpful?</span>
+                    <button onclick="window.chatbot?.saveFeedback('${feedbackId}', true)" style="
+                        background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #10b981;
+                        transition: transform 0.2s;
+                    " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👍</button>
+                    <button onclick="window.chatbot?.saveFeedback('${feedbackId}', false)" style="
+                        background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 4px; color: #ef4444;
+                        transition: transform 0.2s;
+                    " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">👎</button>
                 </div>
-            `;
-        } else {
-            div.innerHTML = `
-                <div style="
-                    background: #4C1D95;
-                    color: white;
-                    padding: 12px 16px;
-                    border-radius: 12px 12px 4px 12px;
-                    max-width: 80%;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                    line-height: 1.6;
-                    font-size: 14px;
-                    word-wrap: break-word;
-                    white-space: pre-wrap;
-                ">${this.escapeHtml(content)}</div>
-            `;
-        }
-        
-        container.appendChild(div);
-        this.scrollToBottom();
+            </div>
+        `;
+    } else {
+        div.innerHTML = `
+            <div style="
+                background: #4C1D95;
+                color: white;
+                padding: 12px 16px;
+                border-radius: 12px 12px 4px 12px;
+                max-width: 80%;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                line-height: 1.6;
+                font-size: 14px;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+            ">${this.escapeHtml(content)}</div>
+        `;
     }
+    
+    container.appendChild(div);
+    this.scrollToBottom();
+}
     
     // ============================================
     // TYPING INDICATOR
