@@ -1676,3 +1676,64 @@ displayCompletedTable() {
     
     console.log('✅ Exams module ready - TVET & Table FIXED!');
 })();
+// ============================================
+// 🚀 FORCE DISPATCH EXAMS READY EVENT WITH DELAY
+// ============================================
+(function ensureExamsReadyEvent() {
+    console.log('📣 Ensuring examsModuleReady event...');
+    
+    // Dispatch immediately if exams are loaded
+    if (window.examsModule && window.examsModule.allExams) {
+        const event = new CustomEvent('examsModuleReady', {
+            detail: { 
+                count: window.examsModule.allExams.length,
+                timestamp: new Date().toISOString(),
+                allExams: window.examsModule.allExams
+            }
+        });
+        document.dispatchEvent(event);
+        console.log('✅ examsModuleReady event dispatched immediately');
+    }
+    
+    // Also dispatch after a short delay to catch late listeners
+    setTimeout(() => {
+        if (window.examsModule && window.examsModule.allExams) {
+            const event = new CustomEvent('examsModuleReady', {
+                detail: { 
+                    count: window.examsModule.allExams.length,
+                    timestamp: new Date().toISOString(),
+                    allExams: window.examsModule.allExams
+                }
+            });
+            document.dispatchEvent(event);
+            console.log('✅ examsModuleReady event dispatched (delayed)');
+        }
+    }, 500);
+    
+    // And again after 2 seconds for safety
+    setTimeout(() => {
+        if (window.examsModule && window.examsModule.allExams) {
+            const event = new CustomEvent('examsModuleReady', {
+                detail: { 
+                    count: window.examsModule.allExams.length,
+                    timestamp: new Date().toISOString(),
+                    allExams: window.examsModule.allExams
+                }
+            });
+            document.dispatchEvent(event);
+            console.log('✅ examsModuleReady event dispatched (safety)');
+        }
+    }, 2000);
+})();
+
+// ============================================
+// ✅ EXPOSE EXAMS DATA GLOBALLY
+// ============================================
+window.__examsReady = true;
+window.__examsData = {
+    allExams: window.examsModule?.allExams || [],
+    loaded: true,
+    timestamp: new Date().toISOString()
+};
+
+console.log('✅ Exams module fully loaded and ready');
