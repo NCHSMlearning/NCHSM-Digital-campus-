@@ -239,172 +239,179 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         
         console.log(`[GET MARKS] ExamType: ${examType}, Year: ${year}, block=${block}, subject=${subject}`);
         
-        if (examType === 'nck') {
-            // ===== NCK LOGIC - WITH YEAR FILTERING =====
-            console.log(`📋 NCK request for: ${subject}, Year: ${year}`);
-            
-            let sheetName = '';
-            if (subject === 'NCK_XY_FORMS' || subject.includes('XY')) {
-                sheetName = 'NCK_XY_FORMS';
-            } else if (subject === 'NCK_ASSESSMENT_AND_CASE' || subject.includes('ASSESSMENT')) {
-                sheetName = 'NCK_ASSESSMENT_AND_CASE';
+      if (examType === 'nck') {
+    console.log(`📋 NCK request for: ${subject}, Year: ${year}`);
+    
+    let sheetName = '';
+    if (subject === 'NCK_XY_FORMS' || subject.includes('XY')) {
+        sheetName = 'NCK_XY_FORMS';
+    } else if (subject === 'NCK_ASSESSMENT_AND_CASE' || subject.includes('ASSESSMENT')) {
+        sheetName = 'NCK_ASSESSMENT_AND_CASE';
+    } else {
+        sheetName = 'NCK_XY_FORMS';
+    }
+    
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: req.spreadsheetId,
+            range: `${sheetName}!A:Z`,
+            valueRenderOption: 'UNFORMATTED_VALUE'
+        });
+        
+        const data = response.data.values || [];
+        console.log(`📋 NCK sheet ${sheetName} has ${data.length} rows`);
+        
+        if (data.length === 0) {
+            res.json([]);
+            return;
+        }
+        
+        const headers = data[0] || [];
+        
+        // Find column indexes
+        const admIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'ADMISSION');
+        const nameIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'NAME');
+        const gradedIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'GRADED BY');
+        const avgIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'AVERAGE');
+        const statusIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'STATUS');
+        
+        // ✅ DYNAMIC YEAR INDEX - FIND IT IN THE HEADERS
+        let yearIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'YEAR');
+        
+        // If not found, try with different variations
+        if (yearIdx === -1) {
+            yearIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase().includes('YEAR'));
+        }
+        
+        // If still not found, use hardcoded values based on sheet
+        if (yearIdx === -1) {
+            if (sheetName === 'NCK_XY_FORMS') {
+                yearIdx = 27; // Column AB
+            } else if (sheetName === 'NCK_ASSESSMENT_AND_CASE') {
+                yearIdx = 18; // Column S
             } else {
-                sheetName = 'NCK_XY_FORMS';
+                yearIdx = 27; // Default
+            }
+            console.log(`📋 Using hardcoded YEAR index: ${yearIdx} for ${sheetName}`);
+        } else {
+            console.log(`📋 Found YEAR column at index: ${yearIdx}`);
+        }
+        
+        console.log(`📋 Requested year: ${year}`);
+        
+        // Get score columns
+        const scoreIndices = [];
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
+            if (i !== admIdx && i !== nameIdx && i !== yearIdx && i !== gradedIdx && i !== avgIdx && i !== statusIdx) {
+                scoreIndices.push(i);
+            }
+        }
+        
+        console.log(`📋 Found ${scoreIndices.length} score columns`);
+        
+        const allMarks = [];
+        let matchedRows = 0;
+        let skippedWrongYear = 0;
+        let yearsFound = {};
+        const requestedYear = String(year).trim();
+        
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || row.length === 0) continue;
+            
+            // ✅ Get year from the correct column
+            let studentYear = '';
+            if (row[yearIdx] !== undefined && row[yearIdx] !== null && row[yearIdx] !== '') {
+                studentYear = String(row[yearIdx]).trim();
             }
             
-            console.log(`📋 Using sheet: ${sheetName}`);
-            
-            try {
-                const response = await sheets.spreadsheets.values.get({
-                    spreadsheetId: req.spreadsheetId,
-                    range: `${sheetName}!A:Z`,
-                    valueRenderOption: 'UNFORMATTED_VALUE'
-                });
-                
-                const data = response.data.values || [];
-                console.log(`📋 NCK sheet ${sheetName} has ${data.length} rows`);
-                
-                if (data.length === 0) {
-                    console.log(`⚠️ No data in ${sheetName}`);
-                    res.json([]);
-                    return;
+            // If no year, try to extract from admission
+            if (!studentYear) {
+                let admission = '';
+                if (admIdx !== -1 && row[admIdx]) {
+                    admission = String(row[admIdx]).trim();
                 }
-                
-                const headers = data[0] || [];
-                console.log(`📋 NCK headers: ${headers.slice(0, 5).join(', ')}...`);
-                
-                // Find column indexes
-                const admIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'ADMISSION');
-                const nameIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'NAME');
-                const yearIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'YEAR');
-                const gradedIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'GRADED BY');
-                const avgIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'AVERAGE');
-                const statusIdx = headers.findIndex(h => h && h.toString().trim().toUpperCase() === 'STATUS');
-                
-                console.log(`📋 Year column index: ${yearIdx}`);
-                console.log(`📋 Requested year: ${year}`);
-                
-                // Get score columns
-                const scoreIndices = [];
-                for (let i = 0; i < headers.length; i++) {
-                    const header = headers[i] ? headers[i].toString().trim().toUpperCase() : '';
-                    if (i !== admIdx && i !== nameIdx && i !== yearIdx && i !== gradedIdx && i !== avgIdx && i !== statusIdx) {
-                        scoreIndices.push(i);
-                    }
+                if (admission.includes('/2024') || admission.includes('/24')) {
+                    studentYear = '2024';
+                } else if (admission.includes('/2025') || admission.includes('/25')) {
+                    studentYear = '2025';
+                } else if (admission.includes('/2026') || admission.includes('/26')) {
+                    studentYear = '2026';
+                } else {
+                    studentYear = '2024';
                 }
-                
-                console.log(`📋 Found ${scoreIndices.length} score columns`);
-                
-                const allMarks = [];
-                let totalRows = 0;
-                let matchedRows = 0;
-                let skippedNoYear = 0;
-                let skippedWrongYear = 0;
-                let yearsFound = {};
-                
-                for (let i = 1; i < data.length; i++) {
-                    const row = data[i];
-                    if (!row || row.length === 0) continue;
-                    totalRows++;
-                    
-                    // Get name
-                    const name = row[nameIdx] ? row[nameIdx].toString().trim() : 'Unknown';
-                    
-                   // Get year from the row - FORCE TO STRING
-let studentYear = '';
-if (yearIdx !== -1 && row[yearIdx] !== undefined && row[yearIdx] !== null) {
-    studentYear = String(row[yearIdx]).trim();
-    console.log(`📋 Row ${i}: Year = "${studentYear}" (type: ${typeof studentYear})`);
-}
-                    
-                    // If no year in row, try to extract from admission
-                    if (!studentYear) {
-                        let admission = '';
-                        if (admIdx !== -1 && row[admIdx]) {
-                            admission = row[admIdx].toString().trim();
-                        }
-                        if (admission.includes('/2024') || admission.includes('/24')) {
-                            studentYear = '2024';
-                        } else if (admission.includes('/2025') || admission.includes('/25')) {
-                            studentYear = '2025';
-                        } else if (admission.includes('/2026') || admission.includes('/26')) {
-                            studentYear = '2026';
-                        } else {
-                            studentYear = '2024'; // Default
-                        }
-                    }
-                    
-                    // Track years found
-                    if (studentYear) {
-                        yearsFound[studentYear] = (yearsFound[studentYear] || 0) + 1;
-                    }
-                    
-                    // ✅ FILTER BY YEAR
-                    if (!studentYear) {
-                        skippedNoYear++;
-                        continue;
-                    }
-                    
-                    if (studentYear !== year) {
-                        skippedWrongYear++;
-                        continue;
-                    }
-                    
-                    matchedRows++;
-                    
-                    // Get admission
-                    let admission = '';
-                    if (admIdx !== -1 && row[admIdx] && row[admIdx].toString().trim() !== '') {
-                        admission = row[admIdx].toString().trim();
-                    } else {
-                        // Use name as identifier if no admission
-                        admission = name.replace(/\s/g, '_').toUpperCase();
-                    }
-                    
-                    // Get scores
-                    const scores = [];
-                    for (const idx of scoreIndices) {
-                        const val = row[idx] ? parseFloat(row[idx]) || 0 : 0;
-                        scores.push(val);
-                    }
-                    
-                    // Calculate average if not already
-                    let avg = 0;
-                    if (avgIdx !== -1 && row[avgIdx]) {
-                        avg = parseFloat(row[avgIdx]) || 0;
-                    } else {
-                        const validScores = scores.filter(s => s > 0);
-                        if (validScores.length > 0) {
-                            avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-                        }
-                    }
-                    
-                    const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx].toString().trim() : (avg >= 60 ? 'PASS' : 'FAIL');
-                    const gradedBy = gradedIdx !== -1 && row[gradedIdx] ? row[gradedIdx].toString().trim() : '';
-                    
-                    allMarks.push({
-                        admission: admission,
-                        name: name,
-                        scores: scores,
-                        final: avg,
-                        status: status,
-                        gradedBy: gradedBy || '',
-                        year: studentYear
-                    });
-                }
-                
-                console.log(`📋 Total rows processed: ${totalRows}`);
-                console.log(`📋 Years found in sheet:`, yearsFound);
-                console.log(`📋 Matched year ${year}: ${matchedRows} records`);
-                console.log(`📋 Skipped: ${skippedNoYear} no year, ${skippedWrongYear} wrong year`);
-                console.log(`📋 Returning ${allMarks.length} records for ${year}`);
-                
-                res.json(allMarks);
-                
-            } catch (error) {
-                console.error('❌ NCK error:', error);
-                res.json([]);
             }
+            
+            // Track years found
+            if (studentYear) {
+                yearsFound[studentYear] = (yearsFound[studentYear] || 0) + 1;
+            }
+            
+            // ✅ FILTER BY YEAR
+            if (!studentYear || studentYear !== requestedYear) {
+                if (studentYear && studentYear !== requestedYear) {
+                    skippedWrongYear++;
+                }
+                continue;
+            }
+            
+            matchedRows++;
+            
+            // Get name
+            const name = row[nameIdx] ? row[nameIdx].toString().trim() : 'Unknown';
+            
+            // Get admission
+            let admission = '';
+            if (admIdx !== -1 && row[admIdx] && row[admIdx].toString().trim() !== '') {
+                admission = row[admIdx].toString().trim();
+            } else {
+                admission = name.replace(/\s/g, '_').toUpperCase();
+            }
+            
+            // Get scores
+            const scores = [];
+            for (const idx of scoreIndices) {
+                const val = row[idx] ? parseFloat(row[idx]) || 0 : 0;
+                scores.push(val);
+            }
+            
+            // Calculate average
+            let avg = 0;
+            if (avgIdx !== -1 && row[avgIdx]) {
+                avg = parseFloat(row[avgIdx]) || 0;
+            } else {
+                const validScores = scores.filter(s => s > 0);
+                if (validScores.length > 0) {
+                    avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+                }
+            }
+            
+            const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx].toString().trim() : (avg >= 60 ? 'PASS' : 'FAIL');
+            const gradedBy = gradedIdx !== -1 && row[gradedIdx] ? row[gradedIdx].toString().trim() : '';
+            
+            allMarks.push({
+                admission: admission,
+                name: name,
+                scores: scores,
+                final: avg,
+                status: status,
+                gradedBy: gradedBy || '',
+                year: studentYear
+            });
+        }
+        
+        console.log(`📋 Years found in sheet:`, yearsFound);
+        console.log(`📋 Matched year ${requestedYear}: ${matchedRows} records`);
+        console.log(`📋 Skipped wrong year: ${skippedWrongYear} records`);
+        console.log(`📋 Returning ${allMarks.length} records`);
+        
+        res.json(allMarks);
+        
+    } catch (error) {
+        console.error('❌ NCK error:', error);
+        res.json([]);
+    }
         } else {
             // ===== INTERNAL MARKS =====
             let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
