@@ -718,7 +718,151 @@
             addGradeChartLegend(gradeCounts);
         }
     }
+    // ============================================
+// 📊 GRADE PREDICTION
+// ============================================
+function showGradePrediction() {
+    const grades = currentData.grades;
+    if (grades.length === 0) return;
     
+    // Remove existing prediction card
+    const existing = document.getElementById('prediction-card');
+    if (existing) existing.remove();
+    
+    // Calculate trend
+    const sorted = [...grades].sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
+    const recent = sorted.slice(-3);
+    const avgRecent = recent.reduce((sum, g) => sum + g.total, 0) / recent.length;
+    const overallAvg = grades.reduce((sum, g) => sum + g.total, 0) / grades.length;
+    
+    // Predict next grade
+    let prediction = overallAvg;
+    if (recent.length >= 2) {
+        const trend = recent[recent.length - 1].total - recent[0].total;
+        prediction = avgRecent + (trend * 0.3);
+    }
+    prediction = Math.min(Math.max(prediction, 0), 100);
+    
+    const predictedGrade = calculateLetterGrade(prediction);
+    const emoji = prediction >= 85 ? '🌟' : prediction >= 75 ? '📈' : prediction >= 60 ? '📊' : '🚨';
+    const color = prediction >= 85 ? '#10b981' : prediction >= 75 ? '#3b82f6' : prediction >= 60 ? '#f59e0b' : '#ef4444';
+    
+    // Add prediction card
+    const container = document.querySelector('.performance-section');
+    if (container) {
+        const card = document.createElement('div');
+        card.id = 'prediction-card';
+        card.style.cssText = `
+            margin-top: 16px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 12px;
+            border-left: 4px solid ${color};
+            animation: fadeInUp 0.5s ease;
+        `;
+        card.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 28px;">${emoji}</span>
+                    <div>
+                        <div style="font-size: 13px; color: #64748b;">Predicted Next Grade</div>
+                        <div style="font-size: 22px; font-weight: 700; color: ${color};">${prediction.toFixed(1)}% (${predictedGrade})</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px; color: #64748b;">Based on ${grades.length} exams</div>
+                    <div style="font-size: 12px; color: ${recent.length >= 2 ? '#10b981' : '#f59e0b'};">
+                        ${recent.length >= 2 ? '📈 Trend detected' : '⚠️ Need more data for trend'}
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    }
+}
+
+// ============================================
+// 📈 GPA TREND CHART
+// ============================================
+function createGpaTrendChart() {
+    const grades = currentData.grades;
+    if (grades.length < 2) return;
+    
+    const sorted = [...grades].sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
+    const labels = sorted.map(g => g.courseName.length > 15 ? g.courseName.substring(0, 15) + '...' : g.courseName);
+    const data = sorted.map(g => g.total);
+    
+    const container = document.querySelector('.performance-section');
+    if (!container) return;
+    
+    // Remove existing chart
+    const existing = document.getElementById('gpaTrendChart');
+    if (existing) existing.remove();
+    const existingLabel = document.getElementById('trendChartLabel');
+    if (existingLabel) existingLabel.remove();
+    
+    // Add label
+    const label = document.createElement('h4');
+    label.id = 'trendChartLabel';
+    label.style.cssText = 'margin: 20px 0 10px 0; font-size: 14px; color: #1e293b;';
+    label.innerHTML = '<i class="fas fa-chart-line" style="color: #4C1D95;"></i> Performance Trend';
+    container.appendChild(label);
+    
+    const canvas = document.createElement('canvas');
+    canvas.id = 'gpaTrendChart';
+    canvas.style.cssText = 'max-height: 180px; width: 100%; margin-top: 8px;';
+    container.appendChild(canvas);
+    
+    if (typeof Chart !== 'undefined') {
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Score (%)',
+                    data: data,
+                    borderColor: '#4C1D95',
+                    backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4C1D95',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.parsed.y + '%'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            callback: (value) => value + '%',
+                            font: { size: 10 }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 9 },
+                            maxRotation: 45,
+                            minRotation: 30
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
     // ============================================
     // GRADE CHART LEGEND
     // ============================================
@@ -1136,6 +1280,8 @@
             
             loadStudentInfo();
             createStudentInfoBar();
+            showGradePrediction();     
+createGpaTrendChart();        
             populateFilterDropdown();
             await loadGrades();
             
