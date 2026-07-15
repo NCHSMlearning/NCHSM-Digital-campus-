@@ -533,51 +533,41 @@ class ChatbotAssistant {
     // SEND MESSAGE WITH SUPABASE STORAGE
     // ============================================
     
-    async sendMessage() {
-        const input = document.getElementById('chatbotInput');
-        const message = input.value.trim();
-        
-        if (!message) return;
-        
-        // Add user message
-        this.addMessage('user', message);
-        input.value = '';
-        input.disabled = true;
-        
-        // Show typing indicator
-        this.showTyping();
-        
-        // Start timer
-        const startTime = Date.now();
-        
-        // Process message
-        const intent = this.detectIntent(message);
-        const handler = this.responses[intent] || this.responses['default'];
-        const response = await handler(message);
-        
-        // Calculate response time
-        const responseTime = Date.now() - startTime;
-        
-        // Remove typing indicator
-        this.hideTyping();
-        
-        // Add bot response with feedback
-        this.addMessageWithFeedback('bot', response);
-        
-        // ✅ SAVE TO SUPABASE
-        await this.saveConversation(
-            message,
-            response,
-            intent,
-            this.getKeywords(message),
-            responseTime
-        );
-        
-        input.disabled = false;
-        input.focus();
-        this.scrollToBottom();
-    }
+  async sendMessage() {
+    const input = document.getElementById('chatbotInput');
+    const message = input.value.trim();
     
+    if (!message) return;
+    
+    this.addMessage('user', message);
+    input.value = '';
+    input.disabled = true;
+    this.showTyping();
+    
+    const startTime = Date.now();
+    const intent = this.detectIntent(message);
+    const handler = this.responses[intent] || this.responses['default'];
+    const response = await handler(message);
+    const responseTime = Date.now() - startTime;
+    this.hideTyping();
+    
+    // ✅ SAVE AND GET THE REAL CONVERSATION
+    const saved = await this.saveConversation(
+        message,
+        response,
+        intent,
+        this.getKeywords(message),
+        responseTime
+    );
+    
+    // ✅ Use the message_id from the saved conversation
+    const messageId = saved?.message_id || `temp_${Date.now()}`;
+    this.addMessageWithFeedback('bot', response, messageId);
+    
+    input.disabled = false;
+    input.focus();
+    this.scrollToBottom();
+}
     // ============================================
     // ADD MESSAGE
     // ============================================
@@ -891,50 +881,64 @@ class ChatbotAssistant {
         return this.sessionId;
     }
     
-    async saveConversation(message, response, intent, keywords, responseTime) {
-        try {
-            if (!this.sb || !this.userId) {
-                console.log('💬 Conversation not saved (no Supabase/user)');
-                return;
-            }
-
-            const { data, error } = await this.sb
-                .from('chatbot_conversations')
-                .insert({
-                    user_id: this.userId,
-                    session_id: this.sessionId || this.generateSessionId(),
-                    message: message,
-                    response: response,
-                    intent: intent || 'unknown',
-                    detected_keywords: keywords || [],
-                    response_time_ms: responseTime || 0,
-                    created_at: new Date().toISOString()
-                })
-                .select();
-
-            if (error) {
-                console.error('❌ Failed to save conversation:', error);
-            } else {
-                console.log('💬 Conversation saved to Supabase');
-            }
-        } catch (error) {
-            console.error('❌ Save conversation error:', error);
+   async saveConversation(message, response, intent, keywords, responseTime) {
+    try {
+        if (!this.sb || !this.userId) {
+            console.log('💬 Conversation not saved (no Supabase/user)');
+            return null;
         }
-    }
-    
-    async saveFeedback(conversationId, wasHelpful) {
-        try {
-            if (!this.sb) return;
-            const { error } = await this.sb
-                .from('chatbot_conversations')
-                .update({ was_helpful: wasHelpful })
-                .eq('id', conversationId);
-            if (error) console.error('❌ Feedback save error:', error);
-        } catch (error) {
-            console.error('❌ Feedback error:', error);
+
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        const { data, error } = await this.sb
+            .from('chatbot_conversations')
+            .insert({
+                user_id: this.userId,
+                session_id: this.sessionId || this.generateSessionId(),
+                message_id: messageId,
+                message: message,
+                response: response,
+                intent: intent || 'unknown',
+                detected_keywords: keywords || [],
+                response_time_ms: responseTime || 0,
+                created_at: new Date().toISOString()
+            })
+            .select();
+
+        if (error) {
+            console.error('❌ Failed to save conversation:', error);
+            return null;
         }
+
+        console.log('💬 Conversation saved to Supabase');
+        return data?.[0] || null;
+    } catch (error) {
+        console.error('❌ Save conversation error:', error);
+        return null;
     }
-    
+}
+   async saveFeedback(messageId, wasHelpful) {
+    try {
+        if (!this.sb) {
+            console.log('⚠️ No Supabase connection');
+            return;
+        }
+        
+        // ✅ Use message_id column
+        const { error } = await this.sb
+            .from('chatbot_conversations')
+            .update({ was_helpful: wasHelpful })
+            .eq('message_id', messageId);
+
+        if (error) {
+            console.error('❌ Feedback save error:', error);
+        } else {
+            console.log('✅ Feedback saved successfully!');
+        }
+    } catch (error) {
+        console.error('❌ Feedback error:', error);
+    }
+}
     async getUserConversations(limit = 20) {
         try {
             if (!this.sb || !this.userId) return [];
