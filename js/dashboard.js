@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS
+// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS + LOGIN POINTS DISPLAY
 
 class DashboardModule {
     constructor(supabaseClient) {
@@ -127,7 +127,9 @@ class DashboardModule {
             streakEmoji: document.getElementById('streak-emoji'),
             streakLights: document.querySelectorAll('.streak-light'),
             streakMilestones: document.querySelectorAll('.milestone'),
-            // ✅ TOTAL POINTS
+            // ✅ LOGIN POINTS DISPLAY ELEMENTS
+            loginPointsDisplay: document.getElementById('login-points-display'),
+            loginCountDisplay: document.getElementById('login-count-display'),
             totalPointsDisplay: document.getElementById('total-points-display')
         };
     }
@@ -1612,21 +1614,32 @@ class DashboardModule {
         if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
     }
     
+    // ✅ UPDATED: Now updates Login Points, Total Points, and everything else
     updateUIFromMetrics() {
         const m = this.metrics;
         
+        // Attendance
         if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
         if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
         if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // ✅ UPDATE TOTAL POINTS
+        // ✅ LOGIN POINTS DISPLAY - FIXED!
+        if (this.elements.loginPointsDisplay) {
+            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
+        }
+        if (this.elements.loginCountDisplay) {
+            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+        }
+        
+        // ✅ TOTAL POINTS
         if (this.elements.totalPointsDisplay) {
             const total = (m.login?.points || 0) + (m.attendance?.points || 0) + (m.nurseiq?.questions || 0);
             this.elements.totalPointsDisplay.innerText = total;
         }
         
+        // Attendance color coding
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -1643,6 +1656,7 @@ class DashboardModule {
             else warningText.innerText = 'GOOD';
         }
         
+        // Exam Card
         const approved = m.examCard.approved || 0;
         if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
         if (this.elements.examStatus) {
@@ -1651,13 +1665,21 @@ class DashboardModule {
         }
         if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
         
+        // NurseIQ
         if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
         if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
         if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
         if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
         
+        // Resources & Exams
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
+        
+        // XP
+        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
+        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
+        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
+        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
     }
     
     startLiveClock() {
@@ -1749,4 +1771,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display!');
