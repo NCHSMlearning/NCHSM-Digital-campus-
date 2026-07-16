@@ -144,220 +144,46 @@
 
     <div class="container">
         
-      <!-- SIDEBAR NAVIGATION - PREMIUM MODERN -->
-<aside class="sidebar-premium" id="sidebar" aria-label="Main navigation">
-    
-    <!-- ===== SIDEBAR HEADER ===== -->
-    <div class="sidebar-header-premium">
-        <div class="logo-section">
-            <div class="logo-wrapper">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="sidebar-logo">
-                <div class="logo-glow"></div>
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
+                <p class="sidebar-subtitle">Navigate to sections</p>
             </div>
-            <div class="brand-text">
-                <h1 class="brand-title">NCHSM</h1>
-                <span class="brand-subtitle">Student Portal</span>
-            </div>
-        </div>
-        
-        <!-- User Profile Mini -->
-        <div class="user-profile-mini" id="sidebarUserProfile">
-            <div class="user-avatar-wrapper">
-                <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100&bold=true" alt="Profile" class="user-avatar">
-                <span class="online-status-dot"></span>
-            </div>
-            <div class="user-info-mini">
-                <span class="user-name" id="sidebarUserName">Student</span>
-                <span class="user-program" id="sidebarUserProgram">KRCHN</span>
-            </div>
-            <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar" title="Collapse Sidebar">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-        </div>
-        
-        <!-- XP Mini Bar -->
-        <div class="xp-mini-premium">
-            <div class="xp-row">
-                <div class="xp-info">
-                    <i class="fas fa-star" style="color: #f59e0b;"></i>
-                    <span>Level <strong id="sidebarUserLevel">1</strong></span>
-                    <span class="xp-divider">·</span>
-                    <span id="sidebarUserXP">0 XP</span>
-                </div>
-                <span class="xp-next-level">Level <span id="sidebarNextLevel">2</span></span>
-            </div>
-            <div class="xp-progress-premium">
-                <div class="xp-progress-fill" id="sidebarXPProgress" style="width: 0%;"></div>
-                <div class="xp-progress-glow"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ===== NAVIGATION ===== -->
-    <nav class="sidebar-nav-premium" aria-label="Primary navigation">
-        <ul class="nav-premium" role="menubar">
-            
-            <!-- DASHBOARD -->
-            <li role="none">
-                <a href="#" data-tab="dashboard" class="active" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-home"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Dashboard</span>
-                    <span class="nav-badge-premium">Home</span>
-                </a>
-            </li>
-            
-            <!-- PROFILE -->
-            <li role="none">
-                <a href="#" data-tab="profile" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-user-circle"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Profile</span>
-                    <span class="nav-badge-premium" id="profileBadge" style="display:none;">!</span>
-                </a>
-            </li>
-            
-            <!-- ACADEMIC CALENDAR -->
-            <li role="none">
-                <a href="#" data-tab="calendar" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Academic Calendar</span>
-                    <span class="nav-badge-premium">📅</span>
-                </a>
-            </li>
-            
-            <!-- LEARNING HUB (DROPDOWN) -->
-            <li role="none" class="has-dropdown-premium">
-                <a href="#" class="dropdown-toggle-premium" role="menuitem" aria-haspopup="true" aria-expanded="false">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-graduation-cap"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">My Learning Hub</span>
-                    <i class="fas fa-chevron-down dropdown-arrow-premium"></i>
-                </a>
-                <ul class="dropdown-submenu-premium" style="display: none;">
-                    <li role="none"><a href="#" data-tab="hub-courses" role="menuitem"><i class="fas fa-book-open"></i> My Courses</a></li>
-                    <li role="none"><a href="#" data-tab="hub-register" role="menuitem"><i class="fas fa-plus-circle"></i> Register Units</a></li>
-                    <li role="none"><a href="#" data-tab="hub-online-learning" role="menuitem"><i class="fas fa-video"></i> Online Learning</a></li>
-                    <li class="dropdown-divider-premium"></li>
-                    <li role="none"><a href="#" data-tab="hub-exam-card" role="menuitem"><i class="fas fa-id-card"></i> Exam Card</a></li>
-                    <li role="none"><a href="#" data-tab="hub-lecture-card" role="menuitem"><i class="fas fa-chalkboard-teacher"></i> Lecture Card</a></li>
-                    <li class="dropdown-divider-premium"></li>
-                    <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i> Exams & Grades</a></li>
-                    <li role="none"><a href="#" data-tab="academic-reports" role="menuitem"><i class="fas fa-file-alt"></i> Academic Reports</a></li>
-                    <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i> Resources</a></li>
-                    <li role="none"><a href="#" data-tab="nurseiq" role="menuitem"><i class="fas fa-brain"></i> NurseIQ</a></li>
+            <nav aria-label="Primary navigation">
+                <ul class="nav" role="menubar">
+                    <li role="none"><a href="#" data-tab="dashboard" class="active" role="menuitem"><i class="fas fa-home"></i><span class="nav-text">Dashboard</span></a></li>
+                    <li role="none"><a href="#" data-tab="profile" role="menuitem"><i class="fas fa-user-circle"></i><span class="nav-text">Profile</span></a></li>
+                    <li role="none"><a href="#" data-tab="calendar" role="menuitem"><i class="fas fa-calendar-alt"></i><span class="nav-text">Academic Calendar</span></a></li>
+                    <li role="none" class="has-dropdown">
+                        <a href="#" class="dropdown-toggle" role="menuitem">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span class="nav-text">My Learning Hub</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        </a>
+                        <ul class="dropdown-submenu" style="display: none;">
+                            <li role="none"><a href="#" data-tab="hub-courses" role="menuitem"><i class="fas fa-book-open"></i> My Courses</a></li>
+                            <li role="none"><a href="#" data-tab="hub-register" role="menuitem"><i class="fas fa-plus-circle"></i> Register Units</a></li>
+                            <li role="none"><a href="#" data-tab="hub-online-learning" role="menuitem"><i class="fas fa-video"></i> Online Learning</a></li>
+                            <li role="none"><a href="#" data-tab="hub-exam-card" role="menuitem"><i class="fas fa-id-card"></i> Exam Card</a></li>
+                            <li role="none"><a href="#" data-tab="hub-lecture-card" role="menuitem"><i class="fas fa-chalkboard-teacher"></i> Lecture Card</a></li>
+                            <li class="dropdown-divider"></li>
+                            <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i> Exams & Grades</a></li>
+                            <li role="none"><a href="#" data-tab="academic-reports" role="menuitem"><i class="fas fa-file-alt"></i> Academic Reports</a></li>
+                            <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i> Resources</a></li>
+                            <li role="none"><a href="#" data-tab="nurseiq" role="menuitem"><i class="fas fa-brain"></i> NurseIQ</a></li>
+                        </ul>
+                    </li>
+                    <li role="none"><a href="#" data-tab="attendance" role="menuitem"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span><span class="nav-badge" id="attendanceBadge" style="display: none;">0</span></a></li>
+                    <li role="none"><a href="#" data-tab="messages" role="menuitem"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span><span class="nav-badge" id="messagesBadge" style="display: none;">0</span></a></li>
+                   
+            <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span><span class="nav-badge" id="ticketsBadge" style="display: none;">0</span></a></li>
+                <li role="none"><a href="#" data-tab="reviews" role="menuitem"><i class="fas fa-star"></i><span class="nav-text">Reviews</span><span class="nav-badge" id="reviewsBadge" style="display: none;">0</span></a></li>
+<li role="none"><a href="#" data-tab="newsletter" role="menuitem"><i class="fas fa-envelope"></i><span class="nav-text">Newsletter</span><span class="nav-badge" id="newsletterBadge" style="display: none;">0</span></a></li>
                 </ul>
-            </li>
-            
-            <!-- ATTENDANCE -->
-            <li role="none">
-                <a href="#" data-tab="attendance" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-check-double"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Attendance</span>
-                    <span class="nav-badge-premium pulse-badge" id="attendanceBadge" style="display:none;">0</span>
-                </a>
-            </li>
-            
-            <!-- MESSAGES -->
-            <li role="none">
-                <a href="#" data-tab="messages" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-comment-dots"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Messages</span>
-                    <span class="nav-badge-premium pulse-badge" id="messagesBadge" style="display:none;">0</span>
-                </a>
-            </li>
-            
-            <!-- SUPPORT TICKETS -->
-            <li role="none">
-                <a href="#" data-tab="support-tickets" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Support Tickets</span>
-                    <span class="nav-badge-premium" id="ticketsBadge" style="display:none;">0</span>
-                </a>
-            </li>
-            
-            <!-- REVIEWS -->
-            <li role="none">
-                <a href="#" data-tab="reviews" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-star"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Reviews</span>
-                    <span class="nav-badge-premium" id="reviewsBadge" style="display:none;">0</span>
-                </a>
-            </li>
-            
-            <!-- NEWSLETTER -->
-            <li role="none">
-                <a href="#" data-tab="newsletter" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-envelope"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Newsletter</span>
-                    <span class="nav-badge-premium" id="newsletterBadge" style="display:none;">📧</span>
-                </a>
-            </li>
-            
-            <!-- DIVIDER -->
-            <li role="separator" class="nav-divider-premium"></li>
-            
-            <!-- HELP -->
-            <li role="none">
-                <a href="#" id="sidebarHelpBtn" role="menuitem">
-                    <span class="nav-icon-wrapper">
-                        <i class="fas fa-question-circle"></i>
-                        <span class="nav-icon-bg"></span>
-                    </span>
-                    <span class="nav-text">Help & Support</span>
-                </a>
-            </li>
-            
-        </ul>
-    </nav>
-    
-    <!-- ===== SIDEBAR FOOTER ===== -->
-    <div class="sidebar-footer-premium">
-        <div class="footer-actions">
-            <button class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-            <button class="footer-btn" id="sidebarThemeBtn" title="Toggle Theme">
-                <i class="fas fa-moon"></i>
-            </button>
-            <button class="footer-btn" id="sidebarLogoutBtn" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-        </div>
-        <div class="footer-version">
-            <span>Portal v2.1</span>
-            <span class="footer-dot">•</span>
-            <span id="sidebarOnlineStatus" class="online-status">
-                <span class="status-dot-small"></span> Online
-            </span>
-        </div>
-    </div>
-    
-</aside>
+            </nav>
+            <div class="sidebar-footer"><p class="version-info" id="sidebarVersion">Portal v2.1</p></div>
+        </aside>
 
         <!-- MAIN CONTENT AREA -->
         <main class="main" id="main-content">
