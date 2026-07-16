@@ -340,13 +340,16 @@ class UIModule {
         setTimeout(handleRoute, 100);
     }
     
-    // ============================================
-    // EVENT LISTENERS
-    // ============================================
-    
-    setupEventListeners() {
-        // Mobile menu toggle
-        if (this.mobileMenuToggle) {
+   // ============================================
+// 🔧 SETUP EVENT LISTENERS - FIXED
+// ============================================
+
+setupEventListeners() {
+    console.log('🔧 Setting up event listeners...');
+
+    // Mobile menu toggle - WITH NULL CHECK
+    if (this.mobileMenuToggle) {
+        try {
             const newToggle = this.mobileMenuToggle.cloneNode(true);
             this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
             this.mobileMenuToggle = newToggle;
@@ -355,33 +358,47 @@ class UIModule {
                 e.stopPropagation();
                 this.toggleMenu();
             });
+            console.log('✅ Mobile toggle setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup mobile toggle:', error);
         }
-        
-        // Overlay click
-        if (this.overlay) {
+    } else {
+        console.warn('⚠️ Mobile menu toggle not found - skipping');
+    }
+
+    // Overlay click - WITH NULL CHECK
+    if (this.overlay) {
+        try {
             const newOverlay = this.overlay.cloneNode(true);
             this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
             this.overlay = newOverlay;
             this.overlay.addEventListener('click', () => {
                 this.closeMenu();
             });
+            console.log('✅ Overlay click setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup overlay:', error);
         }
-        
-        // Dropdown toggle setup
-        this.setupDropdownToggle();
-        
-        // Sidebar navigation links
-        const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab]');
-        console.log(`🔗 Found ${allNavLinks.length} navigation links`);
-        
-        allNavLinks.forEach(link => {
+    } else {
+        console.warn('⚠️ Overlay not found - skipping');
+    }
+
+    // Dropdown toggle setup
+    this.setupDropdownToggle();
+
+    // Sidebar navigation links - WITH NULL CHECK
+    const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab], .nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
+    console.log(`🔗 Found ${allNavLinks.length} navigation links`);
+
+    allNavLinks.forEach(link => {
+        try {
             const newLink = link.cloneNode(true);
             link.parentNode.replaceChild(newLink, link);
-            
+
             newLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const tabId = newLink.getAttribute('data-tab');
                 if (tabId && this.isValidTab(tabId)) {
                     console.log(`🖱️ Link clicked: ${tabId}`);
@@ -389,10 +406,14 @@ class UIModule {
                     this.navigateToTab(tabId);
                 }
             });
-        });
-        
-        // Header logout
-        if (this.headerLogout) {
+        } catch (error) {
+            console.warn('⚠️ Could not setup link:', error);
+        }
+    });
+
+    // Header logout - WITH NULL CHECK
+    if (this.headerLogout) {
+        try {
             const newLogout = this.headerLogout.cloneNode(true);
             this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
             this.headerLogout = newLogout;
@@ -400,41 +421,51 @@ class UIModule {
                 e.preventDefault();
                 this.logout();
             });
+            console.log('✅ Logout button setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup logout:', error);
         }
-        
-        // Header refresh
-        if (this.headerRefresh) {
+    }
+
+    // Header refresh - WITH NULL CHECK
+    if (this.headerRefresh) {
+        try {
             const newRefresh = this.headerRefresh.cloneNode(true);
             this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
             this.headerRefresh = newRefresh;
             this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+            console.log('✅ Refresh button setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup refresh:', error);
         }
-        
-        // Utility buttons
-        if (this.clearCacheBtn) {
-            this.clearCacheBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.clearCache();
-            });
-        }
-        
-        if (this.exportDataBtn) {
-            this.exportDataBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.exportData();
-            });
-        }
-        
-        if (this.systemInfoBtn) {
-            this.systemInfoBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showSystemInfo();
-            });
-        }
-        
-        // Dashboard stat cards
-        setTimeout(() => {
-            document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+    }
+
+    // Utility buttons - WITH NULL CHECKS
+    if (this.clearCacheBtn) {
+        this.clearCacheBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.clearCache();
+        });
+    }
+
+    if (this.exportDataBtn) {
+        this.exportDataBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.exportData();
+        });
+    }
+
+    if (this.systemInfoBtn) {
+        this.systemInfoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSystemInfo();
+        });
+    }
+
+    // Dashboard stat cards
+    setTimeout(() => {
+        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+            try {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 newCard.addEventListener('click', (e) => {
@@ -445,25 +476,28 @@ class UIModule {
                         this.navigateToTab(tabId);
                     }
                 });
-            });
-        }, 1000);
-        
-        // Close menu on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isMenuOpen()) {
-                this.closeMenu();
+            } catch (error) {
+                // Silently skip
             }
         });
-        
-        // Close menu on resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth > 768 && this.isMenuOpen()) {
-                this.closeMenu();
-            }
-        });
-        
-        console.log('✅ Event listeners setup complete');
-    }
+    }, 1000);
+
+    // Close menu on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isMenuOpen()) {
+            this.closeMenu();
+        }
+    });
+
+    // Close menu on resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && this.isMenuOpen()) {
+            this.closeMenu();
+        }
+    });
+
+    console.log('✅ Event listeners setup complete');
+}
     
     // ============================================
     // DROPDOWN TOGGLE SETUP
