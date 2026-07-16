@@ -1440,98 +1440,108 @@
         }
         
         // ==================== UPDATE PERFORMANCE SUMMARY ====================
-        updatePerformanceSummary() {
-            const completedReleased = this.completedExams.filter(exam => 
-                exam.isReleased && exam.totalPercentage !== null
-            );
-            
-            // Get elements
-            const bestScore = document.getElementById('best-score');
-            const lowestScore = document.getElementById('lowest-score');
-            const passRate = document.getElementById('pass-rate');
-            const distinctionCount = document.getElementById('distinction-count');
-            const creditCount = document.getElementById('credit-count');
-            const passCount = document.getElementById('pass-count');
-            const failCount = document.getElementById('fail-count');
-            const firstAssessment = document.getElementById('first-assessment');
-            const latestAssessment = document.getElementById('latest-assessment');
-            const totalSubmitted = document.getElementById('total-submitted');
-            const overallAverage = document.getElementById('overall-average');
-            
-            if (completedReleased.length === 0) {
-                // Set default values
-                if (bestScore) bestScore.textContent = '--';
-                if (lowestScore) lowestScore.textContent = '--';
-                if (passRate) passRate.textContent = '--';
-                if (distinctionCount) distinctionCount.textContent = '0';
-                if (creditCount) creditCount.textContent = '0';
-                if (passCount) passCount.textContent = '0';
-                if (failCount) failCount.textContent = '0';
-                if (firstAssessment) firstAssessment.textContent = '--';
-                if (latestAssessment) latestAssessment.textContent = '--';
-                if (totalSubmitted) totalSubmitted.textContent = '0';
-                if (overallAverage) overallAverage.textContent = '--';
-                return;
-            }
-            
-            // Calculate statistics
-            const percentages = completedReleased.map(e => e.totalPercentage);
-            const best = Math.max(...percentages);
-            const lowest = Math.min(...percentages);
-            const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-            
-            // Count grades
-            const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
-            const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
-            const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
-            const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
-            
-            // Pass rate (60% and above)
-            const passed = distinctions + credits + passes;
-            const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
-            
-            // Get dates
-            const examDates = completedReleased
-                .map(e => e.examStartDateTime || e.examDate)
-                .filter(d => d)
-                .sort((a, b) => new Date(a) - new Date(b));
-            
-            const firstDate = examDates.length > 0 ? examDates[0] : null;
-            const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
-            
-            // Update DOM
-            if (bestScore) bestScore.textContent = best.toFixed(1) + '%';
-            if (lowestScore) lowestScore.textContent = lowest.toFixed(1) + '%';
-            if (passRate) passRate.textContent = passRateValue.toFixed(1) + '%';
-            if (distinctionCount) distinctionCount.textContent = distinctions;
-            if (creditCount) creditCount.textContent = credits;
-            if (passCount) passCount.textContent = passes;
-            if (failCount) failCount.textContent = fails;
-            if (firstAssessment) firstAssessment.textContent = firstDate ? formatKenyaDate(firstDate) : '--';
-            if (latestAssessment) latestAssessment.textContent = latestDate ? formatKenyaDate(latestDate) : '--';
-            if (totalSubmitted) totalSubmitted.textContent = completedReleased.length;
-            if (overallAverage) overallAverage.textContent = average.toFixed(1) + '%';
-            
-            // Update progress bars
-            const total = completedReleased.length;
-            if (total > 0) {
-                const distPct = (distinctions / total) * 100;
-                const credPct = (credits / total) * 100;
-                const passPct = (passes / total) * 100;
-                const failPct = (fails / total) * 100;
-                
-                const distBar = document.getElementById('distinction-bar');
-                const credBar = document.getElementById('credit-bar');
-                const passBar = document.getElementById('pass-bar');
-                const failBar = document.getElementById('fail-bar');
-                
-                if (distBar) distBar.style.width = Math.min(distPct, 100) + '%';
-                if (credBar) credBar.style.width = Math.min(credPct, 100) + '%';
-                if (passBar) passBar.style.width = Math.min(passPct, 100) + '%';
-                if (failBar) failBar.style.width = Math.min(failPct, 100) + '%';
-            }
-        }
+       // ==================== UPDATE PERFORMANCE SUMMARY ====================
+updatePerformanceSummary() {
+    const completedReleased = this.completedExams.filter(exam => 
+        exam.isReleased && exam.totalPercentage !== null
+    );
+    
+    // Get elements with CORRECT IDs matching your HTML
+    const bestScore = document.getElementById('best-score');
+    const lowestScore = document.getElementById('lowest-score');
+    const passRate = document.getElementById('pass-rate');
+    const distinctionCount = document.getElementById('distinction-count');
+    const creditCount = document.getElementById('credit-count');
+    const passCount = document.getElementById('pass-count');
+    const failCount = document.getElementById('fail-count');
+    const firstAssessment = document.getElementById('first-assessment-date');  // ✅ FIXED
+    const latestAssessment = document.getElementById('latest-assessment-date'); // ✅ FIXED
+    const totalSubmitted = document.getElementById('total-submitted');
+    const overallAverage = document.getElementById('overall-average');
+    
+    if (completedReleased.length === 0) {
+        // Set default values
+        if (bestScore) bestScore.textContent = '--';
+        if (lowestScore) lowestScore.textContent = '--';
+        if (passRate) passRate.textContent = '--';
+        if (distinctionCount) distinctionCount.textContent = '0';
+        if (creditCount) creditCount.textContent = '0';
+        if (passCount) passCount.textContent = '0';
+        if (failCount) failCount.textContent = '0';
+        if (firstAssessment) firstAssessment.textContent = '--';
+        if (latestAssessment) latestAssessment.textContent = '--';
+        if (totalSubmitted) totalSubmitted.textContent = '0';
+        if (overallAverage) overallAverage.textContent = '--';
         
+        // Reset progress bars
+        const distBar = document.getElementById('distinction-bar');
+        const credBar = document.getElementById('credit-bar');
+        const passBar = document.getElementById('pass-bar');
+        const failBar = document.getElementById('fail-bar');
+        if (distBar) distBar.style.width = '0%';
+        if (credBar) credBar.style.width = '0%';
+        if (passBar) passBar.style.width = '0%';
+        if (failBar) failBar.style.width = '0%';
+        return;
+    }
+    
+    // Calculate statistics
+    const percentages = completedReleased.map(e => e.totalPercentage);
+    const best = Math.max(...percentages);
+    const lowest = Math.min(...percentages);
+    const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+    
+    // Count grades
+    const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
+    const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+    const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+    const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
+    
+    // Pass rate (60% and above)
+    const passed = distinctions + credits + passes;
+    const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
+    
+    // Get dates
+    const examDates = completedReleased
+        .map(e => e.examStartDateTime || e.examDate)
+        .filter(d => d)
+        .sort((a, b) => new Date(a) - new Date(b));
+    
+    const firstDate = examDates.length > 0 ? examDates[0] : null;
+    const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
+    
+    // Update DOM
+    if (bestScore) bestScore.textContent = best.toFixed(1) + '%';
+    if (lowestScore) lowestScore.textContent = lowest.toFixed(1) + '%';
+    if (passRate) passRate.textContent = passRateValue.toFixed(1) + '%';
+    if (distinctionCount) distinctionCount.textContent = distinctions;
+    if (creditCount) creditCount.textContent = credits;
+    if (passCount) passCount.textContent = passes;
+    if (failCount) failCount.textContent = fails;
+    if (firstAssessment) firstAssessment.textContent = firstDate ? formatKenyaDate(firstDate) : '--';
+    if (latestAssessment) latestAssessment.textContent = latestDate ? formatKenyaDate(latestDate) : '--';
+    if (totalSubmitted) totalSubmitted.textContent = completedReleased.length;
+    if (overallAverage) overallAverage.textContent = average.toFixed(1) + '%';
+    
+    // Update progress bars
+    const total = completedReleased.length;
+    if (total > 0) {
+        const distPct = (distinctions / total) * 100;
+        const credPct = (credits / total) * 100;
+        const passPct = (passes / total) * 100;
+        const failPct = (fails / total) * 100;
+        
+        const distBar = document.getElementById('distinction-bar');
+        const credBar = document.getElementById('credit-bar');
+        const passBar = document.getElementById('pass-bar');
+        const failBar = document.getElementById('fail-bar');
+        
+        if (distBar) distBar.style.width = Math.min(distPct, 100) + '%';
+        if (credBar) credBar.style.width = Math.min(credPct, 100) + '%';
+        if (passBar) passBar.style.width = Math.min(passPct, 100) + '%';
+        if (failBar) failBar.style.width = Math.min(failPct, 100) + '%';
+    }
+}
         updateEmptyStates() {
             if (this.currentEmpty) {
                 this.currentEmpty.style.display = this.currentExams.length === 0 ? 'block' : 'none';
