@@ -4361,14 +4361,15 @@ async function handleAddExam(e) {
     }
 
     try {
-        // ✅ FIXED: Include ALL table columns
+        // ✅ FIXED: Include ALL table columns with correct values
         const examData = {
             // Required fields
             program_type: selected_program,
             title: exam_title,
+            exam_name: exam_title,  // ✅ FIXED: Set exam_name
             exam_type: exam_type,
             exam_date: exam_date,
-            status: exam_status || 'Upcoming',
+            status: exam_status ? exam_status.toLowerCase() : 'published',  // ✅ FIXED: Force lowercase
             
             // Program & Intake
             target_program: selected_program,
@@ -4377,16 +4378,16 @@ async function handleAddExam(e) {
             
             // Block/Term - BOTH fields
             block: block_term,
-            block_term: block_term,
+            block_term: block_term,  // ✅ FIXED: Set block_term
             
             // Course
-            course_id: course_id,
-            course_code: null,  // Can be filled later
+            course_id: course_id || null,
+            course_code: null,
             
             // Marks - ALL three fields
-            MARKS: String(marks_out_of),  // ✅ Capitalized MARKS column
+            MARKS: String(marks_out_of),  // ✅ FIXED: Capitalized MARKS column
             marks_out_of: marks_out_of,
-            total_marks: marks_out_of,
+            total_marks: marks_out_of,  // ✅ FIXED: Set total_marks
             
             // Timing
             exam_start_time: exam_start_time || '09:00:00',
@@ -4394,7 +4395,7 @@ async function handleAddExam(e) {
             
             // Links - BOTH fields
             online_link: exam_link,
-            exam_link: exam_link,
+            exam_link: exam_link,  // ✅ FIXED: Set exam_link
             
             // Pass/Fee
             pass_mark: pass_mark,
