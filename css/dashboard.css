@@ -2092,3 +2092,93 @@
         display: block !important;
     }
 }
+/* ============================================
+   🔧 FIX PAGE HEIGHTS & SCROLLING
+   ============================================ */
+
+/* Fix html and body */
+html, body {
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Container - fixed height viewport */
+.container {
+    display: flex !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    width: 100% !important;
+}
+
+/* Sidebar - fixed height */
+.sidebar-premium {
+    height: 100vh !important;
+    flex-shrink: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* Main content - fills remaining space */
+.main {
+    flex: 1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 20px 20px !important;
+}
+
+/* Main content wrapper */
+#main-content {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: 100% !important;
+}
+
+/* All tab content - scrollable */
+.tab-content {
+    height: auto !important;
+    min-height: calc(100vh - 120px) !important;
+    max-height: calc(100vh - 120px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 20px !important;
+}
+
+/* Dashboard container */
+.dashboard-container {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: 100% !important;
+    padding-bottom: 40px !important;
+}
+
+/* Fix when sidebar is open on mobile */
+body.sidebar-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.sidebar-open .main {
+    overflow-y: auto !important;
+    height: 100vh !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main {
+        padding: 0 12px 12px !important;
+    }
+    
+    .tab-content {
+        min-height: calc(100vh - 100px) !important;
+        max-height: calc(100vh - 100px) !important;
+        padding: 12px !important;
+    }
+}
