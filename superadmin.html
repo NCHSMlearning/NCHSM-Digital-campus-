@@ -5335,14 +5335,18 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div>
-                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Status</label>
-                        <select id="edit_exam_status" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-                            <option value="Upcoming">📅 Upcoming</option>
-                            <option value="InProgress">⏳ In Progress</option>
-                            <option value="Completed">✅ Completed</option>
-                        </select>
-                    </div>
+                    <!-- In the edit exam modal, update the status select -->
+<div>
+    <label style="font-weight: 600; display: block; margin-bottom: 5px;">Status</label>
+    <select id="edit_exam_status" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        <option value="Upcoming">📅 Upcoming</option>
+        <option value="InProgress">⏳ In Progress</option>
+        <option value="Completed">✅ Completed</option>
+        <option value="Published">📢 Published</option>
+        <option value="Draft">📝 Draft</option>
+        <option value="Closed">🔒 Closed</option>
+    </select>
+</div>
                     <div>
                         <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Basis</label>
                         <select id="edit_exam_basis" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
