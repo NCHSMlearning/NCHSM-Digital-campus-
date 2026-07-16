@@ -195,33 +195,50 @@ class UIModule {
         return (this.sidebar && (this.sidebar.classList.contains('active') || this.sidebar.classList.contains('open')));
     }
     
-    openMenu() {
-        if (this.sidebar) {
-            this.sidebar.classList.add('active');
-            this.sidebar.classList.add('open');
-        }
-        if (this.overlay) {
-            this.overlay.classList.add('active');
-            this.overlay.style.display = 'block';
-        }
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('menu-open');
-        console.log('📱 Mobile menu opened');
+ // ✅ REPLACE WITH THIS VERSION
+openMenu() {
+    if (this.sidebar) {
+        this.sidebar.classList.add('active');
+        this.sidebar.classList.add('open');
     }
-    
-    closeMenu() {
-        if (this.sidebar) {
-            this.sidebar.classList.remove('active');
-            this.sidebar.classList.remove('open');
-        }
-        if (this.overlay) {
-            this.overlay.classList.remove('active');
-            this.overlay.style.display = 'none';
-        }
-        document.body.style.overflow = '';
-        document.body.classList.remove('menu-open');
-        console.log('📱 Mobile menu closed');
+    if (this.overlay) {
+        this.overlay.classList.add('active');
+        this.overlay.style.display = 'block';
+        // ✅ NO BLUR
+        this.overlay.style.backdropFilter = 'none';
+        this.overlay.style.webkitBackdropFilter = 'none';
+        this.overlay.style.background = 'rgba(0, 0, 0, 0.4)';
     }
+    document.body.style.overflow = 'hidden';
+    // ✅ REMOVE this line:
+    // document.body.classList.add('menu-open');
+    document.body.style.backdropFilter = 'none';
+    document.body.style.webkitBackdropFilter = 'none';
+    document.body.style.filter = 'none';
+    console.log('📱 Mobile menu opened - NO BLUR');
+}
+
+   // ✅ REPLACE WITH THIS VERSION
+closeMenu() {
+    if (this.sidebar) {
+        this.sidebar.classList.remove('active');
+        this.sidebar.classList.remove('open');
+    }
+    if (this.overlay) {
+        this.overlay.classList.remove('active');
+        this.overlay.style.display = 'none';
+        this.overlay.style.backdropFilter = 'none';
+        this.overlay.style.webkitBackdropFilter = 'none';
+        this.overlay.style.background = 'rgba(0, 0, 0, 0)';
+    }
+    document.body.style.overflow = '';
+    // ✅ REMOVE this line:
+    // document.body.classList.remove('menu-open');
+    document.body.style.backdropFilter = 'none';
+    document.body.style.webkitBackdropFilter = 'none';
+    document.body.style.filter = 'none';
+    console.log('📱 Mobile menu closed - NO BLUR');
+}
     
     toggleMenu() {
         if (this.isMenuOpen()) {
