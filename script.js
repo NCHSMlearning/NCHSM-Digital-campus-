@@ -4313,7 +4313,7 @@ async function removeAssignedClass(examId, className) {
     }
 }
 
-// ========== CREATE EXAM - WITH INTAKE MONTH ==========
+// ========== CREATE EXAM - COMPLETE FIXED VERSION ==========
 async function handleAddExam(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -4352,27 +4352,65 @@ async function handleAddExam(e) {
 
     const selectedClasses = getSelectedClassesForExam();
 
+    // ✅ Get current user for created_by
+    let currentUser = null;
     try {
+        currentUser = await getCurrentUser();
+    } catch (e) {
+        console.warn('Could not get current user:', e);
+    }
+
+    try {
+        // ✅ FIXED: Include ALL table columns
         const examData = {
+            // Required fields
+            program_type: selected_program,
             title: exam_title,
             exam_type: exam_type,
             exam_date: exam_date,
-            exam_start_time: exam_start_time,
-            duration_minutes: exam_duration_minutes,
+            status: exam_status || 'Upcoming',
+            
+            // Program & Intake
             target_program: selected_program,
-            program_type: selected_program,
             intake_year: intake,
             intake_month: intake_month,
+            
+            // Block/Term - BOTH fields
             block: block_term,
+            block_term: block_term,
+            
+            // Course
             course_id: course_id,
-            online_link: exam_link,
-            status: exam_status,
+            course_code: null,  // Can be filled later
+            
+            // Marks - ALL three fields
+            MARKS: String(marks_out_of),  // ✅ Capitalized MARKS column
             marks_out_of: marks_out_of,
+            total_marks: marks_out_of,
+            
+            // Timing
+            exam_start_time: exam_start_time || '09:00:00',
+            duration_minutes: exam_duration_minutes,
+            
+            // Links - BOTH fields
+            online_link: exam_link,
+            exam_link: exam_link,
+            
+            // Pass/Fee
             pass_mark: pass_mark,
             min_fee_balance: min_fee_balance,
+            
+            // Deadline
             marks_entry_deadline: marks_deadline,
+            
+            // Exam basis
             exam_basis: exam_basis,
+            
+            // Classes
             assigned_classes: selectedClasses,
+            
+            // Audit fields
+            created_by: currentUser?.user_id || currentUser?.id || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -4381,14 +4419,23 @@ async function handleAddExam(e) {
 
         const { error, data } = await sb.from('exams').insert(examData).select('id');
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase error:', error);
+            throw error;
+        }
 
-        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, Intake: ${intake} ${intake_month || ''}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, data?.[0]?.id, 'SUCCESS');
-        showFeedback(`✅ Assessment added successfully!`, 'success');
+        const examId = data?.[0]?.id;
         
+        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, Intake: ${intake} ${intake_month || ''}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, examId, 'SUCCESS');
+        showFeedback(`✅ Assessment added successfully! (ID: ${examId})`, 'success');
+        
+        // Reset form
         if (e.target) e.target.reset();
+        
+        // Refresh
         loadExams();
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        if (typeof loadExamsForMarksEntry === 'function') loadExamsForMarksEntry();
         
     } catch (error) {
         console.error('Error adding exam:', error);
@@ -4611,6 +4658,7 @@ async function closeExam(examId) {
 // OPEN EDIT EXAM MODAL
 // ============================================
 
+
 async function openEditExamModal(examId) {
     try {
         console.log('📝 Opening edit modal for exam ID:', examId);
@@ -4631,55 +4679,100 @@ async function openEditExamModal(examId) {
             modal = createExamEditModal();
         }
 
-        // Populate all fields
+        // ============================================================
+        // POPULATE ALL FIELDS - COMPLETE
+        // ============================================================
+
+        // Basic Info
         const examIdInput = document.getElementById('edit_exam_id');
         const titleInput = document.getElementById('edit_exam_title');
         const typeInput = document.getElementById('edit_exam_type');
         const statusInput = document.getElementById('edit_exam_status');
         const basisInput = document.getElementById('edit_exam_basis');
+        
+        // Date/Time
         const dateInput = document.getElementById('edit_exam_date');
         const startTimeInput = document.getElementById('edit_exam_start_time');
         const durationInput = document.getElementById('edit_exam_duration');
         const deadlineInput = document.getElementById('edit_exam_deadline');
+        
+        // Program & Intake
         const programInput = document.getElementById('edit_exam_program');
         const blockInput = document.getElementById('edit_exam_block');
         const intakeInput = document.getElementById('edit_exam_intake');
+        const intakeMonthInput = document.getElementById('edit_exam_intake_month');
         const courseInput = document.getElementById('edit_exam_course');
+        
+        // Marks
         const outOfInput = document.getElementById('edit_exam_out_of');
         const passMarkInput = document.getElementById('edit_exam_pass_mark');
         const minFeeInput = document.getElementById('edit_exam_min_fee');
+        
+        // Links
         const linkInput = document.getElementById('edit_exam_link');
+        
+        // Classes
         const classesContainer = document.getElementById('edit_exam_classes_container');
 
+        // ============================================================
+        // SET VALUES
+        // ============================================================
+
+        // Basic Info
         if (examIdInput) examIdInput.value = exam.id;
-        if (titleInput) titleInput.value = exam.title || '';
+        if (titleInput) titleInput.value = exam.title || exam.exam_name || '';
         if (typeInput) typeInput.value = exam.exam_type || 'CAT';
         if (statusInput) statusInput.value = exam.status || 'Upcoming';
         if (basisInput) basisInput.value = exam.exam_basis || 'ordinary';
+        
+        // Date/Time
         if (dateInput) dateInput.value = exam.exam_date || '';
         if (startTimeInput) startTimeInput.value = exam.exam_start_time || '09:00';
         if (durationInput) durationInput.value = exam.duration_minutes || 60;
         if (deadlineInput) deadlineInput.value = exam.marks_entry_deadline || '';
+        
+        // Program & Intake
         if (programInput) {
-            updateProgramDropdown(programInput);
+            // Populate dropdown options first
+            await populateEditExamCourses(courseInput, exam.target_program || exam.program_type);
             programInput.value = exam.target_program || exam.program_type || 'KRCHN';
-            programInput.dispatchEvent(new Event('change'));
+            // Trigger change event to load courses
+            if (typeof programInput.onchange === 'function') {
+                programInput.onchange();
+            }
         }
+        
         if (blockInput) {
-            setTimeout(() => {
-                blockInput.value = exam.block || exam.block_term || '';
-            }, 200);
+            blockInput.value = exam.block || exam.block_term || '';
         }
-        if (intakeInput) intakeInput.value = exam.intake_year || '';
+        
+        if (intakeInput) {
+            intakeInput.value = exam.intake_year || '';
+        }
+        
+        if (intakeMonthInput) {
+            intakeMonthInput.value = exam.intake_month || '';
+        }
+        
         if (courseInput) {
+            // Populate courses based on program
             await populateEditExamCourses(courseInput, exam.target_program || exam.program_type);
             courseInput.value = exam.course_id || '';
         }
-        if (outOfInput) outOfInput.value = exam.marks_out_of || exam.total_marks || 100;
+        
+        // Marks
+        const marksValue = exam.marks_out_of || exam.total_marks || 100;
+        if (outOfInput) outOfInput.value = marksValue;
         if (passMarkInput) passMarkInput.value = exam.pass_mark || 50;
         if (minFeeInput) minFeeInput.value = exam.min_fee_balance || 0;
+        
+        // Links
         if (linkInput) linkInput.value = exam.online_link || exam.exam_link || '';
 
+        // ============================================================
+        // ASSIGNED CLASSES
+        // ============================================================
+        
         if (classesContainer) {
             const assignedClasses = exam.assigned_classes || [];
             classesContainer.innerHTML = `
@@ -4705,7 +4798,10 @@ async function openEditExamModal(examId) {
             `;
         }
 
+        // Store current exam ID
         window.currentEditExamId = exam.id;
+        
+        // Show modal
         modal.style.display = 'flex';
 
     } catch (err) {
@@ -4714,7 +4810,7 @@ async function openEditExamModal(examId) {
     }
 }
 
-// ========== SAVE EDITED EXAM ==========
+// ========== SAVE EDITED EXAM - COMPLETE FIXED VERSION ==========
 async function saveEditedExam(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -4734,6 +4830,10 @@ async function saveEditedExam(e) {
     const minFeeInput = document.getElementById('edit_exam_min_fee');
     const deadlineInput = document.getElementById('edit_exam_deadline');
     const basisInput = document.getElementById('edit_exam_basis');
+    const programInput = document.getElementById('edit_exam_program');
+    const blockInput = document.getElementById('edit_exam_block');
+    const intakeInput = document.getElementById('edit_exam_intake');
+    const courseInput = document.getElementById('edit_exam_course');
 
     if (!examIdInput || !titleInput) {
         showFeedback('❌ Required form elements not found.', 'error');
@@ -4753,6 +4853,10 @@ async function saveEditedExam(e) {
     const minFee = minFeeInput ? parseInt(minFeeInput.value) || 0 : 0;
     const deadline = deadlineInput ? deadlineInput.value || null : null;
     const examBasis = basisInput ? basisInput.value : 'ordinary';
+    const program = programInput ? programInput.value : null;
+    const block = blockInput ? blockInput.value : null;
+    const intake = intakeInput ? parseInt(intakeInput.value) : null;
+    const courseId = courseInput ? courseInput.value : null;
 
     if (!title || !duration) {
         showFeedback('❌ Title and Duration are required.', 'error');
@@ -4760,28 +4864,58 @@ async function saveEditedExam(e) {
     }
 
     try {
+        // ✅ FIXED: Include ALL fields
         const updateData = {
+            // Basic info
             title: title,
+            exam_name: title,  // ✅ Add exam_name
             exam_type: type,
+            status: status,
+            
+            // Program & Intake
+            program_type: program,
+            target_program: program,
+            intake_year: intake,
+            block: block,
+            block_term: block,  // ✅ Add block_term
+            
+            // Course
+            course_id: courseId,
+            
+            // Marks - ALL three fields
+            MARKS: String(marksOutOf),  // ✅ Add MARKS (capitalized)
+            marks_out_of: marksOutOf,
+            total_marks: marksOutOf,  // ✅ Add total_marks
+            
+            // Timing
             exam_date: date,
             exam_start_time: startTime,
             duration_minutes: duration,
-            status: status,
-            updated_at: new Date().toISOString(),
-            marks_out_of: marksOutOf,
+            
+            // Links - BOTH fields
+            online_link: link,
+            exam_link: link,  // ✅ Add exam_link
+            
+            // Pass/Fee
             pass_mark: passMark,
             min_fee_balance: minFee,
+            
+            // Deadline
             marks_entry_deadline: deadline,
-            exam_basis: examBasis
+            
+            // Exam basis
+            exam_basis: examBasis,
+            
+            // Audit
+            updated_at: new Date().toISOString()
         };
 
-        if (link) {
-            updateData.online_link = link;
-        }
-
-        Object.keys(updateData).forEach(key => 
-            updateData[key] === undefined && delete updateData[key]
-        );
+        // Remove undefined values
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined || updateData[key] === null) {
+                delete updateData[key];
+            }
+        });
 
         console.log('📤 Sending update data:', updateData);
 
@@ -4790,7 +4924,10 @@ async function saveEditedExam(e) {
             .update(updateData)
             .eq('id', examId);
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase error:', error);
+            throw error;
+        }
 
         showFeedback('✅ Exam updated successfully!', 'success');
         await loadExams();
@@ -4799,14 +4936,15 @@ async function saveEditedExam(e) {
             if (typeof renderFullCalendar === 'function') renderFullCalendar(); 
         } catch (e) {}
 
-        document.getElementById('examEditModal').style.display = 'none';
+        // Close modal
+        const modal = document.getElementById('examEditModal');
+        if (modal) modal.style.display = 'none';
 
     } catch (err) {
         console.error('❌ Error saving exam:', err);
         showFeedback(`Failed to update exam: ${err.message}`, 'error');
     }
 }
-
 // ========== OPEN GRADE MODAL ==========
 async function openGradeModal(examId, examName = '') {
     try {
