@@ -916,13 +916,24 @@
     ============================================================ -->
     <script>
 
-         // ============================================================
-    // HIDE .html EXTENSION IN URL
-    // ============================================================
-    if (window.location.pathname.endsWith('.html')) {
-        const cleanPath = window.location.pathname.replace(/\.html$/, '');
+        // ============================================================
+// HIDE .html EXTENSION IN URL (PRESERVES QUERY PARAMETERS)
+// ============================================================
+(function() {
+    const currentPath = window.location.pathname;
+    const search = window.location.search; // Get everything after ?
+    
+    if (currentPath.endsWith('.html') && search) {
+        // If there are query parameters, keep them
+        const cleanPath = currentPath.replace(/\.html$/, '');
+        const newUrl = cleanPath + search;
+        window.history.replaceState({}, '', newUrl);
+    } else if (currentPath.endsWith('.html')) {
+        // If no query parameters, just remove .html
+        const cleanPath = currentPath.replace(/\.html$/, '');
         window.history.replaceState({}, '', cleanPath);
-    } 
+    }
+})();
         // ============================================================
         // SUPABASE CONFIG
         // ============================================================
