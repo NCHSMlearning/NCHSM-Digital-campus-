@@ -1312,3 +1312,205 @@
     --primary-dark: #78350f;
     --primary-bg: #fef3c7;
 }
+/* ============================================
+   ADDITIONAL STYLES - REVIEWS & NEWSLETTER
+   ============================================ */
+
+/* ===== REVIEWS CARD ===== */
+.reviews-preview {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.reviews-preview .stars {
+    font-size: 14px;
+    color: #f59e0b;
+}
+
+.reviews-preview .review-count {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.reviews-preview .review-pending {
+    font-size: 10px;
+    background: #fef3c7;
+    color: #d97706;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: auto;
+}
+
+/* ===== NEWSLETTER CARD ===== */
+.newsletter-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.newsletter-status.subscribed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.newsletter-status.unsubscribed {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.newsletter-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.newsletter-status.subscribed .status-dot {
+    background: #10b981;
+}
+
+.newsletter-status.unsubscribed .status-dot {
+    background: #f59e0b;
+}
+
+/* ===== DASHBOARD CARD HOVER EFFECTS ===== */
+.card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== BADGE ENHANCEMENTS ===== */
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* ===== SIDEBAR BADGE ===== */
+.nav-badge {
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    padding: 0 6px;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    line-height: 18px;
+    margin-left: auto;
+}
+
+/* ===== STREAK CARD - EXTRA POLISH ===== */
+.streak-flame {
+    font-size: 24px;
+    filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.3));
+}
+
+.streak-days {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* ===== XP BAR ANIMATION ===== */
+.xp-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.xp-bar .xp-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444);
+    background-size: 200% 100%;
+    animation: xpProgress 3s ease-in-out infinite;
+    transition: width 0.5s ease;
+}
+
+@keyframes xpProgress {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ===== LOGIN POINTS CARD ===== */
+.login-points {
+    background: #ede9fe;
+    color: #4C1D95;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ===== TOTAL POINTS CARD ===== */
+.total-points {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ===== RESPONSIVE ENHANCEMENTS ===== */
+@media (max-width: 768px) {
+    .reviews-preview {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .reviews-preview .review-pending {
+        margin-left: 0;
+    }
+    
+    .newsletter-status {
+        font-size: 10px;
+        padding: 4px 10px;
+    }
+}
