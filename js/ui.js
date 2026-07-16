@@ -1332,7 +1332,156 @@ class UIModule {
         }
     }
 }
+// ============================================
+// PREMIUM SIDEBAR HANDLER
+// ============================================
 
+function initPremiumSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const toggle = document.getElementById('mobile-menu-toggle');
+    const collapseBtn = document.getElementById('sidebarCollapseBtn');
+    
+    console.log('🔧 Initializing Premium Sidebar...');
+    
+    if (!sidebar) {
+        console.warn('⚠️ Sidebar not found');
+        return;
+    }
+    
+    // 1. Mobile Toggle (Hamburger)
+    if (toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+            if (overlay) overlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+            console.log('📱 Sidebar toggled:', sidebar.classList.contains('active'));
+        });
+    }
+    
+    // 2. Overlay Close
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    }
+    
+    // 3. Collapse Button (Desktop)
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            sidebar.classList.toggle('collapsed');
+            const icon = this.querySelector('i');
+            if (icon) {
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-chevron-left';
+                }
+            }
+            localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed'));
+        });
+        
+        // Restore collapsed state
+        if (localStorage.getItem('sidebar_collapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+            const icon = collapseBtn.querySelector('i');
+            if (icon) icon.className = 'fas fa-chevron-right';
+        }
+    }
+    
+    // 4. Close sidebar when clicking nav links (mobile)
+    document.querySelectorAll('.nav-premium a, .dropdown-submenu-premium a').forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    });
+    
+    // 5. Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+    
+    // 6. Close on resize (going from mobile to desktop)
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768 && sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+    
+    // 7. Click outside to close
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+            const isClickInside = sidebar.contains(e.target);
+            const isClickOnToggle = toggle && toggle.contains(e.target);
+            
+            if (!isClickInside && !isClickOnToggle) {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+    });
+    
+    // 8. DROPDOWN TOGGLE (Learning Hub)
+    const dropdownToggles = document.querySelectorAll('.has-dropdown-premium > .dropdown-toggle-premium');
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const parent = this.closest('.has-dropdown-premium');
+            const submenu = parent.querySelector('.dropdown-submenu-premium');
+            
+            if (!parent || !submenu) return;
+            
+            // Close other dropdowns
+            document.querySelectorAll('.has-dropdown-premium.open').forEach(drop => {
+                if (drop !== parent) {
+                    drop.classList.remove('open');
+                    const menu = drop.querySelector('.dropdown-submenu-premium');
+                    if (menu) menu.style.display = 'none';
+                }
+            });
+            
+            // Toggle current dropdown
+            const isOpen = parent.classList.contains('open');
+            if (isOpen) {
+                parent.classList.remove('open');
+                submenu.style.display = 'none';
+            } else {
+                parent.classList.add('open');
+                submenu.style.display = 'block';
+            }
+        });
+    });
+    
+    console.log('✅ Premium Sidebar initialized');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initPremiumSidebar, 100);
+    });
+} else {
+    setTimeout(initPremiumSidebar, 100);
+}
 // Initialize UI Module
 window.ui = new UIModule();
 
