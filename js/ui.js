@@ -21,7 +21,7 @@ class UIModule {
             'unit-registration', 'learning-hub', 'exam-card',
             'hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card',
             'hub-lecture-card', 'academic-reports',
-            'reviews', 'newsletter'  // ✅ ADDED REVIEWS & NEWSLETTER
+            'reviews', 'newsletter'
         ];
         
         // ========== COMPLETE tabNames ==========
@@ -45,8 +45,8 @@ class UIModule {
             'hub-exam-card': 'Exam Card',
             'hub-lecture-card': 'Lecture Card',
             'academic-reports': 'Academic Reports',
-            'reviews': 'Reviews',          // ✅ ADDED
-            'newsletter': 'Newsletter'     // ✅ ADDED
+            'reviews': 'Reviews',
+            'newsletter': 'Newsletter'
         };
         
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -195,50 +195,44 @@ class UIModule {
         return (this.sidebar && (this.sidebar.classList.contains('active') || this.sidebar.classList.contains('open')));
     }
     
- // ✅ REPLACE WITH THIS VERSION
-openMenu() {
-    if (this.sidebar) {
-        this.sidebar.classList.add('active');
-        this.sidebar.classList.add('open');
+    openMenu() {
+        if (this.sidebar) {
+            this.sidebar.classList.add('active');
+            this.sidebar.classList.add('open');
+        }
+        if (this.overlay) {
+            this.overlay.classList.add('active');
+            this.overlay.style.display = 'block';
+            // ✅ NO BLUR
+            this.overlay.style.backdropFilter = 'none';
+            this.overlay.style.webkitBackdropFilter = 'none';
+            this.overlay.style.background = 'rgba(0, 0, 0, 0.4)';
+        }
+        document.body.style.overflow = 'hidden';
+        document.body.style.backdropFilter = 'none';
+        document.body.style.webkitBackdropFilter = 'none';
+        document.body.style.filter = 'none';
+        console.log('📱 Mobile menu opened - NO BLUR');
     }
-    if (this.overlay) {
-        this.overlay.classList.add('active');
-        this.overlay.style.display = 'block';
-        // ✅ NO BLUR
-        this.overlay.style.backdropFilter = 'none';
-        this.overlay.style.webkitBackdropFilter = 'none';
-        this.overlay.style.background = 'rgba(0, 0, 0, 0.4)';
+    
+    closeMenu() {
+        if (this.sidebar) {
+            this.sidebar.classList.remove('active');
+            this.sidebar.classList.remove('open');
+        }
+        if (this.overlay) {
+            this.overlay.classList.remove('active');
+            this.overlay.style.display = 'none';
+            this.overlay.style.backdropFilter = 'none';
+            this.overlay.style.webkitBackdropFilter = 'none';
+            this.overlay.style.background = 'rgba(0, 0, 0, 0)';
+        }
+        document.body.style.overflow = '';
+        document.body.style.backdropFilter = 'none';
+        document.body.style.webkitBackdropFilter = 'none';
+        document.body.style.filter = 'none';
+        console.log('📱 Mobile menu closed - NO BLUR');
     }
-    document.body.style.overflow = 'hidden';
-    // ✅ REMOVE this line:
-    // document.body.classList.add('menu-open');
-    document.body.style.backdropFilter = 'none';
-    document.body.style.webkitBackdropFilter = 'none';
-    document.body.style.filter = 'none';
-    console.log('📱 Mobile menu opened - NO BLUR');
-}
-
-   // ✅ REPLACE WITH THIS VERSION
-closeMenu() {
-    if (this.sidebar) {
-        this.sidebar.classList.remove('active');
-        this.sidebar.classList.remove('open');
-    }
-    if (this.overlay) {
-        this.overlay.classList.remove('active');
-        this.overlay.style.display = 'none';
-        this.overlay.style.backdropFilter = 'none';
-        this.overlay.style.webkitBackdropFilter = 'none';
-        this.overlay.style.background = 'rgba(0, 0, 0, 0)';
-    }
-    document.body.style.overflow = '';
-    // ✅ REMOVE this line:
-    // document.body.classList.remove('menu-open');
-    document.body.style.backdropFilter = 'none';
-    document.body.style.webkitBackdropFilter = 'none';
-    document.body.style.filter = 'none';
-    console.log('📱 Mobile menu closed - NO BLUR');
-}
     
     toggleMenu() {
         if (this.isMenuOpen()) {
@@ -744,19 +738,17 @@ closeMenu() {
                 case 'support-tickets':
                     if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
                     break;
-                    
                 case 'reviews':
-    console.log('⭐ Loading Reviews module...');
-    if (typeof initReviewsModule === 'function') {
-        initReviewsModule();
-    } else {
-        console.warn('initReviewsModule not found, loading fallback');
-        if (typeof loadReviews === 'function') loadReviews();
-        if (typeof loadSiteRating === 'function') loadSiteRating();
-        if (typeof updateReviewStats === 'function') updateReviewStats();
-    }
-    break;
-                    
+                    console.log('⭐ Loading Reviews module...');
+                    if (typeof initReviewsModule === 'function') {
+                        initReviewsModule();
+                    } else {
+                        console.warn('initReviewsModule not found, loading fallback');
+                        if (typeof loadReviews === 'function') loadReviews();
+                        if (typeof loadSiteRating === 'function') loadSiteRating();
+                        if (typeof updateReviewStats === 'function') updateReviewStats();
+                    }
+                    break;
                 case 'newsletter':
                     console.log('📧 Loading Newsletter module...');
                     if (window.newsletterModule) {
@@ -770,7 +762,6 @@ closeMenu() {
                         loadNewsletterStatus();
                     }
                     break;
-                    
                 default:
                     console.log(`No specific loader for tab: ${tabId}`);
             }
@@ -782,77 +773,62 @@ closeMenu() {
     // ============================================
     
     ensureReviewsStyles() {
-        // Check if reviews styles are already loaded
         if (document.getElementById('reviews-styles')) return;
         
         const style = document.createElement('style');
         style.id = 'reviews-styles';
         style.textContent = `
-            /* Reviews Module Styles */
             .reviews-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
             .reviews-header-premium { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
             .reviews-header-premium h1 { font-size: 28px; font-weight: 700; color: #1e293b; margin: 0; }
             .reviews-header-premium .subtitle { color: #64748b; margin: 4px 0 0; font-size: 15px; }
-            
             .reviews-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 25px; }
             .stat-card-premium { background: white; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f1f5f9; }
             .stat-card-premium .stat-number { display: block; font-size: 24px; font-weight: 700; color: #1e293b; }
             .stat-card-premium .stat-label { font-size: 12px; color: #64748b; }
-            
             .reviews-grid-premium { display: grid; gap: 20px; }
             .review-card-premium { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #f1f5f9; transition: all 0.3s; cursor: pointer; }
             .review-card-premium:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); transform: translateY(-2px); }
-            
             .review-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
             .reviewer-info { display: flex; align-items: center; gap: 12px; }
             .reviewer-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #f1f5f9; }
             .reviewer-avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
             .reviewer-details .reviewer-name { display: block; font-weight: 600; color: #1e293b; font-size: 15px; }
             .reviewer-details .reviewer-program { font-size: 12px; color: #64748b; }
-            
             .review-category-badge { background: #f1f5f9; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #475569; display: inline-flex; align-items: center; gap: 6px; }
             .review-rating { margin-bottom: 8px; }
             .review-title { font-size: 16px; font-weight: 600; color: #1e293b; margin: 0 0 8px; }
             .review-text { color: #475569; line-height: 1.6; font-size: 14px; margin: 0; }
-            
             .review-card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9; margin-top: 12px; }
             .review-date { font-size: 12px; color: #94a3b8; }
             .helpful-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; }
             .helpful-btn:hover { background: #f1f5f9; color: #667eea; }
-            
             .filter-select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: white; min-width: 140px; }
             .reviews-filters-premium { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; background: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
             .filter-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
             .filter-group label { font-size: 13px; color: #475569; font-weight: 500; }
-            
             .btn-gradient { background: linear-gradient(135deg, #667eea, #764ba2); border: none; padding: 12px 24px; border-radius: 12px; color: white; font-weight: 600; transition: all 0.3s; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
             .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
-            
             .loading-state-premium { text-align: center; padding: 60px 20px; }
             .loading-spinner-premium { width: 40px; height: 40px; border: 3px solid #f1f5f9; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
             @keyframes spin { to { transform: rotate(360deg); } }
-            
             .empty-state-premium { text-align: center; padding: 60px 20px; }
             .empty-state-premium i { font-size: 48px; color: #d1d5db; }
             .empty-state-premium h3 { margin: 16px 0 8px; color: #1e293b; }
             .empty-state-premium p { color: #64748b; margin-bottom: 20px; }
-            
             .site-rating-banner { background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 16px; padding: 24px 30px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
             .banner-text h3 { color: white; margin: 0; font-size: 18px; }
             .banner-text p { color: rgba(255,255,255,0.7); margin: 4px 0 0; font-size: 14px; }
             .site-stars { font-size: 32px; cursor: pointer; display: flex; gap: 4px; }
             .site-stars span { transition: all 0.2s; color: #d1d5db; }
             .site-stars span:hover { transform: scale(1.2); }
-            
             .review-pros, .review-cons { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: 8px; margin-top: 8px; font-size: 13px; }
             .review-pros { background: #ecfdf5; color: #065f46; }
             .review-cons { background: #fef2f2; color: #991b1b; }
-            
             .category-quick-filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
             .cat-filter { padding: 8px 16px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; color: #475569; cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
             .cat-filter:hover { border-color: #667eea; color: #667eea; }
             .cat-filter.active { background: #667eea; color: white; border-color: #667eea; }
-            
             .component-selector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
             .component-option { padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fafc; }
             .component-option:hover { border-color: #667eea; background: #f1f5f9; }
@@ -860,11 +836,9 @@ closeMenu() {
             .component-option i { font-size: 24px; color: #667eea; display: block; margin-bottom: 6px; }
             .component-option span { font-size: 13px; font-weight: 500; color: #1e293b; }
             .option-badge { display: block; font-size: 9px; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; margin-top: 4px; color: #64748b; }
-            
             .star-rating-large { font-size: 36px; cursor: pointer; display: flex; gap: 6px; }
             .star-rating-large span { transition: all 0.2s; color: #d1d5db; }
             .star-rating-large span:hover { transform: scale(1.2); }
-            
             .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
             .modal-container-premium { background: white; border-radius: 20px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
             .modal-header-premium { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
@@ -872,7 +846,6 @@ closeMenu() {
             .close-modal-btn { background: none; border: none; font-size: 28px; color: #94a3b8; cursor: pointer; padding: 0 8px; transition: all 0.2s; }
             .close-modal-btn:hover { color: #ef4444; transform: rotate(90deg); }
             .modal-body-premium { padding: 24px; }
-            
             .form-input, .form-textarea, .form-select { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; transition: all 0.2s; font-family: inherit; }
             .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
             .form-textarea { resize: vertical; min-height: 100px; }
@@ -882,7 +855,6 @@ closeMenu() {
             .review-form-premium .required { color: #ef4444; }
             .error-text { color: #dc2626; font-size: 13px; margin-top: 4px; }
             .feedback-message { padding: 12px 16px; border-radius: 10px; margin-top: 16px; }
-            
             @media (max-width: 768px) {
                 .reviews-header-premium { flex-direction: column; align-items: flex-start; }
                 .site-rating-banner { flex-direction: column; align-items: flex-start; }
@@ -896,7 +868,6 @@ closeMenu() {
                 .cat-filter { font-size: 12px; padding: 6px 12px; }
                 .reviews-stats-row { grid-template-columns: 1fr 1fr; }
             }
-            
             @media (max-width: 480px) {
                 .reviews-stats-row { grid-template-columns: 1fr; }
             }
@@ -1349,6 +1320,7 @@ closeMenu() {
         }
     }
 }
+
 // ============================================
 // PREMIUM SIDEBAR HANDLER - COMPLETE FIXED VERSION
 // ============================================
@@ -1629,7 +1601,11 @@ function initPremiumSidebar() {
     console.log('✅ Premium Sidebar fully initialized with all fixes!');
 }
 
-// Initialize when DOM is ready
+// ============================================
+// ✅ SINGLE INITIALIZATION - REMOVED DUPLICATE
+// ============================================
+
+// Initialize Sidebar when DOM is ready (ONCE)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(initPremiumSidebar, 100);
@@ -1638,15 +1614,10 @@ if (document.readyState === 'loading') {
     setTimeout(initPremiumSidebar, 100);
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(initPremiumSidebar, 100);
-    });
-} else {
-    setTimeout(initPremiumSidebar, 100);
-}
-// Initialize UI Module
+// ============================================
+// 🚀 INITIALIZE UI MODULE
+// ============================================
+
 window.ui = new UIModule();
 
 // Global function exports
@@ -1660,8 +1631,18 @@ window.refreshDashboard = () => window.ui?.refreshDashboard?.();
 window.debugUI = () => window.ui?.debugAll?.();
 
 // Event listeners
-document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui = new UIModule(); });
-document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
-document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
+document.addEventListener('DOMContentLoaded', () => { 
+    if (!window.ui) window.ui = new UIModule(); 
+});
+document.addEventListener('appReady', (e) => { 
+    if (window.ui && e.detail?.userProfile) {
+        window.ui.updateAllUserInfo(e.detail.userProfile);
+    }
+});
+document.addEventListener('profilePhotoUpdated', (e) => { 
+    if (window.ui && e.detail?.photoUrl) {
+        window.ui.updateProfilePhoto();
+    }
+});
 
 console.log('✅ UI Module loaded successfully with Reviews & Newsletter support!');
