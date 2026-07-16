@@ -4566,7 +4566,10 @@ function getExamStatusBadge(status) {
     const statusMap = {
         'Upcoming': '<span class="badge badge-info" style="background: #3B82F6; color: white; padding: 4px 10px; border-radius: 20px;">📅 Upcoming</span>',
         'InProgress': '<span class="badge badge-warning" style="background: #F59E0B; color: white; padding: 4px 10px; border-radius: 20px;">⏳ In Progress</span>',
-        'Completed': '<span class="badge badge-success" style="background: #059669; color: white; padding: 4px 10px; border-radius: 20px;">✅ Completed</span>'
+        'Completed': '<span class="badge badge-success" style="background: #059669; color: white; padding: 4px 10px; border-radius: 20px;">✅ Completed</span>',
+        'Published': '<span class="badge badge-published" style="background: #4C1D95; color: white; padding: 4px 10px; border-radius: 20px;">📢 Published</span>',
+        'Draft': '<span class="badge badge-draft" style="background: #6B7280; color: white; padding: 4px 10px; border-radius: 20px;">📝 Draft</span>',
+        'Closed': '<span class="badge badge-closed" style="background: #DC2626; color: white; padding: 4px 10px; border-radius: 20px;">🔒 Closed</span>'
     };
     return statusMap[status] || `<span class="badge" style="background: #6B7280; color: white; padding: 4px 10px; border-radius: 20px;">${status}</span>`;
 }
