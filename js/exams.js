@@ -525,68 +525,104 @@
         }
         
         // ==================== PROCESS EXAMS DATA - FIXED ====================
-        processExamsData(exams, grades) {
-            const studentBlock = this.userBlock || this.userTerm || this.userProfile?.block || 'Term1';
-            const studentIntake = this.intakeYear || this.userProfile?.intake_year || 2026;
-            const studentProgram = this.programType || this.userProfile?.program || 'KRCHN';
-            const isTVET = this.isTVETStudent || this.TVET_PROGRAMS.includes(studentProgram);
-            
-            console.log('🔍 Filtering exams for:', {
-                block: studentBlock,
-                intake: studentIntake,
-                program: studentProgram,
-                isTVET: isTVET,
-                userBlock: this.userBlock,
-                userTerm: this.userTerm
+processExamsData(exams, grades) {
+    // ✅ FIX: Normalize block names
+    const blockMap = {
+        'Introductory': 'Introductory Block',
+        'Introductory Block': 'Introductory Block',
+        'Block 1': 'Block 1',
+        'Block 2': 'Block 2',
+        'Block 3': 'Block 3',
+        'Block 4': 'Block 4',
+        'Block 5': 'Block 5',
+        'Final': 'Final Block'
+    };
+    
+    // Get raw block and normalize it
+    const rawBlock = this.userBlock || this.userTerm || this.userProfile?.block || this.userProfile?.current_block || 'Introductory';
+    const studentBlock = blockMap[rawBlock] || rawBlock;
+    
+    const studentIntake = this.intakeYear || this.userProfile?.intake_year || 2026;
+    const studentProgram = this.programType || this.userProfile?.program || 'KRCHN';
+    const isTVET = this.isTVETStudent || this.TVET_PROGRAMS.includes(studentProgram);
+    
+    console.log('🔍 Filtering exams for:', {
+        rawBlock: rawBlock,
+        normalizedBlock: studentBlock,
+        intake: studentIntake,
+        program: studentProgram,
+        isTVET: isTVET,
+        userBlock: this.userBlock,
+        userTerm: this.userTerm
+    });
+    
+    const tvetPrograms = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+    ];
+    
+    // Filter exams
+    const filteredExams = exams.filter(exam => {
+        // ✅ FIX: Normalize exam block as well
+        const rawExamBlock = exam.block || exam.block_term || 'General';
+        const examBlock = blockMap[rawExamBlock] || rawExamBlock;
+        
+        const examIntake = exam.intake_year;
+        const examProgram = exam.program_type || exam.target_program;
+        
+        // ✅ FIX: Use normalized block for matching
+        const blockMatch = examBlock === studentBlock || 
+                           examBlock === 'General' ||
+                           examBlock === 'All' ||
+                           studentBlock === 'General' ||
+                           !examBlock;
+        
+        const intakeMatch = examIntake == studentIntake;
+        
+        let programMatch = false;
+        if (isTVET) {
+            programMatch = tvetPrograms.includes(examProgram) || 
+                           examProgram === studentProgram ||
+                           studentProgram === examProgram ||
+                           examProgram === 'TVET';
+        } else {
+            programMatch = examProgram === 'KRCHN' || 
+                           examProgram === studentProgram ||
+                           studentProgram === examProgram ||
+                           !examProgram;
+        }
+        
+        const isMatch = blockMatch && intakeMatch && programMatch;
+        
+        // Debug logging for OSCE I JUL 002
+        if (exam.id === 91) {
+            console.log(`🔍 OSCE I JUL 002 check:`, {
+                rawExamBlock: rawExamBlock,
+                normalizedExamBlock: examBlock,
+                studentBlock: studentBlock,
+                blockMatch: blockMatch,
+                intakeMatch: intakeMatch,
+                programMatch: programMatch,
+                isMatch: isMatch
             });
-            
-            const tvetPrograms = [
-                'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-                'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
-            ];
-            
-            // Filter exams
-            const filteredExams = exams.filter(exam => {
-                const examBlock = exam.block || exam.block_term;
-                const examIntake = exam.intake_year;
-                const examProgram = exam.program_type || exam.target_program;
-                
-                const blockMatch = examBlock === studentBlock || 
-                                   examBlock === 'General' ||
-                                   examBlock === 'All' ||
-                                   !examBlock;
-                
-                const intakeMatch = examIntake == studentIntake;
-                
-                let programMatch = false;
-                if (isTVET) {
-                    programMatch = tvetPrograms.includes(examProgram) || 
-                                   examProgram === studentProgram ||
-                                   studentProgram === examProgram ||
-                                   examProgram === 'TVET';
-                } else {
-                    programMatch = examProgram === 'KRCHN' || 
-                                   examProgram === studentProgram ||
-                                   studentProgram === examProgram ||
-                                   !examProgram;
-                }
-                
-                return blockMatch && intakeMatch && programMatch;
-            });
-            
-            console.log(`✅ Showing ${filteredExams.length} exams (filtered from ${exams.length})`);
-            exams = filteredExams;
-            
-            const gradeMap = new Map();
-            grades.forEach(grade => {
-                const gradeWithId = {
-                    ...grade,
-                    id: grade.id || grade._id || grade.grade_id || null
-                };
-                gradeMap.set(String(grade.exam_id), gradeWithId);
-            });
-            
+        }
+        
+        return isMatch;
+    });
+    
+    console.log(`✅ Showing ${filteredExams.length} exams (filtered from ${exams.length})`);
+    exams = filteredExams;
+    
+    // ... rest of the function continues ...
+    const gradeMap = new Map();
+    grades.forEach(grade => {
+        const gradeWithId = {
+            ...grade,
+            id: grade.id || grade._id || grade.grade_id || null
+        };
+        gradeMap.set(String(grade.exam_id), gradeWithId);
+    });
             const kenyaNow = getKenyaNow();
             const examGroups = new Map();
             
