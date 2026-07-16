@@ -74,6 +74,30 @@ class UIModule {
         // Reviews badge interval
         this.reviewsBadgeInterval = null;
         
+        // ============================================
+        // 🚀 AUTO-UPDATE SIDEBAR ON LOAD
+        // ============================================
+        
+        // Update sidebar after user loads
+        setTimeout(() => {
+            this.updateSidebarUserData();
+        }, 800);
+        
+        // Update when app is ready
+        document.addEventListener('appReady', () => {
+            setTimeout(() => this.updateSidebarUserData(), 300);
+        });
+        
+        // Update when dashboard updates
+        document.addEventListener('dashboardUpdated', () => {
+            setTimeout(() => this.updateSidebarUserData(), 300);
+        });
+        
+        // Update when profile updates
+        document.addEventListener('profileUpdated', () => {
+            setTimeout(() => this.updateSidebarUserData(), 300);
+        });
+        
         setTimeout(() => this.safeInitialize(), 500);
     }
     
@@ -340,164 +364,164 @@ class UIModule {
         setTimeout(handleRoute, 100);
     }
     
-   // ============================================
-// 🔧 SETUP EVENT LISTENERS - FIXED
-// ============================================
+    // ============================================
+    // 🔧 SETUP EVENT LISTENERS - FIXED
+    // ============================================
 
-setupEventListeners() {
-    console.log('🔧 Setting up event listeners...');
+    setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
 
-    // Mobile menu toggle - WITH NULL CHECK
-    if (this.mobileMenuToggle) {
-        try {
-            const newToggle = this.mobileMenuToggle.cloneNode(true);
-            this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
-            this.mobileMenuToggle = newToggle;
-            this.mobileMenuToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleMenu();
-            });
-            console.log('✅ Mobile toggle setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup mobile toggle:', error);
-        }
-    } else {
-        console.warn('⚠️ Mobile menu toggle not found - skipping');
-    }
-
-    // Overlay click - WITH NULL CHECK
-    if (this.overlay) {
-        try {
-            const newOverlay = this.overlay.cloneNode(true);
-            this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
-            this.overlay = newOverlay;
-            this.overlay.addEventListener('click', () => {
-                this.closeMenu();
-            });
-            console.log('✅ Overlay click setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup overlay:', error);
-        }
-    } else {
-        console.warn('⚠️ Overlay not found - skipping');
-    }
-
-    // Dropdown toggle setup
-    this.setupDropdownToggle();
-
-    // Sidebar navigation links - WITH NULL CHECK
-    const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab], .nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
-    console.log(`🔗 Found ${allNavLinks.length} navigation links`);
-
-    allNavLinks.forEach(link => {
-        try {
-            const newLink = link.cloneNode(true);
-            link.parentNode.replaceChild(newLink, link);
-
-            newLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const tabId = newLink.getAttribute('data-tab');
-                if (tabId && this.isValidTab(tabId)) {
-                    console.log(`🖱️ Link clicked: ${tabId}`);
-                    if (this.isMenuOpen()) this.closeMenu();
-                    this.navigateToTab(tabId);
-                }
-            });
-        } catch (error) {
-            console.warn('⚠️ Could not setup link:', error);
-        }
-    });
-
-    // Header logout - WITH NULL CHECK
-    if (this.headerLogout) {
-        try {
-            const newLogout = this.headerLogout.cloneNode(true);
-            this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
-            this.headerLogout = newLogout;
-            this.headerLogout.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.logout();
-            });
-            console.log('✅ Logout button setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup logout:', error);
-        }
-    }
-
-    // Header refresh - WITH NULL CHECK
-    if (this.headerRefresh) {
-        try {
-            const newRefresh = this.headerRefresh.cloneNode(true);
-            this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
-            this.headerRefresh = newRefresh;
-            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
-            console.log('✅ Refresh button setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup refresh:', error);
-        }
-    }
-
-    // Utility buttons - WITH NULL CHECKS
-    if (this.clearCacheBtn) {
-        this.clearCacheBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.clearCache();
-        });
-    }
-
-    if (this.exportDataBtn) {
-        this.exportDataBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportData();
-        });
-    }
-
-    if (this.systemInfoBtn) {
-        this.systemInfoBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.showSystemInfo();
-        });
-    }
-
-    // Dashboard stat cards
-    setTimeout(() => {
-        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+        // Mobile menu toggle - WITH NULL CHECK
+        if (this.mobileMenuToggle) {
             try {
-                const newCard = card.cloneNode(true);
-                card.parentNode.replaceChild(newCard, card);
-                newCard.addEventListener('click', (e) => {
+                const newToggle = this.mobileMenuToggle.cloneNode(true);
+                this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
+                this.mobileMenuToggle = newToggle;
+                this.mobileMenuToggle.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const tabId = newCard.getAttribute('data-tab');
+                    e.stopPropagation();
+                    this.toggleMenu();
+                });
+                console.log('✅ Mobile toggle setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup mobile toggle:', error);
+            }
+        } else {
+            console.warn('⚠️ Mobile menu toggle not found - skipping');
+        }
+
+        // Overlay click - WITH NULL CHECK
+        if (this.overlay) {
+            try {
+                const newOverlay = this.overlay.cloneNode(true);
+                this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
+                this.overlay = newOverlay;
+                this.overlay.addEventListener('click', () => {
+                    this.closeMenu();
+                });
+                console.log('✅ Overlay click setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup overlay:', error);
+            }
+        } else {
+            console.warn('⚠️ Overlay not found - skipping');
+        }
+
+        // Dropdown toggle setup
+        this.setupDropdownToggle();
+
+        // Sidebar navigation links - WITH NULL CHECK
+        const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab], .nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
+        console.log(`🔗 Found ${allNavLinks.length} navigation links`);
+
+        allNavLinks.forEach(link => {
+            try {
+                const newLink = link.cloneNode(true);
+                link.parentNode.replaceChild(newLink, link);
+
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const tabId = newLink.getAttribute('data-tab');
                     if (tabId && this.isValidTab(tabId)) {
+                        console.log(`🖱️ Link clicked: ${tabId}`);
                         if (this.isMenuOpen()) this.closeMenu();
                         this.navigateToTab(tabId);
                     }
                 });
             } catch (error) {
-                // Silently skip
+                console.warn('⚠️ Could not setup link:', error);
             }
         });
-    }, 1000);
 
-    // Close menu on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.isMenuOpen()) {
-            this.closeMenu();
+        // Header logout - WITH NULL CHECK
+        if (this.headerLogout) {
+            try {
+                const newLogout = this.headerLogout.cloneNode(true);
+                this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
+                this.headerLogout = newLogout;
+                this.headerLogout.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logout();
+                });
+                console.log('✅ Logout button setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup logout:', error);
+            }
         }
-    });
 
-    // Close menu on resize
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 768 && this.isMenuOpen()) {
-            this.closeMenu();
+        // Header refresh - WITH NULL CHECK
+        if (this.headerRefresh) {
+            try {
+                const newRefresh = this.headerRefresh.cloneNode(true);
+                this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
+                this.headerRefresh = newRefresh;
+                this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+                console.log('✅ Refresh button setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup refresh:', error);
+            }
         }
-    });
 
-    console.log('✅ Event listeners setup complete');
-}
+        // Utility buttons - WITH NULL CHECKS
+        if (this.clearCacheBtn) {
+            this.clearCacheBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.clearCache();
+            });
+        }
+
+        if (this.exportDataBtn) {
+            this.exportDataBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.exportData();
+            });
+        }
+
+        if (this.systemInfoBtn) {
+            this.systemInfoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showSystemInfo();
+            });
+        }
+
+        // Dashboard stat cards
+        setTimeout(() => {
+            document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+                try {
+                    const newCard = card.cloneNode(true);
+                    card.parentNode.replaceChild(newCard, card);
+                    newCard.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const tabId = newCard.getAttribute('data-tab');
+                        if (tabId && this.isValidTab(tabId)) {
+                            if (this.isMenuOpen()) this.closeMenu();
+                            this.navigateToTab(tabId);
+                        }
+                    });
+                } catch (error) {
+                    // Silently skip
+                }
+            });
+        }, 1000);
+
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isMenuOpen()) {
+                this.closeMenu();
+            }
+        });
+
+        // Close menu on resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && this.isMenuOpen()) {
+                this.closeMenu();
+            }
+        });
+
+        console.log('✅ Event listeners setup complete');
+    }
     
     // ============================================
     // DROPDOWN TOGGLE SETUP
@@ -1353,6 +1377,86 @@ setupEventListeners() {
             console.log('- Dropdown open class:', dropdown.classList.contains('open'));
         }
     }
+    
+    // ============================================
+    // 📊 UPDATE SIDEBAR USER DATA - PERMANENT
+    // ============================================
+    
+    updateSidebarUserData() {
+        console.log('🔄 Updating sidebar user data...');
+        
+        // Get user data
+        const userData = window.currentUserProfile || {};
+        
+        // 1. Update name
+        const userName = document.getElementById('sidebarUserName');
+        if (userName) {
+            userName.textContent = userData.full_name || userData.name || 'Student';
+        }
+        
+        // 2. Update program
+        const userProgram = document.getElementById('sidebarUserProgram');
+        if (userProgram) {
+            userProgram.textContent = userData.program || userData.program_type || 'KRCHN';
+        }
+        
+        // 3. Update avatar
+        const avatar = document.getElementById('sidebar-avatar');
+        if (avatar) {
+            const name = (userData.full_name || 'Student').replace(/\s+/g, '+');
+            avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4C1D95&color=fff&size=100&bold=true`;
+        }
+        
+        // 4. Update last login
+        const lastLoginTime = document.getElementById('sidebar-last-login-time');
+        if (lastLoginTime) {
+            const now = new Date();
+            const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            lastLoginTime.textContent = `${date} at ${time}`;
+        }
+        
+        // 5. Update device
+        const deviceEl = document.getElementById('sidebar-last-login-device');
+        if (deviceEl) {
+            const ua = navigator.userAgent;
+            let device = 'Desktop';
+            if (/mobile/i.test(ua)) device = 'Mobile';
+            else if (/tablet/i.test(ua)) device = 'Tablet';
+            let browser = 'Chrome';
+            if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+            else if (ua.includes('Edge')) browser = 'Edge';
+            else if (ua.includes('Opera')) browser = 'Opera';
+            deviceEl.textContent = `${browser} (${device})`;
+        }
+        
+        // 6. Update XP
+        const xpLevel = document.getElementById('sidebarUserLevel');
+        const xpValue = document.getElementById('sidebarUserXP');
+        const xpProgress = document.getElementById('sidebarXPProgress');
+        const nextLevel = document.getElementById('sidebarNextLevel');
+        
+        if (window.dashboardModule && window.dashboardModule.metrics) {
+            const metrics = window.dashboardModule.metrics;
+            if (xpLevel) xpLevel.textContent = metrics.xp?.level || 1;
+            if (xpValue) xpValue.textContent = `${metrics.xp?.current || 0} XP`;
+            if (xpProgress) xpProgress.style.width = (metrics.xp?.percent || 0) + '%';
+            if (nextLevel) nextLevel.textContent = (metrics.xp?.level || 1) + 1;
+        } else {
+            // Fallback: try to get from DOM
+            const levelEl = document.getElementById('user-level');
+            const xpEl = document.getElementById('user-xp');
+            const progressEl = document.getElementById('xp-progress-fill');
+            
+            if (xpLevel) xpLevel.textContent = levelEl?.textContent || '1';
+            if (xpValue) xpValue.textContent = `${xpEl?.textContent || '0'} XP`;
+            if (xpProgress) xpProgress.style.width = progressEl?.style.width || '0%';
+            if (nextLevel) nextLevel.textContent = parseInt(xpLevel?.textContent || '1') + 1;
+        }
+        
+        console.log('✅ Sidebar user data updated');
+    }
 }
 
 // ============================================
@@ -1679,4 +1783,28 @@ document.addEventListener('profilePhotoUpdated', (e) => {
     }
 });
 
+// ============================================
+// 📊 EXPOSE SIDEBAR UPDATE FUNCTION
+// ============================================
+
+window.updateSidebar = () => {
+    if (window.ui && window.ui.updateSidebarUserData) {
+        window.ui.updateSidebarUserData();
+        console.log('✅ Sidebar updated manually');
+    } else {
+        console.warn('⚠️ UI module not ready');
+    }
+};
+
+// Auto-update sidebar on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(window.updateSidebar, 1500);
+});
+
+// Auto-update when app is ready
+document.addEventListener('appReady', () => {
+    setTimeout(window.updateSidebar, 500);
+});
+
 console.log('✅ UI Module loaded successfully with Reviews & Newsletter support!');
+console.log('✅ Sidebar auto-updater registered!');
