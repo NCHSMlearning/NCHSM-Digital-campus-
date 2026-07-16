@@ -127,7 +127,7 @@ class DashboardModule {
             streakEmoji: document.getElementById('streak-emoji'),
             streakLights: document.querySelectorAll('.streak-light'),
             streakMilestones: document.querySelectorAll('.milestone'),
-            // ✅ LOGIN POINTS DISPLAY ELEMENTS
+            // Login points display
             loginPointsDisplay: document.getElementById('login-points-display'),
             loginCountDisplay: document.getElementById('login-count-display'),
             totalPointsDisplay: document.getElementById('total-points-display')
@@ -1104,6 +1104,7 @@ class DashboardModule {
         }
     }
     
+    // ========== UPDATE EXAMS METRIC - COMPLETE FIXED VERSION ==========
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
@@ -1113,16 +1114,36 @@ class DashboardModule {
             const kenyaNow = this.getKenyaNow();
             const todayStr = kenyaNow.toISOString().split('T')[0];
             
+            // ✅ FIX: Use block_term and handle both formats
+            const userBlock = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+            
+            console.log('📅 Fetching exams for block:', userBlock);
+            console.log('📅 User profile:', {
+                program: this.userProfile.program,
+                intake: this.userProfile.intake_year,
+                block: userBlock
+            });
+            
+            // ✅ FIX: Query both block and block_term
             const { data: exams, error } = await this.sb
                 .from('exams')
                 .select('*')
                 .eq('program_type', this.userProfile.program)
-                .eq('block', this.userProfile.block)
                 .eq('intake_year', this.userProfile.intake_year)
+                .or(`block.eq.${userBlock},block_term.eq.${userBlock}`)
                 .order('exam_date', { ascending: true })
                 .order('exam_start_time', { ascending: true });
             
-            if (error) throw error;
+            if (error) {
+                console.error('Exams query error:', error);
+                if (this.elements.upcomingExam) {
+                    this.elements.upcomingExam.innerText = 'Error loading exams';
+                }
+                this.updateNextExamWidget(null);
+                return;
+            }
+            
+            console.log(`📊 Found ${exams?.length || 0} exams for block: ${userBlock}`);
             
             if (!exams || exams.length === 0) {
                 upcomingText = 'No exams scheduled';
@@ -1287,7 +1308,7 @@ class DashboardModule {
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-weight: 600; font-size: 0.9rem; color: #0A3D62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${this.escapeHtml(exam.exam_name || exam.title)}
+                            ${this.escapeHtml(exam.exam_name || exam.title || 'Exam')}
                         </div>
                         <div style="font-size: 0.7rem; color: #64748B; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px;">
                             <span>📅 ${formattedDate}</span>
@@ -1625,7 +1646,7 @@ class DashboardModule {
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // ✅ LOGIN POINTS DISPLAY - FIXED!
+        // Login points
         if (this.elements.loginPointsDisplay) {
             this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
         }
@@ -1633,7 +1654,7 @@ class DashboardModule {
             this.elements.loginCountDisplay.innerText = m.login?.count || 0;
         }
         
-        // ✅ TOTAL POINTS
+        // Total points
         if (this.elements.totalPointsDisplay) {
             const total = (m.login?.points || 0) + (m.attendance?.points || 0) + (m.nurseiq?.questions || 0);
             this.elements.totalPointsDisplay.innerText = total;
