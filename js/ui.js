@@ -1350,7 +1350,7 @@ closeMenu() {
     }
 }
 // ============================================
-// PREMIUM SIDEBAR HANDLER
+// PREMIUM SIDEBAR HANDLER - COMPLETE FIXED VERSION
 // ============================================
 
 function initPremiumSidebar() {
@@ -1365,29 +1365,174 @@ function initPremiumSidebar() {
         console.warn('⚠️ Sidebar not found');
         return;
     }
+
+    // ============================================
+    // 🔧 CRITICAL FIXES - Apply styles
+    // ============================================
     
-    // 1. Mobile Toggle (Hamburger)
+    // 1. Fix sidebar z-index and pointer events
+    sidebar.style.zIndex = '9999';
+    sidebar.style.pointerEvents = 'auto';
+    sidebar.style.overflowY = 'auto';
+    sidebar.style.overflowX = 'hidden';
+    sidebar.style.maxHeight = '100vh';
+    console.log('✅ Sidebar z-index and scroll fixed');
+    
+    // 2. Fix overlay - block clicks on content behind
+    if (overlay) {
+        overlay.style.zIndex = '9998';
+        overlay.style.pointerEvents = 'auto';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'rgba(0, 0, 0, 0.5)';
+        overlay.style.backdropFilter = 'none';
+        overlay.style.display = 'none';
+        console.log('✅ Overlay z-index and pointer events fixed');
+    }
+
+    // 3. Fix nav links - ensure they're clickable
+    document.querySelectorAll('.nav-premium a, .dropdown-submenu-premium a').forEach(link => {
+        link.style.pointerEvents = 'auto';
+        link.style.position = 'relative';
+        link.style.zIndex = '9999';
+        link.style.cursor = 'pointer';
+        link.style.opacity = '1';
+        link.style.visibility = 'visible';
+    });
+
+    // 4. Fix dropdown items
+    document.querySelectorAll('.dropdown-submenu-premium li a').forEach(item => {
+        item.style.pointerEvents = 'auto';
+        item.style.opacity = '1';
+        item.style.visibility = 'visible';
+    });
+
+    // ============================================
+    // 📱 MOBILE TOGGLE (Hamburger) - FIXED
+    // ============================================
+    
     if (toggle) {
-        toggle.addEventListener('click', function(e) {
+        // Remove old listeners by cloning
+        const newToggle = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(newToggle, toggle);
+        
+        newToggle.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            sidebar.classList.toggle('active');
-            if (overlay) overlay.classList.toggle('active');
-            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
-            console.log('📱 Sidebar toggled:', sidebar.classList.contains('active'));
+            
+            const isOpen = sidebar.classList.contains('active') || sidebar.classList.contains('open');
+            
+            if (isOpen) {
+                // Close
+                sidebar.classList.remove('active', 'open');
+                if (overlay) {
+                    overlay.classList.remove('active', 'show');
+                    overlay.style.display = 'none';
+                }
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                console.log('📱 Sidebar CLOSED');
+            } else {
+                // Open
+                sidebar.classList.add('active', 'open');
+                if (overlay) {
+                    overlay.classList.add('active', 'show');
+                    overlay.style.display = 'block';
+                }
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                console.log('📱 Sidebar OPENED');
+            }
         });
+        
+        console.log('✅ Mobile toggle fixed');
     }
+
+    // ============================================
+    // 🔲 OVERLAY CLOSE - FIXED
+    // ============================================
     
-    // 2. Overlay Close
     if (overlay) {
-        overlay.addEventListener('click', function() {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
+        // Remove old listeners by cloning
+        const newOverlay = overlay.cloneNode(true);
+        overlay.parentNode.replaceChild(newOverlay, overlay);
+        
+        newOverlay.addEventListener('click', function() {
+            if (sidebar.classList.contains('active') || sidebar.classList.contains('open')) {
+                sidebar.classList.remove('active', 'open');
+                this.classList.remove('active', 'show');
+                this.style.display = 'none';
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                console.log('📱 Sidebar closed via overlay');
+            }
         });
     }
+
+    // ============================================
+    // 🔗 NAV LINKS - WITH TAB NAVIGATION
+    // ============================================
     
-    // 3. Collapse Button (Desktop)
+    document.querySelectorAll('.nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]').forEach(link => {
+        // Remove old listeners by cloning
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tabId = this.getAttribute('data-tab');
+            console.log(`🖱️ Link clicked: ${tabId}`);
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                const sidebarEl = document.querySelector('.sidebar-premium');
+                const overlayEl = document.getElementById('overlay');
+                if (sidebarEl) {
+                    sidebarEl.classList.remove('active', 'open');
+                }
+                if (overlayEl) {
+                    overlayEl.classList.remove('active', 'show');
+                    overlayEl.style.display = 'none';
+                }
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+            }
+            
+            // Navigate to tab
+            if (window.showTab) {
+                window.showTab(tabId);
+            } else if (window.ui && window.ui.showTab) {
+                window.ui.showTab(tabId);
+            } else {
+                // Direct navigation fallback
+                document.querySelectorAll('.tab-content').forEach(t => {
+                    t.style.display = 'none';
+                    t.classList.remove('active');
+                });
+                const target = document.getElementById(tabId);
+                if (target) {
+                    target.style.display = 'block';
+                    target.classList.add('active');
+                }
+                document.querySelectorAll('.nav-premium a, .dropdown-submenu-premium a').forEach(l => {
+                    l.classList.remove('active');
+                });
+                this.classList.add('active');
+            }
+        });
+    });
+    
+    console.log('✅ All nav links fixed and clickable');
+
+    // ============================================
+    // 📐 COLLAPSE BUTTON (Desktop)
+    // ============================================
+    
     if (collapseBtn) {
         collapseBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1411,51 +1556,44 @@ function initPremiumSidebar() {
             if (icon) icon.className = 'fas fa-chevron-right';
         }
     }
+
+    // ============================================
+    // ⌨️ CLOSE ON ESCAPE KEY
+    // ============================================
     
-    // 4. Close sidebar when clicking nav links (mobile)
-    document.querySelectorAll('.nav-premium a, .dropdown-submenu-premium a').forEach(link => {
-        link.addEventListener('click', function() {
-            if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
-                if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-    });
-    
-    // 5. Close on Escape key
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && sidebar.classList.contains('active')) {
-            sidebar.classList.remove('active');
-            if (overlay) overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-    
-    // 6. Close on resize (going from mobile to desktop)
-    window.addEventListener('resize', function() {
-        if (window.innerWidth > 768 && sidebar.classList.contains('active')) {
-            sidebar.classList.remove('active');
-            if (overlay) overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-    
-    // 7. Click outside to close
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
-            const isClickInside = sidebar.contains(e.target);
-            const isClickOnToggle = toggle && toggle.contains(e.target);
-            
-            if (!isClickInside && !isClickOnToggle) {
-                sidebar.classList.remove('active');
-                if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = '';
+        if (e.key === 'Escape' && (sidebar.classList.contains('active') || sidebar.classList.contains('open'))) {
+            sidebar.classList.remove('active', 'open');
+            if (overlay) {
+                overlay.classList.remove('active', 'show');
+                overlay.style.display = 'none';
             }
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            console.log('📱 Sidebar closed via Escape');
         }
     });
+
+    // ============================================
+    // 📱 CLOSE ON RESIZE (mobile to desktop)
+    // ============================================
     
-    // 8. DROPDOWN TOGGLE (Learning Hub)
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768 && (sidebar.classList.contains('active') || sidebar.classList.contains('open'))) {
+            sidebar.classList.remove('active', 'open');
+            if (overlay) {
+                overlay.classList.remove('active', 'show');
+                overlay.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+        }
+    });
+
+    // ============================================
+    // 📂 DROPDOWN TOGGLE (Learning Hub)
+    // ============================================
+    
     const dropdownToggles = document.querySelectorAll('.has-dropdown-premium > .dropdown-toggle-premium');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
@@ -1487,8 +1625,17 @@ function initPremiumSidebar() {
             }
         });
     });
-    
-    console.log('✅ Premium Sidebar initialized');
+
+    console.log('✅ Premium Sidebar fully initialized with all fixes!');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initPremiumSidebar, 100);
+    });
+} else {
+    setTimeout(initPremiumSidebar, 100);
 }
 
 // Initialize when DOM is ready
