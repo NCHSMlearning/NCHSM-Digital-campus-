@@ -1680,6 +1680,7 @@ console.log('✅ Reviews & Newsletter module loaded with working modals!');
 // ============================================
 
 // Load newsletters for student - FIXED for your table schema
+// Load newsletters for student - FIXED for your table schema
 async function loadNewsletters() {
     console.log('📧 Loading newsletters...');
     
@@ -1703,34 +1704,20 @@ async function loadNewsletters() {
             return;
         }
         
-        // Get current user
         const userId = window.currentUserId || window.currentUserProfile?.user_id;
         if (!userId) {
             listEl.innerHTML = '<p style="color: #dc2626;">Please login to view newsletters</p>';
             return;
         }
         
-        // ✅ FIXED: Removed .eq('status', 'published') and .order('published_at')
-        // Using created_at instead since that column likely exists
+        // ✅ Use your actual column names: subject, sent_at, status
         const { data: newsletters, error } = await supabase
             .from('newsletters')
             .select('*')
-            .order('created_at', { ascending: false });
+            .eq('status', 'published')
+            .order('sent_at', { ascending: false });
         
-        if (error) {
-            console.error('❌ Database error:', error);
-            // Try without order if created_at doesn't exist
-            if (error.message && error.message.includes('column')) {
-                console.log('🔄 Trying without order...');
-                const { data: newsData, error: newsError } = await supabase
-                    .from('newsletters')
-                    .select('*');
-                if (newsError) throw newsError;
-                newsletters = newsData;
-            } else {
-                throw error;
-            }
-        }
+        if (error) throw error;
         
         // Get user's read status
         const { data: readStatus, error: readError } = await supabase
@@ -1742,7 +1729,7 @@ async function loadNewsletters() {
         
         const readIds = new Set(readStatus?.map(r => r.newsletter_id) || []);
         
-        // Update counts - use correct element IDs
+        // Update counts
         const totalEl = document.getElementById('newsletter-total-count') || document.getElementById('newsletterTotalCount');
         const unreadEl = document.getElementById('newsletter-unread-count') || document.getElementById('newsletterUnreadCount');
         
@@ -1762,16 +1749,19 @@ async function loadNewsletters() {
             return;
         }
         
-        // Render newsletters
+        // Render newsletters - using correct column names
         listEl.innerHTML = newsletters.map(newsletter => {
             const isUnread = !readIds.has(newsletter.id);
-            // Use created_at or updated_at or fallback to current date
-            const dateStr = newsletter.created_at || newsletter.updated_at || newsletter.published_at || new Date().toISOString();
+            // Use sent_at or created_at for date
+            const dateStr = newsletter.sent_at || newsletter.published_at || newsletter.created_at || new Date().toISOString();
             const date = new Date(dateStr).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
             });
+            
+            // Use subject as title (or title if available)
+            const title = newsletter.title || newsletter.subject || 'Untitled';
             
             const preview = newsletter.content 
                 ? newsletter.content.replace(/<[^>]*>/g, '').substring(0, 120) + '...'
@@ -1780,7 +1770,7 @@ async function loadNewsletters() {
             return `
                 <div class="newsletter-item ${isUnread ? 'unread' : ''}" onclick="openNewsletter('${newsletter.id}')">
                     <div class="item-header">
-                        <span class="item-title">${escapeHtml(newsletter.title || 'Untitled')}</span>
+                        <span class="item-title">${escapeHtml(title)}</span>
                         <span class="item-date"><i class="fas fa-clock"></i> ${date}</span>
                     </div>
                     <div class="item-preview">${escapeHtml(preview)}</div>
