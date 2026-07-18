@@ -2608,3 +2608,82 @@ main.main {
     position: relative !important;
     z-index: 1 !important;
 }
+/* ============================================
+   🖥️ DESKTOP SCROLL FIX
+   ============================================ */
+
+@media (min-width: 769px) {
+    /* Allow main content to scroll */
+    .main,
+    #main-content,
+    main.main {
+        overflow-y: auto !important;
+        overflow-x: visible !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        padding: 20px 30px 30px !important;
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+        display: block !important;
+        position: relative !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    /* Ensure container doesn't block scrolling */
+    .container {
+        overflow: hidden !important;
+        height: 100vh !important;
+        display: flex !important;
+        width: 100% !important;
+    }
+    
+    /* Fix tab content scrolling */
+    .tab-content {
+        overflow-y: visible !important;
+        overflow-x: visible !important;
+        padding-bottom: 40px !important;
+        min-height: auto !important;
+        max-height: none !important;
+    }
+    
+    /* Dashboard container should allow scrolling */
+    .dashboard-container {
+        overflow-y: visible !important;
+        overflow-x: visible !important;
+        padding-bottom: 40px !important;
+    }
+    
+    /* Ensure footer is visible */
+    .app-footer {
+        position: relative !important;
+        margin-top: 20px !important;
+    }
+}
+
+/* ============================================
+   📱 MOBILE SCROLL FIX
+   ============================================ */
+
+@media (max-width: 768px) {
+    .main,
+    #main-content,
+    main.main {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        padding: 12px 12px 80px !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .tab-content {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 12px !important;
+        min-height: calc(100vh - 100px) !important;
+        padding-bottom: 80px !important;
+    }
+}
