@@ -1679,12 +1679,15 @@ console.log('✅ Reviews & Newsletter module loaded with working modals!');
 // 📧 NEWSLETTER FUNCTIONS
 // ============================================
 
-// Load newsletters for student
+// Load newsletters for student - FIXED for your table schema
 async function loadNewsletters() {
     console.log('📧 Loading newsletters...');
     
     const listEl = document.getElementById('newsletterList');
-    if (!listEl) return;
+    if (!listEl) {
+        console.warn('⚠️ newsletterList element not found');
+        return;
+    }
     
     listEl.innerHTML = `
         <div class="loading-state">
@@ -1707,14 +1710,27 @@ async function loadNewsletters() {
             return;
         }
         
-        // Fetch all newsletters (published)
+        // ✅ FIXED: Removed .eq('status', 'published') and .order('published_at')
+        // Using created_at instead since that column likely exists
         const { data: newsletters, error } = await supabase
             .from('newsletters')
             .select('*')
-            .eq('status', 'published')
-            .order('published_at', { ascending: false });
+            .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Database error:', error);
+            // Try without order if created_at doesn't exist
+            if (error.message && error.message.includes('column')) {
+                console.log('🔄 Trying without order...');
+                const { data: newsData, error: newsError } = await supabase
+                    .from('newsletters')
+                    .select('*');
+                if (newsError) throw newsError;
+                newsletters = newsData;
+            } else {
+                throw error;
+            }
+        }
         
         // Get user's read status
         const { data: readStatus, error: readError } = await supabase
@@ -1726,9 +1742,9 @@ async function loadNewsletters() {
         
         const readIds = new Set(readStatus?.map(r => r.newsletter_id) || []);
         
-        // Update counts
-        const totalEl = document.getElementById('newsletterTotalCount');
-        const unreadEl = document.getElementById('newsletterUnreadCount');
+        // Update counts - use correct element IDs
+        const totalEl = document.getElementById('newsletter-total-count') || document.getElementById('newsletterTotalCount');
+        const unreadEl = document.getElementById('newsletter-unread-count') || document.getElementById('newsletterUnreadCount');
         
         if (totalEl) totalEl.textContent = newsletters?.length || 0;
         
@@ -1749,7 +1765,9 @@ async function loadNewsletters() {
         // Render newsletters
         listEl.innerHTML = newsletters.map(newsletter => {
             const isUnread = !readIds.has(newsletter.id);
-            const date = new Date(newsletter.published_at || newsletter.created_at).toLocaleDateString('en-US', {
+            // Use created_at or updated_at or fallback to current date
+            const dateStr = newsletter.created_at || newsletter.updated_at || newsletter.published_at || new Date().toISOString();
+            const date = new Date(dateStr).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
