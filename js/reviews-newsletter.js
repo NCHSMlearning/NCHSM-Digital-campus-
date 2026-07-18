@@ -1675,3 +1675,351 @@ window.updateFilterResultsCount = updateFilterResultsCount;
 window.closeSuccessPopup = closeSuccessPopup;
 
 console.log('✅ Reviews & Newsletter module loaded with working modals!');
+// ============================================
+// 📧 NEWSLETTER FUNCTIONS
+// ============================================
+
+// Load newsletters for student
+async function loadNewsletters() {
+    console.log('📧 Loading newsletters...');
+    
+    const listEl = document.getElementById('newsletterList');
+    if (!listEl) return;
+    
+    listEl.innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading newsletters...</p>
+        </div>
+    `;
+    
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            listEl.innerHTML = '<p style="color: #dc2626;">Database connection error</p>';
+            return;
+        }
+        
+        // Get current user
+        const userId = window.currentUserId || window.currentUserProfile?.user_id;
+        if (!userId) {
+            listEl.innerHTML = '<p style="color: #dc2626;">Please login to view newsletters</p>';
+            return;
+        }
+        
+        // Fetch all newsletters (published)
+        const { data: newsletters, error } = await supabase
+            .from('newsletters')
+            .select('*')
+            .eq('status', 'published')
+            .order('published_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Get user's read status
+        const { data: readStatus, error: readError } = await supabase
+            .from('newsletter_reads')
+            .select('newsletter_id')
+            .eq('user_id', userId);
+        
+        if (readError) throw readError;
+        
+        const readIds = new Set(readStatus?.map(r => r.newsletter_id) || []);
+        
+        // Update counts
+        const totalEl = document.getElementById('newsletterTotalCount');
+        const unreadEl = document.getElementById('newsletterUnreadCount');
+        
+        if (totalEl) totalEl.textContent = newsletters?.length || 0;
+        
+        const unreadCount = newsletters?.filter(n => !readIds.has(n.id)).length || 0;
+        if (unreadEl) unreadEl.textContent = unreadCount;
+        
+        if (!newsletters || newsletters.length === 0) {
+            listEl.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <h3>No Newsletters Yet</h3>
+                    <p>Subscribe to receive updates and announcements.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Render newsletters
+        listEl.innerHTML = newsletters.map(newsletter => {
+            const isUnread = !readIds.has(newsletter.id);
+            const date = new Date(newsletter.published_at || newsletter.created_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            const preview = newsletter.content 
+                ? newsletter.content.replace(/<[^>]*>/g, '').substring(0, 120) + '...'
+                : 'No preview available';
+            
+            return `
+                <div class="newsletter-item ${isUnread ? 'unread' : ''}" onclick="openNewsletter('${newsletter.id}')">
+                    <div class="item-header">
+                        <span class="item-title">${escapeHtml(newsletter.title || 'Untitled')}</span>
+                        <span class="item-date"><i class="fas fa-clock"></i> ${date}</span>
+                    </div>
+                    <div class="item-preview">${escapeHtml(preview)}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        ${isUnread ? '<span class="item-badge unread-badge">New</span>' : '<span class="item-badge" style="background: #e2e8f0; color: #64748b;">Read</span>'}
+                        <span style="font-size: 12px; color: #94a3b8;">Click to read more →</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        console.log(`✅ Loaded ${newsletters.length} newsletters`);
+        
+    } catch (error) {
+        console.error('Error loading newsletters:', error);
+        listEl.innerHTML = `
+            <div class="empty-state" style="color: #dc2626;">
+                <i class="fas fa-exclamation-circle"></i>
+                <h3>Error Loading Newsletters</h3>
+                <p>${error.message}</p>
+                <button onclick="loadNewsletters()" class="btn-secondary" style="margin-top: 10px;">Retry</button>
+            </div>
+        `;
+    }
+}
+
+// Open newsletter in modal
+async function openNewsletter(newsletterId) {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        
+        const userId = window.currentUserId || window.currentUserProfile?.user_id;
+        if (!userId) {
+            alert('Please login to view newsletters');
+            return;
+        }
+        
+        // Mark as read
+        await supabase
+            .from('newsletter_reads')
+            .upsert({
+                user_id: userId,
+                newsletter_id: newsletterId,
+                read_at: new Date().toISOString()
+            });
+        
+        // Fetch newsletter content
+        const { data: newsletter, error } = await supabase
+            .from('newsletters')
+            .select('*')
+            .eq('id', newsletterId)
+            .single();
+        
+        if (error) throw error;
+        
+        // Show modal
+        const modal = document.getElementById('newsletterReadModal');
+        const title = document.getElementById('newsletterModalTitle');
+        const body = document.getElementById('newsletterModalBody');
+        
+        if (title) title.textContent = newsletter.title || 'Newsletter';
+        
+        const date = new Date(newsletter.published_at || newsletter.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        if (body) {
+            body.innerHTML = `
+                <div class="newsletter-content">
+                    <div style="color: #94a3b8; font-size: 13px; margin-bottom: 16px;">
+                        <i class="fas fa-calendar"></i> ${date}
+                    </div>
+                    <div style="line-height: 1.8; color: #1e293b; font-size: 15px;">
+                        ${newsletter.content || '<p>No content available</p>'}
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (modal) modal.style.display = 'flex';
+        
+        // Reload list to update read status
+        loadNewsletters();
+        
+    } catch (error) {
+        console.error('Error opening newsletter:', error);
+        alert('Error loading newsletter: ' + error.message);
+    }
+}
+
+// Toggle subscription
+async function toggleNewsletterSubscription() {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        
+        const userId = window.currentUserId || window.currentUserProfile?.user_id;
+        if (!userId) {
+            alert('Please login to manage subscription');
+            return;
+        }
+        
+        // Check current subscription status
+        const { data: existing, error: checkError } = await supabase
+            .from('newsletter_subscribers')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+        
+        if (checkError) throw checkError;
+        
+        const btn = document.getElementById('newsletterSubscribeBtn');
+        const statusEl = document.getElementById('dashboard-newsletter-status');
+        
+        if (existing) {
+            // Unsubscribe
+            const { error: deleteError } = await supabase
+                .from('newsletter_subscribers')
+                .delete()
+                .eq('user_id', userId);
+            
+            if (deleteError) throw deleteError;
+            
+            if (btn) {
+                btn.textContent = 'Subscribe';
+                btn.classList.remove('subscribed');
+            }
+            if (statusEl) {
+                statusEl.textContent = '📧 Not Subscribed';
+                statusEl.style.color = '#64748b';
+            }
+            showFeedback('Unsubscribed from newsletter', 'success');
+            
+        } else {
+            // Subscribe
+            const { error: insertError } = await supabase
+                .from('newsletter_subscribers')
+                .insert([{
+                    user_id: userId,
+                    subscribed_at: new Date().toISOString()
+                }]);
+            
+            if (insertError) throw insertError;
+            
+            if (btn) {
+                btn.textContent = 'Unsubscribe';
+                btn.classList.add('subscribed');
+            }
+            if (statusEl) {
+                statusEl.textContent = '📧 Subscribed ✅';
+                statusEl.style.color = '#10b981';
+            }
+            showFeedback('Subscribed to newsletter! 📧', 'success');
+        }
+        
+        // Update dashboard mini card
+        const dashboardStatus = document.getElementById('dashboard-newsletter-status');
+        if (dashboardStatus) {
+            dashboardStatus.textContent = existing ? '📧 Not Subscribed' : '📧 Subscribed ✅';
+        }
+        
+    } catch (error) {
+        console.error('Error toggling subscription:', error);
+        showFeedback('Error: ' + error.message, 'error');
+    }
+}
+
+// Load subscription status
+async function loadSubscriptionStatus() {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        
+        const userId = window.currentUserId || window.currentUserProfile?.user_id;
+        if (!userId) return;
+        
+        const { data, error } = await supabase
+            .from('newsletter_subscribers')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        const isSubscribed = !!data;
+        const btn = document.getElementById('newsletterSubscribeBtn');
+        const statusEl = document.getElementById('dashboard-newsletter-status');
+        const dashboardStatus = document.getElementById('dashboard-newsletter-status');
+        
+        if (btn) {
+            btn.textContent = isSubscribed ? 'Unsubscribe' : 'Subscribe';
+            btn.classList.toggle('subscribed', isSubscribed);
+        }
+        
+        if (statusEl) {
+            statusEl.textContent = isSubscribed ? '📧 Subscribed ✅' : '📧 Not Subscribed';
+            statusEl.style.color = isSubscribed ? '#10b981' : '#64748b';
+        }
+        
+        if (dashboardStatus) {
+            dashboardStatus.textContent = isSubscribed ? '📧 Subscribed ✅' : '📧 Not Subscribed';
+        }
+        
+        return isSubscribed;
+        
+    } catch (error) {
+        console.error('Error loading subscription status:', error);
+        return false;
+    }
+}
+
+// Initialize newsletter module
+function initNewsletterModule() {
+    console.log('📧 Initializing Newsletter Module...');
+    
+    loadNewsletters();
+    loadSubscriptionStatus();
+    
+    // Subscribe button
+    const subscribeBtn = document.getElementById('newsletterSubscribeBtn');
+    if (subscribeBtn) {
+        subscribeBtn.removeEventListener('click', toggleNewsletterSubscription);
+        subscribeBtn.addEventListener('click', toggleNewsletterSubscription);
+    }
+    
+    // Close modal
+    const closeModal = document.getElementById('newsletterModalClose');
+    if (closeModal) {
+        closeModal.removeEventListener('click', function() {
+            const modal = document.getElementById('newsletterReadModal');
+            if (modal) modal.style.display = 'none';
+        });
+        closeModal.addEventListener('click', function() {
+            const modal = document.getElementById('newsletterReadModal');
+            if (modal) modal.style.display = 'none';
+        });
+    }
+    
+    // Close on outside click
+    const modal = document.getElementById('newsletterReadModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+    }
+    
+    console.log('✅ Newsletter Module initialized');
+}
+
+// Expose functions
+window.loadNewsletters = loadNewsletters;
+window.openNewsletter = openNewsletter;
+window.toggleNewsletterSubscription = toggleNewsletterSubscription;
+window.loadSubscriptionStatus = loadSubscriptionStatus;
+window.initNewsletterModule = initNewsletterModule;
+
+console.log('✅ Newsletter functions loaded!');
