@@ -466,30 +466,50 @@
     color: #667eea;
 }
 
-/* Modal */
+/* ============================================
+   ✏️ WRITE REVIEW MODAL
+   ============================================ */
+
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: 99999;
     padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .modal-container-premium {
     background: white;
-    border-radius: 20px;
+    border-radius: 24px;
     max-width: 700px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .modal-container-premium.modal-large {
@@ -497,17 +517,28 @@
 }
 
 .modal-header-premium {
-    padding: 20px 24px;
+    padding: 20px 28px;
     border-bottom: 1px solid #f1f5f9;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: #fafbfc;
+    border-radius: 24px 24px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .modal-header-premium h3 {
     margin: 0;
     font-size: 20px;
+    font-weight: 700;
     color: #1e293b;
+}
+
+.modal-header-premium h3 i {
+    color: #f59e0b;
+    margin-right: 8px;
 }
 
 .close-modal-btn {
@@ -518,60 +549,39 @@
     cursor: pointer;
     padding: 0 8px;
     transition: all 0.2s;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 
 .close-modal-btn:hover {
+    background: #f1f5f9;
     color: #ef4444;
     transform: rotate(90deg);
 }
 
 .modal-body-premium {
-    padding: 24px;
+    padding: 28px;
 }
 
-/* Form */
+/* Review Form */
 .review-form-premium .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 
 .review-form-premium label {
     display: block;
     font-weight: 600;
     color: #1e293b;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-size: 14px;
 }
 
 .review-form-premium .required {
     color: #ef4444;
-}
-
-.form-input, .form-textarea, .form-select {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 14px;
-    transition: all 0.2s;
-    font-family: inherit;
-}
-
-.form-input:focus, .form-textarea:focus, .form-select:focus {
-    border-color: #667eea;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-textarea {
-    resize: vertical;
-    min-height: 100px;
-}
-
-.char-counter {
-    text-align: right;
-    font-size: 12px;
-    color: #94a3b8;
-    margin-top: 4px;
 }
 
 /* Component Selector */
@@ -582,62 +592,92 @@
 }
 
 .component-option {
-    padding: 12px;
-    border: 2px solid #e2e8f0;
+    padding: 14px 12px;
+    border: 2px solid #e5e7eb;
     border-radius: 12px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
-    background: #f8fafc;
+    transition: all 0.3s ease;
+    background: #fafbfc;
 }
 
 .component-option:hover {
     border-color: #667eea;
     background: #f1f5f9;
+    transform: translateY(-2px);
 }
 
 .component-option.selected {
     border-color: #667eea;
     background: #eef2ff;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
 .component-option i {
-    font-size: 24px;
-    color: #667eea;
+    font-size: 28px;
     display: block;
     margin-bottom: 6px;
 }
 
+.component-option i.fa-globe { color: #3b82f6; }
+.component-option i.fa-book-open { color: #10b981; }
+.component-option i.fa-chalkboard-teacher { color: #8b5cf6; }
+.component-option i.fa-building { color: #f59e0b; }
+.component-option i.fa-book { color: #ef4444; }
+.component-option i.fa-users-cog { color: #06b6d4; }
+.component-option i.fa-video { color: #ec4899; }
+.component-option i.fa-stethoscope { color: #14b8a6; }
+.component-option i.fa-star { color: #f59e0b; }
+
 .component-option span {
+    display: block;
     font-size: 13px;
     font-weight: 500;
     color: #1e293b;
 }
 
 .option-badge {
-    display: block;
+    display: inline-block;
     font-size: 9px;
     background: #f1f5f9;
-    padding: 2px 8px;
+    padding: 2px 10px;
     border-radius: 10px;
     margin-top: 4px;
     color: #64748b;
+    font-weight: 500;
 }
 
+.component-name-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.component-name-input-group .form-input {
+    flex: 1;
+}
+
+/* Star Rating */
 .star-rating-large {
-    font-size: 36px;
+    font-size: 40px;
     cursor: pointer;
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    margin: 4px 0 8px;
 }
 
 .star-rating-large span {
     transition: all 0.2s;
     color: #d1d5db;
+    user-select: none;
 }
 
 .star-rating-large span:hover {
     transform: scale(1.2);
+}
+
+.star-rating-large span.active {
+    color: #f59e0b;
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
 .rating-text {
@@ -646,20 +686,47 @@
     margin-top: 4px;
 }
 
-.error-text {
-    color: #dc2626;
-    font-size: 13px;
-    margin-top: 4px;
-}
-
-.feedback-message {
+/* Form Inputs */
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
     padding: 12px 16px;
+    border: 1px solid #e5e7eb;
     border-radius: 10px;
-    margin-top: 16px;
+    font-size: 14px;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: #1e293b;
+    background: white;
 }
 
-.feedback-message i {
-    margin-right: 8px;
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+.char-counter {
+    text-align: right;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
 }
 
 .form-row-two {
@@ -668,121 +735,127 @@
     gap: 16px;
 }
 
-/* Load More */
-.load-more-container {
-    text-align: center;
-    margin-top: 25px;
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 400;
 }
 
-/* Loading & Empty States */
-.loading-state-premium {
-    text-align: center;
-    padding: 60px 20px;
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #667eea;
+    cursor: pointer;
 }
 
-.loading-spinner-premium {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #f1f5f9;
-    border-top-color: #667eea;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
+.checkbox-text {
+    font-size: 14px;
+    color: #475569;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.checkbox-text small {
+    color: #94a3b8;
+    font-size: 12px;
 }
 
-.empty-state-premium {
-    text-align: center;
-    padding: 60px 20px;
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
 }
 
-.empty-state-premium i {
-    font-size: 48px;
-    color: #d1d5db;
+.btn-primary.btn-gradient {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    padding: 12px 32px;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.empty-state-premium h3 {
-    margin: 16px 0 8px;
-    color: #1e293b;
+.btn-primary.btn-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
-.empty-state-premium p {
-    color: #64748b;
-    margin-bottom: 20px;
+.btn-primary.btn-gradient:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .reviews-header-premium {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .site-rating-banner {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .banner-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .reviews-filters-premium {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filter-group {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filter-select {
-        min-width: unset;
-    }
-    
-    .component-selector-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
-    
-    .form-row-two {
-        grid-template-columns: 1fr;
-    }
-    
-    .modal-container-premium {
-        margin: 10px;
-        max-height: 95vh;
-    }
-    
-    .review-card-header {
-        flex-direction: column;
-    }
-    
-    .category-quick-filters {
-        gap: 5px;
-    }
-    
-    .cat-filter {
-        font-size: 12px;
-        padding: 6px 12px;
-    }
+.btn-secondary {
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #475569;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
 }
+
+.btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.error-text {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 4px;
+    display: none;
+}
+
+.error-text.show {
+    display: block;
+}
+
+.feedback-message {
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-top: 16px;
+    display: none;
+}
+
+.feedback-message.show {
+    display: block;
+}
+
+.feedback-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.feedback-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
 /* ============================================
-   📧 NEWSLETTER COMPLETE STYLES
+   📧 NEWSLETTER STYLES
    ============================================ */
 
-/* ===== NEWSLETTER TAB CONTAINER ===== */
 .newsletter-container {
     padding: 0;
     width: 100%;
     max-width: 100%;
 }
 
-/* ===== HEADER ===== */
 .newsletter-header {
     display: flex;
     justify-content: space-between;
@@ -816,7 +889,6 @@
     gap: 10px;
 }
 
-/* ===== SUBSCRIBE BUTTON ===== */
 #newsletterSubscribeBtn {
     padding: 10px 24px;
     border-radius: 30px;
@@ -845,7 +917,6 @@
     background: #059669;
 }
 
-/* ===== STATS ROW ===== */
 .newsletter-stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -864,7 +935,7 @@
 
 .newsletter-stats-row .stat-card:hover {
     border-color: #4C1D95;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .newsletter-stats-row .stat-number {
@@ -880,7 +951,6 @@
     margin-top: 4px;
 }
 
-/* ===== NEWSLETTER LIST ===== */
 .newsletter-list {
     display: flex;
     flex-direction: column;
@@ -898,7 +968,7 @@
 
 .newsletter-item:hover {
     border-color: #4C1D95;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     transform: translateX(4px);
 }
 
@@ -950,14 +1020,17 @@
     background: #ef4444;
 }
 
-/* ===== READ MODAL ===== */
+/* ============================================
+   📖 NEWSLETTER READ MODAL
+   ============================================ */
+
 #newsletterReadModal .modal-container {
     max-width: 600px;
     width: 90%;
     background: white;
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     max-height: 90vh;
     display: flex;
@@ -1015,33 +1088,39 @@
     margin-bottom: 12px;
 }
 
-/* ===== LOADING & EMPTY STATES ===== */
+/* ============================================
+   🔄 LOADING & EMPTY STATES
+   ============================================ */
+
+.loading-state-premium,
 .newsletter-list .loading-state {
     text-align: center;
     padding: 40px 20px;
     color: #94a3b8;
 }
 
+.loading-spinner-premium,
 .newsletter-list .loading-state .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid #e5e7eb;
-    border-top-color: #4C1D95;
+    border: 3px solid #f1f5f9;
+    border-top-color: #667eea;
     border-radius: 50%;
-    margin: 0 auto 12px;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
+.empty-state-premium,
 .newsletter-list .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: #94a3b8;
 }
 
+.empty-state-premium i,
 .newsletter-list .empty-state i {
     font-size: 48px;
     color: #d1d5db;
@@ -1049,18 +1128,106 @@
     margin-bottom: 12px;
 }
 
+.empty-state-premium h3,
 .newsletter-list .empty-state h3 {
+    margin: 16px 0 8px;
     color: #1e293b;
-    margin: 0 0 8px;
 }
 
+.empty-state-premium p,
 .newsletter-list .empty-state p {
-    margin: 0;
-    color: #6b7280;
+    color: #64748b;
+    margin-bottom: 20px;
 }
 
-/* ===== RESPONSIVE ===== */
+/* ============================================
+   📱 RESPONSIVE
+   ============================================ */
+
 @media (max-width: 768px) {
+    .reviews-header-premium {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .site-rating-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .banner-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .reviews-filters-premium {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-select {
+        min-width: unset;
+    }
+    
+    .component-selector-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .form-row-two {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-container-premium {
+        margin: 10px;
+        max-height: 95vh;
+        border-radius: 16px;
+    }
+    
+    .modal-header-premium {
+        padding: 16px 20px;
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .modal-header-premium h3 {
+        font-size: 17px;
+    }
+    
+    .modal-body-premium {
+        padding: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn-primary,
+    .form-actions .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .star-rating-large {
+        font-size: 32px;
+    }
+    
+    .review-card-header {
+        flex-direction: column;
+    }
+    
+    .category-quick-filters {
+        gap: 5px;
+    }
+    
+    .cat-filter {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
     .newsletter-header {
         flex-direction: column;
         align-items: flex-start;
@@ -1107,6 +1274,22 @@
 }
 
 @media (max-width: 480px) {
+    .component-selector-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .component-option {
+        padding: 10px 8px;
+    }
+    
+    .component-option i {
+        font-size: 20px;
+    }
+    
+    .component-option span {
+        font-size: 11px;
+    }
+    
     .newsletter-stats-row {
         grid-template-columns: 1fr 1fr;
     }
@@ -1126,8 +1309,20 @@
     }
 }
 
-/* ===== DASHBOARD MINI CARD OVERRIDE ===== */
+/* ============================================
+   🎯 DASHBOARD MINI CARD OVERRIDE
+   ============================================ */
+
 .mini-card[data-tab="newsletter"] .mini-card-value {
     font-size: 13px;
     font-weight: 600;
+}
+
+/* ============================================
+   📊 LOAD MORE
+   ============================================ */
+
+.load-more-container {
+    text-align: center;
+    margin-top: 25px;
 }
