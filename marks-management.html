@@ -3520,9 +3520,22 @@ window.openMarksEntry = function(block, subject, atype){
 
  async function loadMarksForSubject(block, subject, atype){ 
     showLoading('Loading marks...'); 
-    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {}); 
     
-    // ✅ Get unit code from config
+    // Get marks for the subject
+    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {
+        headers: { 'X-Year': currentYear }
+    });
+    
+    // Get all students for this block and year
+    const students = await apiCall('/api/students', {});
+    const blockStudents = students.filter(s => {
+        const studentYear = Number(s.year);
+        return s.block === block && studentYear === Number(currentYear);
+    });
+    
+    console.log(`📊 Students: ${blockStudents.length}, Marks: ${marks ? marks.length : 0}`);
+    
+    // Get unit code from config
     const config = await getConfig();
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
@@ -3532,18 +3545,74 @@ window.openMarksEntry = function(block, subject, atype){
             <h3>📝 ${displaySubject}</h3>
             <p>${block.replace('_', ' ')} | ${atype === 'full' ? 'CAT1+CAT2+Exam' : (atype === 'single_cat' ? 'CAT+Exam' : 'Exam Only')}</p>
             ${unitCode ? `<p style="font-size:12px; color:#64748b; margin-top:4px;">Unit Code: <strong>${unitCode}</strong></p>` : ''}
+            <p style="font-size:12px; color:#64748b; margin-top:4px;">📅 ${currentYear} Class | 👥 ${blockStudents.length} students</p>
         </div>
         <div id="marksTableContainer"></div>`; 
+    
     updateContentArea(html);
-    displayLecturerMarksTable(marks, block, subject, atype); 
+    
+    // If no students at all, show message
+    if (blockStudents.length === 0) {
+        document.getElementById('marksTableContainer').innerHTML = `
+            <div class="card" style="text-align:center; padding:40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#f59e0b; margin-bottom:16px;"></i>
+                <h4>No Students Enrolled</h4>
+                <p style="color:#64748b;">No students are enrolled in this subject for ${currentYear}.</p>
+            </div>
+        `;
+        hideLoading();
+        return;
+    }
+    
+    // Create a map of existing marks
+    const marksMap = {};
+    if (marks && marks.length > 0) {
+        marks.forEach(m => {
+            if (m.admission) {
+                marksMap[m.admission] = m;
+            }
+        });
+    }
+    
+    // Build the full list: all students + their marks (or empty)
+    const fullMarksList = blockStudents.map(s => {
+        const existing = marksMap[s.admission];
+        return {
+            row: s.row || 0,
+            admission: s.admission,
+            name: s.name || 'Unknown',
+            cat1: existing && existing.cat1 !== undefined ? existing.cat1 : '',
+            cat2: existing && existing.cat2 !== undefined ? existing.cat2 : '',
+            exam: existing && existing.exam !== undefined ? existing.exam : '',
+            final: existing ? existing.final : '',
+            grade: existing ? existing.grade : '',
+            gradedBy: existing ? existing.gradedBy : '',
+            assessmentType: existing ? existing.assessmentType : atype || 'full',
+            year: currentYear
+        };
+    });
+    
+    // Display the marks table with all students
+    displayLecturerMarksTable(fullMarksList, block, subject, atype); 
     hideLoading(); 
 }
 
-  function displayLecturerMarksTable(marks, block, subject, atype){ 
-    if(!marks || !marks.length){ 
-      document.getElementById('marksTableContainer').innerHTML = '<div class="card" style="text-align:center;">No data found</div>'; 
-      return; 
-    } 
+ function displayLecturerMarksTable(marks, block, subject, atype){ 
+    // If marks is empty or not an array, show students with empty fields
+    if (!marks || marks.length === 0) {
+        document.getElementById('marksTableContainer').innerHTML = `
+            <div class="card" style="text-align:center; padding:40px;">
+                <i class="fas fa-users" style="font-size:48px; color:#6366f1; margin-bottom:16px;"></i>
+                <h4>Students Enrolled</h4>
+                <p style="color:#64748b;">Students are enrolled in this subject but marks have not been entered yet.</p>
+                <p style="color:#64748b; font-size:13px;">💡 Enter marks using the fields below (they will appear after you save).</p>
+                <button class="save-btn" onclick="refreshAllData()" style="margin-top:12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        `;
+        return;
+    }
     
     // ===== YOUR GRADING SYSTEM =====
     function getGrade(score, isSecondAttempt = false) {
@@ -3636,9 +3705,9 @@ window.openMarksEntry = function(block, subject, atype){
     
     for(let i = 0; i < marks.length; i++){ 
         const m = marks[i]; 
-        const cat1 = m.cat1 || ''; 
-        const cat2 = m.cat2 || ''; 
-        const exam = m.exam || ''; 
+        const cat1 = (m.cat1 !== undefined && m.cat1 !== '' && m.cat1 !== null) ? m.cat1 : ''; 
+        const cat2 = (m.cat2 !== undefined && m.cat2 !== '' && m.cat2 !== null) ? m.cat2 : ''; 
+        const exam = (m.exam !== undefined && m.exam !== '' && m.exam !== null) ? m.exam : ''; 
         let ncat1 = parseFloat(cat1) || 0; 
         let ncat2 = parseFloat(cat2) || 0; 
         let nexam = parseFloat(exam) || 0; 
@@ -3681,8 +3750,8 @@ window.openMarksEntry = function(block, subject, atype){
                     ${total > 0 ? `<span style="background:${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding:3px 12px; border-radius:12px; color:${total >= 60 ? '#065f46' : '#991b1b'}; font-weight:600; display:inline-block;">${gradeInfo.rating}</span>` : '<span style="color:#94a3b8;">PENDING</span>'}
                 </td>
                 <td style="padding:8px 8px;text-align:center;font-size:12px;color:#64748b;">
-    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
-</td>
+                    ${(m.gradedBy && m.gradedBy !== '' && !['A','B','C','D','A-','B+','B-','C+','C-','D+','E'].includes(m.gradedBy.toUpperCase())) ? m.gradedBy : '-'}
+                </td>
             </tr>`; 
     } 
     
@@ -3699,7 +3768,6 @@ window.openMarksEntry = function(block, subject, atype){
     document.getElementById('marksTableContainer').innerHTML = html; 
     startAutoSave(saveLecturerMarks, 30000);
 }
-
   window.updateLecturerTotal = function(idx){ 
     const at = window.currentAssessmentType || 'full'; 
     let cat1 = parseFloat(document.getElementById(`cat1_${idx}`)?.value) || 0; 
