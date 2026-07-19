@@ -593,25 +593,27 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         // ===== DYNAMIC COLUMN DETECTION =====
         const colMap = {};
         const allColumnNames = [];
-        headers.forEach((header, index) => {
-            const headerUpper = header ? header.toString().trim().toUpperCase() : '';
-            allColumnNames.push(header || `Column ${index + 1}`);
-            
-            if (headerUpper === 'ADMISSION') colMap.admission = index;
-            else if (headerUpper === 'NAME') colMap.name = index;
-            else if (headerUpper === 'CAT1') colMap.cat1 = index;
-            else if (headerUpper === 'CAT2') colMap.cat2 = index;
-            else if (headerUpper === 'EXAM') colMap.exam = index;
-            else if (headerUpper === 'FINAL') colMap.final = index;
-            else if (headerUpper === 'GRADE') colMap.grade = index;
-            else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
-            else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
-            else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
-            else if (headerUpper === 'YEAR') colMap.year = index;
-            else if (headerUpper === 'STATUS') colMap.status = index;
-            else if (headerUpper === 'AVERAGE') colMap.average = index;
-        });
-        
+       headers.forEach((header, index) => {
+    const headerUpper = header ? header.toString().trim().toUpperCase() : '';
+    console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);  // ← DEBUG
+    
+    if (headerUpper === 'ADMISSION') colMap.admission = index;
+    else if (headerUpper === 'NAME') colMap.name = index;
+    else if (headerUpper === 'CAT1') colMap.cat1 = index;
+    else if (headerUpper === 'CAT2') colMap.cat2 = index;
+    else if (headerUpper === 'EXAM') colMap.exam = index;
+    else if (headerUpper === 'FINAL') colMap.final = index;
+    else if (headerUpper === 'GRADE') colMap.grade = index;
+    else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
+    else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
+    else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
+    else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
+    else if (headerUpper === 'STATUS') colMap.status = index;
+    else if (headerUpper === 'AVERAGE') colMap.average = index;
+});
+
+console.log('📋 colMap:', colMap);  // ← DEBUG
+console.log('📋 colMap.year:', colMap.year);  // ← DEBUG
         // Get student data
         const studentsResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: req.spreadsheetId,
@@ -1038,20 +1040,27 @@ app.post('/api/marks', async (req, res) => {
         
         // ===== DYNAMIC COLUMN MAP =====
         const colMap = {};
-        headers.forEach((header, index) => {
-            const headerUpper = header ? header.toString().trim().toUpperCase() : '';
-            if (headerUpper === 'ADMISSION') colMap.admission = index;
-            else if (headerUpper === 'NAME') colMap.name = index;
-            else if (headerUpper === 'CAT1') colMap.cat1 = index;
-            else if (headerUpper === 'CAT2') colMap.cat2 = index;
-            else if (headerUpper === 'EXAM') colMap.exam = index;
-            else if (headerUpper === 'FINAL') colMap.final = index;
-            else if (headerUpper === 'GRADE') colMap.grade = index;
-            else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
-            else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
-            else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
-            else if (headerUpper === 'YEAR') colMap.year = index;
-        });
+       headers.forEach((header, index) => {
+    const headerUpper = header ? header.toString().trim().toUpperCase() : '';
+    console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);  // ← DEBUG
+    
+    if (headerUpper === 'ADMISSION') colMap.admission = index;
+    else if (headerUpper === 'NAME') colMap.name = index;
+    else if (headerUpper === 'CAT1') colMap.cat1 = index;
+    else if (headerUpper === 'CAT2') colMap.cat2 = index;
+    else if (headerUpper === 'EXAM') colMap.exam = index;
+    else if (headerUpper === 'FINAL') colMap.final = index;
+    else if (headerUpper === 'GRADE') colMap.grade = index;
+    else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
+    else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
+    else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
+    else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
+    else if (headerUpper === 'STATUS') colMap.status = index;
+    else if (headerUpper === 'AVERAGE') colMap.average = index;
+});
+
+console.log('📋 colMap:', colMap);  // ← DEBUG
+console.log('📋 colMap.year:', colMap.year);  // ← DEBUG
         
         // Build existing data map
         const existingDataMap = new Map();
