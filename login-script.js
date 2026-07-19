@@ -60,7 +60,18 @@ window.NCHSMLogin = {
         csrfProtection: true,
         requireTwoFactor: false
     },
-    
+ // ============================================
+// BREVO CONFIGURATION - USING ENV VARIABLES
+// ============================================
+brevo: {
+    apiKey: process.env.BREVO_API_KEY || 'YOUR_API_KEY_HERE',  // ← Use env var
+    apiUrl: process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email',
+    enabled: true,
+    sender: {
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@nakurucollegeofhealthelearning.site',
+        name: process.env.BREVO_SENDER_NAME || 'NCHSM ICT Support'
+    }
+},
     // ===== RATE LIMITING =====
     rateLimit: {
         requests: [],
@@ -324,8 +335,8 @@ init: function() {
         }
     },
     
-   // ============================================
-// COMPLETE LOGIN - WITH SESSION TRACKING FIX
+ // ============================================
+// COMPLETE LOGIN - WITH NOTIFICATIONS
 // ============================================
 completeLogin: async function(profileData, sessionToken, isStaff = false) {
     console.log('🎉 COMPLETE LOGIN STARTED');
@@ -391,6 +402,14 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         // 5. Update last login info on page
         this.updateLastLoginInfo();
         
+        // 🆕 5b. Send login notification (for students only)
+        if (profileData.role === 'student' && !isStaff) {
+            console.log('📧 Sending login notification...');
+            this.sendLoginNotification(profileData).catch(err => {
+                console.warn('⚠️ Login notification failed:', err);
+            });
+        }
+        
         // 6. Redirect
         console.log('🚀 Redirecting to dashboard...');
         this.redirectToDashboard(profileData);
@@ -402,7 +421,6 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         this.redirectToDashboard(profileData);
     }
 },
-
 // ============================================
 // FORCE UPDATE LOGIN COUNT - NEW FUNCTION
 // ============================================
@@ -449,7 +467,137 @@ forceUpdateLoginCount: async function(userId) {
         return false;
     }
 },
-    
+        // ============================================
+    // SEND LOGIN NOTIFICATION
+    // ============================================
+    sendLoginNotification: async function(studentData) {
+        // Only for students
+        if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
+        if (!studentData.email || !this.brevo.enabled) return;
+        
+        try {
+            const sender = this.brevo.senders.security;
+            
+            // Get IP
+            let ip = 'Unknown';
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                ip = data.ip;
+            } catch(e) {}
+            
+            const now = new Date();
+            const time = now.toLocaleString('en-KE', { 
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const device = this.parseUserAgent(navigator.userAgent);
+            
+            const response = await fetch(this.brevo.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'api-key': this.brevo.apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sender: { 
+                        email: sender.email, 
+                        name: sender.name
+                    },
+                    to: [{ email: studentData.email }],
+                    subject: '🔐 New Login Alert - NCHSM Student Portal',
+                    htmlContent: this.buildLoginEmail(
+                        studentData.full_name || studentData.name || 'Student',
+                        studentData.email,
+                        studentData.student_id || studentData.user_id || 'N/A',
+                        studentData.program || studentData.department || 'N/A',
+                        studentData.block || studentData.year || 'N/A',
+                        ip,
+                        device,
+                        time
+                    )
+                })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                console.log(`✅ Login notification sent to ${studentData.email}`);
+            } else {
+                console.error('❌ Login notification failed:', data);
+            }
+            
+        } catch(e) {
+            console.warn('⚠️ Login notification error:', e);
+        }
+    },
+
+      // ============================================
+    // BUILD LOGIN EMAIL
+    // ============================================
+    buildLoginEmail: function(name, email, studentId, program, block, ip, device, time) {
+        return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
+                <span style="font-size: 32px;">🔐</span>
+            </div>
+            <h2 style="color: #0A3D62; margin: 10px 0 5px;">New Login Detected</h2>
+            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
+        </div>
+        
+        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
+                👋 <strong>Hello ${name}</strong>
+            </p>
+            <p style="margin: 8px 0 0; color: #1e293b;">
+                Your NCHSM student account was just accessed. If this was you, no action is needed. If not, contact ICT Support immediately.
+            </p>
+        </div>
+        
+        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Login Details</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📌 Block</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${block}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">🌐 IP</td><td style="padding: 6px 0; color: #dc2626; font-weight: 600;">${ip}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">💻 Device</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${device}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">🕐 Time</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
+            </table>
+        </div>
+        
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
+            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Security Tips</h5>
+            <ul style="margin: 0; padding-left: 20px; color: #78350F; font-size: 13px; line-height: 1.6;">
+                <li>If this wasn't you, contact NCHSM ICT Support immediately</li>
+                <li>Never share your login credentials</li>
+                <li>Use a strong, unique password</li>
+            </ul>
+        </div>
+        
+        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+            NCHSM ICT Support<br>
+            📧 ict@nakurucollegeofhealthelearning.site<br>
+            📞 +254 700 000 000<br>
+            © ${new Date().getFullYear()} NCHSM
+        </p>
+    </div>
+</body>
+</html>
+        `;
+    },
     // ============================================
     // HIDE SKELETON LOADER
     // ============================================
