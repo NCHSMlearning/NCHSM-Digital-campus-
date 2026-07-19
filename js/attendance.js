@@ -714,8 +714,8 @@
         }
     }
     
-  // ============================================
-// 🔧 FIXED: loadHistory - PROPER SUPA BASE CLIENT
+// ============================================
+// 🔧 FIXED: loadHistory - USES window.db.supabase (like exams.js)
 // ============================================
 
 async function loadHistory() {
@@ -728,28 +728,7 @@ async function loadHistory() {
     // Show loading
     table.innerHTML = `<tr><td colspan="6">Loading attendance history...</td></tr>`;
     
-    // ✅ Get the REAL Supabase client
-    let supabaseClient = null;
-    
-    if (window.db && typeof window.db.supabase === 'object' && typeof window.db.supabase.from === 'function') {
-        supabaseClient = window.db.supabase;
-    } else if (window.db && typeof window.db.from === 'function') {
-        supabaseClient = window.db;
-    } else if (window.supabase && typeof window.supabase.from === 'function') {
-        supabaseClient = window.supabase;
-    } else if (window.sb && typeof window.sb.from === 'function') {
-        supabaseClient = window.sb;
-    }
-    
-    if (!supabaseClient) {
-        console.error('❌ No Supabase client found');
-        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-            <i class="fas fa-exclamation-triangle"></i> Database client not available
-        </td></tr>`;
-        return;
-    }
-    
-    // Get student ID
+    // ✅ Get student ID (same as exams.js)
     let studentId = window.db?.currentUserId || 
                     window.db?.currentUserProfile?.user_id || 
                     window.currentUserId;
@@ -771,8 +750,18 @@ async function loadHistory() {
         return;
     }
     
+    // ✅ CRITICAL FIX: Use window.db.supabase (like exams.js!)
+    const supabase = window.db?.supabase;
+    if (!supabase) {
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i> Database connection not available
+        </td></tr>`;
+        return;
+    }
+    
     try {
-        const { data, error } = await supabaseClient
+        // ✅ Same pattern as exams.js
+        const { data, error } = await supabase
             .from('geo_attendance_logs')
             .select('*')
             .eq('student_id', studentId)
