@@ -220,140 +220,206 @@
         });
     }
     
-    // 3. SUCCESS MODAL - Replaces success alert()
-    function showSuccessModal(data) {
-        const existing = document.getElementById('successModal');
-        if (existing) existing.remove();
-        
-        const statusMap = {
-            'Present': { emoji: '✅', color: '#10b981', bg: '#d1fae5', title: 'Check-in Successful!' },
-            'Absent': { emoji: '❌', color: '#ef4444', bg: '#fee2e2', title: 'Out of Range' },
-            'Pending': { emoji: '⏳', color: '#f59e0b', bg: '#fef3c7', title: 'Pending Review' }
-        };
-        
-        const status = statusMap[data.status] || statusMap['Pending'];
-        
-        const modal = document.createElement('div');
-        modal.id = 'successModal';
-        modal.innerHTML = `
+  // ============================================
+// ✅ FRIENDLY SUCCESS MODAL - No Scary Popups!
+// ============================================
+
+function showSuccessModal(data) {
+    const existing = document.getElementById('successModal');
+    if (existing) existing.remove();
+    
+    // Determine status emoji, color, and friendly message
+    const statusMap = {
+        'Present': { 
+            emoji: '🎉', 
+            color: '#10b981', 
+            bg: '#d1fae5',
+            title: '✨ Check-in Successful!',
+            message: 'You have been verified! 🎊',
+            iconBg: '#10b981'
+        },
+        'Absent': { 
+            emoji: '📍', 
+            color: '#f59e0b', 
+            bg: '#fef3c7',
+            title: '📍 You are not at this location',
+            message: 'Your location is too far from the target area.',
+            iconBg: '#f59e0b'
+        },
+        'Pending': { 
+            emoji: '⏳', 
+            color: '#3b82f6', 
+            bg: '#dbeafe',
+            title: '⏳ Pending Review',
+            message: 'Your check-in is being reviewed by admin.',
+            iconBg: '#3b82f6'
+        }
+    };
+    
+    const status = statusMap[data.status] || statusMap['Pending'];
+    
+    const modal = document.createElement('div');
+    modal.id = 'successModal';
+    modal.innerHTML = `
+        <div style="
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInBackdrop 0.3s ease;
+        ">
             <div style="
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: rgba(0,0,0,0.5);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                z-index: 999999;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                animation: fadeInBackdrop 0.3s ease;
+                background: white;
+                border-radius: 24px;
+                max-width: 380px;
+                width: 92%;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+                animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                position: relative;
             ">
+                <!-- Decorative Header -->
                 <div style="
-                    background: white;
-                    border-radius: 24px;
-                    max-width: 400px;
-                    width: 92%;
-                    overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                    animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    background: ${status.color};
+                    padding: 20px 24px 16px;
+                    text-align: center;
+                    color: white;
+                    position: relative;
                 ">
-                    <div style="
-                        background: linear-gradient(135deg, ${status.color}, ${status.color}dd);
-                        padding: 24px 28px 20px;
-                        text-align: center;
+                    <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
+                    <h2 style="
+                        margin: 0;
+                        font-size: 20px;
+                        font-weight: 700;
                         color: white;
+                    ">${status.title}</h2>
+                </div>
+                
+                <!-- Body -->
+                <div style="padding: 24px 24px 20px;">
+                    <!-- Friendly Message -->
+                    <div style="
+                        text-align: center;
+                        margin-bottom: 16px;
+                        padding: 12px;
+                        background: ${status.bg};
+                        border-radius: 12px;
+                        color: ${status.color};
+                        font-weight: 500;
+                        font-size: 15px;
                     ">
-                        <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
-                        <h2 style="margin: 0; font-size: 22px; font-weight: 700;">${status.title}</h2>
+                        ${status.message}
                     </div>
                     
-                    <div style="padding: 24px 28px 28px;">
+                    <!-- Details -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr 1fr;
+                        gap: 8px;
+                        margin-bottom: 16px;
+                    ">
                         <div style="
+                            text-align: center;
                             background: #f8fafc;
-                            border-radius: 12px;
-                            padding: 14px 16px;
-                            margin-bottom: 16px;
+                            border-radius: 10px;
+                            padding: 10px 4px;
                         ">
-                            <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Target</div>
-                            <div style="font-weight: 600; font-size: 16px; color: #0f172a;">${data.target}</div>
-                            <div style="font-size: 13px; color: #64748b; margin-top: 2px;">${data.type}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}</div>
+                            <div style="font-size: 10px; color: #94a3b8;">Distance</div>
                         </div>
-                        
                         <div style="
-                            display: grid;
-                            grid-template-columns: 1fr 1fr 1fr;
-                            gap: 10px;
-                            margin-bottom: 16px;
+                            text-align: center;
+                            background: #f8fafc;
+                            border-radius: 10px;
+                            padding: 10px 4px;
                         ">
-                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
-                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}</div>
-                                <div style="font-size: 10px; color: #94a3b8;">Distance</div>
-                            </div>
-                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
-                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.accuracy}</div>
-                                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
-                            </div>
-                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
-                                <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.status}</div>
-                                <div style="font-size: 10px; color: #94a3b8;">Status</div>
-                            </div>
+                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.accuracy}</div>
+                            <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
                         </div>
-                        
                         <div style="
+                            text-align: center;
                             background: ${status.bg};
                             border-radius: 10px;
-                            padding: 12px 16px;
-                            margin-bottom: 20px;
-                            font-size: 13px;
-                            color: ${status.color};
-                            display: flex;
-                            align-items: center;
-                            gap: 10px;
+                            padding: 10px 4px;
                         ">
-                            <span style="font-size: 18px;">${status.emoji}</span>
-                            <span>${data.note || 'Your attendance has been recorded.'}</span>
+                            <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.status}</div>
+                            <div style="font-size: 10px; color: ${status.color};">Status</div>
                         </div>
-                        
-                        <button onclick="window._closeSuccessModal()" style="
-                            width: 100%;
-                            padding: 14px;
-                            border: none;
-                            border-radius: 12px;
-                            font-size: 16px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            background: ${status.color};
-                            color: white;
-                            transition: all 0.2s ease;
-                        " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                            ✅ Done
-                        </button>
                     </div>
+                    
+                    <!-- Target Name -->
+                    <div style="
+                        background: #f8fafc;
+                        border-radius: 10px;
+                        padding: 10px 14px;
+                        margin-bottom: 16px;
+                        text-align: center;
+                    ">
+                        <div style="font-size: 12px; color: #94a3b8;">📍 Target</div>
+                        <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.target}</div>
+                        <div style="font-size: 12px; color: #64748b;">${data.type}</div>
+                    </div>
+                    
+                    <!-- Nice Button -->
+                    <button onclick="window._closeSuccessModal()" style="
+                        width: 100%;
+                        padding: 14px;
+                        border: none;
+                        border-radius: 14px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        background: ${status.color};
+                        color: white;
+                        transition: all 0.2s ease;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <span>Got it!</span> <span style="font-size: 18px;">👍</span>
+                    </button>
                 </div>
             </div>
-        `;
+        </div>
         
-        document.body.appendChild(modal);
-        
-        window._closeSuccessModal = function() {
-            const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.style.animation = 'slideUpModal 0.3s ease reverse';
-                setTimeout(() => modal.remove(), 300);
+        <style>
+            @keyframes fadeInBackdrop {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
-        };
-        
-        // Auto-close for success
-        if (data.status === 'Present') {
-            setTimeout(() => {
-                if (document.getElementById('successModal')) {
-                    window._closeSuccessModal();
-                }
-            }, 4000);
-        }
-    }
+            @keyframes slideUpModal {
+                from { opacity: 0; transform: translateY(30px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        </style>
+    `;
     
+    document.body.appendChild(modal);
+    
+    window._closeSuccessModal = function() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.style.animation = 'slideUpModal 0.25s ease reverse';
+            setTimeout(() => modal.remove(), 250);
+        }
+    };
+    
+    // Auto-close for success
+    if (data.status === 'Present') {
+        setTimeout(() => {
+            if (document.getElementById('successModal')) {
+                window._closeSuccessModal();
+            }
+        }, 4000);
+    }
+}
     // ============================================
     // HELPER FUNCTIONS
     // ============================================
