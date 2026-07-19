@@ -14654,44 +14654,100 @@ function filterAdminActions() {
 }
 
 async function loadApprovalHistory() {
+    console.log('📋 Loading approval history...');
+    
     var tbody = document.getElementById('approval-log-body');
-    if (!tbody) return;
-    
-    var result = await sb
-        .from('admin_action_requests')
-        .select('*')
-        .not('status', 'eq', 'pending')
-        .order('reviewed_at', { ascending: false })
-        .limit(50);
-    
-    var data = result.data;
-    var error = result.error;
-    
-    if (error) {
-        tbody.innerHTML = '<tr><td colspan="5">Error loading history: ' + error.message + '</td></tr>';
+    if (!tbody) {
+        console.error('❌ approval-log-body not found');
         return;
     }
     
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No approval history found</td></tr>';
-        return;
-    }
+    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading history...</td></tr>';
     
-    var html = '';
-    for (var i = 0; i < data.length; i++) {
-        var action = data[i];
-        html += '<tr>' +
-            '<td>' + formatDate(action.reviewed_at) + '</td>' +
-            '<td>' + escapeHtml(action.admin_name) + '</td>' +
-            '<td>' + formatActionType(action.action_type) + '</td>' +
-            '<td>' + getStatusBadge(action.status) + '</td>' +
-            '<td>' + (action.review_notes ? escapeHtml(action.review_notes.substring(0, 50)) : '-') + '</td>' +
-            '</tr>';
+    try {
+        var { data, error } = await sb
+            .from('admin_action_requests')
+            .select('*')
+            .not('status', 'eq', 'pending')
+            .order('reviewed_at', { ascending: false })
+            .limit(50);
+        
+        if (error) {
+            console.error('❌ Error loading history:', error);
+            tbody.innerHTML = '<tr><td colspan="5" style="color: red; padding: 20px; text-align: center;">Error: ' + error.message + '</td></tr>';
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #6b7280;">No approval history found</td></tr>';
+            return;
+        }
+        
+        console.log('✅ Found ' + data.length + ' history records');
+        
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+            var action = data[i];
+            
+            // Format date safely
+            var reviewedDate = 'N/A';
+            if (action.reviewed_at) {
+                try {
+                    var d = new Date(action.reviewed_at);
+                    reviewedDate = d.toLocaleString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    reviewedDate = action.reviewed_at;
+                }
+            }
+            
+            var statusText = action.status === 'approved' ? '✅ Approved' : '❌ Rejected';
+            var statusColor = action.status === 'approved' ? '#059669' : '#dc2626';
+            var notes = action.review_notes || '-';
+            var adminName = action.admin_name || 'Unknown';
+            var actionType = action.action_type || 'unknown';
+            
+            // Format action type
+            var actionDisplay = actionType;
+            var types = {
+                'test_action': '🧪 Test Action',
+                'upload_resource': '📎 Upload Resource',
+                'send_message': '💬 Send Message',
+                'create_exam': '📝 Create Exam',
+                'schedule_session': '📅 Schedule Session',
+                'save_marks': '📊 Save Marks',
+                'save_nck_marks': '🏥 Save NCK Marks',
+                'create_user': '➕ Create User',
+                'delete_user': '❌ Delete User',
+                'edit_user': '✏️ Edit User',
+                'create_course': '📚 Create Course',
+                'delete_course': '🗑️ Delete Course',
+                'edit_course': '✏️ Edit Course',
+                'mass_promotion': '🔼 Mass Promotion'
+            };
+            if (types[actionType]) actionDisplay = types[actionType];
+            
+            html += '<tr style="border-bottom: 1px solid #e5e7eb;">';
+            html += '<td style="padding: 12px;">' + reviewedDate + '</td>';
+            html += '<td style="padding: 12px;"><strong>' + escapeHtml(adminName) + '</strong></td>';
+            html += '<td style="padding: 12px;"><span class="badge badge-info">' + actionDisplay + '</span></td>';
+            html += '<td style="padding: 12px; color: ' + statusColor + '; font-weight: 600;">' + statusText + '</td>';
+            html += '<td style="padding: 12px;">' + escapeHtml(notes) + '</td>';
+            html += '</tr>';
+        }
+        
+        tbody.innerHTML = html;
+        
+    } catch (error) {
+        console.error('❌ Error in loadApprovalHistory:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="color: red; padding: 20px; text-align: center;">Error: ' + error.message + '</td></tr>';
     }
-    
-    tbody.innerHTML = html;
 }
-
 function initAdminApprovals() {
     loadAdminActions();
     loadApprovalHistory();
