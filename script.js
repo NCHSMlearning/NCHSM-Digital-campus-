@@ -4313,7 +4313,214 @@ async function removeAssignedClass(examId, className) {
     }
 }
 
-// ========== CREATE EXAM - COMPLETE FIXED VERSION ==========
+// ============================================
+// 📧 EXAM NOTIFICATION FUNCTIONS
+// ============================================
+
+/**
+ * Send exam posted notification to a single student
+ */
+async function sendExamPostedNotification(studentEmail, studentName, examName, examDate, examTime, examType, program, block, duration, examLink) {
+    if (!BREVO_CONFIG || !BREVO_CONFIG.apiKey) {
+        console.warn('⚠️ Brevo not configured. Notification skipped.');
+        return { success: false, error: 'Brevo not configured' };
+    }
+    
+    try {
+        // Format exam date
+        let formattedDate = examDate || 'TBA';
+        if (examDate) {
+            try {
+                const d = new Date(examDate);
+                formattedDate = d.toLocaleDateString('en-US', {
+                    timeZone: 'Africa/Nairobi',
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } catch(e) {}
+        }
+        
+        // Build email HTML
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
+                <span style="font-size: 32px;">📝</span>
+            </div>
+            <h2 style="color: #0A3D62; margin: 10px 0 5px;">New Exam Posted!</h2>
+            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
+            <p style="color: #10b981; margin: 5px 0 0; font-size: 12px; font-weight: 600;">🔔 A new exam has been scheduled for you</p>
+        </div>
+        
+        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
+                👋 <strong>Dear ${studentName}</strong>
+            </p>
+            <p style="margin: 8px 0 0; color: #1e293b;">
+                A new assessment has been scheduled for your class. Please review the details below.
+            </p>
+        </div>
+        
+        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Exam Details</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Exam</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(examName)}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📋 Type</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(examType || 'EXAM')}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📅 Date</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${formattedDate}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">🕐 Time</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${examTime || '09:00'}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">⏱️ Duration</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${duration || 60} minutes</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Program</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(program)}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📌 Block</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${escapeHtml(block)}</td></tr>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="https://nakurucollegeofhealthelearning.site/exams" 
+               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                🚪 Go to Exams Portal
+            </a>
+        </div>
+        
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
+            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Need Help?</h5>
+            <p style="margin: 0; color: #78350F; font-size: 13px;">
+                Contact NCHSM Examinations Office:<br>
+                📧 portal.nchsm@gmail.com<br>
+                📞 0790969743 | 0702432987
+            </p>
+        </div>
+        
+        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+            NCHSM Examinations Office<br>
+            © ${new Date().getFullYear()} Nakuru College of Health Sciences and Management
+        </p>
+    </div>
+</body>
+</html>
+        `;
+        
+        // Send via Brevo
+        const response = await fetch(BREVO_CONFIG.apiUrl, {
+            method: 'POST',
+            headers: {
+                'api-key': BREVO_CONFIG.apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: 'noreply@nakurucollegeofhealthelearning.site',
+                    name: 'NCHSM Examinations Office'
+                },
+                to: [{ email: studentEmail }],
+                subject: `📝 New Exam Posted - ${examName}`,
+                htmlContent: htmlContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log(`✅ Exam notification sent to ${studentEmail}`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Notification failed:', data);
+            return { success: false, error: data };
+        }
+        
+    } catch(e) {
+        console.warn('⚠️ Notification error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Send exam posted notification to ALL students in a class
+ */
+async function notifyAllStudentsAboutExam(examData) {
+    try {
+        console.log(`📧 Sending exam notifications for: ${examData.title}`);
+        
+        // Get students matching the exam criteria
+        let query = sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, email, program, block')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (examData.program_type) {
+            query = query.eq('program', examData.program_type);
+        }
+        if (examData.block) {
+            query = query.eq('block', examData.block);
+        }
+        
+        const { data: students, error } = await query;
+        
+        if (error) {
+            console.error('❌ Error fetching students:', error);
+            return { success: false, error: error.message };
+        }
+        
+        if (!students || students.length === 0) {
+            console.log('⚠️ No students found for this exam');
+            return { success: false, message: 'No students found' };
+        }
+        
+        console.log(`📊 Found ${students.length} students to notify`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const student of students) {
+            try {
+                const result = await sendExamPostedNotification(
+                    student.email,
+                    student.full_name || 'Student',
+                    examData.title || examData.exam_name || 'New Exam',
+                    examData.exam_date,
+                    examData.exam_start_time || '09:00',
+                    examData.exam_type || 'EXAM',
+                    student.program || examData.program_type,
+                    student.block || examData.block,
+                    examData.duration_minutes || 60,
+                    examData.online_link || examData.exam_link
+                );
+                
+                if (result.success) successCount++;
+                else failCount++;
+                
+                await new Promise(r => setTimeout(r, 300));
+                
+            } catch (err) {
+                console.error(`❌ Failed for ${student.email}:`, err);
+                failCount++;
+            }
+        }
+        
+        console.log(`✅ Notifications sent: ${successCount} success, ${failCount} failed`);
+        return { success: true, successCount, failCount, total: students.length };
+        
+    } catch (error) {
+        console.error('❌ Error sending notifications:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ========== CREATE EXAM - WITH NOTIFICATIONS ==========
 async function handleAddExam(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -4366,10 +4573,10 @@ async function handleAddExam(e) {
             // Required fields
             program_type: selected_program,
             title: exam_title,
-            exam_name: exam_title,  // ✅ FIXED: Set exam_name
+            exam_name: exam_title,
             exam_type: exam_type,
             exam_date: exam_date,
-            status: exam_status ? exam_status.toLowerCase() : 'published',  // ✅ FIXED: Force lowercase
+            status: exam_status ? exam_status.toLowerCase() : 'published',
             
             // Program & Intake
             target_program: selected_program,
@@ -4378,16 +4585,16 @@ async function handleAddExam(e) {
             
             // Block/Term - BOTH fields
             block: block_term,
-            block_term: block_term,  // ✅ FIXED: Set block_term
+            block_term: block_term,
             
             // Course
             course_id: course_id || null,
             course_code: null,
             
             // Marks - ALL three fields
-            MARKS: String(marks_out_of),  // ✅ FIXED: Capitalized MARKS column
+            MARKS: String(marks_out_of),
             marks_out_of: marks_out_of,
-            total_marks: marks_out_of,  // ✅ FIXED: Set total_marks
+            total_marks: marks_out_of,
             
             // Timing
             exam_start_time: exam_start_time || '09:00:00',
@@ -4395,7 +4602,7 @@ async function handleAddExam(e) {
             
             // Links - BOTH fields
             online_link: exam_link,
-            exam_link: exam_link,  // ✅ FIXED: Set exam_link
+            exam_link: exam_link,
             
             // Pass/Fee
             pass_mark: pass_mark,
@@ -4429,6 +4636,86 @@ async function handleAddExam(e) {
         
         await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}, Intake: ${intake} ${intake_month || ''}, OutOf: ${marks_out_of}, Pass: ${pass_mark}%).`, examId, 'SUCCESS');
         showFeedback(`✅ Assessment added successfully! (ID: ${examId})`, 'success');
+        
+        // 🆕 SEND NOTIFICATIONS TO STUDENTS
+        if (examId) {
+            try {
+                console.log('📧 Sending exam notifications to students...');
+                
+                // Get all students matching the exam criteria
+                let studentQuery = sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, email, program, block, intake_year')
+                    .eq('role', 'student')
+                    .eq('status', 'approved');
+                
+                // Filter by program
+                if (selected_program) {
+                    studentQuery = studentQuery.eq('program', selected_program);
+                }
+                
+                // Filter by block
+                if (block_term) {
+                    studentQuery = studentQuery.eq('block', block_term);
+                }
+                
+                // Filter by intake
+                if (intake) {
+                    studentQuery = studentQuery.eq('intake_year', String(intake));
+                }
+                
+                const { data: students, error: studentError } = await studentQuery;
+                
+                if (studentError) {
+                    console.error('❌ Error fetching students:', studentError);
+                } else if (students && students.length > 0) {
+                    console.log(`📊 Found ${students.length} students to notify`);
+                    
+                    let successCount = 0;
+                    let failCount = 0;
+                    
+                    // Send notification to each student
+                    for (const student of students) {
+                        try {
+                            const result = await sendExamPostedNotification(
+                                student.email,
+                                student.full_name || 'Student',
+                                exam_title,
+                                exam_date,
+                                exam_start_time || '09:00',
+                                exam_type,
+                                selected_program,
+                                block_term,
+                                exam_duration_minutes,
+                                exam_link
+                            );
+                            
+                            if (result.success) {
+                                successCount++;
+                            } else {
+                                failCount++;
+                            }
+                            
+                            // Small delay to avoid rate limiting
+                            await new Promise(r => setTimeout(r, 300));
+                            
+                        } catch (notifError) {
+                            console.error(`❌ Failed to notify ${student.email}:`, notifError);
+                            failCount++;
+                        }
+                    }
+                    
+                    console.log(`✅ Exam notifications sent: ${successCount} successful, ${failCount} failed`);
+                    showFeedback(`📧 Notifications sent to ${successCount} students`, 'success');
+                } else {
+                    console.log('⚠️ No students found for this exam criteria');
+                }
+                
+            } catch (notifError) {
+                console.error('❌ Notification process error:', notifError);
+                // Don't fail the exam creation if notifications fail
+            }
+        }
         
         // Reset form
         if (e.target) e.target.reset();
