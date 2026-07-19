@@ -1655,40 +1655,60 @@ async function loadLecturerSubjects() {
         subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
     }
 }
+// ============================================================
+// FIXED: loadLecturerInternalMarks - With Student Names
+// ============================================================
+
 async function loadLecturerInternalMarks() {
-    var block = $('lecBlockSelect').value;
-    var subject = $('lecSubjectSelect').value;
+    var block = $('lecBlockSelect')?.value;
+    var subject = $('lecSubjectSelect')?.value;
     var container = $('lecInternalContainer');
+    
+    if (!container) return;
     
     if (!block || !subject) {
         container.innerHTML = '<div class="text-center" style="padding:40px;">Select a block and subject</div>';
         return;
     }
     
+    console.log('📊 Loading internal marks for:', { block, subject });
+    
     container.innerHTML = '<div class="text-center" style="padding:40px;"><div class="loading-spinner"></div><p>Loading marks...</p></div>';
     
     try {
-        var students = state.allStudents.filter(function(s) { return s.block === block; });
+        // Get students in this block
+        var students = state.allStudents.filter(function(s) { 
+            return s.block === block && s.program === state.program;
+        });
         
-        if (!students.length) {
+        console.log('👥 Students found:', students.length);
+        
+        if (!students || students.length === 0) {
             container.innerHTML = '<div class="text-center" style="padding:40px;">No students found in this block</div>';
             return;
         }
         
         state.currentLecturerStudents = students;
         
+        // Get existing marks
         var { data: existing, error } = await state.sb
             .from(TABLES.MARKS)
             .select('*')
             .eq('block', block)
             .eq('subject_name', subject);
         
-        if (error) throw error;
+        if (error) {
+            console.warn('⚠️ Error loading existing marks:', error);
+            existing = [];
+        }
         
         var marksMap = {};
-        existing?.forEach(function(m) { marksMap[m.admission_number] = m; });
+        existing?.forEach(function(m) { 
+            marksMap[m.admission_number] = m; 
+        });
         
-        var html = '<table class="data-table" style="width:100%;border-collapse:collapse;">' +
+        // Build HTML table
+        var html = '<div class="table-responsive"><table class="data-table" style="width:100%;border-collapse:collapse;">' +
             '<thead><tr style="background:#4C1D95;color:white;">' +
                 '<th style="padding:10px;">Admission</th>' +
                 '<th style="padding:10px;">Student Name</th>' +
@@ -1703,9 +1723,9 @@ async function loadLecturerInternalMarks() {
         for (var i = 0; i < students.length; i++) {
             var s = students[i];
             var m = marksMap[s.student_id] || {};
-            var cat1 = m.cat1_score !== undefined ? m.cat1_score : '';
-            var cat2 = m.cat2_score !== undefined ? m.cat2_score : '';
-            var exam = m.exam_score !== undefined ? m.exam_score : '';
+            var cat1 = m.cat1_score !== undefined && m.cat1_score !== null ? m.cat1_score : '';
+            var cat2 = m.cat2_score !== undefined && m.cat2_score !== null ? m.cat2_score : '';
+            var exam = m.exam_score !== undefined && m.exam_score !== null ? m.exam_score : '';
             var total = 0, grade = '-', status = 'PENDING', color = '#f59e0b';
             
             if (cat1 !== '' || cat2 !== '' || exam !== '') {
@@ -1731,7 +1751,7 @@ async function loadLecturerInternalMarks() {
             '</tr>';
         }
         
-        html += '</tbody></table>' +
+        html += '</tbody></table></div>' +
             '<div style="text-align:center;margin-top:20px;">' +
                 '<button class="btn btn-action" id="saveInternalMarksBtn" style="background:#059669;"><i class="fas fa-save"></i> Save All Marks</button>' +
                 '<button class="btn btn-action" id="fillDownInternalBtn" style="background:#3b82f6;margin-left:10px;"><i class="fas fa-arrow-down"></i> Fill Down</button>' +
@@ -1740,6 +1760,7 @@ async function loadLecturerInternalMarks() {
         container.innerHTML = html;
         $('lecTotalStudents').textContent = students.length;
         
+        // Attach event listeners
         document.querySelectorAll('.internal-cat1, .internal-cat2, .internal-exam').forEach(function(input) {
             input.addEventListener('change', function() {
                 var studentId = this.dataset.student;
@@ -1751,10 +1772,10 @@ async function loadLecturerInternalMarks() {
         document.getElementById('fillDownInternalBtn')?.addEventListener('click', fillDownInternalMarks);
         
     } catch (error) {
+        console.error('Error loading marks:', error);
         container.innerHTML = '<div class="alert alert-danger">Error: ' + error.message + '</div>';
     }
 }
-
 function updateLecturerInternalTotal(studentId) {
     var cat1 = parseFloat(document.querySelector('.internal-cat1[data-student="' + studentId + '"]').value) || 0;
     var cat2 = parseFloat(document.querySelector('.internal-cat2[data-student="' + studentId + '"]').value) || 0;
@@ -1802,6 +1823,9 @@ function fillDownInternalMarks() {
 // ============================================================
 // FIXED: saveLecturerInternalMarks - WITH ADMIN APPROVAL
 // ============================================================
+// ============================================================
+// FIXED: saveLecturerInternalMarks - Matches Your Exact Schema
+// ============================================================
 
 async function saveLecturerInternalMarks() {
     var block = $('lecBlockSelect').value;
@@ -1820,7 +1844,6 @@ async function saveLecturerInternalMarks() {
     
     showLoading('Saving marks...');
     var saved = 0;
-    var marksData = [];
     
     for (var i = 0; i < inputs.length; i++) {
         var sId = inputs[i].getAttribute('data-student');
@@ -1828,45 +1851,90 @@ async function saveLecturerInternalMarks() {
         var cat2 = parseFloat(document.querySelector('.internal-cat2[data-student="' + sId + '"]').value) || 0;
         var exam = parseFloat(document.querySelector('.internal-exam[data-student="' + sId + '"]').value) || 0;
         
+        // Find student name
+        var student = state.allStudents.find(function(s) { return s.student_id === sId; });
+        var studentName = student?.full_name || 'Unknown Student';
+        
         var ncat1 = Math.min(cat1, 30);
         var ncat2 = Math.min(cat2, 30);
         var nexam = Math.min(exam, 70);
         var finalTotal = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
         var grade = calculateGrade(finalTotal);
         
+        // ✅ MATCH YOUR EXACT TABLE SCHEMA
         var markData = {
-            admission_number: sId,
-            block: block,
-            subject_name: subject,
-            cat1_score: cat1,
-            cat2_score: cat2,
-            exam_score: exam,
-            final_score: finalTotal,
-            grade: grade,
+            admission_number: sId,          // Required (NOT NULL)
+            student_name: studentName,       // Required (NOT NULL)
+            block: block,                    // Required (NOT NULL)
+            subject_name: subject,           // Required (NOT NULL)
+            cat1_score: cat1 || null,
+            cat2_score: cat2 || null,
+            exam_score: exam || null,
+            final_score: finalTotal || null,
+            grade: grade || null,
+            graded_by: state.currentUser?.full_name || 'Lecturer',
             academic_year: '2026',
-            approval_status: 'draft'
+            assessment_type: 'full',
+            published: false,
+            approval_status: 'draft',
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
         };
         
-        // Update or insert
-        var { error } = await state.sb
-            .from(TABLES.MARKS)
-            .upsert(markData, { onConflict: 'admission_number,subject_name,block' });
+        console.log('📊 Saving mark for:', sId, markData);
         
-        if (!error) {
-            saved++;
-            marksData.push(markData);
+        try {
+            // Try upsert first
+            var { error } = await state.sb
+                .from(TABLES.MARKS)
+                .upsert(markData, { 
+                    onConflict: 'admission_number,subject_name,block' 
+                });
+            
+            if (error) {
+                console.error('❌ Error saving for', sId, ':', error);
+                // If upsert fails, try insert
+                if (error.code === '23505' || error.message.includes('duplicate')) {
+                    // Update existing
+                    var { error: updateError } = await state.sb
+                        .from(TABLES.MARKS)
+                        .update({
+                            cat1_score: cat1 || null,
+                            cat2_score: cat2 || null,
+                            exam_score: exam || null,
+                            final_score: finalTotal || null,
+                            grade: grade || null,
+                            graded_by: state.currentUser?.full_name || 'Lecturer',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('admission_number', sId)
+                        .eq('subject_name', subject)
+                        .eq('block', block);
+                    
+                    if (!updateError) saved++;
+                } else {
+                    // Try insert without onConflict
+                    var { error: insertError } = await state.sb
+                        .from(TABLES.MARKS)
+                        .insert(markData);
+                    if (!insertError) saved++;
+                }
+            } else {
+                saved++;
+            }
+        } catch (err) {
+            console.error('❌ Catch error for', sId, ':', err);
         }
     }
     
-    // ✅ REQUEST ADMIN APPROVAL
+    // ✅ Request admin approval if marks were saved
     if (saved > 0 && typeof requestAdminApproval === 'function') {
         await requestAdminApproval(
             'save_marks',
             {
                 block: block,
                 subject: subject,
-                marks_count: saved,
-                marks_data: marksData
+                marks_count: saved
             },
             'Saved ' + saved + ' internal marks for ' + subject + ' (' + block + ')',
             block
