@@ -2901,12 +2901,41 @@ async function loadAdminMarks(block, subject, at) {
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
-    // ===== GET COLUMN SETTINGS =====
-    const columnSettings = getInternalColumnSettings(block, subject, currentYear);
-    const visibleColumns = columnSettings.filter(c => c.visible);
+    // ===== GET COLUMN SETTINGS (GLOBAL) =====
+    const columnSettings = await getInternalColumnSettings(block, subject, currentYear);
     
     function shouldShowColumn(colId) {
         return columnSettings.find(c => c.id === colId)?.visible !== false;
+    }
+    
+    // ===== DETECT ACTIVE ASSESSMENT TYPE BASED ON VISIBLE COLUMNS =====
+    const hasCat1 = shouldShowColumn('cat1');
+    const hasCat2 = shouldShowColumn('cat2');
+    const hasExam = shouldShowColumn('exam');
+    
+    // ===== DETERMINE ASSESSMENT TYPE DYNAMICALLY =====
+    let assessmentType = at;
+    let modeLabel = '';
+    
+    if (!hasCat2 && hasCat1 && hasExam) {
+        assessmentType = 'single_cat';
+        modeLabel = 'Single CAT + Exam (CAT2 hidden)';
+        console.log('🔄 CAT2 hidden → Switching to single_cat mode');
+    } else if (!hasCat1 && !hasCat2 && hasExam) {
+        assessmentType = 'exam_only';
+        modeLabel = 'Exam Only (CATs hidden)';
+        console.log('🔄 Only Exam visible → Switching to exam_only mode');
+    } else if (hasCat1 && !hasCat2 && !hasExam) {
+        assessmentType = 'cat_only';
+        modeLabel = 'CAT Only (No Exam)';
+        console.log('🔄 Only CAT1 visible → Switching to cat_only mode');
+    } else if (hasCat1 && hasCat2 && !hasExam) {
+        assessmentType = 'cats_only';
+        modeLabel = 'CAT1 + CAT2 Only (No Exam)';
+        console.log('🔄 No Exam visible → Switching to cats_only mode');
+    } else {
+        modeLabel = at === 'full' ? 'Full (CAT1+CAT2+Exam)' : at;
+        console.log('📊 All columns visible → Using original assessment type');
     }
     
     // ===== GRADING SYSTEM =====
@@ -2931,6 +2960,23 @@ async function loadAdminMarks(block, subject, at) {
         else return '#991b1b';
     }
     
+    // Calculate total based on assessment type
+    function calculateTotal(cat1, cat2, exam, type) {
+        let total = 0;
+        if (type === 'full') {
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        } else if (type === 'single_cat') {
+            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        } else if (type === 'exam_only') {
+            total = Math.round(Math.min(exam,100) * 10) / 10;
+        } else if (type === 'cats_only') {
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
+        } else if (type === 'cat_only') {
+            total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+        }
+        return total;
+    }
+    
     filteredMarks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     if (!filteredMarks || filteredMarks.length === 0) {
@@ -2948,7 +2994,7 @@ async function loadAdminMarks(block, subject, at) {
         return;
     }
     
-    // ===== BUILD TABLE WITH COLUMN MANAGEMENT =====
+    // ===== BUILD TABLE =====
     let html = `
         <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div>
@@ -2957,6 +3003,7 @@ async function loadAdminMarks(block, subject, at) {
                 <span style="font-size:12px; color:#64748b; margin-left:12px;">${block.replace('_', ' ')}</span>
                 <span style="font-size:12px; color:#64748b; margin-left:12px; background:#f1f5f9; padding:2px 12px; border-radius:40px;">🎓 ${currentYear} Class</span>
                 <span style="font-size:12px; color:#64748b; margin-left:12px; background:#e0f2fe; padding:2px 12px; border-radius:40px;">👥 ${filteredMarks.length} students</span>
+                <span style="font-size:11px; color:#64748b; margin-left:12px; background:#fef3c7; padding:2px 12px; border-radius:40px;">📊 ${modeLabel}</span>
             </div>
             <div class="export-bar" style="display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn-primary" onclick="showInternalColumnManager('${block}', '${subject}', '${currentYear}')" 
@@ -2983,7 +3030,7 @@ async function loadAdminMarks(block, subject, at) {
             </div>
             ${columnSettings.filter(c => !c.visible && !c.required).length > 0 ? 
                 `<span style="font-size:11px; color:#6366f1; margin-left:auto;">
-                    <i class="fas fa-eye-slash"></i> ${columnSettings.filter(c => !c.visible && !c.required).length} columns hidden
+                    <i class="fas fa-eye-slash"></i> ${columnSettings.filter(c => !c.visible && !c.required).length} columns hidden globally
                 </span>` : ''}
         </div>
         
@@ -2996,22 +3043,15 @@ async function loadAdminMarks(block, subject, at) {
                         <th style="padding:10px 8px;text-align:left;">Name</th>`;
     
     // ===== COLUMN HEADERS BASED ON SETTINGS =====
-    if (shouldShowColumn('cat1') && at === 'full') {
-        html += '<th style="padding:10px 8px;text-align:center;">CAT1 (0-30)</th>';
+    if (shouldShowColumn('cat1') && (assessmentType === 'full' || assessmentType === 'single_cat' || assessmentType === 'cats_only' || assessmentType === 'cat_only')) {
+        html += `<th style="padding:10px 8px;text-align:center;">CAT1 (0-30)</th>`;
     }
-    if (shouldShowColumn('cat2') && (at === 'full' || at === 'single_cat')) {
-        if (at === 'full') {
-            html += '<th style="padding:10px 8px;text-align:center;">CAT2 (0-30)</th>';
-        } else if (at === 'single_cat') {
-            html += '<th style="padding:10px 8px;text-align:center;">CAT (0-30)</th>';
-        }
+    if (shouldShowColumn('cat2') && (assessmentType === 'full' || assessmentType === 'cats_only')) {
+        html += `<th style="padding:10px 8px;text-align:center;">CAT2 (0-30)</th>`;
     }
-    if (shouldShowColumn('exam')) {
-        if (at === 'full' || at === 'single_cat') {
-            html += '<th style="padding:10px 8px;text-align:center;">Exam (0-70)</th>';
-        } else {
-            html += '<th style="padding:10px 8px;text-align:center;">Exam (0-100)</th>';
-        }
+    if (shouldShowColumn('exam') && (assessmentType === 'full' || assessmentType === 'single_cat' || assessmentType === 'exam_only')) {
+        const maxVal = (assessmentType === 'exam_only') ? 100 : 70;
+        html += `<th style="padding:10px 8px;text-align:center;">Exam (0-${maxVal})</th>`;
     }
     if (shouldShowColumn('total')) {
         html += '<th style="padding:10px 8px;text-align:center;">Total</th>';
@@ -3035,7 +3075,7 @@ async function loadAdminMarks(block, subject, at) {
                 <tbody>`;
     
     window.currentAdminMarks = filteredMarks; 
-    window.currentAdminAssessmentType = at; 
+    window.currentAdminAssessmentType = assessmentType; 
     window.currentAdminBlock = block; 
     window.currentAdminSubject = subject; 
     window.currentSaveFunction = saveAdminMarks;
@@ -3048,15 +3088,8 @@ async function loadAdminMarks(block, subject, at) {
         let ncat1 = parseFloat(cat1) || 0; 
         let ncat2 = parseFloat(cat2) || 0; 
         let nexam = parseFloat(exam) || 0; 
-        let total = 0; 
         
-        if(at === 'full') {
-            total = Math.round(((Math.min(ncat1,30) + Math.min(ncat2,30)) / 60 * 30 + Math.min(nexam,70)) * 10) / 10;
-        } else if(at === 'single_cat') {
-            total = Math.round((Math.min(ncat1,30) + Math.min(nexam,70)) * 10) / 10;
-        } else {
-            total = Math.round(Math.min(nexam,100) * 10) / 10;
-        }
+        let total = calculateTotal(ncat1, ncat2, nexam, assessmentType);
         
         const isSecondAttempt = false;
         const gradeInfo = getGrade(total, isSecondAttempt);
@@ -3069,20 +3102,16 @@ async function loadAdminMarks(block, subject, at) {
             <td style="padding:8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>`;
         
         // ===== DATA CELLS BASED ON SETTINGS =====
-        if (shouldShowColumn('cat1') && at === 'full'){ 
+        if (shouldShowColumn('cat1') && (assessmentType === 'full' || assessmentType === 'single_cat' || assessmentType === 'cats_only' || assessmentType === 'cat_only')) { 
             html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
         }
-        if (shouldShowColumn('cat2') && (at === 'full' || at === 'single_cat')){ 
-            if (at === 'full') {
-                html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
-            } else if (at === 'single_cat') {
-                html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
-            }
+        if (shouldShowColumn('cat2') && (assessmentType === 'full' || assessmentType === 'cats_only')) { 
+            html += `<td style="padding:8px;text-align:center;"><input type="number" id="acat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
         }
-        if (shouldShowColumn('exam')){ 
-    const maxVal = (at === 'full' || at === 'single_cat') ? 70 : 100;
-    html += `<td style="padding:8px;text-align:center;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="${maxVal}" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
-}
+        if (shouldShowColumn('exam') && (assessmentType === 'full' || assessmentType === 'single_cat' || assessmentType === 'exam_only')) { 
+            const maxVal = (assessmentType === 'exam_only') ? 100 : 70;
+            html += `<td style="padding:8px;text-align:center;"><input type="number" id="aexam_${i}" value="${exam}" min="0" max="${maxVal}" step="0.5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #e2e8f0;text-align:center;" onchange="updateAdminTotal(${i})"></td>`;
+        }
         if (shouldShowColumn('total')) {
             html += `<td id="atotal_${i}" style="padding:8px 6px;text-align:center;font-weight:bold;${total >= 60 ? 'color:#065f46;' : (total > 0 ? 'color:#991b1b;' : 'color:#f59e0b;')}">${total > 0 ? total : '--'}</td>`;
         }
@@ -3121,7 +3150,7 @@ async function loadAdminMarks(block, subject, at) {
     startAutoSave(saveAdminMarks, 30000);
 }
 
-  // ===== INTERNAL MARKS COLUMN MANAGER =====
+// ===== INTERNAL MARKS COLUMN MANAGER - GLOBAL VERSION =====
 const INTERNAL_COLUMNS_CONFIG = {
     columns: [
         { id: 'sno', label: '#', visible: true, required: true },
@@ -3138,13 +3167,31 @@ const INTERNAL_COLUMNS_CONFIG = {
     ]
 };
 
-function getInternalColumnSettings(block, subject, year) {
+// ===== GET COLUMN SETTINGS FROM SERVER =====
+async function getInternalColumnSettings(block, subject, year) {
+    try {
+        // Try to get from server first
+        const response = await apiCall(`/api/columns/settings/${encodeURIComponent(block)}/${encodeURIComponent(subject)}/${year}`, {});
+        
+        if (response && response.success && response.columns) {
+            console.log(`✅ Loaded column settings from server for ${block}/${subject}`);
+            // Merge with defaults to ensure all columns exist
+            const merged = INTERNAL_COLUMNS_CONFIG.columns.map(col => {
+                const savedCol = response.columns.find(p => p.id === col.id);
+                return savedCol ? { ...col, visible: savedCol.visible } : col;
+            });
+            return merged;
+        }
+    } catch (e) {
+        console.log('⚠️ Could not load from server, using localStorage fallback');
+    }
+    
+    // Fallback to localStorage
     const key = `internal_columns_${year}_${block}_${subject}`;
     const saved = localStorage.getItem(key);
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
-            // Merge with defaults to ensure all columns exist
             const merged = INTERNAL_COLUMNS_CONFIG.columns.map(col => {
                 const savedCol = parsed.find(p => p.id === col.id);
                 return savedCol ? { ...col, visible: savedCol.visible } : col;
@@ -3157,13 +3204,38 @@ function getInternalColumnSettings(block, subject, year) {
     return [...INTERNAL_COLUMNS_CONFIG.columns];
 }
 
-function saveInternalColumnSettings(block, subject, year, columns) {
+// ===== SAVE COLUMN SETTINGS TO SERVER =====
+async function saveInternalColumnSettings(block, subject, year, columns) {
+    try {
+        // Save to server first
+        const response = await apiCall('/api/columns/settings', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                block, 
+                subject, 
+                year, 
+                columns,
+                lecturerName: currentUser?.name || 'System'
+            })
+        });
+        
+        if (response && response.success) {
+            console.log(`✅ Column settings saved to server for ${block}/${subject}`);
+        } else {
+            console.log('⚠️ Server save failed, saving to localStorage only');
+        }
+    } catch (e) {
+        console.log('⚠️ Could not save to server, saving to localStorage only');
+    }
+    
+    // Also save to localStorage as fallback
     const key = `internal_columns_${year}_${block}_${subject}`;
     localStorage.setItem(key, JSON.stringify(columns));
 }
 
-function showInternalColumnManager(block, subject, year) {
-    const currentColumns = getInternalColumnSettings(block, subject, year);
+// ===== SHOW COLUMN MANAGER MODAL =====
+async function showInternalColumnManager(block, subject, year) {
+    const currentColumns = await getInternalColumnSettings(block, subject, year);
     
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -3181,33 +3253,46 @@ function showInternalColumnManager(block, subject, year) {
                     ${col.label}
                     ${col.required ? ' <span style="color:#94a3b8;font-size:11px;">(required)</span>' : ''}
                 </label>
+                <span style="font-size:10px;color:#94a3b8;margin-left:auto;">
+                    ${col.visible ? '👁️ Visible' : '🔒 Hidden'}
+                </span>
             </div>
         `;
     }).join('');
     
     modal.innerHTML = `
-        <div style="background:white;border-radius:24px;width:500px;max-width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div style="background:white;border-radius:24px;width:520px;max-width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
             <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:18px 24px;border-radius:24px 24px 0 0;display:flex;justify-content:space-between;align-items:center;">
-                <h3 style="margin:0;font-size:18px;"><i class="fas fa-columns"></i> Manage Columns</h3>
+                <h3 style="margin:0;font-size:18px;">
+                    <i class="fas fa-columns"></i> Manage Columns 
+                    <span style="font-size:12px;font-weight:400;opacity:0.8;">(Global for all users)</span>
+                </h3>
                 <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 16px;border-radius:40px;cursor:pointer;font-weight:600;font-size:14px;">
                     <i class="fas fa-times"></i> Close
                 </button>
             </div>
             <div style="padding:24px;">
+                <div style="background:#dbeafe;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;color:#1e40af;">
+                    <i class="fas fa-globe"></i> These settings apply to <strong>ALL users</strong> (Admin + Lecturers)
+                </div>
                 <p style="color:#64748b;margin-bottom:16px;font-size:14px;">
-                    <i class="fas fa-info-circle"></i> Toggle columns visibility in the marks table
+                    <i class="fas fa-info-circle"></i> Toggle columns visibility. Changes are saved globally.
                 </p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:350px;overflow-y:auto;padding-right:4px;">
                     ${columnsHtml}
                 </div>
+                <div style="margin-top:16px;padding:12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>Note:</strong> Hiding CAT2 will automatically switch to Single CAT mode for calculations.
+                </div>
                 <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">
                     <button class="back-btn" onclick="resetInternalColumns('${block}', '${subject}', '${year}')" 
                             style="padding:10px 20px;border:none;border-radius:40px;font-weight:600;cursor:pointer;background:#e2e8f0;color:#475569;">
-                        Reset to Default
+                        <i class="fas fa-undo"></i> Reset to Default
                     </button>
                     <button class="save-btn" onclick="applyInternalColumnSettings('${block}', '${subject}', '${year}')" 
                             style="padding:10px 24px;border:none;border-radius:40px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#10b981,#059669);color:white;">
-                        <i class="fas fa-check"></i> Apply Changes
+                        <i class="fas fa-check"></i> Apply & Save Globally
                     </button>
                 </div>
             </div>
@@ -3216,17 +3301,37 @@ function showInternalColumnManager(block, subject, year) {
     document.body.appendChild(modal);
 }
 
-function resetInternalColumns(block, subject, year) {
-    const key = `internal_columns_${year}_${block}_${subject}`;
-    localStorage.removeItem(key);
-    showNotification('Columns reset to default', false);
-    // Reload the marks to reflect changes
-    loadAdminMarks(block, subject, window.currentAdminAssessmentType || 'full');
-    document.querySelector('.modal')?.remove();
+// ===== RESET COLUMN SETTINGS =====
+async function resetInternalColumns(block, subject, year) {
+    if (!confirm('Reset column settings to default for ALL users?')) return;
+    
+    showLoading('Resetting columns...');
+    
+    try {
+        // Reset on server
+        await apiCall('/api/columns/reset', {
+            method: 'POST',
+            body: JSON.stringify({ block, subject, year })
+        });
+        
+        // Clear localStorage
+        const key = `internal_columns_${year}_${block}_${subject}`;
+        localStorage.removeItem(key);
+        
+        showNotification('✅ Columns reset to default for all users!', false);
+        document.querySelector('.modal')?.remove();
+        
+        // Reload marks with new settings
+        loadAdminMarks(block, subject, window.currentAdminAssessmentType || 'full');
+    } catch (e) {
+        hideLoading();
+        showNotification('❌ Error resetting columns: ' + e.message, true);
+    }
 }
 
-function applyInternalColumnSettings(block, subject, year) {
-    const currentColumns = getInternalColumnSettings(block, subject, year);
+// ===== APPLY COLUMN SETTINGS =====
+async function applyInternalColumnSettings(block, subject, year) {
+    const currentColumns = await getInternalColumnSettings(block, subject, year);
     const updatedColumns = currentColumns.map(col => {
         const checkbox = document.getElementById(`col_${col.id}`);
         if (checkbox && !col.required) {
@@ -3234,99 +3339,23 @@ function applyInternalColumnSettings(block, subject, year) {
         }
         return col;
     });
-    saveInternalColumnSettings(block, subject, year, updatedColumns);
-    showNotification('Column settings applied!', false);
-    document.querySelector('.modal')?.remove();
-    // Reload marks to apply column visibility
-    loadAdminMarks(block, subject, window.currentAdminAssessmentType || 'full');
+    
+    showLoading('Saving column settings...');
+    
+    try {
+        await saveInternalColumnSettings(block, subject, year, updatedColumns);
+        
+        hideLoading();
+        showNotification('✅ Column settings saved globally for ALL users!', false);
+        document.querySelector('.modal')?.remove();
+        
+        // Reload marks to apply column visibility
+        loadAdminMarks(block, subject, window.currentAdminAssessmentType || 'full');
+    } catch (e) {
+        hideLoading();
+        showNotification('❌ Error saving settings: ' + e.message, true);
+    }
 }
-
-function getVisibleInternalColumns(block, subject, year) {
-    const cols = getInternalColumnSettings(block, subject, year);
-    return cols.filter(c => c.visible);
-}
-  window.updateAdminTotal = function(idx){ 
-    const at = window.currentAdminAssessmentType || 'full'; 
-    let cat1 = parseFloat(document.getElementById(`acat1_${idx}`)?.value) || 0; 
-    let cat2 = parseFloat(document.getElementById(`acat2_${idx}`)?.value) || 0; 
-    let exam = parseFloat(document.getElementById(`aexam_${idx}`)?.value) || 0; 
-    let total = 0; 
-    
-    if(at === 'full') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    } else if(at === 'single_cat') {
-        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-    } else {
-        total = Math.round(Math.min(exam,100) * 10) / 10;
-    }
-    
-    // ===== YOUR GRADING SYSTEM =====
-    function getGrade(score, isSecondAttempt = false) {
-        if (isSecondAttempt) {
-            if (score >= 80) return { grade: 'A', rating: 'Distinction', points: 4 };
-            else if (score >= 70) return { grade: 'B', rating: 'Credit', points: 3 };
-            else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2 };
-            else return { grade: 'D', rating: 'Fail', points: 0 };
-        } else {
-            if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4 };
-            else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3 };
-            else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2 };
-            else return { grade: 'D', rating: 'Fail', points: 0 };
-        }
-    }
-    
-    function getPointsColor(points) {
-        if (points >= 4) return '#065f46';
-        else if (points >= 3) return '#1e40af';
-        else if (points >= 2) return '#92400e';
-        else return '#991b1b';
-    }
-    
-    // Check if second attempt (you can add logic here)
-    const isSecondAttempt = false;
-    const gradeInfo = getGrade(total, isSecondAttempt);
-    const pointsColor = getPointsColor(gradeInfo.points);
-    
-    // Update Total
-    const totalEl = document.getElementById(`atotal_${idx}`);
-    if(totalEl) {
-        totalEl.innerHTML = total > 0 ? total : '--';
-        totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
-    }
-    
-    // Update Grade
-    const gradeEl = document.getElementById(`agrade_${idx}`);
-    if(gradeEl) {
-        gradeEl.innerHTML = total > 0 ? gradeInfo.grade : '--';
-        gradeEl.style.color = pointsColor;
-    }
-    
-    // Update Points
-    const pointsEl = document.getElementById(`apoints_${idx}`);
-    if(pointsEl) {
-        pointsEl.innerHTML = total > 0 ? gradeInfo.points.toFixed(1) : '--';
-        pointsEl.style.color = pointsColor;
-    }
-    
-    // Update Rating
-    const ratingEl = document.getElementById(`arating_${idx}`);
-    if(ratingEl) {
-        if(total > 0) {
-            const bgColor = total >= 60 ? '#d1fae5' : '#fee2e2';
-            const textColor = total >= 60 ? '#065f46' : '#991b1b';
-            ratingEl.innerHTML = `<span style="background:${bgColor}; padding:3px 12px; border-radius:12px; color:${textColor}; font-weight:600; display:inline-block;">${gradeInfo.rating}</span>`;
-        } else {
-            ratingEl.innerHTML = '<span style="color:#94a3b8;">PENDING</span>';
-        }
-    }
-    
-    // Update row class
-    const row = document.getElementById(`acat1_${idx}`)?.parentElement?.parentElement; 
-    if(row) {
-        row.className = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : 'pending-row');
-    }
-};
-
   window.saveAdminMarks = async function(){ 
     let marksData = []; 
     const len = window.currentAdminMarks?.length || 0; 
