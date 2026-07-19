@@ -1305,6 +1305,38 @@ function loadExamsTable() {
             approvalBadge = ' <span class="badge badge-danger">❌ Rejected</span>';
         }
         
+        // ✅ CHECK: Is this exam created by THIS lecturer?
+        var isOwner = e.created_by === state.currentUserId;
+        var isPublished = approvalStatus === 'published' || e.status === 'Published' || e.status === 'Completed';
+        
+        // Build action buttons based on ownership and status
+        var actionsHtml = '';
+        
+        if (isOwner) {
+            // OWNER can edit/delete only if still in draft
+            if (approvalStatus === 'draft' || e.status === 'Draft') {
+                actionsHtml += '<button class="btn btn-action btn-small" data-action="edit-exam" data-exam="' + (e.id || '') + '"><i class="fas fa-edit"></i></button>';
+                actionsHtml += '<button class="btn btn-delete btn-small" data-action="delete-exam" data-exam="' + (e.id || '') + '"><i class="fas fa-trash"></i></button>';
+            }
+            
+            // Owner can grade if published
+            if (isPublished) {
+                actionsHtml += '<button class="btn btn-action btn-small" data-action="grade-exam" data-exam="' + (e.id || '') + '" style="background:#10b981;"><i class="fas fa-check-circle"></i></button>';
+            }
+        } else {
+            // NOT OWNER - View only (can grade if published by admin)
+            if (isPublished) {
+                actionsHtml += '<button class="btn btn-action btn-small" data-action="grade-exam" data-exam="' + (e.id || '') + '" style="background:#10b981;"><i class="fas fa-check-circle"></i></button>';
+            }
+            actionsHtml += '<button class="btn btn-action btn-small" data-action="view-exam" data-exam="' + (e.id || '') + '" style="background:#3b82f6;"><i class="fas fa-eye"></i></button>';
+        }
+        
+        // Exam link if available (view only)
+        if (e.online_link || e.exam_link) {
+            var link = e.online_link || e.exam_link;
+            actionsHtml += '<a href="' + escapeHtml(link) + '" target="_blank" class="btn btn-map btn-small" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-external-link-alt"></i></a>';
+        }
+        
         return '<tr>' +
             '<td><span class="exam-type-badge">' + escapeHtml(e.exam_type || 'N/A') + '</span></td>' +
             '<td><strong>' + escapeHtml(e.exam_name || 'N/A') + '</strong>' + approvalBadge + '</td>' +
@@ -1313,11 +1345,7 @@ function loadExamsTable() {
             '<td>' + dateTime + '</td>' +
             '<td>' + (e.duration_minutes ? e.duration_minutes + ' mins' : 'N/A') + '</td>' +
             '<td><span class="status-' + statusClass + '">' + escapeHtml(e.status || 'Scheduled') + '</span></td>' +
-            '<td>' +
-                (approvalStatus === 'draft' ? '<button class="btn btn-action btn-small" data-action="edit-exam" data-exam="' + (e.id || '') + '"><i class="fas fa-edit"></i></button>' : '') +
-                (approvalStatus === 'published' ? '<button class="btn btn-action btn-small" data-action="grade-exam" data-exam="' + (e.id || '') + '" style="background:#10b981;"><i class="fas fa-check-circle"></i></button>' : '') +
-                (approvalStatus === 'draft' ? '<button class="btn btn-delete btn-small" data-action="delete-exam" data-exam="' + (e.id || '') + '"><i class="fas fa-trash"></i></button>' : '') +
-            '</td>' +
+            '<td>' + actionsHtml + '</td>' +
         '</tr>';
     }).join('');
 }
@@ -2025,10 +2053,12 @@ function loadResourcesTable() {
             statusBadge = '<span class="badge badge-danger">❌ Rejected</span>';
         }
         
-        // Use available fields
+        // ✅ Only the uploader can delete (only if pending)
+        var isOwner = r.uploaded_by === state.currentUserId;
+        var canDelete = isOwner && status === 'pending';
+        
         var programDisplay = r.target_program || r.program_type || 'N/A';
         var blockDisplay = r.block || r.block_term || 'N/A';
-        var fileSizeDisplay = r.file_size ? (r.file_size / 1024).toFixed(1) + ' KB' : 'N/A';
         
         return '<tr>' +
             '<td>' + escapeHtml(r.title || 'N/A') + '</td>' +
@@ -2039,7 +2069,7 @@ function loadResourcesTable() {
             '<td>' + statusBadge + '</td>' +
             '<td>' +
                 (status === 'approved' ? '<a href="' + r.file_url + '" target="_blank" class="btn btn-action btn-small"><i class="fas fa-download"></i> Download</a>' : '') +
-                (status === 'pending' ? '<button class="btn btn-delete btn-small" data-action="delete-resource" data-resource="' + r.id + '"><i class="fas fa-trash"></i> Cancel</button>' : '') +
+                (canDelete ? '<button class="btn btn-delete btn-small" data-action="delete-resource" data-resource="' + r.id + '"><i class="fas fa-trash"></i> Cancel</button>' : '') +
             '</td>' +
         '</tr>';
     }).join('');
@@ -2737,15 +2767,35 @@ function handleDynamicClicks(e) {
             showSendMessageModal(target.dataset.user, target.dataset.name);
             break;
         case 'edit-exam':
-            openEditExamModal(target.dataset.exam);
-            break;
-        case 'grade-exam':
-            openGradeModal(target.dataset.exam);
+            // ✅ Only allow if user owns the exam
+            var examId = target.dataset.exam;
+            var exam = state.allExams.find(function(ex) { return ex.id === examId; });
+            if (exam && exam.created_by === state.currentUserId) {
+                openEditExamModal(examId);
+            } else {
+                showNotification('You can only edit exams you created.', 'warning');
+            }
             break;
         case 'delete-exam':
-            deleteExam(target.dataset.exam);
+            // ✅ Only allow if user owns the exam
+            var examIdDel = target.dataset.exam;
+            var examDel = state.allExams.find(function(ex) { return ex.id === examIdDel; });
+            if (examDel && examDel.created_by === state.currentUserId) {
+                deleteExam(examIdDel);
+            } else {
+                showNotification('You can only delete exams you created.', 'warning');
+            }
+            break;
+        case 'grade-exam':
+            // ✅ Anyone can grade (lecturers grade their students)
+            openGradeModal(target.dataset.exam);
+            break;
+        case 'view-exam':
+            // ✅ View only - no edit/delete
+            showNotification('Viewing exam details...', 'info');
             break;
         case 'delete-resource':
+            // ✅ Only delete if pending (not approved yet)
             deleteResource(target.dataset.resource);
             break;
         case 'copy-link':
@@ -2758,7 +2808,14 @@ function handleDynamicClicks(e) {
             viewCheckInMap(target.dataset.lat, target.dataset.lng, target.dataset.name);
             break;
         case 'edit-session':
-            showNotification('Edit session feature coming soon', 'info');
+            // ✅ Only allow if user owns the session
+            var sessionId = target.dataset.session;
+            var session = state.allSessions.find(function(s) { return s.id === sessionId; });
+            if (session && session.lecturer_id === state.currentUserId) {
+                showNotification('Edit session feature coming soon', 'info');
+            } else {
+                showNotification('You can only edit sessions you created.', 'warning');
+            }
             break;
         case 'manage-course':
             showNotification('Course management coming soon', 'info');
