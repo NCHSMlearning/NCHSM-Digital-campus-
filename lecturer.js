@@ -2025,10 +2025,15 @@ function loadResourcesTable() {
             statusBadge = '<span class="badge badge-danger">❌ Rejected</span>';
         }
         
+        // Use available fields
+        var programDisplay = r.target_program || r.program_type || 'N/A';
+        var blockDisplay = r.block || r.block_term || 'N/A';
+        var fileSizeDisplay = r.file_size ? (r.file_size / 1024).toFixed(1) + ' KB' : 'N/A';
+        
         return '<tr>' +
             '<td>' + escapeHtml(r.title || 'N/A') + '</td>' +
             '<td>' + escapeHtml(r.category || 'Academic') + '</td>' +
-            '<td>' + escapeHtml(r.target_program || r.program_type || 'N/A') + '/' + escapeHtml(r.block_term || r.block || 'N/A') + '</td>' +
+            '<td>' + escapeHtml(programDisplay) + '/' + escapeHtml(blockDisplay) + '</td>' +
             '<td>' + escapeHtml(r.uploaded_by_name || 'N/A') + '</td>' +
             '<td>' + formatDate(r.created_at) + '</td>' +
             '<td>' + statusBadge + '</td>' +
@@ -2039,6 +2044,9 @@ function loadResourcesTable() {
         '</tr>';
     }).join('');
 }
+// ============================================================
+// FIXED: handleUploadResource - Matches YOUR EXACT DB Schema
+// ============================================================
 
 async function handleUploadResource(e) {
     e.preventDefault();
@@ -2065,60 +2073,110 @@ async function handleUploadResource(e) {
     var base = title.replace(/[^\w\-]+/g, '_') + '_' + Date.now();
     var fileName = base + '.' + ext;
     var filePath = program + '/' + intake + '/' + block + '/' + fileName;
+    var fileSize = file.size;
+    var fileType = file.type || ext;
     
     try {
+        // Upload to storage
         var { error: uploadError } = await state.sb
             .storage
             .from(RESOURCES_BUCKET)
             .upload(filePath, file, { cacheControl: '3600', upsert: true });
         
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            throw new Error('Storage upload failed: ' + uploadError.message);
+        }
         
-        var { data: { publicUrl } } = state.sb
+        var { data: urlData } = state.sb
             .storage
             .from(RESOURCES_BUCKET)
             .getPublicUrl(filePath);
         
-        await state.sb.from(TABLES.RESOURCES).insert({
+        var publicUrl = urlData?.publicUrl;
+        
+        if (!publicUrl) {
+            throw new Error('Failed to get public URL');
+        }
+        
+        // ✅ MATCH YOUR EXACT TABLE SCHEMA
+        var resourceData = {
+            // Core fields
             title: title,
-            category: category,
+            file_name: fileName,
+            file_path: filePath,
+            file_url: publicUrl,
+            file_size: fileSize,
+            file_type: fileType,
+            
+            // Program fields
             program_type: program,
             target_program: program,
             intake: intake,
-            intake_year: intake,
             block: block,
             block_term: block,
-            file_path: filePath,
-            file_name: fileName,
-            file_url: publicUrl,
+            
+            // Category & Description
+            category: category || 'General',
+            description: '', // Optional - add if you have a description input
+            
+            // Uploader info
             uploaded_by: state.currentUserId,
-            uploaded_by_name: state.currentUser.full_name,
-            allow_download: true,
+            uploaded_by_name: state.currentUser?.full_name || 'Lecturer',
+            
+            // Resource type (default to 'material')
+            resource_type: 'material', // or 'pastpaper' if you add that toggle
+            
+            // Approval fields
             approval_status: 'pending',
-            created_at: new Date().toISOString()
-        });
+            
+            // Allow download
+            allow_download: true,
+            
+            // Timestamps
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        console.log('📤 Inserting resource with data:', resourceData);
+        
+        var { data: inserted, error: insertError } = await state.sb
+            .from(TABLES.RESOURCES)
+            .insert(resourceData)
+            .select();
+        
+        if (insertError) {
+            console.error('Insert error:', insertError);
+            throw new Error('Database insert failed: ' + insertError.message);
+        }
+        
+        // ✅ Request admin approval
+        if (typeof requestAdminApproval === 'function') {
+            await requestAdminApproval(
+                'upload_resource',
+                {
+                    resource_id: inserted[0]?.id,
+                    title: title,
+                    file_path: filePath,
+                    program: program,
+                    block: block,
+                    intake: intake
+                },
+                'Uploaded resource: ' + title,
+                inserted[0]?.id
+            );
+        }
         
         showNotification('✅ Resource uploaded! Waiting for admin approval.', 'success');
         e.target.reset();
-        loadResourcesTable();
+        await loadResourcesTable();
         
     } catch (err) {
+        console.error('Upload error:', err);
         showNotification('Upload failed: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = 'Upload Resource';
-    }
-}
-
-async function deleteResource(resourceId) {
-    if (!confirm('Delete this resource?')) return;
-    
-    try {
-        await state.sb.from(TABLES.RESOURCES).delete().eq('id', resourceId);
-        showNotification('✅ Resource deleted!', 'success');
-        loadResourcesTable();
-    } catch (error) {
-        showNotification('Delete failed: ' + error.message, 'error');
     }
 }
 
