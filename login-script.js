@@ -60,16 +60,63 @@ window.NCHSMLogin = {
         csrfProtection: true,
         requireTwoFactor: false
     },
- // ============================================
-// BREVO CONFIGURATION - USING ENV VARIABLES
+// ============================================
+// BREVO CONFIGURATION - SECURE (Using Supabase)
 // ============================================
 brevo: {
-    apiKey: process.env.BREVO_API_KEY || 'YOUR_API_KEY_HERE',  // ← Use env var
-    apiUrl: process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email',
+    apiKey: null,  // Will be loaded from Supabase
+    apiUrl: 'https://api.brevo.com/v3/smtp/email',
     enabled: true,
     sender: {
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@nakurucollegeofhealthelearning.site',
-        name: process.env.BREVO_SENDER_NAME || 'NCHSM ICT Support'
+        email: 'noreply@nakurucollegeofhealthelearning.site',
+        name: 'NCHSM ICT Support'
+    },
+    _initialized: false
+},
+
+// ============================================
+// LOAD BREVO API KEY FROM SUPABASE
+// ============================================
+loadBrevoApiKey: async function() {
+    try {
+        // First, check if we already have it cached
+        const cached = sessionStorage.getItem('brevo_api_key');
+        if (cached) {
+            console.log('📦 Using cached Brevo API key');
+            this.brevo.apiKey = cached;
+            this.brevo._initialized = true;
+            return true;
+        }
+        
+        console.log('🔑 Fetching Brevo API key from Supabase...');
+        
+        // Call the Edge Function
+        const { data, error } = await this.supabase.functions.invoke('get-secret', {
+            body: { secret_name: 'BREVO_API_KEY' }
+        });
+        
+        if (error) {
+            console.error('❌ Error fetching secret:', error);
+            return false;
+        }
+        
+        if (data && data.secret) {
+            this.brevo.apiKey = data.secret;
+            this.brevo._initialized = true;
+            
+            // Cache it in session storage (safe for this session)
+            sessionStorage.setItem('brevo_api_key', data.secret);
+            
+            console.log('✅ Brevo API key loaded successfully');
+            return true;
+        }
+        
+        console.error('❌ No secret returned');
+        return false;
+        
+    } catch (error) {
+        console.error('❌ Failed to load Brevo API key:', error);
+        return false;
     }
 },
     // ===== RATE LIMITING =====
@@ -89,8 +136,7 @@ brevo: {
     
     // ===== STAFF RECORDS =====
     staffRecords: [],
-    
-  // ============================================
+ // ============================================
 // INITIALIZATION
 // ============================================
 init: function() {
@@ -121,7 +167,7 @@ init: function() {
     this.initPasswordToggle();
     
     // ✅ INITIALIZE PASSWORD STRENGTH METER
-    this.initPasswordStrength();  // ← ADD THIS LINE
+    this.initPasswordStrength();
     
     // Initialize login form
     this.initLoginForm();
@@ -164,6 +210,15 @@ init: function() {
     
     // ✅ INITIALIZE THEME TOGGLE
     this.initThemeToggle();
+    
+    // 🆕 Load Brevo API key from Supabase Secrets
+    this.loadBrevoApiKey().then(success => {
+        if (success) {
+            console.log('✅ Brevo integration ready');
+        } else {
+            console.warn('⚠️ Brevo integration not available - login notifications disabled');
+        }
+    });
     
     // Mark as initialized
     this.state.isInitialized = true;
@@ -467,74 +522,97 @@ forceUpdateLoginCount: async function(userId) {
         return false;
     }
 },
-        // ============================================
-    // SEND LOGIN NOTIFICATION
-    // ============================================
-    sendLoginNotification: async function(studentData) {
-        // Only for students
-        if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
-        if (!studentData.email || !this.brevo.enabled) return;
-        
-        try {
-            const sender = this.brevo.senders.security;
-            
-            // Get IP
-            let ip = 'Unknown';
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                ip = data.ip;
-            } catch(e) {}
-            
-            const now = new Date();
-            const time = now.toLocaleString('en-KE', { 
-                timeZone: 'Africa/Nairobi',
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            const device = this.parseUserAgent(navigator.userAgent);
-            
-            const response = await fetch(this.brevo.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'api-key': this.brevo.apiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sender: { 
-                        email: sender.email, 
-                        name: sender.name
-                    },
-                    to: [{ email: studentData.email }],
-                    subject: '🔐 New Login Alert - NCHSM Student Portal',
-                    htmlContent: this.buildLoginEmail(
-                        studentData.full_name || studentData.name || 'Student',
-                        studentData.email,
-                        studentData.student_id || studentData.user_id || 'N/A',
-                        studentData.program || studentData.department || 'N/A',
-                        studentData.block || studentData.year || 'N/A',
-                        ip,
-                        device,
-                        time
-                    )
-                })
-            });
-            
-            const data = await response.json();
-            if (response.ok) {
-                console.log(`✅ Login notification sent to ${studentData.email}`);
-            } else {
-                console.error('❌ Login notification failed:', data);
+      // ============================================
+// SEND LOGIN NOTIFICATION (SECURE)
+// ============================================
+sendLoginNotification: async function(studentData) {
+    // Only for students
+    if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
+    if (!studentData.email || !this.brevo.enabled) return;
+    
+    try {
+        // Ensure API key is loaded
+        if (!this.brevo._initialized) {
+            console.log('⏳ Loading Brevo API key...');
+            const loaded = await this.loadBrevoApiKey();
+            if (!loaded) {
+                console.error('❌ Cannot send notification - API key not loaded');
+                return;
             }
-            
-        } catch(e) {
-            console.warn('⚠️ Login notification error:', e);
         }
-    },
+        
+        // Check if we have the API key
+        if (!this.brevo.apiKey) {
+            console.error('❌ No Brevo API key available');
+            return;
+        }
+        
+        console.log(`📧 Sending login notification to ${studentData.email}`);
+        
+        // Get student's IP
+        let ip = 'Unknown';
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            ip = data.ip;
+        } catch(e) {}
+        
+        // Get current time in EAT
+        const now = new Date();
+        const time = now.toLocaleString('en-KE', { 
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Parse device info
+        const device = this.parseUserAgent(navigator.userAgent);
+        
+        // Build email HTML
+        const htmlContent = this.buildLoginEmail(
+            studentData.full_name || studentData.name || 'Student',
+            studentData.email,
+            studentData.student_id || studentData.user_id || 'N/A',
+            studentData.program || studentData.department || 'N/A',
+            studentData.block || studentData.year || 'N/A',
+            ip,
+            device,
+            time
+        );
+        
+        // Send via Brevo
+        const response = await fetch(this.brevo.apiUrl, {
+            method: 'POST',
+            headers: {
+                'api-key': this.brevo.apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { 
+                    email: this.brevo.sender.email, 
+                    name: this.brevo.sender.name
+                },
+                to: [{ email: studentData.email }],
+                subject: '🔐 New Login Alert - NCHSM Student Portal',
+                htmlContent: htmlContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log(`✅ Login notification sent to ${studentData.email}`);
+        } else {
+            console.error('❌ Login notification failed:', data);
+        }
+        
+    } catch(e) {
+        console.warn('⚠️ Login notification error:', e);
+    }
+},
 
       // ============================================
     // BUILD LOGIN EMAIL
