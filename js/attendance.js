@@ -714,12 +714,8 @@
         }
     }
     
-    // ============================================
-    // LOAD HISTORY
-    // ============================================
-    
   // ============================================
-// 🔧 FIXED: loadHistory - WORKING VERSION
+// 🔧 FIXED: loadHistory - PROPER SUPA BASE CLIENT
 // ============================================
 
 async function loadHistory() {
@@ -732,7 +728,28 @@ async function loadHistory() {
     // Show loading
     table.innerHTML = `<tr><td colspan="6">Loading attendance history...</td></tr>`;
     
-    // Get student ID from multiple sources
+    // ✅ Get the REAL Supabase client
+    let supabaseClient = null;
+    
+    if (window.db && typeof window.db.supabase === 'object' && typeof window.db.supabase.from === 'function') {
+        supabaseClient = window.db.supabase;
+    } else if (window.db && typeof window.db.from === 'function') {
+        supabaseClient = window.db;
+    } else if (window.supabase && typeof window.supabase.from === 'function') {
+        supabaseClient = window.supabase;
+    } else if (window.sb && typeof window.sb.from === 'function') {
+        supabaseClient = window.sb;
+    }
+    
+    if (!supabaseClient) {
+        console.error('❌ No Supabase client found');
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i> Database client not available
+        </td></tr>`;
+        return;
+    }
+    
+    // Get student ID
     let studentId = window.db?.currentUserId || 
                     window.db?.currentUserProfile?.user_id || 
                     window.currentUserId;
@@ -747,13 +764,6 @@ async function loadHistory() {
         } catch(e) {}
     }
     
-    // ✅ Use getCurrentStudentId as fallback
-    if (!studentId && typeof getCurrentStudentId === 'function') {
-        studentId = getCurrentStudentId();
-    }
-    
-    console.log('📊 Student ID:', studentId);
-    
     if (!studentId) {
         table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
             <i class="fas fa-exclamation-circle"></i> Please log in to view history
@@ -761,17 +771,8 @@ async function loadHistory() {
         return;
     }
     
-    // ✅ Use sbClient (not supabase) to avoid conflict
-    const sbClient = window.db?.supabase || window.supabase;
-    if (!sbClient) {
-        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-            <i class="fas fa-exclamation-triangle"></i> Database connection not available
-        </td></tr>`;
-        return;
-    }
-    
     try {
-        const { data, error } = await sbClient
+        const { data, error } = await supabaseClient
             .from('geo_attendance_logs')
             .select('*')
             .eq('student_id', studentId)
@@ -790,7 +791,6 @@ async function loadHistory() {
             table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
                 <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
                 No attendance records found
-                <div style="font-size:12px; margin-top:4px;">Check in to start tracking your attendance!</div>
             </td></tr>`;
             return;
         }
@@ -798,11 +798,7 @@ async function loadHistory() {
         table.innerHTML = data.map(log => {
             const accuracy = log.accuracy_m || log.accuracy_meters || 0;
             const distance = log.distance_meters || 0;
-            
-            const dist = distance >= 1000 ? 
-                (distance/1000).toFixed(2) + ' km' : 
-                distance.toFixed(0) + ' m';
-            
+            const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
             const time = new Date(log.check_in_time).toLocaleString('en-KE', {
                 timeZone: 'Africa/Nairobi',
                 day: '2-digit',
@@ -815,7 +811,6 @@ async function loadHistory() {
             let status = log.attendance_status || 'Pending';
             let statusColor = '#f59e0b';
             let statusIcon = '⏳';
-            
             if (status === 'Present' || status === 'Verified') {
                 statusColor = '#10b981';
                 statusIcon = '✅';
@@ -824,20 +819,14 @@ async function loadHistory() {
                 statusIcon = '❌';
             }
             
-            const sessionIcon = log.session_type === 'class' ? '📚' : 
-                                (log.session_type === 'clinical' ? '🏥' : '📖');
-            
+            const sessionIcon = log.session_type === 'class' ? '📚' : '🏥';
             const targetName = log.target_name || log.location_name || 'Unknown';
             
             return `<tr>
                 <td style="white-space: nowrap; font-size: 12px;">${time}</td>
                 <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
-                    ${targetName}
-                </td>
-                <td style="color: ${statusColor}; font-weight: 600;">
-                    ${statusIcon} ${status}
-                </td>
+                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">${targetName}</td>
+                <td style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
                 <td>${dist}</td>
                 <td>±${accuracy.toFixed(0)}m</td>
             </tr>`;
