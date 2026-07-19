@@ -1939,7 +1939,126 @@ app.get('/api/stats', async (req, res) => {
         res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
     }
 });
+// ===== GLOBAL COLUMN SETTINGS =====
+// Store in memory (will reset on server restart)
+// For production, store in Google Sheets or a database
+let globalColumnSettings = {};
 
+// ===== GET GLOBAL COLUMN SETTINGS =====
+app.get('/api/columns/settings/:block/:subject/:year', (req, res) => {
+    try {
+        const { block, subject, year } = req.params;
+        const key = `${year}_${block}_${subject}`;
+        
+        console.log(`📋 Getting column settings for: ${key}`);
+        
+        // Check if settings exist
+        if (globalColumnSettings[key]) {
+            return res.json({ 
+                success: true, 
+                columns: globalColumnSettings[key],
+                source: 'server'
+            });
+        }
+        
+        // If not found, return default settings
+        const defaultColumns = [
+            { id: 'sno', label: '#', visible: true, required: true },
+            { id: 'admission', label: 'Admission', visible: true, required: true },
+            { id: 'name', label: 'Name', visible: true, required: true },
+            { id: 'cat1', label: 'CAT1 (0-30)', visible: true, required: false },
+            { id: 'cat2', label: 'CAT2 (0-30)', visible: true, required: false },
+            { id: 'exam', label: 'Exam', visible: true, required: false },
+            { id: 'total', label: 'Total', visible: true, required: false },
+            { id: 'grade', label: 'Grade', visible: true, required: false },
+            { id: 'points', label: 'Points', visible: true, required: false },
+            { id: 'rating', label: 'Rating', visible: true, required: false },
+            { id: 'gradedBy', label: 'Graded By', visible: false, required: false }
+        ];
+        
+        res.json({ 
+            success: true, 
+            columns: defaultColumns,
+            source: 'default'
+        });
+    } catch (error) {
+        console.error('Error getting column settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ===== SAVE GLOBAL COLUMN SETTINGS =====
+app.post('/api/columns/settings', (req, res) => {
+    try {
+        const { block, subject, year, columns, lecturerName } = req.body;
+        const key = `${year}_${block}_${subject}`;
+        
+        console.log(`💾 Saving global column settings for: ${key}`);
+        console.log(`📋 Columns:`, columns.map(c => `${c.id}: ${c.visible ? '✓' : '✗'}`).join(', '));
+        
+        // Store in memory
+        globalColumnSettings[key] = columns;
+        
+        // Log the change
+        markEntryLogs.unshift({
+            timestamp: new Date().toISOString(),
+            lecturerName: lecturerName || 'System',
+            action: 'update_columns',
+            target: subject,
+            block: block,
+            details: `Updated column visibility settings`
+        });
+        if (markEntryLogs.length > 500) markEntryLogs = markEntryLogs.slice(0, 500);
+        
+        res.json({ 
+            success: true, 
+            message: 'Column settings saved globally',
+            key: key,
+            columnCount: columns.length
+        });
+    } catch (error) {
+        console.error('Error saving column settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ===== RESET GLOBAL COLUMN SETTINGS =====
+app.post('/api/columns/reset', (req, res) => {
+    try {
+        const { block, subject, year } = req.body;
+        const key = `${year}_${block}_${subject}`;
+        
+        console.log(`🔄 Resetting column settings for: ${key}`);
+        
+        delete globalColumnSettings[key];
+        
+        res.json({ 
+            success: true, 
+            message: 'Column settings reset to default'
+        });
+    } catch (error) {
+        console.error('Error resetting column settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ===== GET ALL GLOBAL COLUMN SETTINGS (Admin) =====
+app.get('/api/columns/settings/all', (req, res) => {
+    try {
+        const settings = {};
+        for (const [key, value] of Object.entries(globalColumnSettings)) {
+            settings[key] = value;
+        }
+        res.json({ 
+            success: true, 
+            settings: settings,
+            count: Object.keys(settings).length
+        });
+    } catch (error) {
+        console.error('Error getting all column settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 // ===== START SERVER =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
