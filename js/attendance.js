@@ -1,62 +1,148 @@
-// COMPLETE ATTENDANCE SYSTEM - WITH DEVICE FINGERPRINTING
-// FULLY FIXED: History loading, table columns, error handling
-// UPDATED: Uses OLD system's SUPERIOR GPS (maximumAge: 0)
+// ============================================
+// ✅ attendance.js - CLASS-BASED (Like dashboard.js)
+// ============================================
 
-(function() {
-    'use strict';
-    
-    console.log('✅ ATTENDANCE SYSTEM LOADING...');
-    
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-  const CAMPUS_COORDINATES = {
-    latitude: -0.2607276,
-    longitude: 36.0112599
-};
-    
-    let approvedUnits = [];
-    let clinicalLocations = [];
-    let currentLocation = null;
-    let selectedTarget = null;
-    let currentStudent = null;
-    let deviceTableExists = null;
-    
-    // ============================================
-    // HELPER FUNCTIONS
-    // ============================================
-    
-    function getCurrentStudentId() {
-        if (window.db?.currentUserProfile?.user_id) return window.db.currentUserProfile.user_id;
-        if (window.db?.currentUserId) return window.db.currentUserId;
-        try {
-            const profile = localStorage.getItem('userProfile');
-            if (profile) return JSON.parse(profile).user_id;
-        } catch(e) {}
-        return null;
+class AttendanceModule {
+    constructor(supabaseClient) {
+        console.log('🔧 AttendanceModule initialized');
+        
+        // ✅ Store dependencies (SAME as dashboard.js)
+        this.sb = supabaseClient || window.sb || window.db?.supabase;
+        this.userId = null;
+        this.userProfile = null;
+        
+        // ✅ Store data internally
+        this.approvedUnits = [];
+        this.clinicalLocations = [];
+        this.currentLocation = null;
+        this.selectedTarget = null;
+        this.deviceTableExists = null;
+        
+        // ✅ CAMPUS COORDINATES (CORRECT - Kiamunyi)
+        this.CAMPUS_COORDINATES = {
+            latitude: -0.2607276,
+            longitude: 36.0112599
+        };
+        
+        // ✅ Cache DOM elements
+        this.cacheElements();
+        
+        // ✅ Setup event listeners
+        this.setupEventListeners();
+        
+        // ✅ Initialize
+        this.init();
     }
     
-    async function getCurrentStudentProfile() {
-        if (currentStudent) return currentStudent;
+    // ============================================
+    // CACHE DOM ELEMENTS (SAME as dashboard.js)
+    // ============================================
+    
+    cacheElements() {
+        this.elements = {
+            sessionType: document.getElementById('session-type'),
+            targetSelect: document.getElementById('attendance-target'),
+            checkBtn: document.getElementById('check-in-button'),
+            historyTable: document.getElementById('geo-attendance-history'),
+            presentCount: document.getElementById('stats-present-count'),
+            currentTime: document.getElementById('stats-current-time'),
+            gpsStatus: document.getElementById('stats-gps-status'),
+            latEl: document.getElementById('latitude'),
+            lonEl: document.getElementById('longitude'),
+            accEl: document.getElementById('accuracy-value'),
+            forceGpsBtn: document.getElementById('force-gps-btn')
+        };
+    }
+    
+    // ============================================
+    // SETUP EVENT LISTENERS (SAME as dashboard.js)
+    // ============================================
+    
+    setupEventListeners() {
+        if (this.elements.sessionType) {
+            this.elements.sessionType.addEventListener('change', () => {
+                this.populateTargetOptions();
+            });
+        }
         
-        const supabase = window.db?.supabase;
-        const studentId = getCurrentStudentId();
+        if (this.elements.checkBtn) {
+            this.elements.checkBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.doCheckIn();
+            });
+        }
         
-        if (!supabase || !studentId) {
-            return { program: 'KRCHN', intake_year: '2026' };
+        const filterSelect = document.getElementById('history-filter');
+        if (filterSelect) {
+            filterSelect.addEventListener('change', () => {
+                this.filterHistory();
+            });
+        }
+        
+        const refreshBtn = document.getElementById('refresh-history');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.loadHistory();
+                this.updateStats();
+            });
+        }
+        
+        this.addForceGPSButton();
+    }
+    
+    // ============================================
+    // GET STUDENT ID (SAME as dashboard.js)
+    // ============================================
+    
+    getStudentId() {
+        // ✅ Direct access to window.db (SAME as dashboard.js)
+        if (this.userId) return this.userId;
+        if (window.db?.currentUserId) {
+            this.userId = window.db.currentUserId;
+            return this.userId;
+        }
+        if (window.db?.currentUserProfile?.user_id) {
+            this.userId = window.db.currentUserProfile.user_id;
+            return this.userId;
         }
         
         try {
-            const { data, error } = await supabase
+            const profile = localStorage.getItem('userProfile');
+            if (profile) {
+                const parsed = JSON.parse(profile);
+                if (parsed.user_id || parsed.id) {
+                    this.userId = parsed.user_id || parsed.id;
+                    return this.userId;
+                }
+            }
+        } catch(e) {}
+        
+        return null;
+    }
+    
+    // ============================================
+    // GET STUDENT PROFILE (SAME as dashboard.js)
+    // ============================================
+    
+    async getStudentProfile() {
+        if (this.userProfile) return this.userProfile;
+        
+        const studentId = this.getStudentId();
+        if (!studentId) return { program: 'KRCHN', intake_year: '2026' };
+        
+        if (!this.sb) return { program: 'KRCHN', intake_year: '2026' };
+        
+        try {
+            const { data, error } = await this.sb
                 .from('consolidated_user_profiles_table')
                 .select('program, intake_year, full_name')
                 .eq('user_id', studentId)
                 .maybeSingle();
             
-            if (!error && data && data.program) {
-                currentStudent = data;
+            if (!error && data) {
+                this.userProfile = data;
                 console.log(`👨‍🎓 Student: ${data.program} ${data.intake_year}`);
-                return currentStudent;
+                return this.userProfile;
             }
         } catch(e) {
             console.warn('Profile load error:', e);
@@ -65,7 +151,11 @@
         return { program: 'KRCHN', intake_year: '2026' };
     }
     
-    function calculateDistance(lat1, lon1, lat2, lon2) {
+    // ============================================
+    // CALCULATE DISTANCE
+    // ============================================
+    
+    calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
         const toRad = (x) => (x * Math.PI) / 180;
         const dLat = toRad(lat2 - lat1);
@@ -75,38 +165,17 @@
     }
     
     // ============================================
-    // TABLE EXISTENCE CHECK
+    // GET ACCURATE GPS (SUPERIOR OLD SYSTEM)
     // ============================================
     
-    async function tableExists(tableName) {
-        try {
-            const supabase = window.db?.supabase;
-            if (!supabase) return false;
-            
-            const { error } = await supabase
-                .from(tableName)
-                .select('count', { count: 'exact', head: true })
-                .limit(1);
-            
-            return !error;
-        } catch(e) {
-            return false;
-        }
-    }
-    
-    // ============================================
-    // 🆕 SUPERIOR GPS FROM OLD SYSTEM
-    // ============================================
-    
-    function getAccurateLocation() {
+    getAccurateLocation() {
         console.log('📍 Getting ACCURATE GPS (maximumAge:0)...');
         
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
-                console.warn('⚠️ Geolocation not supported, using campus coordinates');
                 resolve({ 
-                    lat: CAMPUS_COORDINATES.latitude, 
-                    lon: CAMPUS_COORDINATES.longitude, 
+                    lat: this.CAMPUS_COORDINATES.latitude, 
+                    lon: this.CAMPUS_COORDINATES.longitude, 
                     acc: 9999,
                     address: 'Campus (GPS unavailable)'
                 });
@@ -122,9 +191,8 @@
                     };
                     console.log(`📍 GPS: ${location.lat.toFixed(6)}, ${location.lon.toFixed(6)} (Accuracy: ±${location.acc.toFixed(0)}m)`);
                     
-                    // Get address from coordinates
                     try {
-                        const address = await getAddressFromCoordinates(location.lat, location.lon);
+                        const address = await this.getAddressFromCoordinates(location.lat, location.lon);
                         location.address = address;
                     } catch(e) {
                         location.address = `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`;
@@ -133,128 +201,28 @@
                     resolve(location);
                 },
                 (error) => {
-                    console.warn('⚠️ GPS Error:', error.message, '- Using campus coordinates');
+                    console.warn('⚠️ GPS Error:', error.message);
                     resolve({ 
-                        lat: CAMPUS_COORDINATES.latitude, 
-                        lon: CAMPUS_COORDINATES.longitude, 
+                        lat: this.CAMPUS_COORDINATES.latitude, 
+                        lon: this.CAMPUS_COORDINATES.longitude, 
                         acc: 9999,
                         address: 'Campus (GPS fallback)'
                     });
                 },
                 { 
-                    enableHighAccuracy: true,  // ✅ Force high accuracy
-                    timeout: 15000,            // ✅ Wait for best signal
-                    maximumAge: 0              // ✅ NO CACHED GPS! (Key from OLD system)
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
                 }
             );
         });
     }
     
     // ============================================
-    // DEVICE FINGERPRINTING
+    // GET ADDRESS FROM COORDINATES
     // ============================================
     
-    async function getDeviceFingerprint() {
-        const fingerprint = {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            screenResolution: `${screen.width}x${screen.height}`,
-            screenColorDepth: screen.colorDepth,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
-            deviceMemory: navigator.deviceMemory || 'unknown',
-            touchSupport: 'ontouchstart' in window,
-            localStorage: !!window.localStorage
-        };
-        
-        const fingerprintString = JSON.stringify(fingerprint);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(fingerprintString);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        return { hash: hashHex, details: fingerprint };
-    }
-    
-    async function checkDeviceTableExists() {
-        if (deviceTableExists !== null) return deviceTableExists;
-        
-        try {
-            deviceTableExists = await tableExists('device_registrations');
-            if (!deviceTableExists) {
-                console.log('⚠️ device_registrations table not found. Device fingerprinting disabled.');
-            } else {
-                console.log('✅ device_registrations table found');
-            }
-            return deviceTableExists;
-        } catch(e) {
-            deviceTableExists = false;
-            return false;
-        }
-    }
-    
-    async function verifyAndRegisterDevice() {
-        const tableExists = await checkDeviceTableExists();
-        if (!tableExists) {
-            console.log('Device fingerprinting skipped - table not found');
-            return true;
-        }
-        
-        const supabase = window.db?.supabase;
-        const studentId = getCurrentStudentId();
-        if (!supabase || !studentId) return true;
-        
-        try {
-            const deviceFingerprint = await getDeviceFingerprint();
-            
-            const { data: existing } = await supabase
-                .from('device_registrations')
-                .select('student_id, student_name')
-                .eq('device_hash', deviceFingerprint.hash)
-                .maybeSingle();
-            
-            if (existing && existing.student_id !== studentId) {
-                alert(`⚠️ DEVICE ALREADY REGISTERED\n\nThis device is registered to: ${existing.student_name || 'another student'}\n\nEach student must use their OWN device for attendance.`);
-                const checkBtn = document.getElementById('check-in-button');
-                if (checkBtn) {
-                    checkBtn.disabled = true;
-                    checkBtn.style.opacity = '0.5';
-                }
-                return false;
-            }
-            
-            const { data: student } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('full_name')
-                .eq('user_id', studentId)
-                .maybeSingle();
-            
-            await supabase
-                .from('device_registrations')
-                .upsert({
-                    device_hash: deviceFingerprint.hash,
-                    student_id: studentId,
-                    student_name: student?.full_name || 'Unknown',
-                    device_name: `${navigator.platform} - ${fingerprint.touchSupport ? 'Mobile' : 'Desktop'}`,
-                    device_details: deviceFingerprint.details,
-                    last_used: new Date().toISOString()
-                }, { onConflict: 'device_hash' });
-            
-            console.log('✅ Device verified and registered');
-            return true;
-        } catch(e) {
-            console.error('Device verification error:', e);
-            return true;
-        }
-    }
-    
-    // ============================================
-    // FREE ADDRESS LOOKUP
-    // ============================================
-    
-    async function getAddressFromCoordinates(lat, lon) {
+    async getAddressFromCoordinates(lat, lon) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
                 headers: { 'User-Agent': 'NCHSM-Attendance-System/1.0' }
@@ -280,14 +248,10 @@
     // UPDATE LOCATION DISPLAY
     // ============================================
     
-    async function updateLocationDisplay(location) {
-        const latEl = document.getElementById('latitude');
-        const lonEl = document.getElementById('longitude');
-        const accEl = document.getElementById('accuracy-value');
-        
-        if (latEl) latEl.textContent = location.lat.toFixed(6);
-        if (lonEl) lonEl.textContent = location.lon.toFixed(6);
-        if (accEl) accEl.textContent = location.acc.toFixed(1);
+    async updateLocationDisplay(location) {
+        if (this.elements.latEl) this.elements.latEl.textContent = location.lat.toFixed(6);
+        if (this.elements.lonEl) this.elements.lonEl.textContent = location.lon.toFixed(6);
+        if (this.elements.accEl) this.elements.accEl.textContent = location.acc.toFixed(1);
         
         let addressDisplay = document.getElementById('location-address');
         if (!addressDisplay) {
@@ -308,56 +272,58 @@
     }
     
     // ============================================
-    // FIX DROPDOWN
+    // ADD FORCE GPS BUTTON
     // ============================================
     
-    function fixDropdown() {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        
-        targetSelect.disabled = false;
-        
-        const newSelect = targetSelect.cloneNode(true);
-        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
-        
-        newSelect.addEventListener('change', function() {
-            if (this.value && this.value !== '') {
-                const parts = this.value.split('|');
-                if (parts.length >= 6) {
-                    window.selectedTarget = {
-                        id: parts[0],
-                        name: parts[1],
-                        type: parts[2],
-                        latitude: parseFloat(parts[3]),
-                        longitude: parseFloat(parts[4]),
-                        radius: parseFloat(parts[5])
-                    };
-                    console.log('✅ Target selected:', window.selectedTarget.name);
-                    
-                    const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) checkBtn.disabled = false;
+    addForceGPSButton() {
+        const container = document.querySelector('.check-in-controls');
+        if (container && !document.getElementById('force-gps-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'force-gps-btn';
+            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
+            btn.style.cssText = `
+                background: #f59e0b;
+                color: white;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 8px;
+                margin: 10px 0;
+                cursor: pointer;
+                font-size: 14px;
+                width: 100%;
+                transition: all 0.3s ease;
+            `;
+            btn.onmouseover = () => { btn.style.background = '#d97706'; };
+            btn.onmouseout = () => { btn.style.background = '#f59e0b'; };
+            btn.onclick = async () => {
+                console.log('🔄 Force refreshing GPS...');
+                if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '⏳ Getting GPS...';
+                
+                try {
+                    const location = await this.getAccurateLocation();
+                    const msg = `📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m\nAddress: ${location.address || 'N/A'}`;
+                    alert(msg);
+                    await this.updateLocationDisplay(location);
+                    if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '✅ GPS Locked';
+                } catch(e) {
+                    alert('GPS failed: ' + e.message);
+                    if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '❌ GPS Failed';
                 }
-            } else {
-                window.selectedTarget = null;
-                const checkBtn = document.getElementById('check-in-button');
-                if (checkBtn) checkBtn.disabled = true;
-            }
-        });
-        
-        console.log('✅ Dropdown fixed');
+            };
+            container.insertBefore(btn, container.firstChild);
+        }
     }
     
     // ============================================
-    // LOAD CLASSROOM UNITS
+    // LOAD APPROVED UNITS
     // ============================================
     
-    async function loadApprovedUnits() {
+    async loadApprovedUnits() {
         try {
-            const supabase = window.db?.supabase;
-            const studentId = getCurrentStudentId();
-            if (!supabase || !studentId) return [];
+            const studentId = this.getStudentId();
+            if (!this.sb || !studentId) return [];
             
-            const { data, error } = await supabase
+            const { data, error } = await this.sb
                 .from('student_unit_registrations')
                 .select('*')
                 .eq('student_id', studentId)
@@ -369,18 +335,18 @@
                 return [];
             }
             
-            approvedUnits = data.map(u => ({
+            this.approvedUnits = data.map(u => ({
                 id: u.id,
                 unit_code: u.unit_code,
                 unit_name: u.unit_name,
                 block: u.block,
-                latitude: u.latitude || CAMPUS_COORDINATES.latitude,
-                longitude: u.longitude || CAMPUS_COORDINATES.longitude,
+                latitude: u.latitude || this.CAMPUS_COORDINATES.latitude,
+                longitude: u.longitude || this.CAMPUS_COORDINATES.longitude,
                 radius: u.radius || 50
             }));
             
-            console.log(`📚 Loaded ${approvedUnits.length} classroom units`);
-            return approvedUnits;
+            console.log(`📚 Loaded ${this.approvedUnits.length} classroom units`);
+            return this.approvedUnits;
         } catch(e) {
             console.error('Error loading units:', e);
             return [];
@@ -391,24 +357,15 @@
     // LOAD CLINICAL LOCATIONS
     // ============================================
     
-    async function loadClinicalLocations() {
+    async loadClinicalLocations() {
         try {
-            const supabase = window.db?.supabase;
-            if (!supabase) return [];
+            if (!this.sb) return [];
             
-            const exists = await tableExists('clinical_names');
-            if (!exists) {
-                console.warn('⚠️ clinical_names table not found');
-                return [];
-            }
-            
-            const student = await getCurrentStudentProfile();
+            const student = await this.getStudentProfile();
             const program = student?.program || 'KRCHN';
             const intakeYear = student?.intake_year || '2026';
             
-            console.log(`Loading clinical locations for: ${program} ${intakeYear}`);
-            
-            const { data, error } = await supabase
+            const { data, error } = await this.sb
                 .from('clinical_names')
                 .select('id, clinical_area_name, latitude, longitude')
                 .eq('program', program)
@@ -420,8 +377,9 @@
                 return [];
             }
             
-            console.log(`🏥 Loaded ${data?.length || 0} clinical locations`);
-            return data || [];
+            this.clinicalLocations = data || [];
+            console.log(`🏥 Loaded ${this.clinicalLocations.length} clinical locations`);
+            return this.clinicalLocations;
         } catch(e) {
             console.error('Error:', e);
             return [];
@@ -429,33 +387,31 @@
     }
     
     // ============================================
-    // POPULATE DROPDOWN
+    // POPULATE TARGET OPTIONS
     // ============================================
     
-    async function populateTargetOptions(sessionType) {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
+    async populateTargetOptions() {
+        if (!this.elements.targetSelect || !this.elements.sessionType) return;
         
-        targetSelect.innerHTML = '<option value="">Loading...</option>';
-        targetSelect.disabled = true;
+        const sessionType = this.elements.sessionType.value;
+        this.elements.targetSelect.innerHTML = '<option value="">Loading...</option>';
+        this.elements.targetSelect.disabled = true;
         
         let options = [];
         
         if (sessionType === 'class') {
-            if (approvedUnits.length === 0) await loadApprovedUnits();
-            
-            options = approvedUnits.map(unit => ({
+            await this.loadApprovedUnits();
+            options = this.approvedUnits.map(unit => ({
                 id: `unit_${unit.id}`,
                 name: `${unit.unit_code} - ${unit.unit_name}`,
                 type: 'class',
-                latitude: unit.latitude || CAMPUS_COORDINATES.latitude,
-                longitude: unit.longitude || CAMPUS_COORDINATES.longitude,
+                latitude: unit.latitude || this.CAMPUS_COORDINATES.latitude,
+                longitude: unit.longitude || this.CAMPUS_COORDINATES.longitude,
                 radius: unit.radius || 50
             }));
-        } 
-        else if (sessionType === 'clinical') {
-            const clinics = await loadClinicalLocations();
-            options = clinics.map(loc => ({
+        } else if (sessionType === 'clinical') {
+            await this.loadClinicalLocations();
+            options = this.clinicalLocations.map(loc => ({
                 id: `clinical_${loc.id}`,
                 name: loc.clinical_area_name,
                 type: 'clinical',
@@ -466,71 +422,51 @@
         }
         
         if (options.length === 0) {
-            targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType === 'class' ? 'courses' : 'clinical locations'} available</option>`;
-            targetSelect.disabled = false;
+            this.elements.targetSelect.innerHTML = `<option value="">⚠️ No ${sessionType === 'class' ? 'courses' : 'clinical locations'} available</option>`;
+            this.elements.targetSelect.disabled = false;
             return;
         }
         
-        targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
+        this.elements.targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
         
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
             option.textContent = opt.name;
-            targetSelect.appendChild(option);
+            this.elements.targetSelect.appendChild(option);
         });
         
-        targetSelect.disabled = false;
+        this.elements.targetSelect.disabled = false;
         console.log(`✅ Loaded ${options.length} ${sessionType} options`);
     }
     
     // ============================================
-    // 🆕 CHECK-IN FUNCTION (UPDATED)
+    // DO CHECK-IN
     // ============================================
     
-    async function doCheckIn() {
-        const btn = document.getElementById('check-in-button');
-        const targetSelect = document.getElementById('attendance-target');
-        const sessionTypeSelect = document.getElementById('session-type');
+    async doCheckIn() {
+        if (!this.elements.checkBtn) return;
         
-        const deviceAllowed = await verifyAndRegisterDevice();
-        if (!deviceAllowed) return;
-        
-        if (!selectedTarget && targetSelect?.value) {
-            const parts = targetSelect.value.split('|');
-            if (parts.length >= 6) {
-                selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    type: parts[2],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])
-                };
-            }
-        }
-        
-        if (!selectedTarget) {
+        if (!this.selectedTarget) {
             alert('Please select a target');
             return;
         }
         
-        btn.disabled = true;
-        btn.innerHTML = '📍 Getting GPS...';
+        this.elements.checkBtn.disabled = true;
+        this.elements.checkBtn.innerHTML = '📍 Getting GPS...';
         
         try {
-            // 🆕 Use the SUPERIOR GPS from OLD system
-            const location = await getAccurateLocation();
-            currentLocation = location;
+            const location = await this.getAccurateLocation();
+            this.currentLocation = location;
             
-            await updateLocationDisplay(location);
+            await this.updateLocationDisplay(location);
             
-            const distance = calculateDistance(
+            const distance = this.calculateDistance(
                 location.lat, location.lon,
-                selectedTarget.latitude, selectedTarget.longitude
+                this.selectedTarget.latitude, this.selectedTarget.longitude
             );
             
-            const radius = selectedTarget.radius || 50;
+            const radius = this.selectedTarget.radius || 50;
             const accuracy = location.acc;
             
             let status = 'Absent';
@@ -552,8 +488,8 @@
             
             const confirmed = confirm(
                 `📍 CHECK-IN CONFIRMATION\n\n` +
-                `Target: ${selectedTarget.name}\n` +
-                `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
+                `Target: ${this.selectedTarget.name}\n` +
+                `Type: ${this.selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
                 `Your Location: ${location.address || `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`}\n` +
                 `GPS Accuracy: ±${accuracy.toFixed(0)}m\n` +
                 `Distance: ${distance.toFixed(0)}m\n` +
@@ -564,46 +500,45 @@
             );
             
             if (!confirmed) {
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
+                this.elements.checkBtn.disabled = false;
+                this.elements.checkBtn.innerHTML = '📍 Check In Now';
                 return;
             }
             
-            btn.innerHTML = '💾 Saving...';
+            this.elements.checkBtn.innerHTML = '💾 Saving...';
             
-            const supabase = window.db?.supabase;
-            const studentId = getCurrentStudentId();
-            const sessionType = sessionTypeSelect?.value || 'class';
+            const studentId = this.getStudentId();
+            const sessionType = this.elements.sessionType?.value || 'class';
             
             const record = {
                 student_id: studentId,
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
-                target_id: selectedTarget.id,
-                target_name: selectedTarget.name,
+                target_id: this.selectedTarget.id,
+                target_name: this.selectedTarget.name,
                 latitude: location.lat,
                 longitude: location.lon,
                 accuracy_m: location.acc,
                 distance_meters: distance,
                 is_verified: status === 'Present',
                 attendance_status: status,
-                target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude,
+                target_latitude: this.selectedTarget.latitude,
+                target_longitude: this.selectedTarget.longitude,
                 location_address: location.address || null
             };
             
             if (sessionType === 'class') {
-                record.unit_code = selectedTarget.name.split(' - ')[0];
+                record.unit_code = this.selectedTarget.name.split(' - ')[0];
             } else {
-                record.clinical_area = selectedTarget.name;
+                record.clinical_area = this.selectedTarget.name;
             }
             
-            const { error } = await supabase.from('geo_attendance_logs').insert([record]);
+            const { error } = await this.sb.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
             
             alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m`);
-            await updateStatsData();
-            await loadHistory();
+            await this.updateStats();
+            await this.loadHistory();
             
             document.dispatchEvent(new CustomEvent('attendanceRecorded', {
                 detail: { isVerified: status === 'Present' }
@@ -613,152 +548,297 @@
             console.error('Check-in error:', error);
             alert('Check-in failed: ' + error.message);
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
+            this.elements.checkBtn.disabled = false;
+            this.elements.checkBtn.innerHTML = '📍 Check In Now';
         }
     }
     
     // ============================================
-    // LOAD HISTORY - FIXED FOR 6 COLUMNS
+    // LOAD HISTORY
     // ============================================
     
- // ============================================
-// 🔧 FIXED: loadHistory Function
-// ============================================
-
-async function loadHistory() {
-    const table = document.getElementById('geo-attendance-history');
-    if (!table) {
-        console.warn('History table not found');
-        return;
-    }
-    
-    const supabaseClient = window.db?.supabase || window.supabase;
-    const studentId = window.getCurrentStudentId();
-    
-    if (!supabaseClient || !studentId) {
-        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
-            <i class="fas fa-exclamation-circle"></i> Please log in to view history
-        </td></tr>`;
-        return;
-    }
-    
-    try {
-        const { data, error } = await supabaseClient
-            .from('geo_attendance_logs')
-            .select('*')
-            .eq('student_id', studentId)
-            .order('check_in_time', { ascending: false })
-            .limit(20);
+    async loadHistory() {
+        if (!this.elements.historyTable) {
+            console.warn('History table not found');
+            return;
+        }
         
-        if (error) {
-            console.error('History query error:', error);
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-                <i class="fas fa-exclamation-triangle"></i> Error loading history
+        const studentId = this.getStudentId();
+        if (!this.sb || !studentId) {
+            this.elements.historyTable.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+                <i class="fas fa-exclamation-circle"></i> Please log in to view history
             </td></tr>`;
             return;
         }
         
-        if (!data || data.length === 0) {
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
-                <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
-                No attendance records found
-                <div style="font-size:12px; margin-top:4px;">Check in to start tracking your attendance!</div>
-            </td></tr>`;
-            return;
-        }
-        
-        table.innerHTML = data.map(log => {
-            // Handle both column names
-            const accuracy = log.accuracy_m || log.accuracy_meters || 0;
-            const distance = log.distance_meters || 0;
+        try {
+            const { data, error } = await this.sb
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('check_in_time', { ascending: false })
+                .limit(20);
             
-            const dist = distance >= 1000 ? 
-                (distance/1000).toFixed(2) + ' km' : 
-                distance.toFixed(0) + ' m';
+            if (error) throw error;
             
-            const time = new Date(log.check_in_time).toLocaleString('en-KE', {
-                timeZone: 'Africa/Nairobi',
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            let status = log.attendance_status || 'Pending';
-            let statusColor = '#f59e0b';
-            let statusIcon = '⏳';
-            
-            if (status === 'Present' || status === 'Verified') {
-                statusColor = '#10b981';
-                statusIcon = '✅';
-            } else if (status === 'Absent') {
-                statusColor = '#ef4444';
-                statusIcon = '❌';
+            if (!data || data.length === 0) {
+                this.elements.historyTable.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                    No attendance records found
+                </td></tr>`;
+                return;
             }
             
-            const sessionIcon = log.session_type === 'class' ? '📚' : 
-                                (log.session_type === 'clinical' ? '🏥' : '📖');
+            this.elements.historyTable.innerHTML = data.map(log => {
+                const accuracy = log.accuracy_m || log.accuracy_meters || 0;
+                const distance = log.distance_meters || 0;
+                const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
+                
+                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                let status = log.attendance_status || 'Pending';
+                let statusColor = '#f59e0b';
+                let statusIcon = '⏳';
+                
+                if (status === 'Present' || status === 'Verified') {
+                    statusColor = '#10b981';
+                    statusIcon = '✅';
+                } else if (status === 'Absent') {
+                    statusColor = '#ef4444';
+                    statusIcon = '❌';
+                }
+                
+                const sessionIcon = log.session_type === 'class' ? '📚' : (log.session_type === 'clinical' ? '🏥' : '📖');
+                const targetName = log.target_name || log.location_name || 'Unknown';
+                
+                return `<tr>
+                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
+                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
+                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">${targetName}</td>
+                    <td style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
+                    <td>${dist}</td>
+                    <td>±${accuracy.toFixed(0)}m</td>
+                </tr>`;
+            }).join('');
             
-            const targetName = log.target_name || log.location_name || 'Unknown';
+            console.log(`✅ Loaded ${data.length} history records`);
+            this.updatePresentCount(data);
             
-            return `<tr>
-                <td style="white-space: nowrap; font-size: 12px;">${time}</td>
-                <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
-                    ${targetName}
-                </td>
-                <td style="color: ${statusColor}; font-weight: 600;">
-                    ${statusIcon} ${status}
-                </td>
-                <td>${dist}</td>
-                <td>±${accuracy.toFixed(0)}m</td>
-            </tr>`;
-        }).join('');
-        
-        console.log(`✅ Loaded ${data.length} history records`);
-        
-        // Update "Present Today" counter
-        updatePresentCount(data);
-        
-    } catch(e) {
-        console.error('History error:', e);
-        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-            <i class="fas fa-exclamation-triangle"></i> Error loading history
-        </td></tr>`;
-    }
-}
-
-// ============================================
-// 📊 Update Present Count
-// ============================================
-
-function updatePresentCount(records) {
-    const presentEl = document.getElementById('stats-present-count');
-    if (!presentEl) return;
-    
-    if (!records || records.length === 0) {
-        presentEl.textContent = '0';
-        return;
+        } catch(e) {
+            console.error('History error:', e);
+            this.elements.historyTable.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> Error loading history
+            </td></tr>`;
+        }
     }
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-    
-    const todayRecords = records.filter(log => {
-        const logDate = new Date(log.check_in_time);
-        return logDate >= today && (log.attendance_status === 'Present' || log.attendance_status === 'Verified');
-    });
-    
-    presentEl.textContent = todayRecords.length;
-}
     // ============================================
-    // STATS DISPLAY
+    // UPDATE PRESENT COUNT
     // ============================================
     
-    function createStatsDisplayIfNeeded() {
+    updatePresentCount(records) {
+        if (!this.elements.presentCount) return;
+        
+        if (!records || records.length === 0) {
+            this.elements.presentCount.textContent = '0';
+            return;
+        }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayRecords = records.filter(log => {
+            const logDate = new Date(log.check_in_time);
+            return logDate >= today && (log.attendance_status === 'Present' || log.attendance_status === 'Verified');
+        });
+        
+        this.elements.presentCount.textContent = todayRecords.length;
+    }
+    
+    // ============================================
+    // UPDATE STATS
+    // ============================================
+    
+    async updateStats() {
+        if (!this.elements.presentCount) return;
+        
+        const studentId = this.getStudentId();
+        if (!this.sb || !studentId) {
+            this.elements.presentCount.textContent = '0';
+            return;
+        }
+        
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = today.toISOString();
+            
+            const { data, error } = await this.sb
+                .from('geo_attendance_logs')
+                .select('id', { count: 'exact' })
+                .eq('student_id', studentId)
+                .eq('attendance_status', 'Present')
+                .gte('check_in_time', todayStr);
+            
+            if (error) throw error;
+            this.elements.presentCount.textContent = data?.length || 0;
+            
+        } catch(e) {
+            console.error('Stats error:', e);
+            this.elements.presentCount.textContent = '?';
+        }
+    }
+    
+    // ============================================
+    // FILTER HISTORY
+    // ============================================
+    
+    async filterHistory() {
+        const filter = document.getElementById('history-filter');
+        if (!filter) return;
+        
+        const value = filter.value;
+        const studentId = this.getStudentId();
+        if (!this.sb || !studentId) return;
+        
+        try {
+            let query = this.sb
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('check_in_time', { ascending: false });
+            
+            const now = new Date();
+            
+            if (value === 'today') {
+                const today = new Date(now);
+                today.setHours(0, 0, 0, 0);
+                query = query.gte('check_in_time', today.toISOString());
+            } else if (value === 'week') {
+                const weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                query = query.gte('check_in_time', weekAgo.toISOString());
+            } else if (value === 'month') {
+                const monthAgo = new Date(now);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                query = query.gte('check_in_time', monthAgo.toISOString());
+            }
+            
+            const { data, error } = await query.limit(50);
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                this.elements.historyTable.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                    No records for this period
+                </td></tr>`;
+                return;
+            }
+            
+            this.elements.historyTable.innerHTML = data.map(log => {
+                const accuracy = log.accuracy_m || log.accuracy_meters || 0;
+                const distance = log.distance_meters || 0;
+                const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
+                
+                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                let status = log.attendance_status || 'Pending';
+                let statusColor = '#f59e0b';
+                let statusIcon = '⏳';
+                
+                if (status === 'Present' || status === 'Verified') {
+                    statusColor = '#10b981';
+                    statusIcon = '✅';
+                } else if (status === 'Absent') {
+                    statusColor = '#ef4444';
+                    statusIcon = '❌';
+                }
+                
+                const sessionIcon = log.session_type === 'class' ? '📚' : (log.session_type === 'clinical' ? '🏥' : '📖');
+                const targetName = log.target_name || log.location_name || 'Unknown';
+                
+                return `<tr>
+                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
+                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
+                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">${targetName}</td>
+                    <td style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
+                    <td>${dist}</td>
+                    <td>±${accuracy.toFixed(0)}m</td>
+                </tr>`;
+            }).join('');
+            
+        } catch(e) {
+            console.error('Filter error:', e);
+        }
+    }
+    
+    // ============================================
+    // INIT (SAME as dashboard.js)
+    // ============================================
+    
+    async init() {
+        console.log('🚀 Initializing attendance system...');
+        
+        try {
+            // ✅ Get student ID (SAME as dashboard.js)
+            const studentId = this.getStudentId();
+            if (!studentId) {
+                console.log('⏳ Waiting for student data...');
+                setTimeout(() => this.init(), 1000);
+                return;
+            }
+            
+            // ✅ Get profile
+            await this.getStudentProfile();
+            
+            // ✅ Load data
+            await this.loadApprovedUnits();
+            await this.loadClinicalLocations();
+            
+            // ✅ Update UI
+            this.createStatsDisplayIfNeeded();
+            await this.updateStats();
+            this.startTimeUpdates();
+            
+            // ✅ Setup dropdown
+            await this.populateTargetOptions();
+            
+            // ✅ Load history
+            await this.loadHistory();
+            
+            console.log('✅ Attendance system ready!');
+            console.log('📍 Using SUPERIOR GPS: maximumAge:0, enableHighAccuracy:true');
+            console.log(`🏫 Campus: ${this.CAMPUS_COORDINATES.latitude}, ${this.CAMPUS_COORDINATES.longitude}`);
+            
+        } catch(e) {
+            console.error('❌ Attendance init error:', e);
+            if (this.elements.checkBtn) {
+                this.elements.checkBtn.disabled = true;
+                this.elements.checkBtn.innerHTML = '⚠️ System Error - Refresh';
+                this.elements.checkBtn.style.background = '#ef4444';
+            }
+        }
+    }
+    
+    // ============================================
+    // CREATE STATS DISPLAY (SAME as dashboard.js)
+    // ============================================
+    
+    createStatsDisplayIfNeeded() {
         if (document.getElementById('stats-present-count')) return;
         
         const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => 
@@ -791,44 +871,12 @@ function updatePresentCount(records) {
         }
     }
     
-    async function updateStatsData() {
-        const presentEl = document.getElementById('stats-present-count');
-        if (!presentEl) {
-            createStatsDisplayIfNeeded();
-            return;
-        }
-        
-        const supabase = window.db?.supabase;
-        const studentId = getCurrentStudentId();
-        
-        if (!supabase || !studentId) {
-            presentEl.textContent = '0';
-            return;
-        }
-        
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayStr = today.toISOString();
-            
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('id', { count: 'exact' })
-                .eq('student_id', studentId)
-                .eq('attendance_status', 'Present')
-                .gte('check_in_time', todayStr);
-            
-            if (error) throw error;
-            presentEl.textContent = data?.length || 0;
-            
-        } catch(e) {
-            console.error('Stats error:', e);
-            presentEl.textContent = '?';
-        }
-    }
+    // ============================================
+    // START TIME UPDATES (SAME as dashboard.js)
+    // ============================================
     
-    function startTimeUpdates() {
-        updateStatsData();
+    startTimeUpdates() {
+        this.updateStats();
         setInterval(() => {
             const timeEl = document.getElementById('stats-current-time');
             if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
@@ -836,253 +884,37 @@ function updatePresentCount(records) {
     }
     
     // ============================================
-    // FORCE GPS BUTTON (UPDATED)
+    // REFRESH (SAME as dashboard.js)
     // ============================================
     
-    function addForceGPSButton() {
-        const container = document.querySelector('.check-in-controls');
-        if (container && !document.getElementById('force-gps-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'force-gps-btn';
-            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
-            btn.style.cssText = `
-                background: #f59e0b;
-                color: white;
-                border: none;
-                padding: 10px 16px;
-                border-radius: 8px;
-                margin: 10px 0;
-                cursor: pointer;
-                font-size: 14px;
-                width: 100%;
-                transition: all 0.3s ease;
-            `;
-            btn.onmouseover = () => { btn.style.background = '#d97706'; };
-            btn.onmouseout = () => { btn.style.background = '#f59e0b'; };
-            btn.onclick = async () => {
-                console.log('🔄 Force refreshing GPS...');
-                const statusEl = document.getElementById('stats-gps-status');
-                if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
-                
-                try {
-                    // 🆕 Use the SUPERIOR GPS from OLD system
-                    const location = await getAccurateLocation();
-                    const msg = `📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m\nAddress: ${location.address || 'N/A'}`;
-                    alert(msg);
-                    await updateLocationDisplay(location);
-                    if (statusEl) statusEl.textContent = '✅ GPS Locked';
-                } catch(e) {
-                    alert('GPS failed: ' + e.message);
-                    if (statusEl) statusEl.textContent = '❌ GPS Failed';
-                }
-            };
-            container.insertBefore(btn, container.firstChild);
-        }
+    async refresh() {
+        console.log('🔄 Refreshing attendance...');
+        await this.init();
+    }
+}
+
+// ============================================
+// ✅ CREATE GLOBAL INSTANCE (SAME as dashboard.js)
+// ============================================
+
+let attendanceModule = null;
+
+function initAttendanceModule(supabaseClient) {
+    const client = supabaseClient || window.sb || window.db?.supabase;
+    if (!client) {
+        console.error('❌ No Supabase client for attendance');
+        return null;
     }
     
-    // ============================================
-    // FILTER FUNCTION
-    // ============================================
-    
-    async function filterHistory() {
-        const filter = document.getElementById('history-filter');
-        if (!filter) return;
-        
-        const value = filter.value;
-        const table = document.getElementById('geo-attendance-history');
-        if (!table) return;
-        
-        const supabase = window.db?.supabase;
-        const studentId = getCurrentStudentId();
-        
-        if (!supabase || !studentId) {
-            table.innerHTML = '<tr><td colspan="6">Please log in</td></tr>';
-            return;
-        }
-        
-        try {
-            let query = supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', studentId)
-                .order('check_in_time', { ascending: false });
-            
-            const now = new Date();
-            
-            if (value === 'today') {
-                const today = new Date(now);
-                today.setHours(0, 0, 0, 0);
-                query = query.gte('check_in_time', today.toISOString());
-            } else if (value === 'week') {
-                const weekAgo = new Date(now);
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                query = query.gte('check_in_time', weekAgo.toISOString());
-            } else if (value === 'month') {
-                const monthAgo = new Date(now);
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                query = query.gte('check_in_time', monthAgo.toISOString());
-            }
-            
-            const { data, error } = await query.limit(50);
-            
-            if (error) throw error;
-            
-            if (!data || data.length === 0) {
-                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
-                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
-                    No records for this period
-                </td></tr>`;
-                return;
-            }
-            
-            table.innerHTML = data.map(log => {
-                const dist = log.distance_meters >= 1000 ? 
-                    (log.distance_meters/1000).toFixed(2) + ' km' : 
-                    log.distance_meters.toFixed(0) + ' m';
-                
-                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
-                    timeZone: 'Africa/Nairobi',
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                const statusColor = log.attendance_status === 'Present' ? '#10b981' : 
-                                   (log.attendance_status === 'Pending' ? '#f59e0b' : '#ef4444');
-                
-                const statusIcon = log.attendance_status === 'Present' ? '✅' : 
-                                   (log.attendance_status === 'Pending' ? '⏳' : '❌');
-                
-                const sessionIcon = log.session_type === 'class' ? '📚' : 
-                                    (log.session_type === 'clinical' ? '🏥' : '📖');
-                
-                return `<tr>
-                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
-                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                    <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.target_name || 'Unknown'}">
-                        ${log.target_name || 'Unknown'}
-                    </td>
-                    <td style="color: ${statusColor}; font-weight: 600;">
-                        ${statusIcon} ${log.attendance_status || 'Unknown'}
-                    </td>
-                    <td>${dist}</td>
-                    <td>±${(log.accuracy_m || 0).toFixed(0)}m</td>
-                </tr>`;
-            }).join('');
-            
-            console.log(`✅ Filtered ${data.length} records`);
-            
-        } catch(e) {
-            console.error('Filter error:', e);
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-                <i class="fas fa-exclamation-triangle"></i> Error filtering
-            </td></tr>`;
-        }
-    }
-    
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-    
-    async function init() {
-        console.log('🚀 Initializing attendance system...');
-        
-        try {
-            await getCurrentStudentProfile();
-            await loadApprovedUnits();
-            await loadClinicalLocations();
-            
-            createStatsDisplayIfNeeded();
-            await updateStatsData();
-            startTimeUpdates();
-            
-            fixDropdown();
-            addForceGPSButton();
-            
-            await checkDeviceTableExists();
-            
-            const sessionType = document.getElementById('session-type');
-            if (sessionType) {
-                sessionType.addEventListener('change', async () => {
-                    const targetGroup = document.getElementById('target-control-group');
-                    const targetLabel = document.getElementById('target-text');
-                    
-                    if (sessionType.value === 'class') {
-                        if (targetGroup) targetGroup.style.display = 'flex';
-                        if (targetLabel) targetLabel.textContent = 'Select Course:';
-                        await populateTargetOptions('class');
-                    } else if (sessionType.value === 'clinical') {
-                        if (targetGroup) targetGroup.style.display = 'flex';
-                        if (targetLabel) targetLabel.textContent = 'Select Clinical Area:';
-                        await populateTargetOptions('clinical');
-                    } else {
-                        if (targetGroup) targetGroup.style.display = 'none';
-                    }
-                });
-                
-                if (sessionType.value === 'class') {
-                    await populateTargetOptions('class');
-                } else if (sessionType.value === 'clinical') {
-                    await populateTargetOptions('clinical');
-                }
-            }
-            
-            const filterSelect = document.getElementById('history-filter');
-            if (filterSelect) {
-                filterSelect.addEventListener('change', filterHistory);
-            }
-            
-            const refreshBtn = document.getElementById('refresh-history');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', () => {
-                    loadHistory();
-                    updateStatsData();
-                });
-            }
-            
-            const checkBtn = document.getElementById('check-in-button');
-            if (checkBtn) {
-                checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
-            }
-            
-            await loadHistory();
-            console.log('✅ Attendance system ready!');
-            console.log('📍 Using SUPERIOR GPS: maximumAge:0, enableHighAccuracy:true');
-            
-        } catch(e) {
-            console.error('❌ Attendance init error:', e);
-            const btn = document.getElementById('check-in-button');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '⚠️ System Error - Refresh';
-                btn.style.background = '#ef4444';
-            }
-        }
-    }
-    
-    // ============================================
-    // EXPOSE FUNCTIONS
-    // ============================================
-    
-    window.refreshStats = updateStatsData;
-    window.refreshHistory = loadHistory;
-    window.filterHistory = filterHistory;
-    window.getAccurateLocation = getAccurateLocation;
-    window.attendanceSystemReady = true;
-    
-    // ============================================
-    // START
-    // ============================================
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-    
-    console.log('✅ Attendance system module loaded!');
-    console.log('🔥 Using OLD system\'s SUPERIOR GPS accuracy!');
-    
-})();
+    attendanceModule = new AttendanceModule(client);
+    return attendanceModule;
+}
+
+// ✅ Make it globally accessible (SAME as dashboard.js)
+window.AttendanceModule = AttendanceModule;
+window.initAttendanceModule = initAttendanceModule;
+window.refreshAttendance = () => attendanceModule?.refresh();
+
+console.log('✅ Attendance module loaded - CLASS-BASED (like dashboard.js)');
+console.log('🔥 Using OLD system\'s SUPERIOR GPS accuracy!');
+console.log(`🏫 Campus: -0.2607276, 36.0112599 (Kiamunyi)`);
