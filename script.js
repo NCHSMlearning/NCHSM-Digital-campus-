@@ -640,19 +640,19 @@ async function loadSectionData(tabId) {
             updateProgramDropdown($('course-program'));
             updateBlockTermOptions('course-program', 'course-block');
             break;
-case 'programs': 
-    loadAllPrograms(); 
-    populateCourseSelector();
-    break;
+        case 'programs': 
+            loadAllPrograms(); 
+            populateCourseSelector();
+            break;
         case 'sessions': 
             loadScheduledSessions(); 
             updateProgramDropdown($('new_session_program'));
             updateBlockTermOptions('new_session_program', 'new_session_block_term');
             populateSessionCourseSelects(); 
             break;
-            case 'reviews-newsletter': 
-    initReviewsNewsletter(); 
-    break;
+        case 'reviews-newsletter': 
+            initReviewsNewsletter(); 
+            break;
         case 'attendance': 
             loadAttendance(); 
             updateProgramDropdown($('att_program'));
@@ -676,12 +676,12 @@ case 'programs':
             renderFullCalendar(); 
             break;
         case 'unit-management': 
-    loadAllUnits(); 
-    loadUnitBlocks();
-    loadUnitRegistrationStats();
-    loadUnitPendingRegistrations(); 
-    loadApprovedRegistrations();
-    break;
+            loadAllUnits(); 
+            loadUnitBlocks();
+            loadUnitRegistrationStats();
+            loadUnitPendingRegistrations(); 
+            loadApprovedRegistrations();
+            break;
         case 'fee-accounts': 
             loadStudentAccounts();
             loadFeeStructure();
@@ -740,12 +740,21 @@ case 'programs':
         case 'data-visualization': 
             loadDataVisualization(); 
             break;
-        // ========== ADD STAFF MANAGEMENT CASE HERE ==========
+        // ========== STAFF MANAGEMENT ==========
         case 'staff-management': 
             if (typeof initStaffManagement === 'function') {
                 initStaffManagement();
             } else if (typeof loadAllStaff === 'function') {
                 loadAllStaff();
+            }
+            break;
+        // ========== ADMIN APPROVALS - ADD THIS CASE ==========
+        case 'admin-approvals':
+            if (typeof loadAdminActions === 'function') {
+                loadAdminActions();
+            }
+            if (typeof loadApprovalHistory === 'function') {
+                loadApprovalHistory();
             }
             break;
         // ====================================================
