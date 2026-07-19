@@ -1501,13 +1501,18 @@
         }
     }
 
-    // ============================================
-    // BUILD WELCOME EMAIL
-    // ============================================
-    function buildWelcomeEmail(name, email, studentId, program, intake, time) {
-        const year = new Date().getFullYear();
-        
-        return `
+ // ============================================
+// BUILD WELCOME EMAIL - UPDATED CONTACTS
+// ============================================
+function buildWelcomeEmail(name, email, studentId, program, intake, time) {
+    const year = new Date().getFullYear();
+    
+    // Contact details
+    const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
+    const PHONE1 = '0790969743';
+    const PHONE2 = '0702432987';
+    
+    return `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
@@ -1557,8 +1562,9 @@
             <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Support</h5>
             <p style="margin: 0; color: #78350F; font-size: 13px;">
                 If you have any questions or need assistance, contact NCHSM ICT Support:
-                <br>📧 ict@nakurucollegeofhealthelearning.site
-                <br>📞 +254 700 000 000
+                <br>📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a>
+                <br>📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
+                📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a>
             </p>
         </div>
         
@@ -1572,15 +1578,16 @@
         <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
         <p style="font-size: 12px; color: #94a3b8; text-align: center;">
             NCHSM ICT Support<br>
-            📧 ict@nakurucollegeofhealthelearning.site<br>
-            🔗 mail.nakurucollegeofhealthelearning.site<br>
+            📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
+            📞 ${PHONE1} | ${PHONE2}<br>
+            🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a><br>
             © ${year} Nakuru College of Health Sciences and Management
         </p>
     </div>
 </body>
 </html>
-        `;
-    }
+    `;
+}
     // ============================================
     // STORED DOCUMENTS DATA
     // ============================================
