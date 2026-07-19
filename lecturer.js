@@ -2,10 +2,7 @@
  * ============================================================
  * NCHSM LECTURER DASHBOARD - COMPLETE JAVASCRIPT
  * ============================================================
- * All features: Dashboard, Profile, Courses, Students, Sessions,
- * Attendance, Exams/CATS, Marks Management, Resources, Messages,
- * Reports, Settings, Nurse IQ, Calendar
- * WITH ADMIN APPROVAL SYSTEM
+ * Matches Super Admin style with program filtering
  */
 
 // ============================================================
@@ -134,6 +131,57 @@ function getProgramFromDepartment(department) {
         return 'TVET';
     }
     return null;
+}
+
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    var code = String(programCode).toUpperCase().trim();
+    var tvetCodes = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+    ];
+    return tvetCodes.includes(code);
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    var code = String(programCode).toUpperCase().trim();
+    if (code === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(code)) return 'TVET';
+    return 'KRCHN';
+}
+
+function getProgramDisplayName(programCode) {
+    if (!programCode) return 'Unknown Program';
+    var names = {
+        'KRCHN': 'KRCHN Nursing',
+        'DPOTT': 'Diploma in Perioperative Theatre Technology',
+        'DCH': 'Diploma in Community Health',
+        'DHRIT': 'Diploma in Health Records and IT',
+        'DSL': 'Diploma in Science Lab',
+        'DSW': 'Diploma in Social Work',
+        'DCJS': 'Diploma in Criminal Justice',
+        'DHSS': 'Diploma in Health Support Services',
+        'DICT': 'Diploma in ICT',
+        'DME': 'Diploma in Medical Engineering',
+        'CPOTT': 'Certificate in Perioperative Theatre Technology',
+        'CCH': 'Certificate in Community Health',
+        'CHRIT': 'Certificate in Health Records and IT',
+        'CPC': 'Certificate in Patient Care',
+        'CSL': 'Certificate in Science Lab',
+        'CSW': 'Certificate in Social Work',
+        'CCJS': 'Certificate in Criminal Justice',
+        'CAG': 'Certificate in Agriculture',
+        'CHSS': 'Certificate in Health Support Services',
+        'CICT': 'Certificate in ICT',
+        'ACH': 'Artisan in Community Health',
+        'AAG': 'Artisan in Agriculture',
+        'ASW': 'Artisan in Social Work',
+        'CCA': 'Certificate in Computer Applications',
+        'PTE': 'TVET/CDACC (PTE)'
+    };
+    return names[code] || programCode;
 }
 
 function populateSelect(selectElement, data, valueKey, textKey, defaultText) {
@@ -632,6 +680,42 @@ function populateCourseFilters(courses) {
     }
 }
 
+function filterCoursesByAcademicPeriod() {
+    var intake = $('intakeYearFilter')?.value;
+    var period = $('academicPeriodFilter')?.value;
+    
+    var filtered = state.allCourses.filter(function(c) {
+        var matchProgram = c.target_program === state.program;
+        var matchIntake = !intake || c.intake_year === intake;
+        var matchPeriod = !period || c.block === period;
+        var isActive = (c.status || 'Active') === 'Active';
+        return matchProgram && matchIntake && matchPeriod && isActive;
+    });
+    
+    var tbody = $('lecturerCoursesTable');
+    if (!tbody) return;
+    
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="7">No courses match filters.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(function(c) {
+        var students = state.allStudents.filter(function(s) {
+            return s.program === state.program && (!c.intake_year || s.intake_year === c.intake_year);
+        });
+        return '<tr>' +
+            '<td><strong>' + escapeHtml(c.unit_code || 'N/A') + '</strong></td>' +
+            '<td>' + escapeHtml(c.course_name || 'N/A') + '</td>' +
+            '<td><span class="program-badge">' + escapeHtml(c.target_program || 'N/A') + '</span></td>' +
+            '<td>' + escapeHtml(c.block || 'N/A') + '</td>' +
+            '<td>' + escapeHtml(c.intake_year || 'N/A') + '</td>' +
+            '<td>' + students.length + ' students</td>' +
+            '<td><button class="btn btn-action btn-small" data-action="manage-course" data-course="' + (c.id || '') + '"><i class="fas fa-chart-bar"></i> Manage</button></td>' +
+        '</tr>';
+    }).join('');
+}
+
 // ============================================================
 // 10. STUDENTS
 // ============================================================
@@ -714,6 +798,47 @@ function filterStudentTable() {
     });
     
     updateStudentStats(visible);
+}
+
+function viewStudentProfile(userId) {
+    var student = state.allStudents.find(function(s) { return s.user_id === userId; });
+    if (!student) {
+        showNotification('Student not found.', 'error');
+        return;
+    }
+    
+    $('infoName').textContent = student.full_name || 'N/A';
+    $('infoRegno').textContent = student.student_id || 'N/A';
+    $('infoEmail').textContent = student.email || 'N/A';
+    $('infoProgram').textContent = student.program || 'N/A';
+    $('infoIntake').textContent = student.intake_year || 'N/A';
+    $('infoStatus').textContent = student.status || 'Active';
+    $('infoAbsences').textContent = student.cumulative_absences || '0';
+    
+    var modal = $('studentInfoModal');
+    modal.classList.add('active');
+}
+
+function closeStudentInfoModal() {
+    var modal = $('studentInfoModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function showSendMessageModal(userId, fullName) {
+    var form = $('sendMessageForm');
+    if (form) form.reset();
+    populateMessageForm();
+    
+    var target = $('msgTarget');
+    if (target) {
+        for (var i = 0; i < target.options.length; i++) {
+            if (target.options[i].value === userId) {
+                target.value = userId;
+                break;
+            }
+        }
+    }
+    showNotification('Ready to message ' + fullName, 'info');
 }
 
 // ============================================================
@@ -803,7 +928,7 @@ async function handleAddSession(e) {
             block_term: data.block_term,
             course_id: data.course_id,
             lecturer_id: state.currentUserId,
-            approval_status: 'pending',  // 🔒 WAITING FOR ADMIN APPROVAL
+            approval_status: 'pending',
             created_at: new Date().toISOString()
         });
         showNotification('✅ Session "' + data.title + '" scheduled! Waiting for admin approval.', 'success');
@@ -1103,6 +1228,37 @@ async function handleManualAttendance(e) {
     }
 }
 
+function viewCheckInMap(lat, lng, name) {
+    if (!lat || !lng) {
+        showNotification('No location data.', 'info');
+        return;
+    }
+    
+    var modal = $('mapModal');
+    modal.classList.add('active');
+    
+    if (state.attendanceMap) state.attendanceMap.remove();
+    
+    $('mapDetails').textContent = 'Location for ' + name;
+    
+    state.attendanceMap = L.map('mapbox-map').setView([parseFloat(lat), parseFloat(lng)], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(state.attendanceMap);
+    
+    L.marker([parseFloat(lat), parseFloat(lng)])
+        .addTo(state.attendanceMap)
+        .bindPopup('<b>' + name + '</b>')
+        .openPopup();
+    
+    setTimeout(function() { state.attendanceMap.invalidateSize(); }, 300);
+}
+
+function closeMapModal() {
+    var modal = $('mapModal');
+    if (modal) modal.classList.remove('active');
+}
+
 // ============================================================
 // 13. EXAMS / CATS
 // ============================================================
@@ -1207,7 +1363,7 @@ async function handleAddExam(e) {
             intake_year: data.intake,
             block_term: data.block_term,
             status: data.status,
-            approval_status: 'draft',  // 🔒 WAITING FOR ADMIN APPROVAL
+            approval_status: 'draft',
             created_by: state.currentUserId,
             created_at: new Date().toISOString()
         });
@@ -1222,6 +1378,88 @@ async function handleAddExam(e) {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Create Exam Record';
+    }
+}
+
+async function deleteExam(examId) {
+    var exam = state.allExams.find(function(e) { return e.id === examId; });
+    if (!confirm('Delete "' + (exam?.exam_name || 'Exam') + '"?')) return;
+    
+    try {
+        await state.sb
+            .from(TABLES.EXAMS)
+            .delete()
+            .eq('id', examId);
+        showNotification('✅ Exam deleted!', 'success');
+        loadExamsTable();
+    } catch (error) {
+        showNotification('Delete failed: ' + error.message, 'error');
+    }
+}
+
+async function openEditExamModal(examId) {
+    try {
+        var { data: exam, error } = await state.sb
+            .from(TABLES.EXAMS)
+            .select('*')
+            .eq('id', examId)
+            .single();
+        
+        if (error || !exam) {
+            showNotification('Exam not found.', 'error');
+            return;
+        }
+        
+        $('editExamId').value = exam.id;
+        $('editExamTitle').value = exam.exam_name || '';
+        $('editExamDate').value = exam.exam_date || '';
+        $('editExamStatus').value = exam.status || 'Scheduled';
+        
+        var modal = $('examEditModal');
+        modal.classList.add('active');
+        
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+function closeEditExamModal() {
+    var modal = $('examEditModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function saveEditedExam(e) {
+    e.preventDefault();
+    var btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    var id = $('editExamId').value;
+    var title = $('editExamTitle').value;
+    var date = $('editExamDate').value;
+    var status = $('editExamStatus').value;
+    
+    if (!title || !date) {
+        showNotification('Title and date required.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+        return;
+    }
+    
+    try {
+        await state.sb
+            .from(TABLES.EXAMS)
+            .update({ exam_name: title, exam_date: date, status: status })
+            .eq('id', id);
+        
+        showNotification('✅ Exam updated!', 'success');
+        closeEditExamModal();
+        loadExamsTable();
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
     }
 }
 
@@ -1457,7 +1695,7 @@ async function saveLecturerInternalMarks() {
                 final_score: finalTotal,
                 grade: grade,
                 academic_year: '2026',
-                approval_status: 'draft'  // 🔒 WAITING FOR ADMIN APPROVAL
+                approval_status: 'draft'
             }, { onConflict: 'admission_number,subject_name,block' });
         
         if (!error) saved++;
@@ -1616,7 +1854,7 @@ async function saveSingleLecturerNCK(idx, studentId) {
             graded_by: gradedBy || state.currentUser?.full_name || 'Lecturer',
             academic_year: '2026',
             published: true,
-            approval_status: 'draft'  // 🔒 WAITING FOR ADMIN APPROVAL
+            approval_status: 'draft'
         }, { onConflict: 'admission_number,subject_name,block' });
     
     hideLoading();
@@ -1658,7 +1896,7 @@ async function saveAllLecturerNCKMarks() {
                 graded_by: gradedBy || state.currentUser?.full_name || 'Lecturer',
                 academic_year: '2026',
                 published: true,
-                approval_status: 'draft'  // 🔒 WAITING FOR ADMIN APPROVAL
+                approval_status: 'draft'
             }, { onConflict: 'admission_number,subject_name,block' });
         
         if (!error) saved++;
@@ -1856,7 +2094,7 @@ async function handleUploadResource(e) {
             uploaded_by: state.currentUserId,
             uploaded_by_name: state.currentUser.full_name,
             allow_download: true,
-            approval_status: 'pending',  // 🔒 WAITING FOR ADMIN APPROVAL
+            approval_status: 'pending',
             created_at: new Date().toISOString()
         });
         
@@ -1980,7 +2218,7 @@ async function handleSendMessage(e) {
             receiver_id: target === 'all-students' ? null : target,
             extension: 'message',
             private: false,
-            approval_status: 'pending',  // 🔒 WAITING FOR ADMIN APPROVAL
+            approval_status: 'pending',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             inserted_at: new Date().toISOString()
@@ -2101,410 +2339,7 @@ async function handleSaveSettings(e) {
 }
 
 // ============================================================
-// 22. MODAL FUNCTIONS
-// ============================================================
-
-async function openGradeModal(examId) {
-    try {
-        showLoading('Loading grading interface...');
-        
-        var { data: exam, error: examError } = await state.sb
-            .from(TABLES.EXAMS)
-            .select('*, course:course_id(course_name, unit_code)')
-            .eq('id', examId)
-            .single();
-        
-        if (examError || !exam) {
-            showNotification('Exam not found.', 'error');
-            return;
-        }
-        
-        var students = state.allStudents.filter(function(s) {
-            return s.program === exam.target_program &&
-                s.intake_year === exam.intake_year &&
-                s.block === exam.block_term;
-        });
-        
-        if (!students.length) {
-            showNotification('No students found for this exam.', 'warning');
-            return;
-        }
-        
-        var { data: existing } = await state.sb
-            .from('exam_grades')
-            .select('*')
-            .eq('exam_id', examId);
-        
-        var modal = $('gradeModal');
-        modal.innerHTML = buildGradeModal(exam, students, existing || []);
-        modal.classList.add('active');
-        
-        students.forEach(function(s) {
-            var cat1 = document.getElementById('cat1-' + s.user_id);
-            var cat2 = document.getElementById('cat2-' + s.user_id);
-            var final = document.getElementById('final-' + s.user_id);
-            if (cat1) cat1.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
-            if (cat2) cat2.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
-            if (final) final.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
-        });
-        
-        var saveBtn = document.getElementById('saveGradesBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', function() { saveAllGrades(examId); });
-        }
-        
-        var closeBtn = modal.querySelector('.close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeGradeModal);
-        }
-        
-        hideLoading();
-        
-    } catch (error) {
-        showNotification('Failed: ' + error.message, 'error');
-    }
-}
-
-function buildGradeModal(exam, students, existing) {
-    var studentRows = students.map(function(s) {
-        var g = existing.find(function(e) { return e.student_id === s.user_id; }) || {};
-        return '<tr data-name="' + s.full_name.toLowerCase() + '" data-id="' + s.student_id.toLowerCase() + '">' +
-            '<td>' + escapeHtml(s.full_name) + '</td>' +
-            '<td>' + escapeHtml(s.student_id) + '</td>' +
-            '<td><input type="number" min="0" max="30" step="0.5" id="cat1-' + s.user_id + '" value="' + (g.cat_1_score || '') + '" class="grade-input"></td>' +
-            '<td><input type="number" min="0" max="30" step="0.5" id="cat2-' + s.user_id + '" value="' + (g.cat_2_score || '') + '" class="grade-input"></td>' +
-            '<td><input type="number" min="0" max="100" step="0.5" id="final-' + s.user_id + '" value="' + (g.exam_score || '') + '" class="grade-input"></td>' +
-            '<td><input type="number" id="total-' + s.user_id + '" value="' + (g.total_score || '') + '" readonly class="total-input"></td>' +
-            '<td><span id="grade-' + s.user_id + '" class="grade-letter">' + calculateGradeLetter(g.total_score) + '</span></td>' +
-            '<td><select id="status-' + s.user_id + '" class="status-select">' +
-                '<option value="Scheduled" ' + (g.result_status === 'Scheduled' ? 'selected' : '') + '>Scheduled</option>' +
-                '<option value="InProgress" ' + (g.result_status === 'InProgress' ? 'selected' : '') + '>In Progress</option>' +
-                '<option value="Graded" ' + (g.result_status === 'Graded' ? 'selected' : '') + '>Graded</option>' +
-                '<option value="Final" ' + (g.result_status === 'Final' ? 'selected' : '') + '>Final</option>' +
-            '</select></td>' +
-        '</tr>';
-    }).join('');
-    
-    return '<div class="modal-header">' +
-            '<h3><i class="fas fa-check-circle"></i> Grade: ' + escapeHtml(exam.exam_name) + '</h3>' +
-            '<span class="close">&times;</span>' +
-        '</div>' +
-        '<div class="modal-body">' +
-            '<div class="exam-info-card" style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;">' +
-                '<p><strong>Course:</strong> ' + escapeHtml(exam.course?.course_name || 'General') + '</p>' +
-                '<p><strong>Program:</strong> ' + escapeHtml(exam.target_program) + ' | Block ' + escapeHtml(exam.block_term) + ' | ' + escapeHtml(exam.intake_year) + '</p>' +
-                '<p><strong>Type:</strong> ' + escapeHtml(exam.exam_type) + ' | <strong>Date:</strong> ' + formatDate(exam.exam_date) + '</p>' +
-            '</div>' +
-            '<div class="search-container">' +
-                '<input type="text" id="gradeSearch" placeholder="Search students..." class="search-input">' +
-                '<button class="btn btn-action" id="exportGradesBtn"><i class="fas fa-download"></i> Export</button>' +
-            '</div>' +
-            '<div class="table-container">' +
-                '<table class="grade-table">' +
-                    '<thead><tr>' +
-                        '<th>Student Name</th>' +
-                        '<th>Student ID</th>' +
-                        '<th>CAT 1 (/30)</th>' +
-                        '<th>CAT 2 (/30)</th>' +
-                        '<th>Final (/100)</th>' +
-                        '<th>Total (/100)</th>' +
-                        '<th>Grade</th>' +
-                        '<th>Status</th>' +
-                    '</tr></thead>' +
-                    '<tbody id="gradeTableBody">' + studentRows + '</tbody>' +
-                '</table>' +
-            '</div>' +
-            '<div class="modal-actions">' +
-                '<button class="btn btn-action" id="saveGradesBtn"><i class="fas fa-save"></i> Save All Grades</button>' +
-                '<button class="btn btn-delete" id="closeGradeModalBtn"><i class="fas fa-times"></i> Close</button>' +
-            '</div>' +
-        '</div>';
-}
-
-function calculateStudentGrade(studentId) {
-    var cat1 = parseFloat(document.getElementById('cat1-' + studentId)?.value) || 0;
-    var cat2 = parseFloat(document.getElementById('cat2-' + studentId)?.value) || 0;
-    var final = parseFloat(document.getElementById('final-' + studentId)?.value) || 0;
-    var total = (cat1 * 0.3) + (cat2 * 0.3) + (final * 0.4);
-    
-    var totalInput = document.getElementById('total-' + studentId);
-    var gradeSpan = document.getElementById('grade-' + studentId);
-    
-    if (totalInput && gradeSpan) {
-        totalInput.value = total.toFixed(1);
-        var letter = calculateGradeLetter(total);
-        gradeSpan.textContent = letter;
-        gradeSpan.className = 'grade-letter ' + (total >= 50 ? 'grade-pass' : 'grade-fail');
-    }
-}
-
-async function saveAllGrades(examId) {
-    var rows = document.querySelectorAll('#gradeTableBody tr');
-    var grades = [];
-    var hasChanges = false;
-    
-    for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var studentId = row.querySelector('input[id^="cat1-"]')?.id.replace('cat1-', '');
-        if (!studentId) continue;
-        
-        var cat1 = document.getElementById('cat1-' + studentId)?.value;
-        var cat2 = document.getElementById('cat2-' + studentId)?.value;
-        var final = document.getElementById('final-' + studentId)?.value;
-        var status = document.getElementById('status-' + studentId)?.value;
-        
-        if (cat1 || cat2 || final) {
-            hasChanges = true;
-            grades.push({
-                exam_id: parseInt(examId),
-                student_id: studentId,
-                cat_1_score: cat1 ? parseFloat(cat1) : null,
-                cat_2_score: cat2 ? parseFloat(cat2) : null,
-                exam_score: final ? parseFloat(final) : null,
-                total_score: document.getElementById('total-' + studentId)?.value ? parseFloat(document.getElementById('total-' + studentId).value) : null,
-                result_status: status,
-                graded_by: state.currentUserId,
-                question_id: '00000000-0000-0000-0000-000000000000'
-            });
-        }
-    }
-    
-    if (!hasChanges) {
-        showNotification('No changes to save.', 'info');
-        return;
-    }
-    
-    try {
-        await state.sb
-            .from('exam_grades')
-            .upsert(grades, { onConflict: 'exam_id,student_id,question_id' });
-        showNotification('✅ Saved ' + grades.length + ' grades!', 'success');
-        closeGradeModal();
-    } catch (error) {
-        showNotification('Failed: ' + error.message, 'error');
-    }
-}
-
-function closeGradeModal() {
-    var modal = $('gradeModal');
-    if (modal) modal.classList.remove('active');
-}
-
-async function openEditExamModal(examId) {
-    try {
-        var { data: exam, error } = await state.sb
-            .from(TABLES.EXAMS)
-            .select('*')
-            .eq('id', examId)
-            .single();
-        
-        if (error || !exam) {
-            showNotification('Exam not found.', 'error');
-            return;
-        }
-        
-        $('editExamId').value = exam.id;
-        $('editExamTitle').value = exam.exam_name || '';
-        $('editExamDate').value = exam.exam_date || '';
-        $('editExamStatus').value = exam.status || 'Scheduled';
-        
-        var modal = $('examEditModal');
-        modal.classList.add('active');
-        
-    } catch (error) {
-        showNotification('Failed: ' + error.message, 'error');
-    }
-}
-
-function closeEditExamModal() {
-    var modal = $('examEditModal');
-    if (modal) modal.classList.remove('active');
-}
-
-async function saveEditedExam(e) {
-    e.preventDefault();
-    var btn = e.submitter || e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    
-    var id = $('editExamId').value;
-    var title = $('editExamTitle').value;
-    var date = $('editExamDate').value;
-    var status = $('editExamStatus').value;
-    
-    if (!title || !date) {
-        showNotification('Title and date required.', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Save Changes';
-        return;
-    }
-    
-    try {
-        await state.sb
-            .from(TABLES.EXAMS)
-            .update({ exam_name: title, exam_date: date, status: status })
-            .eq('id', id);
-        
-        showNotification('✅ Exam updated!', 'success');
-        closeEditExamModal();
-        loadExamsTable();
-    } catch (error) {
-        showNotification('Failed: ' + error.message, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Changes';
-    }
-}
-
-async function deleteExam(examId) {
-    var exam = state.allExams.find(function(e) { return e.id === examId; });
-    if (!confirm('Delete "' + (exam?.exam_name || 'Exam') + '"?')) return;
-    
-    try {
-        await state.sb
-            .from(TABLES.EXAMS)
-            .delete()
-            .eq('id', examId);
-        showNotification('✅ Exam deleted!', 'success');
-        loadExamsTable();
-    } catch (error) {
-        showNotification('Delete failed: ' + error.message, 'error');
-    }
-}
-
-function viewStudentProfile(userId) {
-    var student = state.allStudents.find(function(s) { return s.user_id === userId; });
-    if (!student) {
-        showNotification('Student not found.', 'error');
-        return;
-    }
-    
-    $('infoName').textContent = student.full_name || 'N/A';
-    $('infoRegno').textContent = student.student_id || 'N/A';
-    $('infoEmail').textContent = student.email || 'N/A';
-    $('infoProgram').textContent = student.program || 'N/A';
-    $('infoIntake').textContent = student.intake_year || 'N/A';
-    $('infoStatus').textContent = student.status || 'Active';
-    $('infoAbsences').textContent = student.cumulative_absences || '0';
-    
-    var modal = $('studentInfoModal');
-    modal.classList.add('active');
-}
-
-function closeStudentInfoModal() {
-    var modal = $('studentInfoModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function showSendMessageModal(userId, fullName) {
-    var form = $('sendMessageForm');
-    if (form) form.reset();
-    populateMessageForm();
-    
-    var target = $('msgTarget');
-    if (target) {
-        for (var i = 0; i < target.options.length; i++) {
-            if (target.options[i].value === userId) {
-                target.value = userId;
-                break;
-            }
-        }
-    }
-    showNotification('Ready to message ' + fullName, 'info');
-}
-
-function viewCheckInMap(lat, lng, name) {
-    if (!lat || !lng) {
-        showNotification('No location data.', 'info');
-        return;
-    }
-    
-    var modal = $('mapModal');
-    modal.classList.add('active');
-    
-    if (state.attendanceMap) state.attendanceMap.remove();
-    
-    $('mapDetails').textContent = 'Location for ' + name;
-    
-    state.attendanceMap = L.map('mapbox-map').setView([parseFloat(lat), parseFloat(lng)], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(state.attendanceMap);
-    
-    L.marker([parseFloat(lat), parseFloat(lng)])
-        .addTo(state.attendanceMap)
-        .bindPopup('<b>' + name + '</b>')
-        .openPopup();
-    
-    setTimeout(function() { state.attendanceMap.invalidateSize(); }, 300);
-}
-
-function closeMapModal() {
-    var modal = $('mapModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function saveResourceEdits(e) {
-    e.preventDefault();
-    showNotification('Resource edits saved (placeholder).', 'info');
-    closeEditResourceModal();
-}
-
-function closeEditResourceModal() {
-    var modal = $('editResourceModal');
-    if (modal) modal.classList.remove('active');
-}
-
-async function handleProfilePhotoChange(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-    
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        $('profileImg').src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-    
-    await uploadProfilePhoto(file);
-}
-
-async function uploadProfilePhoto(file) {
-    var userId = state.currentUserId;
-    if (!userId) {
-        showNotification('Error: User ID not found.', 'error');
-        return;
-    }
-    
-    var ext = file.name.split('.').pop();
-    var path = 'avatars/' + userId + '.' + ext;
-    
-    try {
-        await state.sb
-            .storage
-            .from(RESOURCES_BUCKET)
-            .upload(path, file, { cacheControl: '3600', upsert: true });
-        
-        var { data: urlData } = state.sb
-            .storage
-            .from(RESOURCES_BUCKET)
-            .getPublicUrl(path);
-        
-        await state.sb
-            .from(TABLES.USERS)
-            .update({ avatar_url: urlData.publicUrl })
-            .eq('user_id', userId);
-        
-        state.currentUser.avatar_url = urlData.publicUrl;
-        $('profileImg').src = urlData.publicUrl;
-        showNotification('✅ Profile photo updated!', 'success');
-        
-    } catch (error) {
-        showNotification('Photo upload failed: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// 23. EVENT LISTENERS
+// 22. EVENT LISTENERS
 // ============================================================
 
 function setupEventListeners() {
@@ -2800,10 +2635,34 @@ function setupEventListeners() {
     
     // Event delegation for dynamic buttons
     document.addEventListener('click', handleDynamicClicks);
+    
+    // Filter buttons
+    var intakeFilter = $('intakeYearFilter');
+    if (intakeFilter) {
+        intakeFilter.addEventListener('change', filterCoursesByAcademicPeriod);
+    }
+    var periodFilter = $('academicPeriodFilter');
+    if (periodFilter) {
+        periodFilter.addEventListener('change', filterCoursesByAcademicPeriod);
+    }
+    
+    // Course search button
+    var courseSearchBtn = $('courseSearchBtn');
+    if (courseSearchBtn) {
+        courseSearchBtn.addEventListener('click', function() {
+            filterTable('courseSearch', 'lecturerCoursesTable', [0, 1]);
+        });
+    }
+    
+    // Attendance search
+    var attendanceSearch = $('attendanceSearch');
+    if (attendanceSearch) {
+        attendanceSearch.addEventListener('keyup', filterTodayAttendance);
+    }
 }
 
 // ============================================================
-// 24. DYNAMIC CLICK HANDLER
+// 23. DYNAMIC CLICK HANDLER
 // ============================================================
 
 function handleDynamicClicks(e) {
@@ -2858,6 +2717,255 @@ function handleDynamicClicks(e) {
 }
 
 // ============================================================
+// 24. GRADE MODAL
+// ============================================================
+
+async function openGradeModal(examId) {
+    try {
+        showLoading('Loading grading interface...');
+        
+        var { data: exam, error: examError } = await state.sb
+            .from(TABLES.EXAMS)
+            .select('*, course:course_id(course_name, unit_code)')
+            .eq('id', examId)
+            .single();
+        
+        if (examError || !exam) {
+            showNotification('Exam not found.', 'error');
+            return;
+        }
+        
+        var students = state.allStudents.filter(function(s) {
+            return s.program === exam.target_program &&
+                s.intake_year === exam.intake_year &&
+                s.block === exam.block_term;
+        });
+        
+        if (!students.length) {
+            showNotification('No students found for this exam.', 'warning');
+            return;
+        }
+        
+        var { data: existing } = await state.sb
+            .from('exam_grades')
+            .select('*')
+            .eq('exam_id', examId);
+        
+        var modal = $('gradeModal');
+        modal.innerHTML = buildGradeModal(exam, students, existing || []);
+        modal.classList.add('active');
+        
+        students.forEach(function(s) {
+            var cat1 = document.getElementById('cat1-' + s.user_id);
+            var cat2 = document.getElementById('cat2-' + s.user_id);
+            var final = document.getElementById('final-' + s.user_id);
+            if (cat1) cat1.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
+            if (cat2) cat2.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
+            if (final) final.addEventListener('input', function() { calculateStudentGrade(s.user_id); });
+        });
+        
+        var saveBtn = document.getElementById('saveGradesBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() { saveAllGrades(examId); });
+        }
+        
+        var closeBtn = modal.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeGradeModal);
+        }
+        
+        hideLoading();
+        
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+function buildGradeModal(exam, students, existing) {
+    var studentRows = students.map(function(s) {
+        var g = existing.find(function(e) { return e.student_id === s.user_id; }) || {};
+        return '<tr data-name="' + s.full_name.toLowerCase() + '" data-id="' + s.student_id.toLowerCase() + '">' +
+            '<td>' + escapeHtml(s.full_name) + '</td>' +
+            '<td>' + escapeHtml(s.student_id) + '</td>' +
+            '<td><input type="number" min="0" max="30" step="0.5" id="cat1-' + s.user_id + '" value="' + (g.cat_1_score || '') + '" class="grade-input"></td>' +
+            '<td><input type="number" min="0" max="30" step="0.5" id="cat2-' + s.user_id + '" value="' + (g.cat_2_score || '') + '" class="grade-input"></td>' +
+            '<td><input type="number" min="0" max="100" step="0.5" id="final-' + s.user_id + '" value="' + (g.exam_score || '') + '" class="grade-input"></td>' +
+            '<td><input type="number" id="total-' + s.user_id + '" value="' + (g.total_score || '') + '" readonly class="total-input"></td>' +
+            '<td><span id="grade-' + s.user_id + '" class="grade-letter">' + calculateGradeLetter(g.total_score) + '</span></td>' +
+            '<td><select id="status-' + s.user_id + '" class="status-select">' +
+                '<option value="Scheduled" ' + (g.result_status === 'Scheduled' ? 'selected' : '') + '>Scheduled</option>' +
+                '<option value="InProgress" ' + (g.result_status === 'InProgress' ? 'selected' : '') + '>In Progress</option>' +
+                '<option value="Graded" ' + (g.result_status === 'Graded' ? 'selected' : '') + '>Graded</option>' +
+                '<option value="Final" ' + (g.result_status === 'Final' ? 'selected' : '') + '>Final</option>' +
+            '</select></td>' +
+        '</tr>';
+    }).join('');
+    
+    return '<div class="modal-header">' +
+            '<h3><i class="fas fa-check-circle"></i> Grade: ' + escapeHtml(exam.exam_name) + '</h3>' +
+            '<span class="close">&times;</span>' +
+        '</div>' +
+        '<div class="modal-body">' +
+            '<div class="exam-info-card" style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;">' +
+                '<p><strong>Course:</strong> ' + escapeHtml(exam.course?.course_name || 'General') + '</p>' +
+                '<p><strong>Program:</strong> ' + escapeHtml(exam.target_program) + ' | Block ' + escapeHtml(exam.block_term) + ' | ' + escapeHtml(exam.intake_year) + '</p>' +
+                '<p><strong>Type:</strong> ' + escapeHtml(exam.exam_type) + ' | <strong>Date:</strong> ' + formatDate(exam.exam_date) + '</p>' +
+            '</div>' +
+            '<div class="search-container">' +
+                '<input type="text" id="gradeSearch" placeholder="Search students..." class="search-input">' +
+                '<button class="btn btn-action" id="exportGradesBtn"><i class="fas fa-download"></i> Export</button>' +
+            '</div>' +
+            '<div class="table-container">' +
+                '<table class="grade-table">' +
+                    '<thead><tr>' +
+                        '<th>Student Name</th>' +
+                        '<th>Student ID</th>' +
+                        '<th>CAT 1 (/30)</th>' +
+                        '<th>CAT 2 (/30)</th>' +
+                        '<th>Final (/100)</th>' +
+                        '<th>Total (/100)</th>' +
+                        '<th>Grade</th>' +
+                        '<th>Status</th>' +
+                    '</tr></thead>' +
+                    '<tbody id="gradeTableBody">' + studentRows + '</tbody>' +
+                '</table>' +
+            '</div>' +
+            '<div class="modal-actions">' +
+                '<button class="btn btn-action" id="saveGradesBtn"><i class="fas fa-save"></i> Save All Grades</button>' +
+                '<button class="btn btn-delete" id="closeGradeModalBtn"><i class="fas fa-times"></i> Close</button>' +
+            '</div>' +
+        '</div>';
+}
+
+function calculateStudentGrade(studentId) {
+    var cat1 = parseFloat(document.getElementById('cat1-' + studentId)?.value) || 0;
+    var cat2 = parseFloat(document.getElementById('cat2-' + studentId)?.value) || 0;
+    var final = parseFloat(document.getElementById('final-' + studentId)?.value) || 0;
+    var total = (cat1 * 0.3) + (cat2 * 0.3) + (final * 0.4);
+    
+    var totalInput = document.getElementById('total-' + studentId);
+    var gradeSpan = document.getElementById('grade-' + studentId);
+    
+    if (totalInput && gradeSpan) {
+        totalInput.value = total.toFixed(1);
+        var letter = calculateGradeLetter(total);
+        gradeSpan.textContent = letter;
+        gradeSpan.className = 'grade-letter ' + (total >= 50 ? 'grade-pass' : 'grade-fail');
+    }
+}
+
+async function saveAllGrades(examId) {
+    var rows = document.querySelectorAll('#gradeTableBody tr');
+    var grades = [];
+    var hasChanges = false;
+    
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var studentId = row.querySelector('input[id^="cat1-"]')?.id.replace('cat1-', '');
+        if (!studentId) continue;
+        
+        var cat1 = document.getElementById('cat1-' + studentId)?.value;
+        var cat2 = document.getElementById('cat2-' + studentId)?.value;
+        var final = document.getElementById('final-' + studentId)?.value;
+        var status = document.getElementById('status-' + studentId)?.value;
+        
+        if (cat1 || cat2 || final) {
+            hasChanges = true;
+            grades.push({
+                exam_id: parseInt(examId),
+                student_id: studentId,
+                cat_1_score: cat1 ? parseFloat(cat1) : null,
+                cat_2_score: cat2 ? parseFloat(cat2) : null,
+                exam_score: final ? parseFloat(final) : null,
+                total_score: document.getElementById('total-' + studentId)?.value ? parseFloat(document.getElementById('total-' + studentId).value) : null,
+                result_status: status,
+                graded_by: state.currentUserId,
+                question_id: '00000000-0000-0000-0000-000000000000'
+            });
+        }
+    }
+    
+    if (!hasChanges) {
+        showNotification('No changes to save.', 'info');
+        return;
+    }
+    
+    try {
+        await state.sb
+            .from('exam_grades')
+            .upsert(grades, { onConflict: 'exam_id,student_id,question_id' });
+        showNotification('✅ Saved ' + grades.length + ' grades!', 'success');
+        closeGradeModal();
+    } catch (error) {
+        showNotification('Failed: ' + error.message, 'error');
+    }
+}
+
+function closeGradeModal() {
+    var modal = $('gradeModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function saveResourceEdits(e) {
+    e.preventDefault();
+    showNotification('Resource edits saved (placeholder).', 'info');
+    closeEditResourceModal();
+}
+
+function closeEditResourceModal() {
+    var modal = $('editResourceModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function handleProfilePhotoChange(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        $('profileImg').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    
+    await uploadProfilePhoto(file);
+}
+
+async function uploadProfilePhoto(file) {
+    var userId = state.currentUserId;
+    if (!userId) {
+        showNotification('Error: User ID not found.', 'error');
+        return;
+    }
+    
+    var ext = file.name.split('.').pop();
+    var path = 'avatars/' + userId + '.' + ext;
+    
+    try {
+        await state.sb
+            .storage
+            .from(RESOURCES_BUCKET)
+            .upload(path, file, { cacheControl: '3600', upsert: true });
+        
+        var { data: urlData } = state.sb
+            .storage
+            .from(RESOURCES_BUCKET)
+            .getPublicUrl(path);
+        
+        await state.sb
+            .from(TABLES.USERS)
+            .update({ avatar_url: urlData.publicUrl })
+            .eq('user_id', userId);
+        
+        state.currentUser.avatar_url = urlData.publicUrl;
+        $('profileImg').src = urlData.publicUrl;
+        showNotification('✅ Profile photo updated!', 'success');
+        
+    } catch (error) {
+        showNotification('Photo upload failed: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
 // 25. INITIALIZATION
 // ============================================================
 
@@ -2865,3 +2973,74 @@ document.addEventListener('DOMContentLoaded', initLecturerDashboard);
 
 console.log('✅ lecturer.js loaded successfully');
 console.log('📚 Program filter:', state.program);
+
+// ============================================================
+// 26. EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+
+window.loadSectionData = loadSectionData;
+window.filterTable = filterTable;
+window.filterTodayAttendance = filterTodayAttendance;
+window.filterPastAttendance = filterPastAttendance;
+window.filterStudentTable = filterStudentTable;
+window.filterCoursesByAcademicPeriod = filterCoursesByAcademicPeriod;
+window.switchMarksTab = switchMarksTab;
+window.loadLecturerInternalMarks = loadLecturerInternalMarks;
+window.loadLecturerNCKMarks = loadLecturerNCKMarks;
+window.saveLecturerInternalMarks = saveLecturerInternalMarks;
+window.saveAllLecturerNCKMarks = saveAllLecturerNCKMarks;
+window.fillDownInternalMarks = fillDownInternalMarks;
+window.fillDownNCKValues = fillDownNCKValues;
+window.updateLecturerInternalTotal = updateLecturerInternalTotal;
+window.updateLecturerNCKTotal = updateLecturerNCKTotal;
+window.saveSingleLecturerNCK = saveSingleLecturerNCK;
+window.openGradeModal = openGradeModal;
+window.closeGradeModal = closeGradeModal;
+window.saveAllGrades = saveAllGrades;
+window.calculateStudentGrade = calculateStudentGrade;
+window.openEditExamModal = openEditExamModal;
+window.closeEditExamModal = closeEditExamModal;
+window.saveEditedExam = saveEditedExam;
+window.deleteExam = deleteExam;
+window.deleteResource = deleteResource;
+window.closeEditResourceModal = closeEditResourceModal;
+window.closeStudentInfoModal = closeStudentInfoModal;
+window.viewCheckInMap = viewCheckInMap;
+window.closeMapModal = closeMapModal;
+window.showSendMessageModal = showSendMessageModal;
+window.viewStudentProfile = viewStudentProfile;
+window.handleAddSession = handleAddSession;
+window.handleAddExam = handleAddExam;
+window.handleUploadResource = handleUploadResource;
+window.handleSendMessage = handleSendMessage;
+window.handleGenerateReport = handleGenerateReport;
+window.handleSaveSettings = handleSaveSettings;
+window.handleManualAttendance = handleManualAttendance;
+window.lecturerCheckIn = lecturerCheckIn;
+window.loadDashboard = loadDashboard;
+window.loadProfile = loadProfile;
+window.loadCoursesTable = loadCoursesTable;
+window.loadStudentsTable = loadStudentsTable;
+window.loadSessionsTable = loadSessionsTable;
+window.loadAttendance = loadAttendance;
+window.loadExamsTable = loadExamsTable;
+window.loadResourcesTable = loadResourcesTable;
+window.loadMessagesTable = loadMessagesTable;
+window.loadCalendar = loadCalendar;
+window.loadNurseIQ = loadNurseIQ;
+window.populateSessionForm = populateSessionForm;
+window.populateExamForm = populateExamForm;
+window.populateResourceForm = populateResourceForm;
+window.populateMessageForm = populateMessageForm;
+window.loadLecturerAnalytics = loadLecturerAnalytics;
+window.calculateGrade = calculateGrade;
+window.calculateGradeLetter = calculateGradeLetter;
+window.formatDate = formatDate;
+window.formatDateTime = formatDateTime;
+window.escapeHtml = escapeHtml;
+window.showNotification = showNotification;
+window.showFeedback = showFeedback;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
+
+console.log('✅ All lecturer functions exported');
