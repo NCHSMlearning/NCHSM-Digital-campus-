@@ -2242,6 +2242,70 @@ function loadResourcesTable() {
         '</tr>';
     }).join('');
 }
+
+// ============================================================
+// DELETE RESOURCE - Only if Owner and Pending
+// ============================================================
+
+async function deleteResource(resourceId) {
+    console.log('🗑️ Deleting resource:', resourceId);
+    
+    // ✅ Check if user owns this resource
+    var resource = state.allResources.find(function(r) { 
+        return r.id === resourceId; 
+    });
+    
+    if (!resource) {
+        showNotification('Resource not found.', 'error');
+        return;
+    }
+    
+    // Only owner can delete, and only if pending
+    if (resource.uploaded_by !== state.currentUserId) {
+        showNotification('You can only delete resources you uploaded.', 'warning');
+        return;
+    }
+    
+    if (resource.approval_status === 'approved') {
+        showNotification('Approved resources cannot be deleted. Contact admin.', 'warning');
+        return;
+    }
+    
+    if (!confirm('Delete this resource: "' + resource.title + '"?')) return;
+    
+    try {
+        // Delete from storage first
+        if (resource.file_path) {
+            var { error: storageError } = await state.sb
+                .storage
+                .from(RESOURCES_BUCKET)
+                .remove([resource.file_path]);
+            
+            if (storageError) {
+                console.warn('⚠️ Storage delete error:', storageError);
+                // Continue anyway - try to delete from database
+            }
+        }
+        
+        // Delete from database
+        var { error } = await state.sb
+            .from(TABLES.RESOURCES)
+            .delete()
+            .eq('id', resourceId);
+        
+        if (error) throw error;
+        
+        showNotification('✅ Resource deleted!', 'success');
+        await loadResourcesTable();
+        
+    } catch (error) {
+        console.error('Delete error:', error);
+        showNotification('Delete failed: ' + error.message, 'error');
+    }
+}
+
+// Make it globally available
+window.deleteResource = deleteResource;
 // ============================================================
 // FIXED: handleUploadResource - Matches YOUR EXACT DB Schema
 // ============================================================
