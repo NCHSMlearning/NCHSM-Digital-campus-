@@ -2209,7 +2209,66 @@ async function handleUploadResource(e) {
         btn.textContent = 'Upload Resource';
     }
 }
+// ============================================================
+// REQUEST ADMIN APPROVAL - FOR LECTURER ACTIONS
+// ============================================================
 
+async function requestAdminApproval(actionType, actionData, description, targetId) {
+    try {
+        console.log('📤 Requesting admin approval:', { actionType, description, targetId });
+        
+        var { data: { user } } = await state.sb.auth.getUser();
+        if (!user) {
+            console.error('❌ No user found');
+            return { success: false, error: 'No user found' };
+        }
+        
+        var { data: profile, error: profileError } = await state.sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, email')
+            .eq('user_id', user.id)
+            .single();
+        
+        if (profileError) {
+            console.warn('⚠️ Profile fetch error:', profileError);
+        }
+        
+        var actionRequest = {
+            admin_id: user.id,
+            admin_name: profile?.full_name || profile?.email || user.email || 'Unknown Lecturer',
+            action_type: actionType,
+            action_data: actionData || {},
+            description: description || 'No description provided',
+            target_id: targetId || null,
+            status: 'pending',
+            requested_at: new Date().toISOString()
+        };
+        
+        console.log('📋 Action request data:', actionRequest);
+        
+        var { data, error } = await state.sb
+            .from('admin_action_requests')
+            .insert([actionRequest])
+            .select();
+        
+        if (error) {
+            console.error('❌ Insert error:', error);
+            throw error;
+        }
+        
+        console.log('✅ Approval request created:', data);
+        showNotification('✅ Submitted for admin approval. Request ID: ' + data[0].id.substring(0, 8), 'success');
+        return { success: true, requestId: data[0].id };
+        
+    } catch (error) {
+        console.error('❌ Error requesting approval:', error);
+        showNotification('Failed to submit approval request: ' + error.message, 'error');
+        return { success: false, error: error.message };
+    }
+}
+
+// Make it globally available
+window.requestAdminApproval = requestAdminApproval;
 // ============================================================
 // 17. MESSAGES (WITH APPROVAL)
 // ============================================================
@@ -3157,5 +3216,7 @@ window.showNotification = showNotification;
 window.showFeedback = showFeedback;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
+window.requestAdminApproval = requestAdminApproval;
+
 
 console.log('✅ All lecturer functions exported');
