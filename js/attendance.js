@@ -1,5 +1,6 @@
 // ============================================
-// ✅ attendance.js - THE FINAL WORKING VERSION
+// ✅ attendance.js - COMPLETE WITH BEAUTIFUL MODALS
+// NO "This site says" popups!
 // ============================================
 
 (function() {
@@ -24,6 +25,336 @@
     let deviceTableExists = null;
     
     // ============================================
+    // ✅ BEAUTIFUL MODALS - NO "This site says"!
+    // ============================================
+    
+    // 1. TOAST NOTIFICATION
+    function showToast(message, type = 'success', duration = 3500) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#4f46e5'};
+            color: white;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 500;
+            z-index: 999997;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 90%;
+            animation: slideUpToast 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            pointer-events: none;
+        `;
+        
+        const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+        toast.innerHTML = `<span style="font-size: 20px;">${icon}</span> ${message}`;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideDownToast 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    // Add toast styles if not exists
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            @keyframes slideUpToast {
+                from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.9); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+            }
+            @keyframes slideDownToast {
+                from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+                to { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.9); }
+            }
+            @keyframes fadeInBackdrop {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUpModal {
+                from { opacity: 0; transform: translateY(30px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // 2. CONFIRMATION MODAL - Replaces confirm()
+    function showConfirmModal(options) {
+        return new Promise((resolve) => {
+            const existing = document.getElementById('confirmModal');
+            if (existing) existing.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'confirmModal';
+            modal.innerHTML = `
+                <div style="
+                    position: fixed;
+                    top: 0; left: 0;
+                    width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    backdrop-filter: blur(6px);
+                    -webkit-backdrop-filter: blur(6px);
+                    z-index: 999998;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    animation: fadeInBackdrop 0.25s ease;
+                ">
+                    <div style="
+                        background: white;
+                        border-radius: 20px;
+                        max-width: 440px;
+                        width: 92%;
+                        padding: 28px;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        animation: slideUpModal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    ">
+                        <div style="text-align: center; margin-bottom: 12px;">
+                            <div style="
+                                width: 64px; height: 64px;
+                                border-radius: 50%;
+                                background: #ede9fe;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 32px;
+                            ">${options.icon || '📍'}</div>
+                        </div>
+                        
+                        <h3 style="
+                            text-align: center;
+                            margin: 0 0 4px;
+                            font-size: 20px;
+                            font-weight: 700;
+                            color: #0f172a;
+                        ">${options.title || 'Confirm Check-in'}</h3>
+                        
+                        <p style="
+                            text-align: center;
+                            margin: 0 0 20px;
+                            font-size: 14px;
+                            color: #64748b;
+                        ">${options.subtitle || 'Please verify your location before checking in.'}</p>
+                        
+                        <div style="
+                            background: #f8fafc;
+                            border-radius: 12px;
+                            padding: 16px;
+                            margin-bottom: 20px;
+                        ">
+                            ${Object.entries(options.details || {}).map(([key, value]) => `
+                                <div style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    padding: 6px 0;
+                                    border-bottom: 1px solid #f1f5f9;
+                                ">
+                                    <span style="color: #64748b; font-size: 13px;">${key}</span>
+                                    <span style="font-weight: 500; font-size: 13px; color: #0f172a;">${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px;">
+                            <button onclick="window._closeConfirmModal(false)" style="
+                                flex: 1;
+                                padding: 14px;
+                                border: 2px solid #e2e8f0;
+                                border-radius: 12px;
+                                background: white;
+                                font-size: 15px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                color: #64748b;
+                                transition: all 0.2s ease;
+                            " onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                                Cancel
+                            </button>
+                            <button onclick="window._closeConfirmModal(true)" style="
+                                flex: 2;
+                                padding: 14px;
+                                border: none;
+                                border-radius: 12px;
+                                background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                                font-size: 15px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                color: white;
+                                transition: all 0.2s ease;
+                            " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                ✅ Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            window._confirmResolve = resolve;
+            
+            // Store close function
+            window._closeConfirmModal = function(result) {
+                const modal = document.getElementById('confirmModal');
+                if (modal) {
+                    modal.style.animation = 'slideUpModal 0.25s ease reverse';
+                    setTimeout(() => {
+                        modal.remove();
+                        if (window._confirmResolve) {
+                            window._confirmResolve(result);
+                            window._confirmResolve = null;
+                        }
+                    }, 250);
+                }
+            };
+        });
+    }
+    
+    // 3. SUCCESS MODAL - Replaces success alert()
+    function showSuccessModal(data) {
+        const existing = document.getElementById('successModal');
+        if (existing) existing.remove();
+        
+        const statusMap = {
+            'Present': { emoji: '✅', color: '#10b981', bg: '#d1fae5', title: 'Check-in Successful!' },
+            'Absent': { emoji: '❌', color: '#ef4444', bg: '#fee2e2', title: 'Out of Range' },
+            'Pending': { emoji: '⏳', color: '#f59e0b', bg: '#fef3c7', title: 'Pending Review' }
+        };
+        
+        const status = statusMap[data.status] || statusMap['Pending'];
+        
+        const modal = document.createElement('div');
+        modal.id = 'successModal';
+        modal.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                z-index: 999999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeInBackdrop 0.3s ease;
+            ">
+                <div style="
+                    background: white;
+                    border-radius: 24px;
+                    max-width: 400px;
+                    width: 92%;
+                    overflow: hidden;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                ">
+                    <div style="
+                        background: linear-gradient(135deg, ${status.color}, ${status.color}dd);
+                        padding: 24px 28px 20px;
+                        text-align: center;
+                        color: white;
+                    ">
+                        <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
+                        <h2 style="margin: 0; font-size: 22px; font-weight: 700;">${status.title}</h2>
+                    </div>
+                    
+                    <div style="padding: 24px 28px 28px;">
+                        <div style="
+                            background: #f8fafc;
+                            border-radius: 12px;
+                            padding: 14px 16px;
+                            margin-bottom: 16px;
+                        ">
+                            <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Target</div>
+                            <div style="font-weight: 600; font-size: 16px; color: #0f172a;">${data.target}</div>
+                            <div style="font-size: 13px; color: #64748b; margin-top: 2px;">${data.type}</div>
+                        </div>
+                        
+                        <div style="
+                            display: grid;
+                            grid-template-columns: 1fr 1fr 1fr;
+                            gap: 10px;
+                            margin-bottom: 16px;
+                        ">
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Distance</div>
+                            </div>
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.accuracy}</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+                            </div>
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px;">
+                                <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.status}</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Status</div>
+                            </div>
+                        </div>
+                        
+                        <div style="
+                            background: ${status.bg};
+                            border-radius: 10px;
+                            padding: 12px 16px;
+                            margin-bottom: 20px;
+                            font-size: 13px;
+                            color: ${status.color};
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        ">
+                            <span style="font-size: 18px;">${status.emoji}</span>
+                            <span>${data.note || 'Your attendance has been recorded.'}</span>
+                        </div>
+                        
+                        <button onclick="window._closeSuccessModal()" style="
+                            width: 100%;
+                            padding: 14px;
+                            border: none;
+                            border-radius: 12px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            background: ${status.color};
+                            color: white;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            ✅ Done
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        window._closeSuccessModal = function() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.style.animation = 'slideUpModal 0.3s ease reverse';
+                setTimeout(() => modal.remove(), 300);
+            }
+        };
+        
+        // Auto-close for success
+        if (data.status === 'Present') {
+            setTimeout(() => {
+                if (document.getElementById('successModal')) {
+                    window._closeSuccessModal();
+                }
+            }, 4000);
+        }
+    }
+    
+    // ============================================
     // HELPER FUNCTIONS
     // ============================================
     
@@ -41,25 +372,15 @@
         return null;
     }
     
-    // ============================================
-    // ✅ GET SUPA BASE CLIENT (SAME AS exams.js)
-    // ============================================
-    
     function getSupabase() {
-        // Try window.db.supabase first (like exams.js)
         if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
             return window.db.supabase;
         }
-        // Fallback to window.supabase
         if (window.supabase && typeof window.supabase.from === 'function') {
             return window.supabase;
         }
         return null;
     }
-    
-    // ============================================
-    // CALCULATE DISTANCE
-    // ============================================
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
@@ -69,10 +390,6 @@
         const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
-    
-    // ============================================
-    // GET ADDRESS FROM COORDINATES
-    // ============================================
     
     async function getAddressFromCoordinates(lat, lon) {
         try {
@@ -94,7 +411,7 @@
     }
     
     // ============================================
-    // SUPERIOR GPS
+    // GPS FUNCTION
     // ============================================
     
     function getAccurateLocation() {
@@ -122,10 +439,6 @@
         });
     }
     
-    // ============================================
-    // UPDATE LOCATION DISPLAY
-    // ============================================
-    
     async function updateLocationDisplay(location) {
         const latEl = document.getElementById('latitude');
         const lonEl = document.getElementById('longitude');
@@ -152,7 +465,7 @@
     }
     
     // ============================================
-    // CREATE STATS DISPLAY
+    // UI ELEMENTS
     // ============================================
     
     function createStatsDisplayIfNeeded() {
@@ -185,10 +498,6 @@
         }
     }
     
-    // ============================================
-    // ADD FORCE GPS BUTTON
-    // ============================================
-    
     function addForceGPSButton() {
         const container = document.querySelector('.check-in-controls');
         if (container && !document.getElementById('force-gps-btn')) {
@@ -214,12 +523,12 @@
                 try {
                     const location = await getAccurateLocation();
                     await updateLocationDisplay(location);
-                    alert(`📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m`);
+                    showToast(`📍 GPS Locked! Accuracy: ±${location.acc.toFixed(0)}m`, 'success');
                     if (statusEl) statusEl.textContent = '✅ GPS Locked';
                     const checkBtn = document.getElementById('check-in-button');
                     if (checkBtn) { checkBtn.disabled = false; checkBtn.innerHTML = '📍 Check In Now'; }
                 } catch(e) {
-                    alert('GPS failed: ' + e.message);
+                    showToast('GPS failed: ' + e.message, 'error');
                     if (statusEl) statusEl.textContent = '❌ GPS Failed';
                 }
             };
@@ -227,10 +536,6 @@
             console.log('✅ Force GPS button created');
         }
     }
-    
-    // ============================================
-    // FIX DROPDOWN
-    // ============================================
     
     function fixDropdown() {
         const targetSelect = document.getElementById('attendance-target');
@@ -258,7 +563,7 @@
     }
     
     // ============================================
-    // LOAD APPROVED UNITS
+    // LOAD DATA
     // ============================================
     
     async function loadApprovedUnits() {
@@ -283,10 +588,6 @@
         } catch(e) { return []; }
     }
     
-    // ============================================
-    // LOAD CLINICAL LOCATIONS
-    // ============================================
-    
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
@@ -301,10 +602,6 @@
             return clinicalLocations;
         } catch(e) { return []; }
     }
-    
-    // ============================================
-    // POPULATE DROPDOWN
-    // ============================================
     
     async function populateTargetOptions(sessionType) {
         const targetSelect = document.getElementById('attendance-target');
@@ -351,7 +648,7 @@
     }
     
     // ============================================
-    // DO CHECK-IN
+    // ✅ DO CHECK-IN - WITH BEAUTIFUL MODALS
     // ============================================
     
     async function doCheckIn() {
@@ -368,7 +665,10 @@
                 };
             }
         }
-        if (!selectedTarget) { alert('Please select a target'); return; }
+        if (!selectedTarget) {
+            showToast('Please select a target first', 'warning');
+            return;
+        }
         
         btn.disabled = true;
         btn.innerHTML = '📍 Getting GPS...';
@@ -386,16 +686,27 @@
             else if (distance <= radius * 2) { status = 'Pending'; verificationNote = `⚠️ Within ${radius * 2}m, needs review`; }
             else { status = 'Absent'; verificationNote = `❌ Too far (${distance.toFixed(0)}m)`; }
             
-            const confirmed = confirm(
-                `📍 CHECK-IN CONFIRMATION\n\n` +
-                `Target: ${selectedTarget.name}\n` +
-                `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
-                `Your Location: ${location.address || `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`}\n` +
-                `GPS Accuracy: ±${accuracy.toFixed(0)}m\n` +
-                `Distance: ${distance.toFixed(0)}m\n` +
-                `Status: ${status}\n\n${verificationNote}\n\nProceed?`
-            );
-            if (!confirmed) { btn.disabled = false; btn.innerHTML = '📍 Check In Now'; return; }
+            // ✅ BEAUTIFUL CONFIRMATION MODAL - NO "This site says"!
+            const confirmed = await showConfirmModal({
+                icon: '📍',
+                title: 'Verify Check-in',
+                subtitle: 'Please confirm your attendance details:',
+                details: {
+                    'Target': selectedTarget.name,
+                    'Type': selectedTarget.type === 'class' ? 'Classroom' : 'Clinical',
+                    'Location': location.address || 'Unknown',
+                    'Distance': distance.toFixed(0) + 'm',
+                    'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
+                    'Status': status
+                }
+            });
+            
+            if (!confirmed) {
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                showToast('Check-in cancelled', 'warning');
+                return;
+            }
             
             btn.innerHTML = '💾 Saving...';
             const supabase = getSupabase();
@@ -417,13 +728,22 @@
             const { error } = await supabase.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
             
-            alert(`✅ Check-in successful!\nStatus: ${status}\nDistance: ${distance.toFixed(0)}m`);
+            // ✅ BEAUTIFUL SUCCESS MODAL - NO "This site says"!
+            showSuccessModal({
+                target: selectedTarget.name,
+                type: selectedTarget.type === 'class' ? 'Classroom' : 'Clinical',
+                distance: distance.toFixed(0),
+                accuracy: accuracy.toFixed(0),
+                status: status,
+                note: verificationNote
+            });
+            
             await updateStatsData();
             await loadHistory();
             
         } catch(error) {
             console.error('Check-in error:', error);
-            alert('Check-in failed: ' + error.message);
+            showToast('Check-in failed: ' + error.message, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = '📍 Check In Now';
@@ -431,7 +751,7 @@
     }
     
     // ============================================
-    // ✅ FIXED: LOAD HISTORY - USES getSupabase() (like exams.js)
+    // ✅ LOAD HISTORY - FIXED
     // ============================================
     
     async function loadHistory() {
@@ -440,21 +760,15 @@
         
         table.innerHTML = `<tr><td colspan="6">Loading attendance history...</td></tr>`;
         
-        // ✅ Get Supabase client using the same method as exams.js
         const supabase = getSupabase();
         if (!supabase) {
-            console.error('❌ No Supabase client found');
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-                <i class="fas fa-exclamation-triangle"></i> Database not available. Please refresh.
-            </td></tr>`;
+            table.innerHTML = `<tr><td colspan="6" style="color:#ef4444;">Database not available</td></tr>`;
             return;
         }
         
         const studentId = getCurrentStudentId();
         if (!studentId) {
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
-                <i class="fas fa-exclamation-circle"></i> Please log in to view history
-            </td></tr>`;
+            table.innerHTML = `<tr><td colspan="6">Please log in to view history</td></tr>`;
             return;
         }
         
@@ -640,8 +954,10 @@
             
             await loadHistory();
             console.log('✅ Attendance system ready!');
+            showToast('Attendance system ready! 🎯', 'success', 2000);
         } catch(e) {
             console.error('❌ Attendance init error:', e);
+            showToast('Error loading attendance system', 'error');
         }
     }
     
@@ -667,5 +983,6 @@
     
     console.log('✅ Attendance system module loaded!');
     console.log(`🏫 Campus: ${CAMPUS_COORDINATES.latitude}, ${CAMPUS_COORDINATES.longitude} (Kiamunyi)`);
+    console.log('🎉 NO "This site says" popups! Beautiful modals only!');
     
 })();
