@@ -1,5 +1,6 @@
 // ============================================
 // ✅ attendance.js - CLASS-BASED (Like dashboard.js)
+// COMPLETE with Stats, Force GPS, Target Dropdown, History
 // ============================================
 
 class AttendanceModule {
@@ -30,6 +31,10 @@ class AttendanceModule {
         // ✅ Setup event listeners
         this.setupEventListeners();
         
+        // ✅ Create UI components
+        this.createStatsDisplayIfNeeded();
+        this.addForceGPSButton();
+        
         // ✅ Initialize
         this.init();
     }
@@ -42,6 +47,7 @@ class AttendanceModule {
         this.elements = {
             sessionType: document.getElementById('session-type'),
             targetSelect: document.getElementById('attendance-target'),
+            targetGroup: document.getElementById('target-control-group'),
             checkBtn: document.getElementById('check-in-button'),
             historyTable: document.getElementById('geo-attendance-history'),
             presentCount: document.getElementById('stats-present-count'),
@@ -50,7 +56,8 @@ class AttendanceModule {
             latEl: document.getElementById('latitude'),
             lonEl: document.getElementById('longitude'),
             accEl: document.getElementById('accuracy-value'),
-            forceGpsBtn: document.getElementById('force-gps-btn')
+            locationInfo: document.getElementById('location-info'),
+            geoMessage: document.getElementById('geo-message')
         };
     }
     
@@ -87,7 +94,93 @@ class AttendanceModule {
             });
         }
         
-        this.addForceGPSButton();
+        // ✅ Start time updates
+        this.startTimeUpdates();
+    }
+    
+    // ============================================
+    // CREATE STATS DISPLAY
+    // ============================================
+    
+    createStatsDisplayIfNeeded() {
+        if (document.getElementById('stats-present-count')) return;
+        
+        const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => 
+            h.textContent && h.textContent.includes('Daily Attendance'));
+        
+        if (heading && heading.parentElement) {
+            const statsContainer = document.createElement('div');
+            statsContainer.id = 'attendance-stats-container';
+            statsContainer.style.cssText = `
+                display: flex; gap: 20px; margin: 20px 0; padding: 15px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                flex-wrap: wrap;
+            `;
+            statsContainer.innerHTML = `
+                <div style="flex:1; text-align:center; min-width: 100px;">
+                    <div style="font-size:12px; opacity:0.8;">📅 PRESENT TODAY</div>
+                    <div id="stats-present-count" style="font-size:36px; font-weight:bold; color:#4ade80;">0</div>
+                </div>
+                <div style="flex:1; text-align:center; min-width: 100px;">
+                    <div style="font-size:12px; opacity:0.8;">⏰ CURRENT TIME</div>
+                    <div id="stats-current-time" style="font-size:24px; font-weight:bold; font-family:monospace;">--:--:--</div>
+                </div>
+                <div style="flex:1; text-align:center; min-width: 100px;">
+                    <div style="font-size:12px; opacity:0.8;">📍 GPS STATUS</div>
+                    <div id="stats-gps-status" style="font-size:16px; font-weight:bold; color:#93c5fd;">Ready</div>
+                </div>
+            `;
+            heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
+        }
+    }
+    
+    // ============================================
+    // ADD FORCE GPS BUTTON
+    // ============================================
+    
+    addForceGPSButton() {
+        const container = document.querySelector('.check-in-controls');
+        if (container && !document.getElementById('force-gps-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'force-gps-btn';
+            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
+            btn.style.cssText = `
+                background: #f59e0b;
+                color: white;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 8px;
+                margin: 10px 0;
+                cursor: pointer;
+                font-size: 14px;
+                width: 100%;
+                transition: all 0.3s ease;
+            `;
+            btn.onmouseover = () => { btn.style.background = '#d97706'; };
+            btn.onmouseout = () => { btn.style.background = '#f59e0b'; };
+            btn.onclick = async () => {
+                console.log('🔄 Force refreshing GPS...');
+                const statusEl = document.getElementById('stats-gps-status');
+                if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
+                
+                try {
+                    const location = await this.getAccurateLocation();
+                    const msg = `📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m\nAddress: ${location.address || 'N/A'}`;
+                    alert(msg);
+                    await this.updateLocationDisplay(location);
+                    if (statusEl) statusEl.textContent = '✅ GPS Locked';
+                    if (this.elements.checkBtn) {
+                        this.elements.checkBtn.disabled = false;
+                        this.elements.checkBtn.innerHTML = '📍 Check In Now';
+                    }
+                } catch(e) {
+                    alert('GPS failed: ' + e.message);
+                    if (statusEl) statusEl.textContent = '❌ GPS Failed';
+                }
+            };
+            container.insertBefore(btn, container.firstChild);
+        }
     }
     
     // ============================================
@@ -95,7 +188,6 @@ class AttendanceModule {
     // ============================================
     
     getStudentId() {
-        // ✅ Direct access to window.db (SAME as dashboard.js)
         if (this.userId) return this.userId;
         if (window.db?.currentUserId) {
             this.userId = window.db.currentUserId;
@@ -105,7 +197,6 @@ class AttendanceModule {
             this.userId = window.db.currentUserProfile.user_id;
             return this.userId;
         }
-        
         try {
             const profile = localStorage.getItem('userProfile');
             if (profile) {
@@ -116,7 +207,6 @@ class AttendanceModule {
                 }
             }
         } catch(e) {}
-        
         return null;
     }
     
@@ -129,7 +219,6 @@ class AttendanceModule {
         
         const studentId = this.getStudentId();
         if (!studentId) return { program: 'KRCHN', intake_year: '2026' };
-        
         if (!this.sb) return { program: 'KRCHN', intake_year: '2026' };
         
         try {
@@ -147,7 +236,6 @@ class AttendanceModule {
         } catch(e) {
             console.warn('Profile load error:', e);
         }
-        
         return { program: 'KRCHN', intake_year: '2026' };
     }
     
@@ -255,62 +343,18 @@ class AttendanceModule {
         
         let addressDisplay = document.getElementById('location-address');
         if (!addressDisplay) {
-            const locationInfo = document.getElementById('location-info');
-            if (locationInfo) {
+            if (this.elements.locationInfo) {
                 const addressDiv = document.createElement('div');
                 addressDiv.id = 'location-address';
                 addressDiv.className = 'location-address';
                 addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #666;';
-                locationInfo.appendChild(addressDiv);
+                this.elements.locationInfo.appendChild(addressDiv);
                 addressDisplay = addressDiv;
             }
         }
         
         if (addressDisplay && location.address) {
             addressDisplay.innerHTML = `📍 <strong>Location:</strong> ${location.address}`;
-        }
-    }
-    
-    // ============================================
-    // ADD FORCE GPS BUTTON
-    // ============================================
-    
-    addForceGPSButton() {
-        const container = document.querySelector('.check-in-controls');
-        if (container && !document.getElementById('force-gps-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'force-gps-btn';
-            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
-            btn.style.cssText = `
-                background: #f59e0b;
-                color: white;
-                border: none;
-                padding: 10px 16px;
-                border-radius: 8px;
-                margin: 10px 0;
-                cursor: pointer;
-                font-size: 14px;
-                width: 100%;
-                transition: all 0.3s ease;
-            `;
-            btn.onmouseover = () => { btn.style.background = '#d97706'; };
-            btn.onmouseout = () => { btn.style.background = '#f59e0b'; };
-            btn.onclick = async () => {
-                console.log('🔄 Force refreshing GPS...');
-                if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '⏳ Getting GPS...';
-                
-                try {
-                    const location = await this.getAccurateLocation();
-                    const msg = `📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m\nAddress: ${location.address || 'N/A'}`;
-                    alert(msg);
-                    await this.updateLocationDisplay(location);
-                    if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '✅ GPS Locked';
-                } catch(e) {
-                    alert('GPS failed: ' + e.message);
-                    if (this.elements.gpsStatus) this.elements.gpsStatus.textContent = '❌ GPS Failed';
-                }
-            };
-            container.insertBefore(btn, container.firstChild);
         }
     }
     
@@ -438,6 +482,11 @@ class AttendanceModule {
         
         this.elements.targetSelect.disabled = false;
         console.log(`✅ Loaded ${options.length} ${sessionType} options`);
+        
+        // ✅ Show target group
+        if (this.elements.targetGroup) {
+            this.elements.targetGroup.style.display = 'flex';
+        }
     }
     
     // ============================================
@@ -446,6 +495,23 @@ class AttendanceModule {
     
     async doCheckIn() {
         if (!this.elements.checkBtn) return;
+        
+        if (!this.selectedTarget) {
+            // Try to get from dropdown
+            if (this.elements.targetSelect && this.elements.targetSelect.value) {
+                const parts = this.elements.targetSelect.value.split('|');
+                if (parts.length >= 6) {
+                    this.selectedTarget = {
+                        id: parts[0],
+                        name: parts[1],
+                        type: parts[2],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseFloat(parts[5])
+                    };
+                }
+            }
+        }
         
         if (!this.selectedTarget) {
             alert('Please select a target');
@@ -787,6 +853,18 @@ class AttendanceModule {
     }
     
     // ============================================
+    // START TIME UPDATES
+    // ============================================
+    
+    startTimeUpdates() {
+        this.updateStats();
+        setInterval(() => {
+            const timeEl = document.getElementById('stats-current-time');
+            if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+        }, 1000);
+    }
+    
+    // ============================================
     // INIT (SAME as dashboard.js)
     // ============================================
     
@@ -794,7 +872,7 @@ class AttendanceModule {
         console.log('🚀 Initializing attendance system...');
         
         try {
-            // ✅ Get student ID (SAME as dashboard.js)
+            // ✅ Get student ID
             const studentId = this.getStudentId();
             if (!studentId) {
                 console.log('⏳ Waiting for student data...');
@@ -810,15 +888,32 @@ class AttendanceModule {
             await this.loadClinicalLocations();
             
             // ✅ Update UI
-            this.createStatsDisplayIfNeeded();
             await this.updateStats();
-            this.startTimeUpdates();
             
             // ✅ Setup dropdown
             await this.populateTargetOptions();
             
             // ✅ Load history
             await this.loadHistory();
+            
+            // ✅ Enable check-in button if target is selected
+            if (this.elements.targetSelect && this.elements.targetSelect.value) {
+                const parts = this.elements.targetSelect.value.split('|');
+                if (parts.length >= 6) {
+                    this.selectedTarget = {
+                        id: parts[0],
+                        name: parts[1],
+                        type: parts[2],
+                        latitude: parseFloat(parts[3]),
+                        longitude: parseFloat(parts[4]),
+                        radius: parseFloat(parts[5])
+                    };
+                    if (this.elements.checkBtn) {
+                        this.elements.checkBtn.disabled = false;
+                        this.elements.checkBtn.innerHTML = '📍 Check In Now';
+                    }
+                }
+            }
             
             console.log('✅ Attendance system ready!');
             console.log('📍 Using SUPERIOR GPS: maximumAge:0, enableHighAccuracy:true');
@@ -832,55 +927,6 @@ class AttendanceModule {
                 this.elements.checkBtn.style.background = '#ef4444';
             }
         }
-    }
-    
-    // ============================================
-    // CREATE STATS DISPLAY (SAME as dashboard.js)
-    // ============================================
-    
-    createStatsDisplayIfNeeded() {
-        if (document.getElementById('stats-present-count')) return;
-        
-        const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => 
-            h.textContent && h.textContent.includes('Daily Attendance'));
-        
-        if (heading && heading.parentElement) {
-            const statsContainer = document.createElement('div');
-            statsContainer.id = 'attendance-stats-container';
-            statsContainer.style.cssText = `
-                display: flex; gap: 20px; margin: 20px 0; padding: 15px 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                flex-wrap: wrap;
-            `;
-            statsContainer.innerHTML = `
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">📅 PRESENT TODAY</div>
-                    <div id="stats-present-count" style="font-size:36px; font-weight:bold; color:#4ade80;">0</div>
-                </div>
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">⏰ CURRENT TIME</div>
-                    <div id="stats-current-time" style="font-size:24px; font-weight:bold; font-family:monospace;">--:--:--</div>
-                </div>
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">📍 GPS STATUS</div>
-                    <div id="stats-gps-status" style="font-size:16px; font-weight:bold; color:#93c5fd;">Ready</div>
-                </div>
-            `;
-            heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
-        }
-    }
-    
-    // ============================================
-    // START TIME UPDATES (SAME as dashboard.js)
-    // ============================================
-    
-    startTimeUpdates() {
-        this.updateStats();
-        setInterval(() => {
-            const timeEl = document.getElementById('stats-current-time');
-            if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
-        }, 1000);
     }
     
     // ============================================
