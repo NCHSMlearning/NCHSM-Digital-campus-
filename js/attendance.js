@@ -10,11 +10,10 @@
     // ============================================
     // CONFIGURATION
     // ============================================
-    
-    const CAMPUS_COORDINATES = {
-        latitude: -0.2714611,
-        longitude: 36.0519956
-    };
+  const CAMPUS_COORDINATES = {
+    latitude: -0.2607276,
+    longitude: 36.0112599
+};
     
     let approvedUnits = [];
     let clinicalLocations = [];
