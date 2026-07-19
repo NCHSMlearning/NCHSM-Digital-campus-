@@ -574,10 +574,12 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
     }
 });
 
-// ===== CREATE MARKSHEET WITH STUDENTS =====
-async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType, year = '2024') {
+// ========== CREATE MARKSHEET WITH STUDENTS ==========
+async function createMarksheetWithStudents(spreadsheetId, block, subject, assessmentType, unitCode = '', year = '2024') {
     try {
         console.log(`📝 Creating marksheet for ${block} - ${subject} (${year})`);
+        console.log(`📋 Unit Code: ${unitCode || 'None'}`);
+        
         const studentsResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: spreadsheetId,
             range: 'STUDENTS!A:E',
@@ -610,7 +612,8 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
             sheetExists = false;
         }
         
-        const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE', 'YEAR']];
+        // ✅ Include UNIT CODE in headers
+        const rows = [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE', 'UNIT_CODE', 'YEAR']];
         let addedCount = 0;
         let skippedCount = 0;
         let wrongBlockCount = 0;
@@ -644,6 +647,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
                     '',
                     '',
                     assessmentType || 'full',
+                    unitCode || '',  // ✅ Add unit code
                     year || '2024'
                 ]);
                 addedCount++;
@@ -659,10 +663,33 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
             return { success: true, studentCount: existingAdmissions.size, newStudents: 0 };
         }
         
+        // ✅ Update headers to include UNIT_CODE if sheet exists
         if (sheetExists) {
+            try {
+                const headerResponse = await sheets.spreadsheets.values.get({
+                    spreadsheetId: spreadsheetId,
+                    range: `${sheetName}!A1:K1`,
+                    valueRenderOption: 'UNFORMATTED_VALUE'
+                });
+                const headerData = headerResponse.data.values || [];
+                if (headerData.length === 0 || headerData[0].length < 11) {
+                    // Update headers to include UNIT_CODE and YEAR
+                    await sheets.spreadsheets.values.update({
+                        spreadsheetId: spreadsheetId,
+                        range: `${sheetName}!A1:K1`,
+                        valueInputOption: 'RAW',
+                        requestBody: {
+                            values: [['ADMISSION', 'NAME', 'CAT1', 'CAT2', 'EXAM', 'FINAL', 'GRADE', 'GRADED BY', 'ASSESSMENT_TYPE', 'UNIT_CODE', 'YEAR']]
+                        }
+                    });
+                }
+            } catch (e) {
+                console.log('⚠️ Could not check headers, proceeding...');
+            }
+            
             const currentResponse = await sheets.spreadsheets.values.get({
                 spreadsheetId: spreadsheetId,
-                range: `${sheetName}!A:J`,
+                range: `${sheetName}!A:K`,
                 valueRenderOption: 'UNFORMATTED_VALUE'
             });
             const currentData = currentResponse.data.values || [];
@@ -670,7 +697,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
             if (rows.length > 1) {
                 await sheets.spreadsheets.values.update({
                     spreadsheetId: spreadsheetId,
-                    range: `${sheetName}!A${lastRow + 1}:J${lastRow + rows.length - 1}`,
+                    range: `${sheetName}!A${lastRow + 1}:K${lastRow + rows.length - 1}`,
                     valueInputOption: 'RAW',
                     requestBody: { values: rows.slice(1) }
                 });
@@ -687,7 +714,7 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
         });
         await sheets.spreadsheets.values.update({
             spreadsheetId: spreadsheetId,
-            range: `${sheetName}!A1:J${rows.length}`,
+            range: `${sheetName}!A1:K${rows.length}`,
             valueInputOption: 'RAW',
             requestBody: { values: rows }
         });
@@ -1238,6 +1265,7 @@ app.post('/api/add-unit', async (req, res) => {
         });
         const data = response.data.values || [];
         
+        // Check if unit already exists
         for (let i = 1; i < data.length; i++) {
             const row = data[i];
             if (!row || row.length < 3) continue;
@@ -1254,7 +1282,8 @@ app.post('/api/add-unit', async (req, res) => {
                         valueInputOption: 'RAW',
                         requestBody: { values: [['YES', assessmentType || 'full']] }
                     });
-                    await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, year);
+                    // ✅ Pass unitCode to create marksheet
+                    await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, unitCode, year);
                     return res.json({ success: true, message: 'Unit reactivated successfully' });
                 }
             }
@@ -1284,7 +1313,8 @@ app.post('/api/add-unit', async (req, res) => {
             }
         });
         
-        await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, year);
+        // ✅ Pass unitCode to create marksheet
+        await createMarksheetWithStudents(spreadsheetId, block, name, assessmentType, finalUnitCode, year);
         
         res.json({ success: true, message: 'Unit added successfully', unitCode: finalUnitCode });
     } catch (error) {
