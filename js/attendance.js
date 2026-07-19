@@ -1,5 +1,6 @@
 // COMPLETE ATTENDANCE SYSTEM - WITH DEVICE FINGERPRINTING
 // FULLY FIXED: History loading, table columns, error handling
+// UPDATED: Uses OLD system's SUPERIOR GPS (maximumAge: 0)
 
 (function() {
     'use strict';
@@ -21,7 +22,6 @@
     let selectedTarget = null;
     let currentStudent = null;
     let deviceTableExists = null;
-    window.locationWatchId = null;
     
     // ============================================
     // HELPER FUNCTIONS
@@ -93,6 +93,62 @@
         } catch(e) {
             return false;
         }
+    }
+    
+    // ============================================
+    // 🆕 SUPERIOR GPS FROM OLD SYSTEM
+    // ============================================
+    
+    function getAccurateLocation() {
+        console.log('📍 Getting ACCURATE GPS (maximumAge:0)...');
+        
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                console.warn('⚠️ Geolocation not supported, using campus coordinates');
+                resolve({ 
+                    lat: CAMPUS_COORDINATES.latitude, 
+                    lon: CAMPUS_COORDINATES.longitude, 
+                    acc: 9999,
+                    address: 'Campus (GPS unavailable)'
+                });
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const location = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        acc: position.coords.accuracy
+                    };
+                    console.log(`📍 GPS: ${location.lat.toFixed(6)}, ${location.lon.toFixed(6)} (Accuracy: ±${location.acc.toFixed(0)}m)`);
+                    
+                    // Get address from coordinates
+                    try {
+                        const address = await getAddressFromCoordinates(location.lat, location.lon);
+                        location.address = address;
+                    } catch(e) {
+                        location.address = `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`;
+                    }
+                    
+                    resolve(location);
+                },
+                (error) => {
+                    console.warn('⚠️ GPS Error:', error.message, '- Using campus coordinates');
+                    resolve({ 
+                        lat: CAMPUS_COORDINATES.latitude, 
+                        lon: CAMPUS_COORDINATES.longitude, 
+                        acc: 9999,
+                        address: 'Campus (GPS fallback)'
+                    });
+                },
+                { 
+                    enableHighAccuracy: true,  // ✅ Force high accuracy
+                    timeout: 15000,            // ✅ Wait for best signal
+                    maximumAge: 0              // ✅ NO CACHED GPS! (Key from OLD system)
+                }
+            );
+        });
     }
     
     // ============================================
@@ -222,98 +278,6 @@
     }
     
     // ============================================
-    // FORCED FRESH GPS WITH RETRY
-    // ============================================
-    
-    function getRealLocation() {
-        console.log('📍 FORCING FRESH GPS...');
-        
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not supported'));
-                return;
-            }
-            
-            const options = {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 15000
-            };
-            
-            if (navigator.geolocation.clearWatch && window.locationWatchId) {
-                navigator.geolocation.clearWatch(window.locationWatchId);
-                window.locationWatchId = null;
-            }
-            
-            let attempts = 0;
-            const maxAttempts = 5;
-            let bestLocation = null;
-            
-            function tryGetLocation() {
-                navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        const timestamp = position.coords.timestamp;
-                        const age = Date.now() - timestamp;
-                        const accuracy = position.coords.accuracy;
-                        attempts++;
-                        
-                        console.log(`📍 Attempt ${attempts}: Accuracy ±${accuracy}m, Age: ${age}ms`);
-                        
-                        if (age > 3000) {
-                            console.warn('⚠️ Cached GPS! Retrying...');
-                            if (attempts < maxAttempts) {
-                                setTimeout(tryGetLocation, 1000);
-                            }
-                            return;
-                        }
-                        
-                        if (!bestLocation || accuracy < bestLocation.accuracy) {
-                            bestLocation = {
-                                latitude: position.coords.latitude,
-                                longitude: position.coords.longitude,
-                                accuracy: accuracy
-                            };
-                        }
-                        
-                        if (accuracy <= 50) {
-                            console.log('✅ EXCELLENT GPS!');
-                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                            resolve({ ...bestLocation, address });
-                        } 
-                        else if (accuracy <= 100 && attempts >= 2) {
-                            console.log('✅ GOOD GPS');
-                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                            resolve({ ...bestLocation, address });
-                        }
-                        else if (attempts < maxAttempts) {
-                            console.log(`🔄 Retrying (${attempts}/${maxAttempts})...`);
-                            setTimeout(tryGetLocation, 2000);
-                        }
-                        else {
-                            console.warn(`⚠️ Using best available: ${bestLocation.accuracy}m`);
-                            const address = await getAddressFromCoordinates(bestLocation.latitude, bestLocation.longitude);
-                            resolve({ ...bestLocation, address });
-                        }
-                    },
-                    (error) => {
-                        attempts++;
-                        console.error(`GPS Error ${attempts}:`, error.message);
-                        
-                        if (attempts < maxAttempts) {
-                            setTimeout(tryGetLocation, 2000);
-                        } else {
-                            reject(error);
-                        }
-                    },
-                    options
-                );
-            }
-            
-            tryGetLocation();
-        });
-    }
-    
-    // ============================================
     // UPDATE LOCATION DISPLAY
     // ============================================
     
@@ -322,9 +286,9 @@
         const lonEl = document.getElementById('longitude');
         const accEl = document.getElementById('accuracy-value');
         
-        if (latEl) latEl.textContent = location.latitude.toFixed(6);
-        if (lonEl) lonEl.textContent = location.longitude.toFixed(6);
-        if (accEl) accEl.textContent = location.accuracy.toFixed(1);
+        if (latEl) latEl.textContent = location.lat.toFixed(6);
+        if (lonEl) lonEl.textContent = location.lon.toFixed(6);
+        if (accEl) accEl.textContent = location.acc.toFixed(1);
         
         let addressDisplay = document.getElementById('location-address');
         if (!addressDisplay) {
@@ -522,7 +486,7 @@
     }
     
     // ============================================
-    // CHECK-IN FUNCTION
+    // 🆕 CHECK-IN FUNCTION (UPDATED)
     // ============================================
     
     async function doCheckIn() {
@@ -556,23 +520,24 @@
         btn.innerHTML = '📍 Getting GPS...';
         
         try {
-            const location = await getRealLocation();
+            // 🆕 Use the SUPERIOR GPS from OLD system
+            const location = await getAccurateLocation();
             currentLocation = location;
             
             await updateLocationDisplay(location);
             
             const distance = calculateDistance(
-                location.latitude, location.longitude,
+                location.lat, location.lon,
                 selectedTarget.latitude, selectedTarget.longitude
             );
             
             const radius = selectedTarget.radius || 50;
-            const accuracy = location.accuracy;
+            const accuracy = location.acc;
             
             let status = 'Absent';
             let verificationNote = '';
             
-            if (accuracy > radius) {
+            if (accuracy > radius * 2) {
                 status = 'Pending';
                 verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
             } else if (distance <= radius) {
@@ -590,7 +555,7 @@
                 `📍 CHECK-IN CONFIRMATION\n\n` +
                 `Target: ${selectedTarget.name}\n` +
                 `Type: ${selectedTarget.type === 'class' ? 'Classroom' : 'Clinical'}\n` +
-                `Your Location: ${location.address || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}\n` +
+                `Your Location: ${location.address || `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`}\n` +
                 `GPS Accuracy: ±${accuracy.toFixed(0)}m\n` +
                 `Distance: ${distance.toFixed(0)}m\n` +
                 `Verification Radius: ${radius}m\n` +
@@ -617,9 +582,9 @@
                 session_type: sessionType,
                 target_id: selectedTarget.id,
                 target_name: selectedTarget.name,
-                latitude: location.latitude,
-                longitude: location.longitude,
-                accuracy_m: location.accuracy,
+                latitude: location.lat,
+                longitude: location.lon,
+                accuracy_m: location.acc,
                 distance_meters: distance,
                 is_verified: status === 'Present',
                 attendance_status: status,
@@ -700,7 +665,6 @@
                 return;
             }
             
-            // ✅ FIX: Only 6 columns to match table header
             table.innerHTML = data.map(log => {
                 const dist = log.distance_meters >= 1000 ? 
                     (log.distance_meters/1000).toFixed(2) + ' km' : 
@@ -830,7 +794,7 @@
     }
     
     // ============================================
-    // FORCE GPS BUTTON
+    // FORCE GPS BUTTON (UPDATED)
     // ============================================
     
     function addForceGPSButton() {
@@ -859,8 +823,9 @@
                 if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
                 
                 try {
-                    const location = await getRealLocation();
-                    const msg = `📍 REAL GPS:\nLat: ${location.latitude.toFixed(6)}\nLon: ${location.longitude.toFixed(6)}\nAccuracy: ±${location.accuracy.toFixed(0)}m`;
+                    // 🆕 Use the SUPERIOR GPS from OLD system
+                    const location = await getAccurateLocation();
+                    const msg = `📍 REAL GPS:\nLat: ${location.lat.toFixed(6)}\nLon: ${location.lon.toFixed(6)}\nAccuracy: ±${location.acc.toFixed(0)}m\nAddress: ${location.address || 'N/A'}`;
                     alert(msg);
                     await updateLocationDisplay(location);
                     if (statusEl) statusEl.textContent = '✅ GPS Locked';
@@ -915,7 +880,6 @@
                 monthAgo.setMonth(monthAgo.getMonth() - 1);
                 query = query.gte('check_in_time', monthAgo.toISOString());
             }
-            // 'all' - no filter
             
             const { data, error } = await query.limit(50);
             
@@ -929,7 +893,6 @@
                 return;
             }
             
-            // Render rows (same as loadHistory)
             table.innerHTML = data.map(log => {
                 const dist = log.distance_meters >= 1000 ? 
                     (log.distance_meters/1000).toFixed(2) + ' km' : 
@@ -1024,13 +987,11 @@
                 }
             }
             
-            // ✅ Setup filter listener
             const filterSelect = document.getElementById('history-filter');
             if (filterSelect) {
                 filterSelect.addEventListener('change', filterHistory);
             }
             
-            // ✅ Setup refresh button
             const refreshBtn = document.getElementById('refresh-history');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', () => {
@@ -1046,6 +1007,8 @@
             
             await loadHistory();
             console.log('✅ Attendance system ready!');
+            console.log('📍 Using SUPERIOR GPS: maximumAge:0, enableHighAccuracy:true');
+            
         } catch(e) {
             console.error('❌ Attendance init error:', e);
             const btn = document.getElementById('check-in-button');
@@ -1064,7 +1027,7 @@
     window.refreshStats = updateStatsData;
     window.refreshHistory = loadHistory;
     window.filterHistory = filterHistory;
-    window.getRealLocation = getRealLocation;
+    window.getAccurateLocation = getAccurateLocation;
     window.attendanceSystemReady = true;
     
     // ============================================
@@ -1078,5 +1041,6 @@
     }
     
     console.log('✅ Attendance system module loaded!');
+    console.log('🔥 Using OLD system\'s SUPERIOR GPS accuracy!');
     
 })();
