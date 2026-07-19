@@ -1382,6 +1382,205 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+
+        // ============================================
+    // BREVO EMAIL CONFIGURATION
+    // ============================================
+    const BREVO_CONFIG = {
+        apiKey: null,  // Will be loaded from Supabase
+        apiUrl: 'https://api.brevo.com/v3/smtp/email',
+        sender: {
+            email: 'noreply@nakurucollegeofhealthelearning.site',
+            name: 'NCHSM ICT Support'
+        }
+    };
+
+    // ============================================
+    // LOAD BREVO API KEY FROM SUPABASE
+    // ============================================
+    async function loadBrevoApiKey() {
+        try {
+            // Check cache first
+            const cached = sessionStorage.getItem('brevo_api_key');
+            if (cached) {
+                console.log('📦 Using cached Brevo API key');
+                BREVO_CONFIG.apiKey = cached;
+                return true;
+            }
+            
+            console.log('🔑 Fetching Brevo API key from Supabase...');
+            
+            const { data, error } = await sb.functions.invoke('get-secret', {
+                body: { secret_name: 'BREVO_API_KEY' }
+            });
+            
+            if (error) {
+                console.error('❌ Error fetching secret:', error);
+                return false;
+            }
+            
+            if (data && data.secret) {
+                BREVO_CONFIG.apiKey = data.secret;
+                sessionStorage.setItem('brevo_api_key', data.secret);
+                console.log('✅ Brevo API key loaded successfully');
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('❌ Failed to load Brevo API key:', error);
+            return false;
+        }
+    }
+
+    // ============================================
+    // SEND WELCOME/REGISTRATION NOTIFICATION
+    // ============================================
+    async function sendRegistrationNotification(userEmail, userName, studentId, program, intake) {
+        // Check if we have the API key
+        if (!BREVO_CONFIG.apiKey) {
+            console.log('⏳ Loading Brevo API key...');
+            const loaded = await loadBrevoApiKey();
+            if (!loaded) {
+                console.error('❌ Cannot send notification - API key not loaded');
+                return;
+            }
+        }
+        
+        // Double check
+        if (!BREVO_CONFIG.apiKey) {
+            console.error('❌ No Brevo API key available');
+            return;
+        }
+        
+        try {
+            console.log(`📧 Sending registration notification to ${userEmail}`);
+            
+            // Get current time in EAT
+            const now = new Date();
+            const time = now.toLocaleString('en-KE', { 
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Build the welcome email
+            const htmlContent = buildWelcomeEmail(userName, userEmail, studentId, program, intake, time);
+            
+            // Send via Brevo
+            const response = await fetch(BREVO_CONFIG.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'api-key': BREVO_CONFIG.apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sender: { 
+                        email: BREVO_CONFIG.sender.email, 
+                        name: BREVO_CONFIG.sender.name
+                    },
+                    to: [{ email: userEmail }],
+                    subject: '🎓 Welcome to NCHSM Digital Portal!',
+                    htmlContent: htmlContent
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                console.log(`✅ Welcome email sent to ${userEmail}`);
+            } else {
+                console.error('❌ Welcome email failed:', data);
+            }
+            
+        } catch(e) {
+            console.warn('⚠️ Welcome email error:', e);
+        }
+    }
+
+    // ============================================
+    // BUILD WELCOME EMAIL
+    // ============================================
+    function buildWelcomeEmail(name, email, studentId, program, intake, time) {
+        const year = new Date().getFullYear();
+        
+        return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
+                <span style="font-size: 32px;">🎓</span>
+            </div>
+            <h2 style="color: #0A3D62; margin: 10px 0 5px;">Welcome to NCHSM!</h2>
+            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
+        </div>
+        
+        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
+                👋 <strong>Dear ${name}</strong>
+            </p>
+            <p style="margin: 8px 0 0; color: #1e293b;">
+                Your NCHSM Digital Portal account has been successfully created! 
+                We're excited to have you join our learning community.
+            </p>
+        </div>
+        
+        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId || 'Pending'}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program || 'N/A'}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intake || 'N/A'}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">🕐 Registered</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
+            </table>
+        </div>
+        
+        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+            <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
+            <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
+                <li>✅ Your account is pending admin approval</li>
+                <li>📧 You will receive a confirmation email once approved</li>
+                <li>🔑 Use your email and password to login</li>
+                <li>📚 Access course materials after approval</li>
+            </ul>
+        </div>
+        
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
+            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Support</h5>
+            <p style="margin: 0; color: #78350F; font-size: 13px;">
+                If you have any questions or need assistance, contact NCHSM ICT Support:
+                <br>📧 ict@nakurucollegeofhealthelearning.site
+                <br>📞 +254 700 000 000
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="https://nakurucollegeofhealthelearning.site/login.html" 
+               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                🚪 Go to Login
+            </a>
+        </div>
+        
+        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+            NCHSM ICT Support<br>
+            📧 ict@nakurucollegeofhealthelearning.site<br>
+            🔗 mail.nakurucollegeofhealthelearning.site<br>
+            © ${year} Nakuru College of Health Sciences and Management
+        </p>
+    </div>
+</body>
+</html>
+        `;
+    }
     // ============================================
     // STORED DOCUMENTS DATA
     // ============================================
@@ -2225,16 +2424,31 @@ if (profileError) {
             // Wait for all uploads to complete
             await Promise.allSettled(uploadPromises);
             
-            // ============================================
+                       // ============================================
             // SUCCESS!
             // ============================================
             const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
             showFeedback(`✅ Registration successful! ${program_type} student with ${displayIntake} intake.`, 'success');
             
+            // 🆕 Send welcome notification via Brevo
             try {
-                await sendRegistrationEmail(email, full_name);
-            } catch (emailError) {
-                console.warn('Email sending failed:', emailError);
+                await sendRegistrationNotification(
+                    email, 
+                    full_name, 
+                    student_id_number || 'Pending', 
+                    program_type || 'N/A', 
+                    displayIntake
+                );
+                console.log('✅ Welcome notification sent via Brevo');
+            } catch (brevoError) {
+                console.warn('⚠️ Brevo welcome notification failed:', brevoError);
+                // Try the old email method as fallback
+                try {
+                    await sendRegistrationEmail(email, full_name);
+                    console.log('✅ Fallback welcome email sent');
+                } catch (fallbackError) {
+                    console.warn('⚠️ Fallback email failed:', fallbackError);
+                }
             }
             
             showSuccessAnimation(displayIntake);
