@@ -845,57 +845,40 @@ function showSendMessageModal(userId, fullName) {
 // 11. SESSIONS
 // ============================================================
 
+// ============================================================
+// FIXED: populateSessionForm - With Your Actual Blocks
+// ============================================================
+
 function populateSessionForm() {
     var program = state.program;
     var programs = program ? [{ id: program, name: program }] : [];
     populateSelect($('sessionProgram'), programs, 'id', 'name', 'Select Program');
     if (program) $('sessionProgram').value = program;
     
-    var blocks = getAcademicBlocks(program);
+    // Get blocks from your actual data
     var blockSelect = $('sessionBlockTerm');
-    if (blocks.length) {
-        populateSelect(blockSelect, blocks.map(function(b) { return { id: b, name: b }; }), 'id', 'name', 'Select Block/Term');
+    if (blockSelect) {
+        // Fetch actual blocks from units_catalog
+        state.sb
+            .from(TABLES.UNITS)
+            .select('block')
+            .eq('status', 'active')
+            .order('block')
+            .then(function(result) {
+                if (!result.error && result.data) {
+                    var blocks = [...new Set(result.data.map(function(u) { return u.block; }))];
+                    populateSelect(blockSelect, blocks.map(function(b) { return { id: b, name: b }; }), 'id', 'name', 'Select Block/Term');
+                }
+            });
     }
     
     var courses = state.allCourses.filter(function(c) { return c.target_program === program; });
     populateSelect($('sessionCourseId'), courses, 'id', 'course_name', 'Select Course');
 }
 
-function loadSessionsTable() {
-    var tbody = $('sessionsTable');
-    if (!tbody) return;
-    
-    var sessions = state.allSessions;
-    
-    if (!sessions.length) {
-        tbody.innerHTML = '<tr><td colspan="6">No scheduled sessions.</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = sessions.map(function(s) {
-        var course = state.allCourses.find(function(c) { return c.id === s.course_id; })?.course_name || s.course_id || 'N/A';
-        var dateTime = formatDate(s.session_date) + ' @ ' + (s.session_time || 'N/A');
-        var link = CONFIG.SUPABASE_URL + '/attendance?session_id=' + (s.id || '');
-        var statusBadge = '';
-        var approvalStatus = s.approval_status || 'pending';
-        if (approvalStatus === 'pending') {
-            statusBadge = ' <span class="badge badge-warning">⏳ Pending</span>';
-        } else if (approvalStatus === 'approved') {
-            statusBadge = ' <span class="badge badge-success">✅ Approved</span>';
-        } else if (approvalStatus === 'rejected') {
-            statusBadge = ' <span class="badge badge-danger">❌ Rejected</span>';
-        }
-        
-        return '<tr>' +
-            '<td>' + escapeHtml(s.session_title || 'N/A') + statusBadge + '</td>' +
-            '<td>' + dateTime + '</td>' +
-            '<td>' + escapeHtml(course) + '</td>' +
-            '<td>' + escapeHtml(s.target_program || 'N/A') + '/' + escapeHtml(s.block_term || 'N/A') + '</td>' +
-            '<td><a href="#" data-action="copy-link" data-link="' + link + '">Copy Link</a></td>' +
-            '<td><button class="btn btn-action btn-small" data-action="edit-session" data-session="' + (s.id || '') + '">Edit</button></td>' +
-        '</tr>';
-    }).join('');
-}
+// ============================================================
+// FIXED: handleAddSession - WITH ADMIN APPROVAL
+// ============================================================
 
 async function handleAddSession(e) {
     e.preventDefault();
@@ -920,20 +903,45 @@ async function handleAddSession(e) {
     }
     
     try {
-        await state.sb.from(TABLES.SESSIONS).insert({
-            session_title: data.title,
-            session_date: data.date,
-            session_time: data.time,
-            target_program: data.program,
-            block_term: data.block_term,
-            course_id: data.course_id,
-            lecturer_id: state.currentUserId,
-            approval_status: 'pending',
-            created_at: new Date().toISOString()
-        });
+        var { data: inserted, error: insertError } = await state.sb
+            .from(TABLES.SESSIONS)
+            .insert({
+                session_title: data.title,
+                session_date: data.date,
+                session_time: data.time,
+                target_program: data.program,
+                block_term: data.block_term,
+                course_id: data.course_id,
+                lecturer_id: state.currentUserId,
+                approval_status: 'pending',
+                created_at: new Date().toISOString()
+            })
+            .select();
+        
+        if (insertError) throw insertError;
+        
+        // ✅ REQUEST ADMIN APPROVAL
+        if (typeof requestAdminApproval === 'function') {
+            await requestAdminApproval(
+                'schedule_session',
+                {
+                    session_id: inserted[0]?.id,
+                    title: data.title,
+                    date: data.date,
+                    program: data.program,
+                    block: data.block_term
+                },
+                'Scheduled session: ' + data.title,
+                inserted[0]?.id
+            );
+        } else {
+            console.warn('⚠️ requestAdminApproval function not found');
+        }
+        
         showNotification('✅ Session "' + data.title + '" scheduled! Waiting for admin approval.', 'success');
         e.target.reset();
         loadSessionsTable();
+        
     } catch (error) {
         showNotification('Failed: ' + error.message, 'error');
     } finally {
@@ -941,7 +949,6 @@ async function handleAddSession(e) {
         btn.textContent = 'Schedule Session';
     }
 }
-
 // ============================================================
 // 12. ATTENDANCE
 // ============================================================
@@ -1349,6 +1356,9 @@ function loadExamsTable() {
         '</tr>';
     }).join('');
 }
+// ============================================================
+// FIXED: handleAddExam - WITH ADMIN APPROVAL
+// ============================================================
 
 async function handleAddExam(e) {
     e.preventDefault();
@@ -1379,22 +1389,46 @@ async function handleAddExam(e) {
     }
     
     try {
-        await state.sb.from(TABLES.EXAMS).insert({
-            exam_name: data.title,
-            exam_date: data.date,
-            exam_start_time: data.start_time || null,
-            exam_type: data.type,
-            online_link: data.link || null,
-            duration_minutes: parseInt(data.duration),
-            target_program: data.program,
-            course_id: data.course_id || null,
-            intake_year: data.intake,
-            block_term: data.block_term,
-            status: data.status,
-            approval_status: 'draft',
-            created_by: state.currentUserId,
-            created_at: new Date().toISOString()
-        });
+        var { data: inserted, error: insertError } = await state.sb
+            .from(TABLES.EXAMS)
+            .insert({
+                exam_name: data.title,
+                exam_date: data.date,
+                exam_start_time: data.start_time || null,
+                exam_type: data.type,
+                online_link: data.link || null,
+                duration_minutes: parseInt(data.duration),
+                target_program: data.program,
+                course_id: data.course_id || null,
+                intake_year: data.intake,
+                block_term: data.block_term,
+                status: data.status,
+                approval_status: 'draft',
+                created_by: state.currentUserId,
+                created_at: new Date().toISOString()
+            })
+            .select();
+        
+        if (insertError) throw insertError;
+        
+        // ✅ REQUEST ADMIN APPROVAL
+        if (typeof requestAdminApproval === 'function') {
+            await requestAdminApproval(
+                'create_exam',
+                {
+                    exam_id: inserted[0]?.id,
+                    title: data.title,
+                    type: data.type,
+                    program: data.program,
+                    block: data.block_term,
+                    intake: data.intake
+                },
+                'Created exam: ' + data.title,
+                inserted[0]?.id
+            );
+        } else {
+            console.warn('⚠️ requestAdminApproval function not found');
+        }
         
         showNotification('✅ ' + data.type + ' "' + data.title + '" created! Waiting for admin approval.', 'success');
         e.target.reset();
@@ -1408,7 +1442,6 @@ async function handleAddExam(e) {
         btn.textContent = 'Create Exam Record';
     }
 }
-
 async function deleteExam(examId) {
     var exam = state.allExams.find(function(e) { return e.id === examId; });
     if (!confirm('Delete "' + (exam?.exam_name || 'Exam') + '"?')) return;
@@ -1497,46 +1530,131 @@ async function saveEditedExam(e) {
 
 function loadMarksManagement() {
     var blockSelect = $('lecBlockSelect');
-    if (blockSelect && blockSelect.value) {
-        loadLecturerSubjects();
-        loadLecturerInternalMarks();
-    }
+    if (!blockSelect) return;
+    
+    // Fetch actual blocks from units_catalog
+    state.sb
+        .from(TABLES.UNITS)
+        .select('block')
+        .eq('status', 'active')
+        .order('block')
+        .then(function(result) {
+            if (!result.error && result.data) {
+                var blocks = [...new Set(result.data.map(function(u) { return u.block; }))];
+                var currentValue = blockSelect.value;
+                blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+                blocks.forEach(function(block) {
+                    var option = document.createElement('option');
+                    option.value = block;
+                    option.textContent = block;
+                    blockSelect.appendChild(option);
+                });
+                if (currentValue) blockSelect.value = currentValue;
+                
+                // Load subjects if block is selected
+                if (blockSelect.value) {
+                    loadLecturerSubjects();
+                    loadLecturerInternalMarks();
+                }
+            }
+        });
+    
     loadLecturerNCKMarks();
 }
+// ============================================================
+// FIXED: loadLecturerSubjects - Works with Your Actual Data
+// ============================================================
 
 async function loadLecturerSubjects() {
-    var block = $('lecBlockSelect').value;
+    var block = $('lecBlockSelect')?.value;
     var subjectSelect = $('lecSubjectSelect');
+    
+    if (!subjectSelect) {
+        console.warn('⚠️ lecSubjectSelect not found');
+        return;
+    }
+    
     if (!block) {
         subjectSelect.innerHTML = '<option value="">-- Select Block First --</option>';
         return;
     }
     
+    console.log('📚 Loading subjects for block:', block);
+    console.log('📚 Program filter:', state.program);
+    
     try {
-        var { data: units, error } = await state.sb
+        // Build query - don't filter by program if program is null
+        var query = state.sb
             .from(TABLES.UNITS)
             .select('*')
-            .eq('block', block)
-            .eq('target_program', state.program);
+            .eq('status', 'active');
         
-        if (error) throw error;
+        // Try different block matching strategies
+        // Strategy 1: Exact match
+        var { data: units, error } = await query.eq('block', block).order('unit_name', { ascending: true });
         
-        if (!units?.length) {
-            subjectSelect.innerHTML = '<option value="">No subjects found</option>';
+        // If no results, try Strategy 2: Case-insensitive match
+        if (!units || units.length === 0) {
+            console.log('⚠️ No exact match, trying case-insensitive...');
+            var { data: allUnits, error: allError } = await state.sb
+                .from(TABLES.UNITS)
+                .select('*')
+                .eq('status', 'active')
+                .order('unit_name', { ascending: true });
+            
+            if (!allError && allUnits) {
+                units = allUnits.filter(function(u) {
+                    return u.block && u.block.toLowerCase() === block.toLowerCase();
+                });
+            }
+        }
+        
+        // If still no results, try Strategy 3: Contains match
+        if (!units || units.length === 0) {
+            console.log('⚠️ No case-insensitive match, trying contains...');
+            var { data: allUnits, error: allError } = await state.sb
+                .from(TABLES.UNITS)
+                .select('*')
+                .eq('status', 'active')
+                .order('unit_name', { ascending: true });
+            
+            if (!allError && allUnits) {
+                units = allUnits.filter(function(u) {
+                    return u.block && u.block.toLowerCase().includes(block.toLowerCase());
+                });
+            }
+        }
+        
+        if (error) {
+            console.error('❌ Error loading units:', error);
+            subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
             return;
         }
         
-        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>' +
-            units.map(function(u) {
-                return '<option value="' + u.unit_name + '">' + escapeHtml(u.unit_name) + ' (' + (u.unit_code || '') + ')</option>';
-            }).join('');
-            
+        console.log('✅ Loaded', units?.length || 0, 'subjects');
+        
+        if (!units || units.length === 0) {
+            subjectSelect.innerHTML = '<option value="">No subjects found for ' + block + '</option>';
+            return;
+        }
+        
+        // Populate dropdown
+        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        units.forEach(function(u) {
+            var option = document.createElement('option');
+            option.value = u.unit_name;
+            var displayText = u.unit_name;
+            if (u.unit_code) displayText += ' (' + u.unit_code + ')';
+            if (u.credits) displayText += ' - ' + u.credits + ' cr';
+            option.textContent = displayText;
+            subjectSelect.appendChild(option);
+        });
+        
     } catch (error) {
-        console.error('Error loading subjects:', error);
+        console.error('Error in loadLecturerSubjects:', error);
         subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
     }
 }
-
 async function loadLecturerInternalMarks() {
     var block = $('lecBlockSelect').value;
     var subject = $('lecSubjectSelect').value;
@@ -1681,6 +1799,10 @@ function fillDownInternalMarks() {
     showNotification('Values filled down!', 'success');
 }
 
+// ============================================================
+// FIXED: saveLecturerInternalMarks - WITH ADMIN APPROVAL
+// ============================================================
+
 async function saveLecturerInternalMarks() {
     var block = $('lecBlockSelect').value;
     var subject = $('lecSubjectSelect').value;
@@ -1698,6 +1820,7 @@ async function saveLecturerInternalMarks() {
     
     showLoading('Saving marks...');
     var saved = 0;
+    var marksData = [];
     
     for (var i = 0; i < inputs.length; i++) {
         var sId = inputs[i].getAttribute('data-student');
@@ -1711,22 +1834,43 @@ async function saveLecturerInternalMarks() {
         var finalTotal = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
         var grade = calculateGrade(finalTotal);
         
+        var markData = {
+            admission_number: sId,
+            block: block,
+            subject_name: subject,
+            cat1_score: cat1,
+            cat2_score: cat2,
+            exam_score: exam,
+            final_score: finalTotal,
+            grade: grade,
+            academic_year: '2026',
+            approval_status: 'draft'
+        };
+        
+        // Update or insert
         var { error } = await state.sb
             .from(TABLES.MARKS)
-            .upsert({
-                admission_number: sId,
-                block: block,
-                subject_name: subject,
-                cat1_score: cat1,
-                cat2_score: cat2,
-                exam_score: exam,
-                final_score: finalTotal,
-                grade: grade,
-                academic_year: '2026',
-                approval_status: 'draft'
-            }, { onConflict: 'admission_number,subject_name,block' });
+            .upsert(markData, { onConflict: 'admission_number,subject_name,block' });
         
-        if (!error) saved++;
+        if (!error) {
+            saved++;
+            marksData.push(markData);
+        }
+    }
+    
+    // ✅ REQUEST ADMIN APPROVAL
+    if (saved > 0 && typeof requestAdminApproval === 'function') {
+        await requestAdminApproval(
+            'save_marks',
+            {
+                block: block,
+                subject: subject,
+                marks_count: saved,
+                marks_data: marksData
+            },
+            'Saved ' + saved + ' internal marks for ' + subject + ' (' + block + ')',
+            block
+        );
     }
     
     hideLoading();
@@ -1889,6 +2033,10 @@ async function saveSingleLecturerNCK(idx, studentId) {
     showNotification(error ? 'Error: ' + error.message : 'Saved! Waiting for admin approval.', error ? 'error' : 'success');
 }
 
+// ============================================================
+// FIXED: saveAllLecturerNCKMarks - WITH ADMIN APPROVAL
+// ============================================================
+
 async function saveAllLecturerNCKMarks() {
     var block = $('lecNckBlock').value;
     var sheet = $('lecNckSheet').value;
@@ -1901,6 +2049,7 @@ async function saveAllLecturerNCKMarks() {
     
     showLoading('Saving all NCK marks...');
     var saved = 0;
+    var nckData = [];
     
     for (var i = 0; i < inputs.length; i++) {
         var student = state.allStudents[i];
@@ -1911,30 +2060,49 @@ async function saveAllLecturerNCKMarks() {
         var grade = calculateGrade(score);
         var status = score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending');
         
+        var nckRecord = {
+            admission_number: student.student_id,
+            student_name: student.full_name,
+            block: block,
+            subject_name: sheet,
+            final_score: score,
+            grade: grade,
+            status: status,
+            graded_by: gradedBy || state.currentUser?.full_name || 'Lecturer',
+            academic_year: '2026',
+            published: true,
+            approval_status: 'draft'
+        };
+        
         var { error } = await state.sb
             .from(TABLES.NCK)
-            .upsert({
-                admission_number: student.student_id,
-                student_name: student.full_name,
-                block: block,
-                subject_name: sheet,
-                final_score: score,
-                grade: grade,
-                status: status,
-                graded_by: gradedBy || state.currentUser?.full_name || 'Lecturer',
-                academic_year: '2026',
-                published: true,
-                approval_status: 'draft'
-            }, { onConflict: 'admission_number,subject_name,block' });
+            .upsert(nckRecord, { onConflict: 'admission_number,subject_name,block' });
         
-        if (!error) saved++;
+        if (!error) {
+            saved++;
+            nckData.push(nckRecord);
+        }
+    }
+    
+    // ✅ REQUEST ADMIN APPROVAL
+    if (saved > 0 && typeof requestAdminApproval === 'function') {
+        await requestAdminApproval(
+            'save_nck_marks',
+            {
+                block: block,
+                sheet: sheet,
+                marks_count: saved,
+                nck_data: nckData
+            },
+            'Saved ' + saved + ' NCK marks for ' + sheet + ' (' + block + ')',
+            block
+        );
     }
     
     hideLoading();
     showNotification('Saved ' + saved + ' NCK records! Waiting for admin approval.', 'success');
     loadLecturerNCKMarks();
 }
-
 function switchMarksTab(tab) {
     document.querySelectorAll('.marks-tab').forEach(function(t) { t.style.display = 'none'; });
     document.querySelectorAll('.tabs-nav .tab-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -2334,6 +2502,10 @@ function loadMessagesTable() {
     }).join('');
 }
 
+// ============================================================
+// FIXED: handleSendMessage - WITH ADMIN APPROVAL
+// ============================================================
+
 async function handleSendMessage(e) {
     e.preventDefault();
     var btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -2376,11 +2548,29 @@ async function handleSendMessage(e) {
             messageData.recipient_role = 'student';
         }
         
-        var { error } = await state.sb
+        var { data: inserted, error: insertError } = await state.sb
             .from(TABLES.MESSAGES)
-            .insert(messageData);
+            .insert(messageData)
+            .select();
         
-        if (error) throw error;
+        if (insertError) throw insertError;
+        
+        // ✅ REQUEST ADMIN APPROVAL
+        if (typeof requestAdminApproval === 'function') {
+            await requestAdminApproval(
+                'send_message',
+                {
+                    message_id: inserted[0]?.id,
+                    subject: subject,
+                    target: target,
+                    target_program: state.program
+                },
+                'Sent message: ' + subject,
+                inserted[0]?.id
+            );
+        } else {
+            console.warn('⚠️ requestAdminApproval function not found');
+        }
         
         showNotification('✅ Message submitted! Waiting for admin approval.', 'success');
         e.target.reset();
