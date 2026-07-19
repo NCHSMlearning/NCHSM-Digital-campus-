@@ -3518,15 +3518,15 @@ window.openMarksEntry = function(block, subject, atype){
     loadMarksForSubject(block, subject, atype); 
 };
 
- async function loadMarksForSubject(block, subject, atype){ 
+async function loadMarksForSubject(block, subject, atype){ 
     showLoading('Loading marks...'); 
     
-    // Get marks for the subject
+    // ✅ STEP 1: Get marks (if any)
     const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {
         headers: { 'X-Year': currentYear }
     });
     
-    // Get all students for this block and year
+    // ✅ STEP 2: Get ALL students for this block and year
     const students = await apiCall('/api/students', {});
     const blockStudents = students.filter(s => {
         const studentYear = Number(s.year);
@@ -3535,11 +3535,12 @@ window.openMarksEntry = function(block, subject, atype){
     
     console.log(`📊 Students: ${blockStudents.length}, Marks: ${marks ? marks.length : 0}`);
     
-    // Get unit code from config
+    // ✅ STEP 3: Get unit code
     const config = await getConfig();
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
+    // ✅ STEP 4: Build the page
     let html = `<button class="back-btn" onclick="showLecturerSubjects()">Back</button>
         <div class="header">
             <h3>📝 ${displaySubject}</h3>
@@ -3551,7 +3552,7 @@ window.openMarksEntry = function(block, subject, atype){
     
     updateContentArea(html);
     
-    // If no students at all, show message
+    // ✅ STEP 5: If no students, show message
     if (blockStudents.length === 0) {
         document.getElementById('marksTableContainer').innerHTML = `
             <div class="card" style="text-align:center; padding:40px;">
@@ -3564,26 +3565,23 @@ window.openMarksEntry = function(block, subject, atype){
         return;
     }
     
-    // Create a map of existing marks
+    // ✅ STEP 6: Combine students with marks
     const marksMap = {};
-    if (marks && marks.length > 0) {
+    if (marks) {
         marks.forEach(m => {
-            if (m.admission) {
-                marksMap[m.admission] = m;
-            }
+            if (m.admission) marksMap[m.admission] = m;
         });
     }
     
-    // Build the full list: all students + their marks (or empty)
     const fullMarksList = blockStudents.map(s => {
         const existing = marksMap[s.admission];
         return {
             row: s.row || 0,
             admission: s.admission,
             name: s.name || 'Unknown',
-            cat1: existing && existing.cat1 !== undefined ? existing.cat1 : '',
-            cat2: existing && existing.cat2 !== undefined ? existing.cat2 : '',
-            exam: existing && existing.exam !== undefined ? existing.exam : '',
+            cat1: existing ? existing.cat1 : '',
+            cat2: existing ? existing.cat2 : '',
+            exam: existing ? existing.exam : '',
             final: existing ? existing.final : '',
             grade: existing ? existing.grade : '',
             gradedBy: existing ? existing.gradedBy : '',
@@ -3592,11 +3590,10 @@ window.openMarksEntry = function(block, subject, atype){
         };
     });
     
-    // Display the marks table with all students
+    // ✅ STEP 7: Display the table
     displayLecturerMarksTable(fullMarksList, block, subject, atype); 
     hideLoading(); 
 }
-
  function displayLecturerMarksTable(marks, block, subject, atype){ 
     // If marks is empty or not an array, show students with empty fields
     if (!marks || marks.length === 0) {
