@@ -718,106 +718,141 @@
     // LOAD HISTORY
     // ============================================
     
-    async function loadHistory() {
-        const table = document.getElementById('geo-attendance-history');
-        if (!table) {
-            console.warn('History table not found');
-            return;
-        }
-        
-        const supabaseClient = window.db?.supabase || window.supabase;
-        const studentId = getCurrentStudentId();
-        
-        if (!supabaseClient || !studentId) {
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
-                <i class="fas fa-exclamation-circle"></i> Please log in to view history
-            </td></tr>`;
-            return;
-        }
-        
-        try {
-            const { data, error } = await supabaseClient
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', studentId)
-                .order('check_in_time', { ascending: false })
-                .limit(20);
-            
-            if (error) {
-                console.error('History query error:', error);
-                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-                    <i class="fas fa-exclamation-triangle"></i> Error loading history
-                </td></tr>`;
-                return;
-            }
-            
-            if (!data || data.length === 0) {
-                table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
-                    <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
-                    No attendance records found
-                    <div style="font-size:12px; margin-top:4px;">Check in to start tracking your attendance!</div>
-                </td></tr>`;
-                return;
-            }
-            
-            table.innerHTML = data.map(log => {
-                const accuracy = log.accuracy_m || log.accuracy_meters || 0;
-                const distance = log.distance_meters || 0;
-                
-                const dist = distance >= 1000 ? 
-                    (distance/1000).toFixed(2) + ' km' : 
-                    distance.toFixed(0) + ' m';
-                
-                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
-                    timeZone: 'Africa/Nairobi',
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                let status = log.attendance_status || 'Pending';
-                let statusColor = '#f59e0b';
-                let statusIcon = '⏳';
-                
-                if (status === 'Present' || status === 'Verified') {
-                    statusColor = '#10b981';
-                    statusIcon = '✅';
-                } else if (status === 'Absent') {
-                    statusColor = '#ef4444';
-                    statusIcon = '❌';
-                }
-                
-                const sessionIcon = log.session_type === 'class' ? '📚' : 
-                                    (log.session_type === 'clinical' ? '🏥' : '📖');
-                
-                const targetName = log.target_name || log.location_name || 'Unknown';
-                
-                return `<tr>
-                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
-                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
-                        ${targetName}
-                    </td>
-                    <td style="color: ${statusColor}; font-weight: 600;">
-                        ${statusIcon} ${status}
-                    </td>
-                    <td>${dist}</td>
-                    <td>±${accuracy.toFixed(0)}m</td>
-                </tr>`;
-            }).join('');
-            
-            console.log(`✅ Loaded ${data.length} history records`);
-            updatePresentCount(data);
-            
-        } catch(e) {
-            console.error('History error:', e);
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
-                <i class="fas fa-exclamation-triangle"></i> Error loading history
-            </td></tr>`;
-        }
+  // ============================================
+// 🔧 FIXED: loadHistory - WORKING VERSION
+// ============================================
+
+async function loadHistory() {
+    const table = document.getElementById('geo-attendance-history');
+    if (!table) {
+        console.warn('History table not found');
+        return;
     }
+    
+    // Show loading
+    table.innerHTML = `<tr><td colspan="6">Loading attendance history...</td></tr>`;
+    
+    // Get student ID from multiple sources
+    let studentId = window.db?.currentUserId || 
+                    window.db?.currentUserProfile?.user_id || 
+                    window.currentUserId;
+    
+    if (!studentId) {
+        try {
+            const profile = localStorage.getItem('userProfile');
+            if (profile) {
+                const parsed = JSON.parse(profile);
+                studentId = parsed.user_id || parsed.id;
+            }
+        } catch(e) {}
+    }
+    
+    // ✅ Use getCurrentStudentId as fallback
+    if (!studentId && typeof getCurrentStudentId === 'function') {
+        studentId = getCurrentStudentId();
+    }
+    
+    console.log('📊 Student ID:', studentId);
+    
+    if (!studentId) {
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+            <i class="fas fa-exclamation-circle"></i> Please log in to view history
+        </td></tr>`;
+        return;
+    }
+    
+    // ✅ Use sbClient (not supabase) to avoid conflict
+    const sbClient = window.db?.supabase || window.supabase;
+    if (!sbClient) {
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i> Database connection not available
+        </td></tr>`;
+        return;
+    }
+    
+    try {
+        const { data, error } = await sbClient
+            .from('geo_attendance_logs')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('check_in_time', { ascending: false })
+            .limit(20);
+        
+        if (error) {
+            console.error('History query error:', error);
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> Error loading history: ${error.message}
+            </td></tr>`;
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                <i class="fas fa-inbox" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                No attendance records found
+                <div style="font-size:12px; margin-top:4px;">Check in to start tracking your attendance!</div>
+            </td></tr>`;
+            return;
+        }
+        
+        table.innerHTML = data.map(log => {
+            const accuracy = log.accuracy_m || log.accuracy_meters || 0;
+            const distance = log.distance_meters || 0;
+            
+            const dist = distance >= 1000 ? 
+                (distance/1000).toFixed(2) + ' km' : 
+                distance.toFixed(0) + ' m';
+            
+            const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            let status = log.attendance_status || 'Pending';
+            let statusColor = '#f59e0b';
+            let statusIcon = '⏳';
+            
+            if (status === 'Present' || status === 'Verified') {
+                statusColor = '#10b981';
+                statusIcon = '✅';
+            } else if (status === 'Absent') {
+                statusColor = '#ef4444';
+                statusIcon = '❌';
+            }
+            
+            const sessionIcon = log.session_type === 'class' ? '📚' : 
+                                (log.session_type === 'clinical' ? '🏥' : '📖');
+            
+            const targetName = log.target_name || log.location_name || 'Unknown';
+            
+            return `<tr>
+                <td style="white-space: nowrap; font-size: 12px;">${time}</td>
+                <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
+                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
+                    ${targetName}
+                </td>
+                <td style="color: ${statusColor}; font-weight: 600;">
+                    ${statusIcon} ${status}
+                </td>
+                <td>${dist}</td>
+                <td>±${accuracy.toFixed(0)}m</td>
+            </tr>`;
+        }).join('');
+        
+        console.log(`✅ Loaded ${data.length} history records`);
+        updatePresentCount(data);
+        
+    } catch(e) {
+        console.error('History error:', e);
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i> Error loading history: ${e.message}
+        </td></tr>`;
+    }
+}
     
     // ============================================
     // UPDATE PRESENT COUNT
