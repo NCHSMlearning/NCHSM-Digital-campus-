@@ -3403,75 +3403,120 @@ async function applyInternalColumnSettings(block, subject, year) {
       exportToCSV(data, 'internal_marks'); 
     } 
   };
-
-  // ======================= LECTURER SUBJECTS =======================
-  async function showLecturerSubjects() { 
+// ======================= LECTURER SUBJECTS =======================
+async function showLecturerSubjects() { 
     showLoading('Loading your subjects...'); 
     const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5']; 
     const lecturerSubjects = currentUser.subjects || []; 
     const config = await getConfig(); 
     const settings = await apiCall('/api/mark-entry/settings', {});
+    
     const subjectsByBlock = {}; 
     for(let b of blocks) subjectsByBlock[b] = []; 
+    
+    // ✅ FIX: Skip invalid subjects
     for(let subj of lecturerSubjects){ 
-      const parts = subj.split('|'); 
-      const block = parts[0]; 
-      const name = parts[1]; 
-      let atype = 'full';
-      let unitCode = '';
-      if(config && config[block]){ 
-        const found = config[block].find(c => c.name === name); 
-        if(found) {
-            atype = found.assessmentType || 'full';
-            unitCode = found.code || '';
+        // Skip if empty or doesn't contain '|'
+        if (!subj || !subj.includes('|')) {
+            console.warn('⚠️ Skipping invalid subject (no |):', subj);
+            continue;
         }
-      } 
-      let isSubjectOpen = true, closedReason = '';
-      if(settings.global && settings.global.enabled === false){ 
-        isSubjectOpen = false; 
-        closedReason = 'Global entry closed by administrator';
-      } else if(settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false){ 
-        isSubjectOpen = false; 
-        closedReason = `Entry closed for March ${currentYear} class`;
-      } else if(settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false){ 
-        isSubjectOpen = false; 
-        closedReason = `Entry closed for this subject`;
-      }
-      subjectsByBlock[block].push({ name, assessmentType: atype, isOpen: isSubjectOpen, closedReason, code: unitCode }); 
+        
+        const parts = subj.split('|'); 
+        // Skip if incomplete
+        if (parts.length < 2) {
+            console.warn('⚠️ Skipping invalid subject (incomplete):', subj);
+            continue;
+        }
+        
+        const block = parts[0].trim();  // ✅ Trim spaces
+        const name = parts[1].trim();   // ✅ Trim spaces
+        
+        // Skip if block is not recognized
+        if (!blocks.includes(block)) {
+            console.warn('⚠️ Unknown block:', block, 'for subject:', name);
+            continue;
+        }
+        
+        let atype = 'full';
+        let unitCode = '';
+        if(config && config[block] && Array.isArray(config[block])){ 
+            const found = config[block].find(c => c.name === name); 
+            if(found) {
+                atype = found.assessmentType || 'full';
+                unitCode = found.code || '';
+            }
+        } 
+        
+        let isSubjectOpen = true, closedReason = '';
+        if(settings.global && settings.global.enabled === false){ 
+            isSubjectOpen = false; 
+            closedReason = 'Global entry closed by administrator';
+        } else if(settings[`${currentYear}_all`] && settings[`${currentYear}_all`].enabled === false){ 
+            isSubjectOpen = false; 
+            closedReason = `Entry closed for March ${currentYear} class`;
+        } else if(settings[`${block}_${name}`] && settings[`${block}_${name}`].enabled === false){ 
+            isSubjectOpen = false; 
+            closedReason = `Entry closed for this subject`;
+        }
+        
+        // Push to block
+        subjectsByBlock[block].push({ 
+            name, 
+            assessmentType: atype, 
+            isOpen: isSubjectOpen, 
+            closedReason, 
+            code: unitCode 
+        }); 
     } 
+    
     let html = `<button class="back-btn" onclick="showMain()"><i class="fas fa-arrow-left"></i> Back</button>
       <div class="header"><h3><i class="fas fa-book"></i> My Subjects</h3><p>Click on any subject card to enter marks - ${currentYear} Class</p></div>`; 
+    
+    let hasSubjects = false;
     for(let b of blocks){ 
-      if(subjectsByBlock[b] && subjectsByBlock[b].length){ 
-        html += `<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_', ' ')}</h3></div><div class="subject-list">`; 
-        for(let s of subjectsByBlock[b]){ 
-          const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
-          const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
-          const statusBadge = s.isOpen ? '<span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>' : '<span class="badge badge-fail"><i class="fas fa-lock"></i> Closed</span>';
-          const displayName = s.code ? `${s.code} - ${s.name}` : s.name;
-          const onclickAttr = s.isOpen ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"` : `onclick="showNotification('${s.closedReason}', true)"`;
-          html += `<div class="subject-card ${!s.isOpen ? 'closed' : ''}" ${onclickAttr}>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4>${typeIcon} ${displayName}</h4>
-                ${statusBadge}
-            </div>
-            <p><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')} | ${typeLabel}</p>
-            ${s.code ? `<p style="font-size:12px; color:#64748b;"><i class="fas fa-hashtag"></i> ${s.code}</p>` : ''}
-            ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
-          </div>`; 
+        if(subjectsByBlock[b] && subjectsByBlock[b].length){ 
+            hasSubjects = true;
+            html += `<div style="margin:20px 0 10px;"><h3 style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:8px 24px;border-radius:40px;">${b.replace('_', ' ')}</h3></div><div class="subject-list">`; 
+            for(let s of subjectsByBlock[b]){ 
+                const typeIcon = s.assessmentType === 'full' ? '📊' : (s.assessmentType === 'single_cat' ? '📝' : '📖'); 
+                const typeLabel = s.assessmentType === 'full' ? 'CAT1+CAT2+Exam' : (s.assessmentType === 'single_cat' ? 'CAT+Exam' : 'Exam Only');
+                const statusBadge = s.isOpen ? '<span class="badge badge-pass"><i class="fas fa-lock-open"></i> Open</span>' : '<span class="badge badge-fail"><i class="fas fa-lock"></i> Closed</span>';
+                const displayName = s.code ? `${s.code} - ${s.name}` : s.name;
+                const onclickAttr = s.isOpen ? `onclick="openMarksEntry('${b}', '${s.name.replace(/'/g, "\\'")}', '${s.assessmentType}')"` : `onclick="showNotification('${s.closedReason}', true)"`;
+                html += `<div class="subject-card ${!s.isOpen ? 'closed' : ''}" ${onclickAttr}>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4>${typeIcon} ${displayName}</h4>
+                        ${statusBadge}
+                    </div>
+                    <p><i class="fas fa-layer-group"></i> ${b.replace('_', ' ')} | ${typeLabel}</p>
+                    ${s.code ? `<p style="font-size:12px; color:#64748b;"><i class="fas fa-hashtag"></i> ${s.code}</p>` : ''}
+                    ${!s.isOpen ? `<p style="color:#dc2626; font-size:12px; margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> ${s.closedReason}</p>` : ''}
+                </div>`; 
+            } 
+            html += `</div>`; 
         } 
-        html += `</div>`; 
-      } 
     } 
+    
+    // ✅ Show message if no subjects
+    if (!hasSubjects) {
+        html += `<div class="card" style="text-align:center; padding:40px;">
+            <i class="fas fa-book-open" style="font-size:48px; color:#94a3b8; margin-bottom:16px;"></i>
+            <h4>No Subjects Assigned</h4>
+            <p style="color:#64748b;">You don't have any subjects assigned yet. Contact your administrator.</p>
+        </div>`;
+    }
+    
     updateContentArea(html); 
     hideLoading(); 
-  }
-  window.openMarksEntry = function(block, subject, atype){ 
+}
+
+window.openMarksEntry = function(block, subject, atype){ 
     currentMarksBlock = block; 
     currentMarksSubject = subject; 
     currentAssessmentType = atype; 
     loadMarksForSubject(block, subject, atype); 
-  };
+};
 
  async function loadMarksForSubject(block, subject, atype){ 
     showLoading('Loading marks...'); 
