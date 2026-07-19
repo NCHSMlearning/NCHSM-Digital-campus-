@@ -614,68 +614,137 @@ sendLoginNotification: async function(studentData) {
     }
 },
 
-      // ============================================
-    // BUILD LOGIN EMAIL
-    // ============================================
-    buildLoginEmail: function(name, email, studentId, program, block, ip, device, time) {
-        return `
+ // ============================================
+// BUILD LOGIN EMAIL - UPDATED CONTACTS
+// ============================================
+buildLoginEmail: function(name, email, studentId, program, block, ip, device, time) {
+    // Format student ID - if it's a UUID, show "Pending" or use a cleaner format
+    const displayStudentId = studentId && studentId.includes('-') && studentId.length > 20 
+        ? 'Pending' 
+        : studentId || 'N/A';
+    
+    // Format block
+    const displayBlock = block && block !== 'N/A' && block !== 'null' ? block : 'Not Assigned';
+    
+    // Contact details
+    const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
+    const PHONE1 = '0790969743';
+    const PHONE2 = '0702432987';
+    
+    return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
-    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 New Login Alert</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8; color: #1a202c;">
+    <div style="background: #ffffff; border-radius: 20px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px; margin-bottom: 10px;">
                 <span style="font-size: 32px;">🔐</span>
             </div>
-            <h2 style="color: #0A3D62; margin: 10px 0 5px;">New Login Detected</h2>
-            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
+            <h2 style="color: #0A3D62; margin: 0; font-size: 24px;">New Login Detected</h2>
+            <p style="color: #64748B; margin: 5px 0 0;">Nakuru College of Health Sciences and Management</p>
         </div>
         
-        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+        <!-- Welcome Message -->
+        <div style="background: linear-gradient(135deg, #e8f4f8, #d4e8f0); border-radius: 14px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
             <p style="margin: 0; font-size: 16px; color: #0A3D62;">
                 👋 <strong>Hello ${name}</strong>
             </p>
-            <p style="margin: 8px 0 0; color: #1e293b;">
-                Your NCHSM student account was just accessed. If this was you, no action is needed. If not, contact ICT Support immediately.
+            <p style="margin: 8px 0 0; color: #1e293b; font-size: 14px;">
+                Your NCHSM student account was just accessed. If this was you, no action is needed. 
+                If you don't recognize this activity, please secure your account immediately.
             </p>
         </div>
         
-        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Login Details</h4>
+        <!-- Login Details -->
+        <div style="background: #f8fafc; border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">📋 Login Details</h4>
             <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📌 Block</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${block}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">🌐 IP</td><td style="padding: 6px 0; color: #dc2626; font-weight: 600;">${ip}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">💻 Device</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${device}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">🕐 Time</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">👤 Name</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">🆔 Student ID</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${displayStudentId}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">📚 Program</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${program}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">📌 Block</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${displayBlock}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">📧 Email</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${email}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">🌐 IP Address</td>
+                    <td style="padding: 8px 0; color: #dc2626; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${ip}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%; border-bottom: 1px solid #e2e8f0;">💻 Device</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${device}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748B; width: 40%;">🕐 Login Time</td>
+                    <td style="padding: 8px 0; color: #0A3D62; font-weight: 500;">${time}</td>
+                </tr>
             </table>
         </div>
         
-        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
-            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Security Tips</h5>
+        <!-- Quick Actions -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="https://nakurucollegeofhealthelearning.site/student.html" 
+               style="flex: 1; min-width: 140px; background: #0A3D62; color: white; padding: 12px 20px; border-radius: 10px; text-decoration: none; text-align: center; font-weight: 600; font-size: 14px; display: inline-block;">
+                🚪 Go to Portal
+            </a>
+            <a href="mailto:${CONTACT_EMAIL}?subject=Unauthorized%20Login%20Alert" 
+               style="flex: 1; min-width: 140px; background: #e2e8f0; color: #1e293b; padding: 12px 20px; border-radius: 10px; text-decoration: none; text-align: center; font-weight: 600; font-size: 14px; display: inline-block;">
+                📧 Report Issue
+            </a>
+        </div>
+        
+        <!-- Security Tips -->
+        <div style="background: #fef3c7; border-radius: 14px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #F59E0B;">
+            <h5 style="margin: 0 0 8px 0; color: #92400E; font-size: 14px;">💡 Security Tips</h5>
             <ul style="margin: 0; padding-left: 20px; color: #78350F; font-size: 13px; line-height: 1.6;">
                 <li>If this wasn't you, contact NCHSM ICT Support immediately</li>
-                <li>Never share your login credentials</li>
-                <li>Use a strong, unique password</li>
+                <li>Never share your login credentials with anyone</li>
+                <li>Use a strong, unique password for your account</li>
+                <li>Enable two-factor authentication for extra security</li>
             </ul>
         </div>
         
-        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-            NCHSM ICT Support<br>
-            📧 ict@nakurucollegeofhealthelearning.site<br>
-            📞 +254 700 000 000<br>
-            © ${new Date().getFullYear()} NCHSM
-        </p>
+        <!-- Footer -->
+        <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8;">
+            <p style="margin: 0;">
+                NCHSM ICT Support<br>
+                📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
+                📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
+                📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a><br>
+                🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a>
+            </p>
+            <p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">
+                This is an automated security notification. Please do not reply to this email.
+            </p>
+            <p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">
+                © ${new Date().getFullYear()} Nakuru College of Health Sciences and Management
+            </p>
+        </div>
     </div>
 </body>
 </html>
-        `;
-    },
+    `;
+},
     // ============================================
     // HIDE SKELETON LOADER
     // ============================================
