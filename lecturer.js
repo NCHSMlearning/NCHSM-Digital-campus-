@@ -1349,6 +1349,133 @@ function closeMapModal() {
     var modal = $('mapModal');
     if (modal) modal.classList.remove('active');
 }
+// ============================================
+// 📥 EXPORT ATTENDANCE CSV
+// ============================================
+
+function exportAttendanceCSV() {
+    var tbody = $('attendanceTable');
+    if (!tbody) return;
+    
+    var rows = tbody.querySelectorAll('tr');
+    if (!rows.length || rows[0].cells.length < 2) {
+        showNotification('No data to export.', 'warning');
+        return;
+    }
+    
+    var headers = [
+        'Student Name', 'Reg No', 'Program', 'Block/Term', 'Year',
+        'Session Type', 'Course/Target', 'Date/Time', 'Location',
+        'Distance', 'Status', 'GPS Accuracy'
+    ];
+    
+    var csvRows = [headers.join(',')];
+    
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (!cells.length) return;
+        
+        var rowData = [];
+        for (var i = 0; i < Math.min(cells.length, 11); i++) {
+            var text = cells[i]?.textContent?.trim() || '';
+            text = '"' + text.replace(/"/g, '""') + '"';
+            rowData.push(text);
+        }
+        csvRows.push(rowData.join(','));
+    });
+    
+    var csvContent = csvRows.join('\n');
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', 'attendance_' + new Date().toISOString().split('T')[0] + '.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showNotification('✅ Attendance exported successfully!', 'success');
+}
+
+// Make it global
+window.exportAttendanceCSV = exportAttendanceCSV;
+
+// ============================================
+// 🖨️ PRINT ATTENDANCE REPORT
+// ============================================
+
+function printAttendanceReport() {
+    var content = document.querySelector('.todays-attendance-section');
+    if (!content) {
+        showNotification('No data to print.', 'warning');
+        return;
+    }
+    
+    var printWindow = window.open('', '_blank', 'width=1200,height=800');
+    printWindow.document.write('<html><head><title>Attendance Report</title>');
+    printWindow.document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+        body { font-family: 'Inter', Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 8px 6px; text-align: left; }
+        th { background: #4f46e5; color: white; font-weight: 600; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #4f46e5; }
+        .header p { color: #6b7280; margin: 4px 0; }
+        .status-present { color: #10b981; font-weight: 600; }
+        .status-absent { color: #ef4444; font-weight: 600; }
+        .status-pending { color: #f59e0b; font-weight: 600; }
+    `);
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write('<div class="header">');
+    printWindow.document.write('<h1>NCHSM Attendance Report</h1>');
+    printWindow.document.write('<p>Generated: ' + new Date().toLocaleString() + '</p>');
+    printWindow.document.write('<p>Program: ' + (state.program || 'All') + '</p>');
+    printWindow.document.write('</div>');
+    printWindow.document.write(content.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+    
+    showNotification('🖨️ Print dialog opened!', 'success');
+}
+
+// Make it global
+window.printAttendanceReport = printAttendanceReport;
+
+// ============================================
+// 🔄 RESET ATTENDANCE FILTERS
+// ============================================
+
+function resetAttendanceFilters() {
+    var dateInput = $('filterDate');
+    if (dateInput) {
+        var today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+    
+    var blockSelect = $('filterBlock');
+    if (blockSelect) blockSelect.value = 'All';
+    
+    var yearSelect = $('filterYear');
+    if (yearSelect) yearSelect.value = 'All';
+    
+    var typeSelect = $('filterSessionType');
+    if (typeSelect) typeSelect.value = 'All';
+    
+    var searchInput = $('filterSearch');
+    if (searchInput) searchInput.value = '';
+    
+    // Reload attendance with default filters
+    loadFilteredAttendance();
+    
+    showNotification('🔄 Filters reset to default', 'success');
+}
+
+// Make it global
+window.resetAttendanceFilters = resetAttendanceFilters;
 
 // ============================================================
 // 13. EXAMS / CATS
