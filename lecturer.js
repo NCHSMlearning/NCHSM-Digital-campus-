@@ -950,7 +950,8 @@ async function handleAddSession(e) {
     }
 }
 // ============================================================
-// 12. ATTENDANCE
+// 👨‍🏫 LECTURER ATTENDANCE SYSTEM - FIXED
+// Now shows student data from geo_attendance_logs
 // ============================================================
 
 function loadAttendance() {
@@ -961,10 +962,12 @@ function loadAttendance() {
 }
 
 function loadAttendanceSelects() {
-    var students = state.allStudents;
+    var students = state.allStudents || [];
     populateSelect($('attStudentId'), students, 'user_id', 'full_name', 'Select Student');
     
-    var courses = state.allCourses.filter(function(c) { return c.target_program === state.program; });
+    var courses = state.allCourses ? state.allCourses.filter(function(c) { 
+        return c.target_program === state.program; 
+    }) : [];
     populateSelect($('attCourseId'), courses, 'id', 'course_name', 'Select Course');
     
     var dateInput = $('attDate');
@@ -972,6 +975,11 @@ function loadAttendanceSelects() {
         dateInput.value = new Date().toISOString().split('T')[0];
     }
 }
+
+// ============================================
+// ✅ FIXED: LOAD TODAY'S ATTENDANCE
+// NOW SHOWS STUDENT CHECK-INS FROM geo_attendance_logs
+// ============================================
 
 async function loadTodayAttendance() {
     var tbody = $('attendanceTable');
@@ -982,9 +990,19 @@ async function loadTodayAttendance() {
         var start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
         var end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
         
+        // ✅ FIX: Query geo_attendance_logs (where student check-ins are stored)
         var { data: logs, error } = await state.sb
-            .from(TABLES.ATTENDANCE)
-            .select('*')
+            .from('geo_attendance_logs')
+            .select(`
+                *,
+                student:student_id (
+                    full_name,
+                    student_id as reg_no,
+                    program,
+                    block,
+                    intake_year
+                )
+            `)
             .gte('check_in_time', start)
             .lte('check_in_time', end)
             .order('check_in_time', { ascending: false });
@@ -992,31 +1010,39 @@ async function loadTodayAttendance() {
         if (error) throw error;
         
         if (!logs?.length) {
-            tbody.innerHTML = '<tr><td colspan="8">No records today.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">No records today.</td></tr>';
             return;
         }
         
+        // ✅ Show ALL students (not just lecturer)
         var filtered = logs.filter(function(log) {
-            return log.user_id === state.currentUserId ||
-                log.recorded_by_id === state.currentUserId ||
-                log.program === state.program;
+            // Show all student check-ins
+            return log.student_id && log.session_type !== 'Lecturer Check-in';
         });
         
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="8">No records for your program today.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">No student records for your program today.</td></tr>';
             return;
         }
         
         tbody.innerHTML = filtered.map(function(log) {
-            var isLecturer = log.user_role === 'lecturer';
-            var name = isLecturer ? state.currentUser.full_name : (log.student_name || 'Student');
-            var regNo = isLecturer ? (state.currentUser.employee_id || 'N/A') : 'N/A';
-            var course = state.allCourses.find(function(c) { return c.id === log.course_id; })?.course_name || log.course_id || 'General';
-            var dateTime = log.check_in_time ? formatDateTime(log.check_in_time) : 'N/A';
-            var location = log.location_friendly_name || log.location_details || 'N/A';
-            var hasLocation = log.latitude && log.longitude;
+            var student = log.student || {};
+            var name = student.full_name || 'Unknown Student';
+            var regNo = student.reg_no || 'N/A';
+            var program = student.program || 'N/A';
             var sessionType = log.session_type || 'Class';
             var typeClass = sessionType.toLowerCase();
+            
+            // ✅ Get course name from target_name or fallback
+            var course = log.target_name || log.unit_code || log.clinical_area || 'General';
+            
+            var dateTime = log.check_in_time ? formatDateTime(log.check_in_time) : 'N/A';
+            var location = log.location_friendly_name || log.location_address || log.location_details || 'N/A';
+            var hasLocation = log.latitude && log.longitude;
+            
+            // ✅ Status from attendance_status field
+            var status = log.attendance_status || log.is_verified ? 'Present' : 'Pending';
+            var statusClass = status === 'Present' ? 'status-present' : 'status-pending';
             
             return '<tr>' +
                 '<td>' + escapeHtml(name) + '</td>' +
@@ -1025,60 +1051,77 @@ async function loadTodayAttendance() {
                 '<td>' + escapeHtml(course) + '</td>' +
                 '<td>' + dateTime + '</td>' +
                 '<td>' + escapeHtml(location) + '</td>' +
-                '<td><span class="status-present">' + escapeHtml(log.status || 'Present') + '</span></td>' +
+                '<td><span class="' + statusClass + '">' + escapeHtml(status) + '</span></td>' +
                 '<td>' +
                     '<button class="btn btn-action btn-small" ' + (!hasLocation ? 'disabled' : '') +
                     ' data-action="view-map" data-lat="' + (log.latitude || 0) + '" data-lng="' + (log.longitude || 0) + '" data-name="' + escapeHtml(name) + '">' +
-                    (hasLocation ? 'View Map' : 'No Location') +
+                    (hasLocation ? '📍 View Map' : 'No Location') +
                     '</button>' +
                 '</td>' +
             '</tr>';
         }).join('');
         
-        $('todaysAttendanceCount').textContent = filtered.length;
+        var countEl = $('todaysAttendanceCount');
+        if (countEl) countEl.textContent = filtered.length;
         
     } catch (error) {
+        console.error('Error loading today\'s attendance:', error);
         tbody.innerHTML = '<tr><td colspan="8">Error: ' + error.message + '</td></tr>';
     }
 }
+
+// ============================================
+// ✅ FIXED: LOAD PAST ATTENDANCE
+// ============================================
 
 async function loadPastAttendance() {
     var tbody = $('pastAttendanceTable');
     if (!tbody) return;
     
     try {
+        // ✅ Query geo_attendance_logs (student check-ins)
         var { data: records, error } = await state.sb
-            .from(TABLES.ATTENDANCE)
-            .select('*')
+            .from('geo_attendance_logs')
+            .select(`
+                *,
+                student:student_id (
+                    full_name,
+                    student_id as reg_no,
+                    program,
+                    block,
+                    intake_year
+                )
+            `)
             .order('check_in_time', { ascending: false })
             .limit(100);
         
         if (error) throw error;
         
         if (!records?.length) {
-            tbody.innerHTML = '<tr><td colspan="9">No records found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#9ca3af;">No records found.</td></tr>';
             return;
         }
         
+        // ✅ Show ALL student records
         var filtered = records.filter(function(log) {
-            return log.program === state.program ||
-                log.recorded_by_id === state.currentUserId ||
-                log.user_id === state.currentUserId;
+            return log.student_id && log.session_type !== 'Lecturer Check-in';
         });
         
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="9">No records for your program.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#9ca3af;">No student records found.</td></tr>';
             return;
         }
         
         tbody.innerHTML = filtered.map(function(log) {
-            var dt = log.check_in_time ? new Date(log.check_in_time) : new Date();
-            var isLecturer = log.user_role === 'lecturer';
-            var name = isLecturer ? (state.currentUser.full_name || 'Lecturer') : (log.student_name || 'Student');
-            var regNo = isLecturer ? (state.currentUser.employee_id || 'N/A') : 'N/A';
-            var course = state.allCourses.find(function(c) { return c.id === log.course_id; })?.course_name || log.course_id || 'General';
+            var student = log.student || {};
+            var name = student.full_name || 'Unknown Student';
+            var regNo = student.reg_no || 'N/A';
             var sessionType = log.session_type || 'Class';
             var typeClass = sessionType.toLowerCase();
+            var course = log.target_name || log.unit_code || log.clinical_area || 'General';
+            var status = log.attendance_status || log.is_verified ? 'Present' : 'Pending';
+            var statusClass = status === 'Present' ? 'status-present' : 'status-pending';
+            var dt = log.check_in_time ? new Date(log.check_in_time) : new Date();
             
             return '<tr>' +
                 '<td>' + dt.toLocaleDateString('en-GB') + '</td>' +
@@ -1087,26 +1130,38 @@ async function loadPastAttendance() {
                 '<td><span class="session-type-badge type-' + typeClass + '">' + escapeHtml(sessionType) + '</span></td>' +
                 '<td>' + escapeHtml(course) + '</td>' +
                 '<td>' + dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '</td>' +
-                '<td>' + escapeHtml(log.location_friendly_name || log.location_details || 'N/A') + '</td>' +
-                '<td><span class="status-present">' + escapeHtml(log.status || 'Present') + '</span></td>' +
-                '<td>' + escapeHtml(log.recorded_by_name || 'Self') + '</td>' +
+                '<td>' + escapeHtml(log.location_friendly_name || log.location_address || 'N/A') + '</td>' +
+                '<td><span class="' + statusClass + '">' + escapeHtml(status) + '</span></td>' +
+                '<td>' + escapeHtml(log.student_name || 'Student') + '</td>' +
             '</tr>';
         }).join('');
         
-        $('pastAttendanceCount').textContent = filtered.length;
+        var countEl = $('pastAttendanceCount');
+        if (countEl) countEl.textContent = filtered.length;
         
     } catch (error) {
+        console.error('Error loading past attendance:', error);
         tbody.innerHTML = '<tr><td colspan="9">Error: ' + error.message + '</td></tr>';
     }
 }
 
+// ============================================
+// FILTER FUNCTIONS (Updated)
+// ============================================
+
 function filterTodayAttendance() {
     var search = $('attendanceSearch')?.value.toLowerCase() || '';
     var rows = document.querySelectorAll('#attendanceTable tr');
+    var visible = 0;
     rows.forEach(function(row) {
-        if (row.cells.length === 0) return;
-        row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+        if (row.cells.length < 8) return;
+        var text = row.textContent.toLowerCase();
+        var show = !search || text.includes(search);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
+    var countEl = $('todaysAttendanceCount');
+    if (countEl) countEl.textContent = visible;
 }
 
 function filterPastAttendance() {
@@ -1133,8 +1188,13 @@ function filterPastAttendance() {
         if (show) visible++;
     });
     
-    $('pastAttendanceCount').textContent = visible;
+    var countEl = $('pastAttendanceCount');
+    if (countEl) countEl.textContent = visible;
 }
+
+// ============================================
+// LECTURER CHECK-IN (Kept as is)
+// ============================================
 
 async function lecturerCheckIn() {
     var btn = $('lecturerCheckinBtn');
@@ -1150,20 +1210,21 @@ async function lecturerCheckIn() {
     
     navigator.geolocation.getCurrentPosition(async function(pos) {
         try {
-            await state.sb.from(TABLES.ATTENDANCE).insert({
-                user_id: state.currentUserId,
-                user_role: 'lecturer',
-                session_type: 'Lecturer Check-in',
+            // ✅ Store in geo_attendance_logs (same as students)
+            await state.sb.from('geo_attendance_logs').insert({
+                student_id: state.currentUserId,
                 check_in_time: new Date().toISOString(),
+                session_type: 'Lecturer Check-in',
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,
-                status: 'Present',
-                recorded_by_id: state.currentUserId,
-                recorded_by_name: state.currentUser.full_name,
-                student_name: state.currentUser.full_name,
-                program: state.program
+                accuracy_m: pos.coords.accuracy || null,
+                attendance_status: 'Present',
+                is_verified: true,
+                target_name: 'Lecturer Check-in',
+                location_address: 'Lecturer Check-in',
+                student_name: state.currentUser.full_name
             });
-            showNotification('✅ Check-in logged!', 'success');
+            showNotification('✅ Lecturer check-in logged!', 'success');
             loadTodayAttendance();
         } catch (e) {
             showNotification('Check-in failed: ' + e.message, 'error');
@@ -1177,6 +1238,10 @@ async function lecturerCheckIn() {
         btn.textContent = 'Mark My Attendance';
     });
 }
+
+// ============================================
+// MANUAL STUDENT ATTENDANCE ENTRY
+// ============================================
 
 async function handleManualAttendance(e) {
     e.preventDefault();
@@ -1206,27 +1271,29 @@ async function handleManualAttendance(e) {
         return;
     }
     
+    // Get course name
+    var course = state.allCourses.find(function(c) { return c.id === courseId; });
+    var courseName = course ? course.course_name : 'General';
+    
     try {
-        await state.sb.from(TABLES.ATTENDANCE).insert({
-            user_id: studentId,
-            user_role: 'student',
-            session_type: sessionType,
+        // ✅ Store in geo_attendance_logs (same as student check-ins)
+        await state.sb.from('geo_attendance_logs').insert({
+            student_id: studentId,
             check_in_time: date + 'T' + (time || '12:00') + ':00.000Z',
-            course_id: courseId || null,
-            location_details: 'MANUAL: ' + (location || 'N/A') + ' (By ' + state.currentUser.full_name + ')',
-            status: 'Present',
-            recorded_by_id: state.currentUserId,
-            recorded_by_name: state.currentUser.full_name,
+            session_type: sessionType,
+            target_id: courseId || null,
+            target_name: courseName,
+            attendance_status: 'Present',
+            is_verified: true,
+            location_address: 'MANUAL: ' + (location || 'N/A') + ' (By ' + state.currentUser.full_name + ')',
             student_name: student.full_name,
-            student_email: student.email,
-            program: student.program,
-            block: student.block,
-            intake_year: student.intake_year,
-            is_manual_entry: true
+            unit_code: courseId || null,
+            clinical_area: sessionType === 'Clinical' ? courseName : null
         });
         showNotification('✅ ' + student.full_name + ' marked present!', 'success');
         e.target.reset();
         loadTodayAttendance();
+        loadPastAttendance();
     } catch (error) {
         showNotification('Failed: ' + error.message, 'error');
     } finally {
@@ -1234,6 +1301,10 @@ async function handleManualAttendance(e) {
         btn.textContent = 'Mark Student Present';
     }
 }
+
+// ============================================
+// MAP VIEW
+// ============================================
 
 function viewCheckInMap(lat, lng, name) {
     if (!lat || !lng) {
