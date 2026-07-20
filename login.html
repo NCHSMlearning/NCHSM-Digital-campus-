@@ -11,6 +11,7 @@
     <!-- Preconnect for faster loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://accounts.google.com">
     
     <!-- Preload background image -->
     <link rel="preload" 
@@ -22,8 +23,12 @@
     
     <!-- Feather Icons -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- ✅ Google Identity Services - REQUIRED FOR GOOGLE AUTH -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Skip to content link -->
@@ -375,7 +380,6 @@
     </div>
 
     <!-- ===== EXTERNAL SCRIPTS ===== -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="code-protection.js"></script>
     <script src="login-script.js"></script>
 </body>
