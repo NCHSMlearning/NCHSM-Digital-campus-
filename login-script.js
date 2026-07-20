@@ -1,15 +1,17 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 4.0 - Fixed Session + Theme Toggle
+// Version: 4.1 - GOOGLE AUTH INTEGRATED
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
-  // ============================================
+
+// ============================================
 // 🚀 HIDE .html EXTENSION IN URL
 // ============================================
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
     window.history.replaceState({}, '', cleanPath);
 }
+
 // ============================================
 // QUEUE SYSTEM - BYPASSED
 // ============================================
@@ -60,65 +62,30 @@ window.NCHSMLogin = {
         csrfProtection: true,
         requireTwoFactor: false
     },
-// ============================================
-// BREVO CONFIGURATION - SECURE (Using Supabase)
-// ============================================
-brevo: {
-    apiKey: null,  // Will be loaded from Supabase
-    apiUrl: 'https://api.brevo.com/v3/smtp/email',
-    enabled: true,
-    sender: {
-        email: 'noreply@nakurucollegeofhealthelearning.site',
-        name: 'NCHSM ICT Support'
-    },
-    _initialized: false
-},
 
-// ============================================
-// LOAD BREVO API KEY FROM SUPABASE
-// ============================================
-loadBrevoApiKey: async function() {
-    try {
-        // First, check if we already have it cached
-        const cached = sessionStorage.getItem('brevo_api_key');
-        if (cached) {
-            console.log('📦 Using cached Brevo API key');
-            this.brevo.apiKey = cached;
-            this.brevo._initialized = true;
-            return true;
-        }
-        
-        console.log('🔑 Fetching Brevo API key from Supabase...');
-        
-        // Call the Edge Function
-        const { data, error } = await this.supabase.functions.invoke('get-secret', {
-            body: { secret_name: 'BREVO_API_KEY' }
-        });
-        
-        if (error) {
-            console.error('❌ Error fetching secret:', error);
-            return false;
-        }
-        
-        if (data && data.secret) {
-            this.brevo.apiKey = data.secret;
-            this.brevo._initialized = true;
-            
-            // Cache it in session storage (safe for this session)
-            sessionStorage.setItem('brevo_api_key', data.secret);
-            
-            console.log('✅ Brevo API key loaded successfully');
-            return true;
-        }
-        
-        console.error('❌ No secret returned');
-        return false;
-        
-    } catch (error) {
-        console.error('❌ Failed to load Brevo API key:', error);
-        return false;
-    }
-},
+    // ============================================
+    // GOOGLE AUTH CONFIG - ✅ REPLACE CLIENT ID
+    // ============================================
+    google: {
+        clientId: 'YOUR_CLIENT_ID.apps.googleusercontent.com',  // ⚠️ REPLACE WITH YOUR REAL CLIENT ID
+        initialized: false,
+        credential: null
+    },
+
+    // ============================================
+    // BREVO CONFIGURATION - SECURE (Using Supabase)
+    // ============================================
+    brevo: {
+        apiKey: null,
+        apiUrl: 'https://api.brevo.com/v3/smtp/email',
+        enabled: true,
+        sender: {
+            email: 'noreply@nakurucollegeofhealthelearning.site',
+            name: 'NCHSM ICT Support'
+        },
+        _initialized: false
+    },
+    
     // ===== RATE LIMITING =====
     rateLimit: {
         requests: [],
@@ -136,96 +103,101 @@ loadBrevoApiKey: async function() {
     
     // ===== STAFF RECORDS =====
     staffRecords: [],
- // ============================================
-// INITIALIZATION
-// ============================================
-init: function() {
-    if (this.state.isInitialized) {
-        console.log('⚠️ NCHSMLogin already initialized');
-        return;
-    }
-    
-    console.log('🚀 Initializing NCHSMLogin v4.0...');
-    console.log('🛡️ Ultimate Security Edition');
-    console.log('🌓 Theme Toggle + Session Tracking Fixed');
-    
-    // Hide console from hackers
-    this.disableDeveloperTools();
-    
-    // Initialize Feather Icons
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-    
-    // Generate CSRF token
-    this.generateCSRFToken();
-    
-    // Check for trusted device
-    this.checkTrustedDevice();
-    
-    // Initialize password toggle
-    this.initPasswordToggle();
-    
-    // ✅ INITIALIZE PASSWORD STRENGTH METER
-    this.initPasswordStrength();
-    
-    // Initialize login form
-    this.initLoginForm();
-    
-    // Initialize modals
-    this.initModals();
-    
-    // Focus management
-    this.initFocusManagement();
-    
-    // Virtual keyboard handler
-    this.initVirtualKeyboardHandler();
-    
-    // Initialize Supabase
-    this.initSupabase();
-    
-    // Load staff records
-    this.loadStaffRecords();
-    
-    // Clear URL parameters
-    this.clearURLParameters();
-    
-    // Add honeypot
-    this.addHoneypot();
-    
-    // Start session monitoring
-    this.startSessionMonitoring();
-    
-    // Network status
-    this.initNetworkStatus();
-    
-    // OTP input handling
-    this.initOTPInputs();
-    
-    // Ripple effect on buttons
-    this.initRippleEffect();
-    
-    // Hide skeleton loader
-    this.hideSkeletonLoader();
-    
-    // ✅ INITIALIZE THEME TOGGLE
-    this.initThemeToggle();
-    
-    // 🆕 Load Brevo API key from Supabase Secrets
-    this.loadBrevoApiKey().then(success => {
-        if (success) {
-            console.log('✅ Brevo integration ready');
-        } else {
-            console.warn('⚠️ Brevo integration not available - login notifications disabled');
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    init: function() {
+        if (this.state.isInitialized) {
+            console.log('⚠️ NCHSMLogin already initialized');
+            return;
         }
-    });
-    
-    // Mark as initialized
-    this.state.isInitialized = true;
-    
-    console.log('✅ NCHSMLogin v4.0 initialized');
-    console.log(`🕐 ${new Date().toLocaleString()}`);
-},
+        
+        console.log('🚀 Initializing NCHSMLogin v4.1...');
+        console.log('🛡️ Ultimate Security Edition + Google Auth');
+        console.log('🌓 Theme Toggle + Session Tracking Fixed');
+        
+        // Hide console from hackers
+        this.disableDeveloperTools();
+        
+        // Initialize Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // Generate CSRF token
+        this.generateCSRFToken();
+        
+        // Check for trusted device
+        this.checkTrustedDevice();
+        
+        // Initialize password toggle
+        this.initPasswordToggle();
+        
+        // Initialize password strength meter
+        this.initPasswordStrength();
+        
+        // Initialize login form
+        this.initLoginForm();
+        
+        // Initialize modals
+        this.initModals();
+        
+        // Focus management
+        this.initFocusManagement();
+        
+        // Virtual keyboard handler
+        this.initVirtualKeyboardHandler();
+        
+        // Initialize Supabase
+        this.initSupabase();
+        
+        // Load staff records
+        this.loadStaffRecords();
+        
+        // Clear URL parameters
+        this.clearURLParameters();
+        
+        // Add honeypot
+        this.addHoneypot();
+        
+        // Start session monitoring
+        this.startSessionMonitoring();
+        
+        // Network status
+        this.initNetworkStatus();
+        
+        // OTP input handling
+        this.initOTPInputs();
+        
+        // Ripple effect on buttons
+        this.initRippleEffect();
+        
+        // Hide skeleton loader
+        this.hideSkeletonLoader();
+        
+        // Initialize theme toggle
+        this.initThemeToggle();
+        
+        // ✅ INITIALIZE GOOGLE LOGIN
+        this.initGoogleLogin();
+        
+        // Load Brevo API key from Supabase Secrets
+        this.loadBrevoApiKey().then(success => {
+            if (success) {
+                console.log('✅ Brevo integration ready');
+            } else {
+                console.warn('⚠️ Brevo integration not available - login notifications disabled');
+            }
+        });
+        
+        // Mark as initialized
+        this.state.isInitialized = true;
+        
+        console.log('✅ NCHSMLogin v4.1 initialized');
+        console.log(`🕐 ${new Date().toLocaleString()}`);
+    },
+
     // ============================================
     // THEME TOGGLE - FIXED
     // ============================================
@@ -289,7 +261,53 @@ init: function() {
             feather.replace();
         }
     },
-    
+
+    // ============================================
+    // LOAD BREVO API KEY FROM SUPABASE
+    // ============================================
+    loadBrevoApiKey: async function() {
+        try {
+            // First, check if we already have it cached
+            const cached = sessionStorage.getItem('brevo_api_key');
+            if (cached) {
+                console.log('📦 Using cached Brevo API key');
+                this.brevo.apiKey = cached;
+                this.brevo._initialized = true;
+                return true;
+            }
+            
+            console.log('🔑 Fetching Brevo API key from Supabase...');
+            
+            // Call the Edge Function
+            const { data, error } = await this.supabase.functions.invoke('get-secret', {
+                body: { secret_name: 'BREVO_API_KEY' }
+            });
+            
+            if (error) {
+                console.error('❌ Error fetching secret:', error);
+                return false;
+            }
+            
+            if (data && data.secret) {
+                this.brevo.apiKey = data.secret;
+                this.brevo._initialized = true;
+                
+                // Cache it in session storage (safe for this session)
+                sessionStorage.setItem('brevo_api_key', data.secret);
+                
+                console.log('✅ Brevo API key loaded successfully');
+                return true;
+            }
+            
+            console.error('❌ No secret returned');
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Failed to load Brevo API key:', error);
+            return false;
+        }
+    },
+
     // ============================================
     // SESSION TRACKING - FIXED VERSION
     // ============================================
@@ -389,249 +407,251 @@ init: function() {
             return null;
         }
     },
-    
- // ============================================
-// COMPLETE LOGIN - WITH NOTIFICATIONS
-// ============================================
-completeLogin: async function(profileData, sessionToken, isStaff = false) {
-    console.log('🎉 COMPLETE LOGIN STARTED');
-    console.log('📊 Profile Data:', profileData);
-    console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
-    console.log('👔 Is Staff:', isStaff);
-    
-    try {
-        // ✅ FIX: WAIT for updateLastLogin to complete
-        if (!isStaff) {
-            console.log('📝 Updating last login...');
-            const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
-            console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
-            
-            // If update failed, try force update
-            if (!updateResult) {
-                console.log('⚠️ updateLastLogin failed, trying force update...');
-                await this.forceUpdateLoginCount(profileData.user_id);
-            }
-        }
+
+    // ============================================
+    // COMPLETE LOGIN - WITH NOTIFICATIONS
+    // ============================================
+    completeLogin: async function(profileData, sessionToken, isStaff = false) {
+        console.log('🎉 COMPLETE LOGIN STARTED');
+        console.log('📊 Profile Data:', profileData);
+        console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+        console.log('👔 Is Staff:', isStaff);
         
-        // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
-        console.log('🔍 Attempting to track session...');
-        const sessionResult = await this.trackUserSession(
-            profileData.user_id, 
-            profileData.email, 
-            sessionToken, 
-            navigator.userAgent, 
-            isStaff
-        );
-        
-        if (sessionResult) {
-            console.log('✅ Session tracked successfully!');
-        } else {
-            console.warn('⚠️ Session tracking returned null/undefined');
-        }
-        
-        // 3. Store profile (minimal)
-        const safeProfile = {
-            user_id: profileData.user_id,
-            email: profileData.email,
-            full_name: profileData.full_name,
-            role: profileData.role,
-            program: profileData.program || profileData.department,
-            is_staff: isStaff || false
-        };
-        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-        console.log('💾 Profile stored in localStorage');
-        
-        // 4. Store session expiry
-        if (!isStaff && this.supabase) {
-            try {
-                const { data: { session } } = await this.supabase.auth.getSession();
-                if (session) {
-                    localStorage.setItem('session_expires', session.expires_at);
-                    console.log('⏰ Session expiry stored:', session.expires_at);
+        try {
+            // ✅ FIX: WAIT for updateLastLogin to complete
+            if (!isStaff) {
+                console.log('📝 Updating last login...');
+                const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
+                console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
+                
+                // If update failed, try force update
+                if (!updateResult) {
+                    console.log('⚠️ updateLastLogin failed, trying force update...');
+                    await this.forceUpdateLoginCount(profileData.user_id);
                 }
-            } catch (err) {
-                console.warn('⚠️ Could not get session expiry:', err);
             }
+            
+            // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
+            console.log('🔍 Attempting to track session...');
+            const sessionResult = await this.trackUserSession(
+                profileData.user_id, 
+                profileData.email, 
+                sessionToken, 
+                navigator.userAgent, 
+                isStaff
+            );
+            
+            if (sessionResult) {
+                console.log('✅ Session tracked successfully!');
+            } else {
+                console.warn('⚠️ Session tracking returned null/undefined');
+            }
+            
+            // 3. Store profile (minimal)
+            const safeProfile = {
+                user_id: profileData.user_id,
+                email: profileData.email,
+                full_name: profileData.full_name,
+                role: profileData.role,
+                program: profileData.program || profileData.department,
+                is_staff: isStaff || false
+            };
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            console.log('💾 Profile stored in localStorage');
+            
+            // 4. Store session expiry
+            if (!isStaff && this.supabase) {
+                try {
+                    const { data: { session } } = await this.supabase.auth.getSession();
+                    if (session) {
+                        localStorage.setItem('session_expires', session.expires_at);
+                        console.log('⏰ Session expiry stored:', session.expires_at);
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Could not get session expiry:', err);
+                }
+            }
+            
+            // 5. Update last login info on page
+            this.updateLastLoginInfo();
+            
+            // 🆕 5b. Send login notification (for students only)
+            if (profileData.role === 'student' && !isStaff) {
+                console.log('📧 Sending login notification...');
+                this.sendLoginNotification(profileData).catch(err => {
+                    console.warn('⚠️ Login notification failed:', err);
+                });
+            }
+            
+            // 6. Redirect
+            console.log('🚀 Redirecting to dashboard...');
+            this.redirectToDashboard(profileData);
+            
+        } catch (error) {
+            console.error('❌ Complete login error:', error);
+            console.error('❌ Error stack:', error.stack);
+            // Still redirect even if tracking fails
+            this.redirectToDashboard(profileData);
         }
-        
-        // 5. Update last login info on page
-        this.updateLastLoginInfo();
-        
-        // 🆕 5b. Send login notification (for students only)
-        if (profileData.role === 'student' && !isStaff) {
-            console.log('📧 Sending login notification...');
-            this.sendLoginNotification(profileData).catch(err => {
-                console.warn('⚠️ Login notification failed:', err);
-            });
-        }
-        
-        // 6. Redirect
-        console.log('🚀 Redirecting to dashboard...');
-        this.redirectToDashboard(profileData);
-        
-    } catch (error) {
-        console.error('❌ Complete login error:', error);
-        console.error('❌ Error stack:', error.stack);
-        // Still redirect even if tracking fails
-        this.redirectToDashboard(profileData);
-    }
-},
-// ============================================
-// FORCE UPDATE LOGIN COUNT - NEW FUNCTION
-// ============================================
-forceUpdateLoginCount: async function(userId) {
-    try {
-        console.log('🔧 Force updating login count for user:', userId);
-        
-        // Count sessions
-        const { data: sessions, error: sessionsError } = await this.supabase
-            .from('user_sessions')
-            .select('id')
-            .eq('user_id', userId);
-        
-        if (sessionsError) {
-            console.error('❌ Error counting sessions:', sessionsError);
+    },
+
+    // ============================================
+    // FORCE UPDATE LOGIN COUNT - NEW FUNCTION
+    // ============================================
+    forceUpdateLoginCount: async function(userId) {
+        try {
+            console.log('🔧 Force updating login count for user:', userId);
+            
+            // Count sessions
+            const { data: sessions, error: sessionsError } = await this.supabase
+                .from('user_sessions')
+                .select('id')
+                .eq('user_id', userId);
+            
+            if (sessionsError) {
+                console.error('❌ Error counting sessions:', sessionsError);
+                return false;
+            }
+            
+            const sessionCount = sessions?.length || 0;
+            console.log('📊 Total sessions found:', sessionCount);
+            
+            // Update login_count to match sessions
+            const { error: updateError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    login_count: sessionCount,
+                    last_login: new Date().toISOString(),
+                    last_activity: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', userId);
+            
+            if (updateError) {
+                console.error('❌ Error updating login count:', updateError);
+                return false;
+            }
+            
+            console.log(`✅ Login count force updated to ${sessionCount}`);
+            console.log(`✅ Login points: ${sessionCount * 10}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Force update error:', error);
             return false;
         }
+    },
+
+    // ============================================
+    // SEND LOGIN NOTIFICATION (SECURE)
+    // ============================================
+    sendLoginNotification: async function(studentData) {
+        // Only for students
+        if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
+        if (!studentData.email || !this.brevo.enabled) return;
         
-        const sessionCount = sessions?.length || 0;
-        console.log('📊 Total sessions found:', sessionCount);
-        
-        // Update login_count to match sessions
-        const { error: updateError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .update({
-                login_count: sessionCount,
-                last_login: new Date().toISOString(),
-                last_activity: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-        
-        if (updateError) {
-            console.error('❌ Error updating login count:', updateError);
-            return false;
-        }
-        
-        console.log(`✅ Login count force updated to ${sessionCount}`);
-        console.log(`✅ Login points: ${sessionCount * 10}`);
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Force update error:', error);
-        return false;
-    }
-},
-      // ============================================
-// SEND LOGIN NOTIFICATION (SECURE)
-// ============================================
-sendLoginNotification: async function(studentData) {
-    // Only for students
-    if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
-    if (!studentData.email || !this.brevo.enabled) return;
-    
-    try {
-        // Ensure API key is loaded
-        if (!this.brevo._initialized) {
-            console.log('⏳ Loading Brevo API key...');
-            const loaded = await this.loadBrevoApiKey();
-            if (!loaded) {
-                console.error('❌ Cannot send notification - API key not loaded');
+        try {
+            // Ensure API key is loaded
+            if (!this.brevo._initialized) {
+                console.log('⏳ Loading Brevo API key...');
+                const loaded = await this.loadBrevoApiKey();
+                if (!loaded) {
+                    console.error('❌ Cannot send notification - API key not loaded');
+                    return;
+                }
+            }
+            
+            // Check if we have the API key
+            if (!this.brevo.apiKey) {
+                console.error('❌ No Brevo API key available');
                 return;
             }
-        }
-        
-        // Check if we have the API key
-        if (!this.brevo.apiKey) {
-            console.error('❌ No Brevo API key available');
-            return;
-        }
-        
-        console.log(`📧 Sending login notification to ${studentData.email}`);
-        
-        // Get student's IP
-        let ip = 'Unknown';
-        try {
-            const res = await fetch('https://api.ipify.org?format=json');
-            const data = await res.json();
-            ip = data.ip;
-        } catch(e) {}
-        
-        // Get current time in EAT
-        const now = new Date();
-        const time = now.toLocaleString('en-KE', { 
-            timeZone: 'Africa/Nairobi',
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        // Parse device info
-        const device = this.parseUserAgent(navigator.userAgent);
-        
-        // Build email HTML
-        const htmlContent = this.buildLoginEmail(
-            studentData.full_name || studentData.name || 'Student',
-            studentData.email,
-            studentData.student_id || studentData.user_id || 'N/A',
-            studentData.program || studentData.department || 'N/A',
-            studentData.block || studentData.year || 'N/A',
-            ip,
-            device,
-            time
-        );
-        
-        // Send via Brevo
-        const response = await fetch(this.brevo.apiUrl, {
-            method: 'POST',
-            headers: {
-                'api-key': this.brevo.apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: { 
-                    email: this.brevo.sender.email, 
-                    name: this.brevo.sender.name
+            
+            console.log(`📧 Sending login notification to ${studentData.email}`);
+            
+            // Get student's IP
+            let ip = 'Unknown';
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                ip = data.ip;
+            } catch(e) {}
+            
+            // Get current time in EAT
+            const now = new Date();
+            const time = now.toLocaleString('en-KE', { 
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Parse device info
+            const device = this.parseUserAgent(navigator.userAgent);
+            
+            // Build email HTML
+            const htmlContent = this.buildLoginEmail(
+                studentData.full_name || studentData.name || 'Student',
+                studentData.email,
+                studentData.student_id || studentData.user_id || 'N/A',
+                studentData.program || studentData.department || 'N/A',
+                studentData.block || studentData.year || 'N/A',
+                ip,
+                device,
+                time
+            );
+            
+            // Send via Brevo
+            const response = await fetch(this.brevo.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'api-key': this.brevo.apiKey,
+                    'Content-Type': 'application/json'
                 },
-                to: [{ email: studentData.email }],
-                subject: '🔐 New Login Alert - NCHSM Student Portal',
-                htmlContent: htmlContent
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log(`✅ Login notification sent to ${studentData.email}`);
-        } else {
-            console.error('❌ Login notification failed:', data);
+                body: JSON.stringify({
+                    sender: { 
+                        email: this.brevo.sender.email, 
+                        name: this.brevo.sender.name
+                    },
+                    to: [{ email: studentData.email }],
+                    subject: '🔐 New Login Alert - NCHSM Student Portal',
+                    htmlContent: htmlContent
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                console.log(`✅ Login notification sent to ${studentData.email}`);
+            } else {
+                console.error('❌ Login notification failed:', data);
+            }
+            
+        } catch(e) {
+            console.warn('⚠️ Login notification error:', e);
         }
-        
-    } catch(e) {
-        console.warn('⚠️ Login notification error:', e);
-    }
-},
+    },
 
- // ============================================
-// BUILD LOGIN EMAIL - UPDATED CONTACTS
-// ============================================
-buildLoginEmail: function(name, email, studentId, program, block, ip, device, time) {
-    // Format student ID - if it's a UUID, show "Pending" or use a cleaner format
-    const displayStudentId = studentId && studentId.includes('-') && studentId.length > 20 
-        ? 'Pending' 
-        : studentId || 'N/A';
-    
-    // Format block
-    const displayBlock = block && block !== 'N/A' && block !== 'null' ? block : 'Not Assigned';
-    
-    // Contact details
-    const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
-    const PHONE1 = '0790969743';
-    const PHONE2 = '0702432987';
-    
-    return `
+    // ============================================
+    // BUILD LOGIN EMAIL - UPDATED CONTACTS
+    // ============================================
+    buildLoginEmail: function(name, email, studentId, program, block, ip, device, time) {
+        // Format student ID - if it's a UUID, show "Pending" or use a cleaner format
+        const displayStudentId = studentId && studentId.includes('-') && studentId.length > 20 
+            ? 'Pending' 
+            : studentId || 'N/A';
+        
+        // Format block
+        const displayBlock = block && block !== 'N/A' && block !== 'null' ? block : 'Not Assigned';
+        
+        // Contact details
+        const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
+        const PHONE1 = '0790969743';
+        const PHONE2 = '0702432987';
+        
+        return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -743,8 +763,9 @@ buildLoginEmail: function(name, email, studentId, program, block, ip, device, ti
     </div>
 </body>
 </html>
-    `;
-},
+        `;
+    },
+
     // ============================================
     // HIDE SKELETON LOADER
     // ============================================
@@ -1105,61 +1126,63 @@ buildLoginEmail: function(name, email, studentId, program, block, ip, device, ti
             }
         });
     },
+
     // ============================================
-// PASSWORD STRENGTH METER - FIXED
-// ============================================
-initPasswordStrength: function() {
-    const passwordInput = document.getElementById('password');
-    const strengthProgress = document.getElementById('strengthProgress');
-    const strengthText = document.getElementById('strengthText');
-    
-    if (!passwordInput || !strengthProgress || !strengthText) {
-        console.warn('⚠️ Password strength elements not found');
-        return;
-    }
-    
-    console.log('✅ Password strength meter initialized');
-    
-    passwordInput.addEventListener('input', function() {
-        const password = this.value;
-        let strength = 0;
+    // PASSWORD STRENGTH METER - FIXED
+    // ============================================
+    initPasswordStrength: function() {
+        const passwordInput = document.getElementById('password');
+        const strengthProgress = document.getElementById('strengthProgress');
+        const strengthText = document.getElementById('strengthText');
         
-        // Check password criteria
-        if (password.length >= 6) strength++;
-        if (password.length >= 10) strength++;
-        if (/[A-Z]/.test(password)) strength++;
-        if (/[a-z]/.test(password)) strength++;
-        if (/[0-9]/.test(password)) strength++;
-        if (/[^A-Za-z0-9]/.test(password)) strength++;
-        
-        // Define strength levels
-        const levels = [
-            { text: 'Very Weak', color: '#ef4444', width: '20%' },
-            { text: 'Weak', color: '#ef4444', width: '40%' },
-            { text: 'Fair', color: '#f59e0b', width: '60%' },
-            { text: 'Good', color: '#3b82f6', width: '80%' },
-            { text: 'Strong', color: '#10b981', width: '100%' }
-        ];
-        
-        // Calculate level (0-4)
-        const level = Math.min(Math.floor(strength / 1.5), 4);
-        const result = levels[level] || levels[0];
-        
-        // Update UI
-        strengthProgress.style.width = result.width;
-        strengthProgress.style.background = result.color;
-        
-        if (password.length === 0) {
-            strengthText.textContent = 'Enter a strong password';
-            strengthText.style.color = '#94a3b8';
-            strengthProgress.style.width = '0%';
-            strengthProgress.style.background = '#94a3b8';
-        } else {
-            strengthText.textContent = `Strength: ${result.text}`;
-            strengthText.style.color = result.color;
+        if (!passwordInput || !strengthProgress || !strengthText) {
+            console.warn('⚠️ Password strength elements not found');
+            return;
         }
-    });
-},
+        
+        console.log('✅ Password strength meter initialized');
+        
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            
+            // Check password criteria
+            if (password.length >= 6) strength++;
+            if (password.length >= 10) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            
+            // Define strength levels
+            const levels = [
+                { text: 'Very Weak', color: '#ef4444', width: '20%' },
+                { text: 'Weak', color: '#ef4444', width: '40%' },
+                { text: 'Fair', color: '#f59e0b', width: '60%' },
+                { text: 'Good', color: '#3b82f6', width: '80%' },
+                { text: 'Strong', color: '#10b981', width: '100%' }
+            ];
+            
+            // Calculate level (0-4)
+            const level = Math.min(Math.floor(strength / 1.5), 4);
+            const result = levels[level] || levels[0];
+            
+            // Update UI
+            strengthProgress.style.width = result.width;
+            strengthProgress.style.background = result.color;
+            
+            if (password.length === 0) {
+                strengthText.textContent = 'Enter a strong password';
+                strengthText.style.color = '#94a3b8';
+                strengthProgress.style.width = '0%';
+                strengthProgress.style.background = '#94a3b8';
+            } else {
+                strengthText.textContent = `Strength: ${result.text}`;
+                strengthText.style.color = result.color;
+            }
+        });
+    },
+
     // ============================================
     // LOGIN FORM
     // ============================================
@@ -1705,87 +1728,75 @@ initPasswordStrength: function() {
         
         return `${browser} on ${os} (${device})`;
     },
-    
-   // ============================================
-// UPDATE LAST LOGIN - FIXED VERSION
-// ============================================
-updateLastLogin: async function(userId, email) {
-    try {
-        console.log('📝 updateLastLogin called for:', userId);
-        
-        const now = new Date().toISOString();
-        
-        // Get current login count
-        const { data: profile, error: fetchError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('login_count')
-            .eq('user_id', userId)
-            .maybeSingle();
-        
-        if (fetchError) {
-            console.error('❌ Error fetching login count:', fetchError);
+
+    // ============================================
+    // UPDATE LAST LOGIN - FIXED VERSION
+    // ============================================
+    updateLastLogin: async function(userId, email) {
+        try {
+            console.log('📝 updateLastLogin called for:', userId);
+            
+            const now = new Date().toISOString();
+            
+            // Get current login count
+            const { data: profile, error: fetchError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('login_count')
+                .eq('user_id', userId)
+                .maybeSingle();
+            
+            if (fetchError) {
+                console.error('❌ Error fetching login count:', fetchError);
+                return false;
+            }
+            
+            const currentCount = profile?.login_count || 0;
+            const newCount = currentCount + 1;
+            
+            console.log(`📊 Current login count: ${currentCount}, New: ${newCount}`);
+            
+            // Update
+            const { error: updateError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_login: now,
+                    login_count: newCount,
+                    last_activity: now,
+                    updated_at: now
+                })
+                .eq('user_id', userId);
+            
+            if (updateError) {
+                console.error('❌ Error updating login count:', updateError);
+                return false;
+            }
+            
+            console.log(`✅ Login count updated to ${newCount}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ updateLastLogin exception:', error);
             return false;
         }
+    },
+
+    // ============================================
+    // UPDATE LAST LOGIN INFO - WITH CORRECT TIMEZONE
+    // ============================================
+    updateLastLoginInfo: function() {
+        const info = document.getElementById('lastLoginInfo');
+        if (!info) return;
         
-        const currentCount = profile?.login_count || 0;
-        const newCount = currentCount + 1;
-        
-        console.log(`📊 Current login count: ${currentCount}, New: ${newCount}`);
-        
-        // Update
-        const { error: updateError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .update({
-                last_login: now,
-                login_count: newCount,
-                last_activity: now,
-                updated_at: now
-            })
-            .eq('user_id', userId);
-        
-        if (updateError) {
-            console.error('❌ Error updating login count:', updateError);
-            return false;
-        }
-        
-        console.log(`✅ Login count updated to ${newCount}`);
-        return true;
-        
-    } catch (error) {
-        console.error('❌ updateLastLogin exception:', error);
-        return false;
-    }
-},
- // ============================================
-// UPDATE LAST LOGIN INFO - WITH CORRECT TIMEZONE
-// ============================================
-updateLastLoginInfo: function() {
-    const info = document.getElementById('lastLoginInfo');
-    if (!info) return;
-    
-    // Show loading state
-    info.innerHTML = `
-        <i data-feather="clock"></i>
-        <span>Loading last login...</span>
-    `;
-    feather.replace();
-    
-    // Get user profile from localStorage
-    const userProfile = localStorage.getItem('userProfile');
-    if (!userProfile) {
+        // Show loading state
         info.innerHTML = `
             <i data-feather="clock"></i>
-            <span>Welcome! Please log in to see your activity.</span>
+            <span>Loading last login...</span>
         `;
         feather.replace();
-        return;
-    }
-    
-    try {
-        const profile = JSON.parse(userProfile);
-        const userId = profile.user_id;
         
-        if (!userId) {
+        // Get user profile from localStorage
+        const userProfile = localStorage.getItem('userProfile');
+        if (!userProfile) {
             info.innerHTML = `
                 <i data-feather="clock"></i>
                 <span>Welcome! Please log in to see your activity.</span>
@@ -1794,99 +1805,112 @@ updateLastLoginInfo: function() {
             return;
         }
         
-        console.log('🔍 Fetching last login for user:', userId);
-        
-        // Query the database for last login
-        this.supabase
-            .from('user_sessions')
-            .select('login_time, device_info, ip_address')
-            .eq('user_id', userId)
-            .order('login_time', { ascending: false })
-            .limit(2)
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error('❌ Error fetching last login:', error);
-                    this.showCurrentLoginInfo(info);
-                    return;
-                }
-                
-                if (!data || data.length === 0) {
-                    info.innerHTML = `
-                        <i data-feather="clock"></i>
-                        <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
-                    `;
-                    feather.replace();
-                    return;
-                }
-                
-                // data[0] is the current login, data[1] is the previous login
-                if (data.length >= 2 && data[1]) {
-                    const previousLogin = data[1];
-                    
-                    // ✅ FIX: Create date and add 3 hours for EAT timezone
-                    const loginDate = new Date(previousLogin.login_time);
-                    
-                    // Format the time correctly
-                    const timeStr = loginDate.toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: true,
-                        timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
-                    });
-                    const dateStr = loginDate.toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        month: 'long', 
-                        day: 'numeric',
-                        timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
-                    });
-                    const device = previousLogin.device_info || 'Unknown Device';
-                    
-                    info.innerHTML = `
-                        <i data-feather="clock"></i>
-                        <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
-                    `;
-                } else {
-                    info.innerHTML = `
-                        <i data-feather="clock"></i>
-                        <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
-                    `;
-                }
-                feather.replace();
-            })
-            .catch((err) => {
-                console.error('❌ Error:', err);
-                this.showCurrentLoginInfo(info);
-            });
+        try {
+            const profile = JSON.parse(userProfile);
+            const userId = profile.user_id;
             
-    } catch (error) {
-        console.error('❌ Error parsing profile:', error);
-        this.showCurrentLoginInfo(info);
-    }
-},
+            if (!userId) {
+                info.innerHTML = `
+                    <i data-feather="clock"></i>
+                    <span>Welcome! Please log in to see your activity.</span>
+                `;
+                feather.replace();
+                return;
+            }
+            
+            console.log('🔍 Fetching last login for user:', userId);
+            
+            // Query the database for last login
+            this.supabase
+                .from('user_sessions')
+                .select('login_time, device_info, ip_address')
+                .eq('user_id', userId)
+                .order('login_time', { ascending: false })
+                .limit(2)
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error('❌ Error fetching last login:', error);
+                        this.showCurrentLoginInfo(info);
+                        return;
+                    }
+                    
+                    if (!data || data.length === 0) {
+                        info.innerHTML = `
+                            <i data-feather="clock"></i>
+                            <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
+                        `;
+                        feather.replace();
+                        return;
+                    }
+                    
+                    // data[0] is the current login, data[1] is the previous login
+                    if (data.length >= 2 && data[1]) {
+                        const previousLogin = data[1];
+                        
+                        // ✅ FIX: Create date and add 3 hours for EAT timezone
+                        const loginDate = new Date(previousLogin.login_time);
+                        
+                        // Format the time correctly
+                        const timeStr = loginDate.toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
+                        });
+                        const dateStr = loginDate.toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            month: 'long', 
+                            day: 'numeric',
+                            timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
+                        });
+                        const device = previousLogin.device_info || 'Unknown Device';
+                        
+                        info.innerHTML = `
+                            <i data-feather="clock"></i>
+                            <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
+                        `;
+                    } else {
+                        info.innerHTML = `
+                            <i data-feather="clock"></i>
+                            <span>Welcome ${profile.full_name || 'User'}! This is your first login.</span>
+                        `;
+                    }
+                    feather.replace();
+                })
+                .catch((err) => {
+                    console.error('❌ Error:', err);
+                    this.showCurrentLoginInfo(info);
+                });
+                
+        } catch (error) {
+            console.error('❌ Error parsing profile:', error);
+            this.showCurrentLoginInfo(info);
+        }
+    },
 
-// ===== FALLBACK: Show current login info =====
-showCurrentLoginInfo: function(info) {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Africa/Nairobi'
-    });
-    const dateStr = now.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric',
-        timeZone: 'Africa/Nairobi'
-    });
-    const device = this.parseUserAgent(navigator.userAgent);
-    
-    info.innerHTML = `
-        <i data-feather="clock"></i>
-        <span>Logged in: ${dateStr} at ${timeStr} from ${device}</span>
-    `;
-    feather.replace();
-},
+    // ===== FALLBACK: Show current login info =====
+    showCurrentLoginInfo: function(info) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Africa/Nairobi'
+        });
+        const dateStr = now.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric',
+            timeZone: 'Africa/Nairobi'
+        });
+        const device = this.parseUserAgent(navigator.userAgent);
+        
+        info.innerHTML = `
+            <i data-feather="clock"></i>
+            <span>Logged in: ${dateStr} at ${timeStr} from ${device}</span>
+        `;
+        feather.replace();
+    },
     
     // ============================================
     // REDIRECT TO DASHBOARD
@@ -1977,7 +2001,209 @@ showCurrentLoginInfo: function(info) {
             element.style.display = 'none';
         }
     },
-    
+
+    // ============================================
+    // ✅ GOOGLE AUTH METHODS - FULL IMPLEMENTATION
+    // ============================================
+
+    // ============================================
+    // INIT GOOGLE LOGIN
+    // ============================================
+    initGoogleLogin: function() {
+        if (typeof google === 'undefined' || !google.accounts) {
+            console.warn('⚠️ Google library not loaded, retrying in 1s...');
+            setTimeout(() => this.initGoogleLogin(), 1000);
+            return;
+        }
+        
+        console.log('🔑 Initializing Google Login...');
+        
+        try {
+            google.accounts.id.initialize({
+                client_id: this.google.clientId,
+                callback: this.handleGoogleCredential.bind(this),
+                cancel_on_tap_outside: false,
+                auto_select: false,
+                context: 'signin',
+                ux_mode: 'popup'
+            });
+            
+            // Attach to your Google button
+            const googleBtn = document.querySelector('.sso-btn.google');
+            if (googleBtn) {
+                // Remove any existing listeners to avoid duplicates
+                const newBtn = googleBtn.cloneNode(true);
+                googleBtn.parentNode.replaceChild(newBtn, googleBtn);
+                
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔑 Google button clicked');
+                    google.accounts.id.prompt();
+                });
+                console.log('✅ Google button attached');
+            } else {
+                console.warn('⚠️ Google button not found in DOM');
+            }
+            
+            this.google.initialized = true;
+            console.log('✅ Google Login initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Google init error:', error);
+        }
+    },
+
+    // ============================================
+    // HANDLE GOOGLE CREDENTIAL
+    // ============================================
+    handleGoogleCredential: function(response) {
+        console.log('🎯 Google credential received');
+        
+        if (!response.credential) {
+            this.showError('Google authentication failed');
+            return;
+        }
+        
+        this.google.credential = response.credential;
+        
+        // Decode the JWT to get user info
+        try {
+            const payload = this.decodeJWT(response.credential);
+            console.log('📊 Google user:', payload.email);
+            
+            // Process Google login
+            this.processGoogleLogin(payload);
+            
+        } catch (error) {
+            console.error('❌ Error decoding JWT:', error);
+            this.showError('Invalid Google response');
+        }
+    },
+
+    // ============================================
+    // DECODE JWT TOKEN
+    // ============================================
+    decodeJWT: function(token) {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64).split('').map(c => 
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join('')
+        );
+        return JSON.parse(jsonPayload);
+    },
+
+    // ============================================
+    // PROCESS GOOGLE LOGIN
+    // ============================================
+    processGoogleLogin: async function(payload) {
+        if (!this.supabase) {
+            this.showError('Authentication service unavailable');
+            return;
+        }
+        
+        const email = payload.email;
+        const name = payload.name || payload.given_name || 'Student';
+        
+        // Show loading
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.querySelector('.button-text');
+        if (loginButton) {
+            loginButton.disabled = true;
+            buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
+        }
+        
+        try {
+            // Check if user exists in our system
+            const { data: profile, error: profileError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (profileError) {
+                console.error('❌ Profile error:', profileError);
+                this.showError('Database error. Please try again.');
+                return;
+            }
+            
+            if (!profile) {
+                // User doesn't exist - prompt to register
+                this.showError('No account found with this email. Please register first.');
+                setTimeout(() => {
+                    window.location.href = 'register.html';
+                }, 2000);
+                return;
+            }
+            
+            // Check status
+            const validStatuses = ['approved', 'active'];
+            if (!validStatuses.includes(profile.status?.toLowerCase())) {
+                this.showError('Account pending approval. Please wait.');
+                return;
+            }
+            
+            // Create a session for this user
+            const sessionToken = this.generateSecureToken();
+            
+            // Track session
+            const sessionResult = await this.trackUserSession(
+                profile.user_id,
+                email,
+                sessionToken,
+                navigator.userAgent,
+                false
+            );
+            
+            if (!sessionResult) {
+                console.warn('⚠️ Session tracking failed but continuing');
+            }
+            
+            // Update last login
+            await this.updateLastLogin(profile.user_id, email);
+            
+            // Store profile
+            const safeProfile = {
+                user_id: profile.user_id,
+                email: email,
+                full_name: profile.full_name || name,
+                role: profile.role || 'student',
+                program: profile.program || profile.department,
+                is_staff: false,
+                auth_provider: 'google'
+            };
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            
+            // Send login notification (optional)
+            if (profile.role === 'student') {
+                this.sendLoginNotification({
+                    ...profile,
+                    full_name: profile.full_name || name,
+                    email: email
+                }).catch(() => {});
+            }
+            
+            // Success message
+            this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
+            this.updateLastLoginInfo();
+            
+            // Redirect
+            setTimeout(() => {
+                this.redirectToDashboard(safeProfile);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Google login error:', error);
+            this.showError('Login failed. Please try again.');
+        } finally {
+            if (loginButton) {
+                loginButton.disabled = false;
+                buttonText.textContent = 'Sign In';
+            }
+        }
+    },
+
     // ============================================
     // CLEANUP
     // ============================================
@@ -2056,5 +2282,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-console.log('📦 NCHSM Login v4.0 loaded');
+console.log('📦 NCHSM Login v4.1 loaded - Google Auth Integrated');
 console.log(`🕐 ${new Date().toLocaleString()}`);
