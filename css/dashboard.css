@@ -570,6 +570,7 @@
     padding-top: 12px;
     border-top: 1px solid #e5e7eb;
 }
+
 /* ========== COMPACT NEXT CLASS CARD ========== */
 .next-class-card {
     background: linear-gradient(135deg, #4C1D95, #6d28d9);
@@ -594,7 +595,6 @@
     padding: 12px 16px;
 }
 
-/* Time Badge */
 .next-class-time-badge {
     display: flex;
     align-items: center;
@@ -636,7 +636,6 @@
     color: #FFD700;
 }
 
-/* Course Info */
 .next-class-info {
     flex: 1;
     min-width: 160px;
@@ -670,7 +669,6 @@
     color: #FFD700;
 }
 
-/* Day Badge */
 .next-class-day-badge {
     background: rgba(255,255,255,0.12);
     padding: 5px 12px;
@@ -691,27 +689,24 @@
     color: #4C1D95;
 }
 
-/* Mobile */
 @media (max-width: 640px) {
     .next-class-inner {
         flex-direction: column;
         text-align: center;
         padding: 12px;
     }
-    
     .next-class-time-badge {
         align-self: center;
     }
-    
     .next-class-meta {
         justify-content: center;
     }
 }
+
 /* ============================================
    COMPACT STREAK CARD - SMALLER VERSION
    ============================================ */
 
-/* ========== MAIN STREAK CARD - COMPACT ========== */
 .streak-container {
     background: linear-gradient(145deg, #0f172a, #1e293b, #0f172a);
     border-radius: 12px;
@@ -725,7 +720,6 @@
     width: 100%;
 }
 
-/* Animated background glow - subtle */
 .streak-container::before {
     content: '';
     position: absolute;
@@ -743,7 +737,6 @@
     50% { transform: scale(1.1); opacity: 1; }
 }
 
-/* Streak Header - compact */
 .streak-header {
     display: flex;
     justify-content: space-between;
@@ -808,7 +801,6 @@
     font-weight: 500;
 }
 
-/* Streak Progress Bar - compact */
 .streak-progress-container {
     margin: 6px 0 5px;
     position: relative;
@@ -856,7 +848,6 @@
     100% { transform: translateX(100%); }
 }
 
-/* Streak Milestones - compact */
 .streak-milestones {
     display: flex;
     justify-content: space-between;
@@ -892,7 +883,6 @@
     border: 1px solid rgba(52, 211, 153, 0.06);
 }
 
-/* Streak Lights - compact */
 .streak-lights {
     display: flex;
     justify-content: center;
@@ -930,7 +920,6 @@
     50% { transform: scale(1.1); text-shadow: 0 0 18px rgba(251, 191, 36, 0.5), 0 0 35px rgba(251, 191, 36, 0.2); }
 }
 
-/* Streak Message - compact */
 .streak-message {
     text-align: center;
     margin-top: 4px;
@@ -954,7 +943,6 @@
     font-weight: 700;
 }
 
-/* Restore Button - compact */
 .streak-restore-btn {
     display: inline-flex;
     align-items: center;
@@ -990,7 +978,6 @@
     font-size: 11px;
 }
 
-/* ========== STREAK MINI CARD - COMPACT ========== */
 .streak-mini {
     background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
     border-color: #d97706 !important;
@@ -1021,47 +1008,37 @@
     font-size: 7px !important;
 }
 
-/* ========== RESPONSIVE ========== */
 @media (max-width: 640px) {
     .streak-container {
         padding: 8px 12px;
     }
-    
     .streak-number {
         font-size: 20px;
     }
-    
     .streak-emoji {
         font-size: 17px;
     }
-    
     .streak-label {
         font-size: 10px;
         padding: 2px 8px;
     }
-    
     .streak-light {
         font-size: 12px;
     }
-    
     .streak-lights {
         gap: 4px;
     }
-    
     .streak-milestones {
         gap: 1px;
         justify-content: center;
     }
-    
     .milestone {
         font-size: 7px;
         padding: 1px 4px;
     }
-    
     #streak-status-text {
         font-size: 10px;
     }
-    
     .streak-mini .mini-card-value {
         font-size: 16px !important;
     }
@@ -1073,20 +1050,18 @@
         text-align: center;
         gap: 4px;
     }
-    
     .streak-counter {
         text-align: center;
     }
-    
     .streak-number {
         font-size: 18px;
     }
-    
     .streak-restore-btn {
         font-size: 9px;
         padding: 4px 12px;
     }
 }
+
 /* ============================================
    NOTIFICATION BELL STYLES
    ============================================ */
@@ -1104,7 +1079,6 @@
     transform: scale(0.95);
 }
 
-/* Notification Container */
 #notificationContainer {
     position: fixed;
     top: 70px;
@@ -1156,7 +1130,6 @@
     background: #ede9fe;
 }
 
-/* Notification Items */
 .notification-item {
     padding: 12px 14px;
     margin-bottom: 8px;
@@ -1221,7 +1194,6 @@
     margin-top: 6px;
 }
 
-/* Empty State */
 .notif-empty {
     text-align: center;
     padding: 40px 20px;
@@ -1240,7 +1212,6 @@
     font-weight: 500;
 }
 
-/* Mobile Responsive */
 @media (max-width: 768px) {
     #notificationContainer {
         width: 100%;
@@ -1250,7 +1221,11 @@
         max-height: 70vh;
     }
 }
-/* Theme Switcher */
+
+/* ============================================
+   THEME SWITCHER
+   ============================================ */
+
 .theme-switcher {
     display: flex;
     gap: 6px;
@@ -1293,7 +1268,6 @@
     letter-spacing: 0.5px;
 }
 
-/* Theme Variables */
 [data-theme="green"] {
     --primary: #065F46;
     --primary-light: #10b981;
@@ -1312,11 +1286,11 @@
     --primary-dark: #78350f;
     --primary-bg: #fef3c7;
 }
+
 /* ============================================
    ADDITIONAL STYLES - REVIEWS & NEWSLETTER
    ============================================ */
 
-/* ===== REVIEWS CARD ===== */
 .reviews-preview {
     display: flex;
     gap: 12px;
@@ -1347,7 +1321,6 @@
     margin-left: auto;
 }
 
-/* ===== NEWSLETTER CARD ===== */
 .newsletter-status {
     display: flex;
     align-items: center;
@@ -1383,7 +1356,6 @@
     background: #f59e0b;
 }
 
-/* ===== DASHBOARD CARD HOVER EFFECTS ===== */
 .card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1393,7 +1365,6 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
-/* ===== BADGE ENHANCEMENTS ===== */
 .badge {
     display: inline-block;
     padding: 2px 10px;
@@ -1406,23 +1377,19 @@
     background: #d1fae5;
     color: #065f46;
 }
-
 .badge-warning {
     background: #fef3c7;
     color: #92400e;
 }
-
 .badge-danger {
     background: #fee2e2;
     color: #991b1b;
 }
-
 .badge-info {
     background: #dbeafe;
     color: #1e40af;
 }
 
-/* ===== SIDEBAR BADGE ===== */
 .nav-badge {
     background: #ef4444;
     color: white;
@@ -1436,7 +1403,6 @@
     margin-left: auto;
 }
 
-/* ===== STREAK CARD - EXTRA POLISH ===== */
 .streak-flame {
     font-size: 24px;
     filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.3));
@@ -1448,7 +1414,6 @@
     margin-top: 2px;
 }
 
-/* ===== XP BAR ANIMATION ===== */
 .xp-bar {
     height: 6px;
     background: #e2e8f0;
@@ -1471,7 +1436,6 @@
     50% { background-position: 100% 50%; }
 }
 
-/* ===== LOGIN POINTS CARD ===== */
 .login-points {
     background: #ede9fe;
     color: #4C1D95;
@@ -1484,7 +1448,6 @@
     gap: 4px;
 }
 
-/* ===== TOTAL POINTS CARD ===== */
 .total-points {
     background: #fef3c7;
     color: #92400e;
@@ -1497,35 +1460,32 @@
     gap: 4px;
 }
 
-/* ===== RESPONSIVE ENHANCEMENTS ===== */
 @media (max-width: 768px) {
     .reviews-preview {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
     }
-    
     .reviews-preview .review-pending {
         margin-left: 0;
     }
-    
     .newsletter-status {
         font-size: 10px;
         padding: 4px 10px;
     }
 }
+
 /* ============================================
-   🎨 PREMIUM MODERN SIDEBAR
+   🎨 PREMIUM MODERN SIDEBAR - OCEAN BLUE
    ============================================ */
 
-/* ===== SIDEBAR CONTAINER ===== */
 .sidebar-premium {
     width: 280px;
     min-height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    background: linear-gradient(180deg, #0c2340 0%, #1a5276 50%, #0e2f44 100%) !important;
     color: #ffffff;
     display: flex;
     flex-direction: column;
@@ -1538,7 +1498,6 @@
     transition: transform 0.3s ease;
 }
 
-/* Scrollbar */
 .sidebar-premium::-webkit-scrollbar {
     width: 4px;
 }
@@ -1546,11 +1505,10 @@
     background: rgba(255,255,255,0.05);
 }
 .sidebar-premium::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #667eea, #764ba2);
+    background: linear-gradient(180deg, #1a5276, #2e86c1) !important;
     border-radius: 10px;
 }
 
-/* ===== HEADER ===== */
 .sidebar-header-premium {
     padding: 20px 16px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -1560,7 +1518,6 @@
     flex-shrink: 0;
 }
 
-/* ===== LOGO ===== */
 .logo-section {
     display: flex;
     align-items: center;
@@ -1582,7 +1539,7 @@
     object-fit: contain;
     position: relative;
     z-index: 1;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 4px 20px rgba(26, 82, 118, 0.35);
     transition: transform 0.3s ease;
 }
 
@@ -1597,7 +1554,7 @@
     right: -6px;
     bottom: -6px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(102, 126, 234, 0.25), transparent 70%);
+    background: radial-gradient(circle, rgba(26, 82, 118, 0.25), transparent 70%);
     animation: pulseGlow 3s ease-in-out infinite;
 }
 
@@ -1610,7 +1567,7 @@
     font-size: 20px;
     font-weight: 800;
     margin: 0;
-    background: linear-gradient(135deg, #ffffff 0%, #a78bfa 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #85c1e9 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     line-height: 1.2;
@@ -1625,7 +1582,6 @@
     -webkit-text-fill-color: rgba(255, 255, 255, 0.3);
 }
 
-/* ===== USER PROFILE ===== */
 .user-profile-mini {
     display: flex;
     align-items: center;
@@ -1651,7 +1607,7 @@
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #1a5276, #2e86c1);
     object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.15);
 }
@@ -1692,7 +1648,6 @@
     color: rgba(255, 255, 255, 0.4);
 }
 
-/* ===== LAST LOGIN ===== */
 .sidebar-last-login {
     display: flex;
     align-items: center;
@@ -1715,9 +1670,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(102, 126, 234, 0.15);
+    background: rgba(26, 82, 118, 0.15);
     border-radius: 8px;
-    color: #a78bfa;
+    color: #85c1e9;
     font-size: 12px;
     flex-shrink: 0;
 }
@@ -1752,7 +1707,6 @@
     color: rgba(255, 255, 255, 0.25);
 }
 
-/* ===== XP BAR ===== */
 .xp-mini-premium {
     margin: 6px 0 2px;
     padding: 0 2px;
@@ -1802,7 +1756,7 @@
 .xp-progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+    background: linear-gradient(90deg, #1a5276, #2e86c1, #85c1e9) !important;
     border-radius: 10px;
     transition: width 1s ease;
     position: relative;
@@ -1823,7 +1777,6 @@
     100% { transform: translateX(100%); }
 }
 
-/* ===== NAVIGATION ===== */
 .sidebar-nav-premium {
     flex: 1;
     padding: 10px 8px 10px 12px;
@@ -1863,8 +1816,8 @@
 
 .nav-premium a.active {
     color: #ffffff;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.25), rgba(118, 75, 162, 0.25));
-    border-left: 3px solid #667eea;
+    background: linear-gradient(135deg, rgba(26, 82, 118, 0.35), rgba(12, 35, 64, 0.35)) !important;
+    border-left: 3px solid #2e86c1 !important;
 }
 
 .nav-icon-wrapper {
@@ -1897,7 +1850,7 @@
 }
 
 .nav-premium a.active .nav-icon-bg {
-    background: rgba(102, 126, 234, 0.2);
+    background: rgba(26, 82, 118, 0.2);
 }
 
 .nav-text {
@@ -1914,8 +1867,8 @@
 }
 
 .nav-premium a.active .nav-badge-premium {
-    background: rgba(102, 126, 234, 0.3);
-    color: #a78bfa;
+    background: rgba(26, 82, 118, 0.3);
+    color: #85c1e9;
 }
 
 .pulse-badge {
@@ -1931,7 +1884,6 @@
     50% { transform: scale(1.1); }
 }
 
-/* ===== DROPDOWN ===== */
 .has-dropdown-premium {
     position: relative;
 }
@@ -1967,7 +1919,7 @@
 .dropdown-submenu-premium li a:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.04);
-    border-left-color: #667eea;
+    border-left-color: #2e86c1;
     transform: none;
 }
 
@@ -1984,7 +1936,6 @@
     color: rgba(255, 255, 255, 0.2);
 }
 
-/* ===== FOOTER ===== */
 .sidebar-footer-premium {
     padding: 12px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -2045,7 +1996,6 @@
     animation: pulse-dot 2s infinite;
 }
 
-/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .sidebar-premium {
         transform: translateX(-100%);
@@ -2059,7 +2009,6 @@
     }
 }
 
-/* Main content offset */
 .main-content {
     margin-left: 280px;
 }
@@ -2070,21 +2019,20 @@
     }
 }
 
-/* ===== SIDEBAR TOGGLE BUTTON ===== */
 .sidebar-toggle-btn {
     display: none;
     position: fixed;
     top: 12px;
     left: 12px;
     z-index: 1001;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #1a5276, #2e86c1);
     color: white;
     border: none;
     padding: 10px 14px;
     border-radius: 10px;
     font-size: 20px;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 20px rgba(26, 82, 118, 0.4);
 }
 
 @media (max-width: 768px) {
@@ -2092,19 +2040,18 @@
         display: block !important;
     }
 }
+
 /* ============================================
    🔧 FIX PAGE HEIGHTS & SCROLLING
    ============================================ */
 
-/* Fix html and body - ALLOW SCROLLING */
 html, body {
     height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: auto !important;  /* ✅ CHANGE THIS to auto */
+    overflow: auto !important;
 }
 
-/* Only hide overflow when sidebar is open on mobile */
 body.sidebar-open {
     overflow: hidden !important;
     position: fixed !important;
@@ -2117,19 +2064,14 @@ body.sidebar-open .main {
     height: 100vh !important;
 }
 
-/* Container - fixed height viewport */
 .container {
     display: flex !important;
     height: 100vh !important;
     overflow: hidden !important;
     width: 100% !important;
 }
-/* ============================================
-   📱 MOBILE SIDEBAR + SCROLL FIX
-   ============================================ */
 
 @media (max-width: 768px) {
-    /* Overlay - visual only, doesn't block interaction */
     #overlay.active,
     #overlay.show {
         display: block !important;
@@ -2145,7 +2087,6 @@ body.sidebar-open .main {
         height: 100% !important;
     }
     
-    /* Sidebar - scrollable and interactive */
     .sidebar-premium.open,
     .sidebar-premium.active {
         transform: translateX(0) !important;
@@ -2161,7 +2102,6 @@ body.sidebar-open .main {
         height: 100vh !important;
     }
     
-    /* Main content - still scrollable when sidebar is open */
     .main {
         pointer-events: auto !important;
         overflow-y: auto !important;
@@ -2172,7 +2112,6 @@ body.sidebar-open .main {
         z-index: 1 !important;
     }
     
-    /* Tab content - scrollable */
     .tab-content {
         overflow-y: auto !important;
         overflow-x: hidden !important;
@@ -2184,7 +2123,6 @@ body.sidebar-open .main {
         z-index: 1 !important;
     }
     
-    /* Body when sidebar is open - lock scroll but content stays interactive */
     body.sidebar-open {
         overflow: hidden !important;
         position: fixed !important;
@@ -2203,13 +2141,11 @@ body.sidebar-open .main {
         pointer-events: auto !important;
     }
     
-    /* The sidebar toggle button should be on top */
     #mobile-menu-toggle {
         z-index: 10000 !important;
         position: relative !important;
     }
     
-    /* Container fix for mobile */
     .container {
         display: flex !important;
         height: 100vh !important;
@@ -2217,11 +2153,11 @@ body.sidebar-open .main {
         width: 100% !important;
     }
 }
+
 /* ============================================
-   📊 FIX TABLE HORIZONTAL SCROLL - FINAL
+   📊 FIX TABLE HORIZONTAL SCROLL
    ============================================ */
 
-/* Allow horizontal scroll on table containers */
 #cats .assessments-section,
 #cats .assessments-table-container,
 #cats .table-responsive,
@@ -2231,11 +2167,10 @@ body.sidebar-open .main {
     max-width: 100% !important;
     width: 100% !important;
     display: block !important;
-    min-width: 0 !important;  /* ⚠️ CRITICAL - prevents container from expanding */
+    min-width: 0 !important;
     flex-shrink: 1 !important;
 }
 
-/* Force tables to be wider than container */
 #cats table,
 #cats .assessments-table,
 #cats .data-table,
@@ -2249,7 +2184,6 @@ body.sidebar-open .main {
     flex-shrink: 0 !important;
 }
 
-/* Fix cells */
 #cats th,
 #cats td {
     min-width: 80px !important;
@@ -2258,7 +2192,6 @@ body.sidebar-open .main {
     padding: 8px 12px !important;
 }
 
-/* Ensure parent containers don't clip */
 #cats {
     overflow-x: visible !important;
     overflow-y: auto !important;
@@ -2271,18 +2204,15 @@ body.sidebar-open .main {
     overflow-y: auto !important;
 }
 
-/* Fix for container - allow overflow on specific sections */
 .container {
-    overflow: hidden !important; /* Keep as is */
+    overflow: hidden !important;
 }
 
-/* But allow overflow on main content */
 .main {
     overflow-x: visible !important;
     overflow-y: auto !important;
 }
 
-/* Mobile */
 @media (max-width: 768px) {
     #cats table,
     #cats .assessments-table,
@@ -2291,11 +2221,11 @@ body.sidebar-open .main {
         min-width: 700px !important;
     }
 }
+
 /* ============================================
    🏗️ SIDEBAR TOGGLE - PERMANENT FIX
    ============================================ */
 
-/* ===== DESKTOP SIDEBAR (default) ===== */
 @media (min-width: 769px) {
     .sidebar-premium {
         transform: translateX(0) !important;
@@ -2309,13 +2239,12 @@ body.sidebar-open .main {
         flex-direction: column !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+        background: linear-gradient(180deg, #0c2340 0%, #1a5276 50%, #0e2f44 100%) !important;
         border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
         box-shadow: 4px 0 40px rgba(0, 0, 0, 0.4) !important;
         transition: none !important;
     }
     
-    /* Main content with sidebar margin */
     .main,
     #main-content,
     main.main {
@@ -2329,12 +2258,10 @@ body.sidebar-open .main {
         flex: 1 !important;
     }
     
-    /* Hide overlay on desktop */
     .overlay {
         display: none !important;
     }
     
-    /* Fix container for desktop */
     .container {
         display: flex !important;
         width: 100% !important;
@@ -2343,14 +2270,12 @@ body.sidebar-open .main {
         overflow: hidden !important;
     }
     
-    /* Fix tab content */
     .tab-content {
         overflow-x: visible !important;
         overflow-y: visible !important;
         padding: 0 !important;
     }
     
-    /* Fix tables on desktop */
     .table-responsive,
     .table-container,
     .assessments-table-container {
@@ -2367,21 +2292,15 @@ body.sidebar-open .main {
         table-layout: auto !important;
     }
     
-    /* Ensure sidebar toggle is hidden on desktop */
     .sidebar-toggle-btn {
         display: none !important;
     }
     
-    /* Fix any open class from mobile */
     .sidebar-premium.open,
     .sidebar-premium.active {
         transform: translateX(0) !important;
     }
 }
-
-/* ============================================
-   📱 MOBILE SIDEBAR
-   ============================================ */
 
 @media (max-width: 768px) {
     .sidebar-premium {
@@ -2393,7 +2312,7 @@ body.sidebar-open .main {
         height: 100vh !important;
         z-index: 1000 !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+        background: linear-gradient(180deg, #0c2340 0%, #1a5276 50%, #0e2f44 100%) !important;
         border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
         box-shadow: 4px 0 40px rgba(0, 0, 0, 0.4) !important;
         display: flex !important;
@@ -2452,7 +2371,6 @@ body.sidebar-open .main {
         height: 100% !important;
     }
     
-    /* Container fix for mobile */
     .container {
         display: flex !important;
         height: 100vh !important;
@@ -2460,7 +2378,6 @@ body.sidebar-open .main {
         width: 100% !important;
     }
     
-    /* Tab content - scrollable */
     .tab-content {
         overflow-y: auto !important;
         overflow-x: hidden !important;
@@ -2474,7 +2391,6 @@ body.sidebar-open .main {
    📊 TABLE SCROLL FIX - ALL SIZES
    ============================================ */
 
-/* Allow horizontal scroll on table containers */
 .table-responsive,
 .table-container,
 .assessments-table-container,
@@ -2517,57 +2433,7 @@ body.sidebar-open .main {
     padding: 8px 12px !important;
 }
 
-/* CATS tab specific */
-#cats .assessments-section,
-#cats .assessments-table-container,
-#cats .table-responsive,
-#cats .table-container {
-    overflow-x: auto !important;
-    overflow-y: auto !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    display: block !important;
-    min-width: 0 !important;
-    flex-shrink: 1 !important;
-}
-
-#cats table,
-#cats .assessments-table,
-#cats .data-table,
-#cats .grades-table {
-    min-width: 1100px !important;
-    width: auto !important;
-    max-width: none !important;
-    display: table !important;
-    table-layout: auto !important;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-}
-
-#cats th,
-#cats td {
-    min-width: 80px !important;
-    max-width: none !important;
-    white-space: nowrap !important;
-    padding: 8px 12px !important;
-}
-
-#cats {
-    overflow-x: visible !important;
-    overflow-y: auto !important;
-    min-height: calc(100vh - 120px) !important;
-    padding-bottom: 100px !important;
-}
-
-/* Mobile table adjustments */
 @media (max-width: 768px) {
-    #cats table,
-    #cats .assessments-table,
-    #cats .data-table,
-    #cats .grades-table {
-        min-width: 700px !important;
-    }
-    
     .table-responsive table,
     .table-container table,
     .assessments-table-container table,
@@ -2577,7 +2443,6 @@ body.sidebar-open .main {
     }
 }
 
-/* Body */
 body {
     margin: 0 !important;
     padding: 0 !important;
@@ -2587,7 +2452,6 @@ body {
     min-height: 100vh !important;
 }
 
-/* Container */
 .container {
     display: flex !important;
     width: 100% !important;
@@ -2599,7 +2463,6 @@ body {
     align-items: flex-start !important;
 }
 
-/* Main content */
 .main,
 #main-content,
 main.main {
@@ -2608,12 +2471,12 @@ main.main {
     position: relative !important;
     z-index: 1 !important;
 }
+
 /* ============================================
    🖥️ DESKTOP SCROLL FIX
    ============================================ */
 
 @media (min-width: 769px) {
-    /* Allow main content to scroll */
     .main,
     #main-content,
     main.main {
@@ -2629,7 +2492,6 @@ main.main {
         -webkit-overflow-scrolling: touch !important;
     }
     
-    /* Ensure container doesn't block scrolling */
     .container {
         overflow: hidden !important;
         height: 100vh !important;
@@ -2637,7 +2499,6 @@ main.main {
         width: 100% !important;
     }
     
-    /* Fix tab content scrolling */
     .tab-content {
         overflow-y: visible !important;
         overflow-x: visible !important;
@@ -2646,23 +2507,17 @@ main.main {
         max-height: none !important;
     }
     
-    /* Dashboard container should allow scrolling */
     .dashboard-container {
         overflow-y: visible !important;
         overflow-x: visible !important;
         padding-bottom: 40px !important;
     }
     
-    /* Ensure footer is visible */
     .app-footer {
         position: relative !important;
         margin-top: 20px !important;
     }
 }
-
-/* ============================================
-   📱 MOBILE SCROLL FIX
-   ============================================ */
 
 @media (max-width: 768px) {
     .main,
