@@ -64,10 +64,10 @@ window.NCHSMLogin = {
     },
 
     // ============================================
-    // GOOGLE AUTH CONFIG - ✅ REPLACE CLIENT ID
+    // GOOGLE AUTH CONFIG - ✅ YOUR CLIENT ID INSERTED
     // ============================================
     google: {
-        clientId: 'YOUR_CLIENT_ID.apps.googleusercontent.com',  // ⚠️ REPLACE WITH YOUR REAL CLIENT ID
+        clientId: '533086740527-agnvv38lfir1fpsu26dfr7obg21rq9uv.apps.googleusercontent.com',
         initialized: false,
         credential: null
     },
@@ -1847,7 +1847,7 @@ window.NCHSMLogin = {
                     if (data.length >= 2 && data[1]) {
                         const previousLogin = data[1];
                         
-                        // ✅ FIX: Create date and add 3 hours for EAT timezone
+                        // Create date and format with EAT timezone
                         const loginDate = new Date(previousLogin.login_time);
                         
                         // Format the time correctly
@@ -1855,13 +1855,13 @@ window.NCHSMLogin = {
                             hour: '2-digit', 
                             minute: '2-digit',
                             hour12: true,
-                            timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
+                            timeZone: 'Africa/Nairobi'
                         });
                         const dateStr = loginDate.toLocaleDateString('en-US', { 
                             weekday: 'long', 
                             month: 'long', 
                             day: 'numeric',
-                            timeZone: 'Africa/Nairobi'  // ← FORCE EAT TIMEZONE
+                            timeZone: 'Africa/Nairobi'
                         });
                         const device = previousLogin.device_info || 'Unknown Device';
                         
