@@ -2002,83 +2002,79 @@ window.NCHSMLogin = {
         }
     },
 
-    // ============================================
-    // ✅ GOOGLE AUTH METHODS - FULL IMPLEMENTATION
-    // ============================================
-
-    // ============================================
-    // INIT GOOGLE LOGIN
-    // ============================================
-    initGoogleLogin: function() {
-        if (typeof google === 'undefined' || !google.accounts) {
-            console.warn('⚠️ Google library not loaded, retrying in 1s...');
-            setTimeout(() => this.initGoogleLogin(), 1000);
-            return;
-        }
+  // ============================================
+// INIT GOOGLE LOGIN - REDIRECT MODE
+// ============================================
+initGoogleLogin: function() {
+    if (typeof google === 'undefined' || !google.accounts) {
+        console.warn('⚠️ Google library not loaded, retrying in 1s...');
+        setTimeout(() => this.initGoogleLogin(), 1000);
+        return;
+    }
+    
+    console.log('🔑 Initializing Google Login (redirect mode)...');
+    
+    try {
+        google.accounts.id.initialize({
+            client_id: this.google.clientId,
+            callback: this.handleGoogleCredential.bind(this),
+            cancel_on_tap_outside: false,
+            auto_select: false,
+            context: 'signin',
+            ux_mode: 'redirect',  // ← REDIRECT MODE
+            login_uri: window.location.origin + window.location.pathname
+        });
         
-        console.log('🔑 Initializing Google Login...');
-        
-        try {
-            google.accounts.id.initialize({
-                client_id: this.google.clientId,
-                callback: this.handleGoogleCredential.bind(this),
-                cancel_on_tap_outside: false,
-                auto_select: false,
-                context: 'signin',
-                ux_mode: 'popup'
+        // Attach to your Google button
+        const googleBtn = document.querySelector('.sso-btn.google');
+        if (googleBtn) {
+            const newBtn = googleBtn.cloneNode(true);
+            googleBtn.parentNode.replaceChild(newBtn, googleBtn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔑 Google button clicked - redirecting to Google...');
+                google.accounts.id.prompt();
             });
-            
-            // Attach to your Google button
-            const googleBtn = document.querySelector('.sso-btn.google');
-            if (googleBtn) {
-                // Remove any existing listeners to avoid duplicates
-                const newBtn = googleBtn.cloneNode(true);
-                googleBtn.parentNode.replaceChild(newBtn, googleBtn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('🔑 Google button clicked');
-                    google.accounts.id.prompt();
-                });
-                console.log('✅ Google button attached');
-            } else {
-                console.warn('⚠️ Google button not found in DOM');
-            }
-            
-            this.google.initialized = true;
-            console.log('✅ Google Login initialized successfully');
-            
-        } catch (error) {
-            console.error('❌ Google init error:', error);
+            console.log('✅ Google button attached (redirect mode)');
+        } else {
+            console.warn('⚠️ Google button not found');
         }
-    },
+        
+        this.google.initialized = true;
+        console.log('✅ Google Login initialized successfully');
+        
+        // ✅ Listen for redirect response
+        this.listenForGoogleRedirect();
+        
+    } catch (error) {
+        console.error('❌ Google init error:', error);
+    }
+},
 
-    // ============================================
-    // HANDLE GOOGLE CREDENTIAL
-    // ============================================
-    handleGoogleCredential: function(response) {
-        console.log('🎯 Google credential received');
-        
-        if (!response.credential) {
-            this.showError('Google authentication failed');
-            return;
+// ============================================
+// LISTEN FOR GOOGLE REDIRECT RESPONSE
+// ============================================
+listenForGoogleRedirect: function() {
+    console.log('🔍 Listening for Google redirect...');
+    
+    // Check if we already have a credential stored
+    const storedCredential = sessionStorage.getItem('google_credential');
+    if (storedCredential) {
+        console.log('🎯 Found stored credential, processing...');
+        sessionStorage.removeItem('google_credential');
+        this.handleGoogleCredential({ credential: storedCredential });
+        return;
+    }
+    
+    // Listen for custom event from HTML
+    window.addEventListener('googleCredentialReceived', (event) => {
+        console.log('🎯 Google credential received via event!');
+        if (event.detail && event.detail.credential) {
+            this.handleGoogleCredential({ credential: event.detail.credential });
         }
-        
-        this.google.credential = response.credential;
-        
-        // Decode the JWT to get user info
-        try {
-            const payload = this.decodeJWT(response.credential);
-            console.log('📊 Google user:', payload.email);
-            
-            // Process Google login
-            this.processGoogleLogin(payload);
-            
-        } catch (error) {
-            console.error('❌ Error decoding JWT:', error);
-            this.showError('Invalid Google response');
-        }
-    },
+    });
+},
 
     // ============================================
     // DECODE JWT TOKEN
@@ -2094,116 +2090,117 @@ window.NCHSMLogin = {
         return JSON.parse(jsonPayload);
     },
 
-    // ============================================
-    // PROCESS GOOGLE LOGIN
-    // ============================================
-    processGoogleLogin: async function(payload) {
-        if (!this.supabase) {
-            this.showError('Authentication service unavailable');
+   // ============================================
+// PROCESS GOOGLE LOGIN
+// ============================================
+processGoogleLogin: async function(payload) {
+    if (!this.supabase) {
+        this.showError('Authentication service unavailable');
+        return;
+    }
+    
+    const email = payload.email;
+    const name = payload.name || payload.given_name || 'Student';
+    
+    console.log('📧 Processing Google login for:', email);
+    
+    // Show loading
+    const loginButton = document.getElementById('loginButton');
+    const buttonText = document.querySelector('.button-text');
+    if (loginButton) {
+        loginButton.disabled = true;
+        buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
+    }
+    
+    try {
+        // Check if user exists in our system
+        const { data: profile, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+        
+        if (profileError) {
+            console.error('❌ Profile error:', profileError);
+            this.showError('Database error. Please try again.');
             return;
         }
         
-        const email = payload.email;
-        const name = payload.name || payload.given_name || 'Student';
-        
-        // Show loading
-        const loginButton = document.getElementById('loginButton');
-        const buttonText = document.querySelector('.button-text');
-        if (loginButton) {
-            loginButton.disabled = true;
-            buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
-        }
-        
-        try {
-            // Check if user exists in our system
-            const { data: profile, error: profileError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (profileError) {
-                console.error('❌ Profile error:', profileError);
-                this.showError('Database error. Please try again.');
-                return;
-            }
-            
-            if (!profile) {
-                // User doesn't exist - prompt to register
-                this.showError('No account found with this email. Please register first.');
-                setTimeout(() => {
-                    window.location.href = 'register.html';
-                }, 2000);
-                return;
-            }
-            
-            // Check status
-            const validStatuses = ['approved', 'active'];
-            if (!validStatuses.includes(profile.status?.toLowerCase())) {
-                this.showError('Account pending approval. Please wait.');
-                return;
-            }
-            
-            // Create a session for this user
-            const sessionToken = this.generateSecureToken();
-            
-            // Track session
-            const sessionResult = await this.trackUserSession(
-                profile.user_id,
-                email,
-                sessionToken,
-                navigator.userAgent,
-                false
-            );
-            
-            if (!sessionResult) {
-                console.warn('⚠️ Session tracking failed but continuing');
-            }
-            
-            // Update last login
-            await this.updateLastLogin(profile.user_id, email);
-            
-            // Store profile
-            const safeProfile = {
-                user_id: profile.user_id,
-                email: email,
-                full_name: profile.full_name || name,
-                role: profile.role || 'student',
-                program: profile.program || profile.department,
-                is_staff: false,
-                auth_provider: 'google'
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            
-            // Send login notification (optional)
-            if (profile.role === 'student') {
-                this.sendLoginNotification({
-                    ...profile,
-                    full_name: profile.full_name || name,
-                    email: email
-                }).catch(() => {});
-            }
-            
-            // Success message
-            this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
-            this.updateLastLoginInfo();
-            
-            // Redirect
+        if (!profile) {
+            // User doesn't exist - prompt to register
+            this.showError('No account found with this email. Please register first.');
             setTimeout(() => {
-                this.redirectToDashboard(safeProfile);
-            }, 1000);
-            
-        } catch (error) {
-            console.error('❌ Google login error:', error);
-            this.showError('Login failed. Please try again.');
-        } finally {
-            if (loginButton) {
-                loginButton.disabled = false;
-                buttonText.textContent = 'Sign In';
-            }
+                window.location.href = 'register.html';
+            }, 2000);
+            return;
         }
-    },
-
+        
+        // Check status
+        const validStatuses = ['approved', 'active'];
+        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+            this.showError('Account pending approval. Please wait.');
+            return;
+        }
+        
+        // Create a session for this user
+        const sessionToken = this.generateSecureToken();
+        
+        // Track session
+        const sessionResult = await this.trackUserSession(
+            profile.user_id,
+            email,
+            sessionToken,
+            navigator.userAgent,
+            false
+        );
+        
+        if (!sessionResult) {
+            console.warn('⚠️ Session tracking failed but continuing');
+        }
+        
+        // Update last login
+        await this.updateLastLogin(profile.user_id, email);
+        
+        // Store profile
+        const safeProfile = {
+            user_id: profile.user_id,
+            email: email,
+            full_name: profile.full_name || name,
+            role: profile.role || 'student',
+            program: profile.program || profile.department,
+            is_staff: false,
+            auth_provider: 'google'
+        };
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        
+        // Send login notification (optional)
+        if (profile.role === 'student') {
+            this.sendLoginNotification({
+                ...profile,
+                full_name: profile.full_name || name,
+                email: email
+            }).catch(() => {});
+        }
+        
+        // Success message
+        this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
+        this.updateLastLoginInfo();
+        
+        // Redirect
+        setTimeout(() => {
+            this.redirectToDashboard(safeProfile);
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Google login error:', error);
+        this.showError('Login failed. Please try again.');
+    } finally {
+        if (loginButton) {
+            loginButton.disabled = false;
+            buttonText.textContent = 'Sign In';
+        }
+    }
+},
     // ============================================
     // CLEANUP
     // ============================================
