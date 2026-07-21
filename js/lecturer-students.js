@@ -1,7 +1,7 @@
 // js/lecturer-students.js
 /**
  * NCHSM Lecturer Students Module
- * Handles student management, filtering, and profiles
+ * Uses dedicated lecturer database
  */
 
 const LecturerStudents = {
@@ -14,7 +14,6 @@ const LecturerStudents = {
         search: ''
     },
     
-    // Initialize
     async init() {
         console.log('👥 Initializing Lecturer Students...');
         await this.loadStudents();
@@ -22,10 +21,9 @@ const LecturerStudents = {
         console.log('✅ Lecturer Students initialized');
     },
     
-    // Load students
     async loadStudents() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
             if (!program) {
@@ -33,16 +31,8 @@ const LecturerStudents = {
                 return;
             }
             
-            const { data, error } = await window.db.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('role', 'student')
-                .eq('program', program)
-                .order('full_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            this.students = data || [];
+            // ✅ Use lecturerDB
+            this.students = await window.lecturerDB.getStudents(program);
             this.filteredStudents = [...this.students];
             
             this.populateFilters();
@@ -53,11 +43,12 @@ const LecturerStudents = {
             
         } catch (error) {
             console.error('Failed to load students:', error);
-            LecturerUI.showNotification('Failed to load students: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load students: ' + error.message, 'error');
+            }
         }
     },
     
-    // Populate filters
     populateFilters() {
         const years = [...new Set(this.students.map(s => s.intake_year).filter(Boolean))].sort().reverse();
         
@@ -68,7 +59,6 @@ const LecturerStudents = {
         }
     },
     
-    // Render students table
     renderTable() {
         const tbody = document.getElementById('studentsTableBody');
         if (!tbody) return;
@@ -87,12 +77,12 @@ const LecturerStudents = {
             
             return `
                 <tr class="${atRisk ? 'student-at-risk' : ''}">
-                    <td>${atRisk ? '⚠️ ' : ''}${Utils.escapeHtml(student.full_name || 'N/A')}</td>
-                    <td><strong>${Utils.escapeHtml(regNo)}</strong></td>
-                    <td>${Utils.escapeHtml(student.email || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.program || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.intake_year || 'N/A')}</td>
-                    <td><span class="student-status-badge status-${status}">${Utils.escapeHtml(student.status || 'Active')}</span></td>
+                    <td>${atRisk ? '⚠️ ' : ''}${window.LecturerUtils?.escapeHtml(student.full_name || 'N/A') || student.full_name || 'N/A'}</td>
+                    <td><strong>${window.LecturerUtils?.escapeHtml(regNo) || regNo}</strong></td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.email || 'N/A') || student.email || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.program || 'N/A') || student.program || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.intake_year || 'N/A') || student.intake_year || 'N/A'}</td>
+                    <td><span class="student-status-badge status-${status}">${window.LecturerUtils?.escapeHtml(student.status || 'Active') || student.status || 'Active'}</span></td>
                     <td style="color:${(student.cumulative_absences || 0) > 3 ? '#EF4444' : '#10B981'}">
                         ${student.cumulative_absences || 0} days
                     </td>
@@ -102,7 +92,7 @@ const LecturerStudents = {
                             <i class="fas fa-eye"></i>
                         </button>
                         <button class="btn btn-action btn-small" 
-                                onclick="LecturerStudents.messageStudent('${student.user_id}', '${Utils.escapeHtml(student.full_name)}')">
+                                onclick="LecturerStudents.messageStudent('${student.user_id}', '${window.LecturerUtils?.escapeHtml(student.full_name) || student.full_name || ''}')">
                             <i class="fas fa-envelope"></i>
                         </button>
                     </td>
@@ -111,7 +101,6 @@ const LecturerStudents = {
         }).join('');
     },
     
-    // Update statistics
     updateStats() {
         const total = this.filteredStudents.length;
         const statsEl = document.getElementById('studentStats');
@@ -123,14 +112,11 @@ const LecturerStudents = {
         }
     },
     
-    // Apply filters
     applyFilters() {
         const intake = document.getElementById('studentIntakeFilter')?.value || 'all';
         const status = document.getElementById('studentStatusFilter')?.value || 'all';
         const risk = document.getElementById('studentRiskFilter')?.value || 'all';
         const search = document.getElementById('studentSearch')?.value?.toLowerCase() || '';
-        
-        this.filters = { intake, status, risk, search };
         
         this.filteredStudents = this.students.filter(student => {
             const matchIntake = intake === 'all' || student.intake_year === intake;
@@ -149,30 +135,27 @@ const LecturerStudents = {
         this.updateStats();
     },
     
-    // Setup event listeners
     setupEventListeners() {
-        // Filter changes
         ['studentIntakeFilter', 'studentStatusFilter', 'studentRiskFilter'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => this.applyFilters());
         });
         
-        // Search
         const searchInput = document.getElementById('studentSearch');
         if (searchInput) {
             searchInput.addEventListener('keyup', () => this.applyFilters());
         }
     },
     
-    // View student profile
     viewStudent(userId) {
         const student = this.students.find(s => s.user_id === userId);
         if (!student) {
-            LecturerUI.showNotification('Student not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Student not found.', 'error');
+            }
             return;
         }
         
-        // Show student info modal
         document.getElementById('infoName').textContent = student.full_name || 'N/A';
         document.getElementById('infoRegno').textContent = student.student_id || 'N/A';
         document.getElementById('infoEmail').textContent = student.email || 'N/A';
@@ -181,12 +164,12 @@ const LecturerStudents = {
         document.getElementById('infoStatus').textContent = student.status || 'Active';
         document.getElementById('infoAbsences').textContent = student.cumulative_absences || '0';
         
-        LecturerUI.openModal('studentInfoModal');
+        if (window.LecturerUI) {
+            window.LecturerUI.openModal('studentInfoModal');
+        }
     },
     
-    // Message student
     messageStudent(userId, fullName) {
-        // Find the message form and set recipient
         const targetSelect = document.getElementById('msgTarget');
         if (targetSelect) {
             for (let i = 0; i < targetSelect.options.length; i++) {
@@ -196,15 +179,17 @@ const LecturerStudents = {
                 }
             }
         }
-        // Navigate to messages tab
-        LecturerUI.showTab('messages');
-        LecturerUI.showNotification(`Ready to message ${fullName}`, 'info');
+        if (window.LecturerUI) {
+            window.LecturerUI.showTab('messages');
+            window.LecturerUI.showNotification(`Ready to message ${fullName}`, 'info');
+        }
     },
     
-    // Refresh students
     async refresh() {
         await this.loadStudents();
-        LecturerUI.showNotification('Students refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Students refreshed!', 'success');
+        }
     }
 };
 
