@@ -42,13 +42,13 @@ const LecturerUI = {
             });
         });
         
-        // Logout
+        // ✅ Logout - Use lecturerDB
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (confirm('Are you sure you want to logout?')) {
-                    await window.db?.logout();
+                    await window.lecturerDB?.logout();
                 }
             });
         }
@@ -496,9 +496,9 @@ const LecturerUI = {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Wait for database to be ready
+    // ✅ Wait for lecturerDB to be ready
     const checkDb = setInterval(() => {
-        if (window.db && window.db.supabase) {
+        if (window.lecturerDB && window.lecturerDB.isInitialized) {
             clearInterval(checkDb);
             LecturerUI.init();
             LecturerUI.updateCurrentDate();
