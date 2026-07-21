@@ -2542,3 +2542,58 @@ main.main {
         padding-bottom: 80px !important;
     }
 }
+/* ============================================
+   🍭 CANDY GRADIENT ATTENDANCE CARD
+   ============================================ */
+
+.attendance-card {
+    background: linear-gradient(135deg, #fef9c3, #fde68a, #fcd34d) !important;
+    border: 2px solid #fbbf24 !important;
+    border-radius: 16px !important;
+    padding: 24px 28px !important;
+    box-shadow: 0 8px 32px rgba(251,191,36,0.25) !important;
+    cursor: pointer !important;
+}
+
+.attendance-percent {
+    color: #451a03 !important;
+    font-size: 44px !important;
+    font-weight: 900 !important;
+}
+
+.attendance-label {
+    color: #78350f !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+}
+
+.warning-badge {
+    background: #78350f !important;
+    color: #fef3c7 !important;
+    padding: 8px 22px !important;
+    border-radius: 50px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    border: 2px solid #451a03 !important;
+    box-shadow: 0 4px 15px rgba(120,53,15,0.3) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.vp-row {
+    border-top: 2px solid rgba(120,53,15,0.2) !important;
+    padding-top: 16px !important;
+    margin-top: 16px !important;
+    color: #451a03 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    gap: 25px !important;
+}
+
+.vp-row strong {
+    color: #451a03 !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+}
