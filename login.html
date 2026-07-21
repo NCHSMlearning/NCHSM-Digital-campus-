@@ -26,7 +26,57 @@
     
     <!-- ✅ Google Identity Services - REQUIRED FOR GOOGLE AUTH -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- ✅ Google Identity Services - REQUIRED FOR GOOGLE AUTH -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<!-- ✅ Handle Google Redirect Response -->
+<script>
+// This runs immediately when the page loads
+(function() {
+    console.log('🔍 Checking for Google redirect...');
     
+    // Check URL hash (fragment) for credential
+    if (window.location.hash && window.location.hash.includes('credential=')) {
+        console.log('🎯 Found credential in URL hash!');
+        const hash = window.location.hash;
+        const match = hash.match(/credential=([^&]+)/);
+        if (match) {
+            const credential = decodeURIComponent(match[1]);
+            console.log('📊 Credential found, length:', credential.length);
+            
+            // Store it temporarily
+            sessionStorage.setItem('google_credential', credential);
+            
+            // Clean the URL (remove the hash)
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            // Trigger login
+            window.dispatchEvent(new CustomEvent('googleCredentialReceived', {
+                detail: { credential: credential }
+            }));
+        }
+    }
+    
+    // Check URL query params for credential
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('credential')) {
+        const credential = params.get('credential');
+        console.log('🎯 Found credential in URL params!');
+        sessionStorage.setItem('google_credential', credential);
+        
+        // Clean the URL
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        window.dispatchEvent(new CustomEvent('googleCredentialReceived', {
+            detail: { credential: credential }
+        }));
+    }
+})();
+</script>
     <!-- Supabase -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
