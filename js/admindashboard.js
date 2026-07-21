@@ -4789,7 +4789,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         }) : 'N/A';
         
         // ✅ FROM ADDRESS
-        const fromAddress = 'NCHSM Exam Office <admin@nakurucollegeofhealthelearning.site>';
+        const fromAddress = 'NCHSM Exam Office <admin@nchsm.co.ke>';
         
         // ✅ PROFESSIONAL EMAIL HTML
         const html = `
@@ -5078,11 +5078,11 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                 
                 <!-- Button -->
                 <div style="text-align: center; margin: 24px 0 16px;">
-                    <a href="https://nakurucollegeofhealthelearning.site/exams" class="btn-primary">
+                    <a href="https://nchsm.co.ke/exams" class="btn-primary">
                         🔑 Go to Exam Portal
                     </a>
                     <br>
-                    <a href="https://nakurucollegeofhealthelearning.site" class="btn-secondary">
+                    <a href="https://nchsm.co.ke" class="btn-secondary">
                         🌐 Visit NCHSM Digital Campus
                     </a>
                 </div>
@@ -5099,15 +5099,15 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                     <strong>Nakuru College of Health Sciences and Management</strong>
                 </p>
                 <p class="footer-text">
-                    📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nakurucollegeofhealthelearning.site
+                    📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke
                 </p>
                 <p class="footer-text" style="font-size: 11px; color: #aab7c5;">
                     This is an automated notification. Please do not reply to this email.
                 </p>
                 <div class="footer-links">
-                    <a href="https://nakurucollegeofhealthelearning.site">🏠 Home</a>
-                    <a href="https://nakurucollegeofhealthelearning.site/exams">📝 Exams</a>
-                    <a href="https://nakurucollegeofhealthelearning.site/contact">📞 Contact</a>
+                   <a href="https://nchsm.co.ke">🏠 Home</a>
+<a href="https://nchsm.co.ke/exams">📝 Exams</a>
+<a href="https://nchsm.co.ke/contact">📞 Contact</a>
                 </div>
                 <span class="secure-badge">🔒 Secure Notification</span>
             </div>
