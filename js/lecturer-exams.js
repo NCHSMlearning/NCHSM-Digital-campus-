@@ -1,13 +1,12 @@
 // js/lecturer-exams.js
 /**
  * NCHSM Lecturer Exams Module
- * Handles exam creation, grading, and management
+ * Uses dedicated lecturer database
  */
 
 const LecturerExams = {
     exams: [],
     
-    // Initialize
     async init() {
         console.log('📝 Initializing Lecturer Exams...');
         await this.loadExams();
@@ -16,43 +15,28 @@ const LecturerExams = {
         console.log('✅ Lecturer Exams initialized');
     },
     
-    // Load exams
     async loadExams() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
-            const userId = window.db?.getCurrentUserId();
             
             if (!program) {
                 console.warn('No program found');
                 return;
             }
             
-            const { data, error } = await window.db.supabase
-                .from('exams')
-                .select(`
-                    *,
-                    course:course_id (
-                        course_name,
-                        unit_code
-                    )
-                `)
-                .eq('target_program', program)
-                .order('exam_date', { ascending: false });
-            
-            if (error) throw error;
-            
-            this.exams = data || [];
+            this.exams = await window.lecturerDB.getExams(program);
             this.renderExams();
             console.log(`✅ Loaded ${this.exams.length} exams`);
             
         } catch (error) {
             console.error('Failed to load exams:', error);
-            LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
+            }
         }
     },
     
-    // Render exams table
     renderExams() {
         const tbody = document.getElementById('examsTable');
         if (!tbody) return;
@@ -66,9 +50,9 @@ const LecturerExams = {
         
         tbody.innerHTML = exams.map(exam => {
             const course = exam.course?.course_name || 'General';
-            const dateTime = exam.exam_date ? Utils.formatDate(exam.exam_date) : 'N/A';
+            const dateTime = exam.exam_date ? window.LecturerUtils?.formatDate(exam.exam_date) || exam.exam_date : 'N/A';
             const statusClass = (exam.status || 'Scheduled').toLowerCase();
-            const isOwner = exam.created_by === window.db?.getCurrentUserId();
+            const isOwner = exam.created_by === window.lecturerDB?.getCurrentUserId();
             const approvalStatus = exam.approval_status || 'draft';
             
             let actions = '';
@@ -92,14 +76,7 @@ const LecturerExams = {
                 `;
             }
             
-            if (exam.online_link || exam.exam_link) {
-                const link = exam.online_link || exam.exam_link;
-                actions += `
-                    <a href="${link}" target="_blank" class="btn btn-map btn-small">
-                        <i class="fas fa-external-link-alt"></i>
-                    </a>
-                `;
-            }
+            // ❌ REMOVED: Exam link button
             
             const approvalBadge = {
                 'draft': ' <span class="badge badge-warning">📝 Draft</span>',
@@ -109,61 +86,55 @@ const LecturerExams = {
             
             return `
                 <tr>
-                    <td><span class="exam-type-badge">${Utils.escapeHtml(exam.exam_type || 'N/A')}</span></td>
-                    <td><strong>${Utils.escapeHtml(exam.exam_name || 'N/A')}</strong>${approvalBadge}</td>
-                    <td>${Utils.escapeHtml(course)}</td>
-                    <td>${Utils.escapeHtml(exam.target_program || 'N/A')}/${Utils.escapeHtml(exam.block_term || 'N/A')}</td>
+                    <td><span class="exam-type-badge">${window.LecturerUtils?.escapeHtml(exam.exam_type || 'N/A') || exam.exam_type || 'N/A'}</span></td>
+                    <td><strong>${window.LecturerUtils?.escapeHtml(exam.exam_name || 'N/A') || exam.exam_name || 'N/A'}</strong>${approvalBadge}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(course) || course}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(exam.target_program || 'N/A') || exam.target_program || 'N/A'}/${window.LecturerUtils?.escapeHtml(exam.block_term || 'N/A') || exam.block_term || 'N/A'}</td>
                     <td>${dateTime}</td>
                     <td>${exam.duration_minutes ? exam.duration_minutes + ' mins' : 'N/A'}</td>
-                    <td><span class="status-${statusClass}">${Utils.escapeHtml(exam.status || 'Scheduled')}</span></td>
+                    <td><span class="status-${statusClass}">${window.LecturerUtils?.escapeHtml(exam.status || 'Scheduled') || exam.status || 'Scheduled'}</span></td>
                     <td>${actions || '<span style="color:#9ca3af;">No actions</span>'}</td>
                 </tr>
             `;
         }).join('');
     },
     
-    // Populate exam form
     populateExamForm() {
-        const profile = window.db?.getUserProfile();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        // Program
         const programSelect = document.getElementById('examProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
         }
         
-        // Blocks
-        const blocks = Utils.getAcademicBlocks(program);
+        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         const blockSelect = document.getElementById('examBlockTerm');
         if (blockSelect) {
             blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
                 blocks.map(b => `<option value="${b}">${b}</option>`).join('');
         }
         
-        // Courses
         this.loadCoursesForForm();
     },
     
-    // Load courses for form
     async loadCoursesForForm() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
-            const { data, error } = await window.db.supabase
-                .from('courses')
-                .select('id, course_name')
-                .eq('target_program', program)
-                .eq('status', 'Active');
+            if (!program) {
+                console.warn('No program found for courses');
+                return;
+            }
             
-            if (error) throw error;
+            const courses = await window.lecturerDB.getCourses(program);
             
             const courseSelect = document.getElementById('examCourseId');
             if (courseSelect) {
                 courseSelect.innerHTML = '<option value="">-- Select Course (Optional) --</option>' +
-                    (data || []).map(c => 
-                        `<option value="${c.id}">${Utils.escapeHtml(c.course_name)}</option>`
+                    courses.map(c => 
+                        `<option value="${c.id}">${window.LecturerUtils?.escapeHtml(c.course_name) || c.course_name}</option>`
                     ).join('');
             }
             
@@ -172,35 +143,33 @@ const LecturerExams = {
         }
     },
     
-    // Setup event listeners
     setupEventListeners() {
-        // Exam form submission
         const form = document.getElementById('addExamForm');
         if (form) {
             form.addEventListener('submit', (e) => this.handleAddExam(e));
         }
         
-        // Search
         const searchInput = document.getElementById('examSearch');
         if (searchInput) {
             searchInput.addEventListener('keyup', () => {
-                LecturerUI.filterTable('examSearch', 'examsTable', [1, 2, 3]);
+                if (window.LecturerUI) {
+                    window.LecturerUI.filterTable('examSearch', 'examsTable', [1, 2, 3]);
+                }
             });
         }
         
-        // Edit exam form
         const editForm = document.getElementById('editExamForm');
         if (editForm) {
             editForm.addEventListener('submit', (e) => this.handleEditExam(e));
         }
         
-        // Modal close
         document.getElementById('closeExamEditModal')?.addEventListener('click', () => {
-            LecturerUI.closeModal('examEditModal');
+            if (window.LecturerUI) {
+                window.LecturerUI.closeModal('examEditModal');
+            }
         });
     },
     
-    // Handle add exam
     async handleAddExam(e) {
         e.preventDefault();
         const btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -217,49 +186,33 @@ const LecturerExams = {
             course: document.getElementById('examCourseId')?.value,
             startTime: document.getElementById('examStartTime')?.value,
             duration: document.getElementById('examDurationMinutes')?.value,
-            link: document.getElementById('examLink')?.value,
             status: document.getElementById('examStatus')?.value
         };
         
+        // ❌ REMOVED: examLink from formData
+        
         const required = ['title', 'date', 'type', 'program', 'intake', 'block', 'duration'];
         if (required.some(f => !formData[f])) {
-            LecturerUI.showNotification('Please fill all required fields.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Please fill all required fields.', 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Create Exam Record';
             return;
         }
         
         try {
-            const userId = window.db?.getCurrentUserId();
+            const result = await window.lecturerDB.createExam(formData);
             
-            const { data, error } = await window.db.supabase
-                .from('exams')
-                .insert({
-                    exam_name: formData.title,
-                    exam_date: formData.date,
-                    exam_start_time: formData.startTime || null,
-                    exam_type: formData.type,
-                    online_link: formData.link || null,
-                    duration_minutes: parseInt(formData.duration),
-                    target_program: formData.program,
-                    course_id: formData.course || null,
-                    intake_year: formData.intake,
-                    block_term: formData.block,
-                    status: formData.status,
-                    approval_status: 'draft',
-                    created_by: userId,
-                    created_at: new Date().toISOString()
-                })
-                .select();
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             
-            if (error) throw error;
-            
-            // Request admin approval
             if (typeof window.requestAdminApproval === 'function') {
                 await window.requestAdminApproval(
                     'create_exam',
                     {
-                        exam_id: data[0]?.id,
+                        exam_id: result.data[0]?.id,
                         title: formData.title,
                         type: formData.type,
                         program: formData.program,
@@ -267,28 +220,33 @@ const LecturerExams = {
                         intake: formData.intake
                     },
                     'Created exam: ' + formData.title,
-                    data[0]?.id
+                    result.data[0]?.id
                 );
             }
             
-            LecturerUI.showNotification('✅ Exam created! Waiting for admin approval.', 'success');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('✅ Exam created! Waiting for admin approval.', 'success');
+            }
             e.target.reset();
             if (formData.program) document.getElementById('examProgram').value = formData.program;
             await this.loadExams();
             
         } catch (error) {
-            LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = 'Create Exam Record';
         }
     },
     
-    // Edit exam
     async editExam(examId) {
         const exam = this.exams.find(e => e.id === examId);
         if (!exam) {
-            LecturerUI.showNotification('Exam not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Exam not found.', 'error');
+            }
             return;
         }
         
@@ -297,10 +255,11 @@ const LecturerExams = {
         document.getElementById('editExamDate').value = exam.exam_date || '';
         document.getElementById('editExamStatus').value = exam.status || 'Scheduled';
         
-        LecturerUI.openModal('examEditModal');
+        if (window.LecturerUI) {
+            window.LecturerUI.openModal('examEditModal');
+        }
     },
     
-    // Handle edit exam
     async handleEditExam(e) {
         e.preventDefault();
         const btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -313,14 +272,16 @@ const LecturerExams = {
         const status = document.getElementById('editExamStatus').value;
         
         if (!title || !date) {
-            LecturerUI.showNotification('Title and date required.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Title and date required.', 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Save Changes';
             return;
         }
         
         try {
-            await window.db.supabase
+            await window.lecturerDB.supabase
                 .from('exams')
                 .update({
                     exam_name: title,
@@ -329,50 +290,57 @@ const LecturerExams = {
                 })
                 .eq('id', id);
             
-            LecturerUI.showNotification('✅ Exam updated!', 'success');
-            LecturerUI.closeModal('examEditModal');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('✅ Exam updated!', 'success');
+                window.LecturerUI.closeModal('examEditModal');
+            }
             await this.loadExams();
             
         } catch (error) {
-            LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = 'Save Changes';
         }
     },
     
-    // Delete exam
     async deleteExam(examId) {
         const exam = this.exams.find(e => e.id === examId);
         if (!confirm(`Delete exam "${exam?.exam_name || 'Exam'}"?`)) return;
         
         try {
-            await window.db.supabase
+            await window.lecturerDB.supabase
                 .from('exams')
                 .delete()
                 .eq('id', examId);
             
-            LecturerUI.showNotification('✅ Exam deleted!', 'success');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('✅ Exam deleted!', 'success');
+            }
             await this.loadExams();
             
         } catch (error) {
-            LecturerUI.showNotification('Delete failed: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Delete failed: ' + error.message, 'error');
+            }
         }
     },
     
-    // Grade exam
     async gradeExam(examId) {
         const exam = this.exams.find(e => e.id === examId);
         if (!exam) {
-            LecturerUI.showNotification('Exam not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Exam not found.', 'error');
+            }
             return;
         }
         
-        // Get students for this exam
-        const profile = window.db?.getUserProfile();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        const { data: students } = await window.db.supabase
+        const { data: students } = await window.lecturerDB.supabase
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
@@ -381,17 +349,17 @@ const LecturerExams = {
             .eq('block', exam.block_term);
         
         if (!students?.length) {
-            LecturerUI.showNotification('No students found for this exam.', 'warning');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No students found for this exam.', 'warning');
+            }
             return;
         }
         
-        // Get existing grades
-        const { data: existing } = await window.db.supabase
+        const { data: existing } = await window.lecturerDB.supabase
             .from('exam_grades')
             .select('*')
             .eq('exam_id', examId);
         
-        // Build grade modal
         const modalContent = this.buildGradeModal(exam, students, existing || []);
         const modal = document.getElementById('gradeModal');
         if (modal) {
@@ -401,19 +369,18 @@ const LecturerExams = {
         }
     },
     
-    // Build grade modal
     buildGradeModal(exam, students, existing) {
         const studentRows = students.map(s => {
             const g = existing.find(e => e.student_id === s.user_id) || {};
             return `
                 <tr>
-                    <td>${Utils.escapeHtml(s.full_name)}</td>
-                    <td>${Utils.escapeHtml(s.student_id || s.user_id.substring(0, 8))}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(s.full_name) || s.full_name || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(s.student_id || s.user_id.substring(0, 8)) || s.student_id || 'N/A'}</td>
                     <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${g.cat_1_score || ''}" class="grade-input"></td>
                     <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${g.cat_2_score || ''}" class="grade-input"></td>
                     <td><input type="number" min="0" max="100" step="0.5" id="final-${s.user_id}" value="${g.exam_score || ''}" class="grade-input"></td>
                     <td><input type="number" id="total-${s.user_id}" value="${g.total_score || ''}" readonly class="total-input"></td>
-                    <td><span id="grade-${s.user_id}" class="grade-letter">${Utils.calculateGrade(g.total_score)}</span></td>
+                    <td><span id="grade-${s.user_id}" class="grade-letter">${window.LecturerUtils?.calculateGrade(g.total_score) || '-'}</span></td>
                     <td>
                         <select id="status-${s.user_id}" class="status-select">
                             <option value="Scheduled" ${g.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
@@ -427,12 +394,12 @@ const LecturerExams = {
         }).join('');
         
         return `
-            <span class="close" onclick="LecturerUI.closeModal('gradeModal')">&times;</span>
-            <h3><i class="fas fa-check-circle"></i> Grade: ${Utils.escapeHtml(exam.exam_name)}</h3>
+            <span class="close" onclick="if(window.LecturerUI) window.LecturerUI.closeModal('gradeModal')">&times;</span>
+            <h3><i class="fas fa-check-circle"></i> Grade: ${window.LecturerUtils?.escapeHtml(exam.exam_name) || exam.exam_name || 'N/A'}</h3>
             <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;">
-                <p><strong>Course:</strong> ${Utils.escapeHtml(exam.course?.course_name || 'General')}</p>
-                <p><strong>Program:</strong> ${Utils.escapeHtml(exam.target_program)} | Block ${Utils.escapeHtml(exam.block_term)} | ${Utils.escapeHtml(exam.intake_year)}</p>
-                <p><strong>Type:</strong> ${Utils.escapeHtml(exam.exam_type)} | <strong>Date:</strong> ${Utils.formatDate(exam.exam_date)}</p>
+                <p><strong>Course:</strong> ${window.LecturerUtils?.escapeHtml(exam.course?.course_name || 'General') || 'General'}</p>
+                <p><strong>Program:</strong> ${window.LecturerUtils?.escapeHtml(exam.target_program) || exam.target_program || 'N/A'} | Block ${window.LecturerUtils?.escapeHtml(exam.block_term) || exam.block_term || 'N/A'} | ${window.LecturerUtils?.escapeHtml(exam.intake_year) || exam.intake_year || 'N/A'}</p>
+                <p><strong>Type:</strong> ${window.LecturerUtils?.escapeHtml(exam.exam_type) || exam.exam_type || 'N/A'} | <strong>Date:</strong> ${window.LecturerUtils?.formatDate(exam.exam_date) || exam.exam_date || 'N/A'}</p>
             </div>
             <div class="table-responsive">
                 <table class="grade-table">
@@ -455,14 +422,13 @@ const LecturerExams = {
                 <button class="btn btn-action" onclick="LecturerExams.saveGrades('${exam.id}')">
                     <i class="fas fa-save"></i> Save All Grades
                 </button>
-                <button class="btn btn-delete" onclick="LecturerUI.closeModal('gradeModal')">
+                <button class="btn btn-delete" onclick="if(window.LecturerUI) window.LecturerUI.closeModal('gradeModal')">
                     <i class="fas fa-times"></i> Close
                 </button>
             </div>
         `;
     },
     
-    // Save grades
     async saveGrades(examId) {
         const rows = document.querySelectorAll('#gradeTableBody tr');
         const grades = [];
@@ -486,35 +452,42 @@ const LecturerExams = {
                     exam_score: final ? parseFloat(final) : null,
                     total_score: total,
                     result_status: status || 'Graded',
-                    graded_by: window.db?.getCurrentUserId(),
+                    graded_by: window.lecturerDB?.getCurrentUserId(),
                     question_id: '00000000-0000-0000-0000-000000000000'
                 });
             }
         }
         
         if (!grades.length) {
-            LecturerUI.showNotification('No grades to save.', 'info');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No grades to save.', 'info');
+            }
             return;
         }
         
         try {
-            await window.db.supabase
+            await window.lecturerDB.supabase
                 .from('exam_grades')
                 .upsert(grades, { onConflict: 'exam_id,student_id,question_id' });
             
-            LecturerUI.showNotification(`✅ Saved ${grades.length} grades!`, 'success');
-            LecturerUI.closeModal('gradeModal');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification(`✅ Saved ${grades.length} grades!`, 'success');
+                window.LecturerUI.closeModal('gradeModal');
+            }
             await this.loadExams();
             
         } catch (error) {
-            LecturerUI.showNotification('Failed to save grades: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to save grades: ' + error.message, 'error');
+            }
         }
     },
     
-    // Refresh
     async refresh() {
         await this.loadExams();
-        LecturerUI.showNotification('Exams refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Exams refreshed!', 'success');
+        }
     }
 };
 
