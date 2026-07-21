@@ -2525,3 +2525,149 @@ main.main {
         padding-bottom: 80px !important;
     }
 }
+/* ============================================
+   ☀️ SUNLIGHT VISIBILITY FIX - PERMANENT
+   ============================================ */
+
+/* ALL TEXT - MAX CONTRAST */
+.sidebar-premium * {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+}
+
+/* NAV LINKS - BOLD & BRIGHT */
+.sidebar-premium .nav-premium a {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    letter-spacing: 0.3px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    opacity: 1 !important;
+}
+
+.sidebar-premium .nav-premium a i {
+    color: #ffffff !important;
+    font-size: 17px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    opacity: 1 !important;
+}
+
+/* ACTIVE LINK - GOLD FOR CONTRAST */
+.sidebar-premium .nav-premium a.active {
+    color: #1a1a2e !important;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B) !important;
+    border-left: 4px solid #ffffff !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.3) !important;
+}
+
+.sidebar-premium .nav-premium a.active i {
+    color: #1a1a2e !important;
+    text-shadow: none !important;
+}
+
+/* HOVER - BRIGHT WHITE */
+.sidebar-premium .nav-premium a:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.2) !important;
+    text-shadow: 0 0 10px rgba(255,255,255,0.3) !important;
+}
+
+/* USER NAME - BIG & BOLD */
+.sidebar-premium .user-name {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8) !important;
+}
+
+/* USER PROGRAM */
+.sidebar-premium .user-program {
+    color: #FCD34D !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* BRAND TITLE */
+.sidebar-premium .brand-title {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 22px !important;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+    background: none !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* BRAND SUBTITLE */
+.sidebar-premium .brand-subtitle {
+    color: #85c1e9 !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    letter-spacing: 2px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    -webkit-text-fill-color: #85c1e9 !important;
+}
+
+/* XP INFO */
+.sidebar-premium .xp-info {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+}
+
+.sidebar-premium .xp-info strong {
+    color: #FCD34D !important;
+    font-weight: 800 !important;
+}
+
+/* NAV BADGES */
+.sidebar-premium .nav-badge-premium {
+    background: rgba(255,255,255,0.2) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 10px !important;
+    padding: 2px 10px !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.sidebar-premium .pulse-badge {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 10px !important;
+    box-shadow: 0 0 15px rgba(239,68,68,0.5) !important;
+}
+
+/* DROPDOWN */
+.sidebar-premium .dropdown-submenu-premium li a {
+    color: rgba(255,255,255,0.85) !important;
+    font-weight: 500 !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+}
+
+.sidebar-premium .dropdown-submenu-premium li a:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.1) !important;
+}
+
+.sidebar-premium .dropdown-submenu-premium li a i {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+/* FOOTER */
+.sidebar-premium .footer-version {
+    color: rgba(255,255,255,0.5) !important;
+    font-weight: 500 !important;
+}
+
+.sidebar-premium .online-status {
+    color: rgba(255,255,255,0.6) !important;
+    font-weight: 500 !important;
+}
+
+.sidebar-premium .status-dot-small {
+    background: #22c55e !important;
+    box-shadow: 0 0 10px rgba(34,197,94,0.5) !important;
+}
