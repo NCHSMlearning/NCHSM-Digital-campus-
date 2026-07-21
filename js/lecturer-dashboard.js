@@ -1,7 +1,7 @@
 // js/lecturer-dashboard.js
 /**
  * NCHSM Lecturer Dashboard Module
- * Handles dashboard metrics, cards, and overview
+ * Uses dedicated lecturer database
  */
 
 const LecturerDashboard = {
@@ -33,7 +33,8 @@ const LecturerDashboard = {
     },
     
     updateWelcomeBanner() {
-        const profile = window.db?.getUserProfile();
+        // ✅ Use lecturerDB instead of db
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const welcomeHeader = document.getElementById('welcomeHeader');
         const programSubtitle = document.getElementById('programSubtitle');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
@@ -43,7 +44,8 @@ const LecturerDashboard = {
         }
         
         const program = profile?.program || profile?.department || 'KRCHN';
-        const programDisplay = Utils.getProgramDisplayName(program);
+        // ✅ Use LecturerUtils instead of Utils
+        const programDisplay = window.LecturerUtils?.getProgramDisplayName(program) || program;
         
         if (programSubtitle) {
             programSubtitle.textContent = `Dashboard filtered for ${programDisplay}`;
@@ -63,40 +65,33 @@ const LecturerDashboard = {
     
     async loadMetrics() {
         try {
-            const profile = window.db?.getUserProfile();
+            // ✅ Use lecturerDB instead of db
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
-            // Get students
-            const { data: students } = await window.db.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('role', 'student')
-                .eq('program', program);
+            if (!program) {
+                console.warn('No program found for lecturer');
+                return;
+            }
             
-            this.metrics.totalStudents = students?.length || 0;
+            // ✅ Use lecturerDB's built-in getStudents method
+            const students = await window.lecturerDB.getStudents(program);
+            this.metrics.totalStudents = students.length;
             
-            // Get courses
-            const { data: courses } = await window.db.supabase
-                .from('courses')
-                .select('*')
-                .eq('target_program', program)
-                .eq('status', 'Active');
-            
-            this.metrics.totalCourses = courses?.length || 0;
+            // ✅ Use lecturerDB's built-in getCourses method
+            const courses = await window.lecturerDB.getCourses(program);
+            this.metrics.totalCourses = courses.length;
             
             // At-risk students
-            this.metrics.atRiskStudents = students?.filter(s => 
+            this.metrics.atRiskStudents = students.filter(s => 
                 (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation'
             ).length || 0;
             
-            // Exams due
-            const { data: exams } = await window.db.supabase
-                .from('exams')
-                .select('*')
-                .eq('target_program', program)
-                .in('status', ['Scheduled', 'InProgress']);
-            
-            this.metrics.examsDue = exams?.length || 0;
+            // ✅ Use lecturerDB's built-in getExams method
+            const exams = await window.lecturerDB.getExams(program);
+            this.metrics.examsDue = exams.filter(e => 
+                e.status === 'Scheduled' || e.status === 'InProgress'
+            ).length || 0;
             
             this.updateMetricCards();
             
@@ -128,52 +123,37 @@ const LecturerDashboard = {
     
     async loadAttendanceMetrics() {
         try {
-            const profile = window.db?.getUserProfile();
+            // ✅ Use lecturerDB instead of db
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
-            const today = new Date().toISOString().split('T')[0];
             
-            // Today
-            const { data: todayData } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .gte('check_in_time', `${today}T00:00:00.000Z`)
-                .lte('check_in_time', `${today}T23:59:59.999Z`)
-                .eq('program', program);
+            if (!program) return;
             
-            this.attendanceMetrics.today = todayData?.length || 0;
+            const today = new Date();
             
-            // Week
-            const weekRange = Utils.getWeekRange();
-            const { data: weekData } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .gte('check_in_time', weekRange.start.toISOString())
-                .lte('check_in_time', weekRange.end.toISOString())
-                .eq('program', program);
+            // ✅ Use lecturerDB's built-in getAttendance method
+            const todayLogs = await window.lecturerDB.getAttendance(program, today);
+            this.attendanceMetrics.today = todayLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
             
-            this.attendanceMetrics.week = weekData?.length || 0;
+            // Weekly attendance
+            const weekRange = window.LecturerUtils?.getWeekRange() || this.getWeekRange();
+            const weekLogs = await window.lecturerDB.getAttendance(program);
+            this.attendanceMetrics.week = weekLogs.filter(l => {
+                const date = new Date(l.check_in_time);
+                return date >= weekRange.start && date <= weekRange.end && l.session_type !== 'Lecturer Check-in';
+            }).length;
             
-            // Month rate
-            const monthRange = Utils.getMonthRange();
-            const { data: monthData } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select('student_id')
-                .gte('check_in_time', monthRange.start.toISOString())
-                .lte('check_in_time', monthRange.end.toISOString())
-                .eq('program', program);
-            
-            const uniqueStudents = [...new Set(monthData?.map(l => l.student_id) || [])];
-            const students = await this.getStudents(program);
+            // Monthly rate
+            const monthRange = window.LecturerUtils?.getMonthRange() || this.getMonthRange();
+            const monthLogs = await window.lecturerDB.getAttendance(program);
+            const uniqueStudents = [...new Set(monthLogs.map(l => l.student_id))];
+            const students = await window.lecturerDB.getStudents(program);
             const rate = students.length > 0 ? Math.round((uniqueStudents.length / students.length) * 100) : 0;
             this.attendanceMetrics.month = rate;
             
             // Overall
-            const { data: overallData } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('program', program);
-            
-            this.attendanceMetrics.overall = overallData?.length || 0;
+            const overallLogs = await window.lecturerDB.getAttendance(program);
+            this.attendanceMetrics.overall = overallLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
             
             this.updateAttendanceMetricsUI();
             
@@ -182,13 +162,24 @@ const LecturerDashboard = {
         }
     },
     
-    async getStudents(program) {
-        const { data } = await window.db.supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('role', 'student')
-            .eq('program', program);
-        return data || [];
+    getWeekRange() {
+        const today = new Date();
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+        const start = new Date(today);
+        start.setDate(diff);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(today);
+        end.setDate(diff + 6);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+    },
+    
+    getMonthRange() {
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        return { start, end };
     },
     
     updateAttendanceMetricsUI() {
@@ -219,7 +210,9 @@ const LecturerDashboard = {
     async refresh() {
         await this.loadMetrics();
         await this.loadAttendanceMetrics();
-        LecturerUI.showNotification('Dashboard refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Dashboard refreshed!', 'success');
+        }
     }
 };
 
