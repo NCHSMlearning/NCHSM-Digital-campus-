@@ -1,7 +1,7 @@
 // js/lecturer-marks.js
 /**
  * NCHSM Lecturer Marks Module
- * Handles internal marks, NCK marks, and analytics
+ * Uses dedicated lecturer database
  */
 
 const LecturerMarks = {
@@ -20,36 +20,25 @@ const LecturerMarks = {
         const blockSelect = document.getElementById('lecBlockSelect');
         if (!blockSelect) return;
         
-        // Load students for the first block
         await this.loadStudents();
-        
-        // Load subjects
         await this.loadSubjects();
-        
-        // Load internal marks
         await this.loadInternalMarks();
-        
-        // Load NCK marks
         await this.loadNCKMarks();
-        
-        // Update stats
         this.updateStats();
     },
     
     async loadStudents() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
-            const { data, error } = await window.db.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('role', 'student')
-                .eq('program', program);
+            if (!program) {
+                console.warn('No program found');
+                return;
+            }
             
-            if (error) throw error;
-            this.students = data || [];
-            
+            // ✅ Use lecturerDB
+            this.students = await window.lecturerDB.getStudents(program);
             document.getElementById('lecTotalStudents').textContent = this.students.length;
             
         } catch (error) {
@@ -68,7 +57,8 @@ const LecturerMarks = {
         }
         
         try {
-            const { data, error } = await window.db.supabase
+            // ✅ Use lecturerDB
+            const { data, error } = await window.lecturerDB.supabase
                 .from('units_catalog')
                 .select('*')
                 .eq('block', block)
@@ -112,13 +102,8 @@ const LecturerMarks = {
                 return;
             }
             
-            const { data: existing, error } = await window.db.supabase
-                .from('student_marks')
-                .select('*')
-                .eq('block', block)
-                .eq('subject_name', subject);
-            
-            if (error) throw error;
+            // ✅ Use lecturerDB
+            const existing = await window.lecturerDB.getMarks(block, subject);
             
             const marksMap = {};
             existing?.forEach(m => { marksMap[m.admission_number] = m; });
@@ -147,14 +132,14 @@ const LecturerMarks = {
                     const ncat2 = Math.min(parseFloat(cat2) || 0, 30);
                     const nexam = Math.min(parseFloat(exam) || 0, 70);
                     total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-                    grade = Utils.calculateGrade(total);
+                    grade = window.LecturerUtils?.calculateGrade(total) || '-';
                     status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
                     color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
                 }
                 
                 html += `<tr>
-                    <td>${Utils.escapeHtml(s.student_id)}</td>
-                    <td><strong>${Utils.escapeHtml(s.full_name)}</strong></td>
+                    <td>${window.LecturerUtils?.escapeHtml(s.student_id) || s.student_id || 'N/A'}</td>
+                    <td><strong>${window.LecturerUtils?.escapeHtml(s.full_name) || s.full_name || 'N/A'}</strong></td>
                     <td><input type="number" class="internal-cat1" data-student="${s.student_id}" value="${cat1}" min="0" max="30" step="0.5" style="width:70px;padding:5px;"></td>
                     <td><input type="number" class="internal-cat2" data-student="${s.student_id}" value="${cat2}" min="0" max="30" step="0.5" style="width:70px;padding:5px;"></td>
                     <td><input type="number" class="internal-exam" data-student="${s.student_id}" value="${exam}" min="0" max="70" step="0.5" style="width:70px;padding:5px;"></td>
@@ -172,7 +157,6 @@ const LecturerMarks = {
             
             container.innerHTML = html;
             
-            // Attach event listeners
             document.querySelectorAll('.internal-cat1, .internal-cat2, .internal-exam').forEach(input => {
                 input.addEventListener('change', function() {
                     const studentId = this.dataset.student;
@@ -198,7 +182,7 @@ const LecturerMarks = {
         const ncat2 = Math.min(cat2, 30);
         const nexam = Math.min(exam, 70);
         const total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-        const grade = Utils.calculateGrade(total);
+        const grade = window.LecturerUtils?.calculateGrade(total) || '-';
         const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
         const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
         
@@ -232,7 +216,9 @@ const LecturerMarks = {
             this.updateInternalTotal(sId);
         });
         
-        LecturerUI.showNotification('Values filled down!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Values filled down!', 'success');
+        }
     },
     
     async saveInternalMarks() {
@@ -240,17 +226,23 @@ const LecturerMarks = {
         const subject = document.getElementById('lecSubjectSelect').value;
         
         if (!block || !subject) {
-            LecturerUI.showNotification('Select block and subject', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Select block and subject', 'error');
+            }
             return;
         }
         
         const inputs = document.querySelectorAll('.internal-cat1');
         if (!inputs.length) {
-            LecturerUI.showNotification('No data to save', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No data to save', 'error');
+            }
             return;
         }
         
-        LecturerUI.showLoading('Saving marks...');
+        if (window.LecturerUI) {
+            window.LecturerUI.showLoading('Saving marks...');
+        }
         let saved = 0;
         
         for (const input of inputs) {
@@ -266,33 +258,34 @@ const LecturerMarks = {
             const ncat2 = Math.min(cat2, 30);
             const nexam = Math.min(exam, 70);
             const finalTotal = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-            const grade = Utils.calculateGrade(finalTotal);
+            const grade = window.LecturerUtils?.calculateGrade(finalTotal) || '-';
             
             try {
-                const { error } = await window.db.supabase
-                    .from('student_marks')
-                    .upsert({
-                        admission_number: sId,
-                        student_name: studentName,
-                        block: block,
-                        subject_name: subject,
-                        cat1_score: cat1 || null,
-                        cat2_score: cat2 || null,
-                        exam_score: exam || null,
-                        final_score: finalTotal || null,
-                        grade: grade || null,
-                        graded_by: window.db?.getUserProfile()?.full_name || 'Lecturer',
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'admission_number,subject_name,block' });
+                // ✅ Use lecturerDB
+                const result = await window.lecturerDB.saveMarks({
+                    admission_number: sId,
+                    student_name: studentName,
+                    block: block,
+                    subject_name: subject,
+                    cat1_score: cat1 || null,
+                    cat2_score: cat2 || null,
+                    exam_score: exam || null,
+                    final_score: finalTotal || null,
+                    grade: grade || null,
+                    graded_by: window.lecturerDB?.getCurrentUserProfile()?.full_name || 'Lecturer',
+                    updated_at: new Date().toISOString()
+                });
                 
-                if (!error) saved++;
+                if (result.success) saved++;
             } catch (err) {
                 console.error('Error saving for', sId, ':', err);
             }
         }
         
-        LecturerUI.hideLoading();
-        LecturerUI.showNotification(`Saved ${saved} marks!`, 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.hideLoading();
+            window.LecturerUI.showNotification(`Saved ${saved} marks!`, 'success');
+        }
         await this.loadInternalMarks();
     },
     
@@ -317,13 +310,8 @@ const LecturerMarks = {
                 return;
             }
             
-            const { data: existing, error } = await window.db.supabase
-                .from('nck_marks')
-                .select('*')
-                .eq('block', block)
-                .eq('subject_name', sheet);
-            
-            if (error) throw error;
+            // ✅ Use lecturerDB
+            const existing = await window.lecturerDB.getNCKMarks(block, sheet);
             
             const marksMap = {};
             existing?.forEach(m => { marksMap[m.admission_number] = m; });
@@ -344,14 +332,14 @@ const LecturerMarks = {
                 const s = students[i];
                 const m = marksMap[s.student_id] || {};
                 const score = m.final_score !== undefined ? m.final_score : '';
-                const grade = score !== '' ? Utils.calculateGrade(parseFloat(score)) : '-';
+                const grade = score !== '' ? window.LecturerUtils?.calculateGrade(parseFloat(score)) || '-' : '-';
                 const status = score !== '' ? (parseFloat(score) >= 60 ? 'PASS' : (parseFloat(score) > 0 ? 'FAIL' : 'PENDING')) : 'PENDING';
                 const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
                 
                 html += `<tr>
                     <td>${i + 1}</td>
-                    <td><strong>${Utils.escapeHtml(s.full_name)}</strong></td>
-                    <td>${Utils.escapeHtml(s.student_id)}</td>
+                    <td><strong>${window.LecturerUtils?.escapeHtml(s.full_name) || s.full_name || 'N/A'}</strong></td>
+                    <td>${window.LecturerUtils?.escapeHtml(s.student_id) || s.student_id || 'N/A'}</td>
                     <td><input type="number" class="nck-score" data-index="${i}" value="${score}" min="0" max="100" step="0.5" style="width:80px;padding:5px;"></td>
                     <td id="nckGrade_${i}" style="color:${color};">${grade}</td>
                     <td id="nckStatus_${i}" style="color:${color};">${status}</td>
@@ -368,7 +356,6 @@ const LecturerMarks = {
             
             container.innerHTML = html;
             
-            // Attach event listeners
             document.querySelectorAll('.nck-score').forEach(input => {
                 input.addEventListener('change', function() {
                     const idx = parseInt(this.dataset.index);
@@ -394,7 +381,7 @@ const LecturerMarks = {
     
     updateNCKTotal(idx) {
         const score = parseFloat(document.querySelector(`.nck-score[data-index="${idx}"]`)?.value) || 0;
-        const grade = Utils.calculateGrade(score);
+        const grade = window.LecturerUtils?.calculateGrade(score) || '-';
         const status = score >= 60 ? 'PASS' : (score > 0 ? 'FAIL' : 'PENDING');
         const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
         
@@ -416,7 +403,9 @@ const LecturerMarks = {
                 this.updateNCKTotal(i);
             }
         });
-        LecturerUI.showNotification('Values filled down!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Values filled down!', 'success');
+        }
     },
     
     async saveSingleNCK(idx, studentId) {
@@ -426,41 +415,49 @@ const LecturerMarks = {
         const gradedBy = document.querySelector(`.nck-graded[data-index="${idx}"]`)?.value;
         const student = this.students.find(s => s.student_id === studentId);
         
-        const grade = Utils.calculateGrade(score);
+        const grade = window.LecturerUtils?.calculateGrade(score) || '-';
         const status = score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending');
         
         try {
-            const { error } = await window.db.supabase
-                .from('nck_marks')
-                .upsert({
-                    admission_number: studentId,
-                    student_name: student?.full_name || '',
-                    block: block,
-                    subject_name: sheet,
-                    final_score: score,
-                    grade: grade,
-                    status: status,
-                    graded_by: gradedBy || window.db?.getUserProfile()?.full_name || 'Lecturer',
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'admission_number,subject_name,block' });
+            // ✅ Use lecturerDB
+            const result = await window.lecturerDB.saveNCKMarks({
+                admission_number: studentId,
+                student_name: student?.full_name || '',
+                block: block,
+                subject_name: sheet,
+                final_score: score,
+                grade: grade,
+                status: status,
+                graded_by: gradedBy || window.lecturerDB?.getCurrentUserProfile()?.full_name || 'Lecturer',
+                updated_at: new Date().toISOString()
+            });
             
-            if (error) throw error;
-            LecturerUI.showNotification('Saved!', 'success');
+            if (!result.success) throw new Error(result.error);
+            
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Saved!', 'success');
+            }
             await this.loadNCKMarks();
             
         } catch (error) {
-            LecturerUI.showNotification('Error: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Error: ' + error.message, 'error');
+            }
         }
     },
     
     async saveAllNCK() {
         const inputs = document.querySelectorAll('.nck-score');
         if (!inputs.length) {
-            LecturerUI.showNotification('No data to save', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No data to save', 'error');
+            }
             return;
         }
         
-        LecturerUI.showLoading('Saving all NCK marks...');
+        if (window.LecturerUI) {
+            window.LecturerUI.showLoading('Saving all NCK marks...');
+        }
         let saved = 0;
         
         for (let i = 0; i < inputs.length; i++) {
@@ -469,32 +466,33 @@ const LecturerMarks = {
             
             const score = parseFloat(document.querySelector(`.nck-score[data-index="${i}"]`)?.value) || 0;
             const gradedBy = document.querySelector(`.nck-graded[data-index="${i}"]`)?.value;
-            const grade = Utils.calculateGrade(score);
+            const grade = window.LecturerUtils?.calculateGrade(score) || '-';
             const status = score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending');
             
             try {
-                const { error } = await window.db.supabase
-                    .from('nck_marks')
-                    .upsert({
-                        admission_number: student.student_id,
-                        student_name: student.full_name,
-                        block: document.getElementById('lecNckBlock').value,
-                        subject_name: document.getElementById('lecNckSheet').value,
-                        final_score: score,
-                        grade: grade,
-                        status: status,
-                        graded_by: gradedBy || window.db?.getUserProfile()?.full_name || 'Lecturer',
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'admission_number,subject_name,block' });
+                // ✅ Use lecturerDB
+                const result = await window.lecturerDB.saveNCKMarks({
+                    admission_number: student.student_id,
+                    student_name: student.full_name,
+                    block: document.getElementById('lecNckBlock').value,
+                    subject_name: document.getElementById('lecNckSheet').value,
+                    final_score: score,
+                    grade: grade,
+                    status: status,
+                    graded_by: gradedBy || window.lecturerDB?.getCurrentUserProfile()?.full_name || 'Lecturer',
+                    updated_at: new Date().toISOString()
+                });
                 
-                if (!error) saved++;
+                if (result.success) saved++;
             } catch (err) {
                 console.error('Error saving NCK for', student.student_id, ':', err);
             }
         }
         
-        LecturerUI.hideLoading();
-        LecturerUI.showNotification(`Saved ${saved} NCK records!`, 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.hideLoading();
+            window.LecturerUI.showNotification(`Saved ${saved} NCK records!`, 'success');
+        }
         await this.loadNCKMarks();
     },
     
@@ -510,7 +508,6 @@ const LecturerMarks = {
     
     calculateAverageScore() {
         const allScores = [];
-        // Get from marks
         document.querySelectorAll('.internal-exam').forEach(input => {
             const val = parseFloat(input.value);
             if (!isNaN(val) && val > 0) allScores.push(val);
@@ -522,7 +519,6 @@ const LecturerMarks = {
     },
     
     setupEventListeners() {
-        // Block selection
         document.getElementById('lecBlockSelect')?.addEventListener('change', () => {
             this.loadSubjects();
             this.loadInternalMarks();
@@ -540,7 +536,6 @@ const LecturerMarks = {
             this.loadNCKMarks();
         });
         
-        // Tab switching
         document.getElementById('lecTabInternal')?.addEventListener('click', () => {
             document.querySelectorAll('.marks-tab').forEach(t => t.style.display = 'none');
             document.querySelectorAll('.tabs-nav .tab-btn').forEach(b => b.classList.remove('active'));
@@ -560,7 +555,9 @@ const LecturerMarks = {
     
     async refresh() {
         await this.loadMarksManagement();
-        LecturerUI.showNotification('Marks refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Marks refreshed!', 'success');
+        }
     }
 };
 
