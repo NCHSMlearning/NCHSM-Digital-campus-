@@ -1,13 +1,12 @@
 // js/lecturer-profile.js
 /**
  * NCHSM Lecturer Profile Module
- * Handles profile viewing, editing, and photo uploads
+ * Uses dedicated lecturer database
  */
 
 const LecturerProfile = {
     profile: null,
     
-    // Initialize
     async init() {
         console.log('👤 Initializing Lecturer Profile...');
         await this.loadProfile();
@@ -15,10 +14,11 @@ const LecturerProfile = {
         console.log('✅ Lecturer Profile initialized');
     },
     
-    // Load profile
     async loadProfile() {
         try {
-            const profile = window.db?.getUserProfile();
+            // ✅ Use lecturerDB
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            
             if (!profile) {
                 console.warn('No profile found');
                 return;
@@ -30,11 +30,12 @@ const LecturerProfile = {
             
         } catch (error) {
             console.error('Failed to load profile:', error);
-            LecturerUI.showNotification('Failed to load profile: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load profile: ' + error.message, 'error');
+            }
         }
     },
     
-    // Render profile data
     renderProfile() {
         const p = this.profile;
         if (!p) return;
@@ -61,7 +62,7 @@ const LecturerProfile = {
             'profileEmail': p.email || 'N/A',
             'profilePhone': p.phone || 'N/A',
             'profileDept': p.department || 'N/A',
-            'profileJoinDate': p.join_date ? Utils.formatDate(p.join_date) : 'N/A',
+            'profileJoinDate': p.join_date ? window.LecturerUtils?.formatDate(p.join_date) || p.join_date : 'N/A',
             'profileProgramFocus': p.program || p.department || 'N/A'
         };
         
@@ -71,7 +72,6 @@ const LecturerProfile = {
         });
     },
     
-    // Setup event listeners
     setupEventListeners() {
         // Edit profile
         const editBtn = document.getElementById('editProfileBtn');
@@ -82,7 +82,11 @@ const LecturerProfile = {
         // Change password
         const passBtn = document.getElementById('updatePasswordBtn');
         if (passBtn) {
-            passBtn.addEventListener('click', () => this.openPasswordModal());
+            passBtn.addEventListener('click', () => {
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('Password change feature coming soon!', 'info');
+                }
+            });
         }
         
         // Photo upload
@@ -94,7 +98,6 @@ const LecturerProfile = {
         }
     },
     
-    // Open edit profile modal
     openEditModal() {
         const p = this.profile;
         if (!p) return;
@@ -111,15 +114,15 @@ const LecturerProfile = {
                 <form id="editProfileForm">
                     <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" id="editFullName" value="${Utils.escapeHtml(p.full_name || '')}">
+                        <input type="text" id="editFullName" value="${window.LecturerUtils?.escapeHtml(p.full_name || '') || p.full_name || ''}">
                     </div>
                     <div class="form-group">
                         <label>Phone</label>
-                        <input type="tel" id="editPhone" value="${Utils.escapeHtml(p.phone || '')}">
+                        <input type="tel" id="editPhone" value="${window.LecturerUtils?.escapeHtml(p.phone || '') || p.phone || ''}">
                     </div>
                     <div class="form-group">
                         <label>Department</label>
-                        <input type="text" id="editDepartment" value="${Utils.escapeHtml(p.department || '')}">
+                        <input type="text" id="editDepartment" value="${window.LecturerUtils?.escapeHtml(p.department || '') || p.department || ''}">
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn btn-action">Save Changes</button>
@@ -147,28 +150,27 @@ const LecturerProfile = {
         });
     },
     
-    // Save profile updates
     async saveProfile(updates) {
         try {
-            const result = await window.db?.updateProfile(updates);
+            // ✅ Use lecturerDB
+            const result = await window.lecturerDB.updateProfile(updates);
+            
             if (result?.success) {
                 this.profile = { ...this.profile, ...updates };
                 this.renderProfile();
-                LecturerUI.showNotification('Profile updated successfully!', 'success');
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('Profile updated successfully!', 'success');
+                }
             } else {
                 throw new Error(result?.error || 'Update failed');
             }
         } catch (error) {
-            LecturerUI.showNotification('Failed to update profile: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to update profile: ' + error.message, 'error');
+            }
         }
     },
     
-    // Open password change modal
-    openPasswordModal() {
-        LecturerUI.showNotification('Password change feature coming soon!', 'info');
-    },
-    
-    // Handle photo upload
     async handlePhotoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -183,24 +185,31 @@ const LecturerProfile = {
         
         // Upload
         try {
-            const result = await window.db?.uploadPassportPhoto(file);
+            // ✅ Use lecturerDB
+            const result = await window.lecturerDB.uploadPassportPhoto(file);
+            
             if (result?.success) {
                 this.profile.passport_url = result.filePath;
-                LecturerUI.showNotification('Photo updated successfully!', 'success');
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('Photo updated successfully!', 'success');
+                }
             } else {
                 throw new Error(result?.error || 'Upload failed');
             }
         } catch (error) {
-            LecturerUI.showNotification('Failed to upload photo: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to upload photo: ' + error.message, 'error');
+            }
         }
     },
     
-    // Refresh profile
     async refresh() {
-        await window.db?.loadUserProfile();
-        this.profile = window.db?.getUserProfile();
+        await window.lecturerDB?.loadLecturerProfile();
+        this.profile = window.lecturerDB?.getCurrentUserProfile();
         this.renderProfile();
-        LecturerUI.showNotification('Profile refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Profile refreshed!', 'success');
+        }
     }
 };
 
