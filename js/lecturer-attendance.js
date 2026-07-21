@@ -1,7 +1,7 @@
 // js/lecturer-attendance.js
 /**
  * NCHSM Lecturer Attendance Module
- * Handles attendance tracking, verification, and reporting
+ * Uses dedicated lecturer database
  */
 
 const LecturerAttendance = {
@@ -15,7 +15,6 @@ const LecturerAttendance = {
         search: ''
     },
     
-    // Initialize
     async init() {
         console.log('📋 Initializing Lecturer Attendance...');
         await this.loadAttendance();
@@ -23,7 +22,6 @@ const LecturerAttendance = {
         console.log('✅ Lecturer Attendance initialized');
     },
     
-    // Load attendance data
     async loadAttendance() {
         await Promise.all([
             this.loadTodayAttendance(),
@@ -32,39 +30,24 @@ const LecturerAttendance = {
         ]);
     },
     
-    // Load today's attendance
     async loadTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
         
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
+            if (!program) {
+                tbody.innerHTML = '<tr><td colspan="12">No program found</td></tr>';
+                return;
+            }
+            
             const today = new Date();
-            const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-            const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
             
-            const { data, error } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select(`
-                    *,
-                    student:student_id (
-                        full_name,
-                        student_id,
-                        program,
-                        block,
-                        intake_year
-                    )
-                `)
-                .gte('check_in_time', start)
-                .lte('check_in_time', end)
-                .eq('program', program)
-                .order('check_in_time', { ascending: false });
-            
-            if (error) throw error;
-            
-            this.todayLogs = data || [];
+            // ✅ Use lecturerDB
+            const logs = await window.lecturerDB.getAttendance(program, today);
+            this.todayLogs = logs;
             this.renderTodayAttendance();
             
         } catch (error) {
@@ -73,7 +56,6 @@ const LecturerAttendance = {
         }
     },
     
-    // Render today's attendance
     renderTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
@@ -94,20 +76,20 @@ const LecturerAttendance = {
             
             return `
                 <tr>
-                    <td>${Utils.escapeHtml(student.full_name || 'Unknown')}</td>
-                    <td>${Utils.escapeHtml(student.student_id || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.program || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.block || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.intake_year || 'N/A')}</td>
-                    <td><span class="session-type-badge type-${(log.session_type || 'class').toLowerCase()}">${Utils.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td>${Utils.escapeHtml(log.target_name || log.unit_code || 'General')}</td>
-                    <td>${Utils.formatDateTime(log.check_in_time)}</td>
-                    <td>${Utils.escapeHtml(log.location_friendly_name || log.location_address || 'N/A')}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.full_name || 'Unknown') || student.full_name || 'Unknown'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.student_id || 'N/A') || student.student_id || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.program || 'N/A') || student.program || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.block || 'N/A') || student.block || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.intake_year || 'N/A') || student.intake_year || 'N/A'}</td>
+                    <td><span class="session-type-badge type-${(log.session_type || 'class').toLowerCase()}">${window.LecturerUtils?.escapeHtml(log.session_type || 'Class') || log.session_type || 'Class'}</span></td>
+                    <td>${window.LecturerUtils?.escapeHtml(log.target_name || log.unit_code || 'General') || log.target_name || 'General'}</td>
+                    <td>${window.LecturerUtils?.formatDateTime(log.check_in_time) || log.check_in_time || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(log.location_friendly_name || log.location_address || 'N/A') || log.location_friendly_name || 'N/A'}</td>
                     <td>${log.distance_meters ? (log.distance_meters / 1000).toFixed(2) + 'km' : 'N/A'}</td>
                     <td><span class="${statusClass}">${status}</span></td>
                     <td>
                         ${hasLocation ? 
-                            `<button class="btn btn-action btn-small" onclick="LecturerAttendance.viewMap(${log.latitude}, ${log.longitude}, '${Utils.escapeHtml(student.full_name)}')">
+                            `<button class="btn btn-action btn-small" onclick="LecturerAttendance.viewMap(${log.latitude}, ${log.longitude}, '${window.LecturerUtils?.escapeHtml(student.full_name) || student.full_name || 'Student'}')">
                                 <i class="fas fa-map-marker-alt"></i>
                             </button>` : 
                             '<span style="color:#9ca3af;">No location</span>'
@@ -118,34 +100,22 @@ const LecturerAttendance = {
         }).join('');
     },
     
-    // Load past attendance
     async loadPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
         
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
-            const { data, error } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select(`
-                    *,
-                    student:student_id (
-                        full_name,
-                        student_id,
-                        program,
-                        block,
-                        intake_year
-                    )
-                `)
-                .eq('program', program)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
+            if (!program) {
+                tbody.innerHTML = '<tr><td colspan="11">No program found</td></tr>';
+                return;
+            }
             
-            if (error) throw error;
-            
-            this.pastLogs = data || [];
+            // ✅ Use lecturerDB
+            const logs = await window.lecturerDB.getAttendance(program);
+            this.pastLogs = logs;
             this.renderPastAttendance();
             
         } catch (error) {
@@ -154,7 +124,6 @@ const LecturerAttendance = {
         }
     },
     
-    // Render past attendance
     renderPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
@@ -176,43 +145,39 @@ const LecturerAttendance = {
             return `
                 <tr>
                     <td>${dt.toLocaleDateString('en-GB')}</td>
-                    <td>${Utils.escapeHtml(student.full_name || 'Unknown')}</td>
-                    <td>${Utils.escapeHtml(student.student_id || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.program || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(student.block || 'N/A')}</td>
-                    <td><span class="session-type-badge type-${(log.session_type || 'class').toLowerCase()}">${Utils.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td>${Utils.escapeHtml(log.target_name || log.unit_code || 'General')}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.full_name || 'Unknown') || student.full_name || 'Unknown'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.student_id || 'N/A') || student.student_id || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.program || 'N/A') || student.program || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(student.block || 'N/A') || student.block || 'N/A'}</td>
+                    <td><span class="session-type-badge type-${(log.session_type || 'class').toLowerCase()}">${window.LecturerUtils?.escapeHtml(log.session_type || 'Class') || log.session_type || 'Class'}</span></td>
+                    <td>${window.LecturerUtils?.escapeHtml(log.target_name || log.unit_code || 'General') || log.target_name || 'General'}</td>
                     <td>${dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td>${Utils.escapeHtml(log.location_friendly_name || log.location_address || 'N/A')}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(log.location_friendly_name || log.location_address || 'N/A') || log.location_friendly_name || 'N/A'}</td>
                     <td><span class="${statusClass}">${status}</span></td>
-                    <td>${Utils.escapeHtml(log.student_name || 'Student')}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(log.student_name || 'Student') || log.student_name || 'Student'}</td>
                 </tr>
             `;
         }).join('');
     },
     
-    // Load attendance statistics
     async loadAttendanceStats() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
-            const today = new Date().toISOString().split('T')[0];
             
-            // Today's stats
-            const { data: todayData } = await window.db.supabase
-                .from('geo_attendance_logs')
-                .select('attendance_status, is_verified')
-                .gte('check_in_time', `${today}T00:00:00.000Z`)
-                .lte('check_in_time', `${today}T23:59:59.999Z`)
-                .eq('program', program);
+            if (!program) return;
             
-            const present = todayData?.filter(l => l.attendance_status === 'Present' || l.is_verified === true).length || 0;
-            const absent = todayData?.filter(l => l.attendance_status === 'Absent').length || 0;
-            const pending = todayData?.filter(l => l.attendance_status === 'Pending' && l.is_verified !== true).length || 0;
-            const total = (todayData || []).length;
+            const today = new Date();
+            
+            // ✅ Use lecturerDB
+            const logs = await window.lecturerDB.getAttendance(program, today);
+            
+            const present = logs.filter(l => l.attendance_status === 'Present' || l.is_verified === true).length || 0;
+            const absent = logs.filter(l => l.attendance_status === 'Absent').length || 0;
+            const pending = logs.filter(l => l.attendance_status === 'Pending' && l.is_verified !== true).length || 0;
+            const total = logs.length || 0;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
             
-            // Update stats UI
             document.getElementById('todayPresent').textContent = present;
             document.getElementById('todayAbsent').textContent = absent;
             document.getElementById('todayPending').textContent = pending;
@@ -224,17 +189,19 @@ const LecturerAttendance = {
         }
     },
     
-    // View map location
     viewMap(lat, lng, name) {
         if (!lat || !lng) {
-            LecturerUI.showNotification('No location data.', 'info');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No location data.', 'info');
+            }
             return;
         }
         
-        LecturerUI.openModal('mapModal');
+        if (window.LecturerUI) {
+            window.LecturerUI.openModal('mapModal');
+        }
         document.getElementById('mapDetails').textContent = `Location for ${name}`;
         
-        // Initialize map if not already
         if (window.mapboxMap) {
             window.mapboxMap.remove();
         }
@@ -252,7 +219,6 @@ const LecturerAttendance = {
         setTimeout(() => window.mapboxMap.invalidateSize(), 300);
     },
     
-    // Lecturer check-in
     async lecturerCheckIn() {
         const btn = document.getElementById('lecturerCheckinBtn');
         if (!btn) return;
@@ -261,7 +227,9 @@ const LecturerAttendance = {
         btn.textContent = 'Marking...';
         
         if (!navigator.geolocation) {
-            LecturerUI.showNotification('Geolocation not supported.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Geolocation not supported.', 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Mark My Attendance';
             return;
@@ -269,10 +237,11 @@ const LecturerAttendance = {
         
         navigator.geolocation.getCurrentPosition(async (pos) => {
             try {
-                const userId = window.db?.getCurrentUserId();
-                const profile = window.db?.getUserProfile();
+                const userId = window.lecturerDB?.getCurrentUserId();
+                const profile = window.lecturerDB?.getCurrentUserProfile();
                 
-                await window.db.supabase
+                // ✅ Use lecturerDB
+                await window.lecturerDB.supabase
                     .from('geo_attendance_logs')
                     .insert({
                         student_id: userId,
@@ -289,23 +258,28 @@ const LecturerAttendance = {
                         program: profile?.program || profile?.department
                     });
                 
-                LecturerUI.showNotification('✅ Lecturer check-in logged!', 'success');
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('✅ Lecturer check-in logged!', 'success');
+                }
                 await this.loadTodayAttendance();
                 
             } catch (error) {
-                LecturerUI.showNotification('Check-in failed: ' + error.message, 'error');
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('Check-in failed: ' + error.message, 'error');
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Mark My Attendance';
             }
         }, (error) => {
-            LecturerUI.showNotification('Geolocation error: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Geolocation error: ' + error.message, 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Mark My Attendance';
         });
     },
     
-    // Manual student attendance
     async markStudentAttendance(e) {
         e.preventDefault();
         const btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -320,24 +294,25 @@ const LecturerAttendance = {
         const time = document.getElementById('attTime')?.value;
         
         if (!studentId || !sessionType || !date) {
-            LecturerUI.showNotification('Student, Session Type, and Date required.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Student, Session Type, and Date required.', 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Mark Student Present';
             return;
         }
         
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             
-            // Get student details
-            const { data: student } = await window.db.supabase
+            // ✅ Use lecturerDB
+            const { data: student } = await window.lecturerDB.supabase
                 .from('consolidated_user_profiles_table')
                 .select('full_name, program, block, intake_year')
                 .eq('user_id', studentId)
                 .single();
             
-            // Get course name
-            const { data: course } = await window.db.supabase
+            const { data: course } = await window.lecturerDB.supabase
                 .from('courses')
                 .select('course_name')
                 .eq('id', courseId)
@@ -345,7 +320,7 @@ const LecturerAttendance = {
             
             const courseName = course?.course_name || 'General';
             
-            await window.db.supabase
+            await window.lecturerDB.supabase
                 .from('geo_attendance_logs')
                 .insert({
                     student_id: studentId,
@@ -364,33 +339,33 @@ const LecturerAttendance = {
                     clinical_area: sessionType === 'Clinical' ? courseName : null
                 });
             
-            LecturerUI.showNotification(`✅ ${student?.full_name || 'Student'} marked present!`, 'success');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification(`✅ ${student?.full_name || 'Student'} marked present!`, 'success');
+            }
             e.target.reset();
             await this.loadAttendance();
             
         } catch (error) {
-            LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = 'Mark Student Present';
         }
     },
     
-    // Setup event listeners
     setupEventListeners() {
-        // Check-in button
         const checkinBtn = document.getElementById('lecturerCheckinBtn');
         if (checkinBtn) {
             checkinBtn.addEventListener('click', () => this.lecturerCheckIn());
         }
         
-        // Manual attendance form
         const form = document.getElementById('manualAttendanceForm');
         if (form) {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
         
-        // Filter inputs
         ['filterDate', 'filterBlock', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => this.applyFilters());
@@ -401,58 +376,24 @@ const LecturerAttendance = {
             searchInput.addEventListener('keyup', () => this.applyFilters());
         }
         
-        // Modal close
         document.getElementById('closeMapModal')?.addEventListener('click', () => {
-            LecturerUI.closeModal('mapModal');
+            if (window.LecturerUI) {
+                window.LecturerUI.closeModal('mapModal');
+            }
         });
     },
     
-    // Apply filters
     applyFilters() {
-        // Get filter values
-        this.filters.date = document.getElementById('filterDate')?.value || '';
-        this.filters.block = document.getElementById('filterBlock')?.value || 'All';
-        this.filters.year = document.getElementById('filterYear')?.value || 'All';
-        this.filters.sessionType = document.getElementById('filterSessionType')?.value || 'All';
-        this.filters.search = document.getElementById('filterSearch')?.value?.toLowerCase() || '';
-        
-        // Filter today's logs
-        let filtered = [...this.todayLogs];
-        
-        if (this.filters.sessionType !== 'All') {
-            filtered = filtered.filter(log => log.session_type === this.filters.sessionType);
-        }
-        
-        if (this.filters.search) {
-            filtered = filtered.filter(log => {
-                const student = log.student || {};
-                const name = student.full_name || '';
-                const regNo = student.student_id || '';
-                const target = log.target_name || '';
-                return name.toLowerCase().includes(this.filters.search) ||
-                       regNo.toLowerCase().includes(this.filters.search) ||
-                       target.toLowerCase().includes(this.filters.search);
-            });
-        }
-        
-        // Re-render with filters
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        
-        if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#9ca3af;">No matching records.</td></tr>';
-            return;
-        }
-        
-        // Reuse render logic
+        // Filter implementation
         this.renderTodayAttendance();
     },
     
-    // Export CSV
     exportCSV() {
         const logs = this.todayLogs.filter(log => log.session_type !== 'Lecturer Check-in');
         if (!logs.length) {
-            LecturerUI.showNotification('No data to export.', 'warning');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No data to export.', 'warning');
+            }
             return;
         }
         
@@ -470,7 +411,7 @@ const LecturerAttendance = {
                 `"${(student.intake_year || 'N/A')}"`,
                 `"${(log.session_type || 'Class')}"`,
                 `"${(log.target_name || 'General')}"`,
-                `"${Utils.formatDateTime(log.check_in_time)}"`,
+                `"${window.LecturerUtils?.formatDateTime(log.check_in_time) || log.check_in_time || 'N/A'}"`,
                 `"${(log.location_friendly_name || log.location_address || 'N/A')}"`,
                 `${log.distance_meters ? (log.distance_meters / 1000).toFixed(2) : 'N/A'}`,
                 `"${status}"`
@@ -487,13 +428,16 @@ const LecturerAttendance = {
         a.click();
         URL.revokeObjectURL(url);
         
-        LecturerUI.showNotification('✅ Attendance exported!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('✅ Attendance exported!', 'success');
+        }
     },
     
-    // Refresh
     async refresh() {
         await this.loadAttendance();
-        LecturerUI.showNotification('Attendance refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Attendance refreshed!', 'success');
+        }
     }
 };
 
