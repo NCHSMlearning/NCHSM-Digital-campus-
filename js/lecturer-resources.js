@@ -1,7 +1,7 @@
 // js/lecturer-resources.js
 /**
  * NCHSM Lecturer Resources Module
- * Handles resource upload, management, and deletion
+ * Uses dedicated lecturer database
  */
 
 const LecturerResources = {
@@ -17,7 +17,7 @@ const LecturerResources = {
     
     async loadResources() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
             if (!program) {
@@ -25,15 +25,8 @@ const LecturerResources = {
                 return;
             }
             
-            const { data, error } = await window.db.supabase
-                .from('resources')
-                .select('*')
-                .eq('target_program', program)
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            
-            this.resources = data || [];
+            // ✅ Use lecturerDB
+            this.resources = await window.lecturerDB.getResources(program);
             this.renderResources();
             console.log(`✅ Loaded ${this.resources.length} resources`);
             
@@ -64,18 +57,18 @@ const LecturerResources = {
                 'rejected': '<span class="badge badge-danger">❌ Rejected</span>'
             };
             
-            const isOwner = r.uploaded_by === window.db?.getCurrentUserId();
+            const isOwner = r.uploaded_by === window.lecturerDB?.getCurrentUserId();
             const canDelete = isOwner && status === 'pending';
             const programDisplay = r.target_program || r.program_type || 'N/A';
             const blockDisplay = r.block || r.block_term || 'N/A';
             
             return `
                 <tr>
-                    <td>${this.escapeHtml(r.title || 'N/A')}</td>
-                    <td>${this.escapeHtml(r.category || 'Academic')}</td>
-                    <td>${this.escapeHtml(programDisplay)}/${this.escapeHtml(blockDisplay)}</td>
-                    <td>${this.escapeHtml(r.uploaded_by_name || 'N/A')}</td>
-                    <td>${this.formatDate(r.created_at)}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(r.title || 'N/A') || r.title || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(r.category || 'Academic') || r.category || 'Academic'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(programDisplay) || programDisplay}/${window.LecturerUtils?.escapeHtml(blockDisplay) || blockDisplay}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(r.uploaded_by_name || 'N/A') || r.uploaded_by_name || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.formatDate(r.created_at) || r.created_at || 'N/A'}</td>
                     <td>
                         ${statusBadges[status] || statusBadges.pending}
                         ${status === 'approved' ? `<a href="${r.file_url}" target="_blank" class="btn btn-action btn-small"><i class="fas fa-download"></i></a>` : ''}
@@ -86,27 +79,8 @@ const LecturerResources = {
         }).join('');
     },
     
-    escapeHtml(str) {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-    
-    formatDate(date) {
-        if (!date) return 'N/A';
-        return new Date(date).toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
-    },
-    
     populateResourceForm() {
-        const profile = window.db?.getUserProfile();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
         // Program
@@ -124,20 +98,12 @@ const LecturerResources = {
         }
         
         // Blocks
-        const blocks = this.getAcademicBlocks(program);
+        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         const blockSelect = document.getElementById('resourceBlock');
         if (blockSelect) {
             blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
                 blocks.map(b => `<option value="${b}">${b}</option>`).join('');
         }
-    },
-    
-    getAcademicBlocks(program) {
-        const structure = {
-            'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'],
-            'TVET': ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
-        };
-        return structure[program] || structure['KRCHN'];
     },
     
     setupEventListeners() {
@@ -204,64 +170,35 @@ const LecturerResources = {
         }
         
         const file = fileInput.files[0];
-        const ext = file.name.split('.').pop();
-        const fileName = title.replace(/[^\w\-]+/g, '_') + '_' + Date.now() + '.' + ext;
-        const filePath = `${program}/${intake}/${block}/${fileName}`;
         
         try {
-            // Upload to storage
-            const { error: uploadError } = await window.db.supabase.storage
-                .from('resources')
-                .upload(filePath, file, { cacheControl: '3600', upsert: true });
+            // ✅ Use lecturerDB
+            const result = await window.lecturerDB.uploadResource(file, {
+                title: title,
+                program: program,
+                intake: intake,
+                block: block,
+                category: category
+            });
             
-            if (uploadError) throw uploadError;
-            
-            // Get public URL
-            const { data: urlData } = window.db.supabase.storage
-                .from('resources')
-                .getPublicUrl(filePath);
-            
-            const publicUrl = urlData.publicUrl;
-            
-            // Insert into database
-            const { data, error: insertError } = await window.db.supabase
-                .from('resources')
-                .insert({
-                    title: title,
-                    file_name: fileName,
-                    file_path: filePath,
-                    file_url: publicUrl,
-                    file_size: file.size,
-                    file_type: file.type || ext,
-                    program_type: program,
-                    target_program: program,
-                    intake: intake,
-                    block: block,
-                    block_term: block,
-                    category: category || 'General',
-                    uploaded_by: window.db?.getCurrentUserId(),
-                    uploaded_by_name: window.db?.getUserProfile()?.full_name || 'Lecturer',
-                    approval_status: 'pending',
-                    created_at: new Date().toISOString()
-                })
-                .select();
-            
-            if (insertError) throw insertError;
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             
             // Request admin approval
             if (typeof window.requestAdminApproval === 'function') {
                 await window.requestAdminApproval(
                     'upload_resource',
                     {
-                        resource_id: data[0]?.id,
+                        resource_id: result.data[0]?.id,
                         title: title,
-                        file_path: filePath,
+                        file_path: `${program}/${intake}/${block}/${file.name}`,
                         program: program,
                         block: block,
                         intake: intake
                     },
                     'Uploaded resource: ' + title,
-                    data[0]?.id
+                    result.data[0]?.id
                 );
             }
             
@@ -291,7 +228,7 @@ const LecturerResources = {
             return;
         }
         
-        if (resource.uploaded_by !== window.db?.getCurrentUserId()) {
+        if (resource.uploaded_by !== window.lecturerDB?.getCurrentUserId()) {
             if (window.LecturerUI) {
                 window.LecturerUI.showNotification('You can only delete resources you uploaded.', 'warning');
             }
@@ -308,15 +245,16 @@ const LecturerResources = {
         if (!confirm(`Delete resource "${resource.title}"?`)) return;
         
         try {
+            // ✅ Use lecturerDB
             // Delete from storage
             if (resource.file_path) {
-                await window.db.supabase.storage
+                await window.lecturerDB.supabase.storage
                     .from('resources')
                     .remove([resource.file_path]);
             }
             
             // Delete from database
-            await window.db.supabase
+            await window.lecturerDB.supabase
                 .from('resources')
                 .delete()
                 .eq('id', resourceId);
