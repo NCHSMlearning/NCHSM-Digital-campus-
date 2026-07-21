@@ -4322,6 +4322,70 @@ async function removeAssignedClass(examId, className) {
     }
 }
 
+
+// ============================================
+// 📧 BREVO EMAIL CONFIGURATION - ADMIN
+// ============================================
+
+const BREVO_CONFIG = {
+    apiKey: null,  // Will be loaded from Supabase
+    apiUrl: 'https://api.brevo.com/v3/smtp/email',
+    sender: {
+        email: 'noreply@nakurucollegeofhealthelearning.site',
+        name: 'NCHSM Examinations Office'
+    },
+    _initialized: false
+};
+
+// ============================================
+// 🔑 LOAD BREVO API KEY FROM SUPABASE
+// ============================================
+
+async function loadBrevoApiKey() {
+    try {
+        // Check cache first
+        const cached = sessionStorage.getItem('brevo_api_key');
+        if (cached) {
+            console.log('📦 Using cached Brevo API key');
+            BREVO_CONFIG.apiKey = cached;
+            BREVO_CONFIG._initialized = true;
+            return true;
+        }
+        
+        console.log('🔑 Fetching Brevo API key from Supabase...');
+        
+        const { data, error } = await sb.functions.invoke('get-secret', {
+            body: { secret_name: 'BREVO_API_KEY' }
+        });
+        
+        if (error) {
+            console.error('❌ Error fetching secret:', error);
+            return false;
+        }
+        
+        if (data && data.secret) {
+            BREVO_CONFIG.apiKey = data.secret;
+            BREVO_CONFIG._initialized = true;
+            sessionStorage.setItem('brevo_api_key', data.secret);
+            console.log('✅ Brevo API key loaded successfully');
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('❌ Failed to load Brevo API key:', error);
+        return false;
+    }
+}
+
+// ✅ Load Brevo API key immediately
+loadBrevoApiKey().then(success => {
+    if (success) {
+        console.log('✅ Brevo configured for admin');
+    } else {
+        console.warn('⚠️ Brevo not available - notifications disabled');
+    }
+});
 // ============================================
 // 📧 EXAM NOTIFICATION FUNCTIONS
 // ============================================
