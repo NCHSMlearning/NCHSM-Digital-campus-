@@ -1,7 +1,7 @@
 // js/lecturer-courses.js
 /**
  * NCHSM Lecturer Courses Module
- * Handles course management, filtering, and display
+ * Uses dedicated lecturer database
  */
 
 const LecturerCourses = {
@@ -17,7 +17,7 @@ const LecturerCourses = {
     
     async loadCourses() {
         try {
-            const profile = window.db?.getUserProfile();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
             if (!program) {
@@ -25,16 +25,9 @@ const LecturerCourses = {
                 return;
             }
             
-            const { data, error } = await window.db.supabase
-                .from('courses')
-                .select('*')
-                .eq('target_program', program)
-                .eq('status', 'Active')
-                .order('course_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            this.courses = data || [];
+            // ✅ Use lecturerDB
+            const courses = await window.lecturerDB.getCourses(program);
+            this.courses = courses;
             this.filteredCourses = [...this.courses];
             
             this.populateFilters();
@@ -44,7 +37,9 @@ const LecturerCourses = {
             
         } catch (error) {
             console.error('Failed to load courses:', error);
-            LecturerUI.showNotification('Failed to load courses: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load courses: ' + error.message, 'error');
+            }
         }
     },
     
@@ -57,9 +52,9 @@ const LecturerCourses = {
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         
-        const profile = window.db?.getUserProfile();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || 'KRCHN';
-        const blocks = Utils.getAcademicBlocks(program);
+        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         
         const periodFilter = document.getElementById('academicPeriodFilter');
         const label = document.getElementById('academicPeriodLabel');
@@ -95,11 +90,11 @@ const LecturerCourses = {
             
             return `
                 <tr>
-                    <td><strong>${Utils.escapeHtml(course.unit_code || 'N/A')}</strong></td>
-                    <td>${Utils.escapeHtml(course.course_name || 'N/A')}</td>
-                    <td><span class="program-badge">${Utils.escapeHtml(course.target_program || 'N/A')}</span></td>
-                    <td>${Utils.escapeHtml(course.block || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(course.intake_year || 'N/A')}</td>
+                    <td><strong>${window.LecturerUtils?.escapeHtml(course.unit_code || 'N/A') || course.unit_code || 'N/A'}</strong></td>
+                    <td>${window.LecturerUtils?.escapeHtml(course.course_name || 'N/A') || course.course_name || 'N/A'}</td>
+                    <td><span class="program-badge">${window.LecturerUtils?.escapeHtml(course.target_program || 'N/A') || course.target_program || 'N/A'}</span></td>
+                    <td>${window.LecturerUtils?.escapeHtml(course.block || 'N/A') || course.block || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(course.intake_year || 'N/A') || course.intake_year || 'N/A'}</td>
                     <td>${students.length} students</td>
                     <td>
                         <button class="btn btn-action btn-small" 
@@ -131,13 +126,11 @@ const LecturerCourses = {
     },
     
     setupEventListeners() {
-        // Filter changes
         ['intakeYearFilter', 'academicPeriodFilter'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => this.applyFilters());
         });
         
-        // Search
         const searchInput = document.getElementById('courseSearch');
         if (searchInput) {
             searchInput.addEventListener('keyup', () => this.applyFilters());
@@ -152,15 +145,21 @@ const LecturerCourses = {
     manageCourse(courseId) {
         const course = this.courses.find(c => c.id === courseId);
         if (!course) {
-            LecturerUI.showNotification('Course not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Course not found.', 'error');
+            }
             return;
         }
-        LecturerUI.showNotification(`Managing course: ${course.course_name} - Feature coming soon.`, 'info');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification(`Managing course: ${course.course_name} - Feature coming soon.`, 'info');
+        }
     },
     
     async refresh() {
         await this.loadCourses();
-        LecturerUI.showNotification('Courses refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Courses refreshed!', 'success');
+        }
     }
 };
 
