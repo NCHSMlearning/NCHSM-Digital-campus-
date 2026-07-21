@@ -2597,3 +2597,58 @@ main.main {
     font-size: 18px !important;
     font-weight: 800 !important;
 }
+/* ============================================
+   ☀️ SUNLIGHT VISIBILITY FIX - SIDEBAR
+   ============================================ */
+
+.sidebar-premium * {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+}
+
+.sidebar-premium .nav-premium a {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    letter-spacing: 0.3px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    opacity: 1 !important;
+}
+
+.sidebar-premium .nav-premium a i {
+    color: #ffffff !important;
+    font-size: 17px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+    opacity: 1 !important;
+}
+
+.sidebar-premium .nav-premium a.active {
+    color: #1a1a2e !important;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B) !important;
+    border-left: 4px solid #ffffff !important;
+    font-weight: 700 !important;
+}
+
+.sidebar-premium .nav-premium a:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.2) !important;
+}
+
+.sidebar-premium .user-name {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8) !important;
+}
+
+.sidebar-premium .user-program {
+    color: #FCD34D !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+}
+
+.sidebar-premium .brand-title {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 22px !important;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+}
