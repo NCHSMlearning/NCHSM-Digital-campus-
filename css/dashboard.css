@@ -110,63 +110,74 @@
     border-bottom: 2px solid #FDB913;
 }
 
-/* ========== ATTENDANCE CARD - SLIM ========== */
+/* ========== ATTENDANCE CARD - CANDY GRADIENT ========== */
 .attendance-card {
-    background: white;
-    border-radius: 16px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-    border: 1px solid #e5e7eb;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.attendance-card:hover {
-    border-color: #FDB913;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: linear-gradient(135deg, #fef9c3, #fde68a, #fcd34d) !important;
+    border: 2px solid #fbbf24 !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: 0 4px 20px rgba(251,191,36,0.2) !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    margin: 0 !important;
 }
 
 .attendance-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 .attendance-percent {
-    font-size: 28px;
-    font-weight: 800;
-    display: inline;
-    margin-right: 6px;
+    color: #451a03 !important;
+    font-size: 24px !important;
+    font-weight: 900 !important;
 }
 
 .attendance-label {
-    font-size: 12px;
-    color: #6b7280;
+    color: #78350f !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
 }
 
 .warning-badge {
-    background: #fef2f2;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #b91c1c;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+    background: #78350f !important;
+    color: #fef3c7 !important;
+    padding: 3px 12px !important;
+    border-radius: 50px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    border: 2px solid #451a03 !important;
+    box-shadow: 0 2px 10px rgba(120,53,15,0.2) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
 }
 
 .vp-row {
-    display: flex;
-    gap: 20px;
-    font-size: 12px;
-    color: #4b5563;
+    border-top: 1px solid rgba(120,53,15,0.15) !important;
+    padding-top: 6px !important;
+    margin-top: 6px !important;
+    color: #451a03 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
 }
 
 .vp-row strong {
-    font-size: 14px;
-    margin: 0 2px;
+    color: #451a03 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
 }
 
 /* ========== MINI CARDS ========== */
@@ -501,6 +512,14 @@
     .leader-slim .rank {
         width: 25px;
     }
+    
+    .attendance-card {
+        padding: 10px 12px !important;
+    }
+    
+    .attendance-percent {
+        font-size: 20px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -514,6 +533,45 @@
     
     .welcome p {
         font-size: 11px;
+    }
+    
+    .attendance-percent {
+        font-size: 18px !important;
+    }
+    
+    .vp-row {
+        font-size: 10px !important;
+        gap: 8px !important;
+    }
+}
+
+/* ========== DESKTOP - ATTENDANCE CARD SPREADS ========== */
+@media (min-width: 769px) {
+    .attendance-card {
+        padding: 16px 20px !important;
+        max-width: 100% !important;
+    }
+    
+    .attendance-percent {
+        font-size: 30px !important;
+    }
+    
+    .attendance-label {
+        font-size: 13px !important;
+    }
+    
+    .warning-badge {
+        padding: 4px 16px !important;
+        font-size: 11px !important;
+    }
+    
+    .vp-row {
+        font-size: 12px !important;
+        gap: 20px !important;
+    }
+    
+    .vp-row strong {
+        font-size: 14px !important;
     }
 }
 
@@ -708,274 +766,176 @@
    ============================================ */
 
 .streak-container {
-    background: linear-gradient(145deg, #0f172a, #1e293b, #0f172a);
-    border-radius: 12px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
-    border: 1px solid rgba(251, 191, 36, 0.12);
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-    transition: all 0.3s ease;
-    width: 100%;
-}
-
-.streak-container::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.015) 0%, transparent 70%);
-    animation: glowPulse 4s ease-in-out infinite;
-    pointer-events: none;
-}
-
-@keyframes glowPulse {
-    0%, 100% { transform: scale(1); opacity: 0.5; }
-    50% { transform: scale(1.1); opacity: 1; }
+    background: linear-gradient(145deg, #0f172a, #1e293b, #0f172a) !important;
+    border: 1px solid rgba(251, 191, 36, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 12px !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 .streak-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    position: relative;
-    z-index: 1;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 4px !important;
 }
 
 .streak-fire {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
 }
 
 .streak-emoji {
-    font-size: 20px;
-    animation: fireFlicker 1.2s ease-in-out infinite;
-    display: inline-block;
-    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));
-}
-
-@keyframes fireFlicker {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    25% { transform: scale(1.06) rotate(-2deg); }
-    75% { transform: scale(1.06) rotate(2deg); }
+    font-size: 16px !important;
+    filter: drop-shadow(0 0 10px rgba(251,191,36,0.3)) !important;
 }
 
 .streak-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #fbbf24;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    background: rgba(251, 191, 36, 0.06);
-    padding: 2px 10px;
-    border-radius: 12px;
-    border: 1px solid rgba(251, 191, 36, 0.08);
-    white-space: nowrap;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    color: #fbbf24 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    background: rgba(251,191,36,0.08) !important;
+    padding: 2px 8px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(251,191,36,0.08) !important;
 }
 
 .streak-counter {
-    text-align: right;
-    background: rgba(251, 191, 36, 0.04);
-    padding: 2px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(251, 191, 36, 0.06);
+    text-align: right !important;
+    background: rgba(251,191,36,0.06) !important;
+    padding: 2px 8px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(251,191,36,0.06) !important;
 }
 
 .streak-number {
-    font-size: 24px;
-    font-weight: 800;
-    color: #fbbf24;
-    display: block;
-    line-height: 1;
-    text-shadow: 0 0 15px rgba(251, 191, 36, 0.15);
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: #fbbf24 !important;
+    display: block !important;
+    line-height: 1 !important;
+    text-shadow: 0 0 15px rgba(251,191,36,0.15) !important;
 }
 
 .streak-unit {
-    font-size: 9px;
-    color: #94a3b8;
-    font-weight: 500;
+    font-size: 7px !important;
+    color: #94a3b8 !important;
+    font-weight: 500 !important;
 }
 
 .streak-progress-container {
-    margin: 6px 0 5px;
-    position: relative;
-    z-index: 1;
+    margin: 4px 0 3px !important;
 }
 
 .streak-progress-bg {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    height: 4px;
-    overflow: hidden;
-    position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.02);
+    background: rgba(255,255,255,0.06) !important;
+    border-radius: 10px !important;
+    height: 3px !important;
+    overflow: hidden !important;
 }
 
 .streak-progress-fill {
-    height: 100%;
-    border-radius: 12px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444, #f59e0b);
-    background-size: 300% 100%;
-    animation: progressFlow 3s ease-in-out infinite;
-    position: relative;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
-}
-
-@keyframes progressFlow {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
-
-.streak-progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    height: 100% !important;
+    border-radius: 10px !important;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444) !important;
+    box-shadow: 0 0 10px rgba(245,158,11,0.2) !important;
 }
 
 .streak-milestones {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 3px;
-    padding: 0 2px;
-    flex-wrap: wrap;
-    gap: 1px;
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-top: 2px !important;
+    padding: 0 2px !important;
+    flex-wrap: wrap !important;
+    gap: 1px !important;
 }
 
 .milestone {
-    font-size: 8px;
-    color: rgba(255, 255, 255, 0.15);
-    transition: all 0.4s ease;
-    cursor: default;
-    font-weight: 600;
-    padding: 1px 5px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.01);
+    font-size: 6px !important;
+    color: rgba(255,255,255,0.1) !important;
+    transition: all 0.4s ease !important;
+    font-weight: 600 !important;
+    padding: 1px 4px !important;
+    border-radius: 6px !important;
 }
 
 .milestone.active {
-    color: #fbbf24;
-    font-weight: 700;
-    transform: scale(1.05);
-    background: rgba(251, 191, 36, 0.06);
-    border: 1px solid rgba(251, 191, 36, 0.08);
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.04);
+    color: #fbbf24 !important;
+    font-weight: 700 !important;
+    background: rgba(251,191,36,0.08) !important;
+    border: 1px solid rgba(251,191,36,0.08) !important;
 }
 
 .milestone.reached {
-    color: #34d399;
-    background: rgba(52, 211, 153, 0.04);
-    border: 1px solid rgba(52, 211, 153, 0.06);
+    color: #34d399 !important;
+    background: rgba(52,211,153,0.06) !important;
+    border: 1px solid rgba(52,211,153,0.06) !important;
 }
 
 .streak-lights {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin: 5px 0 4px;
-    padding: 3px;
-    position: relative;
-    z-index: 1;
-    flex-wrap: wrap;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    margin: 3px 0 2px !important;
+    padding: 2px !important;
+    flex-wrap: wrap !important;
 }
 
 .streak-light {
-    font-size: 14px;
-    opacity: 0.1;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    filter: grayscale(1) brightness(0.3);
-    transform: scale(0.8);
+    font-size: 11px !important;
+    opacity: 0.1 !important;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    filter: grayscale(1) brightness(0.3) !important;
+    transform: scale(0.8) !important;
 }
 
 .streak-light.active {
-    opacity: 1;
-    filter: grayscale(0) brightness(1);
-    transform: scale(1);
-    animation: lightPulse 1.5s ease-in-out infinite;
-}
-
-.streak-light.active:nth-child(1) { animation-delay: 0s; }
-.streak-light.active:nth-child(2) { animation-delay: 0.12s; }
-.streak-light.active:nth-child(3) { animation-delay: 0.24s; }
-.streak-light.active:nth-child(4) { animation-delay: 0.36s; }
-.streak-light.active:nth-child(5) { animation-delay: 0.48s; }
-
-@keyframes lightPulse {
-    0%, 100% { transform: scale(1); text-shadow: 0 0 8px rgba(251, 191, 36, 0.1); }
-    50% { transform: scale(1.1); text-shadow: 0 0 18px rgba(251, 191, 36, 0.5), 0 0 35px rgba(251, 191, 36, 0.2); }
+    opacity: 1 !important;
+    filter: none !important;
+    transform: scale(1) !important;
+    animation: lightPulse 1.5s ease-in-out infinite !important;
 }
 
 .streak-message {
-    text-align: center;
-    margin-top: 4px;
-    padding: 4px 10px;
-    border-radius: 10px;
-    background: rgba(251, 191, 36, 0.03);
-    border: 1px solid rgba(251, 191, 36, 0.04);
-    position: relative;
-    z-index: 1;
+    text-align: center !important;
+    margin-top: 2px !important;
+    padding: 2px 8px !important;
+    border-radius: 8px !important;
+    background: rgba(251,191,36,0.03) !important;
+    border: 1px solid rgba(251,191,36,0.03) !important;
 }
 
 #streak-status-text {
-    font-size: 11px;
-    font-weight: 500;
-    color: #e2e8f0;
-    letter-spacing: 0.2px;
-}
-
-#streak-status-text .streak-highlight {
-    color: #fbbf24;
-    font-weight: 700;
+    font-size: 9px !important;
+    font-weight: 500 !important;
+    color: #e2e8f0 !important;
+    letter-spacing: 0.2px !important;
 }
 
 .streak-restore-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin: 5px auto 0;
-    padding: 5px 16px;
-    background: linear-gradient(135deg, #f59e0b, #f97316);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 1;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.streak-restore-btn:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.35);
-}
-
-.streak-restore-btn:active {
-    transform: scale(0.95);
-}
-
-.streak-restore-btn i {
-    font-size: 11px;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 3px auto 0 !important;
+    padding: 3px 12px !important;
+    background: linear-gradient(135deg, #f59e0b, #f97316) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 16px !important;
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 10px rgba(245,158,11,0.2) !important;
+    width: fit-content !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 .streak-mini {
@@ -1010,34 +970,30 @@
 
 @media (max-width: 640px) {
     .streak-container {
-        padding: 8px 12px;
+        padding: 8px 10px !important;
     }
     .streak-number {
-        font-size: 20px;
+        font-size: 16px !important;
     }
     .streak-emoji {
-        font-size: 17px;
+        font-size: 14px !important;
     }
     .streak-label {
-        font-size: 10px;
-        padding: 2px 8px;
+        font-size: 8px !important;
+        padding: 1px 6px !important;
     }
     .streak-light {
-        font-size: 12px;
+        font-size: 10px !important;
     }
     .streak-lights {
-        gap: 4px;
-    }
-    .streak-milestones {
-        gap: 1px;
-        justify-content: center;
+        gap: 3px !important;
     }
     .milestone {
-        font-size: 7px;
-        padding: 1px 4px;
+        font-size: 5px !important;
+        padding: 1px 3px !important;
     }
     #streak-status-text {
-        font-size: 10px;
+        font-size: 8px !important;
     }
     .streak-mini .mini-card-value {
         font-size: 16px !important;
@@ -1054,11 +1010,38 @@
         text-align: center;
     }
     .streak-number {
-        font-size: 18px;
+        font-size: 14px !important;
     }
     .streak-restore-btn {
-        font-size: 9px;
-        padding: 4px 12px;
+        font-size: 8px !important;
+        padding: 2px 10px !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .streak-container {
+        padding: 12px 16px !important;
+    }
+    .streak-number {
+        font-size: 22px !important;
+    }
+    .streak-emoji {
+        font-size: 20px !important;
+    }
+    .streak-label {
+        font-size: 10px !important;
+    }
+    #streak-status-text {
+        font-size: 10px !important;
+    }
+    .streak-light {
+        font-size: 13px !important;
+    }
+    .streak-lights {
+        gap: 5px !important;
+    }
+    .milestone {
+        font-size: 7px !important;
     }
 }
 
@@ -2541,114 +2524,4 @@ main.main {
         min-height: calc(100vh - 100px) !important;
         padding-bottom: 80px !important;
     }
-}
-/* ============================================
-   🍭 CANDY GRADIENT ATTENDANCE CARD
-   ============================================ */
-
-.attendance-card {
-    background: linear-gradient(135deg, #fef9c3, #fde68a, #fcd34d) !important;
-    border: 2px solid #fbbf24 !important;
-    border-radius: 16px !important;
-    padding: 24px 28px !important;
-    box-shadow: 0 8px 32px rgba(251,191,36,0.25) !important;
-    cursor: pointer !important;
-}
-
-.attendance-percent {
-    color: #451a03 !important;
-    font-size: 44px !important;
-    font-weight: 900 !important;
-}
-
-.attendance-label {
-    color: #78350f !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
-}
-
-.warning-badge {
-    background: #78350f !important;
-    color: #fef3c7 !important;
-    padding: 8px 22px !important;
-    border-radius: 50px !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    border: 2px solid #451a03 !important;
-    box-shadow: 0 4px 15px rgba(120,53,15,0.3) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-}
-
-.vp-row {
-    border-top: 2px solid rgba(120,53,15,0.2) !important;
-    padding-top: 16px !important;
-    margin-top: 16px !important;
-    color: #451a03 !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    display: flex !important;
-    gap: 25px !important;
-}
-
-.vp-row strong {
-    color: #451a03 !important;
-    font-size: 18px !important;
-    font-weight: 800 !important;
-}
-/* ============================================
-   ☀️ SUNLIGHT VISIBILITY FIX - SIDEBAR
-   ============================================ */
-
-.sidebar-premium * {
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
-}
-
-.sidebar-premium .nav-premium a {
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    letter-spacing: 0.3px !important;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
-    opacity: 1 !important;
-}
-
-.sidebar-premium .nav-premium a i {
-    color: #ffffff !important;
-    font-size: 17px !important;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
-    opacity: 1 !important;
-}
-
-.sidebar-premium .nav-premium a.active {
-    color: #1a1a2e !important;
-    background: linear-gradient(135deg, #FCD34D, #F59E0B) !important;
-    border-left: 4px solid #ffffff !important;
-    font-weight: 700 !important;
-}
-
-.sidebar-premium .nav-premium a:hover {
-    color: #ffffff !important;
-    background: rgba(255,255,255,0.2) !important;
-}
-
-.sidebar-premium .user-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.8) !important;
-}
-
-.sidebar-premium .user-program {
-    color: #FCD34D !important;
-    font-weight: 600 !important;
-    font-size: 12px !important;
-}
-
-.sidebar-premium .brand-title {
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    font-size: 22px !important;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
 }
