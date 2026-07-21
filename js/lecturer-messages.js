@@ -1,7 +1,7 @@
 // js/lecturer-messages.js
 /**
  * NCHSM Lecturer Messages Module
- * Handles sending messages to students and groups
+ * Uses dedicated lecturer database
  */
 
 const LecturerMessages = {
@@ -17,17 +17,15 @@ const LecturerMessages = {
     
     async loadMessages() {
         try {
-            const userId = window.db?.getCurrentUserId();
+            const userId = window.lecturerDB?.getCurrentUserId();
             
-            const { data, error } = await window.db.supabase
-                .from('messages')
-                .select('*')
-                .eq('sender_id', userId)
-                .order('created_at', { ascending: false });
+            if (!userId) {
+                console.warn('No user ID found');
+                return;
+            }
             
-            if (error) throw error;
-            
-            this.messages = data || [];
+            // ✅ Use lecturerDB
+            this.messages = await window.lecturerDB.getMessages(userId);
             this.renderMessages();
             console.log(`✅ Loaded ${this.messages.length} messages`);
             
@@ -63,9 +61,9 @@ const LecturerMessages = {
             
             return `
                 <tr>
-                    <td>${Utils.formatDateTime(m.created_at || m.inserted_at)}</td>
-                    <td>${Utils.escapeHtml(m.topic || m.subject || 'N/A')}</td>
-                    <td>${Utils.escapeHtml(targetDisplay)}</td>
+                    <td>${window.LecturerUtils?.formatDateTime(m.created_at || m.inserted_at) || m.created_at || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(m.topic || m.subject || 'N/A') || m.topic || m.subject || 'N/A'}</td>
+                    <td>${window.LecturerUtils?.escapeHtml(targetDisplay) || targetDisplay}</td>
                     <td>${statusBadges[status] || statusBadges.pending}</td>
                     <td>
                         <button class="btn btn-action btn-small" onclick="LecturerMessages.viewMessage('${m.id}')">
@@ -81,23 +79,21 @@ const LecturerMessages = {
         const targetSelect = document.getElementById('msgTarget');
         if (!targetSelect) return;
         
-        const profile = window.db?.getUserProfile();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        // Get students
-        window.db.supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id')
-            .eq('role', 'student')
-            .eq('program', program)
-            .order('full_name', { ascending: true })
-            .then(({ data, error }) => {
-                if (error) throw error;
-                
+        if (!program) {
+            targetSelect.innerHTML = '<option value="all-students">All Students</option>';
+            return;
+        }
+        
+        // ✅ Use lecturerDB
+        window.lecturerDB.getStudents(program)
+            .then(students => {
                 targetSelect.innerHTML = `
                     <option value="all-students">All ${program || 'Assigned'} Students</option>
-                    ${(data || []).map(s => 
-                        `<option value="${s.user_id}">${Utils.escapeHtml(s.full_name)} (${s.student_id || 'N/A'})</option>`
+                    ${(students || []).map(s => 
+                        `<option value="${s.user_id}">${window.LecturerUtils?.escapeHtml(s.full_name) || s.full_name || 'N/A'} (${s.student_id || 'N/A'})</option>`
                     ).join('')}
                 `;
             })
@@ -127,59 +123,52 @@ const LecturerMessages = {
         const body = document.getElementById('msgBody')?.value;
         
         if (!target || !subject || !body) {
-            LecturerUI.showNotification('Please fill all fields.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Please fill all fields.', 'error');
+            }
             btn.disabled = false;
             btn.textContent = 'Send Message';
             return;
         }
         
         try {
-            const userId = window.db?.getCurrentUserId();
-            const profile = window.db?.getUserProfile();
+            // ✅ Use lecturerDB
+            const result = await window.lecturerDB.sendMessage({
+                target: target,
+                subject: subject,
+                message: body
+            });
             
-            const messageData = {
-                sender_id: userId,
-                sender_role: 'lecturer',
-                topic: subject,
-                body: body,
-                message: body,
-                recipient_role: 'student',
-                target_program: profile?.program || profile?.department,
-                target_group: target === 'all-students' ? 'all-students' : 'specific-user',
-                receiver_id: target === 'all-students' ? null : target,
-                approval_status: 'pending',
-                created_at: new Date().toISOString(),
-                inserted_at: new Date().toISOString()
-            };
-            
-            const { data, error } = await window.db.supabase
-                .from('messages')
-                .insert(messageData)
-                .select();
-            
-            if (error) throw error;
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             
             // Request admin approval
             if (typeof window.requestAdminApproval === 'function') {
+                const profile = window.lecturerDB?.getCurrentUserProfile();
                 await window.requestAdminApproval(
                     'send_message',
                     {
-                        message_id: data[0]?.id,
+                        message_id: result.data[0]?.id,
                         subject: subject,
                         target: target,
                         target_program: profile?.program
                     },
                     'Sent message: ' + subject,
-                    data[0]?.id
+                    result.data[0]?.id
                 );
             }
             
-            LecturerUI.showNotification('✅ Message submitted! Waiting for admin approval.', 'success');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('✅ Message submitted! Waiting for admin approval.', 'success');
+            }
             e.target.reset();
             await this.loadMessages();
             
         } catch (error) {
-            LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed: ' + error.message, 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = 'Send Message';
@@ -189,7 +178,9 @@ const LecturerMessages = {
     viewMessage(messageId) {
         const message = this.messages.find(m => m.id === messageId);
         if (!message) {
-            LecturerUI.showNotification('Message not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Message not found.', 'error');
+            }
             return;
         }
         
@@ -199,7 +190,9 @@ const LecturerMessages = {
     
     async refresh() {
         await this.loadMessages();
-        LecturerUI.showNotification('Messages refreshed!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Messages refreshed!', 'success');
+        }
     }
 };
 
