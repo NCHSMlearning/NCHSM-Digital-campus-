@@ -2002,13 +2002,17 @@ window.NCHSMLogin = {
         }
     },
 
-  // ============================================
-// INIT GOOGLE LOGIN - REDIRECT MODE
+ // ============================================
+// INIT GOOGLE LOGIN - REDIRECT MODE (FIXED)
 // ============================================
 initGoogleLogin: function() {
+    var self = this;  // ← Store reference to this
+    
     if (typeof google === 'undefined' || !google.accounts) {
         console.warn('⚠️ Google library not loaded, retrying in 1s...');
-        setTimeout(() => this.initGoogleLogin(), 1000);
+        setTimeout(function() {
+            self.initGoogleLogin();
+        }, 1000);
         return;
     }
     
@@ -2017,21 +2021,24 @@ initGoogleLogin: function() {
     try {
         google.accounts.id.initialize({
             client_id: this.google.clientId,
-            callback: this.handleGoogleCredential.bind(this),
+            callback: function(response) {
+                // Use self instead of this
+                self.handleGoogleCredential(response);
+            },
             cancel_on_tap_outside: false,
             auto_select: false,
             context: 'signin',
-            ux_mode: 'redirect',  // ← REDIRECT MODE
+            ux_mode: 'redirect',
             login_uri: window.location.origin + window.location.pathname
         });
         
         // Attach to your Google button
-        const googleBtn = document.querySelector('.sso-btn.google');
+        var googleBtn = document.querySelector('.sso-btn.google');
         if (googleBtn) {
-            const newBtn = googleBtn.cloneNode(true);
+            var newBtn = googleBtn.cloneNode(true);
             googleBtn.parentNode.replaceChild(newBtn, googleBtn);
             
-            newBtn.addEventListener('click', (e) => {
+            newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log('🔑 Google button clicked - redirecting to Google...');
                 google.accounts.id.prompt();
@@ -2056,22 +2063,24 @@ initGoogleLogin: function() {
 // LISTEN FOR GOOGLE REDIRECT RESPONSE
 // ============================================
 listenForGoogleRedirect: function() {
+    var self = this;  // ← Store reference
+    
     console.log('🔍 Listening for Google redirect...');
     
     // Check if we already have a credential stored
-    const storedCredential = sessionStorage.getItem('google_credential');
+    var storedCredential = sessionStorage.getItem('google_credential');
     if (storedCredential) {
         console.log('🎯 Found stored credential, processing...');
         sessionStorage.removeItem('google_credential');
-        this.handleGoogleCredential({ credential: storedCredential });
+        self.handleGoogleCredential({ credential: storedCredential });
         return;
     }
     
     // Listen for custom event from HTML
-    window.addEventListener('googleCredentialReceived', (event) => {
+    window.addEventListener('googleCredentialReceived', function(event) {
         console.log('🎯 Google credential received via event!');
         if (event.detail && event.detail.credential) {
-            this.handleGoogleCredential({ credential: event.detail.credential });
+            self.handleGoogleCredential({ credential: event.detail.credential });
         }
     });
 },
