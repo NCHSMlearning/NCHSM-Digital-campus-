@@ -2099,6 +2099,33 @@ listenForGoogleRedirect: function() {
         return JSON.parse(jsonPayload);
     },
 
+// ============================================
+// HANDLE GOOGLE CREDENTIAL
+// ============================================
+handleGoogleCredential: function(response) {
+    console.log('🎯 Google credential received');
+    
+    if (!response.credential) {
+        this.showError('Google authentication failed');
+        return;
+    }
+    
+    this.google.credential = response.credential;
+    
+    // Decode the JWT to get user info
+    try {
+        var payload = this.decodeJWT(response.credential);
+        console.log('📊 Google user:', payload.email);
+        
+        // Process Google login
+        this.processGoogleLogin(payload);
+        
+    } catch (error) {
+        console.error('❌ Error decoding JWT:', error);
+        this.showError('Invalid Google response');
+    }
+},
+    
    // ============================================
 // PROCESS GOOGLE LOGIN
 // ============================================
