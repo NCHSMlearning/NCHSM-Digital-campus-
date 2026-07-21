@@ -80,7 +80,7 @@ window.NCHSMLogin = {
         apiUrl: 'https://api.brevo.com/v3/smtp/email',
         enabled: true,
         sender: {
-            email: 'noreply@nakurucollegeofhealthelearning.site',
+            email: 'noreply@nchsm.co.ke',
             name: 'NCHSM ICT Support'
         },
         _initialized: false
@@ -751,7 +751,7 @@ window.NCHSMLogin = {
                 📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
                 📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
                 📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a><br>
-                🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a>
+                🔗 <a href="https://mail.nchsm.co.ke" style="color: #0A3D62; text-decoration: none;">mail.nchsm.co.ke</a>
             </p>
             <p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">
                 This is an automated security notification. Please do not reply to this email.
