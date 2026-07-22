@@ -2634,7 +2634,7 @@ function closeApprovalModal() {
 }
 
 // ============================================
-// CONFIRM APPROVE USER - FIXED
+// CONFIRM APPROVE USER - WITH ENHANCED EMAIL
 // ============================================
 
 async function confirmApproveUser() {
@@ -2707,11 +2707,18 @@ async function confirmApproveUser() {
         
         if (error) throw error;
         
-        // Send email
+        // ✅ Send approval email with full details
         try {
-            await sendApprovalEmail(email, fullName, role);
+            await sendApprovalEmail(
+                email,           // Student's email
+                fullName,        // Student's full name
+                role,            // Student's role
+                program,         // Program (KRCHN, DPOTT, etc.)
+                intakeYear       // Intake year
+            );
         } catch (e) {
-            console.warn('Email error:', e);
+            console.warn('⚠️ Email error:', e);
+            // Don't fail approval if email fails
         }
         
         showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
@@ -2746,13 +2753,146 @@ window.updateUserRole = updateUserRole;
 
 console.log('✅ Approval functions exposed to global scope');
 // ============================================
-// SEND APPROVAL EMAIL
+// 📧 SEND APPROVAL EMAIL VIA BREVO
 // ============================================
 
-async function sendApprovalEmail(email, userName, role) {
+async function sendApprovalEmail(email, userName, role, program, intakeYear) {
     console.log('📧 Sending approval email to:', email);
     
-    // Your email sending logic here (adapt to your email system)
+    // Check if Brevo is configured
+    if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
+        console.warn('⚠️ Brevo not configured. Using fallback email.');
+        // Fallback to old method
+        return sendApprovalEmailFallback(email, userName, role);
+    }
+    
+    try {
+        const year = new Date().getFullYear();
+        const programDisplay = program || 'N/A';
+        const intakeDisplay = intakeYear || 'N/A';
+        const roleDisplay = role === 'student' ? 'Student' : role || 'User';
+        
+        // Build approval email HTML
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+            <div style="display: inline-block; background: #10b981; border-radius: 50%; padding: 12px;">
+                <span style="font-size: 32px;">✅</span>
+            </div>
+            <h2 style="color: #0A3D62; margin: 10px 0 5px;">Account Approved!</h2>
+            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
+        </div>
+        
+        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
+                👋 <strong>Dear ${userName}</strong>
+            </p>
+            <p style="margin: 8px 0 0; color: #1e293b;">
+                Your NCHSM Digital Portal account has been <strong>approved</strong>! 
+                You can now access all features of the portal.
+            </p>
+        </div>
+        
+        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">👤 Name</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${userName}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📧 Email</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${email}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">🎭 Role</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${roleDisplay}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Program</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${programDisplay}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td>
+                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intakeDisplay}</td></tr>
+            </table>
+        </div>
+        
+        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+            <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
+            <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
+                <li>✅ Login to your account using your email and password</li>
+                <li>📚 Access course materials and learning resources</li>
+                <li>📊 Track your academic progress</li>
+                <li>📧 Contact support if you need any assistance</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="https://nchsm.co.ke/login.html" 
+               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                🚪 Login Now
+            </a>
+        </div>
+        
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
+            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Need Help?</h5>
+            <p style="margin: 0; color: #78350F; font-size: 13px;">
+                Contact NCHSM ICT Support:<br>
+                📧 portal.nchsm@gmail.com<br>
+                📞 0790969743 | 0702432987
+            </p>
+        </div>
+        
+        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+            NCHSM ICT Support<br>
+            📧 portal.nchsm@gmail.com<br>
+            📞 0790969743 | 0702432987<br>
+            © ${year} Nakuru College of Health Sciences and Management
+        </p>
+    </div>
+</body>
+</html>
+        `;
+        
+        // Send via Brevo
+        const response = await fetch(BREVO_CONFIG.apiUrl, {
+            method: 'POST',
+            headers: {
+                'api-key': BREVO_CONFIG.apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: 'noreply@nakurucollegeofhealthelearning.site',
+                    name: 'NCHSM ICT Support'
+                },
+                to: [{ email: email }],
+                subject: `✅ Account Approved - Welcome to NCHSM!`,
+                htmlContent: htmlContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log(`✅ Approval email sent to ${email}`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Approval email failed:', data);
+            return { success: false, error: data };
+        }
+        
+    } catch(e) {
+        console.warn('⚠️ Approval email error:', e);
+        // Fallback to old method
+        return sendApprovalEmailFallback(email, userName, role);
+    }
+}
+
+// ============================================
+// 📧 FALLBACK: SEND APPROVAL EMAIL (OLD METHOD)
+// ============================================
+
+async function sendApprovalEmailFallback(email, userName, role) {
+    console.log('📧 Using fallback approval email to:', email);
+    
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
     
     const params = new URLSearchParams({
@@ -2763,28 +2903,13 @@ async function sendApprovalEmail(email, userName, role) {
         subject: 'Account Approved - NCHSM Digital Portal'
     });
     
-    console.log('📡 Sending approval email...');
-    
-    // Using Image technique to avoid CORS
     const img = new Image();
     img.src = scriptUrl + '?' + params.toString();
     img.style.display = 'none';
+    document.body.appendChild(img);
     
-    return new Promise((resolve, reject) => {
-        img.onload = function() {
-            console.log('✅ Approval email sent!');
-            resolve(true);
-        };
-        
-        img.onerror = function() {
-            console.log('✅ Email request completed (may not have sent)');
-            resolve(false);
-        };
-        
-        document.body.appendChild(img);
-    });
+    return new Promise(resolve => setTimeout(() => resolve(true), 1000));
 }
-
 
 // ============================================
 // UPDATE USER ROLE
@@ -4331,7 +4456,7 @@ const BREVO_CONFIG = {
     apiKey: null,  // Will be loaded from Supabase
     apiUrl: 'https://api.brevo.com/v3/smtp/email',
     sender: {
-        email: 'noreply@nakurucollegeofhealthelearning.site',
+        email: 'noreply@https://nchsm.co.ke',
         name: 'NCHSM Examinations Office'
     },
     _initialized: false
@@ -4461,7 +4586,7 @@ async function sendExamPostedNotification(studentEmail, studentName, examName, e
         </div>
         
         <div style="text-align: center; margin: 20px 0;">
-            <a href="https://nakurucollegeofhealthelearning.site/exams" 
+            <a href="https://nchsm.co.ke/exams" 
                style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
                 🚪 Go to Exams Portal
             </a>
@@ -4495,7 +4620,7 @@ async function sendExamPostedNotification(studentEmail, studentName, examName, e
             },
             body: JSON.stringify({
                 sender: {
-                    email: 'noreply@nakurucollegeofhealthelearning.site',
+                    email: 'noreply@nchsm.co.ke/',
                     name: 'NCHSM Examinations Office'
                 },
                 to: [{ email: studentEmail }],
