@@ -7224,6 +7224,13 @@ window.resetGradeForm = resetGradeForm;
 window.setDefaultGrades = setDefaultGrades;
 window.exportGradesToCSV = exportGradesToCSV;
 window.getGradeColor = getGradeColor;
+// ✅ ADD BREVO FUNCTIONS TO GLOBAL SCOPE
+window.BREVO_CONFIG = BREVO_CONFIG;
+window.loadBrevoApiKey = loadBrevoApiKey;
+window.sendExamPostedNotification = sendExamPostedNotification;
+window.notifyAllStudentsAboutExam = notifyAllStudentsAboutExam;
+
+console.log('✅ Brevo functions exposed globally');
 
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
