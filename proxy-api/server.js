@@ -71,6 +71,12 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
+// ===== HELPER FUNCTION TO CLEAN SUBJECT NAMES (PRESERVES UNDERSCORES) =====
+function cleanSubjectName(subject) {
+    // Preserve letters, numbers, spaces, and underscores
+    return subject.replace(/[^a-zA-Z0-9\s_]/g, '').replace(/\s/g, '_');
+}
+
 // ===== MIDDLEWARE - ALWAYS USE MASTER SPREADSHEET =====
 app.use((req, res, next) => {
     req.spreadsheetId = MASTER_SPREADSHEET_ID;
@@ -212,7 +218,7 @@ app.post('/api/mark-entry/toggle-subject', (req, res) => {
 });
 
 // ============================================================
-// ===== COLUMN MANAGEMENT ENDPOINTS (NEW!) =====
+// ===== COLUMN MANAGEMENT ENDPOINTS =====
 // ============================================================
 
 // Get current columns for a subject
@@ -221,7 +227,8 @@ app.get('/api/columns/:block/:subject', async (req, res) => {
         const { block, subject } = req.params;
         const spreadsheetId = req.spreadsheetId || MASTER_SPREADSHEET_ID;
         
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         
         const response = await sheets.spreadsheets.values.get({
@@ -278,7 +285,8 @@ app.post('/api/columns/delete', async (req, res) => {
         
         console.log(`🗑️ Deleting column ${columnIndex} (${columnName}) from ${block} - ${subject}`);
         
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         
         const response = await sheets.spreadsheets.values.get({
@@ -337,7 +345,8 @@ app.post('/api/columns/add', async (req, res) => {
         
         console.log(`➕ Adding column "${columnName}" (${columnType}) to ${block} - ${subject}`);
         
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         
         const response = await sheets.spreadsheets.values.get({
@@ -398,7 +407,8 @@ app.post('/api/columns/rename', async (req, res) => {
         
         console.log(`✏️ Renaming column ${columnIndex} to "${newName}" in ${block} - ${subject}`);
         
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         
         const response = await sheets.spreadsheets.values.get({
@@ -574,7 +584,8 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         }
         
         // ===== INTERNAL MARKS - DYNAMIC COLUMNS =====
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         
         const response = await sheets.spreadsheets.values.get({
@@ -593,27 +604,28 @@ app.get('/api/marks/:block/:subject', async (req, res) => {
         // ===== DYNAMIC COLUMN DETECTION =====
         const colMap = {};
         const allColumnNames = [];
-       headers.forEach((header, index) => {
-    const headerUpper = header ? header.toString().trim().toUpperCase() : '';
-    console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);  // ← DEBUG
-    
-    if (headerUpper === 'ADMISSION') colMap.admission = index;
-    else if (headerUpper === 'NAME') colMap.name = index;
-    else if (headerUpper === 'CAT1') colMap.cat1 = index;
-    else if (headerUpper === 'CAT2') colMap.cat2 = index;
-    else if (headerUpper === 'EXAM') colMap.exam = index;
-    else if (headerUpper === 'FINAL') colMap.final = index;
-    else if (headerUpper === 'GRADE') colMap.grade = index;
-    else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
-    else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
-    else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
-    else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
-    else if (headerUpper === 'STATUS') colMap.status = index;
-    else if (headerUpper === 'AVERAGE') colMap.average = index;
-});
+        headers.forEach((header, index) => {
+            const headerUpper = header ? header.toString().trim().toUpperCase() : '';
+            console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);
+            
+            if (headerUpper === 'ADMISSION') colMap.admission = index;
+            else if (headerUpper === 'NAME') colMap.name = index;
+            else if (headerUpper === 'CAT1') colMap.cat1 = index;
+            else if (headerUpper === 'CAT2') colMap.cat2 = index;
+            else if (headerUpper === 'EXAM') colMap.exam = index;
+            else if (headerUpper === 'FINAL') colMap.final = index;
+            else if (headerUpper === 'GRADE') colMap.grade = index;
+            else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
+            else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
+            else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
+            else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
+            else if (headerUpper === 'STATUS') colMap.status = index;
+            else if (headerUpper === 'AVERAGE') colMap.average = index;
+        });
 
-console.log('📋 colMap:', colMap);  // ← DEBUG
-console.log('📋 colMap.year:', colMap.year);  // ← DEBUG
+        console.log('📋 colMap:', colMap);
+        console.log('📋 colMap.year:', colMap.year);
+        
         // Get student data
         const studentsResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: req.spreadsheetId,
@@ -721,7 +733,8 @@ async function createMarksheetWithStudents(spreadsheetId, block, subject, assess
         const students = studentsResponse.data.values || [];
         console.log(`📊 Found ${students.length - 1} students in STUDENTS sheet`);
         
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         let existingAdmissions = new Set();
         let sheetExists = false;
@@ -1005,7 +1018,8 @@ app.post('/api/marks', async (req, res) => {
         }
         
         // ===== INTERNAL MARKS SAVE - DYNAMIC COLUMNS =====
-        let cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s/g, '_');
+        // ✅ FIX: Preserve underscores in subject name
+        const cleanSubject = cleanSubjectName(subject);
         const sheetName = `${block}_${cleanSubject}`;
         console.log(`📋 Sheet Name: ${sheetName}`);
         
@@ -1040,27 +1054,27 @@ app.post('/api/marks', async (req, res) => {
         
         // ===== DYNAMIC COLUMN MAP =====
         const colMap = {};
-       headers.forEach((header, index) => {
-    const headerUpper = header ? header.toString().trim().toUpperCase() : '';
-    console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);  // ← DEBUG
-    
-    if (headerUpper === 'ADMISSION') colMap.admission = index;
-    else if (headerUpper === 'NAME') colMap.name = index;
-    else if (headerUpper === 'CAT1') colMap.cat1 = index;
-    else if (headerUpper === 'CAT2') colMap.cat2 = index;
-    else if (headerUpper === 'EXAM') colMap.exam = index;
-    else if (headerUpper === 'FINAL') colMap.final = index;
-    else if (headerUpper === 'GRADE') colMap.grade = index;
-    else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
-    else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
-    else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
-    else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
-    else if (headerUpper === 'STATUS') colMap.status = index;
-    else if (headerUpper === 'AVERAGE') colMap.average = index;
-});
+        headers.forEach((header, index) => {
+            const headerUpper = header ? header.toString().trim().toUpperCase() : '';
+            console.log(`[HEADER] ${index}: "${header}" → "${headerUpper}"`);
+            
+            if (headerUpper === 'ADMISSION') colMap.admission = index;
+            else if (headerUpper === 'NAME') colMap.name = index;
+            else if (headerUpper === 'CAT1') colMap.cat1 = index;
+            else if (headerUpper === 'CAT2') colMap.cat2 = index;
+            else if (headerUpper === 'EXAM') colMap.exam = index;
+            else if (headerUpper === 'FINAL') colMap.final = index;
+            else if (headerUpper === 'GRADE') colMap.grade = index;
+            else if (headerUpper === 'GRADED BY') colMap.gradedBy = index;
+            else if (headerUpper === 'ASSESSMENT_TYPE') colMap.assessmentType = index;
+            else if (headerUpper === 'UNIT_CODE') colMap.unitCode = index;
+            else if (headerUpper === 'YEAR' || headerUpper === 'YEAR' || headerUpper === 'YEAR') colMap.year = index;
+            else if (headerUpper === 'STATUS') colMap.status = index;
+            else if (headerUpper === 'AVERAGE') colMap.average = index;
+        });
 
-console.log('📋 colMap:', colMap);  // ← DEBUG
-console.log('📋 colMap.year:', colMap.year);  // ← DEBUG
+        console.log('📋 colMap:', colMap);
+        console.log('📋 colMap.year:', colMap.year);
         
         // Build existing data map
         const existingDataMap = new Map();
@@ -1948,9 +1962,8 @@ app.get('/api/stats', async (req, res) => {
         res.json({ totalStudents: 0, totalBlocks: 6, totalSubjects: 28 });
     }
 });
+
 // ===== GLOBAL COLUMN SETTINGS =====
-// Store in memory (will reset on server restart)
-// For production, store in Google Sheets or a database
 let globalColumnSettings = {};
 
 // ===== GET GLOBAL COLUMN SETTINGS =====
@@ -1961,7 +1974,6 @@ app.get('/api/columns/settings/:block/:subject/:year', (req, res) => {
         
         console.log(`📋 Getting column settings for: ${key}`);
         
-        // Check if settings exist
         if (globalColumnSettings[key]) {
             return res.json({ 
                 success: true, 
@@ -1970,7 +1982,6 @@ app.get('/api/columns/settings/:block/:subject/:year', (req, res) => {
             });
         }
         
-        // If not found, return default settings
         const defaultColumns = [
             { id: 'sno', label: '#', visible: true, required: true },
             { id: 'admission', label: 'Admission', visible: true, required: true },
@@ -2005,10 +2016,8 @@ app.post('/api/columns/settings', (req, res) => {
         console.log(`💾 Saving global column settings for: ${key}`);
         console.log(`📋 Columns:`, columns.map(c => `${c.id}: ${c.visible ? '✓' : '✗'}`).join(', '));
         
-        // Store in memory
         globalColumnSettings[key] = columns;
         
-        // Log the change
         markEntryLogs.unshift({
             timestamp: new Date().toISOString(),
             lecturerName: lecturerName || 'System',
@@ -2068,6 +2077,7 @@ app.get('/api/columns/settings/all', (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
 // ===== START SERVER =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
