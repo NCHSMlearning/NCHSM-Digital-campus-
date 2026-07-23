@@ -207,7 +207,8 @@
     showNotification(`✅ Exported ${data.length} records`, false);
   }
 
-  async function apiCall(endpoint, opts = {}) { 
+// Replace your existing apiCall function with this
+async function apiCall(endpoint, opts = {}) { 
     try { 
         const headers = {
             'Content-Type': 'application/json',
@@ -219,60 +220,62 @@
             'Expires': '0'
         }; 
         if (opts.headers) Object.assign(headers, opts.headers);
+        
+        // ✅ FORCE CACHE-BUSTING - Always add timestamp
         const separator = endpoint.includes('?') ? '&' : '?';
-        const url = API_BASE_URL + endpoint + separator + '_t=' + Date.now();
-        const res = await fetch(url, { headers, ...opts }); 
+        const timestamp = Date.now();
+        const url = API_BASE_URL + endpoint + separator + '_t=' + timestamp;
+        
+        console.log(`🌐 API Call: ${url.substring(0, 100)}...`); // Debug log
+        
+        const res = await fetch(url, { 
+            headers, 
+            ...opts,
+            // ✅ Force no-cache
+            cache: 'no-store'
+        }); 
+        
         if (!res.ok){
             const errorData = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
             return { success: false, message: errorData.message };
         }
         const ct = res.headers.get('content-type'); 
-        if (ct && ct.includes('application/json')) return await res.json(); 
+        if (ct && ct.includes('application/json')) {
+            const data = await res.json();
+            console.log(`✅ API Response: ${endpoint} - ${data.length || Object.keys(data).length} items`);
+            return data; 
+        }
         return { error: 'Non-JSON response' }; 
     } catch(e){ 
         console.error('❌ API Error:', e); 
         return { success: false, error: e.message }; 
     } 
-  }
-
-  async function getConfig(forceRefresh = false) { 
+}
+async function getConfig(forceRefresh = false) { 
     if (forceRefresh || !configCache) {
-        configCache = await apiCall('/api/units', {});
+        const timestamp = Date.now();
+        configCache = await apiCall('/api/units?_t=' + timestamp, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
+        console.log('📊 Config loaded fresh:', configCache ? Object.keys(configCache).length : 0, 'blocks');
     }
     return configCache; 
-  }
+}
+
+async function refreshConfig() {
+    configCache = null;
+    return await getConfig(true);
+}
 
   async function refreshConfig() {
     configCache = null;
     return await getConfig(true);
   }
 
-  async function refreshAllData() {
-    console.log('🔄 Refreshing all data from server...');
-    showLoading('Refreshing data...');
-    configCache = null;
-    currentAdminMarks = null;
-    currentMarksData = null;
-    currentNCKMarks = null;
-    const stats = await apiCall('/api/stats', {});
-    console.log('📊 Stats refreshed:', stats);
-    if (window.currentAdminBlock && window.currentAdminSubject) {
-        await loadAdminMarks(
-            window.currentAdminBlock,
-            window.currentAdminSubject,
-            window.currentAdminAssessmentType
-        );
-    } else if (currentUser?.role === 'lecturer') {
-        await showLecturerSubjects();
-    } else if (document.getElementById('nckSheetSelect')) {
-        await loadNCKMarks();
-    } else {
-        await showMain();
-    }
-    hideLoading();
-    showNotification('✅ Data refreshed from server!', false);
-  }
-
+ 
   function addGlobalRefreshButton() {
     const existing = document.querySelector('.global-refresh-btn');
     if (existing) existing.remove();
@@ -2876,32 +2879,64 @@ document.querySelectorAll('.nav-item').forEach(el => {
 async function loadAdminMarks(block, subject, at) { 
     showLoading('Loading marks...'); 
     
-    const marks = await apiCall(`/api/marks/${block}/${subject}`, {
+    // ✅ FORCE FRESH DATA - Clear memory cache
+    window.currentAdminMarks = null;
+    
+    // ✅ FORCE FRESH DATA - Add cache-busting timestamp
+    const timestamp = Date.now();
+    let marks = await apiCall(`/api/marks/${block}/${subject}?_t=${timestamp}`, {
         headers: {
             'X-Year': currentYear,
-            'X-Exam-Type': 'internal'
+            'X-Exam-Type': 'internal',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
         }
     });
     
     console.log('📊 Raw marks loaded:', marks ? marks.length : 0);
+    console.log('📊 Sample mark:', marks && marks.length > 0 ? marks[0] : 'No marks');
     
-    const allStudents = await apiCall('/api/students', {});
+    // ✅ If no marks with year filter, try without
+    let finalMarks = marks || [];
+    if (finalMarks.length === 0) {
+        console.log('⚠️ No marks with year filter, trying without...');
+        const allMarks = await apiCall(`/api/marks/${block}/${subject}?_t=${Date.now()}`, {
+            headers: {
+                'X-Exam-Type': 'internal',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
+        });
+        if (allMarks && allMarks.length > 0) {
+            console.log(`✅ Found ${allMarks.length} marks without year filter`);
+            finalMarks = allMarks;
+        }
+    }
+    
+    // ✅ FORCE FRESH STUDENT DATA
+    const students = await apiCall('/api/students?_t=' + Date.now(), {
+        headers: { 
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    });
     const studentNameMap = {};
-    allStudents.forEach(s => {
+    students.forEach(s => {
         studentNameMap[s.admission] = s.name;
     });
     
-    let filteredMarks = marks;
-    filteredMarks = filteredMarks.map(m => ({
+    // Map student names
+    let filteredMarks = finalMarks.map(m => ({
         ...m,
         name: studentNameMap[m.admission] || m.name || 'Unknown'
     }));
     
-    const config = await getConfig();
+    // ✅ FORCE FRESH CONFIG
+    const config = await getConfig(true);
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
-    // ===== GET COLUMN SETTINGS (GLOBAL) =====
+    // ===== GET COLUMN SETTINGS (GLOBAL) WITH CACHE BUST =====
     const columnSettings = await getInternalColumnSettings(block, subject, currentYear);
     
     function shouldShowColumn(colId) {
@@ -2979,6 +3014,14 @@ async function loadAdminMarks(block, subject, at) {
     
     filteredMarks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
+    // ✅ STORE FRESH DATA IN MEMORY
+    window.currentAdminMarks = filteredMarks;
+    window.currentAdminBlock = block;
+    window.currentAdminSubject = subject;
+    window.currentAdminAssessmentType = assessmentType;
+    window.currentSaveFunction = saveAdminMarks;
+    
+    // ✅ Check if we have data
     if (!filteredMarks || filteredMarks.length === 0) {
         document.getElementById('marksTable').innerHTML = `
             <div class="card" style="text-align:center; padding: 40px;">
@@ -3074,12 +3117,6 @@ async function loadAdminMarks(block, subject, at) {
                 </thead>
                 <tbody>`;
     
-    window.currentAdminMarks = filteredMarks; 
-    window.currentAdminAssessmentType = assessmentType; 
-    window.currentAdminBlock = block; 
-    window.currentAdminSubject = subject; 
-    window.currentSaveFunction = saveAdminMarks;
-    
     for(let i = 0; i < filteredMarks.length; i++){ 
         const m = filteredMarks[i]; 
         const cat1 = m.cat1 || ''; 
@@ -3149,7 +3186,6 @@ async function loadAdminMarks(block, subject, at) {
     hideLoading(); 
     startAutoSave(saveAdminMarks, 30000);
 }
-
 // ===== INTERNAL MARKS COLUMN MANAGER - GLOBAL VERSION =====
 const INTERNAL_COLUMNS_CONFIG = {
     columns: [
@@ -3166,16 +3202,19 @@ const INTERNAL_COLUMNS_CONFIG = {
         { id: 'gradedBy', label: 'Graded By', visible: false, required: false }
     ]
 };
-
-// ===== GET COLUMN SETTINGS FROM SERVER =====
 async function getInternalColumnSettings(block, subject, year) {
+    // ✅ Try to get from server with cache-busting
     try {
-        // Try to get from server first
-        const response = await apiCall(`/api/columns/settings/${encodeURIComponent(block)}/${encodeURIComponent(subject)}/${year}`, {});
+        const timestamp = Date.now();
+        const response = await apiCall(`/api/columns/settings/${encodeURIComponent(block)}/${encodeURIComponent(subject)}/${year}?_t=${timestamp}`, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
         
         if (response && response.success && response.columns) {
             console.log(`✅ Loaded column settings from server for ${block}/${subject}`);
-            // Merge with defaults to ensure all columns exist
             const merged = INTERNAL_COLUMNS_CONFIG.columns.map(col => {
                 const savedCol = response.columns.find(p => p.id === col.id);
                 return savedCol ? { ...col, visible: savedCol.visible } : col;
@@ -3183,7 +3222,7 @@ async function getInternalColumnSettings(block, subject, year) {
             return merged;
         }
     } catch (e) {
-        console.log('⚠️ Could not load from server, using localStorage fallback');
+        console.log('⚠️ Could not load from server:', e.message);
     }
     
     // Fallback to localStorage
@@ -3521,22 +3560,57 @@ window.openMarksEntry = function(block, subject, atype){
 async function loadMarksForSubject(block, subject, atype){ 
     showLoading('Loading marks...'); 
     
-    // ✅ STEP 1: Get marks (if any)
-    const marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}`, {
-        headers: { 'X-Year': currentYear }
+    // ✅ FORCE FRESH DATA - Clear memory cache
+    window.currentMarksData = null;
+    
+    // ✅ FORCE FRESH DATA - Add cache-busting timestamp
+    const timestamp = Date.now();
+    let marks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}?_t=${timestamp}`, {
+        headers: { 
+            'X-Year': currentYear,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
     });
     
-    // ✅ STEP 2: Get ALL students for this block and year
-    const students = await apiCall('/api/students', {});
+    console.log('📊 Raw marks loaded:', marks ? marks.length : 0);
+    console.log('📊 Sample mark:', marks && marks.length > 0 ? marks[0] : 'No marks');
+    
+    // ✅ If no marks with year filter, try without
+    let finalMarks = marks || [];
+    if (finalMarks.length === 0) {
+        console.log('⚠️ No marks with year filter, trying without...');
+        const allMarks = await apiCall(`/api/marks/${encodeURIComponent(block)}/${encodeURIComponent(subject)}?_t=${Date.now()}`, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
+        if (allMarks && allMarks.length > 0) {
+            console.log(`✅ Found ${allMarks.length} marks without year filter`);
+            finalMarks = allMarks;
+        }
+    }
+    
+    // ✅ FORCE FRESH STUDENT DATA
+    const students = await apiCall('/api/students?_t=' + Date.now(), {
+        headers: { 
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    });
+    
+    // ✅ Filter students for this block and year
     const blockStudents = students.filter(s => {
         const studentYear = Number(s.year);
         return s.block === block && studentYear === Number(currentYear);
     });
     
-    console.log(`📊 Students: ${blockStudents.length}, Marks: ${marks ? marks.length : 0}`);
+    console.log(`📊 Students: ${blockStudents.length}, Marks: ${finalMarks ? finalMarks.length : 0}`);
     
-    // ✅ STEP 3: Get unit code
-    const config = await getConfig();
+    // ✅ FORCE FRESH CONFIG
+    const config = await getConfig(true);
     const unitCode = config[block]?.find(s => s.name === subject)?.code || '';
     const displaySubject = unitCode ? `${unitCode} - ${subject}` : subject;
     
@@ -3559,6 +3633,9 @@ async function loadMarksForSubject(block, subject, atype){
                 <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#f59e0b; margin-bottom:16px;"></i>
                 <h4>No Students Enrolled</h4>
                 <p style="color:#64748b;">No students are enrolled in this subject for ${currentYear}.</p>
+                <button class="save-btn" onclick="refreshAllData()" style="margin-top:12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
             </div>
         `;
         hideLoading();
@@ -3567,8 +3644,8 @@ async function loadMarksForSubject(block, subject, atype){
     
     // ✅ STEP 6: Combine students with marks
     const marksMap = {};
-    if (marks) {
-        marks.forEach(m => {
+    if (finalMarks) {
+        finalMarks.forEach(m => {
             if (m.admission) marksMap[m.admission] = m;
         });
     }
@@ -3590,12 +3667,20 @@ async function loadMarksForSubject(block, subject, atype){
         };
     });
     
+    // ✅ STORE FRESH DATA IN MEMORY
+    window.currentMarksData = fullMarksList;
+    window.currentMarksBlock = block;
+    window.currentMarksSubject = subject;
+    window.currentAssessmentType = atype;
+    window.currentSaveFunction = saveLecturerMarks;
+    
     // ✅ STEP 7: Display the table
     displayLecturerMarksTable(fullMarksList, block, subject, atype); 
     hideLoading(); 
 }
- function displayLecturerMarksTable(marks, block, subject, atype){ 
-    // If marks is empty or not an array, show students with empty fields
+
+function displayLecturerMarksTable(marks, block, subject, atype){ 
+    // ✅ Check if we have data
     if (!marks || marks.length === 0) {
         document.getElementById('marksTableContainer').innerHTML = `
             <div class="card" style="text-align:center; padding:40px;">
@@ -3610,6 +3695,10 @@ async function loadMarksForSubject(block, subject, atype){
         `;
         return;
     }
+    
+    // ✅ Log data for debugging
+    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    console.log(`📊 Displaying ${marks.length} students (${withScores.length} with scores)`);
     
     // ===== YOUR GRADING SYSTEM =====
     function getGrade(score, isSecondAttempt = false) {
@@ -7299,45 +7388,98 @@ function generateMassTranscriptsZip() {
       }
     }
   }
-// ===== REFRESH FUNCTION (MANUAL ONLY) =====
 async function refreshAllData() {
-    console.log('🔄 Refreshing data from server...');
-    showLoading('Refreshing data...');
+    console.log('🔄 Force refreshing all data from server...');
+    showLoading('Refreshing data from server...');
+    
+    // ✅ Clear ALL memory caches
     configCache = null;
-    currentAdminMarks = null;
-    currentMarksData = null;
-    currentNCKMarks = null;
+    window.currentAdminMarks = null;
+    window.currentMarksData = null;
+    window.currentNCKMarks = null;
+    window._studentDataCache = null;
+    window._studentList = null;
+    window.reportData = null;
+    window._subjectPerformance = null;
+    
+    // ✅ Clear localStorage caches
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+            key.includes('internal_columns_') || 
+            key.includes('nck_columns_') || 
+            key.includes('assessment_columns_') ||
+            key.includes('reportData') ||
+            key.includes('studentDataCache') ||
+            key.includes('_cached')
+        )) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🗑️ Removed localStorage: ${key}`);
+    });
+    if (keysToRemove.length > 0) {
+        console.log(`🗑️ Cleared ${keysToRemove.length} localStorage items`);
+    } else {
+        console.log('📭 No localStorage caches to clear');
+    }
+    
+    // ✅ Reload current view with fresh data
     try {
+        // Admin marks page
         if (window.currentAdminBlock && window.currentAdminSubject) {
-            await loadAdminMarks(window.currentAdminBlock, window.currentAdminSubject, window.currentAdminAssessmentType);
-        } else if (currentUser?.role === 'lecturer') {
+            console.log(`🔄 Reloading admin marks: ${window.currentAdminBlock}/${window.currentAdminSubject}`);
+            await loadAdminMarks(
+                window.currentAdminBlock,
+                window.currentAdminSubject,
+                window.currentAdminAssessmentType || 'full'
+            );
+        } 
+        // Lecturer marks page
+        else if (currentUser?.role === 'lecturer' && window.currentMarksBlock && window.currentMarksSubject) {
+            console.log(`🔄 Reloading lecturer marks: ${window.currentMarksBlock}/${window.currentMarksSubject}`);
+            await loadMarksForSubject(
+                window.currentMarksBlock,
+                window.currentMarksSubject,
+                window.currentAssessmentType || 'full'
+            );
+        } 
+        // Lecturer subjects list
+        else if (currentUser?.role === 'lecturer') {
+            console.log('🔄 Reloading lecturer subjects...');
             await showLecturerSubjects();
-        } else if (document.getElementById('nckSheetSelect')) {
+        } 
+        // NCK page
+        else if (document.getElementById('nckSheetSelect')) {
+            console.log('🔄 Reloading NCK marks...');
             await loadNCKMarks();
-        } else if (document.getElementById('studentSelectForReport')) {
+        } 
+        // Transcripts page
+        else if (document.getElementById('transcriptBlock')) {
+            console.log('🔄 Reloading transcripts...');
             await showTranscriptsPage();
-        } else {
+        }
+        // Default: dashboard
+        else {
+            console.log('🔄 Reloading dashboard...');
             await showMain();
         }
-    } catch(e) {
-        console.log('View reload error:', e);
+        
+        console.log('✅ Refresh complete!');
+        showNotification('✅ Data refreshed from server!', false);
+        
+    } catch (e) {
+        console.error('❌ Refresh error:', e);
+        // Fallback: reload main
         await showMain();
+        showNotification('✅ Data refreshed (fallback view)', false);
     }
+    
     hideLoading();
-    showNotification('✅ Data refreshed from server!', false);
 }
-
-// Ctrl+R shortcut
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        if (document.getElementById('app')) {
-            e.preventDefault();
-            refreshAllData();
-            showNotification('🔄 Refreshing data...', false);
-        }
-    }
-});
-
 // Add refresh button
 function addGlobalRefreshButton() {
     const existing = document.querySelector('.global-refresh-btn');
