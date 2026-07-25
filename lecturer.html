@@ -42,7 +42,8 @@
     flex-direction: column;
     box-shadow: 4px 0 20px rgba(0,0,0,0.1);
     z-index: 999;
-    overflow-y: auto;
+    overflow: visible !important;  /* ← CHANGE THIS */
+    overflow-y: visible !important;  /* ← CHANGE THIS */
     transition: all 0.3s ease;
 ">
     <!-- Sidebar Header -->
@@ -1713,11 +1714,9 @@ if (window.location.pathname.endsWith('.html')) {
 }
 
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - FINAL FIX
+// GLOBAL DROPDOWN TOGGLE FUNCTION - PERMANENT FIX
 // ============================================================
 window.toggleDropdown = function(event) {
-    console.log('🔄 toggleDropdown triggered');
-    
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -1726,7 +1725,6 @@ window.toggleDropdown = function(event) {
     // Find the clicked toggle
     let toggle = event?.currentTarget;
     if (!toggle) {
-        // Try to find from event target
         const target = event?.target;
         if (target) {
             toggle = target.closest('.dropdown-toggle');
@@ -1734,7 +1732,6 @@ window.toggleDropdown = function(event) {
     }
     
     if (!toggle) {
-        // Fallback: find first dropdown toggle
         toggle = document.querySelector('.dropdown-toggle');
         if (!toggle) {
             console.warn('⚠️ No toggle found');
@@ -1777,12 +1774,18 @@ window.toggleDropdown = function(event) {
     } else {
         parentLi.classList.add('open');
         menu.style.display = 'block';
+        // Force menu position
+        menu.style.position = 'fixed';
+        menu.style.top = '70px';
+        menu.style.left = '220px';
+        menu.style.zIndex = '999999';
+        menu.style.background = '#1e1b4b';
+        menu.style.borderRadius = '8px';
+        menu.style.padding = '8px 0';
+        menu.style.minWidth = '220px';
+        menu.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
         console.log('📂 Dropdown OPENED');
     }
-    
-    // Debug
-    console.log('📊 Has open class:', parentLi.classList.contains('open'));
-    console.log('📊 Menu display:', menu.style.display);
     
     return false;
 };
@@ -1878,7 +1881,7 @@ window.hideLoading = function() {
 };
 
 // ============================================================
-// ADD STYLES FOR NOTIFICATIONS AND DROPDOWNS
+// ADD STYLES FOR NOTIFICATIONS AND DROPDOWNS - PERMANENT FIX
 // ============================================================
 (function addStyles() {
     if (document.getElementById('lecturerGlobalStyles')) return;
@@ -1899,25 +1902,71 @@ window.hideLoading = function() {
         }
         
         /* ============================================
-           DROPDOWN STYLES
+           SIDEBAR FIX FOR DROPDOWNS - PERMANENT
+           ============================================ */
+        #sidebar, .sidebar {
+            overflow: visible !important;
+            overflow-y: visible !important;
+            height: 100vh !important;
+            position: fixed !important;
+        }
+        
+        #mainNav {
+            overflow: visible !important;
+        }
+        
+        .container {
+            overflow: visible !important;
+        }
+        
+        /* ============================================
+           DROPDOWN STYLES - PERMANENT
            ============================================ */
         .nav-dropdown {
-            position: relative;
+            position: relative !important;
+            overflow: visible !important;
         }
         
         .nav-dropdown .dropdown-menu {
             display: none !important;
-            list-style: none;
-            padding: 4px 0 4px 20px;
-            margin: 4px 0 0 0;
-            background: rgba(255,255,255,0.05);
-            border-left: 2px solid rgba(253,185,19,0.3);
-            border-radius: 0 0 8px 8px;
+            position: fixed !important;
+            top: 70px !important;
+            left: 220px !important;
+            min-width: 220px !important;
+            z-index: 999999 !important;
+            background: #1e1b4b !important;
+            border-radius: 8px !important;
+            padding: 8px 0 !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
         }
         
         .nav-dropdown.open .dropdown-menu {
             display: block !important;
-            animation: dropdownSlide 0.3s ease;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        .nav-dropdown .dropdown-menu li a {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 10px 16px 10px 24px !important;
+            color: rgba(255,255,255,0.9) !important;
+            text-decoration: none !important;
+            font-size: 13px !important;
+            transition: all 0.2s !important;
+        }
+        
+        .nav-dropdown .dropdown-menu li a:hover {
+            background: rgba(255,255,255,0.1) !important;
+            color: #FDB913 !important;
+        }
+        
+        .nav-dropdown .dropdown-menu li a i {
+            width: 18px !important;
+            text-align: center !important;
+            font-size: 12px !important;
         }
         
         .nav-dropdown.open > a {
@@ -1931,29 +1980,6 @@ window.hideLoading = function() {
         
         .nav-dropdown > a i.fa-chevron-down {
             transition: transform 0.3s ease;
-        }
-        
-        .nav-dropdown .dropdown-menu li a {
-            display: flex !important;
-            align-items: center !important;
-            gap: 12px;
-            padding: 8px 14px 8px 30px !important;
-            border-radius: 8px;
-            color: rgba(255,255,255,0.85) !important;
-            text-decoration: none;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-        
-        .nav-dropdown .dropdown-menu li a:hover {
-            background: rgba(255,255,255,0.1) !important;
-            color: #FDB913 !important;
-        }
-        
-        .nav-dropdown .dropdown-menu li a i {
-            width: 18px;
-            text-align: center;
-            font-size: 12px;
         }
         
         /* ============================================
@@ -1971,11 +1997,6 @@ window.hideLoading = function() {
     document.head.appendChild(style);
     console.log('✅ Styles added with dropdown support');
 })();
-
-console.log('✅ Global lecturer functions loaded');
-console.log('✅ toggleDropdown:', typeof window.toggleDropdown);
-console.log('✅ logout:', typeof window.logout);
-console.log('✅ showNotification:', typeof window.showNotification);
 </script>
 <!-- ============================================ -->
 <!-- REST OF SCRIPTS -->
