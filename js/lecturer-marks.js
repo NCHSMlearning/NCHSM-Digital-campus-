@@ -104,16 +104,17 @@ if (typeof window.hideLoading === 'undefined') {
 }
 
 // ============================================================
-// GET LECTURER ASSIGNED UNITS
+// GET LECTURER ASSIGNED UNITS - FIXED FOR YOUR TABLE STRUCTURE
 // ============================================================
 
 async function getLecturerAssignedUnits(lecturerId, block = null) {
     console.log('📚 Getting assigned units for lecturer:', lecturerId);
     
     try {
+        // Use correct column names from your table
         let query = sb
             .from('lecturer_subject_assignments')
-            .select('subject_name, subject_id, block, program')
+            .select('subject_name, subject_code, block, program, academic_year')
             .eq('lecturer_id', lecturerId);
         
         if (block) {
@@ -122,9 +123,13 @@ async function getLecturerAssignedUnits(lecturerId, block = null) {
         
         const { data, error } = await query;
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error getting assigned units:', error);
+            return [];
+        }
         
         console.log('📚 Assigned units found:', data?.length || 0);
+        console.log('📚 Assigned units:', data);
         return data || [];
         
     } catch (error) {
@@ -381,7 +386,7 @@ function updateLecturerUI(data) {
 }
 
 // ============================================================
-// LOAD BLOCKS - ONLY SHOW BLOCKS WITH ASSIGNED UNITS
+// LOAD BLOCKS - FIXED FOR YOUR TABLE STRUCTURE
 // ============================================================
 
 async function loadMEBlocks() {
@@ -404,6 +409,7 @@ async function loadMEBlocks() {
     }
     
     try {
+        // Get all blocks from units_catalog
         const { data: allBlocks, error: blocksError } = await sb
             .from('units_catalog')
             .select('block')
@@ -413,26 +419,40 @@ async function loadMEBlocks() {
         
         if (blocksError) throw blocksError;
         
+        // Get assigned subject names and codes from lecturer_subject_assignments
         const assignedUnitNames = me_assignedUnits.map(u => u.subject_name).filter(Boolean);
-        const assignedUnitIds = me_assignedUnits.map(u => u.subject_id).filter(Boolean);
+        const assignedUnitCodes = me_assignedUnits.map(u => u.subject_code).filter(Boolean);
         
+        console.log('📚 Assigned subject names:', assignedUnitNames);
+        console.log('📚 Assigned subject codes:', assignedUnitCodes);
+        
+        // Get units in blocks to match against
         const { data: unitsInBlocks, error: unitsError } = await sb
             .from('units_catalog')
-            .select('block, unit_name, id')
+            .select('block, unit_name, unit_code')
             .eq('program', program)
             .eq('status', 'active');
         
         if (unitsError) throw unitsError;
         
+        // Find which blocks have assigned units
         const blocksWithAssignedUnits = new Set();
         unitsInBlocks.forEach(unit => {
             if (assignedUnitNames.includes(unit.unit_name) || 
-                assignedUnitIds.includes(unit.id)) {
+                assignedUnitCodes.includes(unit.unit_code)) {
                 blocksWithAssignedUnits.add(unit.block);
             }
         });
         
-        const blocks = [...blocksWithAssignedUnits].filter(Boolean);
+        // If no assignments found, show all blocks (fallback)
+        let blocks = [...blocksWithAssignedUnits].filter(Boolean);
+        
+        if (blocks.length === 0 && allBlocks) {
+            // If no assigned units, show all blocks (or you can show none)
+            // Uncomment the line below to show all blocks when no assignments exist
+            // blocks = [...new Set(allBlocks.map(d => d.block))];
+            console.log('No assigned units found, showing no blocks');
+        }
         
         if (blockSelect) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
@@ -463,9 +483,8 @@ async function loadMEBlocks() {
         showNotification('Error loading blocks: ' + error.message, 'error');
     }
 }
-
 // ============================================================
-// LOAD UNITS - STRICT FILTERING (ONLY ASSIGNED UNITS)
+// LOAD UNITS - FIXED FOR YOUR TABLE STRUCTURE
 // ============================================================
 
 async function loadMEUnits() {
@@ -488,6 +507,7 @@ async function loadMEUnits() {
     }
     
     try {
+        // Get all units for this block
         const { data: allUnits, error } = await sb
             .from('units_catalog')
             .select('unit_code, unit_name, assessment_type, id')
@@ -498,21 +518,25 @@ async function loadMEUnits() {
         
         if (error) throw error;
         
+        // Get assigned units for this lecturer and block
         const assignedUnitNames = me_assignedUnits
             .filter(u => u.block === block || !u.block)
             .map(u => u.subject_name)
             .filter(Boolean);
         
-        const assignedUnitIds = me_assignedUnits
+        const assignedUnitCodes = me_assignedUnits
             .filter(u => u.block === block || !u.block)
-            .map(u => u.subject_id)
+            .map(u => u.subject_code)
             .filter(Boolean);
         
+        console.log('📚 Assigned names for block:', assignedUnitNames);
+        console.log('📚 Assigned codes for block:', assignedUnitCodes);
+        
+        // Filter units - match by name OR code
         const filteredUnits = allUnits.filter(unit => {
             const matchByName = assignedUnitNames.includes(unit.unit_name);
-            const matchById = assignedUnitIds.includes(unit.id);
-            const matchByCode = assignedUnitNames.includes(unit.unit_code);
-            return matchByName || matchById || matchByCode;
+            const matchByCode = assignedUnitCodes.includes(unit.unit_code);
+            return matchByName || matchByCode;
         });
         
         console.log(`📊 Filtered: ${filteredUnits.length} assigned units out of ${allUnits.length} total`);
@@ -530,10 +554,14 @@ async function loadMEUnits() {
                     option.dataset.assessment = unit.assessment_type || 'full';
                     option.dataset.code = unit.unit_code || '';
                     option.dataset.id = unit.id;
-                    option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}`;
+                    
+                    const isAssigned = assignedUnitNames.includes(unit.unit_name) || 
+                                      assignedUnitCodes.includes(unit.unit_code);
+                    option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}${isAssigned ? ' 📌' : ''}`;
                     unitSelect.appendChild(option);
                 });
                 
+                // Auto-select if only one unit
                 if (filteredUnits.length === 1) {
                     unitSelect.value = filteredUnits[0].unit_name;
                     setTimeout(() => loadMarksEntry(), 300);
@@ -541,9 +569,11 @@ async function loadMEUnits() {
             }
         }
         
+        // Update unit count
         const countEl = document.getElementById('lecturerUnitCount');
         if (countEl) countEl.textContent = filteredUnits.length;
         
+        // Show message if no assigned units
         if (filteredUnits.length === 0) {
             const container = document.getElementById('me_marks_container');
             if (container) {
@@ -566,7 +596,6 @@ async function loadMEUnits() {
         showNotification('Error loading units: ' + error.message, 'error');
     }
 }
-
 // ============================================================
 // LOAD ADMIN COLUMN SETTINGS
 // ============================================================
