@@ -19231,479 +19231,7 @@ window.updateMarksEntryStats = updateMarksEntryStats;
 console.log('✅ Marks Entry functions loaded!');
 
 // ============================================================
-// COMPLETE ENTRY CONTROL FUNCTIONS
-// ============================================================
-
-// Open all subjects in a block
-async function openAllSubjectsInBlock(block) {
-    if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
-    
-    showLoading(`Opening all subjects in ${block}...`);
-    
-    try {
-        const blockSubjects = ecSubjects.filter(s => s.block === block);
-        let count = 0;
-        
-        for (const s of blockSubjects) {
-            const key = `${s.block}_${s.unit_name}`;
-            const { error } = await sb
-                .from('mark_entry_settings')
-                .upsert({
-                    setting_key: key,
-                    enabled: true,
-                    closed_by: null,
-                    closed_at: null,
-                    updated_at: new Date().toISOString()
-                });
-            
-            if (!error) count++;
-        }
-        
-        await logEntryControlAction(
-            'open',
-            `${block} - All Subjects`,
-            block,
-            `Opened all ${count} subjects in ${block}`
-        );
-        
-        showNotification(`✅ Opened ${count} subjects in ${block}`, false);
-        loadEntryControl();
-        
-    } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// Close all subjects in a block
-async function closeAllSubjectsInBlock(block) {
-    if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}?\n\nThis will prevent ANY mark entry for ALL subjects in this block.`)) return;
-    
-    showLoading(`Closing all subjects in ${block}...`);
-    
-    try {
-        const blockSubjects = ecSubjects.filter(s => s.block === block);
-        let count = 0;
-        
-        for (const s of blockSubjects) {
-            const key = `${s.block}_${s.unit_name}`;
-            const { error } = await sb
-                .from('mark_entry_settings')
-                .upsert({
-                    setting_key: key,
-                    enabled: false,
-                    closed_by: currentUser?.name || 'Administrator',
-                    closed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-            
-            if (!error) count++;
-        }
-        
-        await logEntryControlAction(
-            'close',
-            `${block} - All Subjects`,
-            block,
-            `Closed all ${count} subjects in ${block}`
-        );
-        
-        showNotification(`🔒 Closed ${count} subjects in ${block}`, false);
-        loadEntryControl();
-        
-    } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// Log entry control action
-async function logEntryControlAction(action, target, block, details) {
-    try {
-        const { error } = await sb
-            .from('mark_entry_logs')
-            .insert({
-                lecturer_name: currentUser?.name || 'Administrator',
-                action: action,
-                target: target,
-                block: block,
-                details: details,
-                created_at: new Date().toISOString()
-            });
-        
-        if (error) console.error('Log error:', error);
-        
-    } catch (error) {
-        console.error('Failed to log action:', error);
-    }
-}
-
-// Refresh entry control
-function refreshEntryControl() {
-    loadEntryControl();
-    showNotification('🔄 Entry Control refreshed!', false);
-}
-
-// Export logs
-function exportECLogs() {
-    if (!ecLogs || ecLogs.length === 0) {
-        showNotification('No logs to export', 'warning');
-        return;
-    }
-    
-    const headers = ['Timestamp', 'User', 'Action', 'Target', 'Block', 'Details'];
-    const rows = ecLogs.map(log => [
-        log.created_at ? new Date(log.created_at).toLocaleString() : '',
-        log.lecturer_name || 'System',
-        log.action || '',
-        log.target || '',
-        log.block || '',
-        log.details || ''
-    ]);
-    
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',') + '\n';
-    });
-    
-    downloadCSV(csv, `entry_control_logs_${new Date().toISOString().split('T')[0]}.csv`);
-    showNotification('✅ Logs exported!', 'success');
-}
-
-// Save column setting
-async function saveColumnSetting(columnId, visible) {
-    try {
-        // Check if setting exists
-        const { data: existing, error: fetchError } = await sb
-            .from('column_settings')
-            .select('*')
-            .eq('block', 'global')
-            .eq('subject', 'all')
-            .eq('year', currentYear || '2025');
-        
-        if (fetchError) throw fetchError;
-        
-        let columns = [];
-        if (existing && existing.length > 0) {
-            columns = existing[0].columns || [];
-        }
-        
-        // Update column visibility
-        const colIndex = columns.findIndex(c => c.id === columnId);
-        if (colIndex !== -1) {
-            columns[colIndex].visible = visible;
-        } else {
-            columns.push({ id: columnId, visible: visible });
-        }
-        
-        // Save to database
-        const { error } = await sb
-            .from('column_settings')
-            .upsert({
-                block: 'global',
-                subject: 'all',
-                year: currentYear || '2025',
-                columns: columns,
-                updated_at: new Date().toISOString()
-            });
-        
-        if (error) throw error;
-        
-        // Update local cache
-        await loadEntryControl();
-        showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}!`, false);
-        
-    } catch (error) {
-        console.error('Error saving column:', error);
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// Reset all columns
-async function resetAllColumns() {
-    if (!confirm('⚠️ Reset ALL column settings to default for ALL users?')) return;
-    
-    try {
-        const { error } = await sb
-            .from('column_settings')
-            .delete()
-            .eq('block', 'global')
-            .eq('subject', 'all');
-        
-        if (error) throw error;
-        
-        await logEntryControlAction(
-            'reset_columns',
-            'All Columns',
-            null,
-            'Reset all column settings to default'
-        );
-        
-        showNotification('✅ All columns reset to default!', false);
-        loadEntryControl();
-        
-    } catch (error) {
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// ============================================================
-// ADDITIONAL ADMIN FUNCTIONS FROM YOUR HTML
-// ============================================================
-
-// Toggle Mark Entry (Lecturer view)
-async function toggleMarkEntry(block, subject, currentStatus) {
-    const newStatus = !currentStatus;
-    const action = newStatus ? 'open' : 'close';
-    
-    if (!confirm(`⚠️ ${newStatus ? 'Open' : 'Close'} entry for "${subject}"?`)) return;
-    
-    try {
-        const key = `${block}_${subject}`;
-        const { error } = await sb
-            .from('mark_entry_settings')
-            .upsert({
-                setting_key: key,
-                enabled: newStatus,
-                closed_by: newStatus ? null : currentUser?.name || 'Administrator',
-                closed_at: newStatus ? null : new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
-        
-        if (error) throw error;
-        
-        await logEntryControlAction(
-            action,
-            subject,
-            block,
-            `${newStatus ? 'Opened' : 'Closed'} entry for ${subject}`
-        );
-        
-        showNotification(`✅ ${newStatus ? 'Opened' : 'Closed'} "${subject}"!`, false);
-        // Refresh the view
-        if (typeof loadLecturerSubjects === 'function') {
-            loadLecturerSubjects();
-        }
-        
-    } catch (error) {
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// Get subject status for lecturer view
-async function getSubjectStatus(block, subject) {
-    try {
-        const key = `${block}_${subject}`;
-        const { data, error } = await sb
-            .from('mark_entry_settings')
-            .select('*')
-            .eq('setting_key', key)
-            .maybeSingle();
-        
-        if (error) throw error;
-        
-        // Check global and class settings too
-        const { data: globalData } = await sb
-            .from('mark_entry_settings')
-            .select('*')
-            .eq('setting_key', 'global')
-            .maybeSingle();
-        
-        const year = currentYear || '2025';
-        const classKey = `${year}_all`;
-        const { data: classData } = await sb
-            .from('mark_entry_settings')
-            .select('*')
-            .eq('setting_key', classKey)
-            .maybeSingle();
-        
-        // Check in order: subject > class > global
-        if (data && data.enabled === false) return { isOpen: false, reason: 'Subject entry is closed' };
-        if (classData && classData.enabled === false) return { isOpen: false, reason: `Entry closed for ${year} class` };
-        if (globalData && globalData.enabled === false) return { isOpen: false, reason: 'Global entry is closed' };
-        
-        return { isOpen: true, reason: null };
-        
-    } catch (error) {
-        console.error('Error getting subject status:', error);
-        return { isOpen: true, reason: null };
-    }
-}
-
-// ============================================================
-// BULK OPERATIONS
-// ============================================================
-
-// Bulk open subjects by block
-async function bulkOpenSubjects(block) {
-    if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
-    
-    showLoading(`Opening subjects in ${block}...`);
-    
-    try {
-        const subjects = ecSubjects.filter(s => s.block === block);
-        let count = 0;
-        
-        for (const s of subjects) {
-            const key = `${s.block}_${s.unit_name}`;
-            const { error } = await sb
-                .from('mark_entry_settings')
-                .upsert({
-                    setting_key: key,
-                    enabled: true,
-                    closed_by: null,
-                    closed_at: null,
-                    updated_at: new Date().toISOString()
-                });
-            
-            if (!error) count++;
-        }
-        
-        await logEntryControlAction(
-            'bulk_open',
-            `${block} - All Subjects`,
-            block,
-            `Bulk opened ${count} subjects in ${block}`
-        );
-        
-        showNotification(`✅ Opened ${count} subjects`, false);
-        loadEntryControl();
-        
-    } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// Bulk close subjects by block
-async function bulkCloseSubjects(block) {
-    if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}? This will LOCK ALL MARK ENTRY for this block.`)) return;
-    
-    showLoading(`Closing subjects in ${block}...`);
-    
-    try {
-        const subjects = ecSubjects.filter(s => s.block === block);
-        let count = 0;
-        
-        for (const s of subjects) {
-            const key = `${s.block}_${s.unit_name}`;
-            const { error } = await sb
-                .from('mark_entry_settings')
-                .upsert({
-                    setting_key: key,
-                    enabled: false,
-                    closed_by: currentUser?.name || 'Administrator',
-                    closed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-            
-            if (!error) count++;
-        }
-        
-        await logEntryControlAction(
-            'bulk_close',
-            `${block} - All Subjects`,
-            block,
-            `Bulk closed ${count} subjects in ${block}`
-        );
-        
-        showNotification(`🔒 Closed ${count} subjects`, false);
-        loadEntryControl();
-        
-    } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-// ============================================================
-// INITIALIZATION
-// ============================================================
-
-// Initialize entry control when tab is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if entry control tab exists
-    const entryTab = document.querySelector('[data-tab="entry-control"]');
-    if (entryTab) {
-        entryTab.addEventListener('click', function() {
-            setTimeout(() => {
-                if (typeof loadEntryControl === 'function') {
-                    loadEntryControl();
-                }
-            }, 300);
-        });
-    }
-});
-
-// Make functions globally accessible
-window.loadEntryControl = loadEntryControl;
-window.toggleGlobalEntry = toggleGlobalEntry;
-window.toggleClassEntry = toggleClassEntry;
-window.toggleSubjectEntry = toggleSubjectEntry;
-window.openBlockSubjects = openBlockSubjects;
-window.openAllSubjectsInBlock = openAllSubjectsInBlock;
-window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
-window.bulkOpenSubjects = bulkOpenSubjects;
-window.bulkCloseSubjects = bulkCloseSubjects;
-window.saveColumnSetting = saveColumnSetting;
-window.resetAllColumns = resetAllColumns;
-window.refreshEntryControl = refreshEntryControl;
-window.exportECLogs = exportECLogs;
-window.toggleMarkEntry = toggleMarkEntry;
-window.getSubjectStatus = getSubjectStatus;
-
-console.log('✅ Entry Control functions loaded!');
-// ============================================================
-// MARKS ENTRY FUNCTIONS
-// ============================================================
-
-// Load marks entry section
-async function loadMarksEntrySection() {
-    const programSelect = document.getElementById('me_program_select');
-    if (programSelect) {
-        // Initialize program dropdown
-        if (typeof updateProgramDropdown === 'function') {
-            updateProgramDropdown(programSelect);
-        }
-        
-        // If a program is already selected, load blocks
-        if (programSelect.value) {
-            if (typeof loadMEBlocks === 'function') {
-                loadMEBlocks();
-            }
-        } else {
-            // Set default to KRCHN
-            programSelect.value = 'KRCHN';
-            if (typeof loadMEBlocks === 'function') {
-                loadMEBlocks();
-            }
-        }
-    }
-}
-
-// Calculate total marks
-function calculateTotal(cat1, cat2, exam, type) {
-    let total = 0;
-    if (type === 'full') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'single_cat') {
-        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'exam_only') {
-        total = Math.round(Math.min(exam,100) * 10) / 10;
-    } else if (type === 'cats_only') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
-    } else if (type === 'cat_only') {
-        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
-    }
-    return total;
-}
-
-// Make functions global
-window.loadMarksEntrySection = loadMarksEntrySection;
-window.calculateTotal = calculateTotal;
-
-console.log('✅ Marks Entry functions loaded!');
-// ============================================================
-// COMPLETE ENTRY CONTROL FUNCTIONS
+// ENTRY CONTROL - SINGLE CONSOLIDATED VERSION
 // ============================================================
 
 // State variables
@@ -19712,27 +19240,25 @@ let ecLogs = [];
 let ecSubjects = [];
 let ecColumns = [];
 
-// Load Entry Control Panel
+// ============================================================
+// CORE LOAD FUNCTIONS
+// ============================================================
+
 async function loadEntryControl() {
     console.log('🔒 Loading Entry Control Panel...');
     
     showLoading('Loading entry control...');
     
     try {
-        // Get settings
         const { data: settings, error: settingsError } = await sb
             .from('mark_entry_settings')
             .select('*');
         
         if (settingsError) throw settingsError;
         
-        // Convert to object
         ecSettings = {};
-        settings.forEach(s => {
-            ecSettings[s.setting_key] = s;
-        });
+        settings.forEach(s => { ecSettings[s.setting_key] = s; });
         
-        // Get logs
         const { data: logs, error: logsError } = await sb
             .from('mark_entry_logs')
             .select('*')
@@ -19740,10 +19266,8 @@ async function loadEntryControl() {
             .limit(100);
         
         if (logsError) throw logsError;
-        
         ecLogs = logs || [];
         
-        // Get all subjects
         const { data: subjects, error: subjectsError } = await sb
             .from('units_catalog')
             .select('*')
@@ -19751,19 +19275,15 @@ async function loadEntryControl() {
             .order('block', { ascending: true });
         
         if (subjectsError) throw subjectsError;
-        
         ecSubjects = subjects || [];
         
-        // Get column settings
         const { data: columns, error: columnsError } = await sb
             .from('column_settings')
             .select('*');
         
         if (columnsError) throw columnsError;
-        
         ecColumns = columns || [];
         
-        // Render everything
         renderECStats();
         renderECGlobal();
         renderECClassYears();
@@ -19771,20 +19291,21 @@ async function loadEntryControl() {
         renderECSubjects();
         renderECColumns();
         renderECLogs();
-        
-        // Populate block filter
         populateECBlockFilter();
         
         hideLoading();
         
     } catch (error) {
-        console.error('❌ Error loading entry control:', error);
+        console.error('❌ Error:', error);
         hideLoading();
         showNotification('Error loading entry control: ' + error.message, true);
     }
 }
 
-// Render Stats
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+
 function renderECStats() {
     const openSubjects = ecSubjects.filter(s => {
         const key = `${s.block}_${s.unit_name}`;
@@ -19811,7 +19332,6 @@ function renderECStats() {
     if (logsEl) logsEl.textContent = ecLogs.length;
 }
 
-// Render Global Control
 function renderECGlobal() {
     const globalEnabled = !ecSettings.global || ecSettings.global.enabled !== false;
     const btn = document.getElementById('ec_global_toggle_btn');
@@ -19840,7 +19360,6 @@ function renderECGlobal() {
     `;
 }
 
-// Render Class Years
 function renderECClassYears() {
     const container = document.getElementById('ec_class_years');
     if (!container) return;
@@ -19869,7 +19388,6 @@ function renderECClassYears() {
     }).join('');
 }
 
-// Render Blocks
 function renderECBlocks() {
     const container = document.getElementById('ec_blocks');
     if (!container) return;
@@ -19901,13 +19419,11 @@ function renderECBlocks() {
     }).join('');
 }
 
-// Populate Block Filter
 function populateECBlockFilter() {
     const filter = document.getElementById('ec_block_filter');
     if (!filter) return;
     
     const blocks = [...new Set(ecSubjects.map(s => s.block))];
-    
     blocks.forEach(block => {
         const option = document.createElement('option');
         option.value = block;
@@ -19916,24 +19432,19 @@ function populateECBlockFilter() {
     });
 }
 
-// Render Subjects
 function renderECSubjects() {
     const container = document.getElementById('ec_subjects');
     if (!container) return;
     
     const filter = document.getElementById('ec_block_filter')?.value || 'all';
-    
     let subjects = ecSubjects;
-    if (filter !== 'all') {
-        subjects = subjects.filter(s => s.block === filter);
-    }
+    if (filter !== 'all') subjects = subjects.filter(s => s.block === filter);
     
     if (subjects.length === 0) {
         container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No subjects found</p>';
         return;
     }
     
-    // Group by block
     const grouped = {};
     subjects.forEach(s => {
         if (!grouped[s.block]) grouped[s.block] = [];
@@ -19950,7 +19461,6 @@ function renderECSubjects() {
             const key = `${s.block}_${s.unit_name}`;
             const setting = ecSettings[key];
             const enabled = !setting || setting.enabled !== false;
-            
             const displayName = s.unit_code ? `${s.unit_code} - ${s.unit_name}` : s.unit_name;
             
             html += `
@@ -19969,7 +19479,6 @@ function renderECSubjects() {
     container.innerHTML = html;
 }
 
-// Render Columns
 function renderECColumns() {
     const container = document.getElementById('ec_column_settings');
     if (!container) return;
@@ -19989,12 +19498,10 @@ function renderECColumns() {
     ];
     
     container.innerHTML = defaultColumns.map(col => {
-        // Check if column is hidden in any setting
         const isHidden = ecColumns.some(c => {
             const cols = c.columns || [];
             return cols.find(p => p.id === col.id)?.visible === false;
         });
-        
         const isChecked = !isHidden && col.visible;
         const isDisabled = col.required ? 'disabled' : '';
         
@@ -20012,7 +19519,6 @@ function renderECColumns() {
     }).join('');
 }
 
-// Render Logs
 function renderECLogs() {
     const container = document.getElementById('ec_logs');
     if (!container) return;
@@ -20052,137 +19558,95 @@ function renderECLogs() {
 }
 
 // ============================================================
-// ENTRY CONTROL ACTIONS
+// ACTION FUNCTIONS
 // ============================================================
 
-// Toggle Global Entry
 async function toggleGlobalEntry() {
     const globalEnabled = !ecSettings.global || ecSettings.global.enabled !== false;
     const newState = !globalEnabled;
-    
     const action = newState ? 'Open' : 'Close';
-    if (!confirm(`⚠️ ${action} ALL mark entry across the entire system?\n\nThis affects ALL users and ALL subjects.`)) return;
+    
+    if (!confirm(`⚠️ ${action} ALL mark entry across the entire system?`)) return;
     
     showLoading(`${newState ? 'Opening' : 'Closing'} global entry...`);
     
     try {
-        const { error } = await sb
-            .from('mark_entry_settings')
-            .upsert({
-                setting_key: 'global',
-                enabled: newState,
-                closed_by: newState ? null : currentUser?.name || 'Administrator',
-                closed_at: newState ? null : new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
+        await sb.from('mark_entry_settings').upsert({
+            setting_key: 'global',
+            enabled: newState,
+            closed_by: newState ? null : currentUser?.name || 'Administrator',
+            closed_at: newState ? null : new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
         
-        if (error) throw error;
-        
-        // Log the action
-        await logEntryControlAction(
-            newState ? 'open' : 'close',
-            'global',
-            null,
-            `${newState ? 'Opened' : 'Closed'} all mark entry`
-        );
-        
+        await logEntryControlAction(newState ? 'open' : 'close', 'global', null, `${newState ? 'Opened' : 'Closed'} all mark entry`);
         showNotification(`✅ ${newState ? 'Opened' : 'Closed'} all mark entry!`, false);
         loadEntryControl();
-        
     } catch (error) {
         hideLoading();
         showNotification('❌ Error: ' + error.message, true);
     }
 }
 
-// Toggle Class Entry
 async function toggleClassEntry(year) {
     const key = `${year}_all`;
     const setting = ecSettings[key];
     const enabled = !setting || setting.enabled !== false;
     const newState = !enabled;
     
-    const action = newState ? 'Open' : 'Close';
-    if (!confirm(`⚠️ ${action} mark entry for March ${year} class?`)) return;
+    if (!confirm(`⚠️ ${newState ? 'Open' : 'Close'} mark entry for March ${year} class?`)) return;
     
     showLoading(`${newState ? 'Opening' : 'Closing'} class entry...`);
     
     try {
-        const { error } = await sb
-            .from('mark_entry_settings')
-            .upsert({
-                setting_key: key,
-                enabled: newState,
-                closed_by: newState ? null : currentUser?.name || 'Administrator',
-                closed_at: newState ? null : new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
+        await sb.from('mark_entry_settings').upsert({
+            setting_key: key,
+            enabled: newState,
+            closed_by: newState ? null : currentUser?.name || 'Administrator',
+            closed_at: newState ? null : new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
         
-        if (error) throw error;
-        
-        await logEntryControlAction(
-            newState ? 'open' : 'close',
-            `March ${year} Class`,
-            null,
-            `${newState ? 'Opened' : 'Closed'} entry for March ${year} class`
-        );
-        
+        await logEntryControlAction(newState ? 'open' : 'close', `March ${year} Class`, null, `${newState ? 'Opened' : 'Closed'} entry for March ${year} class`);
         showNotification(`✅ ${newState ? 'Opened' : 'Closed'} March ${year} class!`, false);
         loadEntryControl();
-        
     } catch (error) {
         hideLoading();
         showNotification('❌ Error: ' + error.message, true);
     }
 }
 
-// Toggle Subject Entry
 async function toggleSubjectEntry(block, subject) {
     const key = `${block}_${subject}`;
     const setting = ecSettings[key];
     const enabled = !setting || setting.enabled !== false;
     const newState = !enabled;
     
-    const action = newState ? 'Open' : 'Close';
     const displayName = subject.length > 30 ? subject.substring(0, 30) + '...' : subject;
-    
-    if (!confirm(`⚠️ ${action} mark entry for "${displayName}" in ${block.replace('_', ' ')}?`)) return;
+    if (!confirm(`⚠️ ${newState ? 'Open' : 'Close'} mark entry for "${displayName}" in ${block.replace('_', ' ')}?`)) return;
     
     showLoading(`${newState ? 'Opening' : 'Closing'} subject entry...`);
     
     try {
-        const { error } = await sb
-            .from('mark_entry_settings')
-            .upsert({
-                setting_key: key,
-                enabled: newState,
-                closed_by: newState ? null : currentUser?.name || 'Administrator',
-                closed_at: newState ? null : new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
+        await sb.from('mark_entry_settings').upsert({
+            setting_key: key,
+            enabled: newState,
+            closed_by: newState ? null : currentUser?.name || 'Administrator',
+            closed_at: newState ? null : new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
         
-        if (error) throw error;
-        
-        await logEntryControlAction(
-            newState ? 'open' : 'close',
-            subject,
-            block,
-            `${newState ? 'Opened' : 'Closed'} entry for ${subject}`
-        );
-        
+        await logEntryControlAction(newState ? 'open' : 'close', subject, block, `${newState ? 'Opened' : 'Closed'} entry for ${subject}`);
         showNotification(`✅ ${newState ? 'Opened' : 'Closed'} "${displayName}"!`, false);
         loadEntryControl();
-        
     } catch (error) {
         hideLoading();
         showNotification('❌ Error: ' + error.message, true);
     }
 }
 
-// Open Block Subjects Modal
 function openBlockSubjects(block) {
     const blockSubjects = ecSubjects.filter(s => s.block === block);
-    
     if (blockSubjects.length === 0) {
         showNotification('No subjects in this block', 'warning');
         return;
@@ -20231,10 +19695,68 @@ function openBlockSubjects(block) {
     document.body.appendChild(modal);
 }
 
-// Save column setting
+async function openAllSubjectsInBlock(block) {
+    if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
+    
+    showLoading(`Opening all subjects in ${block}...`);
+    
+    try {
+        const blockSubjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of blockSubjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb.from('mark_entry_settings').upsert({
+                setting_key: key,
+                enabled: true,
+                closed_by: null,
+                closed_at: null,
+                updated_at: new Date().toISOString()
+            });
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction('open', `${block} - All Subjects`, block, `Opened all ${count} subjects in ${block}`);
+        showNotification(`✅ Opened ${count} subjects in ${block}`, false);
+        loadEntryControl();
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+async function closeAllSubjectsInBlock(block) {
+    if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}?`)) return;
+    
+    showLoading(`Closing all subjects in ${block}...`);
+    
+    try {
+        const blockSubjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of blockSubjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb.from('mark_entry_settings').upsert({
+                setting_key: key,
+                enabled: false,
+                closed_by: currentUser?.name || 'Administrator',
+                closed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction('close', `${block} - All Subjects`, block, `Closed all ${count} subjects in ${block}`);
+        showNotification(`🔒 Closed ${count} subjects in ${block}`, false);
+        loadEntryControl();
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
 async function saveColumnSetting(columnId, visible) {
     try {
-        // Check if setting exists
         const { data: existing, error: fetchError } = await sb
             .from('column_settings')
             .select('*')
@@ -20249,7 +19771,6 @@ async function saveColumnSetting(columnId, visible) {
             columns = existing[0].columns || [];
         }
         
-        // Update column visibility
         const colIndex = columns.findIndex(c => c.id === columnId);
         if (colIndex !== -1) {
             columns[colIndex].visible = visible;
@@ -20257,85 +19778,54 @@ async function saveColumnSetting(columnId, visible) {
             columns.push({ id: columnId, visible: visible });
         }
         
-        // Save to database
-        const { error } = await sb
-            .from('column_settings')
-            .upsert({
-                block: 'global',
-                subject: 'all',
-                year: currentYear || '2025',
-                columns: columns,
-                updated_at: new Date().toISOString()
-            });
+        await sb.from('column_settings').upsert({
+            block: 'global',
+            subject: 'all',
+            year: currentYear || '2025',
+            columns: columns,
+            updated_at: new Date().toISOString()
+        });
         
-        if (error) throw error;
-        
-        // Update local cache
         await loadEntryControl();
         showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}!`, false);
-        
     } catch (error) {
-        console.error('Error saving column:', error);
         showNotification('❌ Error: ' + error.message, true);
     }
 }
 
-// Reset all columns
 async function resetAllColumns() {
     if (!confirm('⚠️ Reset ALL column settings to default for ALL users?')) return;
     
     try {
-        const { error } = await sb
-            .from('column_settings')
-            .delete()
-            .eq('block', 'global')
-            .eq('subject', 'all');
-        
-        if (error) throw error;
-        
-        await logEntryControlAction(
-            'reset_columns',
-            'All Columns',
-            null,
-            'Reset all column settings to default'
-        );
-        
+        await sb.from('column_settings').delete().eq('block', 'global').eq('subject', 'all');
+        await logEntryControlAction('reset_columns', 'All Columns', null, 'Reset all column settings to default');
         showNotification('✅ All columns reset to default!', false);
         loadEntryControl();
-        
     } catch (error) {
         showNotification('❌ Error: ' + error.message, true);
     }
 }
 
-// Log entry control action
 async function logEntryControlAction(action, target, block, details) {
     try {
-        const { error } = await sb
-            .from('mark_entry_logs')
-            .insert({
-                lecturer_name: currentUser?.name || 'Administrator',
-                action: action,
-                target: target,
-                block: block,
-                details: details,
-                created_at: new Date().toISOString()
-            });
-        
-        if (error) console.error('Log error:', error);
-        
+        await sb.from('mark_entry_logs').insert({
+            lecturer_name: currentUser?.name || 'Administrator',
+            action: action,
+            target: target,
+            block: block,
+            details: details,
+            created_at: new Date().toISOString()
+        });
     } catch (error) {
         console.error('Failed to log action:', error);
     }
 }
 
-// Refresh entry control
 function refreshEntryControl() {
     loadEntryControl();
     showNotification('🔄 Entry Control refreshed!', false);
 }
 
-// Export logs
 function exportECLogs() {
     if (!ecLogs || ecLogs.length === 0) {
         showNotification('No logs to export', 'warning');
@@ -20361,7 +19851,51 @@ function exportECLogs() {
     showNotification('✅ Logs exported!', 'success');
 }
 
-// Make all functions globally accessible
+async function toggleMarkEntry(block, subject, currentStatus) {
+    const newStatus = !currentStatus;
+    if (!confirm(`⚠️ ${newStatus ? 'Open' : 'Close'} entry for "${subject}"?`)) return;
+    
+    try {
+        const key = `${block}_${subject}`;
+        await sb.from('mark_entry_settings').upsert({
+            setting_key: key,
+            enabled: newStatus,
+            closed_by: newStatus ? null : currentUser?.name || 'Administrator',
+            closed_at: newStatus ? null : new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
+        
+        await logEntryControlAction(newStatus ? 'open' : 'close', subject, block, `${newStatus ? 'Opened' : 'Closed'} entry for ${subject}`);
+        showNotification(`✅ ${newStatus ? 'Opened' : 'Closed'} "${subject}"!`, false);
+        if (typeof loadLecturerSubjects === 'function') loadLecturerSubjects();
+    } catch (error) {
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+async function getSubjectStatus(block, subject) {
+    try {
+        const key = `${block}_${subject}`;
+        const { data, error } = await sb.from('mark_entry_settings').select('*').eq('setting_key', key).maybeSingle();
+        if (error) throw error;
+        
+        const { data: globalData } = await sb.from('mark_entry_settings').select('*').eq('setting_key', 'global').maybeSingle();
+        const year = currentYear || '2025';
+        const { data: classData } = await sb.from('mark_entry_settings').select('*').eq('setting_key', `${year}_all`).maybeSingle();
+        
+        if (data && data.enabled === false) return { isOpen: false, reason: 'Subject entry is closed' };
+        if (classData && classData.enabled === false) return { isOpen: false, reason: `Entry closed for ${year} class` };
+        if (globalData && globalData.enabled === false) return { isOpen: false, reason: 'Global entry is closed' };
+        return { isOpen: true, reason: null };
+    } catch (error) {
+        return { isOpen: true, reason: null };
+    }
+}
+
+// ============================================================
+// GLOBAL REGISTRATION
+// ============================================================
+
 window.loadEntryControl = loadEntryControl;
 window.toggleGlobalEntry = toggleGlobalEntry;
 window.toggleClassEntry = toggleClassEntry;
@@ -20374,6 +19908,12 @@ window.resetAllColumns = resetAllColumns;
 window.refreshEntryControl = refreshEntryControl;
 window.exportECLogs = exportECLogs;
 window.logEntryControlAction = logEntryControlAction;
+window.toggleMarkEntry = toggleMarkEntry;
+window.getSubjectStatus = getSubjectStatus;
+
+console.log('✅ Entry Control functions loaded successfully!');
+console.log('✅ saveColumnSetting:', typeof saveColumnSetting);
+console.log('✅ resetAllColumns:', typeof resetAllColumns);
 
 console.log('✅ Entry Control functions loaded!');
 // =====================================================
