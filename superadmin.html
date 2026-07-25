@@ -5218,86 +5218,95 @@
         </table>
     </div>
 </section>
-
-            <!-- Security Settings Section -->
-            <section id="security" class="tab-content">
-                <h2>System Security & Settings</h2>
-                <hr>
-                <h3>Global System Status (Kill Switch)</h3>
-                <div class="inline-form">
-                    <label>Current System Status:</label>
-                    <select id="global_status" onchange="updateSystemStatus(this.value)">
-                        <option value="ACTIVE">System Online (ACTIVE)</option>
-                        <option value="MAINTENANCE">Maintenance Mode</option>
-                        <option value="EMERGENCY_LOCKDOWN">EMERGENCY LOCKDOWN</option>
-                    </select>
-                </div>
-                <div id="status_details">
-                    <textarea id="maintenance_message" rows="3" placeholder="Enter message for users..."></textarea>
-                    <button onclick="saveSystemMessage()" class="btn-action">Save System Message</button>
-                </div>
-                <hr>
-                <h3>Force Password Reset</h3>
-                <form id="global-password-reset-form" class="inline-form">
-                    <input type="email" id="reset_user_email" placeholder="User Email" required>
-                    <input type="password" id="new_password" placeholder="New Password" required>
-                    <button type="submit" class="btn-danger">Force Password Reset</button>
-                </form>
-                <hr>
-                <h3>Account Deactivation</h3>
-                <form id="account-deactivation-form" class="inline-form">
-                    <input type="text" id="deactivate_user_id" placeholder="User ID to Deactivate" required>
-                    <button type="submit" class="btn-danger">Deactivate Account</button>
-                </form>
-            </section>
-
-           <section id="backup" class="tab-content">
-    <h2>Database Backup & Restore</h2>
+<!-- Security Settings Section -->
+<section id="security" class="tab-content">
+    <h2><i class="fas fa-shield-alt"></i> System Security & Settings</h2>
     
-    <!-- Link to Supabase Backups -->
-    <div style="background: #f0f7ff; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-        <h3><i class="fas fa-info-circle"></i> Supabase Backups</h3>
-        <p>Your database is automatically backed up daily by Supabase.</p>
-        <a href="https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups" 
-           target="_blank" 
-           class="btn-action" 
-           style="display: inline-block; background: #4C1D95; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
-            <i class="fas fa-external-link-alt"></i> View Backups on Supabase
-        </a>
+    <!-- ===== GLOBAL SYSTEM STATUS ===== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h3 style="color: #0A3D62; margin-top: 0;">
+            <i class="fas fa-power-off"></i> Global System Status (Kill Switch)
+        </h3>
+        <div class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <label style="font-weight: 600;">Current System Status:</label>
+            <select id="global_status" onchange="updateSystemStatus(this.value)" style="padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; min-width: 200px;">
+                <option value="ACTIVE">🟢 System Online (ACTIVE)</option>
+                <option value="MAINTENANCE">🟡 Maintenance Mode</option>
+                <option value="EMERGENCY_LOCKDOWN">🔴 EMERGENCY LOCKDOWN</option>
+            </select>
+        </div>
+        <div id="status_details" style="margin-top: 15px;">
+            <textarea id="maintenance_message" rows="3" placeholder="Enter message for users..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: vertical;"></textarea>
+            <button onclick="saveSystemMessage()" class="btn-action" style="margin-top: 10px; background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">
+                <i class="fas fa-save"></i> Save System Message
+            </button>
+        </div>
     </div>
     
-    <hr>
-    
-    <h3>Recent Backup History</h3>
-    <div class="toolbar">
-        <button onclick="exportTableToCSV('backup-history-table', 'Backup_History_Export.csv')" class="btn-action export-btn">Export Backup Index (CSV)</button>
+    <!-- ===== FORCE PASSWORD RESET - WITH USER LOOKUP ===== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h3 style="color: #0A3D62; margin-top: 0;">
+            <i class="fas fa-key"></i> Force Password Reset
+        </h3>
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
+            <i class="fas fa-info-circle"></i> First verify the user exists, then reset their password
+        </p>
+        
+        <!-- 🔍 USER LOOKUP SECTION -->
+        <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #4C1D95;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="email" id="userLookupEmail" placeholder="Enter user email to verify" 
+                       style="flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                <button onclick="lookupUser()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                    <i class="fas fa-search"></i> Lookup User
+                </button>
+                <button onclick="clearLookupResult()" class="btn-action" style="background: #6b7280; padding: 10px 16px; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+            <div id="userLookupResult" style="margin-top: 10px; display: none; padding: 12px; border-radius: 8px;"></div>
+        </div>
+        
+        <!-- 🔒 PASSWORD RESET FORM -->
+        <form id="global-password-reset-form" class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; padding: 0; background: transparent;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">User Email *</label>
+                <input type="email" id="reset_user_email" placeholder="User Email" required 
+                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">New Password *</label>
+                <input type="password" id="new_password" placeholder="New Password" required 
+                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+            </div>
+            <button type="submit" class="btn-danger" style="background: #dc2626; color: white; padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                <i class="fas fa-sync-alt"></i> Force Password Reset
+            </button>
+        </form>
+        
+        <div id="resetFeedback" style="margin-top: 10px; font-size: 14px;"></div>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>File Name</th>
-                <th>Date</th>
-                <th>Size</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="backup-history-table">
-            <tr>
-                <td colspan="4">
-                    <div style="text-align: center; padding: 20px; color: #6b7280;">
-                        <i class="fas fa-database" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
-                        <p>Backups are managed by Supabase</p>
-                        <p style="font-size: 12px;">Visit the Supabase Dashboard → Database → Backups</p>
-                        <a href="https://app.supabase.com/project/lwhtjozfsmbyihenfunw/database/backups" 
-                           target="_blank" 
-                           style="color: #4C1D95; text-decoration: underline;">
-                            Click here to view real backups
-                        </a>
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    
+    <!-- ===== ACCOUNT DEACTIVATION ===== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h3 style="color: #0A3D62; margin-top: 0;">
+            <i class="fas fa-user-slash"></i> Account Deactivation
+        </h3>
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
+            <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> 
+            This will permanently block the user from logging in.
+        </p>
+        <form id="account-deactivation-form" class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; padding: 0; background: transparent;">
+            <div style="flex: 1; min-width: 250px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">User ID or Email *</label>
+                <input type="text" id="deactivate_user_id" placeholder="User ID or Email to Deactivate" required 
+                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+            </div>
+            <button type="submit" class="btn-danger" style="background: #dc2626; color: white; padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <i class="fas fa-ban"></i> Deactivate Account
+            </button>
+        </form>
+    </div>
 </section>
                         <!-- ============ ADMIN APPROVALS SECTION - SUPER ADMIN ONLY ============ -->
 <section id="admin-approvals" class="tab-content">
