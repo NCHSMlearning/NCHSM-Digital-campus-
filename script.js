@@ -20495,7 +20495,7 @@ async function loadLecturerAssignments() {
             .from('staff_records')
             .select('*')
             .eq('program', program)
-            .eq('status', 'active')
+           .in('status', ['active', 'approved'])
             .order('first_name', { ascending: true });
         
         if (lecturerError) throw lecturerError;
