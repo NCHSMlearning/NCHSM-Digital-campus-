@@ -848,6 +848,33 @@
                 <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
             </a>
         </li>
+        <!-- ===== MARK ENTRY CONTROL ===== -->
+<li style="margin-bottom: 2px;">
+    <a 
+        href="#" 
+        data-tab="entry-control"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-left: 3px solid #fbbf24;
+        "
+        onmouseover="this.style.background='linear-gradient(135deg, #b91c1c, #991b1b)'"
+        onmouseout="this.style.background='linear-gradient(135deg, #dc2626, #b91c1c)'"
+    >
+        <i class="fas fa-lock" style="width: 20px; text-align: center;"></i>
+        <span>Entry Control</span>
+        <span style="margin-left: auto; background: #fbbf24; padding: 0 8px; border-radius: 20px; font-size: 10px; color: #0A3D62; font-weight: 700;">ADMIN</span>
+    </a>
+</li>
         <li>
             <a 
                 href="#" 
@@ -2869,6 +2896,135 @@
                 <i class="fas fa-info-circle"></i> Applicable to all programs
             </span>
         </div>
+    </div>
+</section>
+
+                                <!-- ============================================ -->
+<!-- MARK ENTRY CONTROL PANEL - ADMIN -->
+<!-- ============================================ -->
+<section id="entry-control" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(220,38,38,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700;">
+                <i class="fas fa-lock"></i> Mark Entry Control Panel
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                Control mark entry access for all programs
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshEntryControl()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div class="card" style="border-top: 4px solid #10b981;">
+            <h3 style="color: #059669; font-size: 12px;">Open Subjects</h3>
+            <p class="data" id="ec_open_subjects" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Available for entry</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #dc2626;">
+            <h3 style="color: #dc2626; font-size: 12px;">Closed Subjects</h3>
+            <p class="data" id="ec_closed_subjects" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Locked</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #f59e0b;">
+            <h3 style="color: #d97706; font-size: 12px;">Global Status</h3>
+            <p class="data" id="ec_global_status" style="font-size: 28px; font-weight: 700; color: #d97706;">🔓</p>
+            <p class="minor-data" style="font-size: 11px;"><span id="ec_global_text">Open</span></p>
+        </div>
+        <div class="card" style="border-top: 4px solid #8b5cf6;">
+            <h3 style="color: #6d28d9; font-size: 12px;">Total Logs</h3>
+            <p class="data" id="ec_total_logs" style="font-size: 28px; font-weight: 700; color: #6d28d9;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Audit records</p>
+        </div>
+    </div>
+
+    <!-- Global Control -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-globe" style="color: #6366f1;"></i> Global Entry Settings
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    Master control for ALL mark entry across the system
+                </p>
+            </div>
+            <div>
+                <button id="ec_global_toggle_btn" onclick="toggleGlobalEntry()" style="padding: 12px 32px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                    <i class="fas fa-lock"></i> Loading...
+                </button>
+            </div>
+        </div>
+        <div id="ec_global_info" style="margin-top: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 13px; color: #475569;">
+            <i class="fas fa-info-circle"></i> Loading status...
+        </div>
+    </div>
+
+    <!-- By Class Year -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b;">
+            <i class="fas fa-calendar-alt" style="color: #6366f1;"></i> By Class Year
+        </h3>
+        <div id="ec_class_years"></div>
+    </div>
+
+    <!-- By Block -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b;">
+            <i class="fas fa-layer-group" style="color: #6366f1;"></i> By Block / Term
+        </h3>
+        <div id="ec_blocks"></div>
+    </div>
+
+    <!-- Subjects Control -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b;">
+            <i class="fas fa-book" style="color: #6366f1;"></i> Subject-Level Control
+            <span style="font-size: 13px; font-weight: 400; color: #64748b; margin-left: 12px;">
+                <i class="fas fa-filter"></i> 
+                <select id="ec_block_filter" onchange="renderECSubjects()" style="padding: 4px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    <option value="all">All Blocks</option>
+                </select>
+            </span>
+        </h3>
+        <div id="ec_subjects"></div>
+    </div>
+
+    <!-- Column Management -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-columns" style="color: #6366f1;"></i> Column Management
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    Show/hide columns globally for all users
+                </p>
+            </div>
+            <button onclick="resetAllColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                <i class="fas fa-undo"></i> Reset All
+            </button>
+        </div>
+        <div id="ec_column_settings" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;"></div>
+    </div>
+
+    <!-- Audit Logs -->
+    <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #1e293b;">
+                <i class="fas fa-history" style="color: #6366f1;"></i> Mark Entry Logs
+            </h3>
+            <button onclick="exportECLogs()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                <i class="fas fa-file-export"></i> Export Logs
+            </button>
+        </div>
+        <div id="ec_logs" style="max-height: 400px; overflow-y: auto;"></div>
     </div>
 </section>
 <!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
