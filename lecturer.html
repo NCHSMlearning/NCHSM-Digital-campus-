@@ -1713,31 +1713,43 @@ if (window.location.pathname.endsWith('.html')) {
 }
 
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - COMPLETE FIX
+// GLOBAL DROPDOWN TOGGLE FUNCTION - FINAL FIX
 // ============================================================
 window.toggleDropdown = function(event) {
+    console.log('🔄 toggleDropdown triggered');
+    
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     
-    // Find the parent dropdown
-    let parentLi = null;
-    if (event && event.currentTarget) {
-        parentLi = event.currentTarget.closest('.nav-dropdown');
-    } else {
-        const target = event ? event.target : null;
+    // Find the clicked toggle
+    let toggle = event?.currentTarget;
+    if (!toggle) {
+        // Try to find from event target
+        const target = event?.target;
         if (target) {
-            parentLi = target.closest('.nav-dropdown');
+            toggle = target.closest('.dropdown-toggle');
         }
     }
     
+    if (!toggle) {
+        // Fallback: find first dropdown toggle
+        toggle = document.querySelector('.dropdown-toggle');
+        if (!toggle) {
+            console.warn('⚠️ No toggle found');
+            return false;
+        }
+    }
+    
+    // Find parent dropdown
+    const parentLi = toggle.closest('.nav-dropdown');
     if (!parentLi) {
         console.warn('⚠️ No parent .nav-dropdown found');
         return false;
     }
     
-    // Find the dropdown menu
+    // Find menu
     const menu = parentLi.querySelector('.dropdown-menu');
     if (!menu) {
         console.warn('⚠️ No dropdown-menu found');
@@ -1751,28 +1763,31 @@ window.toggleDropdown = function(event) {
             const m = dropdown.querySelector('.dropdown-menu');
             if (m) {
                 m.style.display = 'none';
-                m.style.visibility = 'hidden';
             }
         }
     });
     
-    // Toggle current dropdown
+    // Toggle this dropdown
     const isOpen = parentLi.classList.contains('open');
     
     if (isOpen) {
         parentLi.classList.remove('open');
         menu.style.display = 'none';
-        menu.style.visibility = 'hidden';
-        console.log('📂 Dropdown closed');
+        console.log('📂 Dropdown CLOSED');
     } else {
         parentLi.classList.add('open');
         menu.style.display = 'block';
-        menu.style.visibility = 'visible';
-        console.log('📂 Dropdown opened');
+        console.log('📂 Dropdown OPENED');
     }
+    
+    // Debug
+    console.log('📊 Has open class:', parentLi.classList.contains('open'));
+    console.log('📊 Menu display:', menu.style.display);
     
     return false;
 };
+
+console.log('✅ toggleDropdown function updated');
 
 // ============================================================
 // GLOBAL LOGOUT FUNCTION
