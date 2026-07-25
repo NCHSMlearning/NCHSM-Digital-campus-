@@ -1,5 +1,7 @@
 // ============================================================
-// LECTURER MARKS MODULE - COMPLETE (SYNCED WITH ADMIN)
+// LECTURER MARKS MODULE - COMPLETE
+// SYNCED WITH ADMIN SETTINGS
+// TERMINOLOGY: "Unit" instead of "Subject"
 // ============================================================
 
 // ============================================================
@@ -8,7 +10,7 @@
 
 let me_currentMarks = [];
 let me_currentBlock = '';
-let me_currentSubject = '';
+let me_currentUnit = '';
 let me_currentYear = '2025';
 let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
@@ -33,95 +35,78 @@ const LecturerMarks = {
         console.log('✅ Lecturer Marks initialized');
     },
     
-   async detectLecturerProgram() {
-    console.log('🔍 Detecting lecturer program...');
-    
-    try {
-        const { data: { user }, error: userError } = await sb.auth.getUser();
-        if (userError) throw userError;
+    async detectLecturerProgram() {
+        console.log('🔍 Detecting lecturer program...');
         
-        const { data: profile, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        
-        if (profileError) throw profileError;
-        
-        const { data: staff, error: staffError } = await sb
-            .from('staff_records')
-            .select('*')
-            .eq('email', profile?.email || user.email)
-            .maybeSingle();
-        
-        me_currentLecturer = { profile, staff };
-        
-        // ✅ Load lecturer's subject assignments
-        if (staff?.id) {
-            const { data: assignments, error: assignError } = await sb
-                .from('lecturer_subject_assignments')
-                .select('*')
-                .eq('lecturer_id', staff.id);
+        try {
+            const { data: { user }, error: userError } = await sb.auth.getUser();
+            if (userError) throw userError;
             
-            if (!assignError && assignments) {
-                me_currentLecturer.assignments = assignments;
-                console.log('📋 Lecturer assignments loaded:', assignments.length);
+            const { data: profile, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            
+            if (profileError) throw profileError;
+            
+            const { data: staff, error: staffError } = await sb
+                .from('staff_records')
+                .select('*')
+                .eq('email', profile?.email || user.email)
+                .maybeSingle();
+            
+            me_currentLecturer = { profile, staff };
+            
+            const isTVET = staff?.program && staff.program !== 'KRCHN';
+            const programCode = staff?.program || profile?.program || 'KRCHN';
+            const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
+            const departmentName = staff?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
+            
+            const programNameEl = document.getElementById('lecturerProgramName');
+            const programTypeEl = document.getElementById('lecturerProgramType');
+            const unitCountEl = document.getElementById('lecturerSubjectCount');
+            const programSelect = document.getElementById('me_program_select');
+            
+            if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
+            if (programTypeEl) programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
+            if (unitCountEl) unitCountEl.textContent = staff?.assigned_units?.length || 0;
+            
+            if (programSelect) {
+                programSelect.innerHTML = `<option value="${programCode}">${programName}</option>`;
+                programSelect.value = programCode;
             }
+            
+            const tvetInfo = document.getElementById('tvetDepartmentInfo');
+            const krchnInfo = document.getElementById('krchnDepartmentInfo');
+            
+            if (isTVET) {
+                if (tvetInfo) tvetInfo.style.display = 'block';
+                if (krchnInfo) krchnInfo.style.display = 'none';
+                const deptName = document.getElementById('tvetDepartmentName');
+                if (deptName) deptName.textContent = departmentName;
+            } else {
+                if (tvetInfo) tvetInfo.style.display = 'none';
+                if (krchnInfo) krchnInfo.style.display = 'block';
+                const blockName = document.getElementById('krchnBlockName');
+                if (blockName) blockName.textContent = staff?.block || 'N/A';
+            }
+            
+            await loadMEBlocks();
+            return staff;
+            
+        } catch (error) {
+            console.error('Error detecting lecturer program:', error);
+            return null;
         }
-        
-        const isTVET = staff?.program && staff.program !== 'KRCHN';
-        const programCode = staff?.program || profile?.program || 'KRCHN';
-        const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
-        const departmentName = staff?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
-        
-        const programNameEl = document.getElementById('lecturerProgramName');
-        const programTypeEl = document.getElementById('lecturerProgramType');
-        const subjectCountEl = document.getElementById('lecturerSubjectCount');
-        const programSelect = document.getElementById('me_program_select');
-        
-        if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
-        if (programTypeEl) programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
-        
-        // ✅ Count assigned subjects
-        const assignedCount = me_currentLecturer?.assignments?.length || 
-                             (staff?.assigned_subjects?.length || 0);
-        if (subjectCountEl) subjectCountEl.textContent = assignedCount;
-        
-        if (programSelect) {
-            programSelect.innerHTML = `<option value="${programCode}">${programName}</option>`;
-            programSelect.value = programCode;
-        }
-        
-        const tvetInfo = document.getElementById('tvetDepartmentInfo');
-        const krchnInfo = document.getElementById('krchnDepartmentInfo');
-        
-        if (isTVET) {
-            if (tvetInfo) tvetInfo.style.display = 'block';
-            if (krchnInfo) krchnInfo.style.display = 'none';
-            const deptName = document.getElementById('tvetDepartmentName');
-            if (deptName) deptName.textContent = departmentName;
-        } else {
-            if (tvetInfo) tvetInfo.style.display = 'none';
-            if (krchnInfo) krchnInfo.style.display = 'block';
-            const blockName = document.getElementById('krchnBlockName');
-            if (blockName) blockName.textContent = staff?.block || 'N/A';
-        }
-        
-        await loadMEBlocks();
-        return staff;
-        
-    } catch (error) {
-        console.error('Error detecting lecturer program:', error);
-        return null;
-    }
-}
+    },
     
     async loadMarksManagement() {
         const blockSelect = document.getElementById('lecBlockSelect');
         if (!blockSelect) return;
         
         await this.loadStudents();
-        await this.loadSubjects();
+        await this.loadUnits();
         await this.loadInternalMarks();
         await this.loadNCKMarks();
         this.updateStats();
@@ -155,13 +140,13 @@ const LecturerMarks = {
         }
     },
     
-    async loadSubjects() {
+    async loadUnits() {
         const block = document.getElementById('lecBlockSelect')?.value;
-        const subjectSelect = document.getElementById('lecSubjectSelect');
-        if (!subjectSelect) return;
+        const unitSelect = document.getElementById('lecSubjectSelect');
+        if (!unitSelect) return;
         
         if (!block) {
-            subjectSelect.innerHTML = '<option value="">-- Select Block First --</option>';
+            unitSelect.innerHTML = '<option value="">-- Select Block First --</option>';
             return;
         }
         
@@ -176,27 +161,84 @@ const LecturerMarks = {
             if (error) throw error;
             
             if (!data || !data.length) {
-                subjectSelect.innerHTML = '<option value="">No subjects found</option>';
+                unitSelect.innerHTML = '<option value="">No units found</option>';
                 return;
             }
             
-            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>' +
-                data.map(u => `<option value="${u.unit_name}" data-code="${u.unit_code || ''}" data-assessment="${u.assessment_type || 'full'}">${u.unit_name}${u.unit_code ? ' (' + u.unit_code + ')' : ''}</option>`).join('');
+            // ✅ Filter to only show units assigned to this lecturer
+            const lecturerId = me_currentLecturer?.staff?.id || me_currentLecturer?.profile?.id;
+            let assignedUnitNames = [];
+            
+            if (lecturerId) {
+                const { data: assignments, error: assignError } = await sb
+                    .from('lecturer_subject_assignments')
+                    .select('subject_name')
+                    .eq('lecturer_id', lecturerId)
+                    .eq('block', block);
+                
+                if (!assignError && assignments) {
+                    assignedUnitNames = assignments.map(a => a.subject_name);
+                }
+            }
+            
+            // Also check staff_records for assigned_units
+            if (me_currentLecturer?.staff?.assigned_units) {
+                const staffUnits = me_currentLecturer.staff.assigned_units || [];
+                if (Array.isArray(staffUnits)) {
+                    staffUnits.forEach(u => {
+                        if (!assignedUnitNames.includes(u)) {
+                            assignedUnitNames.push(u);
+                        }
+                    });
+                }
+            }
+            
+            let filteredUnits = data;
+            if (assignedUnitNames.length > 0) {
+                filteredUnits = data.filter(u => 
+                    assignedUnitNames.includes(u.unit_name) ||
+                    assignedUnitNames.includes(u.unit_code)
+                );
+                console.log(`📊 Showing ${filteredUnits.length} assigned units out of ${data.length} total`);
+            }
+            
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+            filteredUnits.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.unit_name;
+                option.dataset.assessment = u.assessment_type || 'full';
+                option.dataset.code = u.unit_code || '';
+                const isAssigned = assignedUnitNames.includes(u.unit_name) || 
+                                  assignedUnitNames.includes(u.unit_code);
+                option.textContent = `${u.unit_code || ''} - ${u.unit_name}${isAssigned ? ' 📌' : ''}`;
+                unitSelect.appendChild(option);
+            });
+            
+            if (filteredUnits.length === 0) {
+                unitSelect.innerHTML = '<option value="">-- No units assigned to you --</option>';
+                if (typeof showNotification === 'function') {
+                    showNotification('📚 No units assigned to you in this block', 'warning');
+                }
+            }
+            
+            // Update unit count display
+            const countEl = document.getElementById('lecturerSubjectCount');
+            if (countEl) countEl.textContent = filteredUnits.length;
             
         } catch (error) {
-            console.error('Error loading subjects:', error);
-            subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
+            console.error('Error loading units:', error);
+            unitSelect.innerHTML = '<option value="">Error loading units</option>';
         }
     },
     
     async loadInternalMarks() {
         const block = document.getElementById('lecBlockSelect')?.value;
-        const subject = document.getElementById('lecSubjectSelect')?.value;
+        const unit = document.getElementById('lecSubjectSelect')?.value;
         const container = document.getElementById('lecInternalContainer');
         if (!container) return;
         
-        if (!block || !subject) {
-            container.innerHTML = '<div class="text-center" style="padding:40px;">Select a block and subject</div>';
+        if (!block || !unit) {
+            container.innerHTML = '<div class="text-center" style="padding:40px;">Select a block and unit</div>';
             return;
         }
         
@@ -204,7 +246,7 @@ const LecturerMarks = {
         
         try {
             // ✅ Load admin column settings
-            await this.loadAdminColumnSettings(block, subject);
+            await this.loadAdminColumnSettings(block, unit);
             
             const students = this.students.filter(s => s.block === block);
             
@@ -217,7 +259,7 @@ const LecturerMarks = {
                 .from('student_marks')
                 .select('*')
                 .eq('block', block)
-                .eq('subject_name', subject);
+                .eq('subject_name', unit);
             
             if (error) throw error;
             
@@ -344,8 +386,8 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ NEW: Load admin column settings
-    async loadAdminColumnSettings(block, subject) {
+    // ✅ Load admin column settings
+    async loadAdminColumnSettings(block, unit) {
         try {
             const year = document.getElementById('me_year_select')?.value || '2025';
             
@@ -353,7 +395,7 @@ const LecturerMarks = {
                 .from('column_settings')
                 .select('*')
                 .eq('block', block)
-                .eq('subject', subject)
+                .eq('subject', unit)
                 .eq('year', year)
                 .maybeSingle();
             
@@ -386,7 +428,7 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ NEW: Get visible columns from admin settings
+    // ✅ Get visible columns from admin settings
     getVisibleColumns() {
         const defaultColumns = {
             sno: true,
@@ -414,7 +456,7 @@ const LecturerMarks = {
         return result;
     },
     
-    // ✅ NEW: Update assessment type display
+    // ✅ Update assessment type display
     updateAssessmentTypeDisplay(type) {
         const displayEl = document.getElementById('me_assessment_type_display');
         if (displayEl) {
@@ -434,7 +476,7 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ NEW: Update visible columns info
+    // ✅ Update visible columns info
     updateVisibleColumnsInfo(visibleColumns) {
         const columnsEl = document.getElementById('lecturerVisibleColumns');
         if (!columnsEl) return;
@@ -515,11 +557,11 @@ const LecturerMarks = {
     
     async saveInternalMarks() {
         const block = document.getElementById('lecBlockSelect').value;
-        const subject = document.getElementById('lecSubjectSelect').value;
+        const unit = document.getElementById('lecSubjectSelect').value;
         const year = document.getElementById('me_year_select')?.value || '2025';
         
-        if (!block || !subject) {
-            showNotification('Select block and subject', 'error');
+        if (!block || !unit) {
+            showNotification('Select block and unit', 'error');
             return;
         }
         
@@ -558,7 +600,7 @@ const LecturerMarks = {
                 .from('student_marks')
                 .select('id')
                 .eq('admission_number', sId)
-                .eq('subject_name', subject)
+                .eq('subject_name', unit)
                 .eq('block', block)
                 .eq('academic_year', year)
                 .maybeSingle();
@@ -568,7 +610,7 @@ const LecturerMarks = {
                     admission_number: sId,
                     student_name: studentName,
                     block: block,
-                    subject_name: subject,
+                    subject_name: unit,
                     assessment_type: assessmentType,
                     cat1_score: cat1 || null,
                     cat2_score: cat2 || null,
@@ -892,7 +934,7 @@ const LecturerMarks = {
     
     setupEventListeners() {
         document.getElementById('lecBlockSelect')?.addEventListener('change', () => {
-            this.loadSubjects();
+            this.loadUnits();
             this.loadInternalMarks();
         });
         
@@ -928,27 +970,25 @@ const LecturerMarks = {
 };
 
 // ============================================================
-// STANDALONE FUNCTIONS - UPDATED FOR LECTURER VIEW
+// STANDALONE FUNCTIONS
 // ============================================================
 
-// -------- LOAD BLOCKS --------
 async function loadMEBlocks() {
-    console.log('📚 Loading blocks...');
     const program = document.getElementById('me_program_select')?.value;
     const blockSelect = document.getElementById('me_block_select');
-    const subjectSelect = document.getElementById('me_subject_select');
+    const unitSelect = document.getElementById('me_subject_select');
     const year = document.getElementById('me_year_select')?.value;
     
     if (!program) {
-        if (blockSelect) blockSelect.innerHTML = '<option value="">-- Select Program First --</option>';
-        if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        blockSelect.innerHTML = '<option value="">-- Select Program First --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
         return;
     }
     
     me_currentProgram = program;
     me_currentYear = year;
     
-    if (blockSelect) blockSelect.innerHTML = '<option value="">Loading blocks...</option>';
+    blockSelect.innerHTML = '<option value="">Loading blocks...</option>';
     
     try {
         const { data, error } = await sb
@@ -962,53 +1002,46 @@ async function loadMEBlocks() {
         
         const blocks = [...new Set(data.map(d => d.block))];
         
-        if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
-            blocks.forEach(block => {
-                const option = document.createElement('option');
-                option.value = block;
-                option.textContent = block.replace(/_/g, ' ');
-                blockSelect.appendChild(option);
-            });
-            
-            if (blocks.length === 0) {
-                blockSelect.innerHTML = '<option value="">No blocks found</option>';
-            }
+        blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block;
+            option.textContent = block.replace(/_/g, ' ');
+            blockSelect.appendChild(option);
+        });
+        
+        if (blocks.length === 0) {
+            blockSelect.innerHTML = '<option value="">No blocks found</option>';
         }
         
-        if (subjectSelect) {
-            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        }
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
         
     } catch (error) {
         console.error('Error loading blocks:', error);
-        if (blockSelect) blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
+        blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
         if (typeof showNotification === 'function') {
             showNotification('Error loading blocks: ' + error.message, 'error');
         }
     }
 }
 
-// -------- LOAD SUBJECTS (LECTURER ASSIGNMENT FILTER) --------
-async function loadMESubjects() {
-    console.log('📖 Loading subjects for lecturer...');
+async function loadMEUnits() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
-    const subjectSelect = document.getElementById('me_subject_select');
+    const unitSelect = document.getElementById('me_subject_select');
     const year = document.getElementById('me_year_select')?.value;
     
     if (!program || !block) {
-        if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Select Block First --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Block First --</option>';
         return;
     }
     
     me_currentBlock = block;
     
-    if (subjectSelect) subjectSelect.innerHTML = '<option value="">Loading subjects...</option>';
+    unitSelect.innerHTML = '<option value="">Loading units...</option>';
     
     try {
-        // ✅ Get ALL subjects for this block
-        const { data: allSubjects, error: subjectError } = await sb
+        const { data, error } = await sb
             .from('units_catalog')
             .select('unit_code, unit_name, assessment_type')
             .eq('program', program)
@@ -1016,123 +1049,49 @@ async function loadMESubjects() {
             .eq('status', 'active')
             .order('unit_name', { ascending: true });
         
-        if (subjectError) throw subjectError;
+        if (error) throw error;
         
-        // ✅ Get lecturer's assigned subjects
-        const lecturerId = me_currentLecturer?.profile?.id || me_currentLecturer?.staff?.id;
-        let assignedSubjectNames = [];
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+        data.forEach(unit => {
+            const option = document.createElement('option');
+            option.value = unit.unit_name;
+            option.dataset.assessment = unit.assessment_type || 'full';
+            option.dataset.code = unit.unit_code || '';
+            option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}`;
+            unitSelect.appendChild(option);
+        });
         
-        if (lecturerId) {
-            const { data: assigned, error: assignError } = await sb
-                .from('lecturer_subject_assignments')
-                .select('subject_name')
-                .eq('lecturer_id', lecturerId)
-                .eq('block', block)
-                .eq('program', program)
-                .eq('academic_year', year || '2025');
-            
-            if (!assignError && assigned) {
-                assignedSubjectNames = assigned.map(a => a.subject_name);
-                console.log('📋 Assigned subjects:', assignedSubjectNames);
-            }
-        }
-        
-        // ✅ Also check staff_records for assigned_subjects
-        if (me_currentLecturer?.staff?.assigned_subjects) {
-            const staffSubjects = me_currentLecturer.staff.assigned_subjects || [];
-            if (Array.isArray(staffSubjects)) {
-                staffSubjects.forEach(s => {
-                    if (!assignedSubjectNames.includes(s)) {
-                        assignedSubjectNames.push(s);
-                    }
-                });
-            }
-        }
-        
-        // ✅ Filter subjects - only show assigned ones
-        let filteredSubjects = allSubjects || [];
-        
-        if (assignedSubjectNames.length > 0) {
-            // Only show subjects that are assigned to this lecturer
-            filteredSubjects = allSubjects.filter(unit => 
-                assignedSubjectNames.includes(unit.unit_name) ||
-                assignedSubjectNames.includes(unit.unit_code)
-            );
-            console.log(`📊 Showing ${filteredSubjects.length} assigned subjects out of ${allSubjects.length} total`);
-        } else {
-            console.log('⚠️ No assigned subjects found, showing all subjects (fallback)');
-            // If no assignments found, show all (fallback)
-            filteredSubjects = allSubjects;
-        }
-        
-        if (subjectSelect) {
-            if (filteredSubjects.length === 0) {
-                subjectSelect.innerHTML = '<option value="">-- No subjects assigned to you --</option>';
-                // Show a message to the lecturer
-                if (typeof showNotification === 'function') {
-                    showNotification('📚 No subjects assigned to you in this block', 'warning');
-                }
-            } else {
-                subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-                filteredSubjects.forEach(unit => {
-                    const option = document.createElement('option');
-                    option.value = unit.unit_name;
-                    option.dataset.assessment = unit.assessment_type || 'full';
-                    option.dataset.code = unit.unit_code || '';
-                    const isAssigned = assignedSubjectNames.includes(unit.unit_name) || 
-                                      assignedSubjectNames.includes(unit.unit_code);
-                    option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}${isAssigned ? ' 📌' : ''}`;
-                    subjectSelect.appendChild(option);
-                });
-                
-                // Update subject count display
-                const countEl = document.getElementById('lecturerSubjectCount');
-                if (countEl) countEl.textContent = filteredSubjects.length;
-            }
-        }
-        
-        // ✅ Update the program banner with assignment info
-        const banner = document.getElementById('lecturerProgramBanner');
-        if (banner) {
-            const badge = banner.querySelector('#lecturerProgramBadge');
-            if (badge) {
-                const total = allSubjects?.length || 0;
-                const assigned = filteredSubjects?.length || 0;
-                badge.innerHTML = `
-                    <i class="fas fa-graduation-cap"></i> 
-                    <span id="lecturerProgramType">${program === 'KRCHN' ? '🎓 Nursing' : '🔧 TVET'}</span>
-                    <span style="margin-left: 8px; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 10px;">
-                        📚 ${assigned}/${total} subjects assigned
-                    </span>
-                `;
-            }
+        if (data.length === 0) {
+            unitSelect.innerHTML = '<option value="">No units found</option>';
         }
         
     } catch (error) {
-        console.error('Error loading subjects:', error);
-        if (subjectSelect) subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
+        console.error('Error loading units:', error);
+        unitSelect.innerHTML = '<option value="">Error loading units</option>';
         if (typeof showNotification === 'function') {
-            showNotification('Error loading subjects: ' + error.message, 'error');
+            showNotification('Error loading units: ' + error.message, 'error');
         }
     }
 }
 
-// -------- LOAD MARKS ENTRY (LECTURER VERSION) --------
+// ============================================================
+// LECTURER MARKS ENTRY FUNCTIONS
+// ============================================================
+
 async function loadMarksEntry() {
-    console.log('📊 Loading marks entry (lecturer view)...');
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
-    const subject = document.getElementById('me_subject_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
     const year = document.getElementById('me_year_select')?.value;
     const container = document.getElementById('me_marks_container');
     
-    if (!program || !block || !subject) {
+    if (!program || !block || !unit) {
         if (container) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
                     <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">Select Block and Subject</h3>
-                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned subjects</p>
+                    <h3 style="color: #1e293b;">Select Block and Unit</h3>
+                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned units</p>
                 </div>
             `;
         }
@@ -1141,27 +1100,27 @@ async function loadMarksEntry() {
     
     me_currentProgram = program;
     me_currentBlock = block;
-    me_currentSubject = subject;
+    me_currentUnit = unit;
     me_currentYear = year;
     
     if (container) {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px;">
                 <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${subject}...</p>
+                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unit}...</p>
             </div>
         `;
     }
     
     try {
-        // ✅ Load admin column settings first
-        await LecturerMarks.loadAdminColumnSettings(block, subject);
+        // ✅ Load admin column settings
+        await LecturerMarks.loadAdminColumnSettings(block, unit);
         
         const { data: marks, error } = await sb
             .from('student_marks')
             .select('*')
             .eq('block', block)
-            .eq('subject_name', subject)
+            .eq('subject_name', unit)
             .eq('academic_year', year);
         
         if (error) throw error;
@@ -1203,7 +1162,7 @@ async function loadMarksEntry() {
         }) || [];
         
         me_currentMarks = fullMarks;
-        renderMarksEntryTable(fullMarks, subject, me_currentAssessmentType);
+        renderMarksEntryTable(fullMarks, unit, me_currentAssessmentType);
         updateMarksEntryStats(fullMarks, me_currentAssessmentType);
         checkMarksApprovalStatus(fullMarks);
         
@@ -1232,8 +1191,7 @@ async function loadMarksEntry() {
     }
 }
 
-// -------- RENDER MARKS TABLE (LECTURER VERSION) --------
-function renderMarksEntryTable(marks, subject, assessmentType) {
+function renderMarksEntryTable(marks, unit, assessmentType) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
     
@@ -1248,7 +1206,6 @@ function renderMarksEntryTable(marks, subject, assessmentType) {
         return;
     }
     
-    // ✅ Get visible columns from admin
     const visibleColumns = LecturerMarks.getVisibleColumns();
     
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
@@ -1263,7 +1220,7 @@ function renderMarksEntryTable(marks, subject, assessmentType) {
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
-                <h3 style="margin: 0; color: #0f172a;">${subject}</h3>
+                <h3 style="margin: 0; color: #0f172a;">${unit}</h3>
                 <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock?.replace('_', ' ') || ''} | ${me_currentYear}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
@@ -1369,7 +1326,10 @@ function renderMarksEntryTable(marks, subject, assessmentType) {
     container.innerHTML = html;
 }
 
-// -------- UPDATE MARKS ROW --------
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
 function updateMarksEntryRow(index) {
     const cat1 = parseFloat(document.getElementById(`me_cat1_${index}`)?.value) || 0;
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
@@ -1404,7 +1364,6 @@ function updateMarksEntryRow(index) {
     }
 }
 
-// -------- CALCULATE TOTAL --------
 function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     let total = 0;
     if (type === 'full') {
@@ -1421,7 +1380,6 @@ function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     return total;
 }
 
-// -------- GET GRADE INFO --------
 function getMarksEntryGrade(score) {
     if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46' };
     else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af' };
@@ -1429,7 +1387,6 @@ function getMarksEntryGrade(score) {
     else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
 }
 
-// -------- UPDATE STATS --------
 function updateMarksEntryStats(marks, assessmentType) {
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
@@ -1450,7 +1407,6 @@ function updateMarksEntryStats(marks, assessmentType) {
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
 }
 
-// -------- CHECK APPROVAL STATUS --------
 function checkMarksApprovalStatus(marks) {
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
@@ -1510,11 +1466,10 @@ function checkMarksApprovalStatus(marks) {
     }
 }
 
-// -------- SAVE MARKS --------
 async function saveMarksEntry() {
     const program = me_currentProgram;
     const block = me_currentBlock;
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType || 'full';
     
@@ -1563,7 +1518,7 @@ async function saveMarksEntry() {
                 .from('student_marks')
                 .select('id')
                 .eq('admission_number', mark.admission)
-                .eq('subject_name', subject)
+                .eq('subject_name', unit)
                 .eq('block', block)
                 .eq('academic_year', year)
                 .maybeSingle();
@@ -1575,7 +1530,7 @@ async function saveMarksEntry() {
                 admission_number: mark.admission,
                 student_name: mark.name || 'Unknown',
                 block: block,
-                subject_name: subject,
+                subject_name: unit,
                 assessment_type: assessmentType,
                 cat1_score: mark.cat1,
                 cat2_score: mark.cat2,
@@ -1619,13 +1574,12 @@ async function saveMarksEntry() {
     }
 }
 
-// -------- SUBMIT FOR APPROVAL --------
 async function submitMarksForApproval() {
     const block = me_currentBlock;
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const year = me_currentYear;
     
-    if (!block || !subject) {
+    if (!block || !unit) {
         if (typeof showNotification === 'function') showNotification('Please load marks first', 'warning');
         return;
     }
@@ -1634,7 +1588,7 @@ async function submitMarksForApproval() {
         .from('student_marks')
         .select('id, approval_status')
         .eq('block', block)
-        .eq('subject_name', subject)
+        .eq('subject_name', unit)
         .eq('academic_year', year);
     
     if (!existing || existing.length === 0) {
@@ -1650,7 +1604,7 @@ async function submitMarksForApproval() {
         return;
     }
     
-    if (!confirm(`Submit ${existing.length} marks for ${subject} in ${block.replace('_', ' ')} for admin approval?`)) return;
+    if (!confirm(`Submit ${existing.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) return;
     
     if (typeof showLoading === 'function') showLoading('Submitting for approval...');
     
@@ -1663,7 +1617,7 @@ async function submitMarksForApproval() {
                 submitted_by: me_currentLecturer?.profile?.id || null
             })
             .eq('block', block)
-            .eq('subject_name', subject)
+            .eq('subject_name', unit)
             .eq('academic_year', year);
         
         if (error) throw error;
@@ -1675,7 +1629,7 @@ async function submitMarksForApproval() {
                 action: 'submitted',
                 action_by: me_currentLecturer?.profile?.id || null,
                 action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                reason: `Submitted ${existing.length} marks for ${subject} in ${block}`,
+                reason: `Submitted ${existing.length} marks for "${unit}" in ${block}`,
                 created_at: new Date().toISOString()
             });
         
@@ -1689,18 +1643,17 @@ async function submitMarksForApproval() {
     }
 }
 
-// -------- WITHDRAW FROM APPROVAL --------
 async function withdrawMarksFromApproval() {
     const block = me_currentBlock;
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const year = me_currentYear;
     
-    if (!block || !subject) {
+    if (!block || !unit) {
         if (typeof showNotification === 'function') showNotification('Please load marks first', 'warning');
         return;
     }
     
-    if (!confirm(`Withdraw ${subject} marks from admin approval?`)) return;
+    if (!confirm(`Withdraw "${unit}" marks from admin approval?`)) return;
     
     if (typeof showLoading === 'function') showLoading('Withdrawing from approval...');
     
@@ -1713,7 +1666,7 @@ async function withdrawMarksFromApproval() {
                 submitted_by: null
             })
             .eq('block', block)
-            .eq('subject_name', subject)
+            .eq('subject_name', unit)
             .eq('academic_year', year)
             .eq('approval_status', 'pending');
         
@@ -1729,7 +1682,6 @@ async function withdrawMarksFromApproval() {
     }
 }
 
-// -------- EXPORT MARKS --------
 function exportMarksEntry() {
     const marks = me_currentMarks;
     if (!marks || marks.length === 0) {
@@ -1764,11 +1716,10 @@ function exportMarksEntry() {
         csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
     });
     
-    downloadCSV(csv, `marks_${me_currentSubject}_${me_currentBlock}_${me_currentYear}.csv`);
+    downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
     if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
-// -------- SWITCH LECTURER MARKS TAB --------
 function switchLecturerMarksTab(tab) {
     document.querySelectorAll('.marks-tab').forEach(el => {
         el.style.display = 'none';
@@ -1793,7 +1744,6 @@ function switchLecturerMarksTab(tab) {
     }
 }
 
-// -------- DOWNLOAD CSV --------
 function downloadCSV(csv, filename) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -1806,7 +1756,10 @@ function downloadCSV(csv, filename) {
     URL.revokeObjectURL(url);
 }
 
-// -------- SHOW/HIDE NOTIFICATION/LOADING --------
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
+
 function showNotification(message, type) {
     if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
         window.LecturerUI.showNotification(message, type || 'info');
@@ -1894,7 +1847,7 @@ function hideLoading() {
 window.LecturerMarks = LecturerMarks;
 
 window.loadMEBlocks = loadMEBlocks;
-window.loadMESubjects = loadMESubjects;
+window.loadMEUnits = loadMEUnits;
 window.loadMarksEntry = loadMarksEntry;
 window.renderMarksEntryTable = renderMarksEntryTable;
 window.updateMarksEntryRow = updateMarksEntryRow;
@@ -1914,3 +1867,4 @@ window.hideLoading = hideLoading;
 console.log('✅ Lecturer Marks module loaded successfully!');
 console.log('✅ Synced with admin column settings');
 console.log('✅ Assessment type auto-detected from admin');
+console.log('✅ Terminology: Units instead of Subjects');
