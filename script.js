@@ -757,7 +757,7 @@ async function loadSectionData(tabId) {
                 loadApprovalHistory();
             }
             break;
-        // ========== MARKS ENTRY - NEW ==========
+        // ========== MARKS ENTRY ==========
         case 'marks-entry':
             console.log('📊 Loading Marks Entry section...');
             // Initialize program dropdown
@@ -799,6 +799,25 @@ async function loadSectionData(tabId) {
                         <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for any program</p>
                     </div>
                 `;
+            }
+            break;
+        // ========== ENTRY CONTROL - NEW ==========
+        case 'entry-control':
+            console.log('🔒 Loading Entry Control Panel...');
+            if (typeof loadEntryControl === 'function') {
+                loadEntryControl();
+            } else {
+                console.warn('⚠️ loadEntryControl function not found');
+                // Try to load the function from the module
+                const container = document.getElementById('ec_stats');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #6b7280; margin-top: 10px;">Loading entry control...</p>
+                        </div>
+                    `;
+                }
             }
             break;
         // ====================================================
@@ -19201,6 +19220,479 @@ window.refreshMarksData = refreshMarksData;
 window.calculateMarksEntryTotal = calculateMarksEntryTotal;
 window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
+
+console.log('✅ Marks Entry functions loaded!');
+
+// ============================================================
+// COMPLETE ENTRY CONTROL FUNCTIONS
+// ============================================================
+
+// Open all subjects in a block
+async function openAllSubjectsInBlock(block) {
+    if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
+    
+    showLoading(`Opening all subjects in ${block}...`);
+    
+    try {
+        const blockSubjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of blockSubjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb
+                .from('mark_entry_settings')
+                .upsert({
+                    setting_key: key,
+                    enabled: true,
+                    closed_by: null,
+                    closed_at: null,
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction(
+            'open',
+            `${block} - All Subjects`,
+            block,
+            `Opened all ${count} subjects in ${block}`
+        );
+        
+        showNotification(`✅ Opened ${count} subjects in ${block}`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Close all subjects in a block
+async function closeAllSubjectsInBlock(block) {
+    if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}?\n\nThis will prevent ANY mark entry for ALL subjects in this block.`)) return;
+    
+    showLoading(`Closing all subjects in ${block}...`);
+    
+    try {
+        const blockSubjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of blockSubjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb
+                .from('mark_entry_settings')
+                .upsert({
+                    setting_key: key,
+                    enabled: false,
+                    closed_by: currentUser?.name || 'Administrator',
+                    closed_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction(
+            'close',
+            `${block} - All Subjects`,
+            block,
+            `Closed all ${count} subjects in ${block}`
+        );
+        
+        showNotification(`🔒 Closed ${count} subjects in ${block}`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Log entry control action
+async function logEntryControlAction(action, target, block, details) {
+    try {
+        const { error } = await sb
+            .from('mark_entry_logs')
+            .insert({
+                lecturer_name: currentUser?.name || 'Administrator',
+                action: action,
+                target: target,
+                block: block,
+                details: details,
+                created_at: new Date().toISOString()
+            });
+        
+        if (error) console.error('Log error:', error);
+        
+    } catch (error) {
+        console.error('Failed to log action:', error);
+    }
+}
+
+// Refresh entry control
+function refreshEntryControl() {
+    loadEntryControl();
+    showNotification('🔄 Entry Control refreshed!', false);
+}
+
+// Export logs
+function exportECLogs() {
+    if (!ecLogs || ecLogs.length === 0) {
+        showNotification('No logs to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Timestamp', 'User', 'Action', 'Target', 'Block', 'Details'];
+    const rows = ecLogs.map(log => [
+        log.created_at ? new Date(log.created_at).toLocaleString() : '',
+        log.lecturer_name || 'System',
+        log.action || '',
+        log.target || '',
+        log.block || '',
+        log.details || ''
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `entry_control_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    showNotification('✅ Logs exported!', 'success');
+}
+
+// Save column setting
+async function saveColumnSetting(columnId, visible) {
+    try {
+        // Check if setting exists
+        const { data: existing, error: fetchError } = await sb
+            .from('column_settings')
+            .select('*')
+            .eq('block', 'global')
+            .eq('subject', 'all')
+            .eq('year', currentYear || '2025');
+        
+        if (fetchError) throw fetchError;
+        
+        let columns = [];
+        if (existing && existing.length > 0) {
+            columns = existing[0].columns || [];
+        }
+        
+        // Update column visibility
+        const colIndex = columns.findIndex(c => c.id === columnId);
+        if (colIndex !== -1) {
+            columns[colIndex].visible = visible;
+        } else {
+            columns.push({ id: columnId, visible: visible });
+        }
+        
+        // Save to database
+        const { error } = await sb
+            .from('column_settings')
+            .upsert({
+                block: 'global',
+                subject: 'all',
+                year: currentYear || '2025',
+                columns: columns,
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        // Update local cache
+        await loadEntryControl();
+        showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}!`, false);
+        
+    } catch (error) {
+        console.error('Error saving column:', error);
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Reset all columns
+async function resetAllColumns() {
+    if (!confirm('⚠️ Reset ALL column settings to default for ALL users?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('column_settings')
+            .delete()
+            .eq('block', 'global')
+            .eq('subject', 'all');
+        
+        if (error) throw error;
+        
+        await logEntryControlAction(
+            'reset_columns',
+            'All Columns',
+            null,
+            'Reset all column settings to default'
+        );
+        
+        showNotification('✅ All columns reset to default!', false);
+        loadEntryControl();
+        
+    } catch (error) {
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// ============================================================
+// ADDITIONAL ADMIN FUNCTIONS FROM YOUR HTML
+// ============================================================
+
+// Toggle Mark Entry (Lecturer view)
+async function toggleMarkEntry(block, subject, currentStatus) {
+    const newStatus = !currentStatus;
+    const action = newStatus ? 'open' : 'close';
+    
+    if (!confirm(`⚠️ ${newStatus ? 'Open' : 'Close'} entry for "${subject}"?`)) return;
+    
+    try {
+        const key = `${block}_${subject}`;
+        const { error } = await sb
+            .from('mark_entry_settings')
+            .upsert({
+                setting_key: key,
+                enabled: newStatus,
+                closed_by: newStatus ? null : currentUser?.name || 'Administrator',
+                closed_at: newStatus ? null : new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        await logEntryControlAction(
+            action,
+            subject,
+            block,
+            `${newStatus ? 'Opened' : 'Closed'} entry for ${subject}`
+        );
+        
+        showNotification(`✅ ${newStatus ? 'Opened' : 'Closed'} "${subject}"!`, false);
+        // Refresh the view
+        if (typeof loadLecturerSubjects === 'function') {
+            loadLecturerSubjects();
+        }
+        
+    } catch (error) {
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Get subject status for lecturer view
+async function getSubjectStatus(block, subject) {
+    try {
+        const key = `${block}_${subject}`;
+        const { data, error } = await sb
+            .from('mark_entry_settings')
+            .select('*')
+            .eq('setting_key', key)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        // Check global and class settings too
+        const { data: globalData } = await sb
+            .from('mark_entry_settings')
+            .select('*')
+            .eq('setting_key', 'global')
+            .maybeSingle();
+        
+        const year = currentYear || '2025';
+        const classKey = `${year}_all`;
+        const { data: classData } = await sb
+            .from('mark_entry_settings')
+            .select('*')
+            .eq('setting_key', classKey)
+            .maybeSingle();
+        
+        // Check in order: subject > class > global
+        if (data && data.enabled === false) return { isOpen: false, reason: 'Subject entry is closed' };
+        if (classData && classData.enabled === false) return { isOpen: false, reason: `Entry closed for ${year} class` };
+        if (globalData && globalData.enabled === false) return { isOpen: false, reason: 'Global entry is closed' };
+        
+        return { isOpen: true, reason: null };
+        
+    } catch (error) {
+        console.error('Error getting subject status:', error);
+        return { isOpen: true, reason: null };
+    }
+}
+
+// ============================================================
+// BULK OPERATIONS
+// ============================================================
+
+// Bulk open subjects by block
+async function bulkOpenSubjects(block) {
+    if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
+    
+    showLoading(`Opening subjects in ${block}...`);
+    
+    try {
+        const subjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of subjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb
+                .from('mark_entry_settings')
+                .upsert({
+                    setting_key: key,
+                    enabled: true,
+                    closed_by: null,
+                    closed_at: null,
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction(
+            'bulk_open',
+            `${block} - All Subjects`,
+            block,
+            `Bulk opened ${count} subjects in ${block}`
+        );
+        
+        showNotification(`✅ Opened ${count} subjects`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Bulk close subjects by block
+async function bulkCloseSubjects(block) {
+    if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}? This will LOCK ALL MARK ENTRY for this block.`)) return;
+    
+    showLoading(`Closing subjects in ${block}...`);
+    
+    try {
+        const subjects = ecSubjects.filter(s => s.block === block);
+        let count = 0;
+        
+        for (const s of subjects) {
+            const key = `${s.block}_${s.unit_name}`;
+            const { error } = await sb
+                .from('mark_entry_settings')
+                .upsert({
+                    setting_key: key,
+                    enabled: false,
+                    closed_by: currentUser?.name || 'Administrator',
+                    closed_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (!error) count++;
+        }
+        
+        await logEntryControlAction(
+            'bulk_close',
+            `${block} - All Subjects`,
+            block,
+            `Bulk closed ${count} subjects in ${block}`
+        );
+        
+        showNotification(`🔒 Closed ${count} subjects`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+// Initialize entry control when tab is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if entry control tab exists
+    const entryTab = document.querySelector('[data-tab="entry-control"]');
+    if (entryTab) {
+        entryTab.addEventListener('click', function() {
+            setTimeout(() => {
+                if (typeof loadEntryControl === 'function') {
+                    loadEntryControl();
+                }
+            }, 300);
+        });
+    }
+});
+
+// Make functions globally accessible
+window.loadEntryControl = loadEntryControl;
+window.toggleGlobalEntry = toggleGlobalEntry;
+window.toggleClassEntry = toggleClassEntry;
+window.toggleSubjectEntry = toggleSubjectEntry;
+window.openBlockSubjects = openBlockSubjects;
+window.openAllSubjectsInBlock = openAllSubjectsInBlock;
+window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
+window.bulkOpenSubjects = bulkOpenSubjects;
+window.bulkCloseSubjects = bulkCloseSubjects;
+window.saveColumnSetting = saveColumnSetting;
+window.resetAllColumns = resetAllColumns;
+window.refreshEntryControl = refreshEntryControl;
+window.exportECLogs = exportECLogs;
+window.toggleMarkEntry = toggleMarkEntry;
+window.getSubjectStatus = getSubjectStatus;
+
+console.log('✅ Entry Control functions loaded!');
+// ============================================================
+// MARKS ENTRY FUNCTIONS
+// ============================================================
+
+// Load marks entry section
+async function loadMarksEntrySection() {
+    const programSelect = document.getElementById('me_program_select');
+    if (programSelect) {
+        // Initialize program dropdown
+        if (typeof updateProgramDropdown === 'function') {
+            updateProgramDropdown(programSelect);
+        }
+        
+        // If a program is already selected, load blocks
+        if (programSelect.value) {
+            if (typeof loadMEBlocks === 'function') {
+                loadMEBlocks();
+            }
+        } else {
+            // Set default to KRCHN
+            programSelect.value = 'KRCHN';
+            if (typeof loadMEBlocks === 'function') {
+                loadMEBlocks();
+            }
+        }
+    }
+}
+
+// Calculate total marks
+function calculateTotal(cat1, cat2, exam, type) {
+    let total = 0;
+    if (type === 'full') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'single_cat') {
+        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'exam_only') {
+        total = Math.round(Math.min(exam,100) * 10) / 10;
+    } else if (type === 'cats_only') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
+    } else if (type === 'cat_only') {
+        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+    }
+    return total;
+}
+
+// Make functions global
+window.loadMarksEntrySection = loadMarksEntrySection;
+window.calculateTotal = calculateTotal;
 
 console.log('✅ Marks Entry functions loaded!');
 // =====================================================
