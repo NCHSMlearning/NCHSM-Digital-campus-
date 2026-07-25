@@ -28,7 +28,7 @@
             <span></span>
         </button>
 
-   <!-- ===== SIDEBAR - SUPER ADMIN STYLE ===== -->
+   <!-- ===== SIDEBAR - SUPER ADMIN STYLE (FIXED DROPDOWNS) ===== -->
 <aside class="sidebar" id="sidebar" style="
     width: 280px;
     height: 100vh;
@@ -42,8 +42,7 @@
     flex-direction: column;
     box-shadow: 4px 0 20px rgba(0,0,0,0.1);
     z-index: 999;
-    overflow: visible !important;  /* ← CHANGE THIS */
-    overflow-y: visible !important;  /* ← CHANGE THIS */
+    overflow-y: auto;
     transition: all 0.3s ease;
 ">
     <!-- Sidebar Header -->
@@ -189,193 +188,192 @@
             </a>
         </li>
         
-     <!-- SCHEDULING DROPDOWN -->
-<li class="nav-dropdown" style="margin-bottom: 2px;">
-    <a 
-        href="#" 
-        class="dropdown-toggle" 
-        onclick="window.toggleDropdown(event); return false;"
-        style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            cursor: pointer;
-        "
-        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-        onmouseout="this.style.background='transparent'"
-    >
-        <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
-        <span>Scheduling</span>
-        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
-    </a>
-    <ul 
-        class="dropdown-menu"
-        style="
-            list-style: none;
-            padding: 4px 0 4px 20px;
-            margin: 0;
-            display: none;
-        "
-    >
-        <li>
+        <!-- SCHEDULING DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
+        <li class="nav-dropdown" style="margin-bottom: 2px;">
             <a 
                 href="#" 
-                data-tab="sessions"
+                class="dropdown-toggle"
                 style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    color: rgba(255,255,255,0.8);
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
                     text-decoration: none;
-                    font-size: 13px;
+                    font-size: 14px;
+                    font-weight: 500;
                     transition: all 0.2s;
+                    cursor: pointer;
                 "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
             >
-                <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Manage Sessions</span>
+                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
+                <span>Scheduling</span>
+                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
             </a>
+            <ul 
+                class="dropdown-menu"
+                style="
+                    list-style: none;
+                    padding: 4px 0 4px 20px;
+                    margin: 0;
+                    display: none;
+                "
+            >
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="sessions"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Manage Sessions</span>
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="attendance"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Attendance</span>
+                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
+                    </a>
+                </li>
+            </ul>
         </li>
-        <li>
+        
+        <!-- ACADEMIC DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
+        <li class="nav-dropdown" style="margin-bottom: 2px;">
             <a 
                 href="#" 
-                data-tab="attendance"
+                class="dropdown-toggle"
                 style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    color: rgba(255,255,255,0.8);
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
                     text-decoration: none;
-                    font-size: 13px;
+                    font-size: 14px;
+                    font-weight: 500;
                     transition: all 0.2s;
+                    cursor: pointer;
                 "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
             >
-                <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Attendance</span>
-                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
+                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+                <span>Academic</span>
+                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
             </a>
-        </li>
-    </ul>
-</li>
-
-<!-- ACADEMIC DROPDOWN -->
-<li class="nav-dropdown" style="margin-bottom: 2px;">
-    <a 
-        href="#" 
-        class="dropdown-toggle"
-        onclick="window.toggleDropdown(event); return false;"
-        style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            cursor: pointer;
-        "
-        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-        onmouseout="this.style.background='transparent'"
-    >
-        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-        <span>Academic</span>
-        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
-    </a>
-    <ul 
-        class="dropdown-menu"
-        style="
-            list-style: none;
-            padding: 4px 0 4px 20px;
-            margin: 0;
-            display: none;
-        "
-    >
-        <li>
-            <a 
-                href="#" 
-                data-tab="cats"
+            <ul 
+                class="dropdown-menu"
                 style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    color: rgba(255,255,255,0.8);
-                    text-decoration: none;
-                    font-size: 13px;
-                    transition: all 0.2s;
+                    list-style: none;
+                    padding: 4px 0 4px 20px;
+                    margin: 0;
+                    display: none;
                 "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
             >
-                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Exams / CATS</span>
-                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
-            </a>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="cats"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Exams / CATS</span>
+                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="marks-management"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Marks Management</span>
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="resources"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Resources</span>
+                    </a>
+                </li>
+            </ul>
         </li>
-        <li>
-            <a 
-                href="#" 
-                data-tab="marks-management"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    color: rgba(255,255,255,0.8);
-                    text-decoration: none;
-                    font-size: 13px;
-                    transition: all 0.2s;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-            >
-                <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Marks Management</span>
-            </a>
-        </li>
-        <li>
-            <a 
-                href="#" 
-                data-tab="resources"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    color: rgba(255,255,255,0.8);
-                    text-decoration: none;
-                    font-size: 13px;
-                    transition: all 0.2s;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-            >
-                <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Resources</span>
-            </a>
-        </li>
-    </ul>
-</li>
+        
         <!-- REPORTS -->
         <li style="margin-bottom: 2px;">
             <a 
