@@ -35,72 +35,220 @@ const LecturerMarks = {
         console.log('✅ Lecturer Marks initialized');
     },
     
-    async detectLecturerProgram() {
-        console.log('🔍 Detecting lecturer program...');
-        
+  // ============================================================
+// DETECT LECTURER PROGRAM - PERMANENT FIX
+// ============================================================
+
+async function detectLecturerProgram() {
+    console.log('🔍 Detecting lecturer program...');
+    
+    try {
+        // 1. Get current session
+        let session = null;
         try {
-            const { data: { user }, error: userError } = await sb.auth.getUser();
-            if (userError) throw userError;
-            
-            const { data: profile, error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            
-            if (profileError) throw profileError;
-            
-            const { data: staff, error: staffError } = await sb
-                .from('staff_records')
-                .select('*')
-                .eq('email', profile?.email || user.email)
-                .maybeSingle();
-            
-            me_currentLecturer = { profile, staff };
-            
-            const isTVET = staff?.program && staff.program !== 'KRCHN';
-            const programCode = staff?.program || profile?.program || 'KRCHN';
-            const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
-            const departmentName = staff?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
-            
-            const programNameEl = document.getElementById('lecturerProgramName');
-            const programTypeEl = document.getElementById('lecturerProgramType');
-            const unitCountEl = document.getElementById('lecturerUnitCount');
-            const programSelect = document.getElementById('me_program_select');
-            
-            if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
-            if (programTypeEl) programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
-            if (unitCountEl) unitCountEl.textContent = staff?.assigned_units?.length || 0;
-            
-            if (programSelect) {
-                programSelect.innerHTML = `<option value="${programCode}">${programName}</option>`;
-                programSelect.value = programCode;
+            session = JSON.parse(localStorage.getItem('lecturerSession') || sessionStorage.getItem('lecturerSession') || '{}');
+        } catch (e) {
+            console.warn('No session found');
+        }
+        
+        console.log('📋 Session data:', session);
+        
+        // 2. Get current user from auth
+        const { data: { user }, error: userError } = await sb.auth.getUser();
+        if (userError) {
+            console.error('❌ Auth error:', userError);
+            if (session && session.email) {
+                console.log('📧 Using session email:', session.email);
+                return await loadLecturerByEmail(session.email);
             }
-            
-            const tvetInfo = document.getElementById('tvetDepartmentInfo');
-            const krchnInfo = document.getElementById('krchnDepartmentInfo');
-            
-            if (isTVET) {
-                if (tvetInfo) tvetInfo.style.display = 'block';
-                if (krchnInfo) krchnInfo.style.display = 'none';
-                const deptName = document.getElementById('tvetDepartmentName');
-                if (deptName) deptName.textContent = departmentName;
-            } else {
-                if (tvetInfo) tvetInfo.style.display = 'none';
-                if (krchnInfo) krchnInfo.style.display = 'block';
-                const blockName = document.getElementById('krchnBlockName');
-                if (blockName) blockName.textContent = staff?.block || 'N/A';
-            }
-            
-            await loadMEBlocks();
-            return staff;
-            
-        } catch (error) {
-            console.error('Error detecting lecturer program:', error);
+            throw userError;
+        }
+        
+        console.log('👤 Current user:', user?.email);
+        
+        // 3. Get email
+        const userEmail = session?.email || user?.email;
+        
+        if (!userEmail) {
+            console.error('❌ No email found');
             return null;
         }
-    },
+        
+        // 4. Check consolidated_user_profiles_table
+        let profile = null;
+        let staff = null;
+        
+        const { data: profileData, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', userEmail)
+            .maybeSingle();
+        
+        if (!profileError && profileData) {
+            profile = profileData;
+            console.log('📋 Found profile:', profileData);
+        }
+        
+        // 5. Check staff_records
+        const { data: staffData, error: staffError } = await sb
+            .from('staff_records')
+            .select('*')
+            .eq('email', userEmail)
+            .maybeSingle();
+        
+        if (!staffError && staffData) {
+            staff = staffData;
+            console.log('📋 Found staff record:', staffData);
+        }
+        
+        // 6. Determine program
+        let programCode = 'KRCHN';
+        let programName = 'KRCHN Nursing';
+        let isTVET = false;
+        let departmentName = 'Nursing';
+        
+        if (staff) {
+            if (staff.program) {
+                programCode = staff.program;
+                isTVET = programCode !== 'KRCHN';
+                programName = isTVET ? 'TVET' : 'KRCHN Nursing';
+            }
+            if (staff.department) {
+                departmentName = staff.department;
+            }
+        } else if (profile) {
+            if (profile.program) {
+                programCode = profile.program;
+                isTVET = programCode !== 'KRCHN';
+                programName = isTVET ? 'TVET' : 'KRCHN Nursing';
+            }
+            if (profile.department) {
+                departmentName = profile.department;
+            }
+        }
+        
+        console.log(`📊 Program detected: ${programCode} - ${programName}`);
+        
+        // 7. Update UI
+        const programNameEl = document.getElementById('lecturerProgramName');
+        const programTypeEl = document.getElementById('lecturerProgramType');
+        const unitCountEl = document.getElementById('lecturerUnitCount');
+        const programSelect = document.getElementById('me_program_select');
+        
+        if (programNameEl) {
+            programNameEl.textContent = `${programName} - ${departmentName}`;
+        }
+        
+        if (programTypeEl) {
+            programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
+        }
+        
+        // Count assigned units
+        let assignedCount = 0;
+        if (staff?.id) {
+            const { data: assignments, error: assignError } = await sb
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', staff.id);
+            
+            if (!assignError && assignments) {
+                assignedCount = assignments.length;
+                console.log('📋 Assigned units:', assignments.length);
+            }
+        }
+        
+        if (unitCountEl) {
+            unitCountEl.textContent = assignedCount || '0';
+        }
+        
+        // Update program select
+        if (programSelect) {
+            programSelect.innerHTML = `<option value="${programCode}">${programName} (${programCode})</option>`;
+            programSelect.value = programCode;
+            programSelect.disabled = false;
+        }
+        
+        // Show TVET or KRCHN info
+        const tvetInfo = document.getElementById('tvetDepartmentInfo');
+        const krchnInfo = document.getElementById('krchnDepartmentInfo');
+        
+        if (isTVET) {
+            if (tvetInfo) tvetInfo.style.display = 'block';
+            if (krchnInfo) krchnInfo.style.display = 'none';
+            const deptName = document.getElementById('tvetDepartmentName');
+            if (deptName) deptName.textContent = departmentName;
+        } else {
+            if (tvetInfo) tvetInfo.style.display = 'none';
+            if (krchnInfo) krchnInfo.style.display = 'block';
+            const blockName = document.getElementById('krchnBlockName');
+            if (blockName) blockName.textContent = staff?.block || 'Block 2';
+        }
+        
+        // Store in me_currentLecturer
+        me_currentLecturer = { profile, staff };
+        me_currentProgram = programCode;
+        
+        // Load blocks
+        await loadMEBlocks();
+        
+        console.log('✅ Lecturer program detection complete');
+        return staff || profile;
+        
+    } catch (error) {
+        console.error('❌ Error detecting lecturer program:', error);
+        console.error('Error details:', error.message);
+        
+        // Show error in UI
+        const programNameEl = document.getElementById('lecturerProgramName');
+        if (programNameEl) {
+            programNameEl.textContent = '⚠️ Error loading profile. Please refresh or contact admin.';
+        }
+        
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading lecturer profile: ' + error.message, 'error');
+        }
+        
+        return null;
+    }
+}
+    // ============================================================
+// LOAD LECTURER BY EMAIL - HELPER FUNCTION
+// ============================================================
+
+async function loadLecturerByEmail(email) {
+    console.log('📧 Loading lecturer by email:', email);
     
+    // Check consolidated_user_profiles_table
+    const { data: profile, error: profileError } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+    
+    if (!profileError && profile) {
+        me_currentLecturer = { profile, staff: null };
+        me_currentProgram = profile.program || 'KRCHN';
+        console.log('✅ Lecturer loaded from profile:', profile);
+        return profile;
+    }
+    
+    // Check staff_records
+    const { data: staff, error: staffError } = await sb
+        .from('staff_records')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+    
+    if (!staffError && staff) {
+        me_currentLecturer = { profile: null, staff };
+        me_currentProgram = staff.program || 'KRCHN';
+        console.log('✅ Lecturer loaded from staff_records:', staff);
+        return staff;
+    }
+    
+    console.error('❌ Lecturer not found for email:', email);
+    return null;
+}
     async loadMarksManagement() {
         const blockSelect = document.getElementById('lecBlockSelect');
         if (!blockSelect) return;
@@ -1829,6 +1977,8 @@ function hideLoading() {
 // ============================================================
 
 window.LecturerMarks = LecturerMarks;
+window.detectLecturerProgram = detectLecturerProgram;
+window.loadLecturerByEmail = loadLecturerByEmail;
 
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
