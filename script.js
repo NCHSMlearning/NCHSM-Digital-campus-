@@ -18661,20 +18661,62 @@ window.getStarHTML = getStarHTML;
 
 console.log('✅ Reviews & Newsletter module loaded');
 
-
 // ============================================================
 // MARKS ENTRY SYSTEM - TVET + NURSING
+// WITH ADMIN-ONLY COLUMN MANAGEMENT (GLOBAL SETTINGS)
 // ============================================================
 
-// Current state for Marks Entry
+// ============================================================
+// STATE
+// ============================================================
+
 let me_currentMarks = [];
 let me_currentBlock = '';
 let me_currentSubject = '';
 let me_currentYear = '2025';
 let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
+let me_columnSettings = {};
 
-// Load blocks based on selected program
+// ============================================================
+// CHECK IF USER IS ADMIN
+// ============================================================
+
+function isUserAdmin() {
+    try {
+        // Check from global currentUser
+        if (window.currentUser) {
+            const role = window.currentUser.role || window.currentUser.user_role;
+            return role === 'admin' || role === 'superadmin' || role === 'super_admin';
+        }
+        
+        // Check from sessionStorage
+        const userData = sessionStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            const role = user.role || user.user_role;
+            return role === 'admin' || role === 'superadmin' || role === 'super_admin';
+        }
+        
+        // Check from localStorage
+        const localUser = localStorage.getItem('user');
+        if (localUser) {
+            const user = JSON.parse(localUser);
+            const role = user.role || user.user_role;
+            return role === 'admin' || role === 'superadmin' || role === 'super_admin';
+        }
+        
+        return false;
+    } catch (e) {
+        console.error('Error checking admin status:', e);
+        return false;
+    }
+}
+
+// ============================================================
+// LOAD BLOCKS
+// ============================================================
+
 async function loadMEBlocks() {
     const program = document.getElementById('me_program_select')?.value;
     const blockSelect = document.getElementById('me_block_select');
@@ -18708,7 +18750,7 @@ async function loadMEBlocks() {
         blocks.forEach(block => {
             const option = document.createElement('option');
             option.value = block;
-            option.textContent = block;
+            option.textContent = block.replace(/_/g, ' ');
             blockSelect.appendChild(option);
         });
         
@@ -18721,11 +18763,16 @@ async function loadMEBlocks() {
     } catch (error) {
         console.error('Error loading blocks:', error);
         blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
-        showNotification('Error loading blocks: ' + error.message, 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading blocks: ' + error.message, 'error');
+        }
     }
 }
 
-// Load subjects for selected block
+// ============================================================
+// LOAD SUBJECTS
+// ============================================================
+
 async function loadMESubjects() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -18748,7 +18795,7 @@ async function loadMESubjects() {
             .eq('program', program)
             .eq('block', block)
             .eq('status', 'active')
-            .order('unit_code', { ascending: true });
+            .order('unit_name', { ascending: true });
         
         if (error) throw error;
         
@@ -18766,14 +18813,27 @@ async function loadMESubjects() {
             subjectSelect.innerHTML = '<option value="">No subjects found for this block</option>';
         }
         
+        // Update assessment type
+        const assessmentSelect = document.getElementById('me_assessment_type');
+        if (assessmentSelect && data.length > 0) {
+            const firstUnit = data[0];
+            assessmentSelect.value = firstUnit.assessment_type || 'full';
+            assessmentSelect.disabled = false;
+        }
+        
     } catch (error) {
         console.error('Error loading subjects:', error);
         subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
-        showNotification('Error loading subjects: ' + error.message, 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading subjects: ' + error.message, 'error');
+        }
     }
 }
 
-// Load marks for selected subject - FIXED
+// ============================================================
+// LOAD MARKS ENTRY
+// ============================================================
+
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -18819,7 +18879,7 @@ async function loadMarksEntry() {
         
         if (error) throw error;
         
-        // ✅ FIX: Use student_id (not admission_number)
+        // Get students for this program/block
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
@@ -18830,15 +18890,10 @@ async function loadMarksEntry() {
         if (studentError) throw studentError;
         
         console.log('📊 Students found:', students?.length || 0);
-        if (students && students.length > 0) {
-            console.log('📊 Sample student:', students[0]);
-        }
         
-        // Combine data - use student_id as the key
+        // Build marks map
         const marksMap = {};
         marks.forEach(m => {
-            // The marks table uses admission_number as the student identifier
-            // We need to match it with student_id
             marksMap[m.admission_number] = m;
         });
         
@@ -18857,13 +18912,17 @@ async function loadMarksEntry() {
                 grade: existing?.grade || '',
                 gradedBy: existing?.graded_by || '',
                 assessmentType: existing?.assessment_type || assessmentType,
-                id: existing?.id || null
+                id: existing?.id || null,
+                approval_status: existing?.approval_status || 'draft'
             };
         });
         
         me_currentMarks = fullMarks;
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
         updateMarksEntryStats(fullMarks, assessmentType);
+        
+        // ✅ Load column settings and apply visibility
+        await loadSubjectColumnSettings();
         
     } catch (error) {
         console.error('Error loading marks:', error);
@@ -18872,18 +18931,24 @@ async function loadMarksEntry() {
                 <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
                 <h4 style="color: #991b1b;">Error loading marks</h4>
                 <p style="color: #64748b;">${error.message}</p>
-                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px;">
+                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
                     <i class="fas fa-sync-alt"></i> Retry
                 </button>
             </div>
         `;
-        showNotification('Error loading marks: ' + error.message, 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading marks: ' + error.message, 'error');
+        }
     }
 }
 
-// Render marks table
+// ============================================================
+// RENDER MARKS TABLE
+// ============================================================
+
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
     const container = document.getElementById('me_marks_container');
+    if (!container) return;
     
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
@@ -18910,11 +18975,16 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <button onclick="loadMarksEntry()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
+                ${isUserAdmin() ? `
+                <button onclick="resetGlobalColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-undo"></i> Reset Columns
+                </button>
+                ` : ''}
             </div>
         </div>
         
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <table id="me_marks_table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
                         <th style="padding: 10px 6px; text-align: center; width: 35px;">#</th>
@@ -18927,6 +18997,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
                         <th style="padding: 10px 8px; text-align: center;">Rating</th>
+                        ${isUserAdmin() ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>`;
@@ -18937,12 +19008,18 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const exam = parseFloat(m.exam) || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
-        const rowClass = total >= 60 ? 'pass-row' : (total > 0 ? 'fail-row' : 'pending-row');
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
         
-        html += `<tr class="${rowClass}" style="${total > 0 ? `background: ${total >= 60 ? '#d1fae5' : '#fee2e2'};` : ''}">
+        const approvalBadge = {
+            'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
+            'approved': '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:10px;">✅ Approved</span>',
+            'rejected': '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;">❌ Rejected</span>',
+            'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
+        }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
+        
+        html += `<tr>
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
             <td style="padding: 8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>
@@ -18962,6 +19039,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
                 ${total > 0 ? `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
+            ${isUserAdmin() ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
         </tr>`;
     });
     
@@ -18973,13 +19051,21 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks
             </button>
+            ${isUserAdmin() ? `
+            <button onclick="submitMarksForApproval()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                <i class="fas fa-paper-plane"></i> Submit for Approval
+            </button>
+            ` : ''}
         </div>
     `;
     
     container.innerHTML = html;
 }
 
-// Update marks row when input changes
+// ============================================================
+// UPDATE MARKS ROW
+// ============================================================
+
 function updateMarksEntryRow(index) {
     const cat1 = parseFloat(document.getElementById(`me_cat1_${index}`)?.value) || 0;
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
@@ -18989,28 +19075,24 @@ function updateMarksEntryRow(index) {
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
     
-    // Update total
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
         totalEl.textContent = total > 0 ? total : '--';
         totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
     }
     
-    // Update grade
     const gradeEl = document.getElementById(`me_grade_${index}`);
     if (gradeEl) {
         gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
         gradeEl.style.color = gradeInfo.color;
     }
     
-    // Update points
     const pointsEl = document.getElementById(`me_points_${index}`);
     if (pointsEl) {
         pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
         pointsEl.style.color = gradeInfo.color;
     }
     
-    // Update rating
     const ratingEl = document.getElementById(`me_rating_${index}`);
     if (ratingEl) {
         if (total > 0) {
@@ -19019,9 +19101,19 @@ function updateMarksEntryRow(index) {
             ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
         }
     }
+    
+    // Update me_currentMarks
+    if (me_currentMarks && me_currentMarks[index]) {
+        me_currentMarks[index].cat1 = cat1;
+        me_currentMarks[index].cat2 = cat2;
+        me_currentMarks[index].exam = exam;
+    }
 }
 
-// Calculate total based on assessment type
+// ============================================================
+// CALCULATE TOTAL
+// ============================================================
+
 function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     let total = 0;
     if (type === 'full') {
@@ -19038,7 +19130,10 @@ function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     return total;
 }
 
-// Get grade info
+// ============================================================
+// GET GRADE INFO
+// ============================================================
+
 function getMarksEntryGrade(score) {
     if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4, color: '#065f46' };
     else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3, color: '#1e40af' };
@@ -19046,7 +19141,10 @@ function getMarksEntryGrade(score) {
     else return { grade: 'D', rating: 'Fail', points: 0, color: '#991b1b' };
 }
 
-// Update stats
+// ============================================================
+// UPDATE STATS
+// ============================================================
+
 function updateMarksEntryStats(marks, assessmentType) {
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
@@ -19056,13 +19154,21 @@ function updateMarksEntryStats(marks, assessmentType) {
     const avg = withScores.length > 0 ? 
         withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
     
-    document.getElementById('me_total_students').textContent = marks.length;
-    document.getElementById('me_total_subjects').textContent = marks.length > 0 ? 1 : 0;
-    document.getElementById('me_pass_rate').textContent = marks.length > 0 ? Math.round((passing.length / marks.length) * 100) + '%' : '0%';
-    document.getElementById('me_class_avg').textContent = Math.round(avg) + '%';
+    const totalEl = document.getElementById('me_total_students');
+    const subjectsEl = document.getElementById('me_total_subjects');
+    const passEl = document.getElementById('me_pass_rate');
+    const avgEl = document.getElementById('me_class_avg');
+    
+    if (totalEl) totalEl.textContent = marks.length;
+    if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
+    if (passEl) passEl.textContent = marks.length > 0 ? Math.round((passing.length / marks.length) * 100) + '%' : '0%';
+    if (avgEl) avgEl.textContent = Math.round(avg) + '%';
 }
 
-// Save all marks
+// ============================================================
+// SAVE MARKS
+// ============================================================
+
 async function saveMarksEntry() {
     const program = me_currentProgram;
     const block = me_currentBlock;
@@ -19099,18 +19205,17 @@ async function saveMarksEntry() {
     });
     
     if (marksData.length === 0) {
-        showNotification('No marks to save', 'warning');
+        if (typeof showNotification === 'function') showNotification('No marks to save', 'warning');
         return;
     }
     
-    showLoading('Saving marks...');
+    if (typeof showLoading === 'function') showLoading('Saving marks...');
     
     try {
         let saved = 0;
         let errors = 0;
         
         for (const mark of marksData) {
-            // Check if exists
             const { data: existing } = await sb
                 .from('student_marks')
                 .select('id')
@@ -19159,23 +19264,74 @@ async function saveMarksEntry() {
             }
         }
         
-        hideLoading();
-        showNotification(`✅ Saved ${saved} marks${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Saved ${saved} marks${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
+        }
         
-        // Reload marks to show updated data
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error saving marks: ' + error.message, 'error');
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error saving marks: ' + error.message, 'error');
     }
 }
 
-// Export marks to CSV
+// ============================================================
+// SUBMIT FOR APPROVAL (ADMIN ONLY)
+// ============================================================
+
+async function submitMarksForApproval() {
+    if (!isUserAdmin()) {
+        if (typeof showNotification === 'function') showNotification('Only admins can submit for approval', 'error');
+        return;
+    }
+    
+    const block = me_currentBlock;
+    const subject = me_currentSubject;
+    const year = me_currentYear;
+    
+    if (!block || !subject) {
+        if (typeof showNotification === 'function') showNotification('Please load marks first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Submit ${subject} marks for admin approval?`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Submitting for approval...');
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'pending',
+                submitted_at: new Date().toISOString(),
+                submitted_by: window.currentUser?.id || null
+            })
+            .eq('block', block)
+            .eq('subject_name', subject)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('✅ Marks submitted for approval!', 'success');
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// EXPORT MARKS TO CSV
+// ============================================================
+
 function exportMarksEntry() {
     const marks = me_currentMarks;
     if (!marks || marks.length === 0) {
-        showNotification('No data to export', 'warning');
+        if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
         return;
     }
     
@@ -19206,16 +19362,39 @@ function exportMarksEntry() {
     });
     
     downloadCSV(csv, `marks_${me_currentSubject}_${me_currentBlock}_${me_currentYear}.csv`);
-    showNotification('✅ Marks exported!', 'success');
+    if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
-// Refresh marks data
+// ============================================================
+// REFRESH MARKS DATA
+// ============================================================
+
 function refreshMarksData() {
     loadMarksEntry();
-    showNotification('🔄 Data refreshed!', 'success');
+    if (typeof showNotification === 'function') showNotification('🔄 Data refreshed!', 'success');
 }
 
-// Make functions globally accessible
+// ============================================================
+// HELPER: DOWNLOAD CSV
+// ============================================================
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// GLOBAL REGISTRATION
+// ============================================================
+
+// Core functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMESubjects = loadMESubjects;
 window.loadMarksEntry = loadMarksEntry;
@@ -19227,18 +19406,31 @@ window.refreshMarksData = refreshMarksData;
 window.calculateMarksEntryTotal = calculateMarksEntryTotal;
 window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
+window.submitMarksForApproval = submitMarksForApproval;
+
+// Column Management functions (Admin only)
+window.loadSubjectColumnSettings = loadSubjectColumnSettings;
+window.renderAdminSubjectColumns = renderAdminSubjectColumns;
+window.saveGlobalColumnSetting = saveGlobalColumnSetting;
+window.applyGlobalColumnVisibility = applyGlobalColumnVisibility;
+window.resetGlobalColumns = resetGlobalColumns;
+window.isUserAdmin = isUserAdmin;
 
 console.log('✅ Marks Entry functions loaded!');
+console.log('✅ Column Management loaded (Admin only)');
 
 // ============================================================
-// ENTRY CONTROL - SINGLE CONSOLIDATED VERSION
+// ENTRY CONTROL - COMPLETE SINGLE VERSION
 // ============================================================
 
-// State variables
+// ============================================================
+// STATE VARIABLES
+// ============================================================
+
 let ecSettings = {};
 let ecLogs = [];
 let ecSubjects = [];
-let ecColumns = [];
+let currentYear = '2025';
 
 // ============================================================
 // CORE LOAD FUNCTIONS
@@ -19247,9 +19439,13 @@ let ecColumns = [];
 async function loadEntryControl() {
     console.log('🔒 Loading Entry Control Panel...');
     
-    showLoading('Loading entry control...');
+    if (typeof showLoading === 'function') showLoading('Loading entry control...');
     
     try {
+        if (typeof sb === 'undefined') {
+            throw new Error('Supabase client not initialized');
+        }
+        
         const { data: settings, error: settingsError } = await sb
             .from('mark_entry_settings')
             .select('*');
@@ -19259,10 +19455,11 @@ async function loadEntryControl() {
         ecSettings = {};
         settings.forEach(s => { ecSettings[s.setting_key] = s; });
         
+        // ✅ FIXED: Use 'timestamp' not 'created_at'
         const { data: logs, error: logsError } = await sb
             .from('mark_entry_logs')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('timestamp', { ascending: false })
             .limit(100);
         
         if (logsError) throw logsError;
@@ -19277,28 +19474,22 @@ async function loadEntryControl() {
         if (subjectsError) throw subjectsError;
         ecSubjects = subjects || [];
         
-        const { data: columns, error: columnsError } = await sb
-            .from('column_settings')
-            .select('*');
-        
-        if (columnsError) throw columnsError;
-        ecColumns = columns || [];
-        
         renderECStats();
         renderECGlobal();
         renderECClassYears();
         renderECBlocks();
         renderECSubjects();
-        renderECColumns();
         renderECLogs();
         populateECBlockFilter();
         
-        hideLoading();
+        if (typeof hideLoading === 'function') hideLoading();
         
     } catch (error) {
-        console.error('❌ Error:', error);
-        hideLoading();
-        showNotification('Error loading entry control: ' + error.message, true);
+        console.error('❌ Error loading entry control:', error);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading entry control: ' + error.message, 'error');
+        }
     }
 }
 
@@ -19479,46 +19670,6 @@ function renderECSubjects() {
     container.innerHTML = html;
 }
 
-function renderECColumns() {
-    const container = document.getElementById('ec_column_settings');
-    if (!container) return;
-    
-    const defaultColumns = [
-        { id: 'sno', label: '#', visible: true, required: true },
-        { id: 'admission', label: 'Admission', visible: true, required: true },
-        { id: 'name', label: 'Name', visible: true, required: true },
-        { id: 'cat1', label: 'CAT1 (0-30)', visible: true, required: false },
-        { id: 'cat2', label: 'CAT2 (0-30)', visible: true, required: false },
-        { id: 'exam', label: 'Exam', visible: true, required: false },
-        { id: 'total', label: 'Total', visible: true, required: false },
-        { id: 'grade', label: 'Grade', visible: true, required: false },
-        { id: 'points', label: 'Points', visible: true, required: false },
-        { id: 'rating', label: 'Rating', visible: true, required: false },
-        { id: 'gradedBy', label: 'Graded By', visible: false, required: false }
-    ];
-    
-    container.innerHTML = defaultColumns.map(col => {
-        const isHidden = ecColumns.some(c => {
-            const cols = c.columns || [];
-            return cols.find(p => p.id === col.id)?.visible === false;
-        });
-        const isChecked = !isHidden && col.visible;
-        const isDisabled = col.required ? 'disabled' : '';
-        
-        return `
-            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; ${col.required ? 'opacity: 0.7;' : ''}">
-                <input type="checkbox" id="ec_col_${col.id}" ${isChecked ? 'checked' : ''} ${isDisabled} 
-                       style="width: 16px; height: 16px; cursor: ${col.required ? 'not-allowed' : 'pointer'};"
-                       onchange="saveColumnSetting('${col.id}', this.checked)">
-                <label for="ec_col_${col.id}" style="font-size: 13px; cursor: ${col.required ? 'default' : 'pointer'};">
-                    ${col.label}
-                    ${col.required ? ' <span style="color: #94a3b8; font-size: 11px;">(required)</span>' : ''}
-                </label>
-            </div>
-        `;
-    }).join('');
-}
-
 function renderECLogs() {
     const container = document.getElementById('ec_logs');
     if (!container) return;
@@ -19548,7 +19699,7 @@ function renderECLogs() {
                     <strong>${log.target || log.subject || 'Unknown'}</strong>
                     ${log.block ? `<span style="color: #64748b; font-size: 12px;">in ${log.block.replace('_', ' ')}</span>` : ''}
                     <span style="font-size: 12px; color: #94a3b8; margin-left: 8px;">
-                        ${log.created_at ? new Date(log.created_at).toLocaleString() : ''}
+                        ${log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}
                     </span>
                 </div>
                 ${log.details ? `<span style="font-size: 12px; color: #64748b;">${log.details}</span>` : ''}
@@ -19568,7 +19719,7 @@ async function toggleGlobalEntry() {
     
     if (!confirm(`⚠️ ${action} ALL mark entry across the entire system?`)) return;
     
-    showLoading(`${newState ? 'Opening' : 'Closing'} global entry...`);
+    if (typeof showLoading === 'function') showLoading(`${newState ? 'Opening' : 'Closing'} global entry...`);
     
     try {
         await sb.from('mark_entry_settings').upsert({
@@ -19577,14 +19728,14 @@ async function toggleGlobalEntry() {
             closed_by: newState ? null : currentUser?.name || 'Administrator',
             closed_at: newState ? null : new Date().toISOString(),
             updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'setting_key' });
         
         await logEntryControlAction(newState ? 'open' : 'close', 'global', null, `${newState ? 'Opened' : 'Closed'} all mark entry`);
-        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} all mark entry!`, false);
+        if (typeof showNotification === 'function') showNotification(`✅ ${newState ? 'Opened' : 'Closed'} all mark entry!`, 'success');
         loadEntryControl();
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
@@ -19596,7 +19747,7 @@ async function toggleClassEntry(year) {
     
     if (!confirm(`⚠️ ${newState ? 'Open' : 'Close'} mark entry for March ${year} class?`)) return;
     
-    showLoading(`${newState ? 'Opening' : 'Closing'} class entry...`);
+    if (typeof showLoading === 'function') showLoading(`${newState ? 'Opening' : 'Closing'} class entry...`);
     
     try {
         await sb.from('mark_entry_settings').upsert({
@@ -19605,14 +19756,14 @@ async function toggleClassEntry(year) {
             closed_by: newState ? null : currentUser?.name || 'Administrator',
             closed_at: newState ? null : new Date().toISOString(),
             updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'setting_key' });
         
         await logEntryControlAction(newState ? 'open' : 'close', `March ${year} Class`, null, `${newState ? 'Opened' : 'Closed'} entry for March ${year} class`);
-        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} March ${year} class!`, false);
+        if (typeof showNotification === 'function') showNotification(`✅ ${newState ? 'Opened' : 'Closed'} March ${year} class!`, 'success');
         loadEntryControl();
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
@@ -19625,7 +19776,7 @@ async function toggleSubjectEntry(block, subject) {
     const displayName = subject.length > 30 ? subject.substring(0, 30) + '...' : subject;
     if (!confirm(`⚠️ ${newState ? 'Open' : 'Close'} mark entry for "${displayName}" in ${block.replace('_', ' ')}?`)) return;
     
-    showLoading(`${newState ? 'Opening' : 'Closing'} subject entry...`);
+    if (typeof showLoading === 'function') showLoading(`${newState ? 'Opening' : 'Closing'} subject entry...`);
     
     try {
         await sb.from('mark_entry_settings').upsert({
@@ -19634,21 +19785,21 @@ async function toggleSubjectEntry(block, subject) {
             closed_by: newState ? null : currentUser?.name || 'Administrator',
             closed_at: newState ? null : new Date().toISOString(),
             updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'setting_key' });
         
         await logEntryControlAction(newState ? 'open' : 'close', subject, block, `${newState ? 'Opened' : 'Closed'} entry for ${subject}`);
-        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} "${displayName}"!`, false);
+        if (typeof showNotification === 'function') showNotification(`✅ ${newState ? 'Opened' : 'Closed'} "${displayName}"!`, 'success');
         loadEntryControl();
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
 function openBlockSubjects(block) {
     const blockSubjects = ecSubjects.filter(s => s.block === block);
     if (blockSubjects.length === 0) {
-        showNotification('No subjects in this block', 'warning');
+        if (typeof showNotification === 'function') showNotification('No subjects in this block', 'warning');
         return;
     }
     
@@ -19698,7 +19849,7 @@ function openBlockSubjects(block) {
 async function openAllSubjectsInBlock(block) {
     if (!confirm(`Open ALL subjects in ${block.replace('_', ' ')}?`)) return;
     
-    showLoading(`Opening all subjects in ${block}...`);
+    if (typeof showLoading === 'function') showLoading(`Opening all subjects in ${block}...`);
     
     try {
         const blockSubjects = ecSubjects.filter(s => s.block === block);
@@ -19712,23 +19863,23 @@ async function openAllSubjectsInBlock(block) {
                 closed_by: null,
                 closed_at: null,
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'setting_key' });
             if (!error) count++;
         }
         
         await logEntryControlAction('open', `${block} - All Subjects`, block, `Opened all ${count} subjects in ${block}`);
-        showNotification(`✅ Opened ${count} subjects in ${block}`, false);
+        if (typeof showNotification === 'function') showNotification(`✅ Opened ${count} subjects in ${block}`, 'success');
         loadEntryControl();
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
 async function closeAllSubjectsInBlock(block) {
     if (!confirm(`⚠️ CLOSE ALL subjects in ${block.replace('_', ' ')}?`)) return;
     
-    showLoading(`Closing all subjects in ${block}...`);
+    if (typeof showLoading === 'function') showLoading(`Closing all subjects in ${block}...`);
     
     try {
         const blockSubjects = ecSubjects.filter(s => s.block === block);
@@ -19742,67 +19893,16 @@ async function closeAllSubjectsInBlock(block) {
                 closed_by: currentUser?.name || 'Administrator',
                 closed_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'setting_key' });
             if (!error) count++;
         }
         
         await logEntryControlAction('close', `${block} - All Subjects`, block, `Closed all ${count} subjects in ${block}`);
-        showNotification(`🔒 Closed ${count} subjects in ${block}`, false);
+        if (typeof showNotification === 'function') showNotification(`🔒 Closed ${count} subjects in ${block}`, 'success');
         loadEntryControl();
     } catch (error) {
-        hideLoading();
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-async function saveColumnSetting(columnId, visible) {
-    try {
-        const { data: existing, error: fetchError } = await sb
-            .from('column_settings')
-            .select('*')
-            .eq('block', 'global')
-            .eq('subject', 'all')
-            .eq('year', currentYear || '2025');
-        
-        if (fetchError) throw fetchError;
-        
-        let columns = [];
-        if (existing && existing.length > 0) {
-            columns = existing[0].columns || [];
-        }
-        
-        const colIndex = columns.findIndex(c => c.id === columnId);
-        if (colIndex !== -1) {
-            columns[colIndex].visible = visible;
-        } else {
-            columns.push({ id: columnId, visible: visible });
-        }
-        
-        await sb.from('column_settings').upsert({
-            block: 'global',
-            subject: 'all',
-            year: currentYear || '2025',
-            columns: columns,
-            updated_at: new Date().toISOString()
-        });
-        
-        await loadEntryControl();
-        showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}!`, false);
-    } catch (error) {
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
-
-async function resetAllColumns() {
-    if (!confirm('⚠️ Reset ALL column settings to default for ALL users?')) return;
-    
-    try {
-        await sb.from('column_settings').delete().eq('block', 'global').eq('subject', 'all');
-        await logEntryControlAction('reset_columns', 'All Columns', null, 'Reset all column settings to default');
-        showNotification('✅ All columns reset to default!', false);
-        loadEntryControl();
-    } catch (error) {
-        showNotification('❌ Error: ' + error.message, true);
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
@@ -19814,7 +19914,7 @@ async function logEntryControlAction(action, target, block, details) {
             target: target,
             block: block,
             details: details,
-            created_at: new Date().toISOString()
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Failed to log action:', error);
@@ -19823,18 +19923,18 @@ async function logEntryControlAction(action, target, block, details) {
 
 function refreshEntryControl() {
     loadEntryControl();
-    showNotification('🔄 Entry Control refreshed!', false);
+    if (typeof showNotification === 'function') showNotification('🔄 Entry Control refreshed!', 'success');
 }
 
 function exportECLogs() {
     if (!ecLogs || ecLogs.length === 0) {
-        showNotification('No logs to export', 'warning');
+        if (typeof showNotification === 'function') showNotification('No logs to export', 'warning');
         return;
     }
     
     const headers = ['Timestamp', 'User', 'Action', 'Target', 'Block', 'Details'];
     const rows = ecLogs.map(log => [
-        log.created_at ? new Date(log.created_at).toLocaleString() : '',
+        log.timestamp ? new Date(log.timestamp).toLocaleString() : '',
         log.lecturer_name || 'System',
         log.action || '',
         log.target || '',
@@ -19848,74 +19948,55 @@ function exportECLogs() {
     });
     
     downloadCSV(csv, `entry_control_logs_${new Date().toISOString().split('T')[0]}.csv`);
-    showNotification('✅ Logs exported!', 'success');
+    if (typeof showNotification === 'function') showNotification('✅ Logs exported!', 'success');
 }
 
-async function toggleMarkEntry(block, subject, currentStatus) {
-    const newStatus = !currentStatus;
-    if (!confirm(`⚠️ ${newStatus ? 'Open' : 'Close'} entry for "${subject}"?`)) return;
-    
-    try {
-        const key = `${block}_${subject}`;
-        await sb.from('mark_entry_settings').upsert({
-            setting_key: key,
-            enabled: newStatus,
-            closed_by: newStatus ? null : currentUser?.name || 'Administrator',
-            closed_at: newStatus ? null : new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        });
-        
-        await logEntryControlAction(newStatus ? 'open' : 'close', subject, block, `${newStatus ? 'Opened' : 'Closed'} entry for ${subject}`);
-        showNotification(`✅ ${newStatus ? 'Opened' : 'Closed'} "${subject}"!`, false);
-        if (typeof loadLecturerSubjects === 'function') loadLecturerSubjects();
-    } catch (error) {
-        showNotification('❌ Error: ' + error.message, true);
-    }
-}
+// ============================================================
+// HELPER: DOWNLOAD CSV
+// ============================================================
 
-async function getSubjectStatus(block, subject) {
-    try {
-        const key = `${block}_${subject}`;
-        const { data, error } = await sb.from('mark_entry_settings').select('*').eq('setting_key', key).maybeSingle();
-        if (error) throw error;
-        
-        const { data: globalData } = await sb.from('mark_entry_settings').select('*').eq('setting_key', 'global').maybeSingle();
-        const year = currentYear || '2025';
-        const { data: classData } = await sb.from('mark_entry_settings').select('*').eq('setting_key', `${year}_all`).maybeSingle();
-        
-        if (data && data.enabled === false) return { isOpen: false, reason: 'Subject entry is closed' };
-        if (classData && classData.enabled === false) return { isOpen: false, reason: `Entry closed for ${year} class` };
-        if (globalData && globalData.enabled === false) return { isOpen: false, reason: 'Global entry is closed' };
-        return { isOpen: true, reason: null };
-    } catch (error) {
-        return { isOpen: true, reason: null };
-    }
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 // ============================================================
 // GLOBAL REGISTRATION
 // ============================================================
 
+// Core functions
 window.loadEntryControl = loadEntryControl;
+
+// Render functions
+window.renderECStats = renderECStats;
+window.renderECGlobal = renderECGlobal;
+window.renderECClassYears = renderECClassYears;
+window.renderECBlocks = renderECBlocks;
+window.renderECSubjects = renderECSubjects;
+window.renderECLogs = renderECLogs;
+window.populateECBlockFilter = populateECBlockFilter;
+
+// Action functions
 window.toggleGlobalEntry = toggleGlobalEntry;
 window.toggleClassEntry = toggleClassEntry;
 window.toggleSubjectEntry = toggleSubjectEntry;
 window.openBlockSubjects = openBlockSubjects;
 window.openAllSubjectsInBlock = openAllSubjectsInBlock;
 window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
-window.saveColumnSetting = saveColumnSetting;
-window.resetAllColumns = resetAllColumns;
 window.refreshEntryControl = refreshEntryControl;
 window.exportECLogs = exportECLogs;
 window.logEntryControlAction = logEntryControlAction;
-window.toggleMarkEntry = toggleMarkEntry;
-window.getSubjectStatus = getSubjectStatus;
 
 console.log('✅ Entry Control functions loaded successfully!');
-console.log('✅ saveColumnSetting:', typeof saveColumnSetting);
-console.log('✅ resetAllColumns:', typeof resetAllColumns);
-
-console.log('✅ Entry Control functions loaded!');
+console.log('✅ renderECSubjects:', typeof renderECSubjects);
+console.log('✅ toggleSubjectEntry:', typeof toggleSubjectEntry);
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
