@@ -112,7 +112,6 @@ async function loadLecturerByEmail(email) {
     console.log('📧 Loading lecturer by email:', email);
     
     try {
-        // Try consolidated profiles
         const { data: profile, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -127,7 +126,6 @@ async function loadLecturerByEmail(email) {
             return profile;
         }
         
-        // Try staff records
         const { data: staff, error: staffError } = await sb
             .from('staff_records')
             .select('*')
@@ -159,14 +157,12 @@ async function detectLecturerProgram() {
     console.log('🔍 Detecting lecturer program...');
     
     try {
-        // Get session
         let session = null;
         try {
             session = JSON.parse(localStorage.getItem('lecturerSession') || 
                                sessionStorage.getItem('lecturerSession') || '{}');
         } catch (e) { /* silent */ }
         
-        // Get user
         const { data: { user }, error: userError } = await sb.auth.getUser();
         
         if (userError) {
@@ -184,7 +180,6 @@ async function detectLecturerProgram() {
             return null;
         }
         
-        // Try profile
         const { data: profile, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -199,7 +194,6 @@ async function detectLecturerProgram() {
             return profile;
         }
         
-        // Try staff
         const { data: staff, error: staffError } = await sb
             .from('staff_records')
             .select('*')
@@ -214,7 +208,6 @@ async function detectLecturerProgram() {
             return staff;
         }
         
-        // Default
         me_currentProgram = 'KRCHN';
         updateLecturerUI({ program: 'KRCHN', department: 'Nursing' });
         
@@ -368,7 +361,6 @@ async function loadMEUnits() {
         
         if (error) throw error;
         
-        // Filter assigned units
         const lecturerId = me_currentLecturer?.staff?.id || me_currentLecturer?.profile?.id;
         let assignedUnitNames = [];
         let assignedUnitIds = [];
@@ -415,7 +407,6 @@ async function loadMEUnits() {
             }
         }
         
-        // Update unit count
         const countEl = document.getElementById('lecturerUnitCount');
         if (countEl) countEl.textContent = filteredUnits.length;
         
@@ -452,7 +443,6 @@ async function loadAdminColumnSettings(block, unit) {
             me_columnSettings = data;
             const visibleColumns = getVisibleColumns();
             
-            // Auto-detect assessment type
             if (visibleColumns.cat2 === false && visibleColumns.cat1 !== false) {
                 me_currentAssessmentType = 'single_cat';
             } else if (visibleColumns.cat1 === false && visibleColumns.cat2 !== false) {
