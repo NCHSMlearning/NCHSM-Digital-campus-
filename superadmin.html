@@ -2850,7 +2850,8 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-layer-group"></i> Block
                 </label>
-                <select id="me_block_select" class="form-control" onchange="loadMESubjects()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                <!-- ✅ FIXED: Changed loadMESubjects() to loadMEUnits() -->
+                <select id="me_block_select" class="form-control" onchange="loadMEUnits()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                     <option value="">-- Select Block --</option>
                 </select>
             </div>
@@ -3003,7 +3004,6 @@
         </div>
     </div>
 </div>
-
                                 <!-- ============================================ -->
 <!-- MARK ENTRY CONTROL PANEL - ADMIN -->
 <!-- ============================================ -->
