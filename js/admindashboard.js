@@ -4433,7 +4433,12 @@ window.displayLiveFeed = function() {
         });
     };
 
-    window.confirmReleaseResults = async function() {
+   
+ // ============================================
+// 📝 CONFIRM RELEASE RESULTS - SIMPLE EMAIL ONLY
+// ============================================
+
+window.confirmReleaseResults = async function() {
     const ids = Array.from(selectedStudentIds);
     if (ids.length === 0) { 
         alert('Please select at least one student to release results.'); 
@@ -4443,60 +4448,56 @@ window.displayLiveFeed = function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) return;
     
-    if (!confirm(`Release results for ${ids.length} selected student(s)?`)) return;
+    const sendEmail = document.getElementById('sendEmailOnRelease')?.checked !== false;
+    
+    if (!confirm(`Release results for ${ids.length} selected student(s)${sendEmail ? ' and send email notifications' : ''}?`)) {
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirmReleaseBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
     try {
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('pass_mark, total_marks, exam_type, exam_name')
+            .select('*')
             .eq('id', parseInt(examId))
             .single();
         
         if (examError) throw examError;
         
-        const passMark = exam?.pass_mark || 18;
-        const totalMarks = exam?.total_marks || 30;
-        const isCatExam = (exam?.exam_type || '').toUpperCase().includes('CAT');
-        const examName = exam?.exam_name || 'Exam';
-        
         let releasedCount = 0;
         let failedCount = 0;
+        let emailSent = 0;
         let errorMessages = [];
-        let releaseData = []; // ✅ Store for email sending
+        let releaseData = [];
         
         for (const gradeId of ids) {
             const { data: grade, error: gradeError } = await sb
                 .from('exam_grades')
-                .select('id, student_id, marks, total_score, result_status')
+                .select('id, student_id, marks, total_score, result_status, exam_id')
                 .eq('id', gradeId)
                 .single();
             
             if (gradeError || !grade) {
-                console.error('Grade not found:', gradeId);
                 failedCount++;
                 errorMessages.push(`Grade ID ${gradeId} not found`);
                 continue;
             }
             
             if (!grade.student_id) {
-                console.error('Missing student_id for grade:', gradeId);
                 failedCount++;
                 errorMessages.push(`Missing student_id for grade ${gradeId}`);
                 continue;
             }
             
-            let score = 0;
-            if (isCatExam) {
-                score = grade.marks || parseFloat(grade.total_score) || 0;
-                score = Math.min(score, 30);
-            } else {
-                score = parseFloat(grade.total_score) || grade.marks || 0;
-                score = Math.min(score, totalMarks || 70);
-            }
-            
+            const passMark = exam.pass_mark || Math.round((exam.total_marks || 100) * 0.6);
+            const score = parseFloat(grade.total_score) || grade.marks || 0;
             const isPassed = score >= passMark;
             const resultStatus = isPassed ? 'PASS' : 'FAIL';
             
+            // Release the result
             const { error: releaseError } = await sb
                 .from('released_exam_results')
                 .insert({
@@ -4506,30 +4507,22 @@ window.displayLiveFeed = function() {
                 });
             
             if (releaseError) {
-                console.error('Release error for grade', gradeId, ':', releaseError);
                 failedCount++;
-                errorMessages.push(`Release error for grade ${gradeId}: ${releaseError.message}`);
+                errorMessages.push(`Release error: ${releaseError.message}`);
                 continue;
             }
             
-            const { error: updateError } = await sb
+            // Update grade status
+            await sb
                 .from('exam_grades')
                 .update({
                     result_status: resultStatus,
-                    updated_at: new Date().toISOString()
+                    released: true,
+                    released_at: new Date().toISOString()
                 })
                 .eq('id', gradeId);
             
-            if (updateError) {
-                console.error('Update error for grade', gradeId, ':', updateError);
-                failedCount++;
-                errorMessages.push(`Update error for grade ${gradeId}: ${updateError.message}`);
-                continue;
-            }
-            
             releasedCount++;
-            
-            // ✅ Store for email sending
             releaseData.push({
                 student_id: grade.student_id,
                 exam_id: parseInt(examId),
@@ -4537,65 +4530,43 @@ window.displayLiveFeed = function() {
             });
         }
         
-        let message = `✅ Released ${releasedCount} result(s) for "${examName}"`;
+        let message = `✅ Released ${releasedCount} result(s)`;
         if (failedCount > 0) {
             message += `\n❌ Failed: ${failedCount}`;
-            if (errorMessages.length > 0) {
-                message += `\n\nErrors:\n${errorMessages.slice(0, 5).join('\n')}`;
-                if (errorMessages.length > 5) {
-                    message += `\n... and ${errorMessages.length - 5} more`;
-                }
-            }
         }
         alert(message);
         
         // ============================================
-        // 📧 SEND EMAIL NOTIFICATIONS
+        // 📧 SEND SIMPLE EMAIL NOTIFICATIONS (NO ANSWERS)
         // ============================================
-        if (releasedCount > 0 && releaseData.length > 0) {
-            const sendEmail = document.getElementById('sendEmailOnRelease')?.checked !== false;
+        if (sendEmail && releasedCount > 0 && releaseData.length > 0) {
+            showToast(`📧 Sending ${releaseData.length} notifications...`, 'info');
             
-            if (sendEmail) {
-                showToast('📧 Sending email notifications...', 'info');
-                
-                console.log(`📧 Sending ${releaseData.length} emails...`);
-                let sent = 0;
-                let failed = 0;
-                
-                for (const data of releaseData) {
-                    try {
-                        const success = await sendResultReleaseEmail(
-                            data.student_id,
-                            data.exam_id,
-                            data.grade
-                        );
-                        
-                        if (success) {
-                            sent++;
-                            console.log(`✅ Email sent to student ${data.student_id}`);
-                        } else {
-                            failed++;
-                            console.log(`❌ Email failed for student ${data.student_id}`);
-                        }
-                        
-                        // Small delay to avoid rate limits
-                        await new Promise(r => setTimeout(r, 300));
-                        
-                    } catch (e) {
-                        failed++;
-                        console.error('Email error:', e);
-                    }
+            let sent = 0;
+            let failed = 0;
+            
+            for (const data of releaseData) {
+                try {
+                    const success = await sendSimpleReleaseNotification(
+                        data.student_id,
+                        data.exam_id,
+                        data.grade
+                    );
+                    
+                    if (success) sent++;
+                    else failed++;
+                    
+                    await new Promise(r => setTimeout(r, 300));
+                } catch (e) {
+                    failed++;
+                    console.error('Email error:', e);
                 }
-                
-                if (sent > 0) {
-                    showToast(`✅ ${sent} email notification(s) sent successfully!`, 'success');
-                }
-                if (failed > 0) {
-                    showToast(`⚠️ ${failed} email(s) failed to send`, 'warning');
-                }
-                
-                console.log(`📧 Email summary: ${sent} sent, ${failed} failed`);
             }
+            
+            showToast(
+                `📧 ${sent} notification(s) sent, ${failed} failed`,
+                sent > 0 ? 'success' : 'error'
+            );
         }
         
         closeReleaseModal();
@@ -4605,8 +4576,154 @@ window.displayLiveFeed = function() {
     } catch (err) { 
         alert('❌ Error: ' + err.message); 
         console.error(err);
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-share-alt"></i> Release Results';
     }
 };
+    // ============================================
+// 📧 SEND SIMPLE RELEASE NOTIFICATION (NO ANSWERS)
+// ============================================
+
+async function sendSimpleReleaseNotification(studentId, examId, grade) {
+    try {
+        // Get student details
+        const { data: student, error: studentError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, email, student_id, program')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (studentError || !student || !student.email) {
+            console.log('⚠️ No email found for student:', studentId);
+            return false;
+        }
+        
+        // Get exam details
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('exam_name, exam_type, total_marks, pass_mark')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError || !exam) {
+            console.log('⚠️ Exam not found:', examId);
+            return false;
+        }
+        
+        const score = grade.marks || 0;
+        const totalMarks = exam.total_marks || 100;
+        const percentage = ((score / totalMarks) * 100).toFixed(1);
+        const passed = parseFloat(percentage) >= (exam.pass_mark || 60);
+        const portalUrl = 'https://nchsm.co.ke/exams';
+        
+        // ✅ SIMPLE EMAIL - NO ANSWERS SHOWN
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results Released</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
+        .header img { width: 70px; height: 70px; border-radius: 50%; background: white; padding: 5px; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 4px 0 0; opacity: 0.8; }
+        .body { padding: 30px 35px; }
+        .score-box { text-align: center; padding: 20px; background: #F8FAFC; border-radius: 12px; margin: 16px 0; }
+        .score-box .percentage { font-size: 3rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'}; }
+        .score-box .status { font-size: 1.1rem; font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'}; }
+        .callout { background: #EFF6FF; padding: 20px; border-radius: 12px; border-left: 4px solid #3B82F6; margin: 16px 0; }
+        .callout h3 { margin: 0 0 8px; color: #0A3D62; }
+        .callout ul { margin: 8px 0 0; padding-left: 20px; color: #2c3e50; }
+        .btn { display: inline-block; background: #0A3D62; color: white; padding: 12px 30px; border-radius: 10px; text-decoration: none; }
+        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                <h1>📊 Results Released</h1>
+                <p>Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <div class="body">
+                <p>Dear <strong>${student.full_name}</strong>,</p>
+                <p>Your results for <strong>${exam.exam_name}</strong> have been released.</p>
+                
+                <div class="score-box">
+                    <div class="percentage">${percentage}%</div>
+                    <div class="status">${passed ? '✅ PASS' : '❌ FAIL'}</div>
+                    <div style="font-size: 0.9rem; color: #64748B; margin-top: 8px;">
+                        Score: ${score}/${totalMarks} marks
+                    </div>
+                </div>
+                
+                <div class="callout">
+                    <h3>🔐 View Your Detailed Exam Report</h3>
+                    <p style="margin: 8px 0 0;">Log in to the Student Portal to see:</p>
+                    <ul>
+                        <li>All questions and your answers</li>
+                        <li>Correct answers for each question</li>
+                        <li>Detailed feedback and explanations</li>
+                        <li>Your performance breakdown</li>
+                    </ul>
+                    <div style="margin-top: 16px;">
+                        <a href="${portalUrl}" class="btn">Go to Student Portal</a>
+                    </div>
+                </div>
+                
+                <p style="font-size: 0.85rem; color: #64748B; margin-top: 16px;">
+                    If you have any questions, please contact your instructor.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p style="margin: 4px 0 0; font-size: 0.75rem;">This is an automated message from NCHSM Exam System.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        // Send via Edge Function
+        const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: student.email,
+                subject: `📊 Results Released - ${exam.exam_name}`,
+                html: html,
+                from: 'NCHSM Exam Office <admin@nchsm.co.ke>'
+            })
+        });
+        
+        const data = await result.json();
+        
+        if (data.success) {
+            console.log(`✅ Notification sent to ${student.email}`);
+            return true;
+        } else {
+            console.error('❌ Email failed:', data.error);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        return false;
+    }
+}
 
     // ============================================
 // 📧 RESEND RELEASE EMAIL (Single Student)
