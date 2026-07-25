@@ -65,7 +65,7 @@ const LecturerMarks = {
             
             const programNameEl = document.getElementById('lecturerProgramName');
             const programTypeEl = document.getElementById('lecturerProgramType');
-            const unitCountEl = document.getElementById('lecturerSubjectCount');
+            const unitCountEl = document.getElementById('lecturerUnitCount');
             const programSelect = document.getElementById('me_program_select');
             
             if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
@@ -165,7 +165,7 @@ const LecturerMarks = {
                 return;
             }
             
-            // ✅ Filter to only show units assigned to this lecturer
+            // Filter to only show units assigned to this lecturer
             const lecturerId = me_currentLecturer?.staff?.id || me_currentLecturer?.profile?.id;
             let assignedUnitNames = [];
             
@@ -222,7 +222,7 @@ const LecturerMarks = {
             }
             
             // Update unit count display
-            const countEl = document.getElementById('lecturerSubjectCount');
+            const countEl = document.getElementById('lecturerUnitCount');
             if (countEl) countEl.textContent = filteredUnits.length;
             
         } catch (error) {
@@ -245,7 +245,7 @@ const LecturerMarks = {
         container.innerHTML = '<div class="text-center" style="padding:40px;"><div class="loading-spinner"></div><p>Loading marks...</p></div>';
         
         try {
-            // ✅ Load admin column settings
+            // Load admin column settings
             await this.loadAdminColumnSettings(block, unit);
             
             const students = this.students.filter(s => s.block === block);
@@ -266,10 +266,7 @@ const LecturerMarks = {
             const marksMap = {};
             existing?.forEach(m => { marksMap[m.admission_number] = m; });
             
-            // ✅ Get assessment type from admin settings
             const assessmentType = me_currentAssessmentType || 'full';
-            
-            // ✅ Get visible columns from admin
             const visibleColumns = this.getVisibleColumns();
             
             let html = `<div class="table-responsive"><table class="data-table" style="width:100%;border-collapse:collapse;">
@@ -300,7 +297,6 @@ const LecturerMarks = {
                     const ncat2 = Math.min(parseFloat(cat2) || 0, 30);
                     const nexam = Math.min(parseFloat(exam) || 0, 70);
                     
-                    // ✅ Calculate based on assessment type
                     if (assessmentType === 'full') {
                         total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
                     } else if (assessmentType === 'single_cat') {
@@ -359,10 +355,7 @@ const LecturerMarks = {
             
             container.innerHTML = html;
             
-            // ✅ Update assessment type display
             this.updateAssessmentTypeDisplay(assessmentType);
-            
-            // ✅ Update visible columns info
             this.updateVisibleColumnsInfo(visibleColumns);
             
             document.querySelectorAll('.internal-cat1, .internal-cat2, .internal-exam').forEach(input => {
@@ -386,7 +379,6 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ Load admin column settings
     async loadAdminColumnSettings(block, unit) {
         try {
             const year = document.getElementById('me_year_select')?.value || '2025';
@@ -403,7 +395,6 @@ const LecturerMarks = {
             
             if (data && data.columns) {
                 me_columnSettings = data;
-                // ✅ Extract assessment type from visible columns
                 const visibleColumns = this.getVisibleColumns();
                 if (visibleColumns.cat2 === false && visibleColumns.cat1 !== false) {
                     me_currentAssessmentType = 'single_cat';
@@ -428,7 +419,6 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ Get visible columns from admin settings
     getVisibleColumns() {
         const defaultColumns = {
             sno: true,
@@ -444,8 +434,6 @@ const LecturerMarks = {
         };
         
         const savedColumns = me_columnSettings.columns || [];
-        
-        // Merge saved settings with defaults
         const result = { ...defaultColumns };
         savedColumns.forEach(col => {
             if (col.id in result) {
@@ -456,7 +444,6 @@ const LecturerMarks = {
         return result;
     },
     
-    // ✅ Update assessment type display
     updateAssessmentTypeDisplay(type) {
         const displayEl = document.getElementById('me_assessment_type_display');
         if (displayEl) {
@@ -476,7 +463,6 @@ const LecturerMarks = {
         }
     },
     
-    // ✅ Update visible columns info
     updateVisibleColumnsInfo(visibleColumns) {
         const columnsEl = document.getElementById('lecturerVisibleColumns');
         if (!columnsEl) return;
@@ -973,6 +959,7 @@ const LecturerMarks = {
 // STANDALONE FUNCTIONS
 // ============================================================
 
+// LOAD BLOCKS
 async function loadMEBlocks() {
     const program = document.getElementById('me_program_select')?.value;
     const blockSelect = document.getElementById('me_block_select');
@@ -1025,6 +1012,7 @@ async function loadMEBlocks() {
     }
 }
 
+// LOAD UNITS
 async function loadMEUnits() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -1074,10 +1062,7 @@ async function loadMEUnits() {
     }
 }
 
-// ============================================================
-// LECTURER MARKS ENTRY FUNCTIONS
-// ============================================================
-
+// LOAD MARKS ENTRY
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -1113,7 +1098,6 @@ async function loadMarksEntry() {
     }
     
     try {
-        // ✅ Load admin column settings
         await LecturerMarks.loadAdminColumnSettings(block, unit);
         
         const { data: marks, error } = await sb
@@ -1166,7 +1150,6 @@ async function loadMarksEntry() {
         updateMarksEntryStats(fullMarks, me_currentAssessmentType);
         checkMarksApprovalStatus(fullMarks);
         
-        // ✅ Update lecturer view with admin settings
         LecturerMarks.updateAssessmentTypeDisplay(me_currentAssessmentType);
         const visibleColumns = LecturerMarks.getVisibleColumns();
         LecturerMarks.updateVisibleColumnsInfo(visibleColumns);
@@ -1191,6 +1174,7 @@ async function loadMarksEntry() {
     }
 }
 
+// RENDER MARKS ENTRY TABLE
 function renderMarksEntryTable(marks, unit, assessmentType) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
