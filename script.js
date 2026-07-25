@@ -19809,6 +19809,9 @@ function updateMarksEntryStats(marks, assessmentType) {
 // ============================================================
 // SAVE MARKS
 // ============================================================
+// ============================================================
+// SAVE MARKS - SINGLE UPSERT BATCH (FASTEST)
+// ============================================================
 
 async function saveMarksEntry() {
     const program = me_currentProgram;
@@ -19817,6 +19820,7 @@ async function saveMarksEntry() {
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType;
     
+    // Collect all marks data
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
     
@@ -19833,13 +19837,22 @@ async function saveMarksEntry() {
             const exam = parseFloat(examInput?.value) || 0;
             
             if (admission) {
+                const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+                const gradeInfo = getMarksEntryGrade(total);
+                
                 marksData.push({
-                    admission: admission,
-                    name: name,
-                    cat1: cat1,
-                    cat2: cat2,
-                    exam: exam,
-                    assessmentType: assessmentType
+                    admission_number: admission,
+                    student_name: name || 'Unknown',
+                    block: block,
+                    subject_name: subject,
+                    assessment_type: assessmentType,
+                    cat1_score: cat1,
+                    cat2_score: cat2,
+                    exam_score: exam,
+                    final_score: total,
+                    grade: gradeInfo.grade,
+                    academic_year: year,
+                    updated_at: new Date().toISOString()
                 });
             }
         }
@@ -19850,64 +19863,21 @@ async function saveMarksEntry() {
         return;
     }
     
-    if (typeof showLoading === 'function') showLoading('Saving marks...');
+    if (typeof showLoading === 'function') showLoading(`Saving ${marksData.length} marks...`);
     
     try {
-        let saved = 0;
-        let errors = 0;
+        // ✅ SINGLE UPSERT - All records in one query
+        const { error } = await sb
+            .from('student_marks')
+            .upsert(marksData, { 
+                onConflict: 'admission_number,subject_name,block,academic_year'
+            });
         
-        for (const mark of marksData) {
-            const { data: existing } = await sb
-                .from('student_marks')
-                .select('id')
-                .eq('admission_number', mark.admission)
-                .eq('subject_name', subject)
-                .eq('block', block)
-                .eq('academic_year', year)
-                .maybeSingle();
-            
-            const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
-            const gradeInfo = getMarksEntryGrade(total);
-            
-            const markData = {
-                admission_number: mark.admission,
-                student_name: mark.name || 'Unknown',
-                block: block,
-                subject_name: subject,
-                assessment_type: assessmentType,
-                cat1_score: mark.cat1,
-                cat2_score: mark.cat2,
-                exam_score: mark.exam,
-                final_score: total,
-                grade: gradeInfo.grade,
-                academic_year: year,
-                updated_at: new Date().toISOString()
-            };
-            
-            let result;
-            if (existing) {
-                result = await sb
-                    .from('student_marks')
-                    .update(markData)
-                    .eq('id', existing.id);
-            } else {
-                markData.created_at = new Date().toISOString();
-                result = await sb
-                    .from('student_marks')
-                    .insert([markData]);
-            }
-            
-            if (result.error) {
-                errors++;
-                console.error('Error saving mark:', result.error);
-            } else {
-                saved++;
-            }
-        }
+        if (error) throw error;
         
         if (typeof hideLoading === 'function') hideLoading();
         if (typeof showNotification === 'function') {
-            showNotification(`✅ Saved ${saved} marks${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
+            showNotification(`✅ Saved ${marksData.length} marks successfully!`, 'success');
         }
         
         setTimeout(() => loadMarksEntry(), 500);
