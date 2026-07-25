@@ -626,19 +626,21 @@ const LecturerUI = {
                     window.LecturerExams.loadExams();
                 }
                 break;
-                
-            case 'marks-management':
-                console.log('📊 Loading marks management...');
-                if (window.LecturerMarks) {
-                    if (typeof window.LecturerMarks.loadMarksManagement === 'function') {
-                        window.LecturerMarks.loadMarksManagement();
-                    } else if (typeof window.LecturerMarks.init === 'function') {
-                        window.LecturerMarks.init();
-                    }
-                } else {
-                    console.warn('⚠️ LecturerMarks not found');
-                }
-                break;
+       
+case 'marks-management':
+    console.log('📊 Loading marks management...');
+    
+    // ✅ Call the standalone functions directly - THEY WORK!
+    if (typeof detectLecturerProgram === 'function') {
+        detectLecturerProgram().then(() => {
+            if (typeof loadMEBlocks === 'function') loadMEBlocks();
+            if (typeof loadMESubjects === 'function') loadMESubjects();
+            if (typeof loadMarksEntry === 'function') loadMarksEntry();
+        });
+    } else {
+        console.warn('⚠️ detectLecturerProgram not found');
+    }
+    break;
                 
             case 'resources':
                 console.log('📎 Loading resources...');
