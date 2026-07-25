@@ -14966,14 +14966,6 @@ async function staffLogin(emailOrId, password) {
     return { success: true, staff: session };
 }
 
-// Escape HTML
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // Initialize
 function initStaffManagement() {
     loadAllStaff();
