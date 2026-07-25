@@ -2136,99 +2136,106 @@
         </div>
     </div>
 </section>
-            <!-- STAFF / LECTURER MANAGEMENT SECTION -->
-            <section id="staff-management" class="tab-content">
-                <h2><i class="fas fa-chalkboard-user"></i> Staff & Lecturer Management</h2>
-                <p>Monitor headcount, launch common actions, and manage staff utilities from a single workspace.</p>
+          <!-- STAFF / LECTURER MANAGEMENT SECTION -->
+<section id="staff-management" class="tab-content">
+    <h2><i class="fas fa-chalkboard-user"></i> Staff & Lecturer Management</h2>
+    <p>Monitor headcount, launch common actions, and manage staff utilities from a single workspace.</p>
 
-                <!-- Stats Cards -->
-                <div class="cards">
-                    <div class="card">
-                        <h3>TOTAL STAFF</h3>
-                        <p class="data" id="totalStaffCount">0</p>
-                        <p class="minor-data">Across all departments</p>
-                    </div>
-                    <div class="card">
-                        <h3>ACTIVE STAFF</h3>
-                        <p class="data" id="activeStaffCount">0</p>
-                        <p class="minor-data">Available & on duty</p>
-                    </div>
-                    <div class="card">
-                        <h3>MALE STAFF</h3>
-                        <p class="data" id="maleStaffCount">0</p>
-                        <p class="minor-data">Current campus</p>
-                    </div>
-                    <div class="card">
-                        <h3>FEMALE STAFF</h3>
-                        <p class="data" id="femaleStaffCount">0</p>
-                        <p class="minor-data">Current campus</p>
-                    </div>
-                </div>
+    <!-- Stats Cards -->
+    <div class="cards">
+        <div class="card">
+            <h3>TOTAL STAFF</h3>
+            <p class="data" id="totalStaffCount">0</p>
+            <p class="minor-data">Across all departments</p>
+        </div>
+        <div class="card">
+            <h3>ACTIVE STAFF</h3>
+            <p class="data" id="activeStaffCount">0</p>
+            <p class="minor-data">Available & on duty</p>
+        </div>
+        <div class="card">
+            <h3>MALE STAFF</h3>
+            <p class="data" id="maleStaffCount">0</p>
+            <p class="minor-data">Current campus</p>
+        </div>
+        <div class="card">
+            <h3>FEMALE STAFF</h3>
+            <p class="data" id="femaleStaffCount">0</p>
+            <p class="minor-data">Current campus</p>
+        </div>
+    </div>
 
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px;">
-                    <button onclick="openAddStaffModal()" class="btn-action" style="background: #4C1D95;">
-                        <i class="fas fa-plus"></i> + Add Staff
-                    </button>
-                    <button onclick="exportStaffToCSV()" class="btn-action" style="background: #059669;">
-                        <i class="fas fa-download"></i> Export to Excel
-                    </button>
-                    <button onclick="importStaffFromCSV()" class="btn-action" style="background: #2563eb;">
-                        <i class="fas fa-upload"></i> Import Staff
-                    </button>
-                    <button onclick="loadAllStaff()" class="btn-action" style="background: #6b7280;">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px;">
+        <button onclick="openAddStaffModal()" class="btn-action" style="background: #4C1D95;">
+            <i class="fas fa-plus"></i> + Add Staff
+        </button>
+        <button onclick="exportStaffToCSV()" class="btn-action" style="background: #059669;">
+            <i class="fas fa-download"></i> Export to Excel
+        </button>
+        <button onclick="importStaffFromCSV()" class="btn-action" style="background: #2563eb;">
+            <i class="fas fa-upload"></i> Import Staff
+        </button>
+        <button onclick="loadAllStaff()" class="btn-action" style="background: #6b7280;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
 
-                <!-- Filters -->
-                <div class="filter-bar">
-                    <input type="text" id="staffSearchInput" placeholder="Search by Name or Staff ID" onkeyup="filterStaffTable()">
-                    <select id="departmentFilter" onchange="filterStaffTable()">
-                        <option value="all">All Departments</option>
-                        <option value="Tutors">Tutors / Academic</option>
-                        <option value="Front Desk">Front Desk</option>
-                        <option value="Administration">Administration</option>
-                        <option value="Finance">Finance</option>
-                        <option value="ICT">ICT</option>
-                        <option value="Library">Library</option>
-                        <option value="Clinical">Clinical Instructors</option>
-                    </select>
-                    <select id="statusFilter" onchange="filterStaffTable()">
-                        <option value="all">All Status</option>
-                        <option value="active">Active Staff</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
+    <!-- Filters -->
+    <div class="filter-bar">
+        <input type="text" id="staffSearchInput" placeholder="Search by Name, Staff ID or Email" onkeyup="filterStaffTable()">
+        <select id="programFilter" onchange="filterStaffTable()">
+            <option value="all">All Programs</option>
+            <option value="KRCHN">KRCHN Nursing</option>
+            <option value="TVET">TVET</option>
+        </select>
+        <select id="departmentFilter" onchange="filterStaffTable()">
+            <option value="all">All Departments</option>
+            <option value="Nursing">Nursing</option>
+            <option value="Tutors">Tutors / Academic</option>
+            <option value="Front Desk">Front Desk</option>
+            <option value="Administration">Administration</option>
+            <option value="Finance">Finance</option>
+            <option value="ICT">ICT</option>
+            <option value="Library">Library</option>
+            <option value="Clinical">Clinical Instructors</option>
+            <option value="TVET">TVET Department</option>
+        </select>
+        <select id="statusFilter" onchange="filterStaffTable()">
+            <option value="all">All Status</option>
+            <option value="active">Active Staff</option>
+            <option value="inactive">Inactive</option>
+        </select>
+    </div>
 
-                <!-- Staff Table -->
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Firstname</th>
-                                <th>Other names</th>
-                                <th>Department</th>
-                                <th>Email</th>
-                                <th>Phone number</th>
-                                <th>ID</th>
-                                <th>Gender</th>
-                                <th>Bank</th>
-                                <th>Bank Acc.No</th>
-                                <th>SHIF No</th>
-                                <th>NSRF No</th>
-                                <th>Login</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="staffTableBody">
-                            <tr><td colspan="14" style="text-align: center; padding: 50px;">Loading staff records...<\/td><\/tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
+    <!-- Staff Table -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Firstname</th>
+                    <th>Other names</th>
+                    <th>Department</th>
+                    <th>Program</th>
+                    <th>Email</th>
+                    <th>Phone number</th>
+                    <th>ID</th>
+                    <th>Gender</th>
+                    <th>Bank</th>
+                    <th>Bank Acc.No</th>
+                    <th>SHIF No</th>
+                    <th>NSRF No</th>
+                    <th>Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="staffTableBody">
+                <tr><td colspan="15" style="text-align: center; padding: 50px;">Loading staff records...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 <!-- ============================================ -->
 <!-- PROGRAM MANAGEMENT - COMPLETE SECTION        -->
 <!-- ============================================ -->
