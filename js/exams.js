@@ -525,9 +525,9 @@
             }
         }
         
-        // ==================== PROCESS EXAMS DATA - FIXED ====================
+        // ==================== PROCESS EXAMS DATA ====================
         processExamsData(exams, grades) {
-            // ✅ FIX: Normalize block names
+            // Normalize block names
             const blockMap = {
                 'Introductory': 'Introductory Block',
                 'Introductory Block': 'Introductory Block',
@@ -539,7 +539,6 @@
                 'Final': 'Final Block'
             };
             
-            // Get raw block and normalize it
             const rawBlock = this.userBlock || this.userTerm || this.userProfile?.block || this.userProfile?.current_block || 'Introductory';
             const studentBlock = blockMap[rawBlock] || rawBlock;
             
@@ -565,14 +564,12 @@
             
             // Filter exams
             const filteredExams = exams.filter(exam => {
-                // ✅ FIX: Normalize exam block as well
                 const rawExamBlock = exam.block || exam.block_term || 'General';
                 const examBlock = blockMap[rawExamBlock] || rawExamBlock;
                 
                 const examIntake = exam.intake_year;
                 const examProgram = exam.program_type || exam.target_program;
                 
-                // ✅ FIX: Use normalized block for matching
                 const blockMatch = examBlock === studentBlock || 
                                    examBlock === 'General' ||
                                    examBlock === 'All' ||
@@ -594,28 +591,12 @@
                                    !examProgram;
                 }
                 
-                const isMatch = blockMatch && intakeMatch && programMatch;
-                
-                // Debug logging for OSCE I JUL 002
-                if (exam.id === 91) {
-                    console.log(`🔍 OSCE I JUL 002 check:`, {
-                        rawExamBlock: rawExamBlock,
-                        normalizedExamBlock: examBlock,
-                        studentBlock: studentBlock,
-                        blockMatch: blockMatch,
-                        intakeMatch: intakeMatch,
-                        programMatch: programMatch,
-                        isMatch: isMatch
-                    });
-                }
-                
-                return isMatch;
+                return blockMatch && intakeMatch && programMatch;
             });
             
             console.log(`✅ Showing ${filteredExams.length} exams (filtered from ${exams.length})`);
             exams = filteredExams;
             
-            // ... rest of the function continues ...
             const gradeMap = new Map();
             grades.forEach(grade => {
                 const gradeWithId = {
@@ -728,7 +709,6 @@
                     }
                 }
                 
-                // ✅ FIX: Determine if this is a TVET exam
                 const examProgram = group.program_type || group.target_program || '';
                 const isExamTVET = this.TVET_PROGRAMS.includes(examProgram) || 
                                    examProgram === 'TVET' || 
@@ -745,7 +725,6 @@
                                    examProgram === 'AAG' || examProgram === 'ASW' ||
                                    examProgram === 'CCA' || examProgram === 'PTE';
                 
-                // ✅ Set program display based on exam type
                 let combinedProgram = 'KRCHN Program';
                 let programBadgeClass = 'badge-krchn';
                 let programIcon = 'fa-graduation-cap';
@@ -1119,11 +1098,9 @@
                 
                 let statusHtml = '<span class="status-badge ' + exam.gradeClass + '">' + exam.gradeText + '</span>';
                 
-                // ✅ CLEAN ASSESSMENT CELL - NO DUPLICATES!
                 let assessmentCell = '';
                 assessmentCell += '<div class="assessment-info-box clean">';
                 
-                // Row 1: Name + Badge
                 assessmentCell += '<div class="assessment-row-top">';
                 assessmentCell += '<div class="assessment-name">';
                 assessmentCell += '<strong>' + this.escapeHtml(examDisplayName) + '</strong>';
@@ -1131,14 +1108,12 @@
                 assessmentCell += '</div>';
                 assessmentCell += '</div>';
                 
-                // Row 2: Date (only if available)
                 if (exam.formattedExamDateTime !== 'TBA') {
                     assessmentCell += '<div class="exam-datetime">';
                     assessmentCell += '<i class="fas fa-calendar-clock"></i> ' + exam.formattedExamDateTime;
                     assessmentCell += '</div>';
                 }
                 
-                // Row 3: Countdown (if available)
                 if (timeRemainingHtml) {
                     assessmentCell += '<div class="assessment-row-countdown">';
                     assessmentCell += timeRemainingHtml;
@@ -1147,15 +1122,14 @@
                 
                 assessmentCell += '</div>';
                 
-                // ✅ 7 columns - Clean assessment cell
                 return '<tr class="assessment-row ' + (isCatExam ? 'cat-exam' : 'final-exam') + '" data-exam-id="' + exam.id + '">' +
-                    '<td class="assessment-cell">' + assessmentCell + '</td>' +  // 1: Assessment (CLEAN)
-                    '<td class="text-center status-cell">' + statusHtml + '</td>' +  // 2: Status
-                    '<td class="text-center">' + exam.cat1Display + '</td>' +  // 3: CAT 1
-                    '<td class="text-center">' + exam.cat2Display + '</td>' +  // 4: CAT 2
-                    '<td class="text-center">' + exam.finalDisplay + '</td>' +  // 5: Final
-                    '<td class="text-center total-cell">' + (exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--') + '</td>' +  // 6: Total
-                    '<td class="text-center action-cell">' + actionHtml + '</td>' +  // 7: Action
+                    '<td class="assessment-cell">' + assessmentCell + '</td>' +
+                    '<td class="text-center status-cell">' + statusHtml + '</td>' +
+                    '<td class="text-center">' + exam.cat1Display + '</td>' +
+                    '<td class="text-center">' + exam.cat2Display + '</td>' +
+                    '<td class="text-center">' + exam.finalDisplay + '</td>' +
+                    '<td class="text-center total-cell">' + (exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--') + '</td>' +
+                    '<td class="text-center action-cell">' + actionHtml + '</td>' +
                     '</tr>';
             }).join('');
             
@@ -1163,7 +1137,7 @@
         }
         
         // ============================================
-        // ✅ FIXED: displayCompletedTable - 7 columns
+        // ✅ DISPLAY COMPLETED TABLE - WITH VIEW DETAILS
         // ============================================
         displayCompletedTable() {
             if (!this.completedTable) return;
@@ -1283,10 +1257,8 @@
                     statusBadges = '<span class="badge-pending">⏳ Pending</span>';
                 }
                 
-                // ✅ CLEAN ASSESSMENT CELL FOR COMPLETED - NO DUPLICATES!
                 let assessmentCell = `
                     <div class="assessment-info-box clean">
-                        <!-- Row 1: Name + Badges -->
                         <div class="assessment-row-top">
                             <div class="assessment-name">
                                 <strong>${this.escapeHtml(examDisplayName)}</strong>
@@ -1295,18 +1267,15 @@
                             </div>
                         </div>
                         
-                        <!-- Row 2: Date -->
                         <div class="exam-datetime">
                             <i class="fas fa-calendar-check"></i> ${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}
                         </div>
                         
-                        <!-- Row 3: Score (if released) -->
                         ${exam.isReleased ? `
                         <div class="exam-score">
                             📊 ${displayScore} / ${totalMarks} marks
                         </div>` : ''}
                         
-                        <!-- Row 4: Pending message -->
                         ${exam.actionState === 'pending_release' ? `
                         <div class="exam-pending">
                             ⏳ Results pending release
@@ -1355,11 +1324,14 @@
                 
                 let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
                 
+                // ============================================
+                // ✅ UPDATED: View Details button calls viewDetailedResults
+                // ============================================
                 let actionHtml = '';
                 if (exam.isReleased && exam.hasGrade) {
                     actionHtml = `
-                        <button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})">
-                            <i class="fas fa-chart-line"></i> View Results
+                        <button class="exam-link-btn btn-success" onclick="window.examsModule?.viewDetailedResults(${exam.id})">
+                            <i class="fas fa-clipboard-list"></i> View Details
                         </button>
                     `;
                 } else if (exam.actionState === 'pending_release') {
@@ -1440,108 +1412,99 @@
         }
         
         // ==================== UPDATE PERFORMANCE SUMMARY ====================
-       // ==================== UPDATE PERFORMANCE SUMMARY ====================
-updatePerformanceSummary() {
-    const completedReleased = this.completedExams.filter(exam => 
-        exam.isReleased && exam.totalPercentage !== null
-    );
-    
-    // Get elements with CORRECT IDs matching your HTML
-    const bestScore = document.getElementById('best-score');
-    const lowestScore = document.getElementById('lowest-score');
-    const passRate = document.getElementById('pass-rate');
-    const distinctionCount = document.getElementById('distinction-count');
-    const creditCount = document.getElementById('credit-count');
-    const passCount = document.getElementById('pass-count');
-    const failCount = document.getElementById('fail-count');
-    const firstAssessment = document.getElementById('first-assessment-date');  // ✅ FIXED
-    const latestAssessment = document.getElementById('latest-assessment-date'); // ✅ FIXED
-    const totalSubmitted = document.getElementById('total-submitted');
-    const overallAverage = document.getElementById('overall-average');
-    
-    if (completedReleased.length === 0) {
-        // Set default values
-        if (bestScore) bestScore.textContent = '--';
-        if (lowestScore) lowestScore.textContent = '--';
-        if (passRate) passRate.textContent = '--';
-        if (distinctionCount) distinctionCount.textContent = '0';
-        if (creditCount) creditCount.textContent = '0';
-        if (passCount) passCount.textContent = '0';
-        if (failCount) failCount.textContent = '0';
-        if (firstAssessment) firstAssessment.textContent = '--';
-        if (latestAssessment) latestAssessment.textContent = '--';
-        if (totalSubmitted) totalSubmitted.textContent = '0';
-        if (overallAverage) overallAverage.textContent = '--';
+        updatePerformanceSummary() {
+            const completedReleased = this.completedExams.filter(exam => 
+                exam.isReleased && exam.totalPercentage !== null
+            );
+            
+            const bestScore = document.getElementById('best-score');
+            const lowestScore = document.getElementById('lowest-score');
+            const passRate = document.getElementById('pass-rate');
+            const distinctionCount = document.getElementById('distinction-count');
+            const creditCount = document.getElementById('credit-count');
+            const passCount = document.getElementById('pass-count');
+            const failCount = document.getElementById('fail-count');
+            const firstAssessment = document.getElementById('first-assessment-date');
+            const latestAssessment = document.getElementById('latest-assessment-date');
+            const totalSubmitted = document.getElementById('total-submitted');
+            const overallAverage = document.getElementById('overall-average');
+            
+            if (completedReleased.length === 0) {
+                if (bestScore) bestScore.textContent = '--';
+                if (lowestScore) lowestScore.textContent = '--';
+                if (passRate) passRate.textContent = '--';
+                if (distinctionCount) distinctionCount.textContent = '0';
+                if (creditCount) creditCount.textContent = '0';
+                if (passCount) passCount.textContent = '0';
+                if (failCount) failCount.textContent = '0';
+                if (firstAssessment) firstAssessment.textContent = '--';
+                if (latestAssessment) latestAssessment.textContent = '--';
+                if (totalSubmitted) totalSubmitted.textContent = '0';
+                if (overallAverage) overallAverage.textContent = '--';
+                
+                const distBar = document.getElementById('distinction-bar');
+                const credBar = document.getElementById('credit-bar');
+                const passBar = document.getElementById('pass-bar');
+                const failBar = document.getElementById('fail-bar');
+                if (distBar) distBar.style.width = '0%';
+                if (credBar) credBar.style.width = '0%';
+                if (passBar) passBar.style.width = '0%';
+                if (failBar) failBar.style.width = '0%';
+                return;
+            }
+            
+            const percentages = completedReleased.map(e => e.totalPercentage);
+            const best = Math.max(...percentages);
+            const lowest = Math.min(...percentages);
+            const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+            
+            const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
+            const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+            const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+            const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
+            
+            const passed = distinctions + credits + passes;
+            const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
+            
+            const examDates = completedReleased
+                .map(e => e.examStartDateTime || e.examDate)
+                .filter(d => d)
+                .sort((a, b) => new Date(a) - new Date(b));
+            
+            const firstDate = examDates.length > 0 ? examDates[0] : null;
+            const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
+            
+            if (bestScore) bestScore.textContent = best.toFixed(1) + '%';
+            if (lowestScore) lowestScore.textContent = lowest.toFixed(1) + '%';
+            if (passRate) passRate.textContent = passRateValue.toFixed(1) + '%';
+            if (distinctionCount) distinctionCount.textContent = distinctions;
+            if (creditCount) creditCount.textContent = credits;
+            if (passCount) passCount.textContent = passes;
+            if (failCount) failCount.textContent = fails;
+            if (firstAssessment) firstAssessment.textContent = firstDate ? formatKenyaDate(firstDate) : '--';
+            if (latestAssessment) latestAssessment.textContent = latestDate ? formatKenyaDate(latestDate) : '--';
+            if (totalSubmitted) totalSubmitted.textContent = completedReleased.length;
+            if (overallAverage) overallAverage.textContent = average.toFixed(1) + '%';
+            
+            const total = completedReleased.length;
+            if (total > 0) {
+                const distPct = (distinctions / total) * 100;
+                const credPct = (credits / total) * 100;
+                const passPct = (passes / total) * 100;
+                const failPct = (fails / total) * 100;
+                
+                const distBar = document.getElementById('distinction-bar');
+                const credBar = document.getElementById('credit-bar');
+                const passBar = document.getElementById('pass-bar');
+                const failBar = document.getElementById('fail-bar');
+                
+                if (distBar) distBar.style.width = Math.min(distPct, 100) + '%';
+                if (credBar) credBar.style.width = Math.min(credPct, 100) + '%';
+                if (passBar) passBar.style.width = Math.min(passPct, 100) + '%';
+                if (failBar) failBar.style.width = Math.min(failPct, 100) + '%';
+            }
+        }
         
-        // Reset progress bars
-        const distBar = document.getElementById('distinction-bar');
-        const credBar = document.getElementById('credit-bar');
-        const passBar = document.getElementById('pass-bar');
-        const failBar = document.getElementById('fail-bar');
-        if (distBar) distBar.style.width = '0%';
-        if (credBar) credBar.style.width = '0%';
-        if (passBar) passBar.style.width = '0%';
-        if (failBar) failBar.style.width = '0%';
-        return;
-    }
-    
-    // Calculate statistics
-    const percentages = completedReleased.map(e => e.totalPercentage);
-    const best = Math.max(...percentages);
-    const lowest = Math.min(...percentages);
-    const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-    
-    // Count grades
-    const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
-    const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
-    const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
-    const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
-    
-    // Pass rate (60% and above)
-    const passed = distinctions + credits + passes;
-    const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
-    
-    // Get dates
-    const examDates = completedReleased
-        .map(e => e.examStartDateTime || e.examDate)
-        .filter(d => d)
-        .sort((a, b) => new Date(a) - new Date(b));
-    
-    const firstDate = examDates.length > 0 ? examDates[0] : null;
-    const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
-    
-    // Update DOM
-    if (bestScore) bestScore.textContent = best.toFixed(1) + '%';
-    if (lowestScore) lowestScore.textContent = lowest.toFixed(1) + '%';
-    if (passRate) passRate.textContent = passRateValue.toFixed(1) + '%';
-    if (distinctionCount) distinctionCount.textContent = distinctions;
-    if (creditCount) creditCount.textContent = credits;
-    if (passCount) passCount.textContent = passes;
-    if (failCount) failCount.textContent = fails;
-    if (firstAssessment) firstAssessment.textContent = firstDate ? formatKenyaDate(firstDate) : '--';
-    if (latestAssessment) latestAssessment.textContent = latestDate ? formatKenyaDate(latestDate) : '--';
-    if (totalSubmitted) totalSubmitted.textContent = completedReleased.length;
-    if (overallAverage) overallAverage.textContent = average.toFixed(1) + '%';
-    
-    // Update progress bars
-    const total = completedReleased.length;
-    if (total > 0) {
-        const distPct = (distinctions / total) * 100;
-        const credPct = (credits / total) * 100;
-        const passPct = (passes / total) * 100;
-        const failPct = (fails / total) * 100;
-        
-        const distBar = document.getElementById('distinction-bar');
-        const credBar = document.getElementById('credit-bar');
-        const passBar = document.getElementById('pass-bar');
-        const failBar = document.getElementById('fail-bar');
-        
-        if (distBar) distBar.style.width = Math.min(distPct, 100) + '%';
-        if (credBar) credBar.style.width = Math.min(credPct, 100) + '%';
-        if (passBar) passBar.style.width = Math.min(passPct, 100) + '%';
-        if (failBar) failBar.style.width = Math.min(failPct, 100) + '%';
-    }
-}
         updateEmptyStates() {
             if (this.currentEmpty) {
                 this.currentEmpty.style.display = this.currentExams.length === 0 ? 'block' : 'none';
@@ -1551,11 +1514,14 @@ updatePerformanceSummary() {
             }
         }
         
+        // ============================================
+        // 📊 VIEW EXAM RESULTS (Original - kept for compatibility)
+        // ============================================
         async viewExamResults(examId) {
             try {
                 const supabase = window.db?.supabase;
                 if (!supabase) {
-                    showToast('Database connection not available', 'warning');
+                    this.showToast('Database connection not available', 'warning');
                     return;
                 }
                 
@@ -1672,18 +1638,151 @@ updatePerformanceSummary() {
                 
             } catch (error) {
                 console.error('Error loading exam results:', error);
-                const errorModal = `
-                    <div id="errorModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                        <div style="background: white; border-radius: 12px; max-width: 260px; width: 90%; padding: 20px; text-align: center;">
-                            <div style="font-size: 36px;">⚠️</div>
-                            <p style="margin: 10px 0; font-size: 13px;">Unable to load exam results.</p>
-                            <button onclick="document.getElementById('errorModal').remove()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">OK</button>
+                this.showToast('Error loading exam results', 'error');
+            }
+        }
+        
+        // ============================================
+        // 📊 VIEW DETAILED EXAM RESULTS (STUDENT PORTAL)
+        // ✅ Students see ALL questions, answers, correct answers, explanations
+        // ============================================
+        async viewDetailedResults(examId) {
+            try {
+                const supabase = window.db?.supabase;
+                if (!supabase) {
+                    this.showToast('Database connection not available', 'warning');
+                    return;
+                }
+                
+                const userId = this.userId || window.db?.currentUserId;
+                if (!userId) {
+                    this.showToast('Please log in to view results', 'warning');
+                    return;
+                }
+                
+                // Get exam details
+                const { data: exam, error: examError } = await supabase
+                    .from('exams')
+                    .select('*')
+                    .eq('id', examId)
+                    .single();
+                
+                if (examError) throw examError;
+                
+                // Get student answers with questions
+                const { data: answers, error: answersError } = await supabase
+                    .from('exam_grades')
+                    .select('*, exam_questions!inner(*)')
+                    .eq('student_id', userId)
+                    .eq('exam_id', examId)
+                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
+                
+                if (answersError) throw answersError;
+                
+                // Get overall grade
+                const { data: grade, error: gradeError } = await supabase
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('student_id', userId)
+                    .eq('exam_id', examId)
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .single();
+                
+                if (gradeError) throw gradeError;
+                
+                // Build question review
+                const questions = answers.map(a => ({
+                    question_text: a.exam_questions.question_text,
+                    student_answer: a.selected_answer || 'Not answered',
+                    correct_answer: a.exam_questions.correct_answer,
+                    is_correct: a.selected_answer === a.exam_questions.correct_answer,
+                    explanation: a.exam_questions.explanation || null,
+                    marks_obtained: a.marks || 0,
+                    total_marks: a.exam_questions.marks || 1
+                }));
+                
+                const totalCorrect = questions.filter(q => q.is_correct).length;
+                const totalQuestions = questions.length;
+                const score = grade.marks || 0;
+                const totalMarks = exam.total_marks || 100;
+                const percentage = ((score / totalMarks) * 100).toFixed(1);
+                const passed = parseFloat(percentage) >= (exam.pass_mark || 60);
+                
+                // Build the detailed review modal
+                let questionsHtml = '';
+                questions.forEach((q, index) => {
+                    const isCorrect = q.is_correct;
+                    const icon = isCorrect ? '✅' : '❌';
+                    const bgColor = isCorrect ? '#F0FDF4' : '#FEF2F2';
+                    const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
+                    
+                    questionsHtml += `
+                        <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
+                            <div style="font-weight: 600; color: #0A3D62; margin-bottom: 6px;">
+                                ${icon} Q${index + 1}: ${q.question_text}
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
+                                <div>Your answer: <strong style="color: ${isCorrect ? '#38A169' : '#DC2626'};">${q.student_answer}</strong></div>
+                                <div>Correct answer: <strong style="color: #38A169;">${q.correct_answer}</strong></div>
+                                <div style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">${isCorrect ? '✓ Correct' : '✗ Wrong'}</div>
+                                <div>Marks: ${isCorrect ? q.marks_obtained : 0}/${q.total_marks}</div>
+                            </div>
+                            ${q.explanation ? `<div style="margin-top: 6px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px;">💡 ${q.explanation}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                const modalHtml = `
+                    <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+                        <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h2 style="margin: 0; color: #0A3D62;">
+                                    <i class="fas fa-clipboard-list"></i> Detailed Exam Review
+                                </h2>
+                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
+                                        style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8;">
+                                    &times;
+                                </button>
+                            </div>
+                            
+                            <div style="text-align: center; padding: 16px; background: #F8FAFC; border-radius: 12px; margin-bottom: 20px;">
+                                <h3 style="margin: 0; color: #0A3D62;">${this.escapeHtml(exam.exam_name)}</h3>
+                                <div style="font-size: 2.5rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'};">
+                                    ${percentage}%
+                                </div>
+                                <div style="font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'};">
+                                    ${passed ? '✅ PASS' : '❌ FAIL'}
+                                </div>
+                                <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
+                                    <div><span style="color: #64748B;">Score:</span> <strong>${score}/${totalMarks}</strong></div>
+                                    <div><span style="color: #64748B;">Correct:</span> <strong style="color: #38A169;">${totalCorrect}/${totalQuestions}</strong></div>
+                                    <div><span style="color: #64748B;">Wrong:</span> <strong style="color: #DC2626;">${totalQuestions - totalCorrect}</strong></div>
+                                </div>
+                            </div>
+                            
+                            <h4 style="color: #0A3D62; margin-bottom: 12px;">📝 Question-by-Question Review</h4>
+                            ${questionsHtml}
+                            
+                            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #E2E8F0; padding-top: 16px;">
+                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
+                                        style="padding: 10px 24px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
-                const existingError = document.getElementById('errorModal');
-                if (existingError) existingError.remove();
-                document.body.insertAdjacentHTML('beforeend', errorModal);
+                
+                const existing = document.getElementById('detailedResultsModal');
+                if (existing) existing.remove();
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                document.getElementById('detailedResultsModal').addEventListener('click', function(e) {
+                    if (e.target === this) this.remove();
+                });
+                
+            } catch (error) {
+                console.error('Error loading detailed results:', error);
+                this.showToast('Error loading exam details', 'error');
             }
         }
         
@@ -1756,6 +1855,25 @@ updatePerformanceSummary() {
             });
         }
         
+        // ============================================
+        // 📱 SHOW TOAST HELPER
+        // ============================================
+        showToast(message, type = 'info') {
+            if (typeof showToast === 'function') {
+                showToast(message, type);
+            } else {
+                console.log(`[${type}] ${message}`);
+                // Simple fallback alert
+                if (type === 'error') {
+                    alert('❌ ' + message);
+                } else if (type === 'warning') {
+                    alert('⚠️ ' + message);
+                } else {
+                    alert('ℹ️ ' + message);
+                }
+            }
+        }
+        
         showLoading() {
             const loadingHTML = `<tr class="loading"><td colspan="8"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
             if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
@@ -1823,7 +1941,6 @@ updatePerformanceSummary() {
 (function ensureExamsReadyEvent() {
     console.log('📣 Ensuring examsModuleReady event...');
     
-    // Dispatch immediately if exams are loaded
     if (window.examsModule && window.examsModule.allExams) {
         const event = new CustomEvent('examsModuleReady', {
             detail: { 
@@ -1836,7 +1953,6 @@ updatePerformanceSummary() {
         console.log('✅ examsModuleReady event dispatched immediately');
     }
     
-    // Also dispatch after a short delay to catch late listeners
     setTimeout(() => {
         if (window.examsModule && window.examsModule.allExams) {
             const event = new CustomEvent('examsModuleReady', {
@@ -1851,7 +1967,6 @@ updatePerformanceSummary() {
         }
     }, 500);
     
-    // And again after 2 seconds for safety
     setTimeout(() => {
         if (window.examsModule && window.examsModule.allExams) {
             const event = new CustomEvent('examsModuleReady', {
@@ -1867,9 +1982,6 @@ updatePerformanceSummary() {
     }, 2000);
 })();
 
-// ============================================
-// ✅ EXPOSE EXAMS DATA GLOBALLY
-// ============================================
 window.__examsReady = true;
 window.__examsData = {
     allExams: window.examsModule?.allExams || [],
