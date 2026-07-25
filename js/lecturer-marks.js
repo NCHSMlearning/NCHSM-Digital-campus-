@@ -1549,30 +1549,95 @@ function downloadCSV(csv, filename) {
     URL.revokeObjectURL(url);
 }
 
-// -------- SHOW/HIDE NOTIFICATION/LOADING --------
+// -------- SHOW/HIDE NOTIFICATION/LOADING - FIXED --------
 function showNotification(message, type) {
-    // Try window version first
-    if (typeof window.showNotification === 'function') {
+    // Use LecturerUI if available (prevents recursion)
+    if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
+        window.LecturerUI.showNotification(message, type || 'info');
+        return;
+    }
+    
+    // Use global notification if available and DIFFERENT from this
+    if (typeof window.showNotification === 'function' && 
+        window.showNotification !== showNotification) {
         window.showNotification(message, type || 'info');
         return;
     }
+    
+    // Fallback: log to console
     console.log(`[${type || 'info'}] ${message}`);
+    
+    // Also create a simple toast
+    if (typeof document !== 'undefined') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; padding: 12px 20px;
+            background: ${colors[type] || '#3b82f6'}; color: white;
+            border-radius: 8px; font-weight: 500; z-index: 100000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            max-width: 400px;
+            animation: slideIn 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }
 }
 
 function showLoading(message) {
-    if (typeof window.showLoading === 'function') {
+    // Use LecturerUI if available
+    if (window.LecturerUI && typeof window.LecturerUI.showLoading === 'function') {
+        window.LecturerUI.showLoading(message);
+        return;
+    }
+    
+    // Use global loading if available and DIFFERENT
+    if (typeof window.showLoading === 'function' && 
+        window.showLoading !== showLoading) {
         window.showLoading(message);
         return;
     }
+    
+    // Fallback
     console.log(`⏳ ${message}`);
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        const msg = document.getElementById('loadingMessage');
+        if (msg) msg.textContent = message;
+        overlay.style.display = 'flex';
+    }
 }
 
 function hideLoading() {
-    if (typeof window.hideLoading === 'function') {
+    // Use LecturerUI if available
+    if (window.LecturerUI && typeof window.LecturerUI.hideLoading === 'function') {
+        window.LecturerUI.hideLoading();
+        return;
+    }
+    
+    // Use global loading if available and DIFFERENT
+    if (typeof window.hideLoading === 'function' && 
+        window.hideLoading !== hideLoading) {
         window.hideLoading();
         return;
     }
+    
+    // Fallback
     console.log('✅ Done');
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
 }
 
 // ============================================================
