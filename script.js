@@ -21735,6 +21735,617 @@ window.logEntryControlAction = logEntryControlAction;
 console.log('✅ Entry Control functions loaded successfully!');
 console.log('✅ renderECSubjects:', typeof renderECSubjects);
 console.log('✅ toggleSubjectEntry:', typeof toggleSubjectEntry);
+// ============================================================
+// MARKS APPROVAL SYSTEM - COMPLETE
+// ============================================================
+
+// ============================================================
+// STATE
+// ============================================================
+
+let marksApprovalData = [];
+let marksApprovalFilters = {
+    search: '',
+    subject: 'all',
+    block: 'all'
+};
+
+// ============================================================
+// LOAD MARKS APPROVALS
+// ============================================================
+
+async function loadMarksApprovals() {
+    console.log('📋 Loading marks pending approval...');
+    
+    const container = document.getElementById('marksApprovalTableContainer');
+    if (!container) {
+        console.warn('⚠️ marksApprovalTableContainer not found');
+        return;
+    }
+    
+    try {
+        // Get pending marks with lecturer info
+        const { data: pending, error } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('approval_status', 'pending')
+            .order('submitted_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        marksApprovalData = pending || [];
+        console.log(`📋 Found ${marksApprovalData.length} pending marks`);
+        
+        // Update stats
+        updateMarksApprovalStats();
+        
+        // Populate filters
+        populateMarksApprovalFilters();
+        
+        // Render table
+        renderMarksApprovalTable();
+        
+    } catch (error) {
+        console.error('❌ Error loading marks:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                Error loading marks: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// UPDATE MARKS APPROVAL STATS
+// ============================================================
+
+function updateMarksApprovalStats() {
+    const pending = marksApprovalData;
+    
+    // Update pending count
+    const pendingCount = document.getElementById('pendingMarksCount');
+    if (pendingCount) pendingCount.textContent = pending.length;
+    
+    // Update badge
+    const badge = document.getElementById('marksApprovalBadge');
+    if (badge) {
+        badge.textContent = pending.length;
+        badge.style.display = pending.length > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Update filter count
+    const filterCount = document.getElementById('marksFilterCount');
+    if (filterCount) filterCount.textContent = pending.length;
+    
+    // Count unique subjects
+    const subjects = new Set(pending.map(m => m.subject_name).filter(Boolean));
+    const subjectsCount = document.getElementById('pendingSubjectsCount');
+    if (subjectsCount) subjectsCount.textContent = subjects.size || 0;
+    
+    // Calculate approved today
+    const today = new Date().toDateString();
+    const approvedToday = pending.filter(m => {
+        if (!m.approved_at) return false;
+        return new Date(m.approved_at).toDateString() === today;
+    });
+    const approvedTodayEl = document.getElementById('approvedMarksToday');
+    if (approvedTodayEl) approvedTodayEl.textContent = approvedToday.length;
+    
+    // Count rejected
+    // We need to query rejected marks separately
+    countRejectedMarks();
+}
+
+// ============================================================
+// COUNT REJECTED MARKS
+// ============================================================
+
+async function countRejectedMarks() {
+    try {
+        const { count, error } = await sb
+            .from('student_marks')
+            .select('id', { count: 'exact', head: true })
+            .eq('approval_status', 'rejected');
+        
+        if (error) throw error;
+        
+        const rejectedEl = document.getElementById('rejectedMarksCount');
+        if (rejectedEl) rejectedEl.textContent = count || 0;
+    } catch (error) {
+        console.error('Error counting rejected marks:', error);
+    }
+}
+
+// ============================================================
+// POPULATE MARKS APPROVAL FILTERS
+// ============================================================
+
+function populateMarksApprovalFilters() {
+    const pending = marksApprovalData;
+    
+    // Populate subject filter
+    const subjectFilter = document.getElementById('marksApprovalSubjectFilter');
+    if (subjectFilter) {
+        const currentValue = subjectFilter.value;
+        const subjects = [...new Set(pending.map(m => m.subject_name).filter(Boolean))];
+        subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
+        subjects.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            subjectFilter.appendChild(opt);
+        });
+        subjectFilter.value = currentValue;
+    }
+    
+    // Populate block filter
+    const blockFilter = document.getElementById('marksApprovalBlockFilter');
+    if (blockFilter) {
+        const currentValue = blockFilter.value;
+        const blocks = [...new Set(pending.map(m => m.block).filter(Boolean))];
+        blockFilter.innerHTML = '<option value="all">All Blocks</option>';
+        blocks.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            blockFilter.appendChild(opt);
+        });
+        blockFilter.value = currentValue;
+    }
+}
+
+// ============================================================
+// RENDER MARKS APPROVAL TABLE
+// ============================================================
+
+function renderMarksApprovalTable() {
+    const container = document.getElementById('marksApprovalTableContainer');
+    if (!container) return;
+    
+    // Apply filters
+    let filtered = [...marksApprovalData];
+    
+    const search = document.getElementById('marksApprovalSearch')?.value?.toLowerCase() || '';
+    const subject = document.getElementById('marksApprovalSubjectFilter')?.value || 'all';
+    const block = document.getElementById('marksApprovalBlockFilter')?.value || 'all';
+    
+    if (search) {
+        filtered = filtered.filter(m => 
+            (m.student_name || '').toLowerCase().includes(search) ||
+            (m.subject_name || '').toLowerCase().includes(search) ||
+            (m.admission_number || '').toLowerCase().includes(search)
+        );
+    }
+    
+    if (subject !== 'all') {
+        filtered = filtered.filter(m => m.subject_name === subject);
+    }
+    
+    if (block !== 'all') {
+        filtered = filtered.filter(m => m.block === block);
+    }
+    
+    // Update filter count
+    const filterCount = document.getElementById('marksFilterCount');
+    if (filterCount) filterCount.textContent = filtered.length;
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #10b981;">
+                <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                ✅ No pending marks! All clear.
+            </div>
+        `;
+        return;
+    }
+    
+    // Build table
+    let html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
+                        <th style="padding: 10px; text-align: center; width: 40px;">#</th>
+                        <th style="padding: 10px; text-align: left;">Student</th>
+                        <th style="padding: 10px; text-align: left;">Admission</th>
+                        <th style="padding: 10px; text-align: left;">Subject</th>
+                        <th style="padding: 10px; text-align: left;">Block</th>
+                        <th style="padding: 10px; text-align: center;">CAT1</th>
+                        <th style="padding: 10px; text-align: center;">CAT2</th>
+                        <th style="padding: 10px; text-align: center;">Exam</th>
+                        <th style="padding: 10px; text-align: center;">Total</th>
+                        <th style="padding: 10px; text-align: center;">Grade</th>
+                        <th style="padding: 10px; text-align: left;">Submitted By</th>
+                        <th style="padding: 10px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    filtered.forEach((m, i) => {
+        const rowStyle = i % 2 === 0 ? 'background: #f8fafc;' : '';
+        const total = m.final_score || 0;
+        const isPassing = total >= 60;
+        
+        // Safe escape
+        const safeName = (m.student_name || 'Unknown').replace(/[&<>"]/g, function(match) {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            if (match === '"') return '&quot;';
+            return match;
+        });
+        const safeAdmission = (m.admission_number || 'N/A').replace(/[&<>"]/g, function(match) {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            if (match === '"') return '&quot;';
+            return match;
+        });
+        const safeSubject = (m.subject_name || '').replace(/[&<>"]/g, function(match) {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            if (match === '"') return '&quot;';
+            return match;
+        });
+        const safeBlock = (m.block || '').replace(/[&<>"]/g, function(match) {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            if (match === '"') return '&quot;';
+            return match;
+        });
+        const safeSubmittedBy = (m.submitted_by_name || 'Unknown').replace(/[&<>"]/g, function(match) {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            if (match === '"') return '&quot;';
+            return match;
+        });
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${rowStyle}">
+                <td style="padding: 10px; text-align: center;">${i + 1}</td>
+                <td style="padding: 10px; font-weight: 500;">${safeName}</td>
+                <td style="padding: 10px;">${safeAdmission}</td>
+                <td style="padding: 10px; font-size: 11px;">${safeSubject}</td>
+                <td style="padding: 10px;">${safeBlock}</td>
+                <td style="padding: 10px; text-align: center;">${m.cat1_score || '-'}</td>
+                <td style="padding: 10px; text-align: center;">${m.cat2_score || '-'}</td>
+                <td style="padding: 10px; text-align: center;">${m.exam_score || '-'}</td>
+                <td style="padding: 10px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${total || '-'}</td>
+                <td style="padding: 10px; text-align: center; font-weight: bold; font-size: 16px; color: ${m.grade === 'A' || m.grade === 'B' ? '#065f46' : '#991b1b'};">${m.grade || '-'}</td>
+                <td style="padding: 10px;">${safeSubmittedBy}</td>
+                <td style="padding: 10px; text-align: center; white-space: nowrap;">
+                    <button onclick="approveMark('${m.id}')" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; margin-right: 4px; font-size: 11px;">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button onclick="rejectMark('${m.id}')" style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-top: 10px; font-size: 12px; color: #64748b; border-top: 1px solid #e5e7eb; flex-wrap: wrap; gap: 10px;">
+            <span>📊 Total: ${filtered.length} pending approval(s)</span>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="approveAllPendingMarks()" style="background: #10b981; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-check-double"></i> Approve All
+                </button>
+                <button onclick="rejectAllPendingMarks()" style="background: #dc2626; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-times"></i> Reject All
+                </button>
+                <button onclick="loadMarksApprovals()" style="background: #6b7280; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// ============================================================
+// FILTER MARKS APPROVALS
+// ============================================================
+
+function filterMarksApprovals() {
+    renderMarksApprovalTable();
+}
+
+// ============================================================
+// APPROVE SINGLE MARK
+// ============================================================
+
+async function approveMark(id) {
+    if (!confirm('✅ Approve this mark?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showNotification('✅ Mark approved successfully!', 'success');
+        
+        // Log the approval
+        await logApprovalAction(id, 'approved');
+        
+        // Reload
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error approving mark:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// REJECT SINGLE MARK
+// ============================================================
+
+async function rejectMark(id) {
+    const reason = prompt('❌ Enter rejection reason (optional):');
+    if (reason === null) return; // User cancelled
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'rejected',
+                rejection_reason: reason || 'No reason provided',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showNotification('❌ Mark rejected', 'info');
+        
+        // Log the rejection
+        await logApprovalAction(id, 'rejected', reason);
+        
+        // Reload
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error rejecting mark:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// APPROVE ALL PENDING MARKS
+// ============================================================
+
+async function approveAllPendingMarks() {
+    const count = marksApprovalData.length;
+    if (count === 0) {
+        showNotification('No pending marks to approve', 'info');
+        return;
+    }
+    
+    if (!confirm(`✅ Approve ALL ${count} pending marks?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('approval_status', 'pending');
+        
+        if (error) throw error;
+        
+        showNotification(`✅ All ${count} marks approved!`, 'success');
+        
+        // Log bulk approval
+        await logBulkApprovalAction('approved', count);
+        
+        // Reload
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error approving all marks:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// REJECT ALL PENDING MARKS
+// ============================================================
+
+async function rejectAllPendingMarks() {
+    const count = marksApprovalData.length;
+    if (count === 0) {
+        showNotification('No pending marks to reject', 'info');
+        return;
+    }
+    
+    const reason = prompt(`❌ Enter rejection reason for ALL ${count} marks (optional):`);
+    if (reason === null) return; // User cancelled
+    
+    if (!confirm(`❌ Reject ALL ${count} pending marks?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'rejected',
+                rejection_reason: reason || 'Bulk rejection',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('approval_status', 'pending');
+        
+        if (error) throw error;
+        
+        showNotification(`❌ All ${count} marks rejected`, 'info');
+        
+        // Log bulk rejection
+        await logBulkApprovalAction('rejected', count, reason);
+        
+        // Reload
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error rejecting all marks:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// LOG APPROVAL ACTION
+// ============================================================
+
+async function logApprovalAction(markId, action, reason = null) {
+    try {
+        // Get mark details
+        const { data: mark } = await sb
+            .from('student_marks')
+            .select('student_name, subject_name, block')
+            .eq('id', markId)
+            .single();
+        
+        if (!mark) return;
+        
+        await sb
+            .from('mark_approval_logs')
+            .insert({
+                mark_id: markId,
+                action: action,
+                action_by: window.currentUser?.id || null,
+                action_by_name: window.currentUser?.full_name || 'Super Admin',
+                reason: reason || null,
+                details: `${action} ${mark.student_name} - ${mark.subject_name} (${mark.block})`,
+                created_at: new Date().toISOString()
+            });
+        
+    } catch (error) {
+        console.warn('Error logging approval action:', error);
+    }
+}
+
+// ============================================================
+// LOG BULK APPROVAL ACTION
+// ============================================================
+
+async function logBulkApprovalAction(action, count, reason = null) {
+    try {
+        await sb
+            .from('mark_approval_logs')
+            .insert({
+                mark_id: null,
+                action: `${action}_bulk`,
+                action_by: window.currentUser?.id || null,
+                action_by_name: window.currentUser?.full_name || 'Super Admin',
+                reason: reason || null,
+                details: `${action} ${count} marks in bulk`,
+                created_at: new Date().toISOString()
+            });
+        
+    } catch (error) {
+        console.warn('Error logging bulk action:', error);
+    }
+}
+
+// ============================================================
+// INIT MARKS APPROVAL
+// ============================================================
+
+function initMarksApproval() {
+    console.log('📋 Initializing Marks Approval system...');
+    
+    // Load data
+    loadMarksApprovals();
+    
+    // Set up auto-refresh (every 30 seconds)
+    if (window.marksApprovalInterval) {
+        clearInterval(window.marksApprovalInterval);
+    }
+    window.marksApprovalInterval = setInterval(function() {
+        const tab = document.querySelector('#marks-approval');
+        if (tab && tab.style.display !== 'none') {
+            loadMarksApprovals();
+        }
+    }, 30000);
+    
+    console.log('✅ Marks Approval system initialized!');
+}
+
+// ============================================================
+// EXPORT MARKS APPROVALS TO CSV
+// ============================================================
+
+function exportMarksApprovalsToCSV() {
+    const pending = marksApprovalData;
+    if (!pending || pending.length === 0) {
+        showNotification('No data to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Student', 'Admission', 'Subject', 'Block', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Submitted By', 'Submitted At'];
+    const rows = pending.map(m => [
+        m.student_name || 'Unknown',
+        m.admission_number || 'N/A',
+        m.subject_name || '',
+        m.block || '',
+        m.cat1_score || '',
+        m.cat2_score || '',
+        m.exam_score || '',
+        m.final_score || '',
+        m.grade || '',
+        m.submitted_by_name || 'Unknown',
+        m.submitted_at ? new Date(m.submitted_at).toLocaleString() : ''
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `marks_approvals_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification('✅ Marks approvals exported!', 'success');
+}
+
+// ============================================================
+// GLOBAL EXPOSURE
+// ============================================================
+
+window.loadMarksApprovals = loadMarksApprovals;
+window.filterMarksApprovals = filterMarksApprovals;
+window.approveMark = approveMark;
+window.rejectMark = rejectMark;
+window.approveAllPendingMarks = approveAllPendingMarks;
+window.rejectAllPendingMarks = rejectAllPendingMarks;
+window.initMarksApproval = initMarksApproval;
+window.exportMarksApprovalsToCSV = exportMarksApprovalsToCSV;
+
+console.log('✅ Marks Approval functions loaded!');
+console.log('📋 Run: initMarksApproval() to initialize');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
