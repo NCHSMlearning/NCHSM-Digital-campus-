@@ -19136,7 +19136,6 @@ window.initReviewsNewsletter = initReviewsNewsletter;
 window.getStarHTML = getStarHTML;
 
 console.log('✅ Reviews & Newsletter module loaded');
-
 // ============================================================
 // MARKS ENTRY SYSTEM - SUPER ADMIN
 // WITH LECTURER UNIT ASSIGNMENT MANAGEMENT
@@ -19465,7 +19464,7 @@ async function loadMEBlocks() {
 }
 
 // ============================================================
-// LOAD UNITS (was loadMESubjects)
+// LOAD UNITS
 // ============================================================
 
 async function loadMEUnits() {
@@ -20059,10 +20058,6 @@ function refreshMarksData() {
 // COLUMN MANAGEMENT - ADMIN ONLY
 // ============================================================
 
-// ============================================================
-// LOAD COLUMN SETTINGS FOR CURRENT UNIT
-// ============================================================
-
 async function loadUnitColumnSettings() {
     console.log('📋 Loading column settings...');
     
@@ -20109,7 +20104,6 @@ async function loadUnitColumnSettings() {
         
         me_columnSettings = data || { columns: [] };
         renderUnitColumns();
-        
         applyColumnVisibility();
         
     } catch (error) {
@@ -20193,7 +20187,7 @@ function renderUnitColumns() {
 }
 
 // ============================================================
-// SAVE COLUMN SETTING - FIXED (NO ON CONFLICT)
+// SAVE COLUMN SETTING
 // ============================================================
 
 async function saveUnitColumnSetting(columnId, visible) {
@@ -20290,7 +20284,6 @@ async function saveUnitColumnSetting(columnId, visible) {
     }
 }
 
-// Make sure it's available globally
 window.saveUnitColumnSetting = saveUnitColumnSetting;
 console.log('✅ saveUnitColumnSetting has been replaced with the fixed version!');
 
@@ -20470,7 +20463,7 @@ async function resetUnitColumns() {
 // ============================================================
 
 // ============================================================
-// LOAD LECTURER ASSIGNMENTS - FIXED
+// LOAD LECTURER ASSIGNMENTS
 // ============================================================
 
 async function loadLecturerAssignments() {
@@ -20497,12 +20490,13 @@ async function loadLecturerAssignments() {
     }
     
     try {
-        // ✅ FIXED: Use correct column names: first_name, other_names
+        // ✅ Get ALL active lecturers (filtered by program)
         const { data: lecturers, error: lecturerError } = await sb
             .from('staff_records')
-            .select('id, first_name, other_names, email, department')
+            .select('*')
             .eq('program', program)
-            .eq('status', 'active');
+            .eq('status', 'active')
+            .order('first_name', { ascending: true });
         
         if (lecturerError) throw lecturerError;
         
@@ -20536,15 +20530,21 @@ async function loadLecturerAssignments() {
         let html = '';
         lecturers.forEach(lecturer => {
             const isAssigned = !!assignedMap[lecturer.id];
-            // Combine first_name and other_names for full name
             const fullName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+            const departmentDisplay = getLecturerDepartment(lecturer);
+            const programDisplay = lecturer.program || 'KRCHN';
             
             html += `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
                     <div>
                         <strong style="font-size: 13px; color: #1e293b;">${fullName}</strong>
                         <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
-                        <span style="font-size: 10px; color: #94a3b8;">${lecturer.department || ''}</span>
+                        <span style="font-size: 10px; color: #94a3b8;">
+                            <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 4px;">
+                                ${programDisplay}
+                            </span>
+                            - ${departmentDisplay}
+                        </span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         ${isAssigned ? `
@@ -20566,6 +20566,9 @@ async function loadLecturerAssignments() {
         
         container.innerHTML = html;
         
+        // ✅ Also load assignment history
+        await loadAssignmentHistory();
+        
     } catch (error) {
         console.error('Error loading assignments:', error);
         container.innerHTML = `
@@ -20577,7 +20580,7 @@ async function loadLecturerAssignments() {
 }
 
 // ============================================================
-// ASSIGN LECTURER TO UNIT - FIXED
+// ASSIGN LECTURER TO UNIT
 // ============================================================
 
 async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
@@ -20620,7 +20623,6 @@ async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
     }
 }
 
-// Make it globally available
 window.assignLecturerToUnit = assignLecturerToUnit;
 
 // ============================================================
@@ -20638,7 +20640,27 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
         return;
     }
     
-    if (!confirm(`Remove this lecturer's assignment to "${unit}"?`)) return;
+    // Get lecturer name for confirmation
+    let lecturerName = 'this lecturer';
+    try {
+        const { data: lecturer } = await sb
+            .from('staff_records')
+            .select('first_name, other_names')
+            .eq('id', lecturerId)
+            .maybeSingle();
+        
+        if (lecturer) {
+            lecturerName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+        }
+    } catch (e) {
+        console.warn('Could not fetch lecturer name:', e);
+    }
+    
+    if (!confirm(`⚠️ Remove "${lecturerName}" from "${unit}"?\n\nThis will remove their access to enter marks for this unit.`)) {
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading('Removing assignment...');
     
     try {
         const { error } = await sb
@@ -20652,12 +20674,16 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
         
         if (error) throw error;
         
+        if (typeof hideLoading === 'function') hideLoading();
         if (typeof showNotification === 'function') {
-            showNotification(`✅ Assignment removed`, 'success');
+            showNotification(`✅ "${lecturerName}" removed from "${unit}"`, 'success');
         }
+        
         await loadLecturerAssignments();
+        await loadAssignmentHistory();
         
     } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
         console.error('Error removing assignment:', error);
         if (typeof showNotification === 'function') {
             showNotification('❌ Error removing assignment: ' + error.message, 'error');
@@ -20665,8 +20691,10 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
     }
 }
 
+window.removeLecturerAssignment = removeLecturerAssignment;
+
 // ============================================================
-// SHOW LECTURER ASSIGNMENT MODAL - FIXED
+// SHOW LECTURER ASSIGNMENT MODAL
 // ============================================================
 
 async function showLecturerAssignmentModal() {
@@ -20685,34 +20713,38 @@ async function showLecturerAssignmentModal() {
     
     document.getElementById('me_assign_block').value = block.replace(/_/g, ' ');
     document.getElementById('me_assign_year').value = year;
+    document.getElementById('me_assign_program').value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
     
     const lecturerSelect = document.getElementById('me_lecturer_select');
     if (lecturerSelect) {
         lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
         
         try {
-            // ✅ FIXED: Use correct column names
+            // ✅ Get staff filtered by the SELECTED PROGRAM
             const { data: lecturers, error } = await sb
                 .from('staff_records')
-                .select('id, first_name, other_names, email, department')
+                .select('*')
+                .eq('program', program)
                 .eq('status', 'active')
                 .order('first_name', { ascending: true });
             
             if (error) throw error;
             
+            console.log('📋 Lecturers for program', program, ':', lecturers?.length || 0);
+            
             if (lecturerSelect) {
                 if (!lecturers || lecturers.length === 0) {
-                    lecturerSelect.innerHTML = '<option value="">No lecturers found</option>';
+                    lecturerSelect.innerHTML = '<option value="">No lecturers found for this program</option>';
                 } else {
                     lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
                     lecturers.forEach(l => {
                         const option = document.createElement('option');
                         option.value = l.id;
-                        // Combine first_name and other_names for full name
                         const fullName = l.other_names ? `${l.first_name} ${l.other_names}` : l.first_name;
                         option.textContent = `${fullName} (${l.email || 'no email'})`;
                         lecturerSelect.appendChild(option);
                     });
+                    console.log(`✅ Loaded ${lecturers.length} lecturers for program ${program}`);
                 }
             }
             
@@ -20762,6 +20794,9 @@ async function showLecturerAssignmentModal() {
     
     document.getElementById('lecturerAssignmentModal').style.display = 'flex';
 }
+
+window.showLecturerAssignmentModal = showLecturerAssignmentModal;
+
 // ============================================================
 // CLOSE LECTURER ASSIGNMENT MODAL
 // ============================================================
@@ -20769,6 +20804,8 @@ async function showLecturerAssignmentModal() {
 function closeLecturerAssignmentModal() {
     document.getElementById('lecturerAssignmentModal').style.display = 'none';
 }
+
+window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
 
 // ============================================================
 // SAVE LECTURER ASSIGNMENT
@@ -20802,6 +20839,227 @@ async function saveLecturerAssignment() {
     closeLecturerAssignmentModal();
 }
 
+window.saveLecturerAssignment = saveLecturerAssignment;
+
+// ============================================================
+// ASSIGNMENT HISTORY - LOAD AND DISPLAY
+// ============================================================
+
+async function loadAssignmentHistory() {
+    console.log('📋 Loading assignment history...');
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const container = document.getElementById('me_assignment_history');
+    
+    if (!block || !unit) {
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Select a unit to view assignment history
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                <div class="loading-spinner"></div>
+                Loading assignment history...
+            </div>
+        `;
+    }
+    
+    try {
+        const { data: assignments, error } = await sb
+            .from('lecturer_subject_assignments')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!assignments || assignments.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> No lecturers assigned to this unit yet
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
+                        <th style="padding: 10px 12px; text-align: left;">#</th>
+                        <th style="padding: 10px 12px; text-align: left;">Lecturer Name</th>
+                        <th style="padding: 10px 12px; text-align: left;">Email</th>
+                        <th style="padding: 10px 12px; text-align: left;">Department</th>
+                        <th style="padding: 10px 12px; text-align: left;">Program</th>
+                        <th style="padding: 10px 12px; text-align: left;">Block</th>
+                        <th style="padding: 10px 12px; text-align: left;">Assigned Date</th>
+                        <th style="padding: 10px 12px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        for (let i = 0; i < assignments.length; i++) {
+            const a = assignments[i];
+            const fullName = a.lecturer_name || 'Unknown';
+            
+            const { data: lecturer } = await sb
+                .from('staff_records')
+                .select('*')
+                .eq('id', a.lecturer_id)
+                .maybeSingle();
+            
+            const email = lecturer?.email || a.lecturer_email || 'N/A';
+            const department = a.department || lecturer?.department || 'N/A';
+            const programDisplay = a.program || lecturer?.program || 'KRCHN';
+            const assignedDate = a.created_at ? new Date(a.created_at).toLocaleDateString() : 'N/A';
+            
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <td style="padding: 10px 12px;">${i + 1}</td>
+                    <td style="padding: 10px 12px; font-weight: 600;">${escapeHtml(fullName)}</td>
+                    <td style="padding: 10px 12px;">${escapeHtml(email)}</td>
+                    <td style="padding: 10px 12px;">
+                        <span style="background: ${department === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${escapeHtml(department)}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        <span style="background: ${programDisplay === 'KRCHN' ? '#d1fae5' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${escapeHtml(programDisplay)}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 12px;">${escapeHtml(block.replace(/_/g, ' '))}</td>
+                    <td style="padding: 10px 12px; font-size: 12px; color: #64748b;">${assignedDate}</td>
+                    <td style="padding: 10px 12px; text-align: center;">
+                        <button onclick="removeLecturerAssignment('${a.lecturer_id}', '${a.subject_name}', '${a.block}')" 
+                                style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-times"></i> Drop
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        html += `
+                </tbody>
+            </table>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-top: 10px; font-size: 12px; color: #64748b;">
+                <span>📊 Total: ${assignments.length} lecturer(s) assigned</span>
+                <span>🔄 Last updated: ${new Date().toLocaleString()}</span>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading assignment history:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: #ef4444; font-size: 13px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading assignment history: ${error.message}
+            </div>
+        `;
+    }
+}
+
+window.loadAssignmentHistory = loadAssignmentHistory;
+
+// ============================================================
+// REFRESH ASSIGNMENT HISTORY
+// ============================================================
+
+function refreshAssignmentHistory() {
+    loadAssignmentHistory();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Assignment history refreshed!', 'success');
+    }
+}
+
+window.refreshAssignmentHistory = refreshAssignmentHistory;
+
+// ============================================================
+// CLEAR ALL ASSIGNMENTS FOR A UNIT
+// ============================================================
+
+async function clearAllAssignments() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL lecturers from "${unit}"?\n\nThis will remove all assignments for this unit.`)) {
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading('Removing all assignments...');
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ All assignments removed from "${unit}"`, 'success');
+        }
+        
+        await loadLecturerAssignments();
+        await loadAssignmentHistory();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error clearing assignments:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error clearing assignments: ' + error.message, 'error');
+        }
+    }
+}
+
+window.clearAllAssignments = clearAllAssignments;
+
+// ============================================================
+// GET LECTURER DEPARTMENT - HELPER FUNCTION
+// ============================================================
+
+function getLecturerDepartment(lecturer) {
+    if (lecturer.program === 'KRCHN') {
+        return 'Nursing';
+    } else if (lecturer.program === 'TVET') {
+        return 'TVET Department';
+    } else if (lecturer.department) {
+        return lecturer.department;
+    } else {
+        return 'General';
+    }
+}
+
+window.getLecturerDepartment = getLecturerDepartment;
+
 // ============================================================
 // DEBUG FUNCTION
 // ============================================================
@@ -20831,6 +21089,10 @@ function debugColumnState() {
 
 window.debugColumnState = debugColumnState;
 
+// ============================================================
+// FORCE REFRESH ASSESSMENT
+// ============================================================
+
 window.forceRefreshAssessment = function() {
     console.log('🔄 Manually refreshing assessment...');
     const autoType = getAutoAssessmentType();
@@ -20844,6 +21106,21 @@ window.forceRefreshAssessment = function() {
     console.log(`✅ Refreshed to: ${getAssessmentTypeLabel(autoType)}`);
 };
 
+// ============================================================
+// DOWNLOAD CSV HELPER
+// ============================================================
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
 // ============================================================
 // GLOBAL REGISTRATION
@@ -20880,6 +21157,12 @@ window.showLecturerAssignmentModal = showLecturerAssignmentModal;
 window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
 window.saveLecturerAssignment = saveLecturerAssignment;
 
+// Assignment history
+window.loadAssignmentHistory = loadAssignmentHistory;
+window.refreshAssignmentHistory = refreshAssignmentHistory;
+window.clearAllAssignments = clearAllAssignments;
+window.getLecturerDepartment = getLecturerDepartment;
+
 // Auto-detect functions
 window.detectVisibleColumns = detectVisibleColumns;
 window.getAutoAssessmentType = getAutoAssessmentType;
@@ -20894,6 +21177,7 @@ console.log('✅ Marks Entry functions loaded!');
 console.log('✅ Column Management loaded (Admin only)');
 console.log('✅ Auto-assessment type detection loaded');
 console.log('✅ Lecturer Unit Assignment Management loaded');
+console.log('✅ Assignment History loaded');
 console.log('✅ loadMEBlocks:', typeof loadMEBlocks);
 console.log('✅ loadMEUnits:', typeof loadMEUnits);
 console.log('✅ loadMarksEntry:', typeof loadMarksEntry);
@@ -20901,6 +21185,7 @@ console.log('✅ loadUnitColumnSettings:', typeof loadUnitColumnSettings);
 console.log('✅ saveUnitColumnSetting:', typeof saveUnitColumnSetting);
 console.log('✅ getAutoAssessmentType:', typeof getAutoAssessmentType);
 console.log('✅ loadLecturerAssignments:', typeof loadLecturerAssignments);
+console.log('✅ loadAssignmentHistory:', typeof loadAssignmentHistory);
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
 // ============================================================
