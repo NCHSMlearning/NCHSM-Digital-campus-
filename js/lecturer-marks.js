@@ -1,5 +1,5 @@
 // ============================================================
-// LECTURER MARKS MODULE - COMPLETE
+// LECTURER MARKS MODULE - COMPLETE (SYNCED WITH ADMIN)
 // ============================================================
 
 // ============================================================
@@ -14,6 +14,7 @@ let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
 let me_approvalStatus = 'draft';
 let me_currentLecturer = null;
+let me_columnSettings = { columns: [] };
 
 // ============================================================
 // LECTURER MARKS CLASS
@@ -32,71 +33,88 @@ const LecturerMarks = {
         console.log('✅ Lecturer Marks initialized');
     },
     
-    async detectLecturerProgram() {
-        console.log('🔍 Detecting lecturer program...');
+   async detectLecturerProgram() {
+    console.log('🔍 Detecting lecturer program...');
+    
+    try {
+        const { data: { user }, error: userError } = await sb.auth.getUser();
+        if (userError) throw userError;
         
-        try {
-            const { data: { user }, error: userError } = await sb.auth.getUser();
-            if (userError) throw userError;
-            
-            const { data: profile, error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
+        const { data: profile, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (profileError) throw profileError;
+        
+        const { data: staff, error: staffError } = await sb
+            .from('staff_records')
+            .select('*')
+            .eq('email', profile?.email || user.email)
+            .maybeSingle();
+        
+        me_currentLecturer = { profile, staff };
+        
+        // ✅ Load lecturer's subject assignments
+        if (staff?.id) {
+            const { data: assignments, error: assignError } = await sb
+                .from('lecturer_subject_assignments')
                 .select('*')
-                .eq('user_id', user.id)
-                .maybeSingle();
+                .eq('lecturer_id', staff.id);
             
-            if (profileError) throw profileError;
-            
-            const { data: staff, error: staffError } = await sb
-                .from('staff_records')
-                .select('*')
-                .eq('email', profile?.email || user.email)
-                .maybeSingle();
-            
-            me_currentLecturer = { profile, staff };
-            
-            const isTVET = staff?.program && staff.program !== 'KRCHN';
-            const programCode = staff?.program || profile?.program || 'KRCHN';
-            const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
-            const departmentName = staff?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
-            
-            const programNameEl = document.getElementById('lecturerProgramName');
-            const programTypeEl = document.getElementById('lecturerProgramType');
-            const subjectCountEl = document.getElementById('lecturerSubjectCount');
-            const programSelect = document.getElementById('me_program_select');
-            
-            if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
-            if (programTypeEl) programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
-            if (subjectCountEl) subjectCountEl.textContent = staff?.assigned_subjects?.length || 0;
-            
-            if (programSelect) {
-                programSelect.innerHTML = `<option value="${programCode}">${programName}</option>`;
-                programSelect.value = programCode;
+            if (!assignError && assignments) {
+                me_currentLecturer.assignments = assignments;
+                console.log('📋 Lecturer assignments loaded:', assignments.length);
             }
-            
-            const tvetInfo = document.getElementById('tvetDepartmentInfo');
-            const krchnInfo = document.getElementById('krchnDepartmentInfo');
-            
-            if (isTVET) {
-                if (tvetInfo) tvetInfo.style.display = 'block';
-                if (krchnInfo) krchnInfo.style.display = 'none';
-                const deptName = document.getElementById('tvetDepartmentName');
-                if (deptName) deptName.textContent = departmentName;
-            } else {
-                if (tvetInfo) tvetInfo.style.display = 'none';
-                if (krchnInfo) krchnInfo.style.display = 'block';
-                const blockName = document.getElementById('krchnBlockName');
-                if (blockName) blockName.textContent = staff?.block || 'N/A';
-            }
-            
-            await loadMEBlocks();
-            return staff;
-            
-        } catch (error) {
-            console.error('Error detecting lecturer program:', error);
-            return null;
         }
-    },
+        
+        const isTVET = staff?.program && staff.program !== 'KRCHN';
+        const programCode = staff?.program || profile?.program || 'KRCHN';
+        const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
+        const departmentName = staff?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
+        
+        const programNameEl = document.getElementById('lecturerProgramName');
+        const programTypeEl = document.getElementById('lecturerProgramType');
+        const subjectCountEl = document.getElementById('lecturerSubjectCount');
+        const programSelect = document.getElementById('me_program_select');
+        
+        if (programNameEl) programNameEl.textContent = `${programName} - ${departmentName}`;
+        if (programTypeEl) programTypeEl.textContent = isTVET ? '🔧 TVET' : '🎓 Nursing';
+        
+        // ✅ Count assigned subjects
+        const assignedCount = me_currentLecturer?.assignments?.length || 
+                             (staff?.assigned_subjects?.length || 0);
+        if (subjectCountEl) subjectCountEl.textContent = assignedCount;
+        
+        if (programSelect) {
+            programSelect.innerHTML = `<option value="${programCode}">${programName}</option>`;
+            programSelect.value = programCode;
+        }
+        
+        const tvetInfo = document.getElementById('tvetDepartmentInfo');
+        const krchnInfo = document.getElementById('krchnDepartmentInfo');
+        
+        if (isTVET) {
+            if (tvetInfo) tvetInfo.style.display = 'block';
+            if (krchnInfo) krchnInfo.style.display = 'none';
+            const deptName = document.getElementById('tvetDepartmentName');
+            if (deptName) deptName.textContent = departmentName;
+        } else {
+            if (tvetInfo) tvetInfo.style.display = 'none';
+            if (krchnInfo) krchnInfo.style.display = 'block';
+            const blockName = document.getElementById('krchnBlockName');
+            if (blockName) blockName.textContent = staff?.block || 'N/A';
+        }
+        
+        await loadMEBlocks();
+        return staff;
+        
+    } catch (error) {
+        console.error('Error detecting lecturer program:', error);
+        return null;
+    }
+}
     
     async loadMarksManagement() {
         const blockSelect = document.getElementById('lecBlockSelect');
@@ -185,6 +203,9 @@ const LecturerMarks = {
         container.innerHTML = '<div class="text-center" style="padding:40px;"><div class="loading-spinner"></div><p>Loading marks...</p></div>';
         
         try {
+            // ✅ Load admin column settings
+            await this.loadAdminColumnSettings(block, subject);
+            
             const students = this.students.filter(s => s.block === block);
             
             if (!students.length) {
@@ -203,18 +224,24 @@ const LecturerMarks = {
             const marksMap = {};
             existing?.forEach(m => { marksMap[m.admission_number] = m; });
             
+            // ✅ Get assessment type from admin settings
+            const assessmentType = me_currentAssessmentType || 'full';
+            
+            // ✅ Get visible columns from admin
+            const visibleColumns = this.getVisibleColumns();
+            
             let html = `<div class="table-responsive"><table class="data-table" style="width:100%;border-collapse:collapse;">
                 <thead><tr style="background:#4C1D95;color:white;">
-                    <th style="padding:10px;">#</th>
-                    <th style="padding:10px;">Admission</th>
-                    <th style="padding:10px;">Student Name</th>
-                    <th style="padding:10px;">CAT1 (0-30)</th>
-                    <th style="padding:10px;">CAT2 (0-30)</th>
-                    <th style="padding:10px;">Exam (0-70)</th>
-                    <th style="padding:10px;">Total</th>
-                    <th style="padding:10px;">Grade</th>
-                    <th style="padding:10px;">Status</th>
-                    <th style="padding:10px;">Approval</th>
+                    <th style="padding:10px;" ${visibleColumns.sno === false ? 'style="display:none;"' : ''}>#</th>
+                    <th style="padding:10px;" ${visibleColumns.admission === false ? 'style="display:none;"' : ''}>Admission</th>
+                    <th style="padding:10px;" ${visibleColumns.name === false ? 'style="display:none;"' : ''}>Student Name</th>
+                    ${visibleColumns.cat1 !== false ? '<th style="padding:10px;">CAT1 (0-30)</th>' : ''}
+                    ${visibleColumns.cat2 !== false ? '<th style="padding:10px;">CAT2 (0-30)</th>' : ''}
+                    ${visibleColumns.exam !== false ? '<th style="padding:10px;">Exam (0-70)</th>' : ''}
+                    ${visibleColumns.total !== false ? '<th style="padding:10px;">Total</th>' : ''}
+                    ${visibleColumns.grade !== false ? '<th style="padding:10px;">Grade</th>' : ''}
+                    ${visibleColumns.rating !== false ? '<th style="padding:10px;">Status</th>' : ''}
+                    ${visibleColumns.approval !== false ? '<th style="padding:10px;">Approval</th>' : ''}
                 </tr></thead><tbody>`;
             
             for (let i = 0; i < students.length; i++) {
@@ -230,8 +257,18 @@ const LecturerMarks = {
                     const ncat1 = Math.min(parseFloat(cat1) || 0, 30);
                     const ncat2 = Math.min(parseFloat(cat2) || 0, 30);
                     const nexam = Math.min(parseFloat(exam) || 0, 70);
-                    total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-                    grade = getMarksEntryGrade(total).grade;
+                    
+                    // ✅ Calculate based on assessment type
+                    if (assessmentType === 'full') {
+                        total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
+                    } else if (assessmentType === 'single_cat') {
+                        total = Math.round((ncat1 + nexam) * 10) / 10;
+                    } else {
+                        total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
+                    }
+                    
+                    const gradeInfo = getMarksEntryGrade(total);
+                    grade = gradeInfo.grade;
                     status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
                     color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
                 }
@@ -244,16 +281,16 @@ const LecturerMarks = {
                 }[approvalStatus] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
                 
                 html += `<tr>
-                    <td>${i + 1}</td>
-                    <td>${s.student_id || 'N/A'}</td>
-                    <td><strong>${s.full_name || 'N/A'}</strong></td>
-                    <td><input type="number" class="internal-cat1" data-student="${s.student_id}" value="${cat1}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>
-                    <td><input type="number" class="internal-cat2" data-student="${s.student_id}" value="${cat2}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>
-                    <td><input type="number" class="internal-exam" data-student="${s.student_id}" value="${exam}" min="0" max="70" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>
-                    <td id="lecTotal_${s.student_id}" style="font-weight:bold;color:${color};">${total || '-'}</td>
-                    <td id="lecGrade_${s.student_id}" style="font-weight:bold;color:${color};">${grade}</td>
-                    <td id="lecStatus_${s.student_id}" style="color:${color};">${status}</td>
-                    <td>${approvalBadge}</td>
+                    <td ${visibleColumns.sno === false ? 'style="display:none;"' : ''}>${i + 1}</td>
+                    <td ${visibleColumns.admission === false ? 'style="display:none;"' : ''}>${s.student_id || 'N/A'}</td>
+                    <td ${visibleColumns.name === false ? 'style="display:none;"' : ''}><strong>${s.full_name || 'N/A'}</strong></td>
+                    ${visibleColumns.cat1 !== false ? `<td><input type="number" class="internal-cat1" data-student="${s.student_id}" value="${cat1}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
+                    ${visibleColumns.cat2 !== false ? `<td><input type="number" class="internal-cat2" data-student="${s.student_id}" value="${cat2}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
+                    ${visibleColumns.exam !== false ? `<td><input type="number" class="internal-exam" data-student="${s.student_id}" value="${exam}" min="0" max="70" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
+                    ${visibleColumns.total !== false ? `<td id="lecTotal_${s.student_id}" style="font-weight:bold;color:${color};">${total || '-'}</td>` : ''}
+                    ${visibleColumns.grade !== false ? `<td id="lecGrade_${s.student_id}" style="font-weight:bold;color:${color};">${grade}</td>` : ''}
+                    ${visibleColumns.rating !== false ? `<td id="lecStatus_${s.student_id}" style="color:${color};">${status}</td>` : ''}
+                    ${visibleColumns.approval !== false ? `<td>${approvalBadge}</td>` : ''}
                 </tr>`;
             }
             
@@ -272,10 +309,19 @@ const LecturerMarks = {
                     </div>
                     <div style="font-size:13px;color:#64748b;">
                         <i class="fas fa-info-circle"></i> Total: ${students.length} students
+                        <span style="margin-left:12px;background:#f3f4f6;padding:2px 12px;border-radius:12px;font-size:11px;">
+                            📋 ${assessmentType.replace('_', ' ').toUpperCase()}
+                        </span>
                     </div>
                 </div>`;
             
             container.innerHTML = html;
+            
+            // ✅ Update assessment type display
+            this.updateAssessmentTypeDisplay(assessmentType);
+            
+            // ✅ Update visible columns info
+            this.updateVisibleColumnsInfo(visibleColumns);
             
             document.querySelectorAll('.internal-cat1, .internal-cat2, .internal-exam').forEach(input => {
                 input.addEventListener('change', function() {
@@ -298,15 +344,138 @@ const LecturerMarks = {
         }
     },
     
+    // ✅ NEW: Load admin column settings
+    async loadAdminColumnSettings(block, subject) {
+        try {
+            const year = document.getElementById('me_year_select')?.value || '2025';
+            
+            const { data, error } = await sb
+                .from('column_settings')
+                .select('*')
+                .eq('block', block)
+                .eq('subject', subject)
+                .eq('year', year)
+                .maybeSingle();
+            
+            if (error) throw error;
+            
+            if (data && data.columns) {
+                me_columnSettings = data;
+                // ✅ Extract assessment type from visible columns
+                const visibleColumns = this.getVisibleColumns();
+                if (visibleColumns.cat2 === false && visibleColumns.cat1 !== false) {
+                    me_currentAssessmentType = 'single_cat';
+                } else if (visibleColumns.cat1 === false && visibleColumns.cat2 !== false) {
+                    me_currentAssessmentType = 'single_cat';
+                } else if (visibleColumns.exam === false && visibleColumns.cat1 !== false) {
+                    me_currentAssessmentType = 'cats_only';
+                } else if (visibleColumns.cat1 === false && visibleColumns.cat2 === false && visibleColumns.exam !== false) {
+                    me_currentAssessmentType = 'exam_only';
+                } else {
+                    me_currentAssessmentType = 'full';
+                }
+            }
+            
+            console.log('📋 Loaded admin settings:', { 
+                columns: data?.columns, 
+                assessmentType: me_currentAssessmentType 
+            });
+            
+        } catch (error) {
+            console.error('Error loading admin settings:', error);
+        }
+    },
+    
+    // ✅ NEW: Get visible columns from admin settings
+    getVisibleColumns() {
+        const defaultColumns = {
+            sno: true,
+            admission: true,
+            name: true,
+            cat1: true,
+            cat2: true,
+            exam: true,
+            total: true,
+            grade: true,
+            rating: true,
+            approval: true
+        };
+        
+        const savedColumns = me_columnSettings.columns || [];
+        
+        // Merge saved settings with defaults
+        const result = { ...defaultColumns };
+        savedColumns.forEach(col => {
+            if (col.id in result) {
+                result[col.id] = col.visible;
+            }
+        });
+        
+        return result;
+    },
+    
+    // ✅ NEW: Update assessment type display
+    updateAssessmentTypeDisplay(type) {
+        const displayEl = document.getElementById('me_assessment_type_display');
+        if (displayEl) {
+            const labels = {
+                'full': 'Full (CAT1+CAT2+Exam)',
+                'single_cat': 'Single CAT (CAT+Exam)',
+                'exam_only': 'Exam Only',
+                'cats_only': 'CATs Only (No Exam)',
+                'cat_only': 'CAT Only'
+            };
+            displayEl.textContent = labels[type] || type;
+        }
+        
+        const hiddenEl = document.getElementById('me_assessment_type');
+        if (hiddenEl) {
+            hiddenEl.value = type;
+        }
+    },
+    
+    // ✅ NEW: Update visible columns info
+    updateVisibleColumnsInfo(visibleColumns) {
+        const columnsEl = document.getElementById('lecturerVisibleColumns');
+        if (!columnsEl) return;
+        
+        const columnLabels = {
+            'sno': '#',
+            'admission': 'Admission',
+            'name': 'Name',
+            'cat1': 'CAT1',
+            'cat2': 'CAT2',
+            'exam': 'Exam',
+            'total': 'Total',
+            'grade': 'Grade',
+            'points': 'Points',
+            'rating': 'Rating',
+            'approval': 'Approval'
+        };
+        
+        const visible = Object.keys(columnLabels)
+            .filter(key => visibleColumns[key] !== false)
+            .map(key => columnLabels[key]);
+        
+        columnsEl.textContent = visible.length ? visible.join(', ') : 'No columns visible';
+    },
+    
     updateInternalTotal(studentId) {
         const cat1 = parseFloat(document.querySelector(`.internal-cat1[data-student="${studentId}"]`)?.value) || 0;
         const cat2 = parseFloat(document.querySelector(`.internal-cat2[data-student="${studentId}"]`)?.value) || 0;
         const exam = parseFloat(document.querySelector(`.internal-exam[data-student="${studentId}"]`)?.value) || 0;
         
-        const ncat1 = Math.min(cat1, 30);
-        const ncat2 = Math.min(cat2, 30);
-        const nexam = Math.min(exam, 70);
-        const total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
+        const assessmentType = me_currentAssessmentType || 'full';
+        
+        let total = 0;
+        if (assessmentType === 'full') {
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        } else if (assessmentType === 'single_cat') {
+            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+        } else {
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+        }
+        
         const gradeInfo = getMarksEntryGrade(total);
         const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
         const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
@@ -347,6 +516,7 @@ const LecturerMarks = {
     async saveInternalMarks() {
         const block = document.getElementById('lecBlockSelect').value;
         const subject = document.getElementById('lecSubjectSelect').value;
+        const year = document.getElementById('me_year_select')?.value || '2025';
         
         if (!block || !subject) {
             showNotification('Select block and subject', 'error');
@@ -372,10 +542,16 @@ const LecturerMarks = {
             const student = this.students.find(s => s.student_id === sId);
             const studentName = student?.full_name || 'Unknown Student';
             
-            const ncat1 = Math.min(cat1, 30);
-            const ncat2 = Math.min(cat2, 30);
-            const nexam = Math.min(exam, 70);
-            const finalTotal = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
+            const assessmentType = me_currentAssessmentType || 'full';
+            let finalTotal = 0;
+            if (assessmentType === 'full') {
+                finalTotal = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+            } else if (assessmentType === 'single_cat') {
+                finalTotal = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+            } else {
+                finalTotal = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+            }
+            
             const gradeInfo = getMarksEntryGrade(finalTotal);
             
             const { data: existing } = await sb
@@ -384,6 +560,7 @@ const LecturerMarks = {
                 .eq('admission_number', sId)
                 .eq('subject_name', subject)
                 .eq('block', block)
+                .eq('academic_year', year)
                 .maybeSingle();
             
             try {
@@ -392,13 +569,13 @@ const LecturerMarks = {
                     student_name: studentName,
                     block: block,
                     subject_name: subject,
-                    assessment_type: 'full',
+                    assessment_type: assessmentType,
                     cat1_score: cat1 || null,
                     cat2_score: cat2 || null,
                     exam_score: exam || null,
                     final_score: finalTotal || null,
                     grade: gradeInfo.grade || null,
-                    academic_year: document.getElementById('me_year_select')?.value || '2025',
+                    academic_year: year,
                     updated_at: new Date().toISOString()
                 };
                 
@@ -751,7 +928,7 @@ const LecturerMarks = {
 };
 
 // ============================================================
-// STANDALONE FUNCTIONS - DEFINED HERE
+// STANDALONE FUNCTIONS - UPDATED FOR LECTURER VIEW
 // ============================================================
 
 // -------- LOAD BLOCKS --------
@@ -812,9 +989,9 @@ async function loadMEBlocks() {
     }
 }
 
-// -------- LOAD SUBJECTS --------
+// -------- LOAD SUBJECTS (LECTURER ASSIGNMENT FILTER) --------
 async function loadMESubjects() {
-    console.log('📖 Loading subjects...');
+    console.log('📖 Loading subjects for lecturer...');
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
     const subjectSelect = document.getElementById('me_subject_select');
@@ -830,7 +1007,8 @@ async function loadMESubjects() {
     if (subjectSelect) subjectSelect.innerHTML = '<option value="">Loading subjects...</option>';
     
     try {
-        const { data, error } = await sb
+        // ✅ Get ALL subjects for this block
+        const { data: allSubjects, error: subjectError } = await sb
             .from('units_catalog')
             .select('unit_code, unit_name, assessment_type')
             .eq('program', program)
@@ -838,28 +1016,95 @@ async function loadMESubjects() {
             .eq('status', 'active')
             .order('unit_name', { ascending: true });
         
-        if (error) throw error;
+        if (subjectError) throw subjectError;
+        
+        // ✅ Get lecturer's assigned subjects
+        const lecturerId = me_currentLecturer?.profile?.id || me_currentLecturer?.staff?.id;
+        let assignedSubjectNames = [];
+        
+        if (lecturerId) {
+            const { data: assigned, error: assignError } = await sb
+                .from('lecturer_subject_assignments')
+                .select('subject_name')
+                .eq('lecturer_id', lecturerId)
+                .eq('block', block)
+                .eq('program', program)
+                .eq('academic_year', year || '2025');
+            
+            if (!assignError && assigned) {
+                assignedSubjectNames = assigned.map(a => a.subject_name);
+                console.log('📋 Assigned subjects:', assignedSubjectNames);
+            }
+        }
+        
+        // ✅ Also check staff_records for assigned_subjects
+        if (me_currentLecturer?.staff?.assigned_subjects) {
+            const staffSubjects = me_currentLecturer.staff.assigned_subjects || [];
+            if (Array.isArray(staffSubjects)) {
+                staffSubjects.forEach(s => {
+                    if (!assignedSubjectNames.includes(s)) {
+                        assignedSubjectNames.push(s);
+                    }
+                });
+            }
+        }
+        
+        // ✅ Filter subjects - only show assigned ones
+        let filteredSubjects = allSubjects || [];
+        
+        if (assignedSubjectNames.length > 0) {
+            // Only show subjects that are assigned to this lecturer
+            filteredSubjects = allSubjects.filter(unit => 
+                assignedSubjectNames.includes(unit.unit_name) ||
+                assignedSubjectNames.includes(unit.unit_code)
+            );
+            console.log(`📊 Showing ${filteredSubjects.length} assigned subjects out of ${allSubjects.length} total`);
+        } else {
+            console.log('⚠️ No assigned subjects found, showing all subjects (fallback)');
+            // If no assignments found, show all (fallback)
+            filteredSubjects = allSubjects;
+        }
         
         if (subjectSelect) {
-            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-            data.forEach(unit => {
-                const option = document.createElement('option');
-                option.value = unit.unit_name;
-                option.dataset.assessment = unit.assessment_type || 'full';
-                option.dataset.code = unit.unit_code || '';
-                option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}`;
-                subjectSelect.appendChild(option);
-            });
-            
-            if (data.length === 0) {
-                subjectSelect.innerHTML = '<option value="">No subjects found</option>';
+            if (filteredSubjects.length === 0) {
+                subjectSelect.innerHTML = '<option value="">-- No subjects assigned to you --</option>';
+                // Show a message to the lecturer
+                if (typeof showNotification === 'function') {
+                    showNotification('📚 No subjects assigned to you in this block', 'warning');
+                }
+            } else {
+                subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+                filteredSubjects.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = unit.unit_name;
+                    option.dataset.assessment = unit.assessment_type || 'full';
+                    option.dataset.code = unit.unit_code || '';
+                    const isAssigned = assignedSubjectNames.includes(unit.unit_name) || 
+                                      assignedSubjectNames.includes(unit.unit_code);
+                    option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}${isAssigned ? ' 📌' : ''}`;
+                    subjectSelect.appendChild(option);
+                });
+                
+                // Update subject count display
+                const countEl = document.getElementById('lecturerSubjectCount');
+                if (countEl) countEl.textContent = filteredSubjects.length;
             }
-            
-            const assessmentSelect = document.getElementById('me_assessment_type');
-            if (assessmentSelect && data.length > 0) {
-                const firstUnit = data[0];
-                assessmentSelect.value = firstUnit.assessment_type || 'full';
-                assessmentSelect.disabled = false;
+        }
+        
+        // ✅ Update the program banner with assignment info
+        const banner = document.getElementById('lecturerProgramBanner');
+        if (banner) {
+            const badge = banner.querySelector('#lecturerProgramBadge');
+            if (badge) {
+                const total = allSubjects?.length || 0;
+                const assigned = filteredSubjects?.length || 0;
+                badge.innerHTML = `
+                    <i class="fas fa-graduation-cap"></i> 
+                    <span id="lecturerProgramType">${program === 'KRCHN' ? '🎓 Nursing' : '🔧 TVET'}</span>
+                    <span style="margin-left: 8px; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 10px;">
+                        📚 ${assigned}/${total} subjects assigned
+                    </span>
+                `;
             }
         }
         
@@ -872,17 +1117,13 @@ async function loadMESubjects() {
     }
 }
 
-// -------- LOAD MARKS ENTRY --------
+// -------- LOAD MARKS ENTRY (LECTURER VERSION) --------
 async function loadMarksEntry() {
-    console.log('📊 Loading marks entry...');
+    console.log('📊 Loading marks entry (lecturer view)...');
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
     const subject = document.getElementById('me_subject_select')?.value;
     const year = document.getElementById('me_year_select')?.value;
-    const subjectSelect = document.getElementById('me_subject_select');
-    const selectedOption = subjectSelect?.options[subjectSelect.selectedIndex];
-    const assessmentType = selectedOption?.dataset?.assessment || 'full';
-    const unitCode = selectedOption?.dataset?.code || '';
     const container = document.getElementById('me_marks_container');
     
     if (!program || !block || !subject) {
@@ -890,8 +1131,8 @@ async function loadMarksEntry() {
             container.innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
                     <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">Select Program, Block and Subject</h3>
-                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
+                    <h3 style="color: #1e293b;">Select Block and Subject</h3>
+                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned subjects</p>
                 </div>
             `;
         }
@@ -902,18 +1143,20 @@ async function loadMarksEntry() {
     me_currentBlock = block;
     me_currentSubject = subject;
     me_currentYear = year;
-    me_currentAssessmentType = assessmentType;
     
     if (container) {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px;">
                 <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || subject}...</p>
+                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${subject}...</p>
             </div>
         `;
     }
     
     try {
+        // ✅ Load admin column settings first
+        await LecturerMarks.loadAdminColumnSettings(block, subject);
+        
         const { data: marks, error } = await sb
             .from('student_marks')
             .select('*')
@@ -953,16 +1196,21 @@ async function loadMarksEntry() {
                 final: existing.final_score || '',
                 grade: existing.grade || '',
                 gradedBy: existing.graded_by || '',
-                assessmentType: existing.assessment_type || assessmentType,
+                assessmentType: me_currentAssessmentType || 'full',
                 id: existing.id || null,
                 approval_status: existing.approval_status || 'draft'
             };
         }) || [];
         
         me_currentMarks = fullMarks;
-        renderMarksEntryTable(fullMarks, unitCode, assessmentType);
-        updateMarksEntryStats(fullMarks, assessmentType);
+        renderMarksEntryTable(fullMarks, subject, me_currentAssessmentType);
+        updateMarksEntryStats(fullMarks, me_currentAssessmentType);
         checkMarksApprovalStatus(fullMarks);
+        
+        // ✅ Update lecturer view with admin settings
+        LecturerMarks.updateAssessmentTypeDisplay(me_currentAssessmentType);
+        const visibleColumns = LecturerMarks.getVisibleColumns();
+        LecturerMarks.updateVisibleColumnsInfo(visibleColumns);
         
     } catch (error) {
         console.error('Error loading marks:', error);
@@ -984,8 +1232,8 @@ async function loadMarksEntry() {
     }
 }
 
-// -------- RENDER MARKS TABLE --------
-function renderMarksEntryTable(marks, unitCode, assessmentType) {
+// -------- RENDER MARKS TABLE (LECTURER VERSION) --------
+function renderMarksEntryTable(marks, subject, assessmentType) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
     
@@ -1000,6 +1248,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         return;
     }
     
+    // ✅ Get visible columns from admin
+    const visibleColumns = LecturerMarks.getVisibleColumns();
+    
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
@@ -1008,18 +1259,20 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
-    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
-                <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentSubject}</h3>
+                <h3 style="margin: 0; color: #0f172a;">${subject}</h3>
                 <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock?.replace('_', ' ') || ''} | ${me_currentYear}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
                 <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
                 ${pendingCount > 0 ? `<span style="font-size: 12px; color: #d97706; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⏳ ${pendingCount} pending</span>` : ''}
                 ${approvedCount > 0 ? `<span style="font-size: 12px; color: #065f46; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${approvedCount} approved</span>` : ''}
+            </div>
+            <div style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 14px; border-radius: 20px;">
+                <i class="fas fa-robot"></i> Auto: ${assessmentType.replace('_', ' ').toUpperCase()}
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
@@ -1041,16 +1294,16 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
-                        <th style="padding: 10px 6px; text-align: center; width: 35px;">#</th>
-                        <th style="padding: 10px 8px; text-align: left;">Admission</th>
-                        <th style="padding: 10px 8px; text-align: left;">Name</th>
-                        <th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>
-                        ${assessmentType === 'full' ? '<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>' : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Exam (0-${assessmentType === 'exam_only' ? 100 : 70})</th>
-                        <th style="padding: 10px 8px; text-align: center;">Total</th>
-                        <th style="padding: 10px 8px; text-align: center;">Grade</th>
-                        <th style="padding: 10px 8px; text-align: center;">Rating</th>
-                        <th style="padding: 10px 8px; text-align: center;">Status</th>
+                        <th style="padding: 10px 6px; text-align: center; width: 35px; ${visibleColumns.sno === false ? 'display:none;' : ''}">#</th>
+                        <th style="padding: 10px 8px; text-align: left; ${visibleColumns.admission === false ? 'display:none;' : ''}">Admission</th>
+                        <th style="padding: 10px 8px; text-align: left; ${visibleColumns.name === false ? 'display:none;' : ''}">Name</th>
+                        ${visibleColumns.cat1 !== false ? '<th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>' : ''}
+                        ${assessmentType === 'full' && visibleColumns.cat2 !== false ? '<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>' : ''}
+                        ${visibleColumns.exam !== false ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${assessmentType === 'exam_only' ? 100 : 70})</th>` : ''}
+                        ${visibleColumns.total !== false ? '<th style="padding: 10px 8px; text-align: center;">Total</th>' : ''}
+                        ${visibleColumns.grade !== false ? '<th style="padding: 10px 8px; text-align: center;">Grade</th>' : ''}
+                        ${visibleColumns.rating !== false ? '<th style="padding: 10px 8px; text-align: center;">Rating</th>' : ''}
+                        ${visibleColumns.approval !== false ? '<th style="padding: 10px 8px; text-align: center;">Status</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>`;
@@ -1073,26 +1326,26 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
         
         html += `<tr style="${total > 0 ? `background: ${total >= 60 ? '#d1fae5' : '#fee2e2'};` : ''}">
-            <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
-            <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
-            <td style="padding: 8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>
-            <td style="padding: 8px; text-align: center;">
+            <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8; ${visibleColumns.sno === false ? 'display:none;' : ''}">${i + 1}</td>
+            <td style="padding: 8px 8px; font-weight: 500; font-size: 12px; ${visibleColumns.admission === false ? 'display:none;' : ''}">${m.admission || 'N/A'}</td>
+            <td style="padding: 8px 8px; ${visibleColumns.name === false ? 'display:none;' : ''}"><strong>${m.name || 'Unknown'}</strong></td>
+            ${visibleColumns.cat1 !== false ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
-            </td>
-            ${assessmentType === 'full' ? `
-            <td style="padding: 8px; text-align: center;">
+            </td>` : ''}
+            ${assessmentType === 'full' && visibleColumns.cat2 !== false ? `
+            <td style="padding: 8px; text-align: center; ${visibleColumns.cat2 === false ? 'display:none;' : ''}">
                 <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
-            <td style="padding: 8px; text-align: center;">
+            ${visibleColumns.exam !== false ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${assessmentType === 'exam_only' ? 100 : 70}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
-            </td>
-            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
-            <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
-            <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
-            <td style="padding: 8px 6px; text-align: center;">
+            </td>` : ''}
+            ${visibleColumns.total !== false ? `<td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>` : ''}
+            ${visibleColumns.grade !== false ? `<td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>` : ''}
+            ${visibleColumns.rating !== false ? `<td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>` : ''}
+            ${visibleColumns.approval !== false ? `<td style="padding: 8px 6px; text-align: center;">
                 ${total > 0 ? `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
                 <br><span style="font-size: 10px;">${approvalBadge}</span>
-            </td>
+            </td>` : ''}
         </tr>`;
     });
     
@@ -1107,6 +1360,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <button onclick="submitMarksForApproval()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-paper-plane"></i> 📤 Submit for Approval
             </button>
+            <div style="font-size: 11px; color: #94a3b8;">
+                <i class="fas fa-lock"></i> Auto-detected from admin settings
+            </div>
         </div>
     `;
     
@@ -1118,7 +1374,7 @@ function updateMarksEntryRow(index) {
     const cat1 = parseFloat(document.getElementById(`me_cat1_${index}`)?.value) || 0;
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
-    const assessmentType = me_currentAssessmentType;
+    const assessmentType = me_currentAssessmentType || 'full';
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
@@ -1260,7 +1516,7 @@ async function saveMarksEntry() {
     const block = me_currentBlock;
     const subject = me_currentSubject;
     const year = me_currentYear;
-    const assessmentType = me_currentAssessmentType;
+    const assessmentType = me_currentAssessmentType || 'full';
     
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
@@ -1271,8 +1527,9 @@ async function saveMarksEntry() {
         const examInput = document.getElementById(`me_exam_${index}`);
         
         if (cat1Input || cat2Input || examInput) {
-            const admission = row.cells[1]?.textContent?.trim() || '';
-            const name = row.cells[2]?.textContent?.trim() || '';
+            const cells = row.querySelectorAll('td');
+            const admission = cells[1]?.textContent?.trim() || '';
+            const name = cells[2]?.textContent?.trim() || '';
             const cat1 = parseFloat(cat1Input?.value) || 0;
             const cat2 = parseFloat(cat2Input?.value) || 0;
             const exam = parseFloat(examInput?.value) || 0;
@@ -1480,7 +1737,7 @@ function exportMarksEntry() {
         return;
     }
     
-    const assessmentType = me_currentAssessmentType;
+    const assessmentType = me_currentAssessmentType || 'full';
     const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 'Approval Status'];
     const rows = marks.map(m => {
         const cat1 = m.cat1 || 0;
@@ -1549,25 +1806,21 @@ function downloadCSV(csv, filename) {
     URL.revokeObjectURL(url);
 }
 
-// -------- SHOW/HIDE NOTIFICATION/LOADING - FIXED --------
+// -------- SHOW/HIDE NOTIFICATION/LOADING --------
 function showNotification(message, type) {
-    // Use LecturerUI if available (prevents recursion)
     if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
         window.LecturerUI.showNotification(message, type || 'info');
         return;
     }
     
-    // Use global notification if available and DIFFERENT from this
     if (typeof window.showNotification === 'function' && 
         window.showNotification !== showNotification) {
         window.showNotification(message, type || 'info');
         return;
     }
     
-    // Fallback: log to console
     console.log(`[${type || 'info'}] ${message}`);
     
-    // Also create a simple toast
     if (typeof document !== 'undefined') {
         const toast = document.createElement('div');
         const colors = {
@@ -1595,20 +1848,17 @@ function showNotification(message, type) {
 }
 
 function showLoading(message) {
-    // Use LecturerUI if available
     if (window.LecturerUI && typeof window.LecturerUI.showLoading === 'function') {
         window.LecturerUI.showLoading(message);
         return;
     }
     
-    // Use global loading if available and DIFFERENT
     if (typeof window.showLoading === 'function' && 
         window.showLoading !== showLoading) {
         window.showLoading(message);
         return;
     }
     
-    // Fallback
     console.log(`⏳ ${message}`);
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
@@ -1619,20 +1869,17 @@ function showLoading(message) {
 }
 
 function hideLoading() {
-    // Use LecturerUI if available
     if (window.LecturerUI && typeof window.LecturerUI.hideLoading === 'function') {
         window.LecturerUI.hideLoading();
         return;
     }
     
-    // Use global loading if available and DIFFERENT
     if (typeof window.hideLoading === 'function' && 
         window.hideLoading !== hideLoading) {
         window.hideLoading();
         return;
     }
     
-    // Fallback
     console.log('✅ Done');
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
@@ -1660,12 +1907,10 @@ window.withdrawMarksFromApproval = withdrawMarksFromApproval;
 window.exportMarksEntry = exportMarksEntry;
 window.switchLecturerMarksTab = switchLecturerMarksTab;
 window.checkMarksApprovalStatus = checkMarksApprovalStatus;
-window.detectLecturerProgram = LecturerMarks.detectLecturerProgram.bind(LecturerMarks);
 window.showNotification = showNotification;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 
 console.log('✅ Lecturer Marks module loaded successfully!');
-console.log('✅ loadMEBlocks:', typeof loadMEBlocks);
-console.log('✅ loadMESubjects:', typeof loadMESubjects);
-console.log('✅ loadMarksEntry:', typeof loadMarksEntry);
+console.log('✅ Synced with admin column settings');
+console.log('✅ Assessment type auto-detected from admin');
