@@ -19178,62 +19178,128 @@ function isUserAdmin() {
 }
 
 // ============================================================
-// DETECT VISIBLE COLUMNS - AUTO ASSESSMENT TYPE
+// DETECT VISIBLE COLUMNS - FIXED WITH PROPER DETECTION
 // ============================================================
 
 function detectVisibleColumns() {
+    console.log('🔍 Detecting visible columns...');
+    
     const table = document.querySelector('#me_marks_table');
-    if (!table) return { hasCat1: true, hasCat2: true, hasExam: true };
+    if (!table) {
+        console.warn('⚠️ Table not found, using defaults');
+        return { hasCat1: true, hasCat2: true, hasExam: true };
+    }
     
     const headers = table.querySelectorAll('thead th');
     let hasCat1 = false;
     let hasCat2 = false;
     let hasExam = false;
     
-    headers.forEach((th) => {
-        const text = th.textContent.toLowerCase();
-        if (text.includes('cat1') || text.includes('cat 1')) {
-            hasCat1 = th.style.display !== 'none';
+    // First, check the saved column settings
+    const savedColumns = me_columnSettings.columns || [];
+    const savedCat1 = savedColumns.find(c => c.id === 'cat1');
+    const savedCat2 = savedColumns.find(c => c.id === 'cat2');
+    const savedExam = savedColumns.find(c => c.id === 'exam');
+    
+    headers.forEach((th, index) => {
+        const text = th.textContent.toLowerCase().trim();
+        const computedDisplay = window.getComputedStyle(th).display;
+        const inlineDisplay = th.style.display;
+        const isVisible = inlineDisplay !== 'none' && computedDisplay !== 'none';
+        
+        console.log(`📌 Header ${index}: "${text}" - inline: ${inlineDisplay || 'default'}, computed: ${computedDisplay}, visible: ${isVisible}`);
+        
+        if (text.includes('cat1') || text.includes('cat 1') || text === '#') {
+            // Check saved setting first, then DOM visibility
+            if (savedCat1 !== undefined) {
+                hasCat1 = savedCat1.visible !== false;
+            } else {
+                hasCat1 = isVisible;
+            }
         }
         if (text.includes('cat2') || text.includes('cat 2')) {
-            hasCat2 = th.style.display !== 'none';
+            if (savedCat2 !== undefined) {
+                hasCat2 = savedCat2.visible !== false;
+            } else {
+                hasCat2 = isVisible;
+            }
         }
         if (text.includes('exam')) {
-            hasExam = th.style.display !== 'none';
+            if (savedExam !== undefined) {
+                hasExam = savedExam.visible !== false;
+            } else {
+                hasExam = isVisible;
+            }
         }
     });
     
-    return { hasCat1, hasCat2, hasExam };
+    // If we still have nothing detected, use saved settings as fallback
+    if (!hasCat1 && !hasCat2 && !hasExam) {
+        console.log('⚠️ No columns detected from DOM, using saved settings...');
+        if (savedCat1 !== undefined) hasCat1 = savedCat1.visible !== false;
+        if (savedCat2 !== undefined) hasCat2 = savedCat2.visible !== false;
+        if (savedExam !== undefined) hasExam = savedExam.visible !== false;
+        
+        // If still nothing, default to all visible
+        if (!hasCat1 && !hasCat2 && !hasExam) {
+            hasCat1 = true;
+            hasCat2 = true;
+            hasExam = true;
+        }
+    }
+    
+    const result = { hasCat1, hasCat2, hasExam };
+    console.log('📊 Final detection result:', result);
+    
+    return result;
 }
 
 // ============================================================
-// GET AUTO ASSESSMENT TYPE
+// GET AUTO ASSESSMENT TYPE - IMPROVED
 // ============================================================
 
 function getAutoAssessmentType() {
     const visible = detectVisibleColumns();
+    console.log('📊 Visible columns for assessment:', visible);
     
-    // If only Exam is visible
+    // Case 1: Only Exam is visible
     if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) {
+        console.log('📋 → exam_only');
         return 'exam_only';
     }
     
-    // If only CAT1 is visible (no CAT2, no Exam)
+    // Case 2: Only CAT1 is visible (no CAT2, no Exam)
     if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cat_only (CAT1 only)');
         return 'cat_only';
     }
     
-    // If CAT1 and CAT2 are visible (no Exam)
+    // Case 3: Only CAT2 is visible (no CAT1, no Exam)
+    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cat_only (CAT2 only)');
+        return 'cat_only';
+    }
+    
+    // Case 4: CAT1 and CAT2 are visible (no Exam)
     if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cats_only');
         return 'cats_only';
     }
     
-    // If CAT1 and Exam are visible (no CAT2)
+    // Case 5: CAT1 and Exam are visible (no CAT2)
     if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) {
+        console.log('📋 → single_cat (CAT1 + Exam)');
+        return 'single_cat';
+    }
+    
+    // Case 6: CAT2 and Exam are visible (no CAT1)
+    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) {
+        console.log('📋 → single_cat (CAT2 + Exam)');
         return 'single_cat';
     }
     
     // Default: full assessment
+    console.log('📋 → full (default)');
     return 'full';
 }
 
@@ -20198,14 +20264,20 @@ async function saveSubjectColumnSetting(columnId, visible) {
 }
 
 // ============================================================
-// APPLY COLUMN VISIBILITY - WITH AUTO RECALCULATION
+// APPLY COLUMN VISIBILITY - FIXED
 // ============================================================
 
 function applyColumnVisibility() {
+    console.log('📋 Applying column visibility...');
+    
     const table = document.querySelector('#me_marks_container table');
-    if (!table) return;
+    if (!table) {
+        console.warn('⚠️ Table not found');
+        return;
+    }
     
     const savedColumns = me_columnSettings.columns || [];
+    console.log('📋 Saved columns:', savedColumns);
     
     const columnMap = {
         'sno': 0,
@@ -20224,6 +20296,7 @@ function applyColumnVisibility() {
     const headers = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     
+    // Apply to headers
     headers.forEach((th, index) => {
         let colId = null;
         for (const [key, value] of Object.entries(columnMap)) {
@@ -20234,9 +20307,11 @@ function applyColumnVisibility() {
             const setting = savedColumns.find(c => c.id === colId);
             const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
             th.style.display = visible ? '' : 'none';
+            console.log(`📌 ${colId}: ${visible ? '✅ visible' : '❌ hidden'}`);
         }
     });
     
+    // Apply to rows
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         cells.forEach((td, index) => {
@@ -20253,8 +20328,10 @@ function applyColumnVisibility() {
         });
     });
     
-    // ✅ AUTO-DETECT assessment type based on visible columns
+    // ✅ FORCE AUTO-DETECT and recalculate
+    console.log('🔄 Forcing auto-detection after applying visibility...');
     const autoAssessmentType = getAutoAssessmentType();
+    console.log(`🔄 Auto-detected assessment type: ${autoAssessmentType}`);
     
     if (autoAssessmentType !== me_currentAssessmentType) {
         console.log(`🔄 Assessment type changed: ${me_currentAssessmentType} → ${autoAssessmentType}`);
@@ -20267,10 +20344,67 @@ function applyColumnVisibility() {
         
         // Recalculate all totals with new assessment type
         recalculateAllTotals();
+    } else {
+        console.log('✅ Assessment type unchanged:', autoAssessmentType);
+        updateAssessmentTypeDisplay();
+    }
+}
+// ============================================================
+// DEBUG FUNCTION - CHECK CURRENT STATE
+// ============================================================
+
+function debugColumnState() {
+    console.log('🔍 ===== COLUMN STATE DEBUG =====');
+    
+    // Check saved settings
+    console.log('📋 Saved column settings:', me_columnSettings.columns || []);
+    
+    // Check visible columns from DOM
+    const visible = detectVisibleColumns();
+    console.log('📊 Visible columns from DOM:', visible);
+    
+    // Check current assessment type
+    console.log('📋 Current assessment type:', me_currentAssessmentType);
+    
+    // Check auto-detected type
+    const autoType = getAutoAssessmentType();
+    console.log('📋 Auto-detected type:', autoType);
+    
+    // Check table headers with computed styles
+    const table = document.querySelector('#me_marks_table');
+    if (table) {
+        const headers = table.querySelectorAll('thead th');
+        console.log('📊 Headers with computed styles:');
+        headers.forEach((th, i) => {
+            const text = th.textContent.trim();
+            const computed = window.getComputedStyle(th);
+            console.log(`  ${i}: "${text}" - display: ${computed.display}, inline: ${th.style.display || 'default'}`);
+        });
     }
     
-    updateAssessmentTypeDisplay();
+    console.log('🔍 ===== END DEBUG =====');
 }
+
+// Make it globally accessible
+window.debugColumnState = debugColumnState;
+
+// Also add a manual refresh function
+window.forceRefreshAssessment = function() {
+    console.log('🔄 Manually refreshing assessment...');
+    const autoType = getAutoAssessmentType();
+    me_currentAssessmentType = autoType;
+    const assessmentSelect = document.getElementById('me_assessment_type');
+    if (assessmentSelect) {
+        assessmentSelect.value = autoType;
+    }
+    recalculateAllTotals();
+    updateAssessmentTypeDisplay();
+    console.log(`✅ Refreshed to: ${getAssessmentTypeLabel(autoType)}`);
+};
+
+console.log('✅ Debug functions loaded:');
+console.log('  - debugColumnState() - check current state');
+console.log('  - forceRefreshAssessment() - manually refresh assessment type');
 
 // ============================================================
 // RESET COLUMNS FOR CURRENT SUBJECT
