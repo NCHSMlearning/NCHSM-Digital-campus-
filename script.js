@@ -19695,6 +19695,680 @@ window.loadMarksEntrySection = loadMarksEntrySection;
 window.calculateTotal = calculateTotal;
 
 console.log('✅ Marks Entry functions loaded!');
+// ============================================================
+// COMPLETE ENTRY CONTROL FUNCTIONS
+// ============================================================
+
+// State variables
+let ecSettings = {};
+let ecLogs = [];
+let ecSubjects = [];
+let ecColumns = [];
+
+// Load Entry Control Panel
+async function loadEntryControl() {
+    console.log('🔒 Loading Entry Control Panel...');
+    
+    showLoading('Loading entry control...');
+    
+    try {
+        // Get settings
+        const { data: settings, error: settingsError } = await sb
+            .from('mark_entry_settings')
+            .select('*');
+        
+        if (settingsError) throw settingsError;
+        
+        // Convert to object
+        ecSettings = {};
+        settings.forEach(s => {
+            ecSettings[s.setting_key] = s;
+        });
+        
+        // Get logs
+        const { data: logs, error: logsError } = await sb
+            .from('mark_entry_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+        
+        if (logsError) throw logsError;
+        
+        ecLogs = logs || [];
+        
+        // Get all subjects
+        const { data: subjects, error: subjectsError } = await sb
+            .from('units_catalog')
+            .select('*')
+            .eq('status', 'active')
+            .order('block', { ascending: true });
+        
+        if (subjectsError) throw subjectsError;
+        
+        ecSubjects = subjects || [];
+        
+        // Get column settings
+        const { data: columns, error: columnsError } = await sb
+            .from('column_settings')
+            .select('*');
+        
+        if (columnsError) throw columnsError;
+        
+        ecColumns = columns || [];
+        
+        // Render everything
+        renderECStats();
+        renderECGlobal();
+        renderECClassYears();
+        renderECBlocks();
+        renderECSubjects();
+        renderECColumns();
+        renderECLogs();
+        
+        // Populate block filter
+        populateECBlockFilter();
+        
+        hideLoading();
+        
+    } catch (error) {
+        console.error('❌ Error loading entry control:', error);
+        hideLoading();
+        showNotification('Error loading entry control: ' + error.message, true);
+    }
+}
+
+// Render Stats
+function renderECStats() {
+    const openSubjects = ecSubjects.filter(s => {
+        const key = `${s.block}_${s.unit_name}`;
+        const setting = ecSettings[key];
+        return !setting || setting.enabled !== false;
+    }).length;
+    
+    const closedSubjects = ecSubjects.length - openSubjects;
+    const globalEnabled = !ecSettings.global || ecSettings.global.enabled !== false;
+    
+    const openEl = document.getElementById('ec_open_subjects');
+    const closedEl = document.getElementById('ec_closed_subjects');
+    const statusEl = document.getElementById('ec_global_status');
+    const textEl = document.getElementById('ec_global_text');
+    const logsEl = document.getElementById('ec_total_logs');
+    
+    if (openEl) openEl.textContent = openSubjects;
+    if (closedEl) closedEl.textContent = closedSubjects;
+    if (statusEl) statusEl.textContent = globalEnabled ? '🔓' : '🔒';
+    if (textEl) {
+        textEl.textContent = globalEnabled ? 'Open' : 'Closed';
+        textEl.style.color = globalEnabled ? '#059669' : '#dc2626';
+    }
+    if (logsEl) logsEl.textContent = ecLogs.length;
+}
+
+// Render Global Control
+function renderECGlobal() {
+    const globalEnabled = !ecSettings.global || ecSettings.global.enabled !== false;
+    const btn = document.getElementById('ec_global_toggle_btn');
+    const info = document.getElementById('ec_global_info');
+    
+    if (!btn || !info) return;
+    
+    if (globalEnabled) {
+        btn.style.background = '#dc2626';
+        btn.style.color = 'white';
+        btn.innerHTML = '<i class="fas fa-lock"></i> Close All Entry';
+    } else {
+        btn.style.background = '#10b981';
+        btn.style.color = 'white';
+        btn.innerHTML = '<i class="fas fa-lock-open"></i> Open All Entry';
+    }
+    
+    const closedBy = ecSettings.global?.closed_by || 'System';
+    const closedAt = ecSettings.global?.closed_at ? new Date(ecSettings.global.closed_at).toLocaleString() : 'Never';
+    
+    info.innerHTML = `
+        <i class="fas fa-info-circle"></i> 
+        <strong>Status:</strong> ${globalEnabled ? '🟢 OPEN' : '🔴 CLOSED'} | 
+        <strong>Last changed by:</strong> ${closedBy} | 
+        <strong>At:</strong> ${closedAt}
+    `;
+}
+
+// Render Class Years
+function renderECClassYears() {
+    const container = document.getElementById('ec_class_years');
+    if (!container) return;
+    
+    const years = ['2024', '2025', '2026'];
+    
+    container.innerHTML = years.map(year => {
+        const key = `${year}_all`;
+        const setting = ecSettings[key];
+        const enabled = !setting || setting.enabled !== false;
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${enabled ? '#10b981' : '#dc2626'};">
+                <div>
+                    <strong style="font-size: 15px;">🎓 March ${year} Class</strong>
+                    <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
+                        ${enabled ? '🟢 Open' : '🔴 Closed'}
+                    </span>
+                </div>
+                <button onclick="toggleClassEntry('${year}')" style="padding: 6px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; background: ${enabled ? '#dc2626' : '#10b981'}; color: white;">
+                    <i class="fas ${enabled ? 'fa-lock' : 'fa-lock-open'}"></i>
+                    ${enabled ? 'Close' : 'Open'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Render Blocks
+function renderECBlocks() {
+    const container = document.getElementById('ec_blocks');
+    if (!container) return;
+    
+    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    
+    container.innerHTML = blocks.map(block => {
+        const blockSubjects = ecSubjects.filter(s => s.block === block);
+        const openCount = blockSubjects.filter(s => {
+            const key = `${s.block}_${s.unit_name}`;
+            const setting = ecSettings[key];
+            return !setting || setting.enabled !== false;
+        }).length;
+        const totalCount = blockSubjects.length;
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #6366f1;">
+                <div>
+                    <strong style="font-size: 15px;">📚 ${block.replace('_', ' ')}</strong>
+                    <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
+                        ${openCount}/${totalCount} subjects open
+                    </span>
+                </div>
+                <button onclick="openBlockSubjects('${block}')" style="padding: 6px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; background: #6366f1; color: white;">
+                    <i class="fas fa-cog"></i> Manage
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Populate Block Filter
+function populateECBlockFilter() {
+    const filter = document.getElementById('ec_block_filter');
+    if (!filter) return;
+    
+    const blocks = [...new Set(ecSubjects.map(s => s.block))];
+    
+    blocks.forEach(block => {
+        const option = document.createElement('option');
+        option.value = block;
+        option.textContent = block.replace('_', ' ');
+        filter.appendChild(option);
+    });
+}
+
+// Render Subjects
+function renderECSubjects() {
+    const container = document.getElementById('ec_subjects');
+    if (!container) return;
+    
+    const filter = document.getElementById('ec_block_filter')?.value || 'all';
+    
+    let subjects = ecSubjects;
+    if (filter !== 'all') {
+        subjects = subjects.filter(s => s.block === filter);
+    }
+    
+    if (subjects.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No subjects found</p>';
+        return;
+    }
+    
+    // Group by block
+    const grouped = {};
+    subjects.forEach(s => {
+        if (!grouped[s.block]) grouped[s.block] = [];
+        grouped[s.block].push(s);
+    });
+    
+    let html = '';
+    for (const [block, items] of Object.entries(grouped)) {
+        html += `<div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: #475569; font-size: 13px; margin-bottom: 6px;">${block.replace('_', ' ')}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px;">`;
+        
+        items.forEach(s => {
+            const key = `${s.block}_${s.unit_name}`;
+            const setting = ecSettings[key];
+            const enabled = !setting || setting.enabled !== false;
+            
+            const displayName = s.unit_code ? `${s.unit_code} - ${s.unit_name}` : s.unit_name;
+            
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border-left: 3px solid ${enabled ? '#10b981' : '#dc2626'};">
+                    <span style="font-size: 13px;">${displayName}</span>
+                    <button onclick="toggleSubjectEntry('${s.block}', '${s.unit_name}')" style="padding: 4px 12px; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; background: ${enabled ? '#dc2626' : '#10b981'}; color: white;">
+                        ${enabled ? 'Close' : 'Open'}
+                    </button>
+                </div>
+            `;
+        });
+        
+        html += `</div></div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// Render Columns
+function renderECColumns() {
+    const container = document.getElementById('ec_column_settings');
+    if (!container) return;
+    
+    const defaultColumns = [
+        { id: 'sno', label: '#', visible: true, required: true },
+        { id: 'admission', label: 'Admission', visible: true, required: true },
+        { id: 'name', label: 'Name', visible: true, required: true },
+        { id: 'cat1', label: 'CAT1 (0-30)', visible: true, required: false },
+        { id: 'cat2', label: 'CAT2 (0-30)', visible: true, required: false },
+        { id: 'exam', label: 'Exam', visible: true, required: false },
+        { id: 'total', label: 'Total', visible: true, required: false },
+        { id: 'grade', label: 'Grade', visible: true, required: false },
+        { id: 'points', label: 'Points', visible: true, required: false },
+        { id: 'rating', label: 'Rating', visible: true, required: false },
+        { id: 'gradedBy', label: 'Graded By', visible: false, required: false }
+    ];
+    
+    container.innerHTML = defaultColumns.map(col => {
+        // Check if column is hidden in any setting
+        const isHidden = ecColumns.some(c => {
+            const cols = c.columns || [];
+            return cols.find(p => p.id === col.id)?.visible === false;
+        });
+        
+        const isChecked = !isHidden && col.visible;
+        const isDisabled = col.required ? 'disabled' : '';
+        
+        return `
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; ${col.required ? 'opacity: 0.7;' : ''}">
+                <input type="checkbox" id="ec_col_${col.id}" ${isChecked ? 'checked' : ''} ${isDisabled} 
+                       style="width: 16px; height: 16px; cursor: ${col.required ? 'not-allowed' : 'pointer'};"
+                       onchange="saveColumnSetting('${col.id}', this.checked)">
+                <label for="ec_col_${col.id}" style="font-size: 13px; cursor: ${col.required ? 'default' : 'pointer'};">
+                    ${col.label}
+                    ${col.required ? ' <span style="color: #94a3b8; font-size: 11px;">(required)</span>' : ''}
+                </label>
+            </div>
+        `;
+    }).join('');
+}
+
+// Render Logs
+function renderECLogs() {
+    const container = document.getElementById('ec_logs');
+    if (!container) return;
+    
+    if (ecLogs.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px;">No logs available</p>';
+        return;
+    }
+    
+    container.innerHTML = ecLogs.slice(0, 50).map(log => {
+        const icon = log.action === 'save' ? 'fa-save' : 
+                     log.action === 'close' ? 'fa-lock' : 
+                     log.action === 'open' ? 'fa-lock-open' : 'fa-edit';
+        const color = log.action === 'close' ? '#dc2626' : 
+                      log.action === 'open' ? '#10b981' : '#6366f1';
+        
+        return `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">
+                <i class="fas ${icon}" style="color: ${color}; width: 20px;"></i>
+                <div style="flex: 1;">
+                    <strong>${log.lecturer_name || 'System'}</strong>
+                    <span style="color: #475569;">
+                        ${log.action === 'save' ? 'entered marks for' : 
+                          log.action === 'close' ? 'closed' : 
+                          log.action === 'open' ? 'opened' : 'modified'}
+                    </span>
+                    <strong>${log.target || log.subject || 'Unknown'}</strong>
+                    ${log.block ? `<span style="color: #64748b; font-size: 12px;">in ${log.block.replace('_', ' ')}</span>` : ''}
+                    <span style="font-size: 12px; color: #94a3b8; margin-left: 8px;">
+                        ${log.created_at ? new Date(log.created_at).toLocaleString() : ''}
+                    </span>
+                </div>
+                ${log.details ? `<span style="font-size: 12px; color: #64748b;">${log.details}</span>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// ENTRY CONTROL ACTIONS
+// ============================================================
+
+// Toggle Global Entry
+async function toggleGlobalEntry() {
+    const globalEnabled = !ecSettings.global || ecSettings.global.enabled !== false;
+    const newState = !globalEnabled;
+    
+    const action = newState ? 'Open' : 'Close';
+    if (!confirm(`⚠️ ${action} ALL mark entry across the entire system?\n\nThis affects ALL users and ALL subjects.`)) return;
+    
+    showLoading(`${newState ? 'Opening' : 'Closing'} global entry...`);
+    
+    try {
+        const { error } = await sb
+            .from('mark_entry_settings')
+            .upsert({
+                setting_key: 'global',
+                enabled: newState,
+                closed_by: newState ? null : currentUser?.name || 'Administrator',
+                closed_at: newState ? null : new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        // Log the action
+        await logEntryControlAction(
+            newState ? 'open' : 'close',
+            'global',
+            null,
+            `${newState ? 'Opened' : 'Closed'} all mark entry`
+        );
+        
+        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} all mark entry!`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Toggle Class Entry
+async function toggleClassEntry(year) {
+    const key = `${year}_all`;
+    const setting = ecSettings[key];
+    const enabled = !setting || setting.enabled !== false;
+    const newState = !enabled;
+    
+    const action = newState ? 'Open' : 'Close';
+    if (!confirm(`⚠️ ${action} mark entry for March ${year} class?`)) return;
+    
+    showLoading(`${newState ? 'Opening' : 'Closing'} class entry...`);
+    
+    try {
+        const { error } = await sb
+            .from('mark_entry_settings')
+            .upsert({
+                setting_key: key,
+                enabled: newState,
+                closed_by: newState ? null : currentUser?.name || 'Administrator',
+                closed_at: newState ? null : new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        await logEntryControlAction(
+            newState ? 'open' : 'close',
+            `March ${year} Class`,
+            null,
+            `${newState ? 'Opened' : 'Closed'} entry for March ${year} class`
+        );
+        
+        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} March ${year} class!`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Toggle Subject Entry
+async function toggleSubjectEntry(block, subject) {
+    const key = `${block}_${subject}`;
+    const setting = ecSettings[key];
+    const enabled = !setting || setting.enabled !== false;
+    const newState = !enabled;
+    
+    const action = newState ? 'Open' : 'Close';
+    const displayName = subject.length > 30 ? subject.substring(0, 30) + '...' : subject;
+    
+    if (!confirm(`⚠️ ${action} mark entry for "${displayName}" in ${block.replace('_', ' ')}?`)) return;
+    
+    showLoading(`${newState ? 'Opening' : 'Closing'} subject entry...`);
+    
+    try {
+        const { error } = await sb
+            .from('mark_entry_settings')
+            .upsert({
+                setting_key: key,
+                enabled: newState,
+                closed_by: newState ? null : currentUser?.name || 'Administrator',
+                closed_at: newState ? null : new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        await logEntryControlAction(
+            newState ? 'open' : 'close',
+            subject,
+            block,
+            `${newState ? 'Opened' : 'Closed'} entry for ${subject}`
+        );
+        
+        showNotification(`✅ ${newState ? 'Opened' : 'Closed'} "${displayName}"!`, false);
+        loadEntryControl();
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Open Block Subjects Modal
+function openBlockSubjects(block) {
+    const blockSubjects = ecSubjects.filter(s => s.block === block);
+    
+    if (blockSubjects.length === 0) {
+        showNotification('No subjects in this block', 'warning');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    
+    let subjectsHtml = blockSubjects.map(s => {
+        const key = `${s.block}_${s.unit_name}`;
+        const setting = ecSettings[key];
+        const enabled = !setting || setting.enabled !== false;
+        const displayName = s.unit_code ? `${s.unit_code} - ${s.unit_name}` : s.unit_name;
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid ${enabled ? '#10b981' : '#dc2626'};">
+                <span style="font-size: 13px;">${displayName}</span>
+                <button onclick="toggleSubjectEntry('${s.block}', '${s.unit_name}')" style="padding: 4px 12px; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; background: ${enabled ? '#dc2626' : '#10b981'}; color: white;">
+                    ${enabled ? 'Close' : 'Open'}
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; max-width: 600px; width: 95%; max-height: 85vh; overflow-y: auto; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #1e293b;">${block.replace('_', ' ')} - Subjects</h3>
+                <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                ${subjectsHtml}
+            </div>
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+                <button onclick="openAllSubjectsInBlock('${block}')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-lock-open"></i> Open All
+                </button>
+                <button onclick="closeAllSubjectsInBlock('${block}')" style="flex: 1; padding: 8px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-lock"></i> Close All
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Save column setting
+async function saveColumnSetting(columnId, visible) {
+    try {
+        // Check if setting exists
+        const { data: existing, error: fetchError } = await sb
+            .from('column_settings')
+            .select('*')
+            .eq('block', 'global')
+            .eq('subject', 'all')
+            .eq('year', currentYear || '2025');
+        
+        if (fetchError) throw fetchError;
+        
+        let columns = [];
+        if (existing && existing.length > 0) {
+            columns = existing[0].columns || [];
+        }
+        
+        // Update column visibility
+        const colIndex = columns.findIndex(c => c.id === columnId);
+        if (colIndex !== -1) {
+            columns[colIndex].visible = visible;
+        } else {
+            columns.push({ id: columnId, visible: visible });
+        }
+        
+        // Save to database
+        const { error } = await sb
+            .from('column_settings')
+            .upsert({
+                block: 'global',
+                subject: 'all',
+                year: currentYear || '2025',
+                columns: columns,
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        // Update local cache
+        await loadEntryControl();
+        showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}!`, false);
+        
+    } catch (error) {
+        console.error('Error saving column:', error);
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Reset all columns
+async function resetAllColumns() {
+    if (!confirm('⚠️ Reset ALL column settings to default for ALL users?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('column_settings')
+            .delete()
+            .eq('block', 'global')
+            .eq('subject', 'all');
+        
+        if (error) throw error;
+        
+        await logEntryControlAction(
+            'reset_columns',
+            'All Columns',
+            null,
+            'Reset all column settings to default'
+        );
+        
+        showNotification('✅ All columns reset to default!', false);
+        loadEntryControl();
+        
+    } catch (error) {
+        showNotification('❌ Error: ' + error.message, true);
+    }
+}
+
+// Log entry control action
+async function logEntryControlAction(action, target, block, details) {
+    try {
+        const { error } = await sb
+            .from('mark_entry_logs')
+            .insert({
+                lecturer_name: currentUser?.name || 'Administrator',
+                action: action,
+                target: target,
+                block: block,
+                details: details,
+                created_at: new Date().toISOString()
+            });
+        
+        if (error) console.error('Log error:', error);
+        
+    } catch (error) {
+        console.error('Failed to log action:', error);
+    }
+}
+
+// Refresh entry control
+function refreshEntryControl() {
+    loadEntryControl();
+    showNotification('🔄 Entry Control refreshed!', false);
+}
+
+// Export logs
+function exportECLogs() {
+    if (!ecLogs || ecLogs.length === 0) {
+        showNotification('No logs to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Timestamp', 'User', 'Action', 'Target', 'Block', 'Details'];
+    const rows = ecLogs.map(log => [
+        log.created_at ? new Date(log.created_at).toLocaleString() : '',
+        log.lecturer_name || 'System',
+        log.action || '',
+        log.target || '',
+        log.block || '',
+        log.details || ''
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `entry_control_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    showNotification('✅ Logs exported!', 'success');
+}
+
+// Make all functions globally accessible
+window.loadEntryControl = loadEntryControl;
+window.toggleGlobalEntry = toggleGlobalEntry;
+window.toggleClassEntry = toggleClassEntry;
+window.toggleSubjectEntry = toggleSubjectEntry;
+window.openBlockSubjects = openBlockSubjects;
+window.openAllSubjectsInBlock = openAllSubjectsInBlock;
+window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
+window.saveColumnSetting = saveColumnSetting;
+window.resetAllColumns = resetAllColumns;
+window.refreshEntryControl = refreshEntryControl;
+window.exportECLogs = exportECLogs;
+window.logEntryControlAction = logEntryControlAction;
+
+console.log('✅ Entry Control functions loaded!');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
