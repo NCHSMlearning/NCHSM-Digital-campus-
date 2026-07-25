@@ -20189,13 +20189,15 @@ function renderSubjectColumns() {
 }
 
 // ============================================================
-// SAVE COLUMN SETTING - WITH AUTO RECALCULATION
+// SAVE COLUMN SETTING - FIXED (NO ON CONFLICT)
 // ============================================================
 
 async function saveSubjectColumnSetting(columnId, visible) {
     const subject = me_currentSubject;
     const block = me_currentBlock;
-    const year = me_currentYear;
+    const year = me_currentYear || '2025';
+    
+    console.log('💾 Saving column setting:', { columnId, visible, subject, block, year });
     
     if (!subject || !block) {
         if (typeof showNotification === 'function') {
@@ -20212,21 +20214,13 @@ async function saveSubjectColumnSetting(columnId, visible) {
     }
     
     try {
-        const { data: existing, error: fetchError } = await sb
-            .from('column_settings')
-            .select('*')
-            .eq('block', block)
-            .eq('subject', subject)
-            .eq('year', year)
-            .maybeSingle();
-        
-        if (fetchError) throw fetchError;
-        
+        // Get existing columns from current state
         let columns = [];
-        if (existing && existing.columns) {
-            columns = existing.columns || [];
+        if (me_columnSettings && me_columnSettings.columns) {
+            columns = me_columnSettings.columns || [];
         }
         
+        // Update column visibility
         const colIndex = columns.findIndex(c => c.id === columnId);
         if (colIndex !== -1) {
             columns[colIndex].visible = visible;
@@ -20234,19 +20228,55 @@ async function saveSubjectColumnSetting(columnId, visible) {
             columns.push({ id: columnId, visible: visible });
         }
         
-        const { error } = await sb
+        console.log('📋 Updated columns:', columns);
+        
+        // ✅ CHECK IF RECORD EXISTS (NO ON CONFLICT)
+        const { data: existing, error: fetchError } = await sb
             .from('column_settings')
-            .upsert({
-                block: block,
-                subject: subject,
-                year: year,
-                columns: columns,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'block,subject,year' });
+            .select('id')
+            .eq('block', block)
+            .eq('subject', subject)
+            .eq('year', year)
+            .maybeSingle();
+        
+        if (fetchError) {
+            console.error('❌ Fetch error:', fetchError);
+            throw fetchError;
+        }
+        
+        let error;
+        if (existing) {
+            // ✅ UPDATE (NO ON CONFLICT)
+            console.log('📝 Updating existing record:', existing.id);
+            const { error: updateError } = await sb
+                .from('column_settings')
+                .update({
+                    columns: columns,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existing.id);
+            error = updateError;
+            if (!error) console.log('✅ Update successful');
+        } else {
+            // ✅ INSERT (NO ON CONFLICT)
+            console.log('📝 Inserting new record');
+            const { error: insertError } = await sb
+                .from('column_settings')
+                .insert({
+                    block: block,
+                    subject: subject,
+                    year: year,
+                    columns: columns,
+                    updated_at: new Date().toISOString()
+                });
+            error = insertError;
+            if (!error) console.log('✅ Insert successful');
+        }
         
         if (error) throw error;
         
-        me_columnSettings.columns = columns;
+        // Update local cache
+        me_columnSettings = { columns: columns };
         
         if (typeof showNotification === 'function') {
             showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${subject}`, 'success');
@@ -20256,12 +20286,16 @@ async function saveSubjectColumnSetting(columnId, visible) {
         applyColumnVisibility();
         
     } catch (error) {
-        console.error('Error saving column:', error);
+        console.error('❌ Error saving column:', error);
         if (typeof showNotification === 'function') {
             showNotification('❌ Error saving column: ' + error.message, 'error');
         }
     }
 }
+
+// Make sure it's available globally
+window.saveSubjectColumnSetting = saveSubjectColumnSetting;
+console.log('✅ saveSubjectColumnSetting has been replaced with the fixed version!');
 
 // ============================================================
 // APPLY COLUMN VISIBILITY - FIXED (USES HEADER TEXT MATCHING)
