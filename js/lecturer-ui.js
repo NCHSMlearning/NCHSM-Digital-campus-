@@ -201,31 +201,103 @@ const LecturerUI = {
         console.log('✅ Lecturer UI initialized');
     },
     
-    // Setup main event listeners
+    // ============================================
+    // SETUP EVENT LISTENERS - FIXED FOR #mainNav
+    // ============================================
+    
     setupEventListeners() {
-        // Tab navigation
-        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
-            link.addEventListener('click', (e) => {
+        console.log('🎯 Setting up event listeners...');
+        
+        // ============================================
+        // FIX: Sidebar navigation using #mainNav
+        // ============================================
+        
+        // Get all sidebar links from #mainNav
+        const sidebarLinks = document.querySelectorAll('#mainNav a[data-tab]');
+        console.log(`🔗 Found ${sidebarLinks.length} sidebar links`);
+        
+        sidebarLinks.forEach(link => {
+            const tab = link.getAttribute('data-tab');
+            
+            // Remove any existing event listeners by cloning
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+            
+            // Add click handler
+            newLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                const tab = link.getAttribute('data-tab');
-                this.showTab(tab);
+                e.stopPropagation();
+                console.log(`🖱️ CLICKED: ${tab}`);
                 
-                // Close mobile sidebar
-                if (window.innerWidth <= 768) {
-                    this.toggleSidebar(false);
+                // Close dropdown if inside one
+                const parent = this.closest('.nav-dropdown');
+                if (parent) {
+                    parent.classList.remove('open');
+                    const menu = parent.querySelector('.dropdown-menu');
+                    if (menu) menu.style.display = 'none';
+                }
+                
+                // Show tab
+                if (window.LecturerUI && typeof window.LecturerUI.showTab === 'function') {
+                    window.LecturerUI.showTab(tab);
+                } else {
+                    console.error('❌ LecturerUI.showTab not found');
+                    // Fallback: manual tab switching
+                    document.querySelectorAll('.tab-content').forEach(el => {
+                        el.style.display = 'none';
+                        el.classList.remove('active');
+                    });
+                    const target = document.getElementById(tab + '-content') || document.getElementById(tab);
+                    if (target) {
+                        target.style.display = 'block';
+                        target.classList.add('active');
+                        console.log(`✅ Manual fallback: ${tab}`);
+                    }
                 }
             });
         });
         
+        // ============================================
+        // FIX: Dropdown toggles using #mainNav
+        // ============================================
+        
+        document.querySelectorAll('#mainNav .dropdown-toggle').forEach(toggle => {
+            // Remove existing listeners
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+            
+            newToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('📂 Toggle dropdown');
+                
+                const parent = this.closest('.nav-dropdown');
+                if (parent) {
+                    parent.classList.toggle('open');
+                    const menu = parent.querySelector('.dropdown-menu');
+                    if (menu) {
+                        menu.style.display = parent.classList.contains('open') ? 'block' : 'none';
+                    }
+                }
+            });
+        });
+        
+        // ============================================
         // Card clicks
+        // ============================================
+        
         document.querySelectorAll('.card[data-tab]').forEach(card => {
             card.addEventListener('click', () => {
                 const tab = card.getAttribute('data-tab');
+                console.log(`🃏 Card clicked: ${tab}`);
                 this.showTab(tab);
             });
         });
         
-        // Logout - Use lecturerDB
+        // ============================================
+        // Logout
+        // ============================================
+        
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -240,7 +312,10 @@ const LecturerUI = {
             });
         }
         
+        // ============================================
         // Notification button
+        // ============================================
+        
         const notifBtn = document.getElementById('notificationBtn');
         if (notifBtn) {
             notifBtn.addEventListener('click', () => {
@@ -248,7 +323,10 @@ const LecturerUI = {
             });
         }
         
+        // ============================================
         // Help button
+        // ============================================
+        
         const helpBtn = document.getElementById('helpBtn');
         if (helpBtn) {
             helpBtn.addEventListener('click', () => {
@@ -256,7 +334,10 @@ const LecturerUI = {
             });
         }
         
+        // ============================================
         // Close modals on overlay click
+        // ============================================
+        
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -265,12 +346,17 @@ const LecturerUI = {
             });
         });
         
+        // ============================================
         // Close modals with Escape key
+        // ============================================
+        
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeAllModals();
             }
         });
+        
+        console.log('✅ All event listeners setup complete!');
     },
     
     // Setup mobile navigation
@@ -332,13 +418,7 @@ const LecturerUI = {
         console.log('📂 Setting up dropdowns...');
         
         // Note: window.toggleDropdown is already defined globally
-        
-        // Class-based approach for dropdowns
-        document.querySelectorAll('.nav-dropdown .dropdown-toggle').forEach(toggle => {
-            // Remove existing listener to avoid duplicates
-            toggle.removeEventListener('click', this.handleDropdownClick);
-            toggle.addEventListener('click', this.handleDropdownClick.bind(this));
-        });
+        // But we also handle dropdowns via event listeners in setupEventListeners
         
         // Close dropdowns on outside click
         document.addEventListener('click', (e) => {
@@ -350,31 +430,6 @@ const LecturerUI = {
                 });
             }
         });
-    },
-    
-    handleDropdownClick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const parentLi = e.currentTarget.closest('.nav-dropdown');
-        if (!parentLi) return;
-        
-        // Close all other dropdowns
-        document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-            if (dropdown !== parentLi) {
-                dropdown.classList.remove('open');
-                const menu = dropdown.querySelector('.dropdown-menu');
-                if (menu) menu.style.display = 'none';
-            }
-        });
-        
-        // Toggle current dropdown
-        const isOpen = parentLi.classList.contains('open');
-        parentLi.classList.toggle('open');
-        const menu = parentLi.querySelector('.dropdown-menu');
-        if (menu) {
-            menu.style.display = isOpen ? 'none' : 'block';
-        }
     },
     
     // Load theme preference
@@ -431,8 +486,8 @@ const LecturerUI = {
             }
         }
         
-        // Update nav links
-        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+        // Update nav links - using #mainNav
+        document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
                 link.classList.add('active');
