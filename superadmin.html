@@ -2736,9 +2736,8 @@
         </div>
     </div>
 </section>
-
-                                <!-- ============================================ -->
-<!-- MARKS ENTRY SYSTEM - TVET + NURSING -->
+<!-- ============================================ -->
+<!-- MARKS ENTRY SYSTEM - WITH COLUMN MANAGEMENT -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -2875,6 +2874,31 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
+    <!-- COLUMN MANAGEMENT - Integrated in Marks Entry -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-columns" style="color: #059669;"></i> Column Settings for <span id="me_column_subject_name">Current Subject</span>
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Show/hide columns for this subject only
+                </p>
+            </div>
+            <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                <i class="fas fa-undo"></i> Reset for This Subject
+            </button>
+        </div>
+        <div id="me_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+            <!-- Column checkboxes will be populated by JavaScript -->
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-info-circle"></i> Select a subject to manage columns
+            </div>
+        </div>
+    </div>
+
     <!-- Marks Table Container -->
     <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
         <div style="text-align: center; padding: 60px 20px;">
@@ -2994,24 +3018,6 @@
             </span>
         </h3>
         <div id="ec_subjects"></div>
-    </div>
-
-    <!-- Column Management -->
-    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-            <div>
-                <h3 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-columns" style="color: #6366f1;"></i> Column Management
-                </h3>
-                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    Show/hide columns globally for all users
-                </p>
-            </div>
-            <button onclick="resetAllColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
-                <i class="fas fa-undo"></i> Reset All
-            </button>
-        </div>
-        <div id="ec_column_settings" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;"></div>
     </div>
 
     <!-- Audit Logs -->
