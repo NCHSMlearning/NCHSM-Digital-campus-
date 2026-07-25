@@ -2769,7 +2769,7 @@
             <p class="minor-data" style="font-size: 11px;">With marks</p>
         </div>
         <div class="card" style="border-top: 4px solid #4C1D95;">
-            <h3 style="color: #4C1D95; font-size: 12px;">Total Subjects</h3>
+            <h3 style="color: #4C1D95; font-size: 12px;">Total Units</h3>
             <p class="data" id="me_total_subjects" style="font-size: 28px; font-weight: 700; color: #4C1D95;">0</p>
             <p class="minor-data" style="font-size: 11px;">Active units</p>
         </div>
@@ -2856,10 +2856,10 @@
             </div>
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-book"></i> Subject
+                    <i class="fas fa-book"></i> Unit
                 </label>
                 <select id="me_subject_select" class="form-control" onchange="loadMarksEntry()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="">-- Select Subject --</option>
+                    <option value="">-- Select Unit --</option>
                 </select>
             </div>
             <div>
@@ -2886,10 +2886,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
             <div>
                 <h3 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Lecturer Subject Assignments
+                    <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Lecturer Unit Assignments
                 </h3>
                 <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> Assign lecturers to subjects for the current block
+                    <i class="fas fa-info-circle"></i> Assign lecturers to units for the current block
                 </p>
             </div>
             <button onclick="showLecturerAssignmentModal()" class="btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer;">
@@ -2898,7 +2898,7 @@
         </div>
         <div id="me_lecturer_assignments" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                <i class="fas fa-info-circle"></i> Select a subject to manage lecturer assignments
+                <i class="fas fa-info-circle"></i> Select a unit to manage lecturer assignments
             </div>
         </div>
     </div>
@@ -2910,19 +2910,19 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
             <div>
                 <h3 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-columns" style="color: #059669;"></i> Column Settings for <span id="me_column_subject_name">Current Subject</span>
+                    <i class="fas fa-columns" style="color: #059669;"></i> Column Settings for <span id="me_column_subject_name">Current Unit</span>
                 </h3>
                 <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> Show/hide columns for this subject only
+                    <i class="fas fa-info-circle"></i> Show/hide columns for this unit only
                 </p>
             </div>
             <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
-                <i class="fas fa-undo"></i> Reset for This Subject
+                <i class="fas fa-undo"></i> Reset for This Unit
             </button>
         </div>
         <div id="me_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                <i class="fas fa-info-circle"></i> Select a subject to manage columns
+                <i class="fas fa-info-circle"></i> Select a unit to manage columns
             </div>
         </div>
     </div>
@@ -2931,7 +2931,7 @@
     <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
         <div style="text-align: center; padding: 60px 20px;">
             <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-            <h3 style="color: #1e293b;">Select Program, Block and Subject</h3>
+            <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
             <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for any program</p>
         </div>
     </div>
@@ -2961,7 +2961,7 @@
     <div style="background: white; border-radius: 16px; padding: 30px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 style="margin: 0; color: #1e293b;">
-                <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Assign Lecturer to Subject
+                <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Assign Lecturer to Unit
             </h3>
             <button onclick="closeLecturerAssignmentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
         </div>
@@ -2975,10 +2975,10 @@
         </div>
         <div style="margin-bottom: 15px;">
             <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                <i class="fas fa-book"></i> Subject
+                <i class="fas fa-book"></i> Unit
             </label>
             <select id="me_assign_subject_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
-                <option value="">-- Select Subject --</option>
+                <option value="">-- Select Unit --</option>
             </select>
         </div>
         <div style="margin-bottom: 15px;">
