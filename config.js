@@ -1,4 +1,4 @@
-// config.js - Configuration for NCHSM Student Portal
+// config.js - Configuration for NCHSM Student Portal & Lecturer Dashboard
 // This file contains PUBLIC test credentials
 // For production, use GitHub Secrets with GitHub Actions
 
@@ -26,10 +26,7 @@
         console.info = function() {};
         console.warn = function() {};
         
-        // Optional: Keep errors but silence them too (uncomment if desired)
-        // console.error = function() {};
-        
-        // Or keep errors with a prefix (recommended for production debugging)
+        // Keep errors with a prefix (recommended for production debugging)
         console.error = function(...args) {
             originalError('[NCHSM Error]', ...args);
         };
@@ -42,10 +39,14 @@
     }
 })();
 
-console.log('🚀 Loading NCHSM Student Portal Configuration');
+console.log('🚀 Loading NCHSM Portal Configuration');
+
+// ============================================================
+// APPLICATION CONFIGURATION
+// ============================================================
 
 window.APP_CONFIG = {
-    // Public test Supabase credentials
+    // Public Supabase credentials
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
     
@@ -58,24 +59,109 @@ window.APP_CONFIG = {
     ENVIRONMENT: 'production',
     
     // Application settings
-    APP_NAME: 'NCHSM Digital Student Portal',
+    APP_NAME: 'NCHSM Digital Portal',
     APP_VERSION: '2.1.0'
 };
 
-// Only show these logs if debugging is enabled
+// ============================================================
+// CREATE SUPABASE CLIENT INSTANCE
+// ============================================================
+
+// Check if supabase is available (loaded from CDN)
+if (typeof supabase !== 'undefined') {
+    try {
+        // Create the Supabase client
+        const supabaseClient = supabase.createClient(
+            window.APP_CONFIG.SUPABASE_URL,
+            window.APP_CONFIG.SUPABASE_ANON_KEY,
+            {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            }
+        );
+        
+        // Expose globally as 'sb' (for lecturer-marks.js and others)
+        window.sb = supabaseClient;
+        
+        // Also expose as supabaseClient for clarity
+        window.supabaseClient = supabaseClient;
+        
+        if (!window.__LOGS_DISABLED) {
+            console.log('✅ Supabase client created and exposed as window.sb');
+        }
+    } catch (error) {
+        console.error('❌ Failed to create Supabase client:', error);
+    }
+} else {
+    console.warn('⚠️ Supabase library not loaded. Make sure to include: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>');
+}
+
+// ============================================================
+// FALLBACK: Ensure sb is defined (for modules that need it)
+// ============================================================
+
+if (typeof window.sb === 'undefined') {
+    console.warn('⚠️ Creating fallback Supabase client...');
+    try {
+        // Try to create the client again
+        if (typeof supabase !== 'undefined') {
+            window.sb = supabase.createClient(
+                window.APP_CONFIG.SUPABASE_URL,
+                window.APP_CONFIG.SUPABASE_ANON_KEY
+            );
+            console.log('✅ Fallback Supabase client created');
+        } else {
+            // Create a dummy client that throws helpful errors
+            window.sb = {
+                auth: {
+                    getUser: function() { 
+                        console.error('❌ Supabase not initialized. Check your config.js loading.');
+                        return Promise.reject(new Error('Supabase not initialized'));
+                    },
+                    getSession: function() {
+                        console.error('❌ Supabase not initialized. Check your config.js loading.');
+                        return Promise.reject(new Error('Supabase not initialized'));
+                    }
+                },
+                from: function(table) {
+                    console.error('❌ Supabase not initialized. Cannot query table:', table);
+                    return {
+                        select: function() { return this; },
+                        eq: function() { return this; },
+                        maybeSingle: function() { return Promise.reject(new Error('Supabase not initialized')); }
+                    };
+                }
+            };
+            console.warn('⚠️ Created dummy Supabase client. Real client will not work.');
+        }
+    } catch (e) {
+        console.error('❌ Could not create fallback Supabase client:', e);
+    }
+}
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+if (!window.APP_CONFIG.SUPABASE_URL || !window.APP_CONFIG.SUPABASE_ANON_KEY) {
+    console.error('❌ Missing Supabase credentials in APP_CONFIG');
+}
+
 if (!window.__LOGS_DISABLED) {
     console.log('✅ Configuration loaded successfully');
     console.log('App:', window.APP_CONFIG.APP_NAME);
     console.log('Version:', window.APP_CONFIG.APP_VERSION);
     console.log('Environment:', window.APP_CONFIG.ENVIRONMENT);
+    console.log('Supabase client ready:', typeof window.sb !== 'undefined');
 }
 
-// Optional: Add validation (always show errors)
-if (!window.APP_CONFIG.SUPABASE_URL || !window.APP_CONFIG.SUPABASE_ANON_KEY) {
-    console.error('❌ Missing Supabase credentials');
-}
+// ============================================================
+// EXPORT (for module systems)
+// ============================================================
 
-// Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = window.APP_CONFIG;
 }
