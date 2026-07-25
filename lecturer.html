@@ -854,113 +854,173 @@
                     </table>
                 </div>
             </section>
+<!-- ============================================================
+     MARKS MANAGEMENT SECTION - WITH LECTURER PROGRAM DETECTION
+     ============================================================ -->
+<section id="marks-management-content" class="tab-content">
+    <div class="marks-system-header">
+        <h2><i class="fas fa-chart-line"></i> Marks Management</h2>
+        <p>Enter marks for your assigned subjects. All submissions require admin approval before finalization.</p>
+    </div>
+    
+    <!-- Lecturer Program Banner -->
+    <div id="lecturerProgramBanner" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <i class="fas fa-user-graduate" style="color: white; font-size: 20px;"></i>
+            <span style="color: white; font-weight: 600; margin-left: 10px;">
+                <span id="lecturerProgramName">Loading...</span>
+            </span>
+            <span id="lecturerProgramBadge" style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; color: white; font-size: 12px; margin-left: 10px;">
+                <i class="fas fa-graduation-cap"></i> <span id="lecturerProgramType">Loading...</span>
+            </span>
+        </div>
+        <div style="color: rgba(255,255,255,0.9); font-size: 13px;">
+            <i class="fas fa-book"></i> <span id="lecturerSubjectCount">0</span> Subjects Assigned
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="cards">
+        <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #4C1D95;">
+            <h3>Total Students</h3>
+            <p class="data" id="lecTotalStudents">0</p>
+            <p class="minor-data">Under your supervision</p>
+        </div>
+        <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #f59e0b;">
+            <h3>Pending Approval</h3>
+            <p class="data" id="lecPendingApproval">0</p>
+            <p class="minor-data">Awaiting admin review</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+            <h3>Approved Marks</h3>
+            <p class="data" id="lecApprovedMarks">0</p>
+            <p class="minor-data">Finalized by admin</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #6366f1;">
+            <h3>Average Score</h3>
+            <p class="data" id="lecAvgScore">0%</p>
+            <p class="minor-data">Across all subjects</p>
+        </div>
+    </div>
+    
+    <!-- Approval Status Banner -->
+    <div id="approvalStatusBanner" style="display: none; background: #fef3c7; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <i class="fas fa-clock" style="color: #d97706;"></i>
+                <strong>Approval Status:</strong>
+                <span id="approvalStatusText">Pending Admin Approval</span>
+                <span id="approvalStatusBadge" class="badge badge-warning" style="margin-left: 10px;">⏳ Pending</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="submitForApprovalBtn" class="btn btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" onclick="submitMarksForApproval()">
+                    <i class="fas fa-paper-plane"></i> Submit for Approval
+                </button>
+                <button id="withdrawApprovalBtn" class="btn btn-action" style="background: #dc2626; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; display: none;" onclick="withdrawMarksFromApproval()">
+                    <i class="fas fa-undo"></i> Withdraw
+                </button>
+            </div>
+        </div>
+        <div id="approvalDetails" style="margin-top: 10px; font-size: 13px; color: #92400e; display: none;">
+            <p><strong>Submitted:</strong> <span id="submittedDate">-</span></p>
+            <p><strong>Submitted By:</strong> <span id="submittedBy">-</span></p>
+            <p id="rejectionReason" style="color: #dc2626; display: none;"><strong>Rejection Reason:</strong> <span id="rejectionReasonText">-</span></p>
+        </div>
+    </div>
+    
+    <!-- Selectors -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+            <!-- Program - Auto-detected and locked -->
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-tag"></i> Program
+                </label>
+                <select id="me_program_select" class="form-control" disabled style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px; cursor: not-allowed;">
+                    <option value="">-- Loading Program --</option>
+                </select>
+                <small style="color: #6b7280; font-size: 11px;">Automatically detected from your profile</small>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-calendar"></i> Academic Year
+                </label>
+                <select id="me_year_select" class="form-control" onchange="loadMEBlocks()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <option value="2024">2024</option>
+                    <option value="2025" selected>2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-layer-group"></i> Block
+                </label>
+                <select id="me_block_select" class="form-control" onchange="loadMESubjects()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <option value="">-- Select Block --</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-book"></i> Subject
+                </label>
+                <select id="me_subject_select" class="form-control" onchange="loadMarksEntry()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <option value="">-- Select Subject --</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-tag"></i> Assessment Type
+                </label>
+                <select id="me_assessment_type" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;" disabled>
+                    <option value="full">Full (CAT1+CAT2+Exam)</option>
+                    <option value="single_cat">Single CAT (CAT+Exam)</option>
+                    <option value="exam_only">Exam Only</option>
+                </select>
+            </div>
+        </div>
+        <!-- TVET Department Info -->
+        <div id="tvetDepartmentInfo" style="display: none; margin-top: 10px; padding: 10px 14px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            <i class="fas fa-info-circle" style="color: #d97706;"></i>
+            <span style="font-size: 13px; color: #92400e;">
+                <strong>TVET Department:</strong> <span id="tvetDepartmentName">Loading...</span> 
+                | <strong>Block:</strong> <span id="tvetBlockName">Loading...</span>
+            </span>
+        </div>
+        <!-- KRCHN Department Info -->
+        <div id="krchnDepartmentInfo" style="display: none; margin-top: 10px; padding: 10px 14px; background: #dbeafe; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <i class="fas fa-info-circle" style="color: #2563eb;"></i>
+            <span style="font-size: 13px; color: #1e40af;">
+                <strong>School of Nursing:</strong> KRCHN Program
+                | <strong>Block:</strong> <span id="krchnBlockName">Loading...</span>
+            </span>
+        </div>
+    </div>
+    
+    <!-- Marks Table Container -->
+    <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+        <div style="text-align: center; padding: 60px 20px;">
+            <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+            <h3 style="color: #1e293b;">Select Block and Subject</h3>
+            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned subjects</p>
+        </div>
+    </div>
 
-            <!-- ===== MARKS MANAGEMENT SECTION ===== -->
-            <section id="marks-management-content" class="tab-content">
-                <div class="marks-system-header">
-                    <h2><i class="fas fa-chart-line"></i> NCK & Internal Marks System</h2>
-                    <p>Complete marks management for clinical evaluation (NCK XY FORMS) and internal assessments (CATs & Exams)</p>
-                </div>
-                
-                <div class="cards">
-                    <div class="card">
-                        <h3>Total Students</h3>
-                        <p class="data" id="lecTotalStudents">0</p>
-                    </div>
-                    <div class="card card-alert-success">
-                        <h3>Internal Marks</h3>
-                        <p class="data" id="lecTotalInternal">0</p>
-                    </div>
-                    <div class="card card-alert-warning">
-                        <h3>NCK Records</h3>
-                        <p class="data" id="lecTotalNck">0</p>
-                    </div>
-                    <div class="card card-alert-primary">
-                        <h3>Average Score</h3>
-                        <p class="data" id="lecAvgScore">0%</p>
-                    </div>
-                </div>
-                
-                <div class="tabs-nav">
-                    <button class="tab-btn active" id="lecTabInternal"><i class="fas fa-pen-alt"></i> Internal Marks</button>
-                    <button class="tab-btn" id="lecTabNck"><i class="fas fa-file-medical"></i> NCK Clinical Scores</button>
-                    <button class="tab-btn" id="lecTabAnalytics"><i class="fas fa-chart-line"></i> Analytics</button>
-                </div>
-                
-                <!-- Internal Marks Tab -->
-                <div id="lecInternalTab" class="marks-tab active">
-                    <div class="filter-bar">
-                        <select id="lecBlockSelect" class="form-control">
-                            <option value="">-- Select Block --</option>
-                            <option value="Introductory">Introductory Block</option>
-                            <option value="Block 1">Block 1</option>
-                            <option value="Block 2">Block 2</option>
-                            <option value="Block 3">Block 3</option>
-                            <option value="Block 4">Block 4</option>
-                            <option value="Block 5">Block 5</option>
-                            <option value="Final">Final Block</option>
-                        </select>
-                        <select id="lecSubjectSelect" class="form-control">
-                            <option value="">-- Select Subject --</option>
-                        </select>
-                        <button class="btn btn-action" id="saveInternalMarksBtn"><i class="fas fa-save"></i> Save All Marks</button>
-                        <button class="btn btn-action" id="fillDownInternalBtn"><i class="fas fa-arrow-down"></i> Fill Down</button>
-                    </div>
-                    <div id="lecInternalContainer" class="table-responsive">
-                        <div class="text-center" style="padding: 40px;">
-                            <div class="loading-spinner"></div>
-                            <p>Select a block and subject to load marks...</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- NCK Marks Tab -->
-                <div id="lecNckTab" class="marks-tab" style="display: none;">
-                    <div class="filter-bar">
-                        <select id="lecNckSheet" class="form-control">
-                            <option value="XY FORMS">📊 XY FORMS - Clinical Evaluation</option>
-                            <option value="ASSESSMENT AND CASE">📋 ASSESSMENT & CASE - Written</option>
-                        </select>
-                        <select id="lecNckBlock" class="form-control">
-                            <option value="">-- Select Block --</option>
-                            <option value="Introductory">Introductory Block</option>
-                            <option value="Block 1">Block 1</option>
-                            <option value="Block 2">Block 2</option>
-                            <option value="Block 3">Block 3</option>
-                            <option value="Block 4">Block 4</option>
-                            <option value="Block 5">Block 5</option>
-                            <option value="Final">Final Block</option>
-                        </select>
-                        <button class="btn btn-action" id="saveAllNckMarksBtn"><i class="fas fa-save"></i> Save All NCK Marks</button>
-                        <button class="btn btn-action" id="fillDownNckBtn"><i class="fas fa-arrow-down"></i> Fill Down</button>
-                    </div>
-                    <div id="lecNckContainer" class="table-responsive">
-                        <div class="text-center" style="padding: 40px;">
-                            <div class="loading-spinner"></div>
-                            <p>Select a block to load NCK marks...</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Analytics Tab -->
-                <div id="lecAnalyticsTab" class="marks-tab" style="display: none;">
-                    <div class="cards">
-                        <div class="card" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none;">
-                            <div style="font-size: 32px; font-weight: bold;" id="lecAnalyticsAvg">0%</div>
-                            <div>Average Score</div>
-                        </div>
-                        <div class="card" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none;">
-                            <div style="font-size: 32px; font-weight: bold;" id="lecAnalyticsPass">0%</div>
-                            <div>Pass Rate</div>
-                        </div>
-                        <div class="card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;">
-                            <div style="font-size: 32px; font-weight: bold;" id="lecAnalyticsTotal">0</div>
-                            <div>Total Records</div>
-                        </div>
-                    </div>
-                    <canvas id="lecPerformanceChart" style="max-height: 300px; width: 100%;"></canvas>
-                </div>
-            </section>
+    <!-- Grading System Reference -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-top: 20px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
+            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 12px;">A (75-100%) → 4.0</span>
+            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 12px;">B (65-74%) → 3.0</span>
+            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 12px;">C (60-64%) → 2.0</span>
+            <span style="background: #fee2e2; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">D (Below 60%) → 0.0</span>
+            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                <i class="fas fa-info-circle"></i> Applicable to all programs
+            </span>
+        </div>
+    </div>
+</section>
 
             <!-- ===== RESOURCES SECTION ===== -->
             <section id="resources-content" class="tab-content">
