@@ -722,7 +722,7 @@
                     </ul>
                 </li>
                 
-              <!-- ACADEMIC -->
+             <!-- ACADEMIC -->
 <li class="nav-dropdown" style="margin-bottom: 2px;">
     <a 
         href="#" 
@@ -822,7 +822,7 @@
                 <span>CATS/Exams</span>
             </a>
         </li>
-        <!-- ✅ MARKS ENTRY - ADD THIS ITEM -->
+        <!-- ✅ MARKS ENTRY -->
         <li>
             <a 
                 href="#" 
@@ -848,33 +848,58 @@
                 <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
             </a>
         </li>
-        <!-- ===== MARK ENTRY CONTROL ===== -->
-<li style="margin-bottom: 2px;">
-    <a 
-        href="#" 
-        data-tab="entry-control"
-        style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            border-left: 3px solid #fbbf24;
-        "
-        onmouseover="this.style.background='linear-gradient(135deg, #b91c1c, #991b1b)'"
-        onmouseout="this.style.background='linear-gradient(135deg, #dc2626, #b91c1c)'"
-    >
-        <i class="fas fa-lock" style="width: 20px; text-align: center;"></i>
-        <span>Entry Control</span>
-        <span style="margin-left: auto; background: #fbbf24; padding: 0 8px; border-radius: 20px; font-size: 10px; color: #0A3D62; font-weight: 700;">ADMIN</span>
-    </a>
-</li>
+        <!-- ✅ MARK ENTRY CONTROL -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="entry-control"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                    background: rgba(220,38,38,0.15);
+                    border-left: 3px solid #fbbf24;
+                "
+                onmouseover="this.style.background='rgba(220,38,38,0.3)'; this.style.color='white'"
+                onmouseout="this.style.background='rgba(220,38,38,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-lock" style="width: 18px; text-align: center; font-size: 12px; color: #fbbf24;"></i>
+                <span>Entry Control</span>
+                <span style="margin-left: auto; background: #fbbf24; padding: 0 8px; border-radius: 20px; font-size: 9px; color: #0A3D62; font-weight: 700;">ADMIN</span>
+            </a>
+        </li>
+        <!-- ✅ MARKS APPROVAL - NEW ITEM -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="marks-approval"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                    background: rgba(245,158,11,0.15);
+                    border-left: 3px solid #f59e0b;
+                "
+                onmouseover="this.style.background='rgba(245,158,11,0.3)'; this.style.color='white'"
+                onmouseout="this.style.background='rgba(245,158,11,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-check-double" style="width: 18px; text-align: center; font-size: 12px; color: #f59e0b;"></i>
+                <span>Marks Approval</span>
+                <span id="marksApprovalBadge" style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 9px; color: #0A3D62; font-weight: 700;">0</span>
+            </a>
+        </li>
         <li>
             <a 
                 href="#" 
@@ -3357,6 +3382,81 @@
             </button>
         </div>
         <div id="ec_logs" style="max-height: 400px; overflow-y: auto;"></div>
+    </div>
+</section>
+
+    <!-- ============================================ -->
+<!-- MARKS APPROVAL SECTION - ADD AFTER ENTRY CONTROL -->
+<!-- ============================================ -->
+<section id="marks-approval" class="tab-content">
+    <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(245,158,11,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700;">
+                <i class="fas fa-check-double"></i> Marks Pending Approval
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-clock"></i> Review and approve marks submitted by lecturers
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="loadMarksApprovals()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="approveAllPendingMarks()" class="btn-action" style="background: #10b981; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-check-double"></i> Approve All
+            </button>
+            <button onclick="rejectAllPendingMarks()" class="btn-action" style="background: #dc2626; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-times"></i> Reject All
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div class="card" style="border-top: 4px solid #f59e0b;">
+            <h3 style="color: #d97706; font-size: 12px;">⏳ Pending Marks</h3>
+            <p class="data" id="pendingMarksCount" style="font-size: 28px; font-weight: 700; color: #d97706;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Awaiting your review</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+            <h3 style="color: #059669; font-size: 12px;">✅ Approved Today</h3>
+            <p class="data" id="approvedMarksToday" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Marks approved</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #ef4444;">
+            <h3 style="color: #dc2626; font-size: 12px;">❌ Rejected</h3>
+            <p class="data" id="rejectedMarksCount" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
+            <p class="minor-data" style="font-size: 11px;">This month</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #4C1D95;">
+            <h3 style="color: #4C1D95; font-size: 12px;">📚 Total Subjects</h3>
+            <p class="data" id="pendingSubjectsCount" style="font-size: 28px; font-weight: 700; color: #4C1D95;">0</p>
+            <p class="minor-data" style="font-size: 11px;">With pending marks</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <input type="text" id="marksApprovalSearch" placeholder="🔍 Search student or subject..." onkeyup="filterMarksApprovals()" style="flex: 1; min-width: 150px; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+        <select id="marksApprovalSubjectFilter" onchange="filterMarksApprovals()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+            <option value="all">All Subjects</option>
+        </select>
+        <select id="marksApprovalBlockFilter" onchange="filterMarksApprovals()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+            <option value="all">All Blocks</option>
+        </select>
+        <span style="font-size: 13px; color: #64748b;">
+            <i class="fas fa-info-circle"></i> <span id="marksFilterCount">0</span> pending
+        </span>
+    </div>
+
+    <!-- Marks Table -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+        <div id="marksApprovalTableContainer">
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 10px;">Loading pending marks...</p>
+            </div>
+        </div>
     </div>
 </section>
 <!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
