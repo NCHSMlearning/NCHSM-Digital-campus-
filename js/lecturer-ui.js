@@ -1,8 +1,156 @@
-// js/lecturer-ui.js
-/**
- * NCHSM Lecturer UI Module
- * Handles UI interactions, modals, tabs, and notifications
- */
+// ============================================================
+// LECTURER UI MODULE - COMPLETE FIXED VERSION
+// ============================================================
+
+// ============================================================
+// IMMEDIATE GLOBAL DEFINITIONS (Runs before DOM ready)
+// ============================================================
+
+// Define toggleDropdown immediately so HTML onclick can find it
+if (typeof window.toggleDropdown === 'undefined') {
+    window.toggleDropdown = function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const parentLi = event.currentTarget.closest('.nav-dropdown');
+        if (!parentLi) return;
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+            if (dropdown !== parentLi) {
+                dropdown.classList.remove('open');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                if (menu) menu.style.display = 'none';
+            }
+        });
+        
+        // Toggle current dropdown
+        const isOpen = parentLi.classList.contains('open');
+        parentLi.classList.toggle('open');
+        const menu = parentLi.querySelector('.dropdown-menu');
+        if (menu) {
+            menu.style.display = isOpen ? 'none' : 'block';
+        }
+    };
+}
+
+// Define logout function
+if (typeof window.logout === 'undefined') {
+    window.logout = function() {
+        if (confirm('Are you sure you want to logout?')) {
+            if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
+                window.lecturerDB.logout();
+            } else {
+                window.location.href = 'login.html';
+            }
+        }
+    };
+}
+
+// Define closeModal function
+if (typeof window.closeModal === 'undefined') {
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'none';
+    };
+}
+
+// Define showNotification function
+if (typeof window.showNotification === 'undefined') {
+    window.showNotification = function(message, type) {
+        type = type || 'info';
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        
+        document.querySelectorAll('.custom-notification').forEach(el => el.remove());
+        
+        const notification = document.createElement('div');
+        notification.className = 'custom-notification';
+        notification.style.cssText = `
+            position: fixed; top: 20px; right: 20px; padding: 14px 24px;
+            background: ${colors[type] || '#3b82f6'}; color: white;
+            border-radius: 10px; font-weight: 500; z-index: 100000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 450px; font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid rgba(255,255,255,0.3);
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(20px)';
+            notification.style.transition = 'all 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
+    };
+}
+
+// Define showLoading function
+if (typeof window.showLoading === 'undefined') {
+    window.showLoading = function(message) {
+        message = message || 'Loading...';
+        let overlay = document.getElementById('loadingOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'loadingOverlay';
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.6); z-index: 9999;
+                display: flex; align-items: center; justify-content: center;
+                flex-direction: column;
+            `;
+            overlay.innerHTML = `
+                <div style="background: white; padding: 30px 40px; border-radius: 12px; text-align: center; min-width: 200px;">
+                    <div class="loading-spinner" style="border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                    <p style="color: #1e293b; font-weight: 500;" id="loadingMessage">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        } else {
+            const msg = document.getElementById('loadingMessage');
+            if (msg) msg.textContent = message;
+            overlay.style.display = 'flex';
+        }
+    };
+}
+
+// Define hideLoading function
+if (typeof window.hideLoading === 'undefined') {
+    window.hideLoading = function() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+}
+
+// Add animation styles if not present
+(function addGlobalStyles() {
+    if (document.getElementById('lecturerGlobalStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'lecturerGlobalStyles';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+console.log('✅ Global functions registered for lecturer');
+
+// ============================================================
+// LECTURER UI CLASS
+// ============================================================
 
 const LecturerUI = {
     currentTab: 'dashboard',
@@ -43,7 +191,7 @@ const LecturerUI = {
             });
         });
         
-        // ✅ Logout - Use lecturerDB
+        // Logout - Use lecturerDB
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -143,41 +291,15 @@ const LecturerUI = {
     },
     
     // ============================================
-    // DROPDOWN MANAGEMENT - FIXED
+    // DROPDOWN MANAGEMENT
     // ============================================
     
     setupDropdowns() {
         console.log('📂 Setting up dropdowns...');
         
-        // Method 1: Handle onclick="toggleDropdown(event)" from HTML
-        if (typeof window.toggleDropdown === 'undefined') {
-            window.toggleDropdown = function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                const parentLi = event.currentTarget.closest('.nav-dropdown');
-                if (!parentLi) return;
-                
-                // Close all other dropdowns
-                document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-                    if (dropdown !== parentLi) {
-                        dropdown.classList.remove('open');
-                        const menu = dropdown.querySelector('.dropdown-menu');
-                        if (menu) menu.style.display = 'none';
-                    }
-                });
-                
-                // Toggle current dropdown
-                const isOpen = parentLi.classList.contains('open');
-                parentLi.classList.toggle('open');
-                const menu = parentLi.querySelector('.dropdown-menu');
-                if (menu) {
-                    menu.style.display = isOpen ? 'none' : 'block';
-                }
-            };
-        }
+        // Note: window.toggleDropdown is already defined globally
         
-        // Method 2: Also support the class-based approach
+        // Class-based approach for dropdowns
         document.querySelectorAll('.nav-dropdown .dropdown-toggle').forEach(toggle => {
             // Remove existing listener to avoid duplicates
             toggle.removeEventListener('click', this.handleDropdownClick);
@@ -384,12 +506,8 @@ const LecturerUI = {
     // NOTIFICATIONS
     // ==========================================
     
-    showNotification(message, type = 'success') {
-        // Try using AppUtils first
-        if (window.AppUtils && typeof window.AppUtils.showToast === 'function') {
-            window.AppUtils.showToast(message, type);
-            return;
-        }
+    showNotification(message, type) {
+        type = type || 'success';
         
         // Try using the global showNotification
         if (typeof window.showNotification === 'function') {
@@ -415,7 +533,8 @@ const LecturerUI = {
         }
     },
     
-    createToast(message, type = 'info') {
+    createToast(message, type) {
+        type = type || 'info';
         const colors = {
             success: '#059669',
             error: '#dc2626',
@@ -444,11 +563,20 @@ const LecturerUI = {
         }, 4000);
     },
     
-    showLoading(message = 'Loading...') {
+    showLoading(message) {
+        message = message || 'Loading...';
+        if (typeof window.showLoading === 'function') {
+            window.showLoading(message);
+            return;
+        }
         this.showNotification(message, 'info');
     },
     
     hideLoading() {
+        if (typeof window.hideLoading === 'function') {
+            window.hideLoading();
+            return;
+        }
         const el = document.getElementById('feedbackMessage');
         if (el) {
             el.style.display = 'none';
@@ -480,7 +608,8 @@ const LecturerUI = {
     // TABLE HELPERS
     // ==========================================
     
-    filterTable(inputId, tableId, columnsToSearch = [0]) {
+    filterTable(inputId, tableId, columnsToSearch) {
+        columnsToSearch = columnsToSearch || [0];
         const filter = document.getElementById(inputId)?.value?.toUpperCase() || '';
         const tbody = document.getElementById(tableId);
         if (!tbody) return 0;
@@ -495,8 +624,9 @@ const LecturerUI = {
             }
             
             let matches = false;
+            const cells = row.querySelectorAll('td');
             for (let i = 0; i < columnsToSearch.length; i++) {
-                const td = row.querySelectorAll('td')[columnsToSearch[i]];
+                const td = cells[columnsToSearch[i]];
                 if (td) {
                     const text = (td.textContent || td.innerText || '').toUpperCase();
                     if (text.includes(filter)) {
@@ -517,7 +647,8 @@ const LecturerUI = {
     // FORM HELPERS
     // ==========================================
     
-    populateSelect(selectElement, data, valueKey, textKey, defaultText = 'Select') {
+    populateSelect(selectElement, data, valueKey, textKey, defaultText) {
+        defaultText = defaultText || 'Select';
         if (!selectElement) return;
         selectElement.innerHTML = `<option value="">-- ${defaultText} --</option>`;
         if (!data || !data.length) return;
@@ -582,41 +713,13 @@ const LecturerUI = {
 };
 
 // ============================================
-// GLOBAL TOGGLE DROPDOWN FUNCTION
-// ============================================
-
-// This handles the onclick="toggleDropdown(event)" from HTML
-window.toggleDropdown = function(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const parentLi = event.currentTarget.closest('.nav-dropdown');
-    if (!parentLi) return;
-    
-    // Close all other dropdowns
-    document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-        if (dropdown !== parentLi) {
-            dropdown.classList.remove('open');
-            const menu = dropdown.querySelector('.dropdown-menu');
-            if (menu) menu.style.display = 'none';
-        }
-    });
-    
-    // Toggle current dropdown
-    const isOpen = parentLi.classList.contains('open');
-    parentLi.classList.toggle('open');
-    const menu = parentLi.querySelector('.dropdown-menu');
-    if (menu) {
-        menu.style.display = isOpen ? 'none' : 'block';
-    }
-};
-
-// ============================================
 // INITIALIZATION
 // ============================================
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM Ready - Initializing Lecturer UI...');
+    
     // Wait for lecturerDB to be ready
     const checkDb = setInterval(() => {
         if (window.lecturerDB && window.lecturerDB.isInitialized) {
@@ -629,15 +732,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
     
-    // Fallback: initialize after 2 seconds even if DB not ready
+    // Fallback: initialize after 3 seconds even if DB not ready
     setTimeout(() => {
         if (!document.querySelector('.sidebar .nav')) {
+            console.log('⏳ Fallback initialization...');
             LecturerUI.init();
         }
-    }, 2000);
+    }, 3000);
 });
 
 // Make globally accessible
 window.LecturerUI = LecturerUI;
 
 console.log('✅ Lecturer UI module loaded');
+console.log('✅ toggleDropdown:', typeof window.toggleDropdown);
+console.log('✅ logout:', typeof window.logout);
+console.log('✅ showNotification:', typeof window.showNotification);
+console.log('✅ showLoading:', typeof window.showLoading);
+console.log('✅ hideLoading:', typeof window.hideLoading);
