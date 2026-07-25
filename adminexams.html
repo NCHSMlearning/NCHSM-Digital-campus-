@@ -949,59 +949,84 @@
         </div>
     </div>
 
-    <!-- Release Modal -->
-    <div id="releaseModal" class="modal">
-        <div class="modal-content" style="max-width: 1000px;">
-            <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
-            <h2><i class="fas fa-share-alt"></i> Release & Resend Results</h2>
-            <div class="filters-grid">
-                <div class="filter-group">
-                    <label>Select Exam:</label>
-                    <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
-                        <option value="">-- Select Exam --</option>
-                    </select>
-                </div>
+   <!-- Release Modal -->
+<div id="releaseModal" class="modal">
+    <div class="modal-content" style="max-width: 1200px;">
+        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
+        <h2><i class="fas fa-share-alt"></i> Release Results</h2>
+        
+        <!-- Email Notification Toggle - SINGLE TOGGLE FOR ALL -->
+        <div style="background: #EFF6FF; padding: 16px; border-radius: 12px; margin: 16px 0; border-left: 4px solid #3B82F6;">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500;">
+                    <input type="checkbox" id="sendEmailOnRelease" checked style="width: 18px; height: 18px;">
+                    <span><i class="fas fa-envelope"></i> Send email notifications to ALL selected students</span>
+                </label>
+                <span style="font-size: 0.85rem; color: #64748B;">
+                    <i class="fas fa-info-circle"></i> Students will be directed to the portal for detailed review
+                </span>
             </div>
-            <div id="releasePreview" style="display:none;">
-                <div class="release-actions">
-                    <button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button>
-                    <button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button>
-                    <span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span>
-                </div>
-                <div id="releaseSummary"></div>
-                <div style="max-height: 400px; overflow-y: auto;">
-                    <table class="preview-table" style="width:100%;">
-                        <thead>
-                            <tr>
-                                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-                                <th>Student ID</th>
-                                <th>Student Name</th>
-                                <th>Score</th>
-                                <th>%</th>
-                                <th>Status</th>
-                                <th>Released</th>
-                                <th style="min-width:180px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="releasePreviewBody"></tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 16px; padding: 12px; background: #F0FDF4; border-radius: 8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                        <input type="checkbox" id="sendEmailOnRelease" checked>
-                        <i class="fas fa-envelope"></i> Send email notification
-                    </label>
-                    <span style="font-size:0.75rem; color:#64748B;">(Students will be notified that their results have been released)</span>
-                </div>
-                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                    <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
-                    <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">
-                        <i class="fas fa-share-alt"></i> Release Selected
-                    </button>
-                </div>
+        </div>
+        
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>Select Exam:</label>
+                <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
+                    <option value="">-- Select Exam --</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="releasePreview" style="display:none;">
+            <!-- Selection Controls -->
+            <div class="release-actions" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 12px 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 12px;">
+                <button class="btn btn-secondary" onclick="selectAllStudents(true)" style="padding: 6px 16px;">
+                    <i class="fas fa-check-double"></i> Select All
+                </button>
+                <button class="btn btn-warning" onclick="selectAllStudents(false)" style="padding: 6px 16px;">
+                    <i class="fas fa-times"></i> Deselect All
+                </button>
+                <span style="margin-left: auto; font-weight: 600; color: #0A3D62;">
+                    <span id="selectedCount">0</span> / <span id="totalStudentsCount">0</span> selected
+                </span>
+            </div>
+            
+            <!-- Summary Stats -->
+            <div id="releaseSummary" style="padding: 8px 0 12px;"></div>
+            
+            <!-- Student List -->
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px;">
+                <table class="preview-table" style="width:100%;">
+                    <thead>
+                        <tr style="background: #F8FAFC; position: sticky; top: 0; z-index: 10;">
+                            <th style="width:40px; padding: 10px 8px;">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" style="width: 16px; height: 16px;">
+                            </th>
+                            <th style="padding: 10px 8px;">Student ID</th>
+                            <th style="padding: 10px 8px;">Name</th>
+                            <th style="padding: 10px 8px;">Score</th>
+                            <th style="padding: 10px 8px;">%</th>
+                            <th style="padding: 10px 8px;">Status</th>
+                            <th style="padding: 10px 8px;">Released</th>
+                            <th style="padding: 10px 8px; min-width:100px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="releasePreviewBody"></tbody>
+                </table>
+            </div>
+            
+            <!-- Release Button -->
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end; padding-top: 16px; border-top: 1px solid #E2E8F0;">
+                <button class="btn btn-danger" onclick="closeReleaseModal()" style="padding: 10px 24px;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()" style="padding: 10px 32px; font-size: 1rem;">
+                    <i class="fas fa-share-alt"></i> Release Selected Results
+                </button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Reset Exam Modal -->
     <div id="resetExamModal" class="modal">
