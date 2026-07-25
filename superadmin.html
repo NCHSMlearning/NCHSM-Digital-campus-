@@ -2737,7 +2737,8 @@
     </div>
 </section>
 <!-- ============================================ -->
-<!-- MARKS ENTRY SYSTEM - WITH COLUMN MANAGEMENT -->
+<!-- MARKS ENTRY SYSTEM - TVET + NURSING -->
+<!-- WITH AUTO-DETECT ASSESSMENT TYPE -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -2864,18 +2865,22 @@
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-tag"></i> Assessment Type
+                    <span style="font-size: 11px; color: #6b7280; font-weight: 400; display: block;">(Auto-detected from visible columns)</span>
                 </label>
-                <select id="me_assessment_type" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;" disabled>
+                <select id="me_assessment_type" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px; cursor: not-allowed;" disabled>
                     <option value="full">Full (CAT1+CAT2+Exam)</option>
                     <option value="single_cat">Single CAT (CAT+Exam)</option>
                     <option value="exam_only">Exam Only</option>
+                    <option value="cats_only">CAT1+CAT2 Only</option>
+                    <option value="cat_only">CAT Only</option>
                 </select>
+                <small style="color: #6b7280; font-size: 11px;">Auto-detected based on visible columns</small>
             </div>
         </div>
     </div>
 
     <!-- ============================================ -->
-    <!-- COLUMN MANAGEMENT - Integrated in Marks Entry -->
+    <!-- COLUMN MANAGEMENT - ADMIN ONLY -->
     <!-- ============================================ -->
     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
@@ -2892,7 +2897,6 @@
             </button>
         </div>
         <div id="me_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
-            <!-- Column checkboxes will be populated by JavaScript -->
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
                 <i class="fas fa-info-circle"></i> Select a subject to manage columns
             </div>
@@ -2918,6 +2922,9 @@
             <span style="background: #fee2e2; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">D (Below 60%) → 0.0</span>
             <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
                 <i class="fas fa-info-circle"></i> Applicable to all programs
+            </span>
+            <span id="assessmentTypeDisplay" style="font-size: 11px; color: #059669; background: #d1fae5; padding: 2px 12px; border-radius: 12px;">
+                <i class="fas fa-magic"></i> Auto: <span id="autoAssessmentTypeLabel">Full</span>
             </span>
         </div>
     </div>
