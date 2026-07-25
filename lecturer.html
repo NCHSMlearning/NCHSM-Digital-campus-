@@ -28,140 +28,520 @@
             <span></span>
         </button>
 
-    <!-- ===== SIDEBAR ===== -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img 
-                    src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                    alt="NCHSM Logo"
-                    class="logo"
-                    onerror="this.style.display='none'"
-                >
-                <div>
-                    <h2>Lecturer Portal</h2>
-                    <span class="role-badge" id="userRoleBadge">Lecturer</span>
-                    <span class="role-badge program-badge" id="userProgramBadge">Loading...</span>
-                </div>
-            </div>
+   <!-- ===== SIDEBAR - SUPER ADMIN STYLE ===== -->
+<aside class="sidebar" id="sidebar" style="
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    z-index: 999;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+">
+    <!-- Sidebar Header -->
+    <div style="
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 12px 24px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        margin-bottom: 20px;
+    ">
+        <img 
+            src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+            alt="NCHSM Logo"
+            style="
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                background: white;
+                padding: 8px;
+                object-fit: contain;
+            "
+            onerror="this.style.display='none'"
+        >
+        <div>
+            <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Lecturer Portal</h2>
+            <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Lecturer</span>
+            <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px; margin-left: 4px;" id="userProgramBadge">Loading...</span>
+        </div>
+    </div>
 
-            <ul class="nav" id="mainNav">
+    <!-- Navigation -->
+    <ul style="
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex: 1;
+        overflow-y: auto;
+    " id="mainNav">
+        <!-- DASHBOARD -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="dashboard" 
+                class="active"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    background: rgba(255,255,255,0.15);
+                    border-left: 3px solid white;
+                "
+            >
+                <i class="fas fa-tachometer-alt" style="width: 20px; text-align: center;"></i>
+                <span>Dashboard</span>
+                <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">3</span>
+            </a>
+        </li>
+        
+        <!-- PROFILE -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="profile"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-user" style="width: 20px; text-align: center;"></i>
+                <span>My Profile</span>
+            </a>
+        </li>
+        
+        <!-- MY COURSES -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="my-courses"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-book" style="width: 20px; text-align: center;"></i>
+                <span>My Courses</span>
+            </a>
+        </li>
+        
+        <!-- MY STUDENTS -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="my-students"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-users" style="width: 20px; text-align: center;"></i>
+                <span>My Students</span>
+                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="studentCountBadge">0</span>
+            </a>
+        </li>
+        
+        <!-- SCHEDULING DROPDOWN -->
+        <li class="nav-dropdown" style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                class="dropdown-toggle" 
+                onclick="toggleDropdown(event)"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
+                <span>Scheduling</span>
+                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+            </a>
+            <ul 
+                class="dropdown-menu"
+                style="
+                    list-style: none;
+                    padding: 4px 0 4px 20px;
+                    margin: 0;
+                    display: none;
+                "
+            >
                 <li>
-                    <a href="#" data-tab="dashboard" class="active">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Dashboard</span>
-                        <span class="badge">3</span>
+                    <a 
+                        href="#" 
+                        data-tab="sessions"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Manage Sessions</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" data-tab="profile">
-                        <i class="fas fa-user"></i>
-                        <span>My Profile</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="my-courses">
-                        <i class="fas fa-book"></i>
-                        <span>My Courses</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="my-students">
-                        <i class="fas fa-users"></i>
-                        <span>My Students</span>
-                        <span class="badge badge-danger" id="studentCountBadge">0</span>
-                    </a>
-                </li>
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Scheduling</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a href="#" data-tab="sessions">
-                                <i class="fas fa-calendar-plus"></i>
-                                <span>Manage Sessions</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" data-tab="attendance">
-                                <i class="fas fa-clipboard-check"></i>
-                                <span>Attendance</span>
-                                <span class="badge badge-warning" id="attendanceBadge">0</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <li class="nav-dropdown">
-                    <a href="#" class="dropdown-toggle">
-                        <i class="fas fa-graduation-cap"></i>
-                        <span>Academic</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a href="#" data-tab="cats">
-                                <i class="fas fa-file-alt"></i>
-                                <span>Exams / CATS</span>
-                                <span class="badge badge-warning" id="examBadge">0</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" data-tab="marks-management">
-                                <i class="fas fa-chart-line"></i>
-                                <span>Marks Management</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" data-tab="resources">
-                                <i class="fas fa-file-upload"></i>
-                                <span>Resources</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <li>
-                    <a href="#" data-tab="reports">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reports</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="nurse-iq">
-                        <i class="fas fa-stethoscope"></i>
-                        <span>Nurse IQ</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="messages">
-                        <i class="fas fa-envelope"></i>
-                        <span>Messages</span>
-                        <span class="badge badge-danger" id="messageBadge">0</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="calendar">
-                        <i class="fas fa-calendar"></i>
-                        <span>Calendar</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-tab="settings">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
+                    <a 
+                        href="#" 
+                        data-tab="attendance"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Attendance</span>
+                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
                     </a>
                 </li>
             </ul>
+        </li>
+        
+        <!-- ACADEMIC DROPDOWN -->
+        <li class="nav-dropdown" style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                class="dropdown-toggle"
+                onclick="toggleDropdown(event)"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+                <span>Academic</span>
+                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+            </a>
+            <ul 
+                class="dropdown-menu"
+                style="
+                    list-style: none;
+                    padding: 4px 0 4px 20px;
+                    margin: 0;
+                    display: none;
+                "
+            >
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="cats"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Exams / CATS</span>
+                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="marks-management"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Marks Management</span>
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        href="#" 
+                        data-tab="resources"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            color: rgba(255,255,255,0.8);
+                            text-decoration: none;
+                            font-size: 13px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                    >
+                        <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                        <span>Resources</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        
+        <!-- REPORTS -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="reports"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-chart-bar" style="width: 20px; text-align: center;"></i>
+                <span>Reports</span>
+            </a>
+        </li>
+        
+        <!-- NURSE IQ -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="nurse-iq"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-stethoscope" style="width: 20px; text-align: center;"></i>
+                <span>Nurse IQ</span>
+            </a>
+        </li>
+        
+        <!-- MESSAGES -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="messages"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-envelope" style="width: 20px; text-align: center;"></i>
+                <span>Messages</span>
+                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="messageBadge">0</span>
+            </a>
+        </li>
+        
+        <!-- CALENDAR -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="calendar"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-calendar" style="width: 20px; text-align: center;"></i>
+                <span>Calendar</span>
+            </a>
+        </li>
+        
+        <!-- SETTINGS -->
+        <li style="margin-bottom: 2px;">
+            <a 
+                href="#" 
+                data-tab="settings"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: white;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'"
+            >
+                <i class="fas fa-cog" style="width: 20px; text-align: center;"></i>
+                <span>Settings</span>
+            </a>
+        </li>
+    </ul>
 
-            <div class="logout">
-                <a href="#" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                    <span class="shortcut">⌘Q</span>
-                </a>
-            </div>
-        </aside>
+    <!-- LOGOUT -->
+    <div 
+        style="
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 16px;
+            margin-top: 8px;
+        "
+    >
+        <a 
+            href="#" 
+            id="logoutBtn"
+            onclick="logout()"
+            style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: white;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            "
+            onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+            onmouseout="this.style.background='transparent'"
+        >
+            <i class="fas fa-sign-out-alt" style="width: 20px; text-align: center;"></i>
+            <span>Logout</span>
+            <span style="margin-left: auto; font-size: 11px; opacity: 0.6;">⌘Q</span>
+        </a>
+    </div>
+</aside>
         <!-- ===== MAIN CONTENT ===== -->
         <main class="main" id="mainContent">
             <!-- Header -->
