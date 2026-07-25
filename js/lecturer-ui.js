@@ -6,33 +6,49 @@
 // IMMEDIATE GLOBAL DEFINITIONS (Runs before DOM ready)
 // ============================================================
 
-// Define toggleDropdown immediately so HTML onclick can find it
-if (typeof window.toggleDropdown === 'undefined') {
-    window.toggleDropdown = function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        const parentLi = event.currentTarget.closest('.nav-dropdown');
-        if (!parentLi) return;
-        
-        // Close all other dropdowns
-        document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-            if (dropdown !== parentLi) {
-                dropdown.classList.remove('open');
-                const menu = dropdown.querySelector('.dropdown-menu');
-                if (menu) menu.style.display = 'none';
+// ============================================================
+// GLOBAL DROPDOWN TOGGLE FUNCTION - FINAL FIX
+// ============================================================
+window.toggleDropdown = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const parentLi = event.currentTarget.closest('.nav-dropdown');
+    if (!parentLi) {
+        console.warn('⚠️ No parent .nav-dropdown found');
+        return;
+    }
+    
+    const menu = parentLi.querySelector('.dropdown-menu');
+    if (!menu) {
+        console.warn('⚠️ No dropdown-menu found');
+        return;
+    }
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+        if (dropdown !== parentLi) {
+            dropdown.classList.remove('open');
+            const m = dropdown.querySelector('.dropdown-menu');
+            if (m) {
+                m.style.display = 'none';
             }
-        });
-        
-        // Toggle current dropdown
-        const isOpen = parentLi.classList.contains('open');
-        parentLi.classList.toggle('open');
-        const menu = parentLi.querySelector('.dropdown-menu');
-        if (menu) {
-            menu.style.display = isOpen ? 'none' : 'block';
         }
-    };
-}
+    });
+    
+    // Toggle current dropdown
+    const isOpen = parentLi.classList.contains('open');
+    
+    if (isOpen) {
+        parentLi.classList.remove('open');
+        menu.style.display = 'none';
+        console.log('📂 Dropdown closed');
+    } else {
+        parentLi.classList.add('open');
+        menu.style.display = 'block';
+        console.log('📂 Dropdown opened');
+    }
+};
 
 // Define logout function
 if (typeof window.logout === 'undefined') {
