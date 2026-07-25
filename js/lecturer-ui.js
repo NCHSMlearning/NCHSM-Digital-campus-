@@ -15,6 +15,7 @@ const LecturerUI = {
         this.setupMobileNav();
         this.setupDropdowns();
         this.loadTheme();
+        this.updateCurrentDate();
         console.log('✅ Lecturer UI initialized');
     },
     
@@ -48,7 +49,11 @@ const LecturerUI = {
             logoutBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (confirm('Are you sure you want to logout?')) {
-                    await window.lecturerDB?.logout();
+                    if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
+                        await window.lecturerDB.logout();
+                    } else {
+                        window.location.href = 'login.html';
+                    }
                 }
             });
         }
@@ -92,7 +97,12 @@ const LecturerUI = {
         const sidebar = document.getElementById('sidebar');
         
         if (toggle && sidebar) {
-            toggle.addEventListener('click', () => {
+            // Remove any existing listeners
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+            
+            newToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.toggleSidebar();
             });
         }
@@ -112,7 +122,7 @@ const LecturerUI = {
     // Toggle sidebar
     toggleSidebar(forceState) {
         const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
+        const toggle = document.getElementById('mobileNavToggle');
         
         if (!sidebar) return;
         
@@ -125,52 +135,90 @@ const LecturerUI = {
         sidebar.classList.toggle('active', this.sidebarOpen);
         sidebar.classList.toggle('open', this.sidebarOpen);
         
-        if (overlay) {
-            overlay.classList.toggle('active', this.sidebarOpen);
-        }
-        
-        document.body.style.overflow = this.sidebarOpen ? 'hidden' : '';
-        
-        const toggle = document.getElementById('mobileNavToggle');
         if (toggle) {
             toggle.setAttribute('aria-expanded', this.sidebarOpen);
         }
+        
+        document.body.style.overflow = this.sidebarOpen ? 'hidden' : '';
     },
     
-    // Setup dropdown menus
+    // ============================================
+    // DROPDOWN MANAGEMENT - FIXED
+    // ============================================
+    
     setupDropdowns() {
-        document.querySelectorAll('.nav-dropdown .dropdown-toggle').forEach(toggle => {
-            toggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                const parent = toggle.closest('.nav-dropdown');
-                const menu = parent?.querySelector('.dropdown-menu');
+        console.log('📂 Setting up dropdowns...');
+        
+        // Method 1: Handle onclick="toggleDropdown(event)" from HTML
+        if (typeof window.toggleDropdown === 'undefined') {
+            window.toggleDropdown = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
                 
+                const parentLi = event.currentTarget.closest('.nav-dropdown');
+                if (!parentLi) return;
+                
+                // Close all other dropdowns
+                document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+                    if (dropdown !== parentLi) {
+                        dropdown.classList.remove('open');
+                        const menu = dropdown.querySelector('.dropdown-menu');
+                        if (menu) menu.style.display = 'none';
+                    }
+                });
+                
+                // Toggle current dropdown
+                const isOpen = parentLi.classList.contains('open');
+                parentLi.classList.toggle('open');
+                const menu = parentLi.querySelector('.dropdown-menu');
                 if (menu) {
-                    const isOpen = menu.style.display === 'block';
-                    
-                    // Close all other dropdowns
-                    document.querySelectorAll('.nav-dropdown .dropdown-menu').forEach(m => {
-                        if (m !== menu) {
-                            m.style.display = 'none';
-                            m.closest('.nav-dropdown')?.classList.remove('open');
-                        }
-                    });
-                    
                     menu.style.display = isOpen ? 'none' : 'block';
-                    parent?.classList.toggle('open', !isOpen);
                 }
-            });
+            };
+        }
+        
+        // Method 2: Also support the class-based approach
+        document.querySelectorAll('.nav-dropdown .dropdown-toggle').forEach(toggle => {
+            // Remove existing listener to avoid duplicates
+            toggle.removeEventListener('click', this.handleDropdownClick);
+            toggle.addEventListener('click', this.handleDropdownClick.bind(this));
         });
         
         // Close dropdowns on outside click
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.nav-dropdown')) {
-                document.querySelectorAll('.nav-dropdown .dropdown-menu').forEach(menu => {
-                    menu.style.display = 'none';
-                    menu.closest('.nav-dropdown')?.classList.remove('open');
+                document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+                    dropdown.classList.remove('open');
+                    const menu = dropdown.querySelector('.dropdown-menu');
+                    if (menu) menu.style.display = 'none';
                 });
             }
         });
+    },
+    
+    handleDropdownClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const parentLi = e.currentTarget.closest('.nav-dropdown');
+        if (!parentLi) return;
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+            if (dropdown !== parentLi) {
+                dropdown.classList.remove('open');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                if (menu) menu.style.display = 'none';
+            }
+        });
+        
+        // Toggle current dropdown
+        const isOpen = parentLi.classList.contains('open');
+        parentLi.classList.toggle('open');
+        const menu = parentLi.querySelector('.dropdown-menu');
+        if (menu) {
+            menu.style.display = isOpen ? 'none' : 'block';
+        }
     },
     
     // Load theme preference
@@ -195,7 +243,7 @@ const LecturerUI = {
     showTab(tabId) {
         console.log('📂 Opening tab:', tabId);
         
-        // Update URL using SPA Router
+        // Update URL using SPA Router if available
         if (window.SPA_ROUTER && typeof window.SPA_ROUTER.updateURL === 'function') {
             window.SPA_ROUTER.updateURL(tabId);
         }
@@ -207,7 +255,10 @@ const LecturerUI = {
         });
         
         // Show target tab
-        const target = document.getElementById(tabId + '-content');
+        let target = document.getElementById(tabId);
+        if (!target) {
+            target = document.getElementById(tabId + '-content');
+        }
         if (target) {
             target.style.display = 'block';
             target.classList.add('active');
@@ -340,6 +391,12 @@ const LecturerUI = {
             return;
         }
         
+        // Try using the global showNotification
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+            return;
+        }
+        
         // Fallback to feedback message
         const el = document.getElementById('feedbackMessage');
         if (el) {
@@ -353,8 +410,38 @@ const LecturerUI = {
                 }, 5000);
             }
         } else {
-            console.log(`[${type}] ${message}`);
+            // Create a toast notification
+            this.createToast(message, type);
         }
+    },
+    
+    createToast(message, type = 'info') {
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; padding: 14px 24px;
+            background: ${colors[type] || '#3b82f6'}; color: white;
+            border-radius: 10px; font-weight: 500; z-index: 100000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 450px; font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid rgba(255,255,255,0.3);
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     },
     
     showLoading(message = 'Loading...') {
@@ -494,20 +581,63 @@ const LecturerUI = {
     }
 };
 
-// Initialize on DOM ready
+// ============================================
+// GLOBAL TOGGLE DROPDOWN FUNCTION
+// ============================================
+
+// This handles the onclick="toggleDropdown(event)" from HTML
+window.toggleDropdown = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const parentLi = event.currentTarget.closest('.nav-dropdown');
+    if (!parentLi) return;
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
+        if (dropdown !== parentLi) {
+            dropdown.classList.remove('open');
+            const menu = dropdown.querySelector('.dropdown-menu');
+            if (menu) menu.style.display = 'none';
+        }
+    });
+    
+    // Toggle current dropdown
+    const isOpen = parentLi.classList.contains('open');
+    parentLi.classList.toggle('open');
+    const menu = parentLi.querySelector('.dropdown-menu');
+    if (menu) {
+        menu.style.display = isOpen ? 'none' : 'block';
+    }
+};
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // ✅ Wait for lecturerDB to be ready
+    // Wait for lecturerDB to be ready
     const checkDb = setInterval(() => {
         if (window.lecturerDB && window.lecturerDB.isInitialized) {
             clearInterval(checkDb);
             LecturerUI.init();
-            LecturerUI.updateCurrentDate();
             
             // Dispatch event that UI is ready
             document.dispatchEvent(new CustomEvent('uiReady'));
+            console.log('✅ UI Ready event dispatched');
         }
     }, 100);
+    
+    // Fallback: initialize after 2 seconds even if DB not ready
+    setTimeout(() => {
+        if (!document.querySelector('.sidebar .nav')) {
+            LecturerUI.init();
+        }
+    }, 2000);
 });
 
 // Make globally accessible
 window.LecturerUI = LecturerUI;
+
+console.log('✅ Lecturer UI module loaded');
