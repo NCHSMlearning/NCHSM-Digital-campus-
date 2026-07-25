@@ -3,72 +3,8 @@
 // ============================================================
 
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - WORKING FIX
+// GLOBAL FUNCTIONS (NO toggleDropdown - using Super Admin style)
 // ============================================================
-window.toggleDropdown = function(event) {
-    console.log('🔄 toggleDropdown triggered');
-    
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    // Find the clicked element
-    let target = event?.currentTarget || document.querySelector('.dropdown-toggle');
-    if (!target) {
-        console.warn('⚠️ No toggle found');
-        return false;
-    }
-    
-    // Find parent dropdown
-    const parentLi = target.closest('.nav-dropdown');
-    if (!parentLi) {
-        console.warn('⚠️ No parent .nav-dropdown found');
-        return false;
-    }
-    
-    // Find menu
-    const menu = parentLi.querySelector('.dropdown-menu');
-    if (!menu) {
-        console.warn('⚠️ No dropdown-menu found');
-        return false;
-    }
-    
-    // Close all other dropdowns
-    document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-        if (dropdown !== parentLi) {
-            dropdown.classList.remove('open');
-            const m = dropdown.querySelector('.dropdown-menu');
-            if (m) {
-                m.style.display = 'none';
-            }
-        }
-    });
-    
-    // Toggle this dropdown (EXACT same as your manual test)
-    const isOpen = parentLi.classList.contains('open');
-    
-    if (isOpen) {
-        parentLi.classList.remove('open');
-        menu.style.display = 'none';
-        console.log('📂 Dropdown CLOSED');
-    } else {
-        parentLi.classList.add('open');
-        menu.style.display = 'block';
-        console.log('📂 Dropdown OPENED');
-    }
-    
-    // Debug
-    console.log('📊 Has open class:', parentLi.classList.contains('open'));
-    console.log('📊 Menu display:', menu.style.display);
-    
-    return false;
-};
-
-console.log('✅ toggleDropdown function updated');
-
-// Test it
-document.querySelector('.nav-dropdown:first-child .dropdown-toggle')?.click();
 
 // Define logout function
 if (typeof window.logout === 'undefined') {
@@ -178,17 +114,57 @@ if (typeof window.hideLoading === 'undefined') {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Dropdown styles - Super Admin style */
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown .dropdown-menu {
+            display: none !important;
+            list-style: none;
+            padding: 4px 0 4px 20px;
+            margin: 0;
+            background: rgba(255,255,255,0.05);
+            border-left: 2px solid rgba(253,185,19,0.3);
+            border-radius: 0 0 8px 8px;
+            min-width: 200px;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 999999;
+        }
         .nav-dropdown.open .dropdown-menu {
             display: block !important;
+            animation: dropdownSlide 0.3s ease;
         }
         .nav-dropdown.open > a {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.1) !important;
+            border-left: 3px solid #FDB913 !important;
         }
         .nav-dropdown.open > a i.fa-chevron-down {
             transform: rotate(180deg);
         }
-        .dropdown-menu {
-            animation: dropdownSlide 0.3s ease;
+        .nav-dropdown > a i.fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+        .nav-dropdown .dropdown-menu li a {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px;
+            padding: 8px 14px 8px 30px !important;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.85) !important;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .nav-dropdown .dropdown-menu li a:hover {
+            background: rgba(255,255,255,0.1) !important;
+            color: #FDB913 !important;
+        }
+        .nav-dropdown .dropdown-menu li a i {
+            width: 18px;
+            text-align: center;
+            font-size: 12px;
         }
         @keyframes dropdownSlide {
             from { opacity: 0; transform: translateY(-10px); }
@@ -199,6 +175,53 @@ if (typeof window.hideLoading === 'undefined') {
 })();
 
 console.log('✅ Global functions registered for lecturer');
+
+// ============================================================
+// DROPDOWN TOGGLE - SAME AS SUPER ADMIN (NO toggleDropdown function)
+// ============================================================
+(function() {
+    function initDropdowns() {
+        const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
+        dropdownToggles.forEach(toggle => {
+            toggle.removeEventListener('click', handleDropdownClick);
+            toggle.addEventListener('click', handleDropdownClick);
+        });
+    }
+    
+    function handleDropdownClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parentLi = this.closest('.nav-dropdown');
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+            if (dropdown !== parentLi) {
+                dropdown.classList.remove('open');
+            }
+        });
+        
+        // Toggle current dropdown
+        parentLi.classList.toggle('open');
+    }
+    
+    function closeDropdownsOnClickOutside(e) {
+        if (!e.target.closest('.nav-dropdown')) {
+            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('open');
+            });
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initDropdowns();
+            document.addEventListener('click', closeDropdownsOnClickOutside);
+        });
+    } else {
+        initDropdowns();
+        document.addEventListener('click', closeDropdownsOnClickOutside);
+    }
+})();
 
 // ============================================================
 // LECTURER UI CLASS
@@ -452,11 +475,7 @@ const LecturerUI = {
     
     setupDropdowns() {
         console.log('📂 Setting up dropdowns...');
-        
-        // Note: window.toggleDropdown is already defined globally
-        // But we also handle dropdowns via event listeners in setupEventListeners
-        
-        // Close dropdowns on outside click
+        // Just close dropdowns on outside click - the main handler is already in the IIFE above
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.nav-dropdown')) {
                 document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
@@ -513,7 +532,6 @@ const LecturerUI = {
             console.log('✅ Tab opened:', sectionId);
         } else {
             console.warn('⚠️ Tab not found:', sectionId);
-            // Try fallback: find by data-tab
             const fallback = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
             if (fallback) {
                 fallback.style.display = 'block';
@@ -549,23 +567,17 @@ const LecturerUI = {
     loadSectionData(tabId) {
         console.log('📊 Loading data for tab:', tabId);
         
-        // Close any open modals
         this.closeAllModals();
         
-        // Load data based on tab - with safety checks
         switch (tabId) {
             case 'dashboard':
                 console.log('🔄 Loading dashboard...');
                 if (window.LecturerDashboard) {
                     if (typeof window.LecturerDashboard.loadMetrics === 'function') {
                         window.LecturerDashboard.loadMetrics();
-                    } else {
-                        console.warn('⚠️ LecturerDashboard.loadMetrics not found');
                     }
                     if (typeof window.LecturerDashboard.loadAttendanceMetrics === 'function') {
                         window.LecturerDashboard.loadAttendanceMetrics();
-                    } else {
-                        console.warn('⚠️ LecturerDashboard.loadAttendanceMetrics not found');
                     }
                 } else {
                     console.warn('⚠️ LecturerDashboard not found');
@@ -575,79 +587,43 @@ const LecturerUI = {
                 
             case 'profile':
                 console.log('👤 Loading profile...');
-                if (window.LecturerProfile) {
-                    if (typeof window.LecturerProfile.loadProfile === 'function') {
-                        window.LecturerProfile.loadProfile();
-                    } else {
-                        console.warn('⚠️ LecturerProfile.loadProfile not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerProfile not found');
+                if (window.LecturerProfile && typeof window.LecturerProfile.loadProfile === 'function') {
+                    window.LecturerProfile.loadProfile();
                 }
                 break;
                 
             case 'my-courses':
                 console.log('📚 Loading courses...');
-                if (window.LecturerCourses) {
-                    if (typeof window.LecturerCourses.loadCourses === 'function') {
-                        window.LecturerCourses.loadCourses();
-                    } else {
-                        console.warn('⚠️ LecturerCourses.loadCourses not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerCourses not found');
+                if (window.LecturerCourses && typeof window.LecturerCourses.loadCourses === 'function') {
+                    window.LecturerCourses.loadCourses();
                 }
                 break;
                 
             case 'my-students':
                 console.log('👨‍🎓 Loading students...');
-                if (window.LecturerStudents) {
-                    if (typeof window.LecturerStudents.loadStudents === 'function') {
-                        window.LecturerStudents.loadStudents();
-                    } else {
-                        console.warn('⚠️ LecturerStudents.loadStudents not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerStudents not found');
+                if (window.LecturerStudents && typeof window.LecturerStudents.loadStudents === 'function') {
+                    window.LecturerStudents.loadStudents();
                 }
                 break;
                 
             case 'sessions':
                 console.log('📅 Loading sessions...');
-                if (window.LecturerSessions) {
-                    if (typeof window.LecturerSessions.loadSessions === 'function') {
-                        window.LecturerSessions.loadSessions();
-                    } else {
-                        console.warn('⚠️ LecturerSessions.loadSessions not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerSessions not found');
+                if (window.LecturerSessions && typeof window.LecturerSessions.loadSessions === 'function') {
+                    window.LecturerSessions.loadSessions();
                 }
                 break;
                 
             case 'attendance':
                 console.log('📋 Loading attendance...');
-                if (window.LecturerAttendance) {
-                    if (typeof window.LecturerAttendance.loadAttendance === 'function') {
-                        window.LecturerAttendance.loadAttendance();
-                    } else {
-                        console.warn('⚠️ LecturerAttendance.loadAttendance not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerAttendance not found');
+                if (window.LecturerAttendance && typeof window.LecturerAttendance.loadAttendance === 'function') {
+                    window.LecturerAttendance.loadAttendance();
                 }
                 break;
                 
             case 'cats':
                 console.log('📝 Loading exams...');
-                if (window.LecturerExams) {
-                    if (typeof window.LecturerExams.loadExams === 'function') {
-                        window.LecturerExams.loadExams();
-                    } else {
-                        console.warn('⚠️ LecturerExams.loadExams not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerExams not found');
+                if (window.LecturerExams && typeof window.LecturerExams.loadExams === 'function') {
+                    window.LecturerExams.loadExams();
                 }
                 break;
                 
@@ -656,14 +632,8 @@ const LecturerUI = {
                 if (window.LecturerMarks) {
                     if (typeof window.LecturerMarks.loadMarksManagement === 'function') {
                         window.LecturerMarks.loadMarksManagement();
-                    } else {
-                        console.warn('⚠️ LecturerMarks.loadMarksManagement not found');
-                        // Try alternative methods
-                        if (typeof window.LecturerMarks.init === 'function') {
-                            window.LecturerMarks.init();
-                        } else if (typeof window.LecturerMarks.loadMarks === 'function') {
-                            window.LecturerMarks.loadMarks();
-                        }
+                    } else if (typeof window.LecturerMarks.init === 'function') {
+                        window.LecturerMarks.init();
                     }
                 } else {
                     console.warn('⚠️ LecturerMarks not found');
@@ -672,27 +642,15 @@ const LecturerUI = {
                 
             case 'resources':
                 console.log('📎 Loading resources...');
-                if (window.LecturerResources) {
-                    if (typeof window.LecturerResources.loadResources === 'function') {
-                        window.LecturerResources.loadResources();
-                    } else {
-                        console.warn('⚠️ LecturerResources.loadResources not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerResources not found');
+                if (window.LecturerResources && typeof window.LecturerResources.loadResources === 'function') {
+                    window.LecturerResources.loadResources();
                 }
                 break;
                 
             case 'messages':
                 console.log('💬 Loading messages...');
-                if (window.LecturerMessages) {
-                    if (typeof window.LecturerMessages.loadMessages === 'function') {
-                        window.LecturerMessages.loadMessages();
-                    } else {
-                        console.warn('⚠️ LecturerMessages.loadMessages not found');
-                    }
-                } else {
-                    console.warn('⚠️ LecturerMessages not found');
+                if (window.LecturerMessages && typeof window.LecturerMessages.loadMessages === 'function') {
+                    window.LecturerMessages.loadMessages();
                 }
                 break;
                 
@@ -759,27 +717,21 @@ const LecturerUI = {
     
     showNotification(message, type) {
         type = type || 'success';
-        
-        // Try using the global showNotification
         if (typeof window.showNotification === 'function') {
             window.showNotification(message, type);
             return;
         }
-        
-        // Fallback to feedback message
         const el = document.getElementById('feedbackMessage');
         if (el) {
             el.textContent = message;
             el.className = 'feedback-' + type;
             el.style.display = 'block';
-            
             if (type !== 'error') {
                 setTimeout(() => {
                     el.style.display = 'none';
                 }, 5000);
             }
         } else {
-            // Create a toast notification
             this.createToast(message, type);
         }
     },
@@ -792,7 +744,6 @@ const LecturerUI = {
             warning: '#f59e0b',
             info: '#3b82f6'
         };
-        
         const toast = document.createElement('div');
         toast.style.cssText = `
             position: fixed; top: 20px; right: 20px; padding: 14px 24px;
@@ -805,7 +756,6 @@ const LecturerUI = {
         `;
         toast.textContent = message;
         document.body.appendChild(toast);
-        
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(20px)';
@@ -864,16 +814,13 @@ const LecturerUI = {
         const filter = document.getElementById(inputId)?.value?.toUpperCase() || '';
         const tbody = document.getElementById(tableId);
         if (!tbody) return 0;
-        
         const rows = tbody.querySelectorAll('tr');
         let visible = 0;
-        
         rows.forEach(row => {
             if (row.querySelectorAll('td').length === 0) {
                 row.style.display = '';
                 return;
             }
-            
             let matches = false;
             const cells = row.querySelectorAll('td');
             for (let i = 0; i < columnsToSearch.length; i++) {
@@ -886,11 +833,9 @@ const LecturerUI = {
                     }
                 }
             }
-            
             row.style.display = matches ? '' : 'none';
             if (matches) visible++;
         });
-        
         return visible;
     },
     
@@ -903,7 +848,6 @@ const LecturerUI = {
         if (!selectElement) return;
         selectElement.innerHTML = `<option value="">-- ${defaultText} --</option>`;
         if (!data || !data.length) return;
-        
         data.forEach(item => {
             const value = item[valueKey] || item.id || '';
             const text = item[textKey] || item.name || value;
@@ -917,7 +861,6 @@ const LecturerUI = {
     getFormData(formId) {
         const form = document.getElementById(formId);
         if (!form) return {};
-        
         const formData = new FormData(form);
         const data = {};
         for (const [key, value] of formData.entries()) {
@@ -933,7 +876,6 @@ const LecturerUI = {
     setFormData(formId, data) {
         const form = document.getElementById(formId);
         if (!form) return;
-        
         Object.keys(data).forEach(key => {
             const input = form.querySelector(`[name="${key}"]`) || document.getElementById(key);
             if (input) {
@@ -967,23 +909,16 @@ const LecturerUI = {
 // INITIALIZATION
 // ============================================
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 DOM Ready - Initializing Lecturer UI...');
-    
-    // Wait for lecturerDB to be ready
     const checkDb = setInterval(() => {
         if (window.lecturerDB && window.lecturerDB.isInitialized) {
             clearInterval(checkDb);
             LecturerUI.init();
-            
-            // Dispatch event that UI is ready
             document.dispatchEvent(new CustomEvent('uiReady'));
             console.log('✅ UI Ready event dispatched');
         }
     }, 100);
-    
-    // Fallback: initialize after 3 seconds even if DB not ready
     setTimeout(() => {
         if (!document.querySelector('.sidebar .nav')) {
             console.log('⏳ Fallback initialization...');
@@ -996,7 +931,7 @@ document.addEventListener('DOMContentLoaded', function() {
 window.LecturerUI = LecturerUI;
 
 console.log('✅ Lecturer UI module loaded');
-console.log('✅ toggleDropdown:', typeof window.toggleDropdown);
+console.log('✅ toggleDropdown: REMOVED (using Super Admin style)');
 console.log('✅ logout:', typeof window.logout);
 console.log('✅ showNotification:', typeof window.showNotification);
 console.log('✅ showLoading:', typeof window.showLoading);
