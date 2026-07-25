@@ -20694,7 +20694,7 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
 window.removeLecturerAssignment = removeLecturerAssignment;
 
 // ============================================================
-// SHOW LECTURER ASSIGNMENT MODAL
+// SHOW LECTURER ASSIGNMENT MODAL - FIXED
 // ============================================================
 
 async function showLecturerAssignmentModal() {
@@ -20720,12 +20720,12 @@ async function showLecturerAssignmentModal() {
         lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
         
         try {
-            // ✅ Get staff filtered by the SELECTED PROGRAM
+            // ✅ FIXED: Get ALL active/approved lecturers for this program
             const { data: lecturers, error } = await sb
                 .from('staff_records')
                 .select('*')
                 .eq('program', program)
-                .eq('status', 'active')
+                .in('status', ['active', 'approved'])  // ← FIXED HERE
                 .order('first_name', { ascending: true });
             
             if (error) throw error;
@@ -20796,6 +20796,7 @@ async function showLecturerAssignmentModal() {
 }
 
 window.showLecturerAssignmentModal = showLecturerAssignmentModal;
+console.log('✅ showLecturerAssignmentModal fixed with status filter!');
 
 // ============================================================
 // CLOSE LECTURER ASSIGNMENT MODAL
