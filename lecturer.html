@@ -188,194 +188,193 @@
             </a>
         </li>
         
-        <!-- SCHEDULING DROPDOWN -->
-        <li class="nav-dropdown" style="margin-bottom: 2px;">
+     <!-- SCHEDULING DROPDOWN -->
+<li class="nav-dropdown" style="margin-bottom: 2px;">
+    <a 
+        href="#" 
+        class="dropdown-toggle" 
+        onclick="window.toggleDropdown(event); return false;"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='transparent'"
+    >
+        <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
+        <span>Scheduling</span>
+        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+    </a>
+    <ul 
+        class="dropdown-menu"
+        style="
+            list-style: none;
+            padding: 4px 0 4px 20px;
+            margin: 0;
+            display: none;
+        "
+    >
+        <li>
             <a 
                 href="#" 
-                class="dropdown-toggle" 
-                onclick="toggleDropdown(event)"
+                data-tab="sessions"
                 style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
                     text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
+                    font-size: 13px;
                     transition: all 0.2s;
-                    cursor: pointer;
                 "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
             >
-                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
-                <span>Scheduling</span>
-                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Manage Sessions</span>
             </a>
-            <ul 
-                class="dropdown-menu"
-                style="
-                    list-style: none;
-                    padding: 4px 0 4px 20px;
-                    margin: 0;
-                    display: none;
-                "
-            >
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="sessions"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Manage Sessions</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="attendance"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Attendance</span>
-                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
-                    </a>
-                </li>
-            </ul>
         </li>
-        
-        <!-- ACADEMIC DROPDOWN -->
-        <li class="nav-dropdown" style="margin-bottom: 2px;">
+        <li>
             <a 
                 href="#" 
-                class="dropdown-toggle"
-                onclick="toggleDropdown(event)"
+                data-tab="attendance"
                 style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
                     text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
+                    font-size: 13px;
                     transition: all 0.2s;
-                    cursor: pointer;
                 "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
             >
-                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-                <span>Academic</span>
-                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Attendance</span>
+                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
             </a>
-            <ul 
-                class="dropdown-menu"
-                style="
-                    list-style: none;
-                    padding: 4px 0 4px 20px;
-                    margin: 0;
-                    display: none;
-                "
-            >
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="cats"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Exams / CATS</span>
-                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="marks-management"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Marks Management</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="resources"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Resources</span>
-                    </a>
-                </li>
-            </ul>
         </li>
-        
+    </ul>
+</li>
+
+<!-- ACADEMIC DROPDOWN -->
+<li class="nav-dropdown" style="margin-bottom: 2px;">
+    <a 
+        href="#" 
+        class="dropdown-toggle"
+        onclick="window.toggleDropdown(event); return false;"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='transparent'"
+    >
+        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+        <span>Academic</span>
+        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+    </a>
+    <ul 
+        class="dropdown-menu"
+        style="
+            list-style: none;
+            padding: 4px 0 4px 20px;
+            margin: 0;
+            display: none;
+        "
+    >
+        <li>
+            <a 
+                href="#" 
+                data-tab="cats"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Exams / CATS</span>
+                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
+            </a>
+        </li>
+        <li>
+            <a 
+                href="#" 
+                data-tab="marks-management"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Marks Management</span>
+            </a>
+        </li>
+        <li>
+            <a 
+                href="#" 
+                data-tab="resources"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Resources</span>
+            </a>
+        </li>
+    </ul>
+</li>
         <!-- REPORTS -->
         <li style="margin-bottom: 2px;">
             <a 
@@ -1704,40 +1703,75 @@
     crossorigin=""></script>
 
 <!-- ============================================ -->
-<!-- GLOBAL FUNCTIONS FOR LECTURER HTML -->
+<!-- GLOBAL FUNCTIONS FOR LECTURER HTML - FIXED -->
 <!-- ============================================ -->
 <script>
-    // Hides the .html extension in the URL  
+// Hides the .html extension in the URL  
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
     window.history.replaceState({}, '', cleanPath);
 }
+
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION
+// GLOBAL DROPDOWN TOGGLE FUNCTION - COMPLETE FIX
 // ============================================================
 window.toggleDropdown = function(event) {
-    event.preventDefault();
-    event.stopPropagation();
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     
-    const parentLi = event.currentTarget.closest('.nav-dropdown');
-    if (!parentLi) return;
+    // Find the parent dropdown
+    let parentLi = null;
+    if (event && event.currentTarget) {
+        parentLi = event.currentTarget.closest('.nav-dropdown');
+    } else {
+        const target = event ? event.target : null;
+        if (target) {
+            parentLi = target.closest('.nav-dropdown');
+        }
+    }
+    
+    if (!parentLi) {
+        console.warn('⚠️ No parent .nav-dropdown found');
+        return false;
+    }
+    
+    // Find the dropdown menu
+    const menu = parentLi.querySelector('.dropdown-menu');
+    if (!menu) {
+        console.warn('⚠️ No dropdown-menu found');
+        return false;
+    }
     
     // Close all other dropdowns
     document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
         if (dropdown !== parentLi) {
             dropdown.classList.remove('open');
-            const menu = dropdown.querySelector('.dropdown-menu');
-            if (menu) menu.style.display = 'none';
+            const m = dropdown.querySelector('.dropdown-menu');
+            if (m) {
+                m.style.display = 'none';
+                m.style.visibility = 'hidden';
+            }
         }
     });
     
     // Toggle current dropdown
     const isOpen = parentLi.classList.contains('open');
-    parentLi.classList.toggle('open');
-    const menu = parentLi.querySelector('.dropdown-menu');
-    if (menu) {
-        menu.style.display = isOpen ? 'none' : 'block';
+    
+    if (isOpen) {
+        parentLi.classList.remove('open');
+        menu.style.display = 'none';
+        menu.style.visibility = 'hidden';
+        console.log('📂 Dropdown closed');
+    } else {
+        parentLi.classList.add('open');
+        menu.style.display = 'block';
+        menu.style.visibility = 'visible';
+        console.log('📂 Dropdown opened');
     }
+    
+    return false;
 };
 
 // ============================================================
@@ -1764,7 +1798,8 @@ window.closeModal = function(modalId) {
 // ============================================================
 // GLOBAL NOTIFICATION FUNCTIONS (Fallback)
 // ============================================================
-window.showNotification = function(message, type = 'info') {
+window.showNotification = function(message, type) {
+    type = type || 'info';
     const colors = {
         success: '#059669',
         error: '#dc2626',
@@ -1772,7 +1807,6 @@ window.showNotification = function(message, type = 'info') {
         info: '#3b82f6'
     };
     
-    // Remove existing notifications
     document.querySelectorAll('.custom-notification').forEach(el => el.remove());
     
     const notification = document.createElement('div');
@@ -1797,7 +1831,8 @@ window.showNotification = function(message, type = 'info') {
     }, 4000);
 };
 
-window.showLoading = function(message = 'Loading...') {
+window.showLoading = function(message) {
+    message = message || 'Loading...';
     let overlay = document.getElementById('loadingOverlay');
     if (!overlay) {
         overlay = document.createElement('div');
@@ -1828,7 +1863,7 @@ window.hideLoading = function() {
 };
 
 // ============================================================
-// ADD STYLES FOR NOTIFICATIONS
+// ADD STYLES FOR NOTIFICATIONS AND DROPDOWNS
 // ============================================================
 (function addStyles() {
     if (document.getElementById('lecturerGlobalStyles')) return;
@@ -1843,8 +1878,83 @@ window.hideLoading = function() {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @keyframes dropdownSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ============================================
+           DROPDOWN STYLES
+           ============================================ */
+        .nav-dropdown {
+            position: relative;
+        }
+        
+        .nav-dropdown .dropdown-menu {
+            display: none !important;
+            list-style: none;
+            padding: 4px 0 4px 20px;
+            margin: 4px 0 0 0;
+            background: rgba(255,255,255,0.05);
+            border-left: 2px solid rgba(253,185,19,0.3);
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .nav-dropdown.open .dropdown-menu {
+            display: block !important;
+            animation: dropdownSlide 0.3s ease;
+        }
+        
+        .nav-dropdown.open > a {
+            background: rgba(255,255,255,0.1) !important;
+            border-left: 3px solid #FDB913 !important;
+        }
+        
+        .nav-dropdown.open > a i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
+        
+        .nav-dropdown > a i.fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-dropdown .dropdown-menu li a {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px;
+            padding: 8px 14px 8px 30px !important;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.85) !important;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .nav-dropdown .dropdown-menu li a:hover {
+            background: rgba(255,255,255,0.1) !important;
+            color: #FDB913 !important;
+        }
+        
+        .nav-dropdown .dropdown-menu li a i {
+            width: 18px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        /* ============================================
+           SIDEBAR LINK ACTIVE STYLES
+           ============================================ */
+        .nav a.active {
+            background: rgba(255,255,255,0.15) !important;
+            border-left: 3px solid #FDB913 !important;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.1) !important;
+        }
     `;
     document.head.appendChild(style);
+    console.log('✅ Styles added with dropdown support');
 })();
 
 console.log('✅ Global lecturer functions loaded');
@@ -1852,7 +1962,6 @@ console.log('✅ toggleDropdown:', typeof window.toggleDropdown);
 console.log('✅ logout:', typeof window.logout);
 console.log('✅ showNotification:', typeof window.showNotification);
 </script>
-
 <!-- ============================================ -->
 <!-- REST OF SCRIPTS -->
 <!-- ============================================ -->
