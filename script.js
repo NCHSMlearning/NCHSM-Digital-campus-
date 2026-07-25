@@ -14426,7 +14426,7 @@ async function loadAllStaff() {
     
     const tbody = document.getElementById('staffTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="14"><div class="loading-spinner"></div> Loading staff...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15"><div class="loading-spinner"></div> Loading staff...</td></tr>';
     }
     
     try {
@@ -14450,7 +14450,7 @@ async function loadAllStaff() {
     } catch (error) {
         console.error('Error loading staff:', error);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="14" style="color: red; padding: 40px; text-align: center;">
+            tbody.innerHTML = `<tr><td colspan="15" style="color: red; padding: 40px; text-align: center;">
                 ❌ Error: ${error.message}<br>
                 <small>Please create the staff_records table in Supabase.</small>
             </td></tr>`;
@@ -14462,8 +14462,8 @@ async function loadAllStaff() {
 function updateStaffStats() {
     const total = staffRecords.length;
     const active = staffRecords.filter(s => s.status === 'active').length;
-    const male = staffRecords.filter(s => s.gender === 'M').length;
-    const female = staffRecords.filter(s => s.gender === 'F').length;
+    const male = staffRecords.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+    const female = staffRecords.filter(s => s.gender === 'F' || s.gender === 'Female').length;
     
     const totalEl = document.getElementById('totalStaffCount');
     const activeEl = document.getElementById('activeStaffCount');
@@ -14484,12 +14484,14 @@ function renderStaffTable() {
     const searchTerm = (document.getElementById('staffSearchInput')?.value || '').toLowerCase();
     const deptFilter = document.getElementById('departmentFilter')?.value || 'all';
     const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+    const programFilter = document.getElementById('programFilter')?.value || 'all';
     
     let filtered = [...staffRecords];
     
     if (searchTerm) {
         filtered = filtered.filter(s => 
             (s.first_name || '').toLowerCase().includes(searchTerm) || 
+            (s.other_names || '').toLowerCase().includes(searchTerm) ||
             (s.id || '').toLowerCase().includes(searchTerm) || 
             (s.email || '').toLowerCase().includes(searchTerm)
         );
@@ -14503,8 +14505,12 @@ function renderStaffTable() {
         filtered = filtered.filter(s => s.status === statusFilter);
     }
     
+    if (programFilter !== 'all') {
+        filtered = filtered.filter(s => s.program === programFilter);
+    }
+    
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 40px; color: #6b7280;">No staff records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; padding: 40px; color: #6b7280;">No staff records found</td></tr>';
         return;
     }
     
@@ -14515,16 +14521,24 @@ function renderStaffTable() {
             '<span style="color: #10b981;">✅ Enabled</span>' : 
             '<span style="color: #ef4444;">❌ Disabled</span>';
         
+        const programBadge = staff.program === 'TVET' ? 
+            '<span style="background: #f59e0b; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px;">TVET</span>' :
+            '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px;">KRCHN</span>';
+        
+        const genderDisplay = staff.gender === 'M' || staff.gender === 'Male' ? 'Male' : 
+                             staff.gender === 'F' || staff.gender === 'Female' ? 'Female' : '-';
+        
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.first_name)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.department)}</td>
+                <td style="padding: 12px;">${programBadge}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
                 <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}</strong></td>
-                <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}</td>
+                <td style="padding: 12px;">${genderDisplay}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.bank_name || '-')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.bank_account || '-')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.shif_number || '-')}</td>
@@ -14544,17 +14558,33 @@ function renderStaffTable() {
 function openAddStaffModal() {
     console.log('🔧 Opening Add Staff Modal...');
     
-    const modal = document.getElementById('staffModal');
+    const modal = document.getElementById('addStaffModal');
     if (!modal) {
-        console.error('❌ staffModal not found in HTML!');
+        console.error('❌ addStaffModal not found in HTML!');
         alert('Staff modal not found. Please check the HTML.');
         return;
     }
     
-    document.getElementById('staffForm')?.reset();
-    document.getElementById('editStaffId').value = '';
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Register New Staff';
+    // Reset form
+    document.getElementById('staffTitle').value = 'Mr.';
+    document.getElementById('staffFirstName').value = '';
+    document.getElementById('staffOtherNames').value = '';
+    document.getElementById('staffEmail').value = '';
+    document.getElementById('staffPhone').value = '';
+    document.getElementById('staffNationalId').value = '';
+    document.getElementById('staffGender').value = 'Male';
+    document.getElementById('staffDepartment').value = 'Nursing';
+    document.getElementById('staffProgram').value = 'KRCHN';
+    document.getElementById('staffDesignation').value = '';
+    document.getElementById('staffBankName').value = '';
+    document.getElementById('staffBankAccount').value = '';
+    document.getElementById('staffShifNumber').value = '';
+    document.getElementById('staffNsrfNumber').value = '';
+    document.getElementById('staffTaxPin').value = '';
+    document.getElementById('staffGuardianPhone').value = '';
+    document.getElementById('staffStatus').value = 'active';
     
+    // Hide password section
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) passwordSection.style.display = 'none';
     
@@ -14563,8 +14593,8 @@ function openAddStaffModal() {
 }
 
 // Close modal
-function closeStaffModal() {
-    const modal = document.getElementById('staffModal');
+function closeAddStaffModal() {
+    const modal = document.getElementById('addStaffModal');
     if (modal) modal.style.display = 'none';
 }
 
@@ -14582,7 +14612,6 @@ function toggleStaffPasswordField() {
 async function saveStaff() {
     console.log('🔧 Saving staff...');
     
-    const editId = document.getElementById('editStaffId').value;
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
     const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
@@ -14606,19 +14635,21 @@ async function saveStaff() {
         title: document.getElementById('staffTitle').value,
         first_name: document.getElementById('staffFirstName').value.trim(),
         other_names: document.getElementById('staffOtherNames').value.trim(),
-        department: document.getElementById('staffDept').value,
-        designation: document.getElementById('staffDesignation').value,
+        department: document.getElementById('staffDepartment').value,
+        program: document.getElementById('staffProgram').value,
+        designation: document.getElementById('staffDesignation').value || 'Staff',
         email: document.getElementById('staffEmail').value.trim(),
         phone: document.getElementById('staffPhone').value.trim(),
         national_id: document.getElementById('staffNationalId').value.trim(),
         gender: document.getElementById('staffGender').value,
         bank_name: document.getElementById('staffBankName').value.trim(),
-        bank_account: document.getElementById('staffBankAcc').value.trim(),
-        shif_number: document.getElementById('staffShif').value.trim(),
-        nsrf_number: document.getElementById('staffNsrf').value.trim(),
+        bank_account: document.getElementById('staffBankAccount').value.trim(),
+        shif_number: document.getElementById('staffShifNumber').value.trim(),
+        nsrf_number: document.getElementById('staffNsrfNumber').value.trim(),
         tax_pin: document.getElementById('staffTaxPin').value.trim(),
+        guardian_phone: document.getElementById('staffGuardianPhone').value.trim(),
         login_enabled: loginEnabled,
-        status: 'active'
+        status: document.getElementById('staffStatus').value || 'active'
     };
     
     if (!staffData.first_name || !staffData.department || !staffData.email || !staffData.phone) {
@@ -14627,46 +14658,26 @@ async function saveStaff() {
     }
     
     try {
-        if (editId) {
-            // Update existing
-            if (loginEnabled && password) {
-                staffData.password_hash = btoa(password);
-            }
-            
-            const { error } = await sb
-                .from('staff_records')
-                .update(staffData)
-                .eq('id', editId);
-            
-            if (error) throw error;
-            alert(`✅ Staff ${staffData.first_name} updated!`);
-            
-        } else {
-            // Create new - generate staff ID
-            let staffId = document.getElementById('staffId').value.trim();
-            if (!staffId) {
-                const nextNum = staffRecords.length + 101;
-                staffId = `STAFF${nextNum}`;
-            }
-            staffData.id = staffId;
-            
-            if (loginEnabled && password) {
-                staffData.password_hash = btoa(password);
-            }
-            staffData.created_at = new Date().toISOString();
-            
-            const { error, data } = await sb
-                .from('staff_records')
-                .insert([staffData])
-                .select();
-            
-            if (error) throw error;
-            
-            console.log('✅ Staff saved:', data);
-            alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
-        }
+        // Generate staff ID
+        const staffId = 'STAFF' + String(Date.now()).slice(-6);
+        staffData.id = staffId;
         
-        closeStaffModal();
+        if (loginEnabled && password) {
+            staffData.password_hash = btoa(password);
+        }
+        staffData.created_at = new Date().toISOString();
+        
+        const { error, data } = await sb
+            .from('staff_records')
+            .insert([staffData])
+            .select();
+        
+        if (error) throw error;
+        
+        console.log('✅ Staff saved:', data);
+        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+        
+        closeAddStaffModal();
         loadAllStaff();
         
     } catch (error) {
@@ -14683,23 +14694,30 @@ async function editStaff(staffId) {
         return;
     }
     
-    document.getElementById('editStaffId').value = staff.id;
-    document.getElementById('staffTitle').value = staff.title || '';
-    document.getElementById('staffFirstName').value = staff.first_name;
+    const modal = document.getElementById('addStaffModal');
+    if (!modal) {
+        alert('Modal not found');
+        return;
+    }
+    
+    document.getElementById('staffTitle').value = staff.title || 'Mr.';
+    document.getElementById('staffFirstName').value = staff.first_name || '';
     document.getElementById('staffOtherNames').value = staff.other_names || '';
-    document.getElementById('staffDept').value = staff.department;
+    document.getElementById('staffDepartment').value = staff.department || 'Nursing';
+    document.getElementById('staffProgram').value = staff.program || 'KRCHN';
     document.getElementById('staffDesignation').value = staff.designation || '';
-    document.getElementById('staffEmail').value = staff.email;
-    document.getElementById('staffPhone').value = staff.phone;
+    document.getElementById('staffEmail').value = staff.email || '';
+    document.getElementById('staffPhone').value = staff.phone || '';
     document.getElementById('staffNationalId').value = staff.national_id || '';
-    document.getElementById('staffGender').value = staff.gender || '';
+    document.getElementById('staffGender').value = staff.gender || 'Male';
     document.getElementById('staffBankName').value = staff.bank_name || '';
-    document.getElementById('staffBankAcc').value = staff.bank_account || '';
-    document.getElementById('staffShif').value = staff.shif_number || '';
-    document.getElementById('staffNsrf').value = staff.nsrf_number || '';
+    document.getElementById('staffBankAccount').value = staff.bank_account || '';
+    document.getElementById('staffShifNumber').value = staff.shif_number || '';
+    document.getElementById('staffNsrfNumber').value = staff.nsrf_number || '';
     document.getElementById('staffTaxPin').value = staff.tax_pin || '';
+    document.getElementById('staffGuardianPhone').value = staff.guardian_phone || '';
+    document.getElementById('staffStatus').value = staff.status || 'active';
     document.getElementById('staffEnableLogin').checked = staff.login_enabled || false;
-    document.getElementById('staffId').value = staff.id;
     
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) {
@@ -14711,8 +14729,10 @@ async function editStaff(staffId) {
         }
     }
     
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Staff';
-    document.getElementById('staffModal').style.display = 'flex';
+    // Store staff ID for update
+    document.getElementById('editStaffId').value = staff.id;
+    
+    modal.style.display = 'flex';
 }
 
 // Reset staff password
@@ -14771,12 +14791,12 @@ function filterStaffTable() {
 
 // Export to CSV
 function exportStaffToCSV() {
-    const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF', 'NSRF', 'Tax PIN', 'Login Enabled'];
+    const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Program', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF', 'NSRF', 'Tax PIN', 'Guardian Phone', 'Login Enabled', 'Status'];
     
     const rows = staffRecords.map(s => [
-        s.id, s.title || '', s.first_name, s.other_names || '', s.department, s.designation || '',
+        s.id, s.title || '', s.first_name, s.other_names || '', s.department, s.program || 'KRCHN', s.designation || '',
         s.email, s.phone, s.national_id || '', s.gender || '', s.bank_name || '', s.bank_account || '',
-        s.shif_number || '', s.nsrf_number || '', s.tax_pin || '', s.login_enabled ? 'Yes' : 'No'
+        s.shif_number || '', s.nsrf_number || '', s.tax_pin || '', s.guardian_phone || '', s.login_enabled ? 'Yes' : 'No', s.status || 'active'
     ]);
     
     let csv = headers.join(',') + '\n';
@@ -14792,10 +14812,7 @@ function exportStaffToCSV() {
     URL.revokeObjectURL(link.href);
 }
 
-// ============================================
-// IMPORT STAFF FROM CSV - NEW FUNCTION
-// ============================================
-
+// Import Staff from CSV
 function importStaffFromCSV() {
     console.log('🔧 Import Staff from CSV...');
     
@@ -14818,7 +14835,7 @@ function importStaffFromCSV() {
                 const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
                 
                 // Validate required fields
-                const required = ['first_name', 'email', 'phone', 'department'];
+                const required = ['first_name', 'email', 'phone', 'department', 'program'];
                 const missing = required.filter(f => !headers.includes(f));
                 
                 if (missing.length > 0) {
@@ -14839,16 +14856,13 @@ function importStaffFromCSV() {
                         row[h] = values[idx] || '';
                     });
                     
-                    // Skip empty rows
                     if (!row.first_name && !row.email) {
                         skipped++;
                         continue;
                     }
                     
-                    // Generate staff ID
-                    const staffId = `STAFF${String(Date.now()).slice(-6)}${String(i).padStart(3, '0')}`;
+                    const staffId = 'STAFF' + String(Date.now()).slice(-6) + String(i).padStart(3, '0');
                     
-                    // Check if staff already exists
                     const { data: existing } = await sb
                         .from('staff_records')
                         .select('id')
@@ -14866,6 +14880,7 @@ function importStaffFromCSV() {
                         first_name: row.first_name || '',
                         other_names: row.other_names || '',
                         department: row.department || '',
+                        program: row.program || 'KRCHN',
                         designation: row.designation || '',
                         email: row.email || '',
                         phone: row.phone || '',
@@ -14876,6 +14891,7 @@ function importStaffFromCSV() {
                         shif_number: row.shif_number || '',
                         nsrf_number: row.nsrf_number || '',
                         tax_pin: row.tax_pin || '',
+                        guardian_phone: row.guardian_phone || '',
                         login_enabled: row.login_enabled === 'true' || row.login_enabled === 'TRUE' || false,
                         status: row.status || 'active',
                         created_at: new Date().toISOString()
@@ -14893,7 +14909,6 @@ function importStaffFromCSV() {
                     }
                 }
                 
-                // Show results
                 let message = `✅ Import complete!\n\n`;
                 message += `📥 Imported: ${imported} staff\n`;
                 if (skipped > 0) message += `⏭️ Skipped: ${skipped} empty rows\n`;
@@ -14904,8 +14919,6 @@ function importStaffFromCSV() {
                 }
                 
                 alert(message);
-                
-                // Refresh staff list
                 loadAllStaff();
                 
             } catch (error) {
@@ -14945,11 +14958,20 @@ async function staffLogin(emailOrId, password) {
         name: `${data.title || ''} ${data.first_name} ${data.other_names || ''}`,
         email: data.email,
         department: data.department,
+        program: data.program || 'KRCHN',
         role: 'staff'
     };
     
     localStorage.setItem('staffSession', JSON.stringify(session));
     return { success: true, staff: session };
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Initialize
@@ -14962,6 +14984,12 @@ function initStaffManagement() {
     const deptFilter = document.getElementById('departmentFilter');
     if (deptFilter) deptFilter.addEventListener('change', filterStaffTable);
     
+    const programFilter = document.getElementById('programFilter');
+    if (programFilter) programFilter.addEventListener('change', filterStaffTable);
+    
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) statusFilter.addEventListener('change', filterStaffTable);
+    
     const loginCheckbox = document.getElementById('staffEnableLogin');
     if (loginCheckbox) loginCheckbox.addEventListener('change', toggleStaffPasswordField);
 }
@@ -14969,7 +14997,7 @@ function initStaffManagement() {
 // Make global
 window.loadAllStaff = loadAllStaff;
 window.openAddStaffModal = openAddStaffModal;
-window.closeStaffModal = closeStaffModal;
+window.closeAddStaffModal = closeAddStaffModal;
 window.saveStaff = saveStaff;
 window.editStaff = editStaff;
 window.resetStaffPassword = resetStaffPassword;
@@ -14982,7 +15010,6 @@ window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
 
 console.log('✅ Staff Management module ready');
-
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
