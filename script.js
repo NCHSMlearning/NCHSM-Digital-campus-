@@ -19121,6 +19121,7 @@ console.log('✅ Reviews & Newsletter module loaded');
 // ============================================================
 // MARKS ENTRY SYSTEM - TVET + NURSING
 // WITH ADMIN-ONLY COLUMN MANAGEMENT (GLOBAL SETTINGS)
+// AND AUTO-DETECT ASSESSMENT TYPE
 // ============================================================
 
 // ============================================================
@@ -19135,14 +19136,12 @@ let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
 let me_columnSettings = {};
 
-
 // ============================================================
 // CHECK IF USER IS ADMIN - SUPER ADMIN PAGE
 // ============================================================
 
 function isUserAdmin() {
     try {
-        // Check from global currentUser
         if (window.currentUser) {
             const role = window.currentUser.role || window.currentUser.user_role || window.currentUser.userRole;
             if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
@@ -19150,7 +19149,6 @@ function isUserAdmin() {
             }
         }
         
-        // Check from sessionStorage
         const sessionUser = sessionStorage.getItem('user');
         if (sessionUser) {
             try {
@@ -19162,26 +19160,180 @@ function isUserAdmin() {
             } catch (e) {}
         }
         
-        // Check URL params
         const urlParams = new URLSearchParams(window.location.search);
         const roleParam = urlParams.get('role');
         if (roleParam === 'superadmin' || roleParam === 'admin') {
             return true;
         }
         
-        // Check if current URL is superadmin page
         if (window.location.pathname.includes('superadmin') || window.location.pathname.includes('admin')) {
             return true;
         }
         
-        // DEFAULT: Return true for Super Admin page
         return true;
         
     } catch (e) {
-        // If anything fails, return true (since this is a Super Admin page)
         return true;
     }
 }
+
+// ============================================================
+// DETECT VISIBLE COLUMNS - AUTO ASSESSMENT TYPE
+// ============================================================
+
+function detectVisibleColumns() {
+    const table = document.querySelector('#me_marks_table');
+    if (!table) return { hasCat1: true, hasCat2: true, hasExam: true };
+    
+    const headers = table.querySelectorAll('thead th');
+    let hasCat1 = false;
+    let hasCat2 = false;
+    let hasExam = false;
+    
+    headers.forEach((th) => {
+        const text = th.textContent.toLowerCase();
+        if (text.includes('cat1') || text.includes('cat 1')) {
+            hasCat1 = th.style.display !== 'none';
+        }
+        if (text.includes('cat2') || text.includes('cat 2')) {
+            hasCat2 = th.style.display !== 'none';
+        }
+        if (text.includes('exam')) {
+            hasExam = th.style.display !== 'none';
+        }
+    });
+    
+    return { hasCat1, hasCat2, hasExam };
+}
+
+// ============================================================
+// GET AUTO ASSESSMENT TYPE
+// ============================================================
+
+function getAutoAssessmentType() {
+    const visible = detectVisibleColumns();
+    
+    // If only Exam is visible
+    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) {
+        return 'exam_only';
+    }
+    
+    // If only CAT1 is visible (no CAT2, no Exam)
+    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) {
+        return 'cat_only';
+    }
+    
+    // If CAT1 and CAT2 are visible (no Exam)
+    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
+        return 'cats_only';
+    }
+    
+    // If CAT1 and Exam are visible (no CAT2)
+    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) {
+        return 'single_cat';
+    }
+    
+    // Default: full assessment
+    return 'full';
+}
+
+// ============================================================
+// GET ASSESSMENT TYPE LABEL
+// ============================================================
+
+function getAssessmentTypeLabel(type) {
+    const labels = {
+        'full': 'Full (CAT1+CAT2+Exam)',
+        'single_cat': 'Single CAT (CAT+Exam)',
+        'exam_only': 'Exam Only',
+        'cats_only': 'CAT1+CAT2 Only',
+        'cat_only': 'CAT Only'
+    };
+    return labels[type] || type;
+}
+
+// ============================================================
+// UPDATE ASSESSMENT TYPE DISPLAY
+// ============================================================
+
+function updateAssessmentTypeDisplay() {
+    const autoType = getAutoAssessmentType();
+    const label = getAssessmentTypeLabel(autoType);
+    
+    const labelEl = document.getElementById('autoAssessmentTypeLabel');
+    if (labelEl) {
+        labelEl.textContent = label;
+    }
+    
+    const assessmentSelect = document.getElementById('me_assessment_type');
+    if (assessmentSelect) {
+        assessmentSelect.value = autoType;
+    }
+    
+    me_currentAssessmentType = autoType;
+}
+
+// ============================================================
+// RECALCULATE ALL TOTALS WITH CURRENT ASSESSMENT TYPE
+// ============================================================
+
+function recalculateAllTotals() {
+    const assessmentType = me_currentAssessmentType;
+    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    rows.forEach((row, index) => {
+        const cat1Input = document.getElementById(`me_cat1_${index}`);
+        const cat2Input = document.getElementById(`me_cat2_${index}`);
+        const examInput = document.getElementById(`me_exam_${index}`);
+        
+        const cat1 = parseFloat(cat1Input?.value) || 0;
+        const cat2 = parseFloat(cat2Input?.value) || 0;
+        const exam = parseFloat(examInput?.value) || 0;
+        
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+        
+        const totalEl = document.getElementById(`me_total_${index}`);
+        if (totalEl) {
+            totalEl.textContent = total > 0 ? total : '--';
+            totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+        }
+        
+        const gradeEl = document.getElementById(`me_grade_${index}`);
+        if (gradeEl) {
+            gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
+            gradeEl.style.color = gradeInfo.color;
+        }
+        
+        const pointsEl = document.getElementById(`me_points_${index}`);
+        if (pointsEl) {
+            pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+            pointsEl.style.color = gradeInfo.color;
+        }
+        
+        const ratingEl = document.getElementById(`me_rating_${index}`);
+        if (ratingEl) {
+            if (total > 0) {
+                ratingEl.innerHTML = `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+            } else {
+                ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
+            }
+        }
+        
+        if (me_currentMarks && me_currentMarks[index]) {
+            me_currentMarks[index].cat1 = cat1;
+            me_currentMarks[index].cat2 = cat2;
+            me_currentMarks[index].exam = exam;
+            me_currentMarks[index].assessmentType = assessmentType;
+        }
+    });
+    
+    updateMarksEntryStats(me_currentMarks, assessmentType);
+    updateAssessmentTypeDisplay();
+    
+    console.log(`✅ Recalculated all totals with assessment type: ${assessmentType}`);
+}
+
 // ============================================================
 // LOAD BLOCKS
 // ============================================================
@@ -19286,7 +19438,7 @@ async function loadMESubjects() {
         if (assessmentSelect && data.length > 0) {
             const firstUnit = data[0];
             assessmentSelect.value = firstUnit.assessment_type || 'full';
-            assessmentSelect.disabled = false;
+            assessmentSelect.disabled = true;
         }
         
     } catch (error) {
@@ -19386,8 +19538,10 @@ async function loadMarksEntry() {
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
         updateMarksEntryStats(fullMarks, assessmentType);
         
-        // Load column settings and apply visibility
         await loadSubjectColumnSettings();
+        
+        // Update auto assessment type display
+        updateAssessmentTypeDisplay();
         
     } catch (error) {
         console.error('Error loading marks:', error);
@@ -19408,7 +19562,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE
+// RENDER MARKS TABLE - WITH AUTO DETECTION
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -19421,6 +19575,12 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         return total >= 60;
     });
     
+    // Determine which columns to show based on assessment type
+    const showCat1 = assessmentType !== 'exam_only';
+    const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
+    const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
+    const examMax = assessmentType === 'exam_only' ? 100 : 70;
+    
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
@@ -19429,6 +19589,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
                 <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
+                <span style="font-size: 12px; color: #6b7280; margin-left: 12px; background: #f3f4f6; padding: 2px 12px; border-radius: 40px;">
+                    📋 Auto: ${getAssessmentTypeLabel(assessmentType)}
+                </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
@@ -19455,9 +19618,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 6px; text-align: center; width: 35px;">#</th>
                         <th style="padding: 10px 8px; text-align: left;">Admission</th>
                         <th style="padding: 10px 8px; text-align: left;">Name</th>
-                        <th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>
-                        ${assessmentType === 'full' ? '<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>' : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Exam (0-${assessmentType === 'exam_only' ? 100 : 70})</th>
+                        ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>` : ''}
+                        ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>` : ''}
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
                         <th style="padding: 10px 8px; text-align: center;">Total</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
@@ -19488,16 +19651,15 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
             <td style="padding: 8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>
-            <td style="padding: 8px; text-align: center;">
+            ${showCat1 ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
-            </td>
-            ${assessmentType === 'full' ? `
-            <td style="padding: 8px; text-align: center;">
+            </td>` : ''}
+            ${showCat2 ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
-            <td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${assessmentType === 'exam_only' ? 100 : 70}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
-            </td>
+            ${showExam ? `<td style="padding: 8px; text-align: center;">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMax}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+            </td>` : ''}
             <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
@@ -19575,22 +19737,37 @@ function updateMarksEntryRow(index) {
 }
 
 // ============================================================
-// CALCULATE TOTAL
+// CALCULATE TOTAL - SUPPORTS ALL ASSESSMENT TYPES
 // ============================================================
 
 function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     let total = 0;
-    if (type === 'full') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'single_cat') {
-        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'exam_only') {
-        total = Math.round(Math.min(exam,100) * 10) / 10;
-    } else if (type === 'cats_only') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
-    } else if (type === 'cat_only') {
-        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+    
+    switch(type) {
+        case 'full':
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+            break;
+            
+        case 'single_cat':
+            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+            break;
+            
+        case 'exam_only':
+            total = Math.round(Math.min(exam,100) * 10) / 10;
+            break;
+            
+        case 'cats_only':
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
+            break;
+            
+        case 'cat_only':
+            total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+            break;
+            
+        default:
+            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
     }
+    
     return total;
 }
 
@@ -19839,9 +20016,7 @@ function refreshMarksData() {
 }
 
 // ============================================================
-// ============================================================
 // COLUMN MANAGEMENT - ADMIN ONLY (GLOBAL SETTINGS)
-// ============================================================
 // ============================================================
 
 // ============================================================
@@ -19855,7 +20030,6 @@ async function loadSubjectColumnSettings() {
     const block = me_currentBlock;
     const year = me_currentYear;
     
-    // Update subject name in column header
     const subjectNameEl = document.getElementById('me_column_subject_name');
     if (subjectNameEl) {
         subjectNameEl.textContent = subject || 'Current Subject';
@@ -19864,7 +20038,6 @@ async function loadSubjectColumnSettings() {
     const container = document.getElementById('me_column_settings');
     if (!container) return;
     
-    // Only show column management for admins
     if (!isUserAdmin()) {
         container.innerHTML = `
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
@@ -19884,7 +20057,6 @@ async function loadSubjectColumnSettings() {
     }
     
     try {
-        // Get column settings for this specific subject (GLOBAL - applies to all users)
         const { data, error } = await sb
             .from('column_settings')
             .select('*')
@@ -19898,7 +20070,6 @@ async function loadSubjectColumnSettings() {
         me_columnSettings = data || { columns: [] };
         renderSubjectColumns();
         
-        // Apply column visibility to the table
         applyColumnVisibility();
         
     } catch (error) {
@@ -19922,7 +20093,6 @@ function renderSubjectColumns() {
     const container = document.getElementById('me_column_settings');
     if (!container) return;
     
-    // Only admins can see column management
     if (!isUserAdmin()) {
         container.innerHTML = `
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
@@ -19946,7 +20116,6 @@ function renderSubjectColumns() {
         { id: 'gradedBy', label: 'Graded By', required: false }
     ];
     
-    // Get saved column visibility
     const savedColumns = me_columnSettings.columns || [];
     
     container.innerHTML = `
@@ -19984,7 +20153,7 @@ function renderSubjectColumns() {
 }
 
 // ============================================================
-// SAVE COLUMN SETTING - ADMIN ONLY
+// SAVE COLUMN SETTING - WITH AUTO RECALCULATION
 // ============================================================
 
 async function saveSubjectColumnSetting(columnId, visible) {
@@ -19999,7 +20168,6 @@ async function saveSubjectColumnSetting(columnId, visible) {
         return;
     }
     
-    // Only admins can save column settings
     if (!isUserAdmin()) {
         if (typeof showNotification === 'function') {
             showNotification('Only administrators can change column settings', 'error');
@@ -20008,7 +20176,6 @@ async function saveSubjectColumnSetting(columnId, visible) {
     }
     
     try {
-        // Get existing settings
         const { data: existing, error: fetchError } = await sb
             .from('column_settings')
             .select('*')
@@ -20024,7 +20191,6 @@ async function saveSubjectColumnSetting(columnId, visible) {
             columns = existing.columns || [];
         }
         
-        // Update column visibility
         const colIndex = columns.findIndex(c => c.id === columnId);
         if (colIndex !== -1) {
             columns[colIndex].visible = visible;
@@ -20032,7 +20198,6 @@ async function saveSubjectColumnSetting(columnId, visible) {
             columns.push({ id: columnId, visible: visible });
         }
         
-        // Save to database with onConflict
         const { error } = await sb
             .from('column_settings')
             .upsert({
@@ -20045,14 +20210,13 @@ async function saveSubjectColumnSetting(columnId, visible) {
         
         if (error) throw error;
         
-        // Update local cache
         me_columnSettings.columns = columns;
         
         if (typeof showNotification === 'function') {
             showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${subject}`, 'success');
         }
         
-        // Re-render marks table with updated columns
+        // Apply visibility AND auto-recalculate
         applyColumnVisibility();
         
     } catch (error) {
@@ -20064,7 +20228,7 @@ async function saveSubjectColumnSetting(columnId, visible) {
 }
 
 // ============================================================
-// APPLY COLUMN VISIBILITY TO TABLE
+// APPLY COLUMN VISIBILITY - WITH AUTO RECALCULATION
 // ============================================================
 
 function applyColumnVisibility() {
@@ -20073,7 +20237,6 @@ function applyColumnVisibility() {
     
     const savedColumns = me_columnSettings.columns || [];
     
-    // Column index mapping
     const columnMap = {
         'sno': 0,
         'admission': 1,
@@ -20088,11 +20251,9 @@ function applyColumnVisibility() {
         'gradedBy': 10
     };
     
-    // Get all headers and rows
     const headers = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     
-    // Apply to headers
     headers.forEach((th, index) => {
         let colId = null;
         for (const [key, value] of Object.entries(columnMap)) {
@@ -20106,7 +20267,6 @@ function applyColumnVisibility() {
         }
     });
     
-    // Apply to rows
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         cells.forEach((td, index) => {
@@ -20122,6 +20282,24 @@ function applyColumnVisibility() {
             }
         });
     });
+    
+    // ✅ AUTO-DETECT assessment type based on visible columns
+    const autoAssessmentType = getAutoAssessmentType();
+    
+    if (autoAssessmentType !== me_currentAssessmentType) {
+        console.log(`🔄 Assessment type changed: ${me_currentAssessmentType} → ${autoAssessmentType}`);
+        me_currentAssessmentType = autoAssessmentType;
+        
+        const assessmentSelect = document.getElementById('me_assessment_type');
+        if (assessmentSelect) {
+            assessmentSelect.value = autoAssessmentType;
+        }
+        
+        // Recalculate all totals with new assessment type
+        recalculateAllTotals();
+    }
+    
+    updateAssessmentTypeDisplay();
 }
 
 // ============================================================
@@ -20140,7 +20318,6 @@ async function resetSubjectColumns() {
         return;
     }
     
-    // Only admins can reset column settings
     if (!isUserAdmin()) {
         if (typeof showNotification === 'function') {
             showNotification('Only administrators can reset column settings', 'error');
@@ -20151,7 +20328,6 @@ async function resetSubjectColumns() {
     if (!confirm(`Reset columns for "${subject}" to default settings?`)) return;
     
     try {
-        // Delete column settings for this subject
         const { error } = await sb
             .from('column_settings')
             .delete()
@@ -20168,7 +20344,6 @@ async function resetSubjectColumns() {
             showNotification(`✅ Columns reset to default for ${subject}`, 'success');
         }
         
-        // Re-render marks table
         if (typeof loadMarksEntry === 'function') {
             loadMarksEntry();
         }
@@ -20185,7 +20360,6 @@ async function resetSubjectColumns() {
 // GLOBAL REGISTRATION
 // ============================================================
 
-// Core functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMESubjects = loadMESubjects;
 window.loadMarksEntry = loadMarksEntry;
@@ -20199,7 +20373,6 @@ window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
 window.submitMarksForApproval = submitMarksForApproval;
 
-// Column Management functions (Admin only)
 window.loadSubjectColumnSettings = loadSubjectColumnSettings;
 window.renderSubjectColumns = renderSubjectColumns;
 window.saveSubjectColumnSetting = saveSubjectColumnSetting;
@@ -20207,10 +20380,18 @@ window.applyColumnVisibility = applyColumnVisibility;
 window.resetSubjectColumns = resetSubjectColumns;
 window.isUserAdmin = isUserAdmin;
 
+// Auto-detect functions
+window.detectVisibleColumns = detectVisibleColumns;
+window.getAutoAssessmentType = getAutoAssessmentType;
+window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
+window.recalculateAllTotals = recalculateAllTotals;
+
 console.log('✅ Marks Entry functions loaded!');
 console.log('✅ Column Management loaded (Admin only)');
+console.log('✅ Auto-assessment type detection loaded');
 console.log('✅ loadSubjectColumnSettings:', typeof loadSubjectColumnSettings);
 console.log('✅ saveSubjectColumnSetting:', typeof saveSubjectColumnSetting);
+console.log('✅ getAutoAssessmentType:', typeof getAutoAssessmentType);
 
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
