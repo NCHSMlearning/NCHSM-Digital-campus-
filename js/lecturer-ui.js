@@ -142,6 +142,22 @@ if (typeof window.hideLoading === 'undefined') {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .nav-dropdown.open .dropdown-menu {
+            display: block !important;
+        }
+        .nav-dropdown.open > a {
+            background: rgba(255,255,255,0.1);
+        }
+        .nav-dropdown.open > a i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
+        .dropdown-menu {
+            animation: dropdownSlide 0.3s ease;
+        }
+        @keyframes dropdownSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     `;
     document.head.appendChild(style);
 })();
@@ -155,6 +171,24 @@ console.log('✅ Global functions registered for lecturer');
 const LecturerUI = {
     currentTab: 'dashboard',
     sidebarOpen: false,
+    
+    // Tab ID mapping
+    tabMapping: {
+        'dashboard': 'dashboard-content',
+        'profile': 'profile-content',
+        'my-courses': 'my-courses-content',
+        'my-students': 'my-students-content',
+        'sessions': 'sessions-content',
+        'attendance': 'attendance-content',
+        'cats': 'cats-content',
+        'marks-management': 'marks-management-content',
+        'resources': 'resources-content',
+        'reports': 'reports-content',
+        'nurse-iq': 'nurse-iq-content',
+        'messages': 'messages-content',
+        'calendar': 'calendar-content',
+        'settings': 'settings-content'
+    },
     
     // Initialize UI
     init() {
@@ -370,6 +404,10 @@ const LecturerUI = {
             window.SPA_ROUTER.updateURL(tabId);
         }
         
+        // Get the actual section ID from mapping
+        const sectionId = this.tabMapping[tabId] || tabId;
+        console.log('📌 Looking for section:', sectionId);
+        
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.style.display = 'none';
@@ -377,13 +415,20 @@ const LecturerUI = {
         });
         
         // Show target tab
-        let target = document.getElementById(tabId);
-        if (!target) {
-            target = document.getElementById(tabId + '-content');
-        }
+        const target = document.getElementById(sectionId);
         if (target) {
             target.style.display = 'block';
             target.classList.add('active');
+            console.log('✅ Tab opened:', sectionId);
+        } else {
+            console.warn('⚠️ Tab not found:', sectionId);
+            // Try fallback: find by data-tab
+            const fallback = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
+            if (fallback) {
+                fallback.style.display = 'block';
+                fallback.classList.add('active');
+                console.log('✅ Tab opened via fallback:', tabId);
+            }
         }
         
         // Update nav links
@@ -411,65 +456,180 @@ const LecturerUI = {
     
     // Load data for a specific section
     loadSectionData(tabId) {
+        console.log('📊 Loading data for tab:', tabId);
+        
         // Close any open modals
         this.closeAllModals();
         
-        // Load data based on tab
+        // Load data based on tab - with safety checks
         switch (tabId) {
             case 'dashboard':
+                console.log('🔄 Loading dashboard...');
                 if (window.LecturerDashboard) {
-                    window.LecturerDashboard.loadMetrics();
-                    window.LecturerDashboard.loadAttendanceMetrics();
+                    if (typeof window.LecturerDashboard.loadMetrics === 'function') {
+                        window.LecturerDashboard.loadMetrics();
+                    } else {
+                        console.warn('⚠️ LecturerDashboard.loadMetrics not found');
+                    }
+                    if (typeof window.LecturerDashboard.loadAttendanceMetrics === 'function') {
+                        window.LecturerDashboard.loadAttendanceMetrics();
+                    } else {
+                        console.warn('⚠️ LecturerDashboard.loadAttendanceMetrics not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerDashboard not found');
+                    this.updateDashboardStats();
                 }
                 break;
+                
             case 'profile':
+                console.log('👤 Loading profile...');
                 if (window.LecturerProfile) {
-                    window.LecturerProfile.loadProfile();
+                    if (typeof window.LecturerProfile.loadProfile === 'function') {
+                        window.LecturerProfile.loadProfile();
+                    } else {
+                        console.warn('⚠️ LecturerProfile.loadProfile not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerProfile not found');
                 }
                 break;
+                
             case 'my-courses':
+                console.log('📚 Loading courses...');
                 if (window.LecturerCourses) {
-                    window.LecturerCourses.loadCourses();
+                    if (typeof window.LecturerCourses.loadCourses === 'function') {
+                        window.LecturerCourses.loadCourses();
+                    } else {
+                        console.warn('⚠️ LecturerCourses.loadCourses not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerCourses not found');
                 }
                 break;
+                
             case 'my-students':
+                console.log('👨‍🎓 Loading students...');
                 if (window.LecturerStudents) {
-                    window.LecturerStudents.loadStudents();
+                    if (typeof window.LecturerStudents.loadStudents === 'function') {
+                        window.LecturerStudents.loadStudents();
+                    } else {
+                        console.warn('⚠️ LecturerStudents.loadStudents not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerStudents not found');
                 }
                 break;
-            case 'attendance':
-                if (window.LecturerAttendance) {
-                    window.LecturerAttendance.loadAttendance();
-                }
-                break;
-            case 'cats':
-                if (window.LecturerExams) {
-                    window.LecturerExams.loadExams();
-                }
-                break;
-            case 'marks-management':
-                if (window.LecturerMarks) {
-                    window.LecturerMarks.loadMarksManagement();
-                }
-                break;
-            case 'resources':
-                if (window.LecturerResources) {
-                    window.LecturerResources.loadResources();
-                }
-                break;
-            case 'messages':
-                if (window.LecturerMessages) {
-                    window.LecturerMessages.loadMessages();
-                }
-                break;
+                
             case 'sessions':
+                console.log('📅 Loading sessions...');
                 if (window.LecturerSessions) {
-                    window.LecturerSessions.loadSessions();
+                    if (typeof window.LecturerSessions.loadSessions === 'function') {
+                        window.LecturerSessions.loadSessions();
+                    } else {
+                        console.warn('⚠️ LecturerSessions.loadSessions not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerSessions not found');
                 }
                 break;
+                
+            case 'attendance':
+                console.log('📋 Loading attendance...');
+                if (window.LecturerAttendance) {
+                    if (typeof window.LecturerAttendance.loadAttendance === 'function') {
+                        window.LecturerAttendance.loadAttendance();
+                    } else {
+                        console.warn('⚠️ LecturerAttendance.loadAttendance not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerAttendance not found');
+                }
+                break;
+                
+            case 'cats':
+                console.log('📝 Loading exams...');
+                if (window.LecturerExams) {
+                    if (typeof window.LecturerExams.loadExams === 'function') {
+                        window.LecturerExams.loadExams();
+                    } else {
+                        console.warn('⚠️ LecturerExams.loadExams not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerExams not found');
+                }
+                break;
+                
+            case 'marks-management':
+                console.log('📊 Loading marks management...');
+                if (window.LecturerMarks) {
+                    if (typeof window.LecturerMarks.loadMarksManagement === 'function') {
+                        window.LecturerMarks.loadMarksManagement();
+                    } else {
+                        console.warn('⚠️ LecturerMarks.loadMarksManagement not found');
+                        // Try alternative methods
+                        if (typeof window.LecturerMarks.init === 'function') {
+                            window.LecturerMarks.init();
+                        } else if (typeof window.LecturerMarks.loadMarks === 'function') {
+                            window.LecturerMarks.loadMarks();
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ LecturerMarks not found');
+                }
+                break;
+                
+            case 'resources':
+                console.log('📎 Loading resources...');
+                if (window.LecturerResources) {
+                    if (typeof window.LecturerResources.loadResources === 'function') {
+                        window.LecturerResources.loadResources();
+                    } else {
+                        console.warn('⚠️ LecturerResources.loadResources not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerResources not found');
+                }
+                break;
+                
+            case 'messages':
+                console.log('💬 Loading messages...');
+                if (window.LecturerMessages) {
+                    if (typeof window.LecturerMessages.loadMessages === 'function') {
+                        window.LecturerMessages.loadMessages();
+                    } else {
+                        console.warn('⚠️ LecturerMessages.loadMessages not found');
+                    }
+                } else {
+                    console.warn('⚠️ LecturerMessages not found');
+                }
+                break;
+                
             default:
                 console.log('No specific loader for tab:', tabId);
         }
+    },
+    
+    // Fallback method to update dashboard stats directly
+    updateDashboardStats() {
+        console.log('📊 Updating dashboard stats (fallback)...');
+        const stats = {
+            'totalStudentsCount': '0',
+            'totalCoursesCount': '0',
+            'studentsAtRiskCount': '0',
+            'pendingAttendanceCount': '0',
+            'examsDueCount': '0',
+            'unreadMessagesCount': '0',
+            'todayAttendanceTotal': '0',
+            'weeklyAttendanceTotal': '0',
+            'monthlyAttendanceRate': '0%',
+            'overallAttendanceTotal': '0'
+        };
+        
+        Object.keys(stats).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = stats[id];
+        });
     },
     
     // ==========================================
