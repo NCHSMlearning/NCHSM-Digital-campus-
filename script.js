@@ -20264,7 +20264,7 @@ async function saveSubjectColumnSetting(columnId, visible) {
 }
 
 // ============================================================
-// APPLY COLUMN VISIBILITY - FIXED
+// APPLY COLUMN VISIBILITY - FIXED (USES HEADER TEXT MATCHING)
 // ============================================================
 
 function applyColumnVisibility() {
@@ -20279,29 +20279,61 @@ function applyColumnVisibility() {
     const savedColumns = me_columnSettings.columns || [];
     console.log('📋 Saved columns:', savedColumns);
     
-    const columnMap = {
-        'sno': 0,
-        'admission': 1,
-        'name': 2,
-        'cat1': 3,
-        'cat2': 4,
-        'exam': 5,
-        'total': 6,
-        'grade': 7,
-        'points': 8,
-        'rating': 9,
-        'gradedBy': 10
-    };
-    
+    // Get all headers
     const headers = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     
-    // Apply to headers
+    // Map column IDs to their indices in the current table
+    const columnIndexMap = {};
     headers.forEach((th, index) => {
-        let colId = null;
-        for (const [key, value] of Object.entries(columnMap)) {
-            if (value === index) colId = key;
+        const text = th.textContent.toLowerCase().trim();
+        if (text.includes('cat1') || text.includes('cat 1')) {
+            columnIndexMap['cat1'] = index;
+        } else if (text.includes('cat2') || text.includes('cat 2')) {
+            columnIndexMap['cat2'] = index;
+        } else if (text.includes('exam')) {
+            columnIndexMap['exam'] = index;
+        } else if (text.includes('total')) {
+            columnIndexMap['total'] = index;
+        } else if (text.includes('grade')) {
+            columnIndexMap['grade'] = index;
+        } else if (text.includes('points')) {
+            columnIndexMap['points'] = index;
+        } else if (text.includes('rating')) {
+            columnIndexMap['rating'] = index;
+        } else if (text.includes('graded by')) {
+            columnIndexMap['gradedBy'] = index;
+        } else if (text.includes('#')) {
+            columnIndexMap['sno'] = index;
+        } else if (text.includes('admission')) {
+            columnIndexMap['admission'] = index;
+        } else if (text.includes('name')) {
+            columnIndexMap['name'] = index;
+        } else if (text.includes('approval')) {
+            columnIndexMap['approval'] = index;
         }
+    });
+    
+    console.log('📋 Column index map:', columnIndexMap);
+    
+    // Apply visibility to headers
+    headers.forEach((th) => {
+        const text = th.textContent.toLowerCase().trim();
+        let colId = null;
+        
+        if (text.includes('cat1') || text.includes('cat 1')) colId = 'cat1';
+        else if (text.includes('cat2') || text.includes('cat 2')) colId = 'cat2';
+        else if (text.includes('exam')) colId = 'exam';
+        else if (text.includes('total')) colId = 'total';
+        else if (text.includes('grade')) colId = 'grade';
+        else if (text.includes('points')) colId = 'points';
+        else if (text.includes('rating')) colId = 'rating';
+        else if (text.includes('graded by')) colId = 'gradedBy';
+        else if (text.includes('#')) colId = 'sno';
+        else if (text.includes('admission')) colId = 'admission';
+        else if (text.includes('name')) colId = 'name';
+        else if (text.includes('approval')) colId = 'approval';
+        
         if (colId) {
             const isRequired = ['sno', 'admission', 'name'].includes(colId);
             const setting = savedColumns.find(c => c.id === colId);
@@ -20311,14 +20343,19 @@ function applyColumnVisibility() {
         }
     });
     
-    // Apply to rows
+    // Apply visibility to rows
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         cells.forEach((td, index) => {
+            // Find which column this cell belongs to
             let colId = null;
-            for (const [key, value] of Object.entries(columnMap)) {
-                if (value === index) colId = key;
+            for (const [id, idx] of Object.entries(columnIndexMap)) {
+                if (idx === index) {
+                    colId = id;
+                    break;
+                }
             }
+            
             if (colId) {
                 const isRequired = ['sno', 'admission', 'name'].includes(colId);
                 const setting = savedColumns.find(c => c.id === colId);
