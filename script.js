@@ -18684,13 +18684,11 @@ let me_columnSettings = {};
 
 function isUserAdmin() {
     try {
-        // Check from global currentUser
         if (window.currentUser) {
             const role = window.currentUser.role || window.currentUser.user_role;
             return role === 'admin' || role === 'superadmin' || role === 'super_admin';
         }
         
-        // Check from sessionStorage
         const userData = sessionStorage.getItem('user');
         if (userData) {
             const user = JSON.parse(userData);
@@ -18698,7 +18696,6 @@ function isUserAdmin() {
             return role === 'admin' || role === 'superadmin' || role === 'super_admin';
         }
         
-        // Check from localStorage
         const localUser = localStorage.getItem('user');
         if (localUser) {
             const user = JSON.parse(localUser);
@@ -18813,7 +18810,6 @@ async function loadMESubjects() {
             subjectSelect.innerHTML = '<option value="">No subjects found for this block</option>';
         }
         
-        // Update assessment type
         const assessmentSelect = document.getElementById('me_assessment_type');
         if (assessmentSelect && data.length > 0) {
             const firstUnit = data[0];
@@ -18869,7 +18865,6 @@ async function loadMarksEntry() {
     `;
     
     try {
-        // Get marks from Supabase
         const { data: marks, error } = await sb
             .from('student_marks')
             .select('*')
@@ -18879,7 +18874,6 @@ async function loadMarksEntry() {
         
         if (error) throw error;
         
-        // Get students for this program/block
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
@@ -18891,7 +18885,6 @@ async function loadMarksEntry() {
         
         console.log('📊 Students found:', students?.length || 0);
         
-        // Build marks map
         const marksMap = {};
         marks.forEach(m => {
             marksMap[m.admission_number] = m;
@@ -18921,7 +18914,7 @@ async function loadMarksEntry() {
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
         updateMarksEntryStats(fullMarks, assessmentType);
         
-        // ✅ Load column settings and apply visibility
+        // Load column settings and apply visibility
         await loadSubjectColumnSettings();
         
     } catch (error) {
@@ -18976,7 +18969,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
                 ${isUserAdmin() ? `
-                <button onclick="resetGlobalColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-undo"></i> Reset Columns
                 </button>
                 ` : ''}
@@ -19102,7 +19095,6 @@ function updateMarksEntryRow(index) {
         }
     }
     
-    // Update me_currentMarks
     if (me_currentMarks && me_currentMarks[index]) {
         me_currentMarks[index].cat1 = cat1;
         me_currentMarks[index].cat2 = cat2;
@@ -19375,6 +19367,349 @@ function refreshMarksData() {
 }
 
 // ============================================================
+// ============================================================
+// COLUMN MANAGEMENT - ADMIN ONLY (GLOBAL SETTINGS)
+// ============================================================
+// ============================================================
+
+// ============================================================
+// LOAD COLUMN SETTINGS FOR CURRENT SUBJECT
+// ============================================================
+
+async function loadSubjectColumnSettings() {
+    console.log('📋 Loading column settings...');
+    
+    const subject = me_currentSubject;
+    const block = me_currentBlock;
+    const year = me_currentYear;
+    
+    // Update subject name in column header
+    const subjectNameEl = document.getElementById('me_column_subject_name');
+    if (subjectNameEl) {
+        subjectNameEl.textContent = subject || 'Current Subject';
+    }
+    
+    const container = document.getElementById('me_column_settings');
+    if (!container) return;
+    
+    // Only show column management for admins
+    if (!isUserAdmin()) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-lock"></i> Column settings are managed by the Administrator
+            </div>
+        `;
+        return;
+    }
+    
+    if (!subject || !block) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-info-circle"></i> Select a subject to manage columns
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        // Get column settings for this specific subject (GLOBAL - applies to all users)
+        const { data, error } = await sb
+            .from('column_settings')
+            .select('*')
+            .eq('block', block)
+            .eq('subject', subject)
+            .eq('year', year)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        me_columnSettings = data || { columns: [] };
+        renderSubjectColumns();
+        
+        // Apply column visibility to the table
+        applyColumnVisibility();
+        
+    } catch (error) {
+        console.error('Error loading column settings:', error);
+        container.innerHTML = `
+            <div style="color: #ef4444; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading columns: ${error.message}
+            </div>
+        `;
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading column settings: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// RENDER COLUMN CHECKBOXES - ADMIN ONLY
+// ============================================================
+
+function renderSubjectColumns() {
+    const container = document.getElementById('me_column_settings');
+    if (!container) return;
+    
+    // Only admins can see column management
+    if (!isUserAdmin()) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-lock"></i> Column settings are managed by the Administrator
+            </div>
+        `;
+        return;
+    }
+    
+    const defaultColumns = [
+        { id: 'sno', label: '#', required: true },
+        { id: 'admission', label: 'Admission', required: true },
+        { id: 'name', label: 'Name', required: true },
+        { id: 'cat1', label: 'CAT1 (0-30)', required: false },
+        { id: 'cat2', label: 'CAT2 (0-30)', required: false },
+        { id: 'exam', label: 'Exam', required: false },
+        { id: 'total', label: 'Total', required: false },
+        { id: 'grade', label: 'Grade', required: false },
+        { id: 'points', label: 'Points', required: false },
+        { id: 'rating', label: 'Rating', required: false },
+        { id: 'gradedBy', label: 'Graded By', required: false }
+    ];
+    
+    // Get saved column visibility
+    const savedColumns = me_columnSettings.columns || [];
+    
+    container.innerHTML = `
+        <div style="grid-column: 1 / -1; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: #6b7280;">
+                <i class="fas fa-globe"></i> These settings apply to ALL users (Lecturers & Students)
+            </span>
+            <span style="background: #4C1D95; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                <i class="fas fa-shield-alt"></i> ADMIN
+            </span>
+        </div>
+        ${defaultColumns.map(col => {
+            const saved = savedColumns.find(c => c.id === col.id);
+            const isChecked = saved !== undefined ? saved.visible : col.required;
+            const isDisabled = col.required ? 'disabled' : '';
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; ${col.required ? 'opacity: 0.7;' : ''}">
+                    <input type="checkbox" id="me_col_${col.id}" ${isChecked ? 'checked' : ''} ${isDisabled} 
+                           style="width: 16px; height: 16px; cursor: ${col.required ? 'not-allowed' : 'pointer'};"
+                           onchange="saveSubjectColumnSetting('${col.id}', this.checked)">
+                    <label for="me_col_${col.id}" style="font-size: 13px; cursor: ${col.required ? 'default' : 'pointer'};">
+                        ${col.label}
+                        ${col.required ? ' <span style="color: #94a3b8; font-size: 11px;">(required)</span>' : ''}
+                    </label>
+                </div>
+            `;
+        }).join('')}
+        <div style="grid-column: 1 / -1; margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="resetSubjectColumns()" style="padding: 6px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <i class="fas fa-undo"></i> Reset for This Subject
+            </button>
+        </div>
+    `;
+}
+
+// ============================================================
+// SAVE COLUMN SETTING - ADMIN ONLY
+// ============================================================
+
+async function saveSubjectColumnSetting(columnId, visible) {
+    const subject = me_currentSubject;
+    const block = me_currentBlock;
+    const year = me_currentYear;
+    
+    if (!subject || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('No subject selected', 'warning');
+        }
+        return;
+    }
+    
+    // Only admins can save column settings
+    if (!isUserAdmin()) {
+        if (typeof showNotification === 'function') {
+            showNotification('Only administrators can change column settings', 'error');
+        }
+        return;
+    }
+    
+    try {
+        // Get existing settings
+        const { data: existing, error: fetchError } = await sb
+            .from('column_settings')
+            .select('*')
+            .eq('block', block)
+            .eq('subject', subject)
+            .eq('year', year)
+            .maybeSingle();
+        
+        if (fetchError) throw fetchError;
+        
+        let columns = [];
+        if (existing && existing.columns) {
+            columns = existing.columns || [];
+        }
+        
+        // Update column visibility
+        const colIndex = columns.findIndex(c => c.id === columnId);
+        if (colIndex !== -1) {
+            columns[colIndex].visible = visible;
+        } else {
+            columns.push({ id: columnId, visible: visible });
+        }
+        
+        // Save to database with onConflict
+        const { error } = await sb
+            .from('column_settings')
+            .upsert({
+                block: block,
+                subject: subject,
+                year: year,
+                columns: columns,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'block,subject,year' });
+        
+        if (error) throw error;
+        
+        // Update local cache
+        me_columnSettings.columns = columns;
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${subject}`, 'success');
+        }
+        
+        // Re-render marks table with updated columns
+        applyColumnVisibility();
+        
+    } catch (error) {
+        console.error('Error saving column:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error saving column: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// APPLY COLUMN VISIBILITY TO TABLE
+// ============================================================
+
+function applyColumnVisibility() {
+    const table = document.querySelector('#me_marks_container table');
+    if (!table) return;
+    
+    const savedColumns = me_columnSettings.columns || [];
+    
+    // Column index mapping
+    const columnMap = {
+        'sno': 0,
+        'admission': 1,
+        'name': 2,
+        'cat1': 3,
+        'cat2': 4,
+        'exam': 5,
+        'total': 6,
+        'grade': 7,
+        'points': 8,
+        'rating': 9,
+        'gradedBy': 10
+    };
+    
+    // Get all headers and rows
+    const headers = table.querySelectorAll('thead th');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    // Apply to headers
+    headers.forEach((th, index) => {
+        let colId = null;
+        for (const [key, value] of Object.entries(columnMap)) {
+            if (value === index) colId = key;
+        }
+        if (colId) {
+            const isRequired = ['sno', 'admission', 'name'].includes(colId);
+            const setting = savedColumns.find(c => c.id === colId);
+            const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
+            th.style.display = visible ? '' : 'none';
+        }
+    });
+    
+    // Apply to rows
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((td, index) => {
+            let colId = null;
+            for (const [key, value] of Object.entries(columnMap)) {
+                if (value === index) colId = key;
+            }
+            if (colId) {
+                const isRequired = ['sno', 'admission', 'name'].includes(colId);
+                const setting = savedColumns.find(c => c.id === colId);
+                const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
+                td.style.display = visible ? '' : 'none';
+            }
+        });
+    });
+}
+
+// ============================================================
+// RESET COLUMNS FOR CURRENT SUBJECT
+// ============================================================
+
+async function resetSubjectColumns() {
+    const subject = me_currentSubject;
+    const block = me_currentBlock;
+    const year = me_currentYear;
+    
+    if (!subject || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('No subject selected', 'warning');
+        }
+        return;
+    }
+    
+    // Only admins can reset column settings
+    if (!isUserAdmin()) {
+        if (typeof showNotification === 'function') {
+            showNotification('Only administrators can reset column settings', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm(`Reset columns for "${subject}" to default settings?`)) return;
+    
+    try {
+        // Delete column settings for this subject
+        const { error } = await sb
+            .from('column_settings')
+            .delete()
+            .eq('block', block)
+            .eq('subject', subject)
+            .eq('year', year);
+        
+        if (error) throw error;
+        
+        me_columnSettings = { columns: [] };
+        renderSubjectColumns();
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Columns reset to default for ${subject}`, 'success');
+        }
+        
+        // Re-render marks table
+        if (typeof loadMarksEntry === 'function') {
+            loadMarksEntry();
+        }
+        
+    } catch (error) {
+        console.error('Error resetting columns:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error resetting columns: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
 // GLOBAL REGISTRATION
 // ============================================================
 
@@ -19394,14 +19729,16 @@ window.submitMarksForApproval = submitMarksForApproval;
 
 // Column Management functions (Admin only)
 window.loadSubjectColumnSettings = loadSubjectColumnSettings;
-window.renderAdminSubjectColumns = renderAdminSubjectColumns;
-window.saveGlobalColumnSetting = saveGlobalColumnSetting;
-window.applyGlobalColumnVisibility = applyGlobalColumnVisibility;
-window.resetGlobalColumns = resetGlobalColumns;
+window.renderSubjectColumns = renderSubjectColumns;
+window.saveSubjectColumnSetting = saveSubjectColumnSetting;
+window.applyColumnVisibility = applyColumnVisibility;
+window.resetSubjectColumns = resetSubjectColumns;
 window.isUserAdmin = isUserAdmin;
 
 console.log('✅ Marks Entry functions loaded!');
 console.log('✅ Column Management loaded (Admin only)');
+console.log('✅ loadSubjectColumnSettings:', typeof loadSubjectColumnSettings);
+console.log('✅ saveSubjectColumnSetting:', typeof saveSubjectColumnSetting);
 
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
