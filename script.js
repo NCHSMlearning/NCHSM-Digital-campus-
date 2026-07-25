@@ -19119,9 +19119,8 @@ window.getStarHTML = getStarHTML;
 console.log('✅ Reviews & Newsletter module loaded');
 
 // ============================================================
-// MARKS ENTRY SYSTEM - TVET + NURSING
-// WITH ADMIN-ONLY COLUMN MANAGEMENT (GLOBAL SETTINGS)
-// AND AUTO-DETECT ASSESSMENT TYPE
+// MARKS ENTRY SYSTEM - SUPER ADMIN
+// WITH LECTURER UNIT ASSIGNMENT MANAGEMENT
 // ============================================================
 
 // ============================================================
@@ -19130,14 +19129,15 @@ console.log('✅ Reviews & Newsletter module loaded');
 
 let me_currentMarks = [];
 let me_currentBlock = '';
-let me_currentSubject = '';
+let me_currentUnit = '';
 let me_currentYear = '2025';
 let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
 let me_columnSettings = {};
+let me_currentAssignments = [];
 
 // ============================================================
-// CHECK IF USER IS ADMIN - SUPER ADMIN PAGE
+// CHECK IF USER IS ADMIN
 // ============================================================
 
 function isUserAdmin() {
@@ -19178,7 +19178,7 @@ function isUserAdmin() {
 }
 
 // ============================================================
-// DETECT VISIBLE COLUMNS - FIXED WITH PROPER DETECTION
+// DETECT VISIBLE COLUMNS
 // ============================================================
 
 function detectVisibleColumns() {
@@ -19195,7 +19195,6 @@ function detectVisibleColumns() {
     let hasCat2 = false;
     let hasExam = false;
     
-    // First, check the saved column settings
     const savedColumns = me_columnSettings.columns || [];
     const savedCat1 = savedColumns.find(c => c.id === 'cat1');
     const savedCat2 = savedColumns.find(c => c.id === 'cat2');
@@ -19210,7 +19209,6 @@ function detectVisibleColumns() {
         console.log(`📌 Header ${index}: "${text}" - inline: ${inlineDisplay || 'default'}, computed: ${computedDisplay}, visible: ${isVisible}`);
         
         if (text.includes('cat1') || text.includes('cat 1') || text === '#') {
-            // Check saved setting first, then DOM visibility
             if (savedCat1 !== undefined) {
                 hasCat1 = savedCat1.visible !== false;
             } else {
@@ -19233,14 +19231,12 @@ function detectVisibleColumns() {
         }
     });
     
-    // If we still have nothing detected, use saved settings as fallback
     if (!hasCat1 && !hasCat2 && !hasExam) {
         console.log('⚠️ No columns detected from DOM, using saved settings...');
         if (savedCat1 !== undefined) hasCat1 = savedCat1.visible !== false;
         if (savedCat2 !== undefined) hasCat2 = savedCat2.visible !== false;
         if (savedExam !== undefined) hasExam = savedExam.visible !== false;
         
-        // If still nothing, default to all visible
         if (!hasCat1 && !hasCat2 && !hasExam) {
             hasCat1 = true;
             hasCat2 = true;
@@ -19255,50 +19251,43 @@ function detectVisibleColumns() {
 }
 
 // ============================================================
-// GET AUTO ASSESSMENT TYPE - IMPROVED
+// GET AUTO ASSESSMENT TYPE
 // ============================================================
 
 function getAutoAssessmentType() {
     const visible = detectVisibleColumns();
     console.log('📊 Visible columns for assessment:', visible);
     
-    // Case 1: Only Exam is visible
     if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) {
         console.log('📋 → exam_only');
         return 'exam_only';
     }
     
-    // Case 2: Only CAT1 is visible (no CAT2, no Exam)
     if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) {
         console.log('📋 → cat_only (CAT1 only)');
         return 'cat_only';
     }
     
-    // Case 3: Only CAT2 is visible (no CAT1, no Exam)
     if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
         console.log('📋 → cat_only (CAT2 only)');
         return 'cat_only';
     }
     
-    // Case 4: CAT1 and CAT2 are visible (no Exam)
     if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
         console.log('📋 → cats_only');
         return 'cats_only';
     }
     
-    // Case 5: CAT1 and Exam are visible (no CAT2)
     if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) {
         console.log('📋 → single_cat (CAT1 + Exam)');
         return 'single_cat';
     }
     
-    // Case 6: CAT2 and Exam are visible (no CAT1)
     if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) {
         console.log('📋 → single_cat (CAT2 + Exam)');
         return 'single_cat';
     }
     
-    // Default: full assessment
     console.log('📋 → full (default)');
     return 'full';
 }
@@ -19340,7 +19329,7 @@ function updateAssessmentTypeDisplay() {
 }
 
 // ============================================================
-// RECALCULATE ALL TOTALS WITH CURRENT ASSESSMENT TYPE
+// RECALCULATE ALL TOTALS
 // ============================================================
 
 function recalculateAllTotals() {
@@ -19407,12 +19396,12 @@ function recalculateAllTotals() {
 async function loadMEBlocks() {
     const program = document.getElementById('me_program_select')?.value;
     const blockSelect = document.getElementById('me_block_select');
-    const subjectSelect = document.getElementById('me_subject_select');
+    const unitSelect = document.getElementById('me_subject_select');
     const year = document.getElementById('me_year_select')?.value;
     
     if (!program) {
         blockSelect.innerHTML = '<option value="">-- Select Program First --</option>';
-        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
         return;
     }
     
@@ -19445,7 +19434,7 @@ async function loadMEBlocks() {
             blockSelect.innerHTML = '<option value="">No blocks found</option>';
         }
         
-        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
         
     } catch (error) {
         console.error('Error loading blocks:', error);
@@ -19457,23 +19446,23 @@ async function loadMEBlocks() {
 }
 
 // ============================================================
-// LOAD SUBJECTS
+// LOAD UNITS (was loadMESubjects)
 // ============================================================
 
-async function loadMESubjects() {
+async function loadMEUnits() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
-    const subjectSelect = document.getElementById('me_subject_select');
+    const unitSelect = document.getElementById('me_subject_select');
     const year = document.getElementById('me_year_select')?.value;
     
     if (!program || !block) {
-        subjectSelect.innerHTML = '<option value="">-- Select Block First --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Block First --</option>';
         return;
     }
     
     me_currentBlock = block;
     
-    subjectSelect.innerHTML = '<option value="">Loading subjects...</option>';
+    unitSelect.innerHTML = '<option value="">Loading units...</option>';
     
     try {
         const { data, error } = await sb
@@ -19486,18 +19475,18 @@ async function loadMESubjects() {
         
         if (error) throw error;
         
-        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
         data.forEach(unit => {
             const option = document.createElement('option');
             option.value = unit.unit_name;
             option.dataset.assessment = unit.assessment_type || 'full';
             option.dataset.code = unit.unit_code || '';
             option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}`;
-            subjectSelect.appendChild(option);
+            unitSelect.appendChild(option);
         });
         
         if (data.length === 0) {
-            subjectSelect.innerHTML = '<option value="">No subjects found for this block</option>';
+            unitSelect.innerHTML = '<option value="">No units found for this block</option>';
         }
         
         const assessmentSelect = document.getElementById('me_assessment_type');
@@ -19507,11 +19496,14 @@ async function loadMESubjects() {
             assessmentSelect.disabled = true;
         }
         
+        // ✅ Load lecturer assignments for this block
+        await loadLecturerAssignments();
+        
     } catch (error) {
-        console.error('Error loading subjects:', error);
-        subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
+        console.error('Error loading units:', error);
+        unitSelect.innerHTML = '<option value="">Error loading units</option>';
         if (typeof showNotification === 'function') {
-            showNotification('Error loading subjects: ' + error.message, 'error');
+            showNotification('Error loading units: ' + error.message, 'error');
         }
     }
 }
@@ -19523,18 +19515,18 @@ async function loadMESubjects() {
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
-    const subject = document.getElementById('me_subject_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
     const year = document.getElementById('me_year_select')?.value;
-    const subjectSelect = document.getElementById('me_subject_select');
-    const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
+    const unitSelect = document.getElementById('me_subject_select');
+    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
     const assessmentType = selectedOption?.dataset?.assessment || 'full';
     const unitCode = selectedOption?.dataset?.code || '';
     
-    if (!program || !block || !subject) {
+    if (!program || !block || !unit) {
         document.getElementById('me_marks_container').innerHTML = `
             <div style="text-align: center; padding: 60px 20px;">
                 <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b;">Select Program, Block and Subject</h3>
+                <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
                 <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
             </div>
         `;
@@ -19543,14 +19535,14 @@ async function loadMarksEntry() {
     
     me_currentProgram = program;
     me_currentBlock = block;
-    me_currentSubject = subject;
+    me_currentUnit = unit;
     me_currentYear = year;
     me_currentAssessmentType = assessmentType;
     
     document.getElementById('me_marks_container').innerHTML = `
         <div style="text-align: center; padding: 40px;">
             <div class="loading-spinner"></div>
-            <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || subject}...</p>
+            <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
         </div>
     `;
     
@@ -19559,7 +19551,7 @@ async function loadMarksEntry() {
             .from('student_marks')
             .select('*')
             .eq('block', block)
-            .eq('subject_name', subject)
+            .eq('subject_name', unit)
             .eq('academic_year', year);
         
         if (error) throw error;
@@ -19604,9 +19596,8 @@ async function loadMarksEntry() {
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
         updateMarksEntryStats(fullMarks, assessmentType);
         
-        await loadSubjectColumnSettings();
+        await loadUnitColumnSettings();
         
-        // Update auto assessment type display
         updateAssessmentTypeDisplay();
         
     } catch (error) {
@@ -19641,7 +19632,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         return total >= 60;
     });
     
-    // Determine which columns to show based on assessment type
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
@@ -19650,7 +19640,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
-                <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentSubject}</h3>
+                <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentUnit}</h3>
                 <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock.replace('_', ' ')} | ${me_currentYear}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
@@ -19670,7 +19660,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
                 ${isUserAdmin() ? `
-                <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="resetUnitColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-undo"></i> Reset Columns
                 </button>
                 ` : ''}
@@ -19873,20 +19863,16 @@ function updateMarksEntryStats(marks, assessmentType) {
 }
 
 // ============================================================
-// SAVE MARKS
-// ============================================================
-// ============================================================
-// SAVE MARKS - SINGLE UPSERT BATCH (FASTEST)
+// SAVE MARKS - SINGLE UPSERT BATCH
 // ============================================================
 
 async function saveMarksEntry() {
     const program = me_currentProgram;
     const block = me_currentBlock;
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType;
     
-    // Collect all marks data
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
     
@@ -19910,7 +19896,7 @@ async function saveMarksEntry() {
                     admission_number: admission,
                     student_name: name || 'Unknown',
                     block: block,
-                    subject_name: subject,
+                    subject_name: unit,
                     assessment_type: assessmentType,
                     cat1_score: cat1,
                     cat2_score: cat2,
@@ -19932,7 +19918,6 @@ async function saveMarksEntry() {
     if (typeof showLoading === 'function') showLoading(`Saving ${marksData.length} marks...`);
     
     try {
-        // ✅ SINGLE UPSERT - All records in one query
         const { error } = await sb
             .from('student_marks')
             .upsert(marksData, { 
@@ -19955,7 +19940,7 @@ async function saveMarksEntry() {
 }
 
 // ============================================================
-// SUBMIT FOR APPROVAL (ADMIN ONLY)
+// SUBMIT FOR APPROVAL
 // ============================================================
 
 async function submitMarksForApproval() {
@@ -19965,15 +19950,15 @@ async function submitMarksForApproval() {
     }
     
     const block = me_currentBlock;
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const year = me_currentYear;
     
-    if (!block || !subject) {
+    if (!block || !unit) {
         if (typeof showNotification === 'function') showNotification('Please load marks first', 'warning');
         return;
     }
     
-    if (!confirm(`Submit ${subject} marks for admin approval?`)) return;
+    if (!confirm(`Submit "${unit}" marks for admin approval?`)) return;
     
     if (typeof showLoading === 'function') showLoading('Submitting for approval...');
     
@@ -19986,7 +19971,7 @@ async function submitMarksForApproval() {
                 submitted_by: window.currentUser?.id || null
             })
             .eq('block', block)
-            .eq('subject_name', subject)
+            .eq('subject_name', unit)
             .eq('academic_year', year);
         
         if (error) throw error;
@@ -20038,7 +20023,7 @@ function exportMarksEntry() {
         csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
     });
     
-    downloadCSV(csv, `marks_${me_currentSubject}_${me_currentBlock}_${me_currentYear}.csv`);
+    downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
     if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
@@ -20052,23 +20037,23 @@ function refreshMarksData() {
 }
 
 // ============================================================
-// COLUMN MANAGEMENT - ADMIN ONLY (GLOBAL SETTINGS)
+// COLUMN MANAGEMENT - ADMIN ONLY
 // ============================================================
 
 // ============================================================
-// LOAD COLUMN SETTINGS FOR CURRENT SUBJECT
+// LOAD COLUMN SETTINGS FOR CURRENT UNIT
 // ============================================================
 
-async function loadSubjectColumnSettings() {
+async function loadUnitColumnSettings() {
     console.log('📋 Loading column settings...');
     
-    const subject = me_currentSubject;
+    const unit = me_currentUnit;
     const block = me_currentBlock;
     const year = me_currentYear;
     
-    const subjectNameEl = document.getElementById('me_column_subject_name');
-    if (subjectNameEl) {
-        subjectNameEl.textContent = subject || 'Current Subject';
+    const unitNameEl = document.getElementById('me_column_subject_name');
+    if (unitNameEl) {
+        unitNameEl.textContent = unit || 'Current Unit';
     }
     
     const container = document.getElementById('me_column_settings');
@@ -20083,10 +20068,10 @@ async function loadSubjectColumnSettings() {
         return;
     }
     
-    if (!subject || !block) {
+    if (!unit || !block) {
         container.innerHTML = `
             <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                <i class="fas fa-info-circle"></i> Select a subject to manage columns
+                <i class="fas fa-info-circle"></i> Select a unit to manage columns
             </div>
         `;
         return;
@@ -20097,14 +20082,14 @@ async function loadSubjectColumnSettings() {
             .from('column_settings')
             .select('*')
             .eq('block', block)
-            .eq('subject', subject)
+            .eq('subject', unit)
             .eq('year', year)
             .maybeSingle();
         
         if (error) throw error;
         
         me_columnSettings = data || { columns: [] };
-        renderSubjectColumns();
+        renderUnitColumns();
         
         applyColumnVisibility();
         
@@ -20125,7 +20110,7 @@ async function loadSubjectColumnSettings() {
 // RENDER COLUMN CHECKBOXES - ADMIN ONLY
 // ============================================================
 
-function renderSubjectColumns() {
+function renderUnitColumns() {
     const container = document.getElementById('me_column_settings');
     if (!container) return;
     
@@ -20172,7 +20157,7 @@ function renderSubjectColumns() {
                 <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; ${col.required ? 'opacity: 0.7;' : ''}">
                     <input type="checkbox" id="me_col_${col.id}" ${isChecked ? 'checked' : ''} ${isDisabled} 
                            style="width: 16px; height: 16px; cursor: ${col.required ? 'not-allowed' : 'pointer'};"
-                           onchange="saveSubjectColumnSetting('${col.id}', this.checked)">
+                           onchange="saveUnitColumnSetting('${col.id}', this.checked)">
                     <label for="me_col_${col.id}" style="font-size: 13px; cursor: ${col.required ? 'default' : 'pointer'};">
                         ${col.label}
                         ${col.required ? ' <span style="color: #94a3b8; font-size: 11px;">(required)</span>' : ''}
@@ -20181,8 +20166,8 @@ function renderSubjectColumns() {
             `;
         }).join('')}
         <div style="grid-column: 1 / -1; margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="resetSubjectColumns()" style="padding: 6px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                <i class="fas fa-undo"></i> Reset for This Subject
+            <button onclick="resetUnitColumns()" style="padding: 6px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <i class="fas fa-undo"></i> Reset for This Unit
             </button>
         </div>
     `;
@@ -20192,16 +20177,16 @@ function renderSubjectColumns() {
 // SAVE COLUMN SETTING - FIXED (NO ON CONFLICT)
 // ============================================================
 
-async function saveSubjectColumnSetting(columnId, visible) {
-    const subject = me_currentSubject;
+async function saveUnitColumnSetting(columnId, visible) {
+    const unit = me_currentUnit;
     const block = me_currentBlock;
     const year = me_currentYear || '2025';
     
-    console.log('💾 Saving column setting:', { columnId, visible, subject, block, year });
+    console.log('💾 Saving column setting:', { columnId, visible, unit, block, year });
     
-    if (!subject || !block) {
+    if (!unit || !block) {
         if (typeof showNotification === 'function') {
-            showNotification('No subject selected', 'warning');
+            showNotification('No unit selected', 'warning');
         }
         return;
     }
@@ -20214,13 +20199,11 @@ async function saveSubjectColumnSetting(columnId, visible) {
     }
     
     try {
-        // Get existing columns from current state
         let columns = [];
         if (me_columnSettings && me_columnSettings.columns) {
             columns = me_columnSettings.columns || [];
         }
         
-        // Update column visibility
         const colIndex = columns.findIndex(c => c.id === columnId);
         if (colIndex !== -1) {
             columns[colIndex].visible = visible;
@@ -20230,12 +20213,11 @@ async function saveSubjectColumnSetting(columnId, visible) {
         
         console.log('📋 Updated columns:', columns);
         
-        // ✅ CHECK IF RECORD EXISTS (NO ON CONFLICT)
         const { data: existing, error: fetchError } = await sb
             .from('column_settings')
             .select('id')
             .eq('block', block)
-            .eq('subject', subject)
+            .eq('subject', unit)
             .eq('year', year)
             .maybeSingle();
         
@@ -20246,7 +20228,6 @@ async function saveSubjectColumnSetting(columnId, visible) {
         
         let error;
         if (existing) {
-            // ✅ UPDATE (NO ON CONFLICT)
             console.log('📝 Updating existing record:', existing.id);
             const { error: updateError } = await sb
                 .from('column_settings')
@@ -20258,13 +20239,12 @@ async function saveSubjectColumnSetting(columnId, visible) {
             error = updateError;
             if (!error) console.log('✅ Update successful');
         } else {
-            // ✅ INSERT (NO ON CONFLICT)
             console.log('📝 Inserting new record');
             const { error: insertError } = await sb
                 .from('column_settings')
                 .insert({
                     block: block,
-                    subject: subject,
+                    subject: unit,
                     year: year,
                     columns: columns,
                     updated_at: new Date().toISOString()
@@ -20275,14 +20255,12 @@ async function saveSubjectColumnSetting(columnId, visible) {
         
         if (error) throw error;
         
-        // Update local cache
         me_columnSettings = { columns: columns };
         
         if (typeof showNotification === 'function') {
-            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${subject}`, 'success');
+            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${unit}`, 'success');
         }
         
-        // Apply visibility AND auto-recalculate
         applyColumnVisibility();
         
     } catch (error) {
@@ -20294,11 +20272,11 @@ async function saveSubjectColumnSetting(columnId, visible) {
 }
 
 // Make sure it's available globally
-window.saveSubjectColumnSetting = saveSubjectColumnSetting;
-console.log('✅ saveSubjectColumnSetting has been replaced with the fixed version!');
+window.saveUnitColumnSetting = saveUnitColumnSetting;
+console.log('✅ saveUnitColumnSetting has been replaced with the fixed version!');
 
 // ============================================================
-// APPLY COLUMN VISIBILITY - FIXED (USES HEADER TEXT MATCHING)
+// APPLY COLUMN VISIBILITY
 // ============================================================
 
 function applyColumnVisibility() {
@@ -20313,11 +20291,9 @@ function applyColumnVisibility() {
     const savedColumns = me_columnSettings.columns || [];
     console.log('📋 Saved columns:', savedColumns);
     
-    // Get all headers
     const headers = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     
-    // Map column IDs to their indices in the current table
     const columnIndexMap = {};
     headers.forEach((th, index) => {
         const text = th.textContent.toLowerCase().trim();
@@ -20350,7 +20326,6 @@ function applyColumnVisibility() {
     
     console.log('📋 Column index map:', columnIndexMap);
     
-    // Apply visibility to headers
     headers.forEach((th) => {
         const text = th.textContent.toLowerCase().trim();
         let colId = null;
@@ -20377,11 +20352,9 @@ function applyColumnVisibility() {
         }
     });
     
-    // Apply visibility to rows
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         cells.forEach((td, index) => {
-            // Find which column this cell belongs to
             let colId = null;
             for (const [id, idx] of Object.entries(columnIndexMap)) {
                 if (idx === index) {
@@ -20399,7 +20372,6 @@ function applyColumnVisibility() {
         });
     });
     
-    // ✅ FORCE AUTO-DETECT and recalculate
     console.log('🔄 Forcing auto-detection after applying visibility...');
     const autoAssessmentType = getAutoAssessmentType();
     console.log(`🔄 Auto-detected assessment type: ${autoAssessmentType}`);
@@ -20413,82 +20385,25 @@ function applyColumnVisibility() {
             assessmentSelect.value = autoAssessmentType;
         }
         
-        // Recalculate all totals with new assessment type
         recalculateAllTotals();
     } else {
         console.log('✅ Assessment type unchanged:', autoAssessmentType);
         updateAssessmentTypeDisplay();
     }
 }
-// ============================================================
-// DEBUG FUNCTION - CHECK CURRENT STATE
-// ============================================================
-
-function debugColumnState() {
-    console.log('🔍 ===== COLUMN STATE DEBUG =====');
-    
-    // Check saved settings
-    console.log('📋 Saved column settings:', me_columnSettings.columns || []);
-    
-    // Check visible columns from DOM
-    const visible = detectVisibleColumns();
-    console.log('📊 Visible columns from DOM:', visible);
-    
-    // Check current assessment type
-    console.log('📋 Current assessment type:', me_currentAssessmentType);
-    
-    // Check auto-detected type
-    const autoType = getAutoAssessmentType();
-    console.log('📋 Auto-detected type:', autoType);
-    
-    // Check table headers with computed styles
-    const table = document.querySelector('#me_marks_table');
-    if (table) {
-        const headers = table.querySelectorAll('thead th');
-        console.log('📊 Headers with computed styles:');
-        headers.forEach((th, i) => {
-            const text = th.textContent.trim();
-            const computed = window.getComputedStyle(th);
-            console.log(`  ${i}: "${text}" - display: ${computed.display}, inline: ${th.style.display || 'default'}`);
-        });
-    }
-    
-    console.log('🔍 ===== END DEBUG =====');
-}
-
-// Make it globally accessible
-window.debugColumnState = debugColumnState;
-
-// Also add a manual refresh function
-window.forceRefreshAssessment = function() {
-    console.log('🔄 Manually refreshing assessment...');
-    const autoType = getAutoAssessmentType();
-    me_currentAssessmentType = autoType;
-    const assessmentSelect = document.getElementById('me_assessment_type');
-    if (assessmentSelect) {
-        assessmentSelect.value = autoType;
-    }
-    recalculateAllTotals();
-    updateAssessmentTypeDisplay();
-    console.log(`✅ Refreshed to: ${getAssessmentTypeLabel(autoType)}`);
-};
-
-console.log('✅ Debug functions loaded:');
-console.log('  - debugColumnState() - check current state');
-console.log('  - forceRefreshAssessment() - manually refresh assessment type');
 
 // ============================================================
-// RESET COLUMNS FOR CURRENT SUBJECT
+// RESET COLUMNS FOR CURRENT UNIT
 // ============================================================
 
-async function resetSubjectColumns() {
-    const subject = me_currentSubject;
+async function resetUnitColumns() {
+    const unit = me_currentUnit;
     const block = me_currentBlock;
     const year = me_currentYear;
     
-    if (!subject || !block) {
+    if (!unit || !block) {
         if (typeof showNotification === 'function') {
-            showNotification('No subject selected', 'warning');
+            showNotification('No unit selected', 'warning');
         }
         return;
     }
@@ -20500,23 +20415,23 @@ async function resetSubjectColumns() {
         return;
     }
     
-    if (!confirm(`Reset columns for "${subject}" to default settings?`)) return;
+    if (!confirm(`Reset columns for "${unit}" to default settings?`)) return;
     
     try {
         const { error } = await sb
             .from('column_settings')
             .delete()
             .eq('block', block)
-            .eq('subject', subject)
+            .eq('subject', unit)
             .eq('year', year);
         
         if (error) throw error;
         
         me_columnSettings = { columns: [] };
-        renderSubjectColumns();
+        renderUnitColumns();
         
         if (typeof showNotification === 'function') {
-            showNotification(`✅ Columns reset to default for ${subject}`, 'success');
+            showNotification(`✅ Columns reset to default for ${unit}`, 'success');
         }
         
         if (typeof loadMarksEntry === 'function') {
@@ -20532,11 +20447,390 @@ async function resetSubjectColumns() {
 }
 
 // ============================================================
+// LECTURER UNIT ASSIGNMENT MANAGEMENT
+// ============================================================
+
+// ============================================================
+// LOAD LECTURER UNIT ASSIGNMENTS
+// ============================================================
+
+async function loadLecturerAssignments() {
+    console.log('📋 Loading lecturer unit assignments...');
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const container = document.getElementById('me_lecturer_assignments');
+    
+    if (!block || !unit) {
+        if (container) {
+            container.innerHTML = `
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> Select a unit to view lecturer assignments
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    if (container) {
+        container.innerHTML = '<div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">Loading assignments...</div>';
+    }
+    
+    try {
+        const { data: lecturers, error: lecturerError } = await sb
+            .from('staff_records')
+            .select('id, full_name, email, department')
+            .eq('program', program)
+            .eq('status', 'active');
+        
+        if (lecturerError) throw lecturerError;
+        
+        const { data: assignments, error: assignError } = await sb
+            .from('lecturer_subject_assignments')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (assignError) throw assignError;
+        
+        me_currentAssignments = assignments || [];
+        
+        const assignedMap = {};
+        assignments?.forEach(a => {
+            assignedMap[a.lecturer_id] = a;
+        });
+        
+        if (!lecturers || lecturers.length === 0) {
+            container.innerHTML = `
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> No lecturers found for this program
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        lecturers.forEach(lecturer => {
+            const isAssigned = !!assignedMap[lecturer.id];
+            
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
+                    <div>
+                        <strong style="font-size: 13px; color: #1e293b;">${lecturer.full_name || 'Unknown'}</strong>
+                        <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
+                        <span style="font-size: 10px; color: #94a3b8;">${lecturer.department || ''}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${isAssigned ? `
+                            <span style="background: #10b981; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                <i class="fas fa-check"></i> Assigned
+                            </span>
+                            <button onclick="removeLecturerAssignment('${lecturer.id}', '${unit}', '${block}')" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        ` : `
+                            <button onclick="assignLecturerToUnit('${lecturer.id}', '${lecturer.full_name}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading assignments:', error);
+        container.innerHTML = `
+            <div style="color: #ef4444; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading assignments: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// ASSIGN LECTURER TO UNIT
+// ============================================================
+
+async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId || !unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Missing required information', 'error');
+        }
+        return;
+    }
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .insert({
+                lecturer_id: lecturerId,
+                lecturer_name: lecturerName,
+                program: program,
+                block: block,
+                subject_name: unit,
+                academic_year: year,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ ${lecturerName} assigned to "${unit}"`, 'success');
+        }
+        await loadLecturerAssignments();
+        
+    } catch (error) {
+        console.error('Error assigning lecturer:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error assigning lecturer: ' + error.message, 'error');
+        }
+    }
+}
+
+// Make it globally available
+window.assignLecturerToUnit = assignLecturerToUnit;
+
+// ============================================================
+// REMOVE LECTURER ASSIGNMENT
+// ============================================================
+
+async function removeLecturerAssignment(lecturerId, unit, block) {
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId || !unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Missing required information', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm(`Remove this lecturer's assignment to "${unit}"?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .delete()
+            .eq('lecturer_id', lecturerId)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Assignment removed`, 'success');
+        }
+        await loadLecturerAssignments();
+        
+    } catch (error) {
+        console.error('Error removing assignment:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error removing assignment: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// SHOW LECTURER ASSIGNMENT MODAL
+// ============================================================
+
+async function showLecturerAssignmentModal() {
+    const block = document.getElementById('me_block_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const unitSelect = document.getElementById('me_subject_select');
+    const currentUnit = unitSelect?.value;
+    
+    if (!block || !program) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a program and block first', 'warning');
+        }
+        return;
+    }
+    
+    document.getElementById('me_assign_block').value = block.replace(/_/g, ' ');
+    document.getElementById('me_assign_year').value = year;
+    
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    if (lecturerSelect) {
+        lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
+        
+        try {
+            const { data: lecturers, error } = await sb
+                .from('staff_records')
+                .select('id, full_name, email')
+                .eq('program', program)
+                .eq('status', 'active')
+                .order('full_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
+            lecturers?.forEach(l => {
+                const option = document.createElement('option');
+                option.value = l.id;
+                option.textContent = `${l.full_name} (${l.email || 'no email'})`;
+                lecturerSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('Error loading lecturers:', error);
+            lecturerSelect.innerHTML = '<option value="">Error loading lecturers</option>';
+        }
+    }
+    
+    const assignUnitSelect = document.getElementById('me_assign_subject_select');
+    if (assignUnitSelect) {
+        assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
+        
+        try {
+            const { data: units, error } = await sb
+                .from('units_catalog')
+                .select('unit_name, unit_code')
+                .eq('program', program)
+                .eq('block', block)
+                .eq('status', 'active')
+                .order('unit_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            assignUnitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+            units?.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.unit_name;
+                option.textContent = `${u.unit_code || ''} - ${u.unit_name}`;
+                if (u.unit_name === currentUnit) {
+                    option.selected = true;
+                }
+                assignUnitSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('Error loading units:', error);
+            assignUnitSelect.innerHTML = '<option value="">Error loading units</option>';
+        }
+    }
+    
+    document.getElementById('lecturerAssignmentModal').style.display = 'flex';
+}
+
+// ============================================================
+// CLOSE LECTURER ASSIGNMENT MODAL
+// ============================================================
+
+function closeLecturerAssignmentModal() {
+    document.getElementById('lecturerAssignmentModal').style.display = 'none';
+}
+
+// ============================================================
+// SAVE LECTURER ASSIGNMENT
+// ============================================================
+
+async function saveLecturerAssignment() {
+    const lecturerId = document.getElementById('me_lecturer_select')?.value;
+    const unit = document.getElementById('me_assign_subject_select')?.value;
+    const block = document.getElementById('me_block_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a lecturer', 'warning');
+        }
+        return;
+    }
+    
+    if (!unit) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit', 'warning');
+        }
+        return;
+    }
+    
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    const lecturerName = lecturerSelect?.options[lecturerSelect.selectedIndex]?.text?.split(' (')[0] || 'Lecturer';
+    
+    await assignLecturerToUnit(lecturerId, lecturerName, unit, block);
+    closeLecturerAssignmentModal();
+}
+
+// ============================================================
+// DEBUG FUNCTION
+// ============================================================
+
+function debugColumnState() {
+    console.log('🔍 ===== COLUMN STATE DEBUG =====');
+    console.log('📋 Saved column settings:', me_columnSettings.columns || []);
+    const visible = detectVisibleColumns();
+    console.log('📊 Visible columns from DOM:', visible);
+    console.log('📋 Current assessment type:', me_currentAssessmentType);
+    const autoType = getAutoAssessmentType();
+    console.log('📋 Auto-detected type:', autoType);
+    
+    const table = document.querySelector('#me_marks_table');
+    if (table) {
+        const headers = table.querySelectorAll('thead th');
+        console.log('📊 Headers with computed styles:');
+        headers.forEach((th, i) => {
+            const text = th.textContent.trim();
+            const computed = window.getComputedStyle(th);
+            console.log(`  ${i}: "${text}" - display: ${computed.display}, inline: ${th.style.display || 'default'}`);
+        });
+    }
+    
+    console.log('🔍 ===== END DEBUG =====');
+}
+
+window.debugColumnState = debugColumnState;
+
+window.forceRefreshAssessment = function() {
+    console.log('🔄 Manually refreshing assessment...');
+    const autoType = getAutoAssessmentType();
+    me_currentAssessmentType = autoType;
+    const assessmentSelect = document.getElementById('me_assessment_type');
+    if (assessmentSelect) {
+        assessmentSelect.value = autoType;
+    }
+    recalculateAllTotals();
+    updateAssessmentTypeDisplay();
+    console.log(`✅ Refreshed to: ${getAssessmentTypeLabel(autoType)}`);
+};
+
+// ============================================================
+// DOWNLOAD CSV HELPER
+// ============================================================
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// ============================================================
 // GLOBAL REGISTRATION
 // ============================================================
 
+// Main functions
 window.loadMEBlocks = loadMEBlocks;
-window.loadMESubjects = loadMESubjects;
+window.loadMEUnits = loadMEUnits;
 window.loadMarksEntry = loadMarksEntry;
 window.renderMarksEntryTable = renderMarksEntryTable;
 window.updateMarksEntryRow = updateMarksEntryRow;
@@ -20547,13 +20841,23 @@ window.calculateMarksEntryTotal = calculateMarksEntryTotal;
 window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
 window.submitMarksForApproval = submitMarksForApproval;
+window.downloadCSV = downloadCSV;
 
-window.loadSubjectColumnSettings = loadSubjectColumnSettings;
-window.renderSubjectColumns = renderSubjectColumns;
-window.saveSubjectColumnSetting = saveSubjectColumnSetting;
+// Column management
+window.loadUnitColumnSettings = loadUnitColumnSettings;
+window.renderUnitColumns = renderUnitColumns;
+window.saveUnitColumnSetting = saveUnitColumnSetting;
 window.applyColumnVisibility = applyColumnVisibility;
-window.resetSubjectColumns = resetSubjectColumns;
+window.resetUnitColumns = resetUnitColumns;
 window.isUserAdmin = isUserAdmin;
+
+// Lecturer assignment
+window.loadLecturerAssignments = loadLecturerAssignments;
+window.assignLecturerToUnit = assignLecturerToUnit;
+window.removeLecturerAssignment = removeLecturerAssignment;
+window.showLecturerAssignmentModal = showLecturerAssignmentModal;
+window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
+window.saveLecturerAssignment = saveLecturerAssignment;
 
 // Auto-detect functions
 window.detectVisibleColumns = detectVisibleColumns;
@@ -20561,13 +20865,21 @@ window.getAutoAssessmentType = getAutoAssessmentType;
 window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
 window.recalculateAllTotals = recalculateAllTotals;
 
+// Debug
+window.debugColumnState = debugColumnState;
+window.forceRefreshAssessment = forceRefreshAssessment;
+
 console.log('✅ Marks Entry functions loaded!');
 console.log('✅ Column Management loaded (Admin only)');
 console.log('✅ Auto-assessment type detection loaded');
-console.log('✅ loadSubjectColumnSettings:', typeof loadSubjectColumnSettings);
-console.log('✅ saveSubjectColumnSetting:', typeof saveSubjectColumnSetting);
+console.log('✅ Lecturer Unit Assignment Management loaded');
+console.log('✅ loadMEBlocks:', typeof loadMEBlocks);
+console.log('✅ loadMEUnits:', typeof loadMEUnits);
+console.log('✅ loadMarksEntry:', typeof loadMarksEntry);
+console.log('✅ loadUnitColumnSettings:', typeof loadUnitColumnSettings);
+console.log('✅ saveUnitColumnSetting:', typeof saveUnitColumnSetting);
 console.log('✅ getAutoAssessmentType:', typeof getAutoAssessmentType);
-
+console.log('✅ loadLecturerAssignments:', typeof loadLecturerAssignments);
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
 // ============================================================
