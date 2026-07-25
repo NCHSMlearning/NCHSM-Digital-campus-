@@ -748,7 +748,7 @@ async function loadSectionData(tabId) {
                 loadAllStaff();
             }
             break;
-        // ========== ADMIN APPROVALS - ADD THIS CASE ==========
+        // ========== ADMIN APPROVALS ==========
         case 'admin-approvals':
             if (typeof loadAdminActions === 'function') {
                 loadAdminActions();
@@ -757,10 +757,53 @@ async function loadSectionData(tabId) {
                 loadApprovalHistory();
             }
             break;
+        // ========== MARKS ENTRY - NEW ==========
+        case 'marks-entry':
+            console.log('📊 Loading Marks Entry section...');
+            // Initialize program dropdown
+            const meProgramSelect = document.getElementById('me_program_select');
+            if (meProgramSelect) {
+                // Update the program dropdown with all options
+                if (typeof updateProgramDropdown === 'function') {
+                    updateProgramDropdown(meProgramSelect);
+                }
+                
+                // If a program is already selected, load blocks
+                if (meProgramSelect.value) {
+                    if (typeof loadMEBlocks === 'function') {
+                        loadMEBlocks();
+                    }
+                } else {
+                    // Set default to KRCHN
+                    meProgramSelect.value = 'KRCHN';
+                    if (typeof loadMEBlocks === 'function') {
+                        loadMEBlocks();
+                    }
+                }
+            }
+            
+            // Set default year to current
+            const meYearSelect = document.getElementById('me_year_select');
+            if (meYearSelect && !meYearSelect.value) {
+                const currentYear = new Date().getFullYear();
+                meYearSelect.value = String(currentYear);
+            }
+            
+            // Show a message if no data
+            const container = document.getElementById('me_marks_container');
+            if (container && !container.innerHTML.includes('Select Program')) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">Select Program, Block and Subject</h3>
+                        <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for any program</p>
+                    </div>
+                `;
+            }
+            break;
         // ====================================================
     }
 }
-
 /*******************************************************
  * 5. AUDIT LOGGING - XSS SAFE VERSION
  *******************************************************/
