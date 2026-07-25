@@ -20451,7 +20451,7 @@ async function resetUnitColumns() {
 // ============================================================
 
 // ============================================================
-// LOAD LECTURER UNIT ASSIGNMENTS
+// LOAD LECTURER ASSIGNMENTS - FIXED
 // ============================================================
 
 async function loadLecturerAssignments() {
@@ -20478,14 +20478,16 @@ async function loadLecturerAssignments() {
     }
     
     try {
+        // ✅ FIXED: Use correct column names: first_name, other_names
         const { data: lecturers, error: lecturerError } = await sb
             .from('staff_records')
-            .select('id, full_name, email, department')
+            .select('id, first_name, other_names, email, department')
             .eq('program', program)
             .eq('status', 'active');
         
         if (lecturerError) throw lecturerError;
         
+        // Get assignments for this unit
         const { data: assignments, error: assignError } = await sb
             .from('lecturer_subject_assignments')
             .select('*')
@@ -20515,11 +20517,13 @@ async function loadLecturerAssignments() {
         let html = '';
         lecturers.forEach(lecturer => {
             const isAssigned = !!assignedMap[lecturer.id];
+            // Combine first_name and other_names for full name
+            const fullName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
             
             html += `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
                     <div>
-                        <strong style="font-size: 13px; color: #1e293b;">${lecturer.full_name || 'Unknown'}</strong>
+                        <strong style="font-size: 13px; color: #1e293b;">${fullName}</strong>
                         <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
                         <span style="font-size: 10px; color: #94a3b8;">${lecturer.department || ''}</span>
                     </div>
@@ -20532,7 +20536,7 @@ async function loadLecturerAssignments() {
                                 <i class="fas fa-times"></i> Remove
                             </button>
                         ` : `
-                            <button onclick="assignLecturerToUnit('${lecturer.id}', '${lecturer.full_name}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                            <button onclick="assignLecturerToUnit('${lecturer.id}', '${fullName}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
                                 <i class="fas fa-user-plus"></i> Assign
                             </button>
                         `}
@@ -20554,7 +20558,7 @@ async function loadLecturerAssignments() {
 }
 
 // ============================================================
-// ASSIGN LECTURER TO UNIT
+// ASSIGN LECTURER TO UNIT - FIXED
 // ============================================================
 
 async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
@@ -20643,7 +20647,7 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
 }
 
 // ============================================================
-// SHOW LECTURER ASSIGNMENT MODAL
+// SHOW LECTURER ASSIGNMENT MODAL - FIXED
 // ============================================================
 
 async function showLecturerAssignmentModal() {
@@ -20668,29 +20672,43 @@ async function showLecturerAssignmentModal() {
         lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
         
         try {
+            // ✅ FIXED: Use correct column names
             const { data: lecturers, error } = await sb
                 .from('staff_records')
-                .select('id, full_name, email')
-                .eq('program', program)
+                .select('id, first_name, other_names, email, department')
                 .eq('status', 'active')
-                .order('full_name', { ascending: true });
+                .order('first_name', { ascending: true });
             
             if (error) throw error;
             
-            lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
-            lecturers?.forEach(l => {
-                const option = document.createElement('option');
-                option.value = l.id;
-                option.textContent = `${l.full_name} (${l.email || 'no email'})`;
-                lecturerSelect.appendChild(option);
-            });
+            if (lecturerSelect) {
+                if (!lecturers || lecturers.length === 0) {
+                    lecturerSelect.innerHTML = '<option value="">No lecturers found</option>';
+                } else {
+                    lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
+                    lecturers.forEach(l => {
+                        const option = document.createElement('option');
+                        option.value = l.id;
+                        // Combine first_name and other_names for full name
+                        const fullName = l.other_names ? `${l.first_name} ${l.other_names}` : l.first_name;
+                        option.textContent = `${fullName} (${l.email || 'no email'})`;
+                        lecturerSelect.appendChild(option);
+                    });
+                }
+            }
             
         } catch (error) {
             console.error('Error loading lecturers:', error);
-            lecturerSelect.innerHTML = '<option value="">Error loading lecturers</option>';
+            if (lecturerSelect) {
+                lecturerSelect.innerHTML = '<option value="">Error loading lecturers</option>';
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('Error loading lecturers: ' + error.message, 'error');
+            }
         }
     }
     
+    // Load units for assignment
     const assignUnitSelect = document.getElementById('me_assign_subject_select');
     if (assignUnitSelect) {
         assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
@@ -20725,7 +20743,6 @@ async function showLecturerAssignmentModal() {
     
     document.getElementById('lecturerAssignmentModal').style.display = 'flex';
 }
-
 // ============================================================
 // CLOSE LECTURER ASSIGNMENT MODAL
 // ============================================================
