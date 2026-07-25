@@ -4599,7 +4599,209 @@
         </div>
     </div>
 </section>
-
+   <!-- Resources Section with Past Papers Support - UPDATED FOR TVET/KRCHN with EDIT -->
+<section id="resources" class="tab-content">
+    <h2><i class="fas fa-book-open"></i> Resource Center</h2>
+    <p>Upload learning materials and past examination papers for students</p>
+    
+    <!-- Program Mode Indicator -->
+    <div id="admin-program-indicator" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: #475569;">Mode:</span>
+        <span id="admin-program-badge" style="background: #4C1D95; color: white; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+            <i class="fas fa-graduation-cap"></i> KRCHN Nursing
+        </span>
+        <span id="admin-block-term-badge" style="background: #e2e8f0; color: #1e293b; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+            <i class="fas fa-layer-group"></i> Block: Introductory
+        </span>
+        <button onclick="switchAdminProgram()" style="margin-left: auto; padding: 4px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+            <i class="fas fa-sync-alt"></i> Switch Mode
+        </button>
+    </div>
+    
+    <!-- Resource Type Toggle -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button id="resource-type-all" class="resource-type-btn active" onclick="filterResourceType('all')" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-layer-group"></i> All Resources
+        </button>
+        <button id="resource-type-material" class="resource-type-btn" onclick="filterResourceType('material')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-book"></i> Learning Materials
+            <span id="material-count-badge" style="background: #10b981; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+        <button id="resource-type-pastpaper" class="resource-type-btn" onclick="filterResourceType('pastpaper')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-history"></i> Past Papers
+            <span id="pastpaper-count-badge" style="background: #f59e0b; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+    </div>
+    
+    <!-- UNIFIED UPLOAD/EDIT FORM -->
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3 id="form-title"><i class="fas fa-upload"></i> Upload Resource</h3>
+        <p id="form-subtitle" style="color: #6b7280; font-size: 13px; margin-top: -5px; margin-bottom: 15px;">Upload new learning materials or past examination papers</p>
+        
+        <!-- Past Paper Toggle Checkbox -->
+        <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields()">
+                <i class="fas fa-history"></i>
+                <span><strong>This is a Past Paper</strong> (Check this if uploading exam papers from previous years)</span>
+            </label>
+        </div>
+        
+        <!-- Unified Form -->
+        <form id="upload-resource-form" class="inline-form" onsubmit="event.preventDefault(); handleResourceUpload(event);">
+            <!-- Hidden ID for edit mode -->
+            <input type="hidden" id="resource_edit_id" value="">
+            
+            <!-- Program Type -->
+            <select id="resource_program" required onchange="updateBlockOptions()">
+                <option value="">-- Select Program --</option>
+                <optgroup label="KRCHN">
+                    <option value="KRCHN">KRCHN Nursing</option>
+                </optgroup>
+                <optgroup label="TVET Programs">
+                    <option value="DPOTT">DPOTT - Perioperative Theatre Technology</option>
+                    <option value="DCH">DCH - Community Health</option>
+                    <option value="DHRIT">DHRIT - Health Records and IT</option>
+                    <option value="DSL">DSL - Science Lab</option>
+                    <option value="DSW">DSW - Social Work & Community Development</option>
+                    <option value="DCJS">DCJS - Criminal Justice</option>
+                    <option value="DHSS">DHSS - Health Support Services</option>
+                    <option value="DICT">DICT - ICT</option>
+                    <option value="DME">DME - Medical Engineering</option>
+                    <option value="CPOTT">CPOTT - Certificate Perioperative Theatre Technology</option>
+                    <option value="CCH">CCH - Certificate Community Health</option>
+                    <option value="CHRIT">CHRIT - Certificate Health Records and IT</option>
+                    <option value="CPC">CPC - Certificate Patient Care</option>
+                    <option value="CSL">CSL - Certificate Science Lab</option>
+                    <option value="CSW">CSW - Certificate Social Work</option>
+                    <option value="CCJS">CCJS - Certificate Criminal Justice</option>
+                    <option value="CAG">CAG - Certificate Agriculture</option>
+                    <option value="CHSS">CHSS - Certificate Health Support Services</option>
+                    <option value="CICT">CICT - Certificate ICT</option>
+                    <option value="ACH">ACH - Artisan Community Health</option>
+                    <option value="AAG">AAG - Artisan Agriculture</option>
+                    <option value="ASW">ASW - Artisan Social Work</option>
+                    <option value="CCA">CCA - Certificate Computer Applications</option>
+                    <option value="PTE">PTE - TVET/CDACC</option>
+                </optgroup>
+            </select>
+            
+            <!-- Intake Year -->
+            <select id="resource_intake" required>
+                <option value="">-- Intake Year --</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+            
+            <!-- Block/Term - DYNAMIC -->
+            <select id="resource_block" required>
+                <option value="">-- Select Block/Term --</option>
+            </select>
+            
+            <!-- File Upload -->
+            <input type="file" id="resource-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4">
+            <small id="file-edit-info" style="color: #6b7280; font-size: 11px; display: none;">Leave empty to keep existing file</small>
+            
+            <!-- Title -->
+            <input type="text" id="resource-title" placeholder="Resource Title" required>
+            
+            <!-- Description -->
+            <textarea id="resource-description" placeholder="Description (optional)" rows="2" style="width: 100%;"></textarea>
+            
+            <!-- Past Paper Specific Fields (hidden by default) -->
+            <div id="pastpaper-fields" style="display: none; border-top: 2px dashed #4C1D95; padding-top: 15px; margin-top: 10px;">
+                <h4 style="margin: 0 0 10px 0; color: #4C1D95;"><i class="fas fa-history"></i> Past Paper Details</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; flex-wrap: wrap;">
+                    <select id="resource_pastpaper_year">
+                        <option value="">-- Exam Year --</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
+                        <option value="2022">2022</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                    
+                    <select id="resource_exam_type">
+                        <option value="">-- Exam Type --</option>
+                        <option value="CAT_1">CAT 1</option>
+                        <option value="CAT_2">CAT 2</option>
+                        <option value="END_TERM">End of Term</option>
+                        <option value="FINAL">Final Exam</option>
+                        <option value="SUPPLEMENTARY">Supplementary</option>
+                        <option value="SPECIAL">Special Exam</option>
+                    </select>
+                    
+                    <input type="text" id="resource_course_name" placeholder="Course Name (e.g., Anatomy, Pharmacology)">
+                </div>
+                <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> These fields are only needed for past papers</small>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                <button type="submit" id="form-submit-btn">
+                    <i class="fas fa-upload"></i> Upload Resource
+                </button>
+                <button type="button" id="form-cancel-btn" onclick="cancelEditResource()" style="display: none; background: #6b7280; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Filters -->
+    <div class="toolbar">
+        <input type="text" id="resource-search" placeholder="🔍 Search resources..." onkeyup="filterResourcesTable()">
+        <select id="resource-block-filter" onchange="filterResourcesTable()">
+            <option value="all">All Blocks/Terms</option>
+        </select>
+        <select id="resource-year-filter" onchange="filterResourcesTable()">
+            <option value="all">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <select id="resource-program-filter" onchange="filterResourcesTable()">
+            <option value="all">All Programs</option>
+            <option value="KRCHN">KRCHN</option>
+            <option value="DPOTT">DPOTT</option>
+            <option value="DCH">DCH</option>
+            <option value="DHRIT">DHRIT</option>
+            <option value="DSL">DSL</option>
+            <option value="DSW">DSW</option>
+            <option value="DCJS">DCJS</option>
+        </select>
+        <button onclick="exportResourcesToCSV()" class="btn-action export-btn">Export List (CSV)</button>
+        <button onclick="loadAllResources()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+    
+    <!-- Resources Table -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Year/Intake</th>
+                    <th>Program</th>
+                    <th>Block/Term</th>
+                    <th>Title/Course</th>
+                    <th>Description</th>
+                    <th>Uploaded By</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resources-list">
+                <tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 <!-- Edit Resource Modal -->
 <div id="edit-resource-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
     <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
