@@ -3,26 +3,35 @@
 // ============================================================
 
 // ============================================================
-// IMMEDIATE GLOBAL DEFINITIONS (Runs before DOM ready)
-// ============================================================
-
-// ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - FINAL FIX
+// GLOBAL DROPDOWN TOGGLE FUNCTION - WORKING FIX
 // ============================================================
 window.toggleDropdown = function(event) {
-    event.preventDefault();
-    event.stopPropagation();
+    console.log('🔄 toggleDropdown triggered');
     
-    const parentLi = event.currentTarget.closest('.nav-dropdown');
-    if (!parentLi) {
-        console.warn('⚠️ No parent .nav-dropdown found');
-        return;
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
     }
     
+    // Find the clicked element
+    let target = event?.currentTarget || document.querySelector('.dropdown-toggle');
+    if (!target) {
+        console.warn('⚠️ No toggle found');
+        return false;
+    }
+    
+    // Find parent dropdown
+    const parentLi = target.closest('.nav-dropdown');
+    if (!parentLi) {
+        console.warn('⚠️ No parent .nav-dropdown found');
+        return false;
+    }
+    
+    // Find menu
     const menu = parentLi.querySelector('.dropdown-menu');
     if (!menu) {
         console.warn('⚠️ No dropdown-menu found');
-        return;
+        return false;
     }
     
     // Close all other dropdowns
@@ -36,19 +45,30 @@ window.toggleDropdown = function(event) {
         }
     });
     
-    // Toggle current dropdown
+    // Toggle this dropdown (EXACT same as your manual test)
     const isOpen = parentLi.classList.contains('open');
     
     if (isOpen) {
         parentLi.classList.remove('open');
         menu.style.display = 'none';
-        console.log('📂 Dropdown closed');
+        console.log('📂 Dropdown CLOSED');
     } else {
         parentLi.classList.add('open');
         menu.style.display = 'block';
-        console.log('📂 Dropdown opened');
+        console.log('📂 Dropdown OPENED');
     }
+    
+    // Debug
+    console.log('📊 Has open class:', parentLi.classList.contains('open'));
+    console.log('📊 Menu display:', menu.style.display);
+    
+    return false;
 };
+
+console.log('✅ toggleDropdown function updated');
+
+// Test it
+document.querySelector('.nav-dropdown:first-child .dropdown-toggle')?.click();
 
 // Define logout function
 if (typeof window.logout === 'undefined') {
