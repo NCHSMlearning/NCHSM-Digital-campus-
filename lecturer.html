@@ -1235,11 +1235,12 @@
      MARKS MANAGEMENT SECTION - LECTURER VIEW
      AUTO-DETECTED ASSESSMENT TYPE FROM ADMIN SETTINGS
      NO COLUMN MANAGEMENT - READ ONLY
+     TERMINOLOGY: "Unit" instead of "Subject"
      ============================================================ -->
 <section id="marks-management-content" class="tab-content">
     <div class="marks-system-header">
         <h2><i class="fas fa-chart-line"></i> Marks Management</h2>
-        <p>Enter marks for your assigned subjects. All submissions require admin approval before finalization.</p>
+        <p>Enter marks for your assigned units. All submissions require admin approval before finalization.</p>
         <p style="font-size: 13px; color: #6b7280; margin-top: 4px;">
             <i class="fas fa-info-circle"></i> Column visibility and assessment type are managed by the Administrator.
         </p>
@@ -1257,7 +1258,7 @@
             </span>
         </div>
         <div style="color: rgba(255,255,255,0.9); font-size: 13px;">
-            <i class="fas fa-book"></i> <span id="lecturerSubjectCount">0</span> Subjects Assigned
+            <i class="fas fa-book"></i> <span id="lecturerUnitCount">0</span> Units Assigned
         </div>
     </div>
     
@@ -1281,7 +1282,7 @@
         <div class="card" style="border-top: 4px solid #6366f1;">
             <h3>Average Score</h3>
             <p class="data" id="lecAvgScore">0%</p>
-            <p class="minor-data">Across all subjects</p>
+            <p class="minor-data">Across all units</p>
         </div>
     </div>
     
@@ -1339,16 +1340,16 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-layer-group"></i> Block
                 </label>
-                <select id="me_block_select" class="form-control" onchange="loadMESubjects()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                <select id="me_block_select" class="form-control" onchange="loadMEUnits()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                     <option value="">-- Select Block --</option>
                 </select>
             </div>
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-book"></i> Subject
+                    <i class="fas fa-book"></i> Unit
                 </label>
                 <select id="me_subject_select" class="form-control" onchange="loadMarksEntry()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="">-- Select Subject --</option>
+                    <option value="">-- Select Unit --</option>
                 </select>
             </div>
             <!-- Assessment Type - Auto-detected, READ ONLY for lecturers -->
@@ -1404,8 +1405,8 @@
     <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
         <div style="text-align: center; padding: 60px 20px;">
             <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-            <h3 style="color: #1e293b;">Select Block and Subject</h3>
-            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned subjects</p>
+            <h3 style="color: #1e293b;">Select Block and Unit</h3>
+            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned units</p>
         </div>
     </div>
 
