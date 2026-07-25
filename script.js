@@ -18773,7 +18773,7 @@ async function loadMESubjects() {
     }
 }
 
-// Load marks for selected subject
+// Load marks for selected subject - FIXED
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -18819,26 +18819,35 @@ async function loadMarksEntry() {
         
         if (error) throw error;
         
-        // Get students for this program and block
+        // ✅ FIX: Use student_id (not admission_number)
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('admission_number, full_name, block, intake_year, program')
+            .select('student_id, full_name, block, intake_year, program')
             .eq('role', 'student')
             .eq('program', program)
             .eq('block', block);
         
         if (studentError) throw studentError;
         
-        // Combine data
+        console.log('📊 Students found:', students?.length || 0);
+        if (students && students.length > 0) {
+            console.log('📊 Sample student:', students[0]);
+        }
+        
+        // Combine data - use student_id as the key
         const marksMap = {};
         marks.forEach(m => {
+            // The marks table uses admission_number as the student identifier
+            // We need to match it with student_id
             marksMap[m.admission_number] = m;
         });
         
         const fullMarks = students.map(s => {
-            const existing = marksMap[s.admission_number];
+            const studentId = s.student_id || '';
+            const existing = marksMap[studentId];
+            
             return {
-                admission: s.admission_number,
+                admission: studentId,
                 name: s.full_name || 'Unknown',
                 program: s.program || program,
                 cat1: existing?.cat1_score || '',
@@ -18854,8 +18863,6 @@ async function loadMarksEntry() {
         
         me_currentMarks = fullMarks;
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
-        
-        // Update stats
         updateMarksEntryStats(fullMarks, assessmentType);
         
     } catch (error) {
