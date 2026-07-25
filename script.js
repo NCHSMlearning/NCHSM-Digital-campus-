@@ -801,20 +801,37 @@ async function loadSectionData(tabId) {
                 `;
             }
             break;
-        // ========== ENTRY CONTROL - NEW ==========
+        // ========== ENTRY CONTROL ==========
         case 'entry-control':
             console.log('🔒 Loading Entry Control Panel...');
             if (typeof loadEntryControl === 'function') {
                 loadEntryControl();
             } else {
                 console.warn('⚠️ loadEntryControl function not found');
-                // Try to load the function from the module
                 const container = document.getElementById('ec_stats');
                 if (container) {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 40px;">
                             <div class="loading-spinner"></div>
                             <p style="color: #6b7280; margin-top: 10px;">Loading entry control...</p>
+                        </div>
+                    `;
+                }
+            }
+            break;
+        // ========== MARKS APPROVAL - NEW ==========
+        case 'marks-approval':
+            console.log('✅ Loading Marks Approval section...');
+            if (typeof loadMarksApprovals === 'function') {
+                loadMarksApprovals();
+            } else {
+                console.warn('⚠️ loadMarksApprovals function not found');
+                const container = document.getElementById('marksApprovalTableContainer');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #6b7280; margin-top: 10px;">Loading marks approvals...</p>
                         </div>
                     `;
                 }
