@@ -2737,8 +2737,8 @@
     </div>
 </section>
 <!-- ============================================ -->
-<!-- MARKS ENTRY SYSTEM - TVET + NURSING -->
-<!-- WITH AUTO-DETECT ASSESSMENT TYPE -->
+<!-- MARKS ENTRY SYSTEM - SUPER ADMIN -->
+<!-- WITH LECTURER ASSIGNMENT MANAGEMENT -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -2880,6 +2880,30 @@
     </div>
 
     <!-- ============================================ -->
+    <!-- LECTURER ASSIGNMENT MANAGEMENT - ADMIN ONLY -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Lecturer Subject Assignments
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Assign lecturers to subjects for the current block
+                </p>
+            </div>
+            <button onclick="showLecturerAssignmentModal()" class="btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                <i class="fas fa-user-plus"></i> Assign Lecturer
+            </button>
+        </div>
+        <div id="me_lecturer_assignments" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-info-circle"></i> Select a subject to manage lecturer assignments
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
     <!-- COLUMN MANAGEMENT - ADMIN ONLY -->
     <!-- ============================================ -->
     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
@@ -2929,6 +2953,56 @@
         </div>
     </div>
 </section>
+
+<!-- ============================================ -->
+<!-- LECTURER ASSIGNMENT MODAL -->
+<!-- ============================================ -->
+<div id="lecturerAssignmentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 16px; padding: 30px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; color: #1e293b;">
+                <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Assign Lecturer to Subject
+            </h3>
+            <button onclick="closeLecturerAssignmentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                <i class="fas fa-user"></i> Select Lecturer
+            </label>
+            <select id="me_lecturer_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                <option value="">-- Select Lecturer --</option>
+            </select>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                <i class="fas fa-book"></i> Subject
+            </label>
+            <select id="me_assign_subject_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                <option value="">-- Select Subject --</option>
+            </select>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                <i class="fas fa-layer-group"></i> Block
+            </label>
+            <input type="text" id="me_assign_block" class="form-control" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                <i class="fas fa-calendar"></i> Academic Year
+            </label>
+            <input type="text" id="me_assign_year" class="form-control" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px;">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="closeLecturerAssignmentModal()" class="btn-action" style="background: #6b7280; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                Cancel
+            </button>
+            <button onclick="saveLecturerAssignment()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-save"></i> Assign
+            </button>
+        </div>
+    </div>
+</div>
 
                                 <!-- ============================================ -->
 <!-- MARK ENTRY CONTROL PANEL - ADMIN -->
