@@ -1222,7 +1222,7 @@ function checkMarksApprovalStatus(marks) {
 
 
 // ============================================================
-// SAVE MARKS ENTRY - FAST WITH LOADING SCREEN & PERCENTAGE
+// SAVE MARKS ENTRY - WITH AUTO PROMPT FOR SUBMISSION
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1287,8 +1287,34 @@ async function saveMarksEntry() {
         return;
     }
     
+    // Count how many students have scores
+    const studentsWithScores = marksData.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    const studentsWithoutScores = marksData.filter(m => m.cat1 === 0 && m.cat2 === 0 && m.exam === 0);
+    
+    // Check if any marks are approved (to show warning)
+    let hasApprovedMarks = false;
+    const { data: checkExisting } = await sb
+        .from('student_marks')
+        .select('approval_status')
+        .eq('block', block)
+        .eq('subject_name', unit)
+        .eq('academic_year', year)
+        .in('admission_number', marksData.map(m => m.admission));
+    
+    if (checkExisting) {
+        hasApprovedMarks = checkExisting.some(m => m.approval_status === 'approved');
+    }
+    
     // Confirm before saving
-    if (!confirm(`💾 Save marks for ${marksData.length} students in "${unit}"?`)) {
+    let confirmMessage = `💾 Save marks for ${marksData.length} students in "${unit}"?`;
+    if (studentsWithScores.length === 0) {
+        confirmMessage = `⚠️ No scores entered yet. Save empty marks for ${marksData.length} students?`;
+    }
+    if (hasApprovedMarks) {
+        confirmMessage += `\n\n⚠️ Some marks are APPROVED. Editing them will be logged.`;
+    }
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
@@ -1309,9 +1335,7 @@ async function saveMarksEntry() {
     const totalStudents = marksData.length;
     
     try {
-        // ============================================================
-        // BULK FETCH - Get all existing marks in one query
-        // ============================================================
+        // Bulk fetch existing marks
         updateLoadingProgress(10, 1, 'Fetching existing marks...');
         
         const admissions = marksData.map(m => m.admission);
@@ -1327,7 +1351,6 @@ async function saveMarksEntry() {
             throw new Error('Error fetching existing marks: ' + fetchError.message);
         }
         
-        // Create a map for quick lookup
         const existingMap = {};
         existingMarks?.forEach(m => {
             existingMap[m.admission_number] = m;
@@ -1335,9 +1358,6 @@ async function saveMarksEntry() {
         
         updateLoadingProgress(20, 2, 'Processing marks...');
         
-        // ============================================================
-        // BULK UPDATE/INSERT - Prepare all operations
-        // ============================================================
         const updates = [];
         const inserts = [];
         let processedCount = 0;
@@ -1346,11 +1366,9 @@ async function saveMarksEntry() {
             const existing = existingMap[mark.admission] || null;
             processedCount++;
             
-            // Update progress
             const progress = 20 + (processedCount / totalStudents) * 60;
             updateLoadingProgress(progress, 2, `Processing ${processedCount}/${totalStudents} students...`);
             
-            // Calculate totals
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
@@ -1358,7 +1376,6 @@ async function saveMarksEntry() {
             let isApprovedEdit = false;
             
             if (existing) {
-                // Check if marks have changed
                 const oldCat1 = parseFloat(existing.cat1_score) || 0;
                 const oldCat2 = parseFloat(existing.cat2_score) || 0;
                 const oldExam = parseFloat(existing.exam_score) || 0;
@@ -1370,7 +1387,6 @@ async function saveMarksEntry() {
                     Math.abs(oldExam - mark.exam) > 0.01
                 );
                 
-                // ✅ ALLOW editing approved marks - keep as approved, log it
                 if (hasChanges && existing.approval_status === 'approved') {
                     newApprovalStatus = 'approved';
                     isApprovedEdit = true;
@@ -1392,7 +1408,6 @@ async function saveMarksEntry() {
                     console.log(`✏️ Approved mark edited: ${mark.admission}`);
                 }
                 
-                // If changes were made and status was pending or rejected, reset to draft
                 if (hasChanges && !isApprovedEdit) {
                     if (existing.approval_status === 'pending' || existing.approval_status === 'rejected') {
                         newApprovalStatus = 'draft';
@@ -1403,7 +1418,6 @@ async function saveMarksEntry() {
                     }
                 }
                 
-                // Prepare update
                 updates.push({
                     id: existing.id,
                     data: {
@@ -1420,7 +1434,6 @@ async function saveMarksEntry() {
                 });
                 
             } else {
-                // Prepare insert
                 inserts.push({
                     admission_number: mark.admission,
                     student_name: mark.name || 'Unknown',
@@ -1440,14 +1453,11 @@ async function saveMarksEntry() {
             }
         }
         
-        // ============================================================
-        // EXECUTE BULK OPERATIONS
-        // ============================================================
+        // Execute bulk operations
         updateLoadingProgress(80, 3, 'Saving to database...');
         
         // Bulk update
         if (updates.length > 0) {
-            // Process updates in batches of 50 for performance
             const batchSize = 50;
             for (let i = 0; i < updates.length; i += batchSize) {
                 const batch = updates.slice(i, i + batchSize);
@@ -1460,7 +1470,6 @@ async function saveMarksEntry() {
                 await Promise.all(promises);
                 updated += batch.length;
                 
-                // Update progress
                 const progress = 80 + (i + batch.length) / updates.length * 15;
                 updateLoadingProgress(progress, 3, `Saving ${Math.min(i + batch.length, updates.length)}/${updates.length} updates...`);
             }
@@ -1468,7 +1477,6 @@ async function saveMarksEntry() {
         
         // Bulk insert
         if (inserts.length > 0) {
-            // Insert in batches of 50
             const batchSize = 50;
             for (let i = 0; i < inserts.length; i += batchSize) {
                 const batch = inserts.slice(i, i + batchSize);
@@ -1483,27 +1491,22 @@ async function saveMarksEntry() {
                     saved += batch.length;
                 }
                 
-                // Update progress
                 const progress = 80 + (i + batch.length) / inserts.length * 15;
                 updateLoadingProgress(progress, 3, `Inserting ${Math.min(i + batch.length, inserts.length)}/${inserts.length} new...`);
             }
         }
         
-        // ============================================================
-        // LOG APPROVED EDITS (if any)
-        // ============================================================
+        // Log approved edits
         if (approvedEdits.length > 0) {
             updateLoadingProgress(95, 4, 'Logging edits...');
             
             try {
-                // Check if table exists
                 const { error: tableError } = await sb
                     .from('approved_edit_logs')
                     .select('id')
                     .limit(1);
                 
                 if (!tableError) {
-                    // Insert logs in batches
                     const batchSize = 20;
                     for (let i = 0; i < approvedEdits.length; i += batchSize) {
                         const batch = approvedEdits.slice(i, i + batchSize);
@@ -1526,34 +1529,27 @@ async function saveMarksEntry() {
                             edited_at: new Date().toISOString()
                         }));
                         
-                        const { error } = await sb
+                        await sb
                             .from('approved_edit_logs')
                             .insert(logs);
-                        
-                        if (error) {
-                            console.warn('⚠️ Error logging approved edits:', error);
-                        }
                     }
                     console.log(`📝 Logged ${approvedEdits.length} approved mark edits`);
-                } else {
-                    console.warn('⚠️ approved_edit_logs table not found, skipping logging');
                 }
             } catch (logError) {
                 console.warn('⚠️ Could not log approved edits:', logError.message);
             }
         }
         
-        // ============================================================
-        // COMPLETE
-        // ============================================================
+        // Complete
         updateLoadingProgress(100, 4, '✅ Complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
         
         // ============================================================
-        // SHOW DETAILED RESULTS
+        // SHOW RESULTS
         // ============================================================
         let message = '';
+        let hasDraftMarks = false;
         
         if (saved > 0 && updated > 0 && errors === 0) {
             message = `✅ Saved ${saved} new and updated ${updated} marks successfully!`;
@@ -1578,10 +1574,121 @@ async function saveMarksEntry() {
             showNotification(`🔄 ${resetToDraft} marks were reset to DRAFT due to changes. Re-submit for approval.`, 'warning');
         }
         
-        // Reload marks
-        if (errors === 0 || saved > 0 || updated > 0) {
-            setTimeout(() => loadMarksEntry(), 500);
+        // ============================================================
+        // ⭐ ASK TO SUBMIT FOR APPROVAL ⭐
+        // ============================================================
+        
+        // Check if there are any draft marks to submit
+        if (saved > 0 || updated > 0) {
+            // Check if there are draft marks
+            const { data: draftCheck } = await sb
+                .from('student_marks')
+                .select('id')
+                .eq('block', block)
+                .eq('subject_name', unit)
+                .eq('academic_year', year)
+                .in('approval_status', ['draft', 'rejected']);
+            
+            if (draftCheck && draftCheck.length > 0) {
+                const draftCount = draftCheck.length;
+                const studentsWithScoresCount = marksData.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0).length;
+                
+                // Only ask if there are students with scores
+                if (studentsWithScoresCount > 0) {
+                    const submitMessage = `📤 ${draftCount} marks are ready for approval.\n\nWould you like to submit them for admin approval now?`;
+                    
+                    if (confirm(submitMessage)) {
+                        // ✅ User wants to submit
+                        showLoadingScreen(`Submitting ${draftCount} marks...`, '📤 Submitting for Approval');
+                        updateLoadingProgress(10, 1, 'Preparing submission...');
+                        
+                        try {
+                            // Get IDs of draft/rejected marks
+                            const { data: submitMarks } = await sb
+                                .from('student_marks')
+                                .select('id')
+                                .eq('block', block)
+                                .eq('subject_name', unit)
+                                .eq('academic_year', year)
+                                .in('approval_status', ['draft', 'rejected']);
+                            
+                            if (submitMarks && submitMarks.length > 0) {
+                                const ids = submitMarks.map(m => m.id);
+                                const batchSize = 50;
+                                let submitted = 0;
+                                let submitErrors = 0;
+                                
+                                for (let i = 0; i < ids.length; i += batchSize) {
+                                    const batch = ids.slice(i, i + batchSize);
+                                    const progress = 20 + (i / ids.length) * 70;
+                                    updateLoadingProgress(progress, 2, `Submitting ${Math.min(i + batch.length, ids.length)}/${ids.length} marks...`);
+                                    
+                                    const { error: submitError } = await sb
+                                        .from('student_marks')
+                                        .update({
+                                            approval_status: 'pending',
+                                            submitted_at: new Date().toISOString(),
+                                            submitted_by: me_currentLecturer?.profile?.id || null
+                                        })
+                                        .in('id', batch);
+                                    
+                                    if (submitError) {
+                                        submitErrors += batch.length;
+                                        console.error('Submit error:', submitError);
+                                    } else {
+                                        submitted += batch.length;
+                                    }
+                                }
+                                
+                                // Log the submission
+                                if (submitted > 0) {
+                                    updateLoadingProgress(95, 3, 'Logging submission...');
+                                    try {
+                                        await sb
+                                            .from('mark_approval_logs')
+                                            .insert({
+                                                block: block,
+                                                subject: unit,
+                                                academic_year: year,
+                                                action: 'submitted',
+                                                action_by: me_currentLecturer?.profile?.id || null,
+                                                action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
+                                                marks_count: submitted,
+                                                reason: `Submitted ${submitted} marks for "${unit}" in ${block}`,
+                                                created_at: new Date().toISOString()
+                                            });
+                                    } catch (logError) {
+                                        console.warn('Could not save approval log:', logError);
+                                    }
+                                }
+                                
+                                updateLoadingProgress(100, 4, '✅ Complete!');
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                hideLoadingScreen();
+                                
+                                if (submitErrors > 0 && submitted > 0) {
+                                    showNotification(`⚠️ ${submitted} marks submitted, ${submitErrors} errors`, 'warning');
+                                } else if (submitted > 0) {
+                                    showNotification(`✅ ${submitted} marks submitted for approval!`, 'success');
+                                } else {
+                                    showNotification('❌ Failed to submit marks', 'error');
+                                }
+                            }
+                        } catch (submitError) {
+                            hideLoadingScreen();
+                            showNotification('❌ Error submitting: ' + submitError.message, 'error');
+                            console.error('Submit error:', submitError);
+                        }
+                    } else {
+                        // User declined submission
+                        showNotification('💾 Marks saved as DRAFT. Submit later using the "Submit" button.', 'info');
+                    }
+                }
+            }
         }
+        
+        // Reload marks
+        setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
         hideLoadingScreen();
@@ -1589,6 +1696,168 @@ async function saveMarksEntry() {
         console.error('Save error:', error);
     }
 }
+
+// ============================================================
+// SUBMIT MARKS FOR APPROVAL - WITH LOADING SCREEN
+// ============================================================
+
+async function submitMarksForApproval() {
+    const block = me_currentBlock;
+    const unit = me_currentUnit;
+    const year = me_currentYear;
+    
+    if (!block || !unit) {
+        showNotification('Please load marks first', 'warning');
+        return;
+    }
+    
+    // Show loading screen
+    showLoadingScreen('Checking marks...', '📤 Submit for Approval');
+    updateLoadingProgress(10, 1, 'Checking marks status...');
+    
+    try {
+        // Get marks for this unit
+        const { data: marks, error } = await sb
+            .from('student_marks')
+            .select('id, approval_status, final_score, admission_number, student_name')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (!marks || marks.length === 0) {
+            hideLoadingScreen();
+            showNotification('No marks to submit for approval', 'warning');
+            return;
+        }
+        
+        // Check if any marks have scores
+        const hasScores = marks.some(m => m.final_score !== null && m.final_score > 0);
+        if (!hasScores) {
+            hideLoadingScreen();
+            showNotification('⚠️ Please enter marks before submitting for approval', 'warning');
+            return;
+        }
+        
+        // Count marks by status
+        const draftMarks = marks.filter(m => m.approval_status === 'draft' || m.approval_status === 'rejected');
+        const pendingMarks = marks.filter(m => m.approval_status === 'pending');
+        const approvedMarks = marks.filter(m => m.approval_status === 'approved');
+        
+        updateLoadingProgress(30, 2, `Found ${draftMarks.length} marks ready for submission...`);
+        
+        // Check if there are any draft/rejected marks to submit
+        if (draftMarks.length === 0) {
+            hideLoadingScreen();
+            if (approvedMarks.length === marks.length) {
+                showNotification('✅ All marks are already approved!', 'success');
+            } else if (pendingMarks.length > 0) {
+                showNotification(`⏳ ${pendingMarks.length} marks are already pending approval`, 'warning');
+            } else {
+                showNotification('No draft or rejected marks to submit', 'warning');
+            }
+            return;
+        }
+        
+        // Show summary before submission
+        const summary = [
+            `📊 ${draftMarks.length} marks ready for submission`,
+            approvedMarks.length > 0 ? `✅ ${approvedMarks.length} already approved (will not be resubmitted)` : null,
+            pendingMarks.length > 0 ? `⏳ ${pendingMarks.length} already pending` : null
+        ].filter(Boolean).join('\n');
+        
+        hideLoadingScreen();
+        
+        if (!confirm(`📤 Submit for approval?\n\n${summary}\n\nContinue?`)) {
+            return;
+        }
+        
+        // Show loading for submission
+        showLoadingScreen(`Submitting ${draftMarks.length} marks...`, '📤 Submitting for Approval');
+        updateLoadingProgress(40, 2, 'Preparing submission...');
+        
+        // Get the IDs of marks to submit
+        const markIds = draftMarks.map(m => m.id);
+        
+        // Update in batches
+        const batchSize = 50;
+        let submitted = 0;
+        let errors = 0;
+        
+        for (let i = 0; i < markIds.length; i += batchSize) {
+            const batch = markIds.slice(i, i + batchSize);
+            
+            const progress = 40 + (i / markIds.length) * 50;
+            updateLoadingProgress(progress, 3, `Submitting ${Math.min(i + batch.length, markIds.length)}/${markIds.length} marks...`);
+            
+            const { error: updateError } = await sb
+                .from('student_marks')
+                .update({
+                    approval_status: 'pending',
+                    submitted_at: new Date().toISOString(),
+                    submitted_by: me_currentLecturer?.profile?.id || null
+                })
+                .in('id', batch);
+            
+            if (updateError) {
+                errors += batch.length;
+                console.error('Error submitting batch:', updateError);
+            } else {
+                submitted += batch.length;
+            }
+        }
+        
+        // Log the submission
+        if (submitted > 0) {
+            updateLoadingProgress(95, 4, 'Logging submission...');
+            
+            try {
+                await sb
+                    .from('mark_approval_logs')
+                    .insert({
+                        block: block,
+                        subject: unit,
+                        academic_year: year,
+                        action: 'submitted',
+                        action_by: me_currentLecturer?.profile?.id || null,
+                        action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
+                        marks_count: submitted,
+                        reason: `Submitted ${submitted} marks for "${unit}" in ${block}`,
+                        created_at: new Date().toISOString()
+                    });
+            } catch (logError) {
+                console.warn('Could not save approval log:', logError);
+            }
+        }
+        
+        // Complete
+        updateLoadingProgress(100, 4, '✅ Complete!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        hideLoadingScreen();
+        
+        // Show results
+        if (errors > 0 && submitted > 0) {
+            showNotification(`⚠️ ${submitted} marks submitted, ${errors} errors`, 'warning');
+        } else if (submitted > 0) {
+            showNotification(`✅ ${submitted} marks submitted for approval!`, 'success');
+        } else {
+            showNotification('❌ Failed to submit marks', 'error');
+        }
+        
+        // Refresh
+        setTimeout(() => loadMarksEntry(), 500);
+        
+    } catch (error) {
+        hideLoadingScreen();
+        showNotification('❌ Error submitting for approval: ' + error.message, 'error');
+        console.error('Submit error:', error);
+    }
+}
+
+// ============================================================
+// WITHDRAW MARKS FROM APPROVAL - WITH LOADING SCREEN
+// ============================================================
 
 async function withdrawMarksFromApproval() {
     const block = me_currentBlock;
@@ -1600,55 +1869,88 @@ async function withdrawMarksFromApproval() {
         return;
     }
     
-    const { data: pendingMarks, error } = await sb
-        .from('student_marks')
-        .select('id')
-        .eq('block', block)
-        .eq('subject_name', unit)
-        .eq('academic_year', year)
-        .eq('approval_status', 'pending');
-    
-    if (error) {
-        showNotification('Error checking marks: ' + error.message, 'error');
-        return;
-    }
-    
-    if (!pendingMarks || pendingMarks.length === 0) {
-        showNotification('No pending marks to withdraw', 'warning');
-        return;
-    }
-    
-    if (!confirm(`⏪ Withdraw ${pendingMarks.length} pending marks from approval? They will go back to DRAFT status.`)) {
-        return;
-    }
-    
-    showLoading('Withdrawing from approval...');
+    showLoadingScreen('Checking pending marks...', '⏪ Withdraw from Approval');
+    updateLoadingProgress(20, 1, 'Checking pending marks...');
     
     try {
-        const { error: updateError } = await sb
+        // Get pending marks
+        const { data: pendingMarks, error } = await sb
             .from('student_marks')
-            .update({
-                approval_status: 'draft',
-                submitted_at: null,
-                submitted_by: null
-            })
+            .select('id, admission_number, student_name')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year)
             .eq('approval_status', 'pending');
         
-        if (updateError) throw updateError;
+        if (error) throw error;
         
-        hideLoading();
-        showNotification(`✅ ${pendingMarks.length} marks withdrawn from approval!`, 'success');
-        await loadMarksEntry();
+        hideLoadingScreen();
+        
+        if (!pendingMarks || pendingMarks.length === 0) {
+            showNotification('No pending marks to withdraw', 'warning');
+            return;
+        }
+        
+        // Show list of students
+        const studentList = pendingMarks.map(m => `  • ${m.student_name} (${m.admission_number})`).join('\n');
+        
+        if (!confirm(`⏪ Withdraw ${pendingMarks.length} pending marks from approval?\n\nStudents:\n${studentList}\n\nThey will go back to DRAFT status.`)) {
+            return;
+        }
+        
+        showLoadingScreen(`Withdrawing ${pendingMarks.length} marks...`, '⏪ Withdrawing');
+        updateLoadingProgress(30, 2, 'Processing withdrawal...');
+        
+        // Withdraw in batches
+        const batchSize = 50;
+        const ids = pendingMarks.map(m => m.id);
+        let withdrawn = 0;
+        let errors = 0;
+        
+        for (let i = 0; i < ids.length; i += batchSize) {
+            const batch = ids.slice(i, i + batchSize);
+            
+            const progress = 30 + (i / ids.length) * 60;
+            updateLoadingProgress(progress, 3, `Withdrawing ${Math.min(i + batch.length, ids.length)}/${ids.length} marks...`);
+            
+            const { error: updateError } = await sb
+                .from('student_marks')
+                .update({
+                    approval_status: 'draft',
+                    submitted_at: null,
+                    submitted_by: null
+                })
+                .in('id', batch);
+            
+            if (updateError) {
+                errors += batch.length;
+                console.error('Error withdrawing batch:', updateError);
+            } else {
+                withdrawn += batch.length;
+            }
+        }
+        
+        // Complete
+        updateLoadingProgress(100, 4, '✅ Complete!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        hideLoadingScreen();
+        
+        if (errors > 0 && withdrawn > 0) {
+            showNotification(`⚠️ ${withdrawn} marks withdrawn, ${errors} errors`, 'warning');
+        } else if (withdrawn > 0) {
+            showNotification(`✅ ${withdrawn} marks withdrawn from approval!`, 'success');
+        } else {
+            showNotification('❌ Failed to withdraw marks', 'error');
+        }
+        
+        setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
-        hideLoading();
+        hideLoadingScreen();
         showNotification('❌ Error withdrawing: ' + error.message, 'error');
+        console.error('Withdraw error:', error);
     }
 }
-
 // ============================================================
 // EXPORT MARKS
 // ============================================================
