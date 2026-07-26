@@ -423,8 +423,8 @@ trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff
         return null;
     }
 },
-   // ============================================
-// COMPLETE LOGIN - WITH NOTIFICATIONS & UUID FIX
+  // ============================================
+// COMPLETE LOGIN - WITH UUID FIX
 // ============================================
 completeLogin: async function(profileData, sessionToken, isStaff = false) {
     console.log('🎉 COMPLETE LOGIN STARTED');
@@ -484,7 +484,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         // 3. Store profile with the correct UUID
         const safeProfile = {
             user_id: userIdForSession,  // ✅ Store UUID, not staff ID
-            staff_id: profileData.user_id, // Store staff ID separately for reference
+            staff_id: profileData.staff_id || profileData.id, // Store staff ID separately
             email: profileData.email,
             full_name: profileData.full_name,
             role: profileData.role || 'staff',
@@ -878,28 +878,27 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         });
     },
     
-    // ============================================
-    // LOAD STAFF RECORDS
-    // ============================================
-    loadStaffRecords: async function() {
-        try {
-            if (!this.supabase) return;
-            
-            const { data, error } = await this.supabase
-                .from('staff_records')
-                .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
-                .eq('login_enabled', true)
-                .eq('status', 'active');
-            
-            if (!error && data) {
-                this.staffRecords = data;
-                console.log(`📋 Loaded ${this.staffRecords.length} staff records`);
-            }
-        } catch (error) {
-            console.error('Error loading staff records:', error);
+   // ============================================
+// LOAD STAFF RECORDS
+// ============================================
+loadStaffRecords: async function() {
+    try {
+        if (!this.supabase) return;
+        
+        const { data, error } = await this.supabase
+            .from('staff_records')
+            .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
+            .eq('login_enabled', true)
+            .in('status', ['active', 'approved']);  // ✅ Include both!
+        
+        if (!error && data) {
+            this.staffRecords = data;
+            console.log(`📋 Loaded ${this.staffRecords.length} staff records`);
         }
-    },
-    
+    } catch (error) {
+        console.error('Error loading staff records:', error);
+    }
+},
     // ============================================
     // DISABLE DEVELOPER TOOLS
     // ============================================
@@ -1475,7 +1474,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         return Math.abs(hash).toString(16);
     },
     
-    // ============================================
+   // ============================================
 // STAFF LOGIN - WITH UUID
 // ============================================
 verifyStaffLogin: async function(identifier, password) {
@@ -1486,17 +1485,29 @@ verifyStaffLogin: async function(identifier, password) {
         
         if (!staff) return null;
         
+        // Check if password_hash exists
+        if (!staff.password_hash) {
+            console.log('❌ No password hash for staff:', staff.email);
+            return null;
+        }
+        
         const storedPassword = atob(staff.password_hash);
         if (storedPassword !== password) return null;
         
-        // ✅ Get the UUID from consolidated_user_profiles_table
-        const { data: profile } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id')
-            .eq('email', staff.email)
-            .single();
-        
-        const uuid = profile?.user_id || staff.id;
+        // Get the UUID from consolidated_user_profiles_table
+        let uuid = staff.id;
+        try {
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', staff.email)
+                .single();
+            if (profile?.user_id) {
+                uuid = profile.user_id;
+            }
+        } catch (e) {
+            console.log('Using staff ID as fallback for UUID');
+        }
         
         console.log('✅ Staff verified:', {
             staff_id: staff.id,
@@ -1505,9 +1516,9 @@ verifyStaffLogin: async function(identifier, password) {
         });
         
         return {
-            user_id: uuid,              // ✅ UUID for session tracking
-            staff_id: staff.id,         // ✅ Staff ID for reference
-            id: staff.id,               // ✅ Original ID for backward compatibility
+            user_id: uuid,              // UUID for session tracking
+            staff_id: staff.id,         // Staff ID for reference
+            id: staff.id,               // Original ID for backward compatibility
             email: staff.email,
             full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
             role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
@@ -1521,7 +1532,7 @@ verifyStaffLogin: async function(identifier, password) {
     }
 },
     // ============================================
-// EXECUTE LOGIN
+// EXECUTE LOGIN - COMPLETE FIX
 // ============================================
 executeLogin: async function(identifier, password) {
     if (!this.supabase) {
@@ -1534,27 +1545,42 @@ executeLogin: async function(identifier, password) {
     let isStaff = false;
     
     // ============================================
-    // 👇 STEP 1: CHECK STAFF LOGIN FIRST
+    // 👇 STEP 1: CHECK STAFF LOGIN
     // ============================================
     const isStaffId = !identifier.includes('@');
-    if (isStaffId || identifier.includes('@')) {
+    
+    // Only check staff login if:
+    // 1. It's a staff ID (no @) OR
+    // 2. We want to check staff by email
+    if (isStaffId) {
+        // Staff ID format - ONLY check staff_records
         const staffProfile = await this.verifyStaffLogin(identifier, password);
         if (staffProfile) {
-            // ✅ Staff found - return immediately
             profileData = staffProfile;
             isStaff = true;
             return { profileData, isStaff };
         }
-        // ❌ Staff not found - THROW ERROR, don't fall back to student login
+        // Staff ID not found - throw error
         this.recordFailedAttempt();
         throw new Error('Invalid staff credentials');
     }
     
     // ============================================
-    // 👇 STEP 2: STUDENT LOGIN (ONLY IF NOT STAFF)
+    // 👇 STEP 2: EMAIL LOGIN - Try Staff First, Then Student
     // ============================================
-    // Only reach here if identifier is an email AND staff login failed
-    // or if we want to specifically check student login
+    // This is for email logins - try staff first, fallback to student
+    const staffProfile = await this.verifyStaffLogin(identifier, password);
+    if (staffProfile) {
+        // Staff found by email
+        profileData = staffProfile;
+        isStaff = true;
+        return { profileData, isStaff };
+    }
+    
+    // ============================================
+    // 👇 STEP 3: STUDENT LOGIN (Supabase Auth)
+    // ============================================
+    // Only reach here if staff login failed and it's an email
     try {
         const { data: authData, error: authError } = await this.supabase.auth
             .signInWithPassword({ 
@@ -1593,11 +1619,6 @@ executeLogin: async function(identifier, password) {
         return { profileData: profile, isStaff: false };
         
     } catch (error) {
-        // If it's a staff error, rethrow it
-        if (error.message === 'Invalid staff credentials') {
-            throw error;
-        }
-        // Otherwise, it's a student login error
         throw error;
     }
 },
