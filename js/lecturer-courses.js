@@ -27,7 +27,7 @@ const LecturerReports = {
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - SAME AS COURSES MODULE
+    // RESOLVE THE CORRECT LECTURER ID
     // ============================================
     async resolveLecturerId() {
         try {
@@ -497,6 +497,9 @@ const LecturerReports = {
         }
     },
     
+    // ============================================
+    // GENERATE REPORT
+    // ============================================
     async generateReport(e) {
         e.preventDefault();
         const form = e.target;
@@ -540,6 +543,22 @@ const LecturerReports = {
             
             const reportName = `${unitName} - ${typeNames[reportType] || reportType}`;
             
+            // Generate the actual report data
+            const reportData = await this.generateReportData(unitId, reportType, unit);
+            
+            // Download the report
+            if (format === 'CSV') {
+                this.downloadCSV(reportData, reportName);
+            } else if (format === 'PDF') {
+                this.downloadPDF(reportData, reportName);
+            } else if (format === 'Excel') {
+                this.downloadExcel(reportData, reportName);
+            } else {
+                // HTML Preview
+                this.showHTMLPreview(reportData, reportName);
+            }
+            
+            // Save report to database
             const newReport = {
                 id: `report-${Date.now()}`,
                 name: reportName,
@@ -574,7 +593,7 @@ const LecturerReports = {
             this.renderReports(this.reports);
             this.updateStats();
             
-            window.showNotification('✅ Report generated successfully!', 'success');
+            window.showNotification(`✅ ${reportName} generated and downloaded!`, 'success');
             
             form.reset();
             this.populateReportForm();
@@ -586,6 +605,307 @@ const LecturerReports = {
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
+    },
+    
+    // ============================================
+    // GENERATE REPORT DATA
+    // ============================================
+    async generateReportData(unitId, reportType, unit) {
+        const supabase = window.lecturerDB?.supabase;
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        
+        let data = [];
+        let headers = [];
+        
+        if (reportType === 'AttendanceSummary') {
+            // Get attendance data
+            const { data: attendance } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('program', unit.program)
+                .eq('block', unit.block);
+            
+            // Get students
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('full_name, student_id, admission_number')
+                .eq('program', unit.program)
+                .eq('role', 'student');
+            
+            const studentMap = {};
+            students?.forEach(s => {
+                studentMap[s.student_id] = {
+                    name: s.full_name || 'Unknown',
+                    admission: s.admission_number || s.student_id || 'N/A'
+                };
+            });
+            
+            // Count attendance per student
+            const attendanceCount = {};
+            attendance?.forEach(a => {
+                const key = a.student_id;
+                if (!attendanceCount[key]) {
+                    attendanceCount[key] = 0;
+                }
+                attendanceCount[key]++;
+            });
+            
+            data = students?.map(s => {
+                const student = studentMap[s.student_id] || {};
+                const present = attendanceCount[s.student_id] || 0;
+                const total = attendance?.length || 0;
+                return {
+                    'Student Name': student.name || 'Unknown',
+                    'Admission': student.admission || 'N/A',
+                    'Present Days': present,
+                    'Total Days': total,
+                    'Attendance Rate': total > 0 ? Math.round((present / total) * 100) + '%' : '0%'
+                };
+            }) || [];
+            
+            headers = ['Student Name', 'Admission', 'Present Days', 'Total Days', 'Attendance Rate'];
+            
+        } else if (reportType === 'CourseGradeBook' || reportType === 'PerformanceAnalysis') {
+            // Get marks data
+            const { data: marks } = await supabase
+                .from('student_marks')
+                .select('*')
+                .eq('subject_name', unit.name)
+                .eq('block', unit.block)
+                .eq('program', unit.program);
+            
+            // Get students
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('full_name, student_id, admission_number')
+                .eq('program', unit.program)
+                .eq('role', 'student');
+            
+            const studentMap = {};
+            students?.forEach(s => {
+                studentMap[s.student_id] = {
+                    name: s.full_name || 'Unknown',
+                    admission: s.admission_number || s.student_id || 'N/A'
+                };
+            });
+            
+            data = marks?.map(m => {
+                const student = studentMap[m.admission_number] || {};
+                const cat1 = m.cat1_score || 0;
+                const cat2 = m.cat2_score || 0;
+                const exam = m.exam_score || 0;
+                const total = cat1 + cat2 + exam;
+                const grade = total >= 75 ? 'A' : total >= 65 ? 'B' : total >= 60 ? 'C' : 'D';
+                
+                return {
+                    'Student Name': student.name || 'Unknown',
+                    'Admission': m.admission_number || 'N/A',
+                    'CAT1': cat1,
+                    'CAT2': cat2,
+                    'Exam': exam,
+                    'Total': total,
+                    'Grade': grade,
+                    'Status': total >= 60 ? 'Pass' : 'Fail'
+                };
+            }) || [];
+            
+            headers = ['Student Name', 'Admission', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Status'];
+            
+        } else if (reportType === 'EnrollmentList' || reportType === 'ClassRoster') {
+            // Get students
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('full_name, student_id, admission_number, email, phone')
+                .eq('program', unit.program)
+                .eq('role', 'student');
+            
+            // Get registrations
+            const { data: registrations } = await supabase
+                .from('student_unit_registrations')
+                .select('student_id')
+                .eq('unit_name', unit.name)
+                .eq('block', unit.block)
+                .eq('status', 'approved');
+            
+            const registeredIds = new Set(registrations?.map(r => r.student_id) || []);
+            
+            data = students?.map(s => ({
+                'Student Name': s.full_name || 'Unknown',
+                'Student ID': s.student_id || 'N/A',
+                'Admission': s.admission_number || 'N/A',
+                'Email': s.email || 'N/A',
+                'Phone': s.phone || 'N/A',
+                'Registered': registeredIds.has(s.student_id) ? '✅ Yes' : '❌ No'
+            })) || [];
+            
+            headers = ['Student Name', 'Student ID', 'Admission', 'Email', 'Phone', 'Registered'];
+        }
+        
+        return {
+            headers: headers,
+            rows: data,
+            title: `${unit.name} - ${reportType}`,
+            unit: unit,
+            generatedAt: new Date().toISOString()
+        };
+    },
+    
+    // ============================================
+    // DOWNLOAD CSV
+    // ============================================
+    downloadCSV(reportData, reportName) {
+        const { headers, rows } = reportData;
+        
+        let csv = headers.join(',') + '\n';
+        rows.forEach(row => {
+            const values = headers.map(h => {
+                const val = row[h] || '';
+                return `"${String(val).replace(/"/g, '""')}"`;
+            });
+            csv += values.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${reportName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+    
+    // ============================================
+    // DOWNLOAD PDF
+    // ============================================
+    downloadPDF(reportData, reportName) {
+        const { headers, rows, title, generatedAt } = reportData;
+        
+        let html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${title}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { color: #4C1D95; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { background: #4C1D95; color: white; padding: 10px; text-align: left; }
+                    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+                    tr:nth-child(even) { background: #f8fafc; }
+                    .footer { margin-top: 20px; color: #94a3b8; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <h1>${title}</h1>
+                <p>Generated: ${new Date(generatedAt).toLocaleString()}</p>
+                <table>
+                    <thead>
+                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="footer">
+                    Total Records: ${rows.length}
+                </div>
+                <script>
+                    window.onload = function() { window.print(); }
+                </script>
+            </body>
+            </html>
+        `;
+        
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+    },
+    
+    // ============================================
+    // SHOW HTML PREVIEW
+    // ============================================
+    showHTMLPreview(reportData, reportName) {
+        const { headers, rows, title, generatedAt } = reportData;
+        
+        let html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${title}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+                    h1 { color: #4C1D95; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { background: #4C1D95; color: white; padding: 10px; text-align: left; position: sticky; top: 0; }
+                    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+                    tr:nth-child(even) { background: #f8fafc; }
+                    tr:hover { background: #e2e8f0; }
+                    .footer { margin-top: 20px; color: #94a3b8; font-size: 12px; display: flex; justify-content: space-between; }
+                    .badge { background: #4C1D95; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>${title}</h1>
+                    <span class="badge">${rows.length} records</span>
+                </div>
+                <p>Generated: ${new Date(generatedAt).toLocaleString()}</p>
+                <table>
+                    <thead>
+                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="footer">
+                    <span>${reportName}</span>
+                    <span>Total: ${rows.length} records</span>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="window.print()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button onclick="window.close()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                        Close
+                    </button>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        const win = window.open('', '_blank', 'width=1200,height=800');
+        win.document.write(html);
+        win.document.close();
+    },
+    
+    // ============================================
+    // DOWNLOAD EXCEL
+    // ============================================
+    downloadExcel(reportData, reportName) {
+        const { headers, rows } = reportData;
+        
+        let csv = headers.join('\t') + '\n';
+        rows.forEach(row => {
+            const values = headers.map(h => row[h] || '');
+            csv += values.join('\t') + '\n';
+        });
+        
+        const blob = new Blob([csv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${reportName.replace(/[^a-zA-Z0-9]/g, '_')}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     },
     
     async deleteReport(reportId) {
@@ -783,4 +1103,4 @@ window.refreshReports = () => LecturerReports.refresh();
 window.exportAllReports = () => LecturerReports.exportAllReports();
 window.printReportTable = () => LecturerReports.printReportTable();
 
-console.log('✅ LecturerReports module loaded - Same ID resolution as marks module');
+console.log('✅ LecturerReports module loaded - Full report generation with download');
